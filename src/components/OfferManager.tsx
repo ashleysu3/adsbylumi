@@ -70,7 +70,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
       if (!template) throw new Error("Template not found");
 
       // Create strategy with pre-filled offer data
-      const { data: strategy, error } = await supabase
+      const { data: strategy, error: strategyError } = await supabase
         .from('strategies')
         .insert({
           brand_id: brandId,
@@ -85,10 +85,30 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (strategyError) throw strategyError;
 
-      toast.success(`Campaign created for ${offer.name}!`);
-      navigate(`/creative?strategy=${strategy.id}`);
+      // Create workspace
+      const { data: workspace, error: workspaceError } = await supabase
+        .from('campaign_workspaces')
+        .insert({
+          brand_id: brandId,
+          template_id: template.id,
+          strategy_id: strategy.id,
+          name: `${template.name} - ${offer.name}`,
+          strategy_json: template.strategy_template,
+          offer_name: offer.name,
+          offer_url: offer.url || null,
+          offer_price: offer.price_point || null,
+          offer_description: offer.description || null,
+          progress_status: "creative_in_progress",
+        })
+        .select()
+        .single();
+
+      if (workspaceError) throw workspaceError;
+
+      toast.success(`Campaign workspace created for ${offer.name}!`);
+      navigate(`/workspace/${workspace.id}`);
     } catch (error: any) {
       console.error('Error creating campaign:', error);
       toast.error(error.message || 'Failed to create campaign');

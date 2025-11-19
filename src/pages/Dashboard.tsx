@@ -217,6 +217,9 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
+            {/* Campaign Workspaces */}
+            <CampaignsList brandId={brand.id} />
+
             {/* Audience Psychology */}
             <AudiencePsychology
               brandId={brand.id}

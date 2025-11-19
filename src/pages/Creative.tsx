@@ -16,10 +16,12 @@ import { toast } from "sonner";
 export default function Creative() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const strategyId = searchParams.get("strategy");
+  const workspaceId = searchParams.get("workspace");
+  const strategyId = searchParams.get("strategy"); // Keep for backward compatibility
 
   const [loading, setLoading] = useState(false);
   const [brand, setBrand] = useState<any>(null);
+  const [workspace, setWorkspace] = useState<any>(null);
   const [strategy, setStrategy] = useState<any>(null);
   const [creativeData, setCreativeData] = useState<any>(null);
   const [hasPrefilledOffer, setHasPrefilledOffer] = useState(false);
@@ -37,7 +39,7 @@ export default function Creative() {
 
   useEffect(() => {
     fetchData();
-  }, [strategyId]);
+  }, [workspaceId, strategyId]);
 
   const fetchData = async () => {
     try {
@@ -56,7 +58,40 @@ export default function Creative() {
         setOffers(offersData || []);
       }
 
-      if (strategyId) {
+      // Load from workspace if available
+      if (workspaceId) {
+        const { data: workspaceData } = await supabase
+          .from("campaign_workspaces")
+          .select("*")
+          .eq("id", workspaceId)
+          .single();
+        
+        setWorkspace(workspaceData);
+        
+        if (workspaceData?.offer_name) {
+          setOfferName(workspaceData.offer_name);
+          setOfferUrl(workspaceData.offer_url || "");
+          setOfferPrice(workspaceData.offer_price || "");
+          setOfferDescription(workspaceData.offer_description || "");
+          setShowOfferForm(false);
+          setHasPrefilledOffer(true);
+        }
+        
+        if (workspaceData?.creative_json) {
+          setCreativeData(workspaceData.creative_json);
+        }
+        
+        if (workspaceData?.strategy_id) {
+          const { data: strategyData } = await supabase
+            .from("strategies")
+            .select("*")
+            .eq("id", workspaceData.strategy_id)
+            .single();
+          setStrategy(strategyData);
+        }
+      } 
+      // Fallback to old strategy-based flow
+      else if (strategyId) {
         const { data: strategyData } = await supabase.from("strategies").select("*").eq("id", strategyId).single();
         setStrategy(strategyData);
         
@@ -81,14 +116,30 @@ export default function Creative() {
     }
 
     try {
-      const { error } = await supabase.from("strategies").update({
-        offer_name: offerName,
-        offer_url: offerUrl,
-        offer_price: offerPrice,
-        offer_description: offerDescription,
-      }).eq("id", strategyId);
-
-      if (error) throw error;
+      // Save to workspace if available
+      if (workspace) {
+        const { error } = await supabase.from("campaign_workspaces").update({
+          offer_name: offerName,
+          offer_url: offerUrl,
+          offer_price: offerPrice,
+          offer_description: offerDescription,
+          progress_status: "creative_in_progress",
+        }).eq("id", workspace.id);
+        
+        if (error) throw error;
+      }
+      // Fallback to strategy
+      else if (strategy) {
+        const { error } = await supabase.from("strategies").update({
+          offer_name: offerName,
+          offer_url: offerUrl,
+          offer_price: offerPrice,
+          offer_description: offerDescription,
+        }).eq("id", strategy.id);
+        
+        if (error) throw error;
+      }
+      
       setShowOfferForm(false);
       toast.success("Offer details saved!");
     } catch (error: any) {
@@ -130,7 +181,13 @@ export default function Creative() {
     try {
       const payload: any = {
         brandName: brand.name,
-        strategyData: { ...strategy, offer_name: offerName, offer_url: offerUrl, offer_price: offerPrice, offer_description: offerDescription },
+        strategyData: { 
+          ...(workspace?.strategy_json || strategy), 
+          offer_name: offerName, 
+          offer_url: offerUrl, 
+          offer_price: offerPrice, 
+          offer_description: offerDescription 
+        },
         creativeType: 'complete'
       };
       
@@ -147,7 +204,21 @@ export default function Creative() {
 
       if (error) throw error;
       setCreativeData(data);
-      toast.success("Creative assets generated!");
+      
+      // Save to workspace if available
+      if (workspace) {
+        await supabase.from("campaign_workspaces").update({
+          creative_json: data,
+          progress_status: "waiting_for_assets",
+          production_checklist: generateProductionChecklist(data),
+        }).eq("id", workspace.id);
+        
+        toast.success("Creative saved to workspace!");
+        // Navigate to workspace instead of staying on creative page
+        navigate(`/workspace/${workspace.id}`);
+      } else {
+        toast.success("Creative assets generated!");
+      }
     } catch (error: any) {
       console.error("Error generating creative:", error);
       if (error.message?.includes("429")) toast.error("Rate limit exceeded. Please wait a moment.");
@@ -156,6 +227,17 @@ export default function Creative() {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const generateProductionChecklist = (creative: any) => {
+    const items = [];
+    if (creative.hooks) items.push({ id: "hooks", category: "📹 To Record", title: "Film hook variations", completed: false });
+    if (creative.scripts) items.push({ id: "scripts", category: "📹 To Record", title: "Record scripts", completed: false });
+    if (creative.broll) items.push({ id: "broll", category: "📹 To Record", title: "Capture B-roll", completed: false });
+    if (creative.graphics) items.push({ id: "graphics", category: "🎨 To Design", title: "Create graphics", completed: false });
+    items.push({ id: "edit", category: "✂️ Post-Production", title: "Edit videos", completed: false });
+    items.push({ id: "formats", category: "✂️ Post-Production", title: "Export formats", completed: false });
+    return items;
   };
 
   const copyToClipboard = (text: string) => {
@@ -167,8 +249,8 @@ export default function Creative() {
     return (<DashboardLayout><Card><CardHeader><CardTitle>Setup Required</CardTitle><CardDescription>Please complete your brand setup first.</CardDescription></CardHeader></Card></DashboardLayout>);
   }
 
-  if (!strategy) {
-    return (<DashboardLayout><Card><CardHeader><CardTitle>No Strategy Selected</CardTitle><CardDescription>Please select a campaign template from the Ad Planner first.</CardDescription></CardHeader><CardContent><Button onClick={() => navigate("/planning")}><ArrowLeft className="mr-2 h-4 w-4" />Go to Ad Planner</Button></CardContent></Card></DashboardLayout>);
+  if (!workspace && !strategy) {
+    return (<DashboardLayout><Card><CardHeader><CardTitle>No Campaign Selected</CardTitle><CardDescription>Please select a campaign template from the Ad Planner first.</CardDescription></CardHeader><CardContent><Button onClick={() => navigate("/planning")}><ArrowLeft className="mr-2 h-4 w-4" />Go to Ad Planner</Button></CardContent></Card></DashboardLayout>);
   }
 
   return (
