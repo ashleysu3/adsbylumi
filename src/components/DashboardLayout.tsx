@@ -11,8 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Home, Lightbulb, Palette, BarChart3, LogOut, Settings, Sparkles } from "lucide-react";
+import { Home, Lightbulb, Palette, BarChart3, LogOut, Settings } from "lucide-react";
 import { toast } from "sonner";
+import logo from "@/assets/logo.png";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -62,11 +63,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Sparkles className="h-7 w-7 text-primary" />
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Your Ad Assistant
-              </h1>
+            <div className="flex items-center">
+              <img src={logo} alt="Your Ad Assistant" className="h-10" />
             </div>
 
             <div className="flex items-center space-x-2">
