@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, creativeType } = await req.json();
+    const { brandName, strategyData, creativeType, productPsychology, audiencePsychology } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -48,7 +48,7 @@ Your output must be a valid JSON object with this exact structure:
 
 Keep everything clear, direct, and focused on results.`;
 
-    const userPrompt = `Brand: ${brandName}
+    let userPrompt = `Brand: ${brandName}
 Campaign Type: ${strategyData.campaign_type}
 Goal: ${strategyData.name}
 
@@ -56,9 +56,49 @@ Messaging Framework:
 ${JSON.stringify(strategyData.messaging_framework, null, 2)}
 
 Audience Psychology:
-${JSON.stringify(strategyData.audience_psychology, null, 2)}
+${JSON.stringify(strategyData.audience_psychology, null, 2)}`;
 
-Generate ${creativeType} creative assets that speak directly to this audience. Be specific and actionable.`;
+    // Add psychology-enhanced prompting if available
+    if (audiencePsychology || productPsychology) {
+      userPrompt += `\n\n=== DEEP PSYCHOLOGY INSIGHTS ===\n`;
+      
+      if (audiencePsychology) {
+        userPrompt += `\nAUDIENCE PROFILE:
+Demographics: ${audiencePsychology.demographics || 'Not specified'}
+Psychographics: ${audiencePsychology.psychographics || 'Not specified'}
+Core Pain Points: ${JSON.stringify(audiencePsychology.pain_points || [])}
+Core Desires: ${JSON.stringify(audiencePsychology.desires || [])}
+Common Objections: ${JSON.stringify(audiencePsychology.objections || [])}`;
+      }
+      
+      if (productPsychology) {
+        userPrompt += `\n\nPRODUCT POSITIONING:
+${productPsychology.positioning || 'Not specified'}
+
+BUYING TRIGGERS FOR THIS PRODUCT:
+${productPsychology.buying_triggers || 'Not specified'}
+
+PRODUCT-SPECIFIC DESIRES:
+${JSON.stringify(productPsychology.product_desires || [])}
+
+PRODUCT-SPECIFIC OBJECTIONS TO ADDRESS:
+${JSON.stringify(productPsychology.product_objections || [])}
+
+PRODUCT SOLVES THESE PAIN POINTS:
+${JSON.stringify(productPsychology.product_pain_points || [])}`;
+      }
+      
+      userPrompt += `\n\nCREATIVE DIRECTION:
+1. HOOKS - Trigger the buying_triggers and speak to product_desires
+2. SCRIPTS - Address product_objections and position the product correctly
+3. HEADLINES - Speak directly to product pain points
+4. PRIMARY COPY - Use the positioning language and audience psychographics
+5. B-ROLL - Visually represent the transformation from pain points to desires
+
+Make everything hyper-specific to this audience + product combination.`;
+    } else {
+      userPrompt += `\n\nGenerate ${creativeType} creative assets that speak directly to this audience. Be specific and actionable.`;
+    }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
