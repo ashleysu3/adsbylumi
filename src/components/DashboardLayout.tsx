@@ -49,7 +49,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const navItems = [
-    { path: "/dashboard", icon: Home, label: "My Brand" },
     { path: "/planning", icon: Lightbulb, label: "Ad Planner" },
     { path: "/creative", icon: Palette, label: "Creative" },
     { path: "/data", icon: BarChart3, label: "Performance" },
@@ -87,6 +86,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                    <Home className="mr-2 h-4 w-4" />
+                    My Brand
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
