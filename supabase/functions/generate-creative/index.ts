@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +20,30 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const systemPrompt = `You are a Meta Ads creative director. Generate compelling ad creative that converts.
+    // Initialize Supabase client to fetch knowledge base
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch relevant knowledge from knowledge base
+    const { data: knowledgeDocs } = await supabase
+      .from('knowledge_documents')
+      .select('category, title, content')
+      .eq('active', true)
+      .in('category', ['hooks', 'copy_formulas', 'creative_department', 'psychology', 'visual_guidelines']);
+
+    // Organize knowledge by category
+    const knowledgeByCategory: Record<string, string> = {};
+    if (knowledgeDocs) {
+      for (const doc of knowledgeDocs) {
+        if (!knowledgeByCategory[doc.category]) {
+          knowledgeByCategory[doc.category] = '';
+        }
+        knowledgeByCategory[doc.category] += `\n${doc.title}:\n${doc.content}\n`;
+      }
+    }
+
+    let systemPrompt = `You are a Meta Ads creative director. Generate compelling ad creative that converts.
 
 Your output must be a valid JSON object with this exact structure:
 {
@@ -47,6 +71,29 @@ Your output must be a valid JSON object with this exact structure:
 }
 
 Keep everything clear, direct, and focused on results.`;
+
+    // Add knowledge base context to system prompt
+    if (Object.keys(knowledgeByCategory).length > 0) {
+      systemPrompt += `\n\n=== KNOWLEDGE BASE GUIDELINES ===\n`;
+      
+      if (knowledgeByCategory.hooks) {
+        systemPrompt += `\nHOOKS LIBRARY:\n${knowledgeByCategory.hooks}`;
+      }
+      if (knowledgeByCategory.copy_formulas) {
+        systemPrompt += `\nCOPY FORMULAS:\n${knowledgeByCategory.copy_formulas}`;
+      }
+      if (knowledgeByCategory.creative_department) {
+        systemPrompt += `\nCREATIVE BEST PRACTICES:\n${knowledgeByCategory.creative_department}`;
+      }
+      if (knowledgeByCategory.psychology) {
+        systemPrompt += `\nPSYCHOLOGY TRIGGERS:\n${knowledgeByCategory.psychology}`;
+      }
+      if (knowledgeByCategory.visual_guidelines) {
+        systemPrompt += `\nVISUAL GUIDELINES:\n${knowledgeByCategory.visual_guidelines}`;
+      }
+      
+      systemPrompt += `\n\nApply these guidelines when creating hooks, scripts, copy, and visual directions.`;
+    }
 
     let userPrompt = `Brand: ${brandName}
 Campaign Type: ${strategyData.campaign_type}
