@@ -96,6 +96,7 @@ export default function Planning() {
 
     setLoading(true);
     try {
+      // Create strategy first
       const strategyData = {
         brand_id: brand.id,
         template_id: template.id,
@@ -109,19 +110,37 @@ export default function Planning() {
         status: "active",
       };
 
-      const { data: newStrategy, error } = await supabase
+      const { data: newStrategy, error: strategyError } = await supabase
         .from("strategies")
         .insert(strategyData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (strategyError) throw strategyError;
 
-      toast.success(`${template.name} strategy loaded!`);
-      navigate(`/creative?strategy=${newStrategy.id}`);
+      // Create campaign workspace
+      const workspaceData = {
+        brand_id: brand.id,
+        template_id: template.id,
+        strategy_id: newStrategy.id,
+        name: template.name,
+        strategy_json: template.strategy_template,
+        progress_status: "creative_in_progress",
+      };
+
+      const { data: newWorkspace, error: workspaceError } = await supabase
+        .from("campaign_workspaces")
+        .insert(workspaceData)
+        .select()
+        .single();
+
+      if (workspaceError) throw workspaceError;
+
+      toast.success(`${template.name} workspace created!`);
+      navigate(`/workspace/${newWorkspace.id}`);
     } catch (error: any) {
-      console.error("Error creating strategy:", error);
-      toast.error(error.message || "Failed to load template");
+      console.error("Error creating workspace:", error);
+      toast.error(error.message || "Failed to create workspace");
     } finally {
       setLoading(false);
     }

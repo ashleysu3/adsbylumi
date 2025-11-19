@@ -12,6 +12,7 @@ import { ProductionChecklist } from "@/components/ProductionChecklist";
 import { CreativeAssets } from "@/components/CreativeAssets";
 import { AssetUploader } from "@/components/AssetUploader";
 import { MetaCampaignBuilder } from "@/components/MetaCampaignBuilder";
+import { WorkspaceHelp } from "@/components/WorkspaceHelp";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface CampaignWorkspace {
@@ -159,6 +160,8 @@ export default function CampaignWorkspace() {
             {getStatusLabel(workspace.progress_status)}
           </Badge>
         </div>
+
+        <WorkspaceHelp />
 
         {workspace.offer_name && (
           <Card className="mb-6">
