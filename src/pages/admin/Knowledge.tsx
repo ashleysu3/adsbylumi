@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Plus, Edit, Trash2, Save, X } from "lucide-react";
+import { BookOpen, Plus, Edit, Trash2, Save, X, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 interface KnowledgeDoc {
@@ -41,6 +41,9 @@ export default function Knowledge() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [editingDoc, setEditingDoc] = useState<KnowledgeDoc | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form state
   const [formCategory, setFormCategory] = useState("");
@@ -167,6 +170,83 @@ export default function Knowledge() {
     setFormTags("");
   };
 
+  const handleBulkUpload = async (files: FileList) => {
+    if (!files || files.length === 0) return;
+    
+    setUploading(true);
+    const results: { success: number; failed: number; errors: string[] } = {
+      success: 0,
+      failed: 0,
+      errors: []
+    };
+
+    for (const file of Array.from(files)) {
+      try {
+        let content = "";
+        const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+        
+        // Read file content based on type
+        if (file.type.startsWith("text/") || file.name.endsWith(".md") || file.name.endsWith(".txt")) {
+          content = await file.text();
+        } else {
+          results.failed++;
+          results.errors.push(`${file.name}: Unsupported file type. Please use .txt or .md files`);
+          continue;
+        }
+
+        if (!content.trim()) {
+          results.failed++;
+          results.errors.push(`${file.name}: File is empty`);
+          continue;
+        }
+
+        // Auto-detect category from filename or use default
+        let category = "ad_planner";
+        const lowerName = file.name.toLowerCase();
+        if (lowerName.includes("hook")) category = "hooks";
+        else if (lowerName.includes("copy")) category = "copy_formulas";
+        else if (lowerName.includes("visual")) category = "visual_guidelines";
+        else if (lowerName.includes("psychology") || lowerName.includes("psych")) category = "psychology";
+        else if (lowerName.includes("creative")) category = "creative_department";
+        else if (lowerName.includes("meta")) category = "meta_best_practices";
+
+        // Insert into database
+        const { error } = await supabase
+          .from("knowledge_documents")
+          .insert({
+            title: fileName,
+            content: content.trim(),
+            category,
+            tags: [],
+          });
+
+        if (error) {
+          results.failed++;
+          results.errors.push(`${file.name}: ${error.message}`);
+        } else {
+          results.success++;
+        }
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push(`${file.name}: ${error.message || "Unknown error"}`);
+      }
+    }
+
+    setUploading(false);
+    setUploadDialogOpen(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    // Show results
+    if (results.success > 0) {
+      toast.success(`Successfully uploaded ${results.success} document(s)`);
+      fetchDocuments();
+    }
+    if (results.failed > 0) {
+      toast.error(`Failed to upload ${results.failed} document(s). Check console for details.`);
+      console.error("Upload errors:", results.errors);
+    }
+  };
+
   const filteredDocs = selectedCategory === "all" 
     ? documents 
     : documents.filter(d => d.category === selectedCategory);
@@ -191,17 +271,59 @@ export default function Knowledge() {
               Manage AI knowledge for creative generation
             </p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Knowledge
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="flex gap-2">
+            <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" />
+                  Bulk Upload
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Bulk Upload Knowledge Files</DialogTitle>
+                  <DialogDescription>
+                    Upload multiple .txt or .md files. Category will be auto-detected from filename.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Select Files</Label>
+                    <Input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".txt,.md,text/plain,text/markdown"
+                      multiple
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          handleBulkUpload(e.target.files);
+                        }
+                      }}
+                      disabled={uploading}
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Tip: Include keywords in filenames (e.g., "hooks_library.txt", "psychology_triggers.md")
+                    </p>
+                  </div>
+                  {uploading && (
+                    <div className="text-center py-4">
+                      <div className="animate-pulse">Uploading files...</div>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Knowledge
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingDoc ? "Edit" : "Add"} Knowledge Document</DialogTitle>
                 <DialogDescription>
@@ -262,6 +384,7 @@ export default function Knowledge() {
               </div>
             </DialogContent>
           </Dialog>
+        </div>
         </div>
 
         <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
