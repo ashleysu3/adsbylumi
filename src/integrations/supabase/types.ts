@@ -14,16 +14,280 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audiences: {
+        Row: {
+          brand_id: string
+          created_at: string | null
+          demographics: string | null
+          desires: string[] | null
+          id: string
+          name: string
+          objections: string[] | null
+          pain_points: string[] | null
+          psychographics: string | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string | null
+          demographics?: string | null
+          desires?: string[] | null
+          id?: string
+          name: string
+          objections?: string[] | null
+          pain_points?: string[] | null
+          psychographics?: string | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string | null
+          demographics?: string | null
+          desires?: string[] | null
+          id?: string
+          name?: string
+          objections?: string[] | null
+          pain_points?: string[] | null
+          psychographics?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audiences_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brands: {
+        Row: {
+          brand_voice: string | null
+          created_at: string | null
+          id: string
+          industry: string | null
+          meta_account_id: string | null
+          name: string
+          target_audience: string | null
+          updated_at: string | null
+          user_id: string
+          value_proposition: string | null
+          website_url: string | null
+        }
+        Insert: {
+          brand_voice?: string | null
+          created_at?: string | null
+          id?: string
+          industry?: string | null
+          meta_account_id?: string | null
+          name: string
+          target_audience?: string | null
+          updated_at?: string | null
+          user_id: string
+          value_proposition?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          brand_voice?: string | null
+          created_at?: string | null
+          id?: string
+          industry?: string | null
+          meta_account_id?: string | null
+          name?: string
+          target_audience?: string | null
+          updated_at?: string | null
+          user_id?: string
+          value_proposition?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      offers: {
+        Row: {
+          brand_id: string
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          price_point: string | null
+          target_outcome: string | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          price_point?: string | null
+          target_outcome?: string | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          price_point?: string | null
+          target_outcome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offers_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      strategies: {
+        Row: {
+          audience_psychology: Json | null
+          brand_id: string
+          campaign_type: string
+          contextual_keywords: string[] | null
+          created_at: string | null
+          id: string
+          kpi_benchmarks: Json | null
+          messaging_framework: Json | null
+          name: string
+          optimization_goals: string[] | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          audience_psychology?: Json | null
+          brand_id: string
+          campaign_type: string
+          contextual_keywords?: string[] | null
+          created_at?: string | null
+          id?: string
+          kpi_benchmarks?: Json | null
+          messaging_framework?: Json | null
+          name: string
+          optimization_goals?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          audience_psychology?: Json | null
+          brand_id?: string
+          campaign_type?: string
+          contextual_keywords?: string[] | null
+          created_at?: string | null
+          id?: string
+          kpi_benchmarks?: Json | null
+          messaging_framework?: Json | null
+          name?: string
+          optimization_goals?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategies_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string | null
+          current_period_end: string | null
+          id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string | null
+          current_period_end?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      subscription_tier: "starter" | "growth" | "agency_pro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +414,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      subscription_tier: ["starter", "growth", "agency_pro"],
+    },
   },
 } as const
