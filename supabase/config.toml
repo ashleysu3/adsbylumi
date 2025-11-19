@@ -1,1 +1,16 @@
 project_id = "sqwjbndgighjtifijgws"
+
+[functions.generate-creative]
+verify_jwt = true
+
+[functions.extract-brand-info]
+verify_jwt = true
+
+[functions.generate-audience-psychology]
+verify_jwt = false
+
+[functions.extract-offer-info]
+verify_jwt = true
+
+[functions.generate-product-psychology]
+verify_jwt = false
