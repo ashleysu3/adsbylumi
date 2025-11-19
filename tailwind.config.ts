@@ -43,22 +43,6 @@ export default {
           DEFAULT: "hsl(var(--gold))",
           foreground: "hsl(var(--gold-foreground))",
         },
-        green: {
-          DEFAULT: "hsl(var(--green))",
-          foreground: "hsl(var(--green-foreground))",
-        },
-        coral: {
-          DEFAULT: "hsl(var(--coral))",
-          foreground: "hsl(var(--coral-foreground))",
-        },
-        cyan: {
-          DEFAULT: "hsl(var(--cyan))",
-          foreground: "hsl(var(--cyan-foreground))",
-        },
-        pink: {
-          DEFAULT: "hsl(var(--pink))",
-          foreground: "hsl(var(--pink-foreground))",
-        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
