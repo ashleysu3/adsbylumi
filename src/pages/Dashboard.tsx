@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { BrandEditDialog } from "@/components/BrandEditDialog";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
@@ -17,7 +15,6 @@ import { Building2, Globe, Target, TrendingUp, Edit, ChevronDown } from "lucide-
 import { toast } from "sonner";
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
@@ -147,158 +144,147 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Tabs for Performance and Campaigns */}
-        <Tabs defaultValue="performance" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="campaigns">My Campaigns</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="performance" className="space-y-6">
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Brand Details + Psychology + Offers */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Brand Details Card */}
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Building2 className="h-5 w-5 text-primary" />
-                        <CardTitle>Brand Details</CardTitle>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit Details
-                      </Button>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Brand Details + Psychology + Offers */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Brand Details Card */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    <CardTitle>Brand Details</CardTitle>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit Details
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {brand.website_url && (
+                  <div className="flex items-start space-x-3">
+                    <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Website</p>
+                      <a
+                        href={brand.website_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        {brand.website_url}
+                      </a>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {brand.website_url && (
-                      <div className="flex items-start space-x-3">
-                        <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium">Website</p>
-                          <a
-                            href={brand.website_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline"
-                          >
-                            {brand.website_url}
-                          </a>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {brand.industry && (
-                      <div className="flex items-start space-x-3">
-                        <Target className="h-5 w-5 text-muted-foreground mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium">Industry</p>
-                          <p className="text-sm text-muted-foreground">{brand.industry}</p>
-                        </div>
-                      </div>
-                    )}
+                  </div>
+                )}
+                
+                {brand.industry && (
+                  <div className="flex items-start space-x-3">
+                    <Target className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Industry</p>
+                      <p className="text-sm text-muted-foreground">{brand.industry}</p>
+                    </div>
+                  </div>
+                )}
 
-                    <div className="pt-4 border-t">
-                      <p className="text-sm font-medium mb-2">Meta Ad Account</p>
-                      {brand.meta_account_id ? (
-                        <div className="flex items-center justify-between">
-                          <code className="text-xs bg-muted px-2 py-1 rounded">{brand.meta_account_id}</code>
-                          <MetaAccountConnect 
-                            brandId={brand.id} 
-                            currentAccountId={brand.meta_account_id}
-                            onUpdate={fetchBrandData}
-                          />
-                        </div>
+                <div className="pt-4 border-t">
+                  <p className="text-sm font-medium mb-2">Meta Ad Account</p>
+                  {brand.meta_account_id ? (
+                    <div className="flex items-center justify-between">
+                      <code className="text-xs bg-muted px-2 py-1 rounded">{brand.meta_account_id}</code>
+                      <MetaAccountConnect 
+                        brandId={brand.id} 
+                        currentAccountId={brand.meta_account_id}
+                        onUpdate={fetchBrandData}
+                      />
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Connect your Meta Ad Account to enable campaign creation
+                      </p>
+                      <MetaAccountConnect 
+                        brandId={brand.id} 
+                        currentAccountId={brand.meta_account_id}
+                        onUpdate={fetchBrandData}
+                      />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Campaign Workspaces */}
+            <CampaignsList brandId={brand.id} />
+
+            {/* Audience Psychology */}
+            <AudiencePsychology
+              brandId={brand.id}
+              psychology={brand.audience_psychology}
+              status={brand.psychology_status}
+              onUpdate={fetchBrandData}
+            />
+
+            {/* Offers Manager */}
+            <OfferManager
+              brandId={brand.id}
+              offers={offers}
+              onUpdate={fetchBrandData}
+            />
+          </div>
+
+          {/* Right Column - What You Offer Section (Collapsible) */}
+          <div className="lg:col-span-1">
+            <Collapsible open={offerSectionOpen} onOpenChange={setOfferSectionOpen}>
+              <Card>
+                <CardHeader>
+                  <CollapsibleTrigger asChild>
+                    <button className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+                      <div className="flex items-center space-x-2">
+                        <TrendingUp className="h-5 w-5 text-primary" />
+                        <CardTitle>What You Offer & Who You Serve</CardTitle>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${offerSectionOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  </CollapsibleTrigger>
+                </CardHeader>
+
+                <CollapsibleContent>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <p className="text-sm font-medium mb-2">What You Offer</p>
+                      {brand.value_proposition ? (
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {brand.value_proposition}
+                        </p>
                       ) : (
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Connect your Meta Ad Account to enable campaign creation
-                          </p>
-                          <MetaAccountConnect 
-                            brandId={brand.id} 
-                            currentAccountId={brand.meta_account_id}
-                            onUpdate={fetchBrandData}
-                          />
-                        </div>
+                        <p className="text-sm text-muted-foreground italic">
+                          Add your value proposition to help create better ad strategies.
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="pt-4 border-t">
+                      <p className="text-sm font-medium mb-2">Who You Serve</p>
+                      {brand.target_audience ? (
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {brand.target_audience}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground italic">
+                          Not set yet
+                        </p>
                       )}
                     </div>
                   </CardContent>
-                </Card>
-
-                {/* Audience Psychology */}
-                <AudiencePsychology
-                  brandId={brand.id}
-                  psychology={brand.audience_psychology}
-                  status={brand.psychology_status}
-                  onUpdate={fetchBrandData}
-                />
-
-                {/* Offers Manager */}
-                <OfferManager
-                  brandId={brand.id}
-                  offers={offers}
-                  onUpdate={fetchBrandData}
-                />
-              </div>
-
-              {/* Right Column - What You Offer Section (Collapsible) */}
-              <div className="lg:col-span-1">
-                <Collapsible open={offerSectionOpen} onOpenChange={setOfferSectionOpen}>
-                  <Card>
-                    <CardHeader>
-                      <CollapsibleTrigger asChild>
-                        <button className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
-                          <div className="flex items-center space-x-2">
-                            <TrendingUp className="h-5 w-5 text-primary" />
-                            <CardTitle>What You Offer & Who You Serve</CardTitle>
-                          </div>
-                          <ChevronDown className={`h-4 w-4 transition-transform ${offerSectionOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                      </CollapsibleTrigger>
-                    </CardHeader>
-
-                    <CollapsibleContent>
-                      <CardContent className="space-y-6">
-                        <div>
-                          <p className="text-sm font-medium mb-2">What You Offer</p>
-                          {brand.value_proposition ? (
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {brand.value_proposition}
-                            </p>
-                          ) : (
-                            <p className="text-sm text-muted-foreground italic">
-                              Add your value proposition to help create better ad strategies.
-                            </p>
-                          )}
-                        </div>
-                        
-                        <div className="pt-4 border-t">
-                          <p className="text-sm font-medium mb-2">Who You Serve</p>
-                          {brand.target_audience ? (
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {brand.target_audience}
-                            </p>
-                          ) : (
-                            <p className="text-sm text-muted-foreground italic">
-                              Not set yet
-                            </p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="campaigns">
-            <CampaignsList brandId={brand.id} />
-          </TabsContent>
-        </Tabs>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          </div>
+        </div>
 
         {/* Quick Actions */}
         <Card>
@@ -309,7 +295,7 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button size="lg" className="h-12 px-8" onClick={() => navigate("/planning")}>
+            <Button size="lg" className="h-12 px-8" onClick={() => window.location.href = "/planning"}>
               Start Planning
             </Button>
           </CardContent>
