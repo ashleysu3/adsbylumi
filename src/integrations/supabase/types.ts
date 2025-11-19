@@ -100,6 +100,60 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_templates: {
+        Row: {
+          active: boolean | null
+          audience_type: string
+          budget_suggestion: string | null
+          campaign_structure: string
+          created_at: string | null
+          description: string
+          icon: string
+          id: string
+          long_description: string
+          name: string
+          objective: string
+          optimization_event: string | null
+          slug: string
+          strategy_template: Json
+          use_case: string
+        }
+        Insert: {
+          active?: boolean | null
+          audience_type: string
+          budget_suggestion?: string | null
+          campaign_structure: string
+          created_at?: string | null
+          description: string
+          icon: string
+          id?: string
+          long_description: string
+          name: string
+          objective: string
+          optimization_event?: string | null
+          slug: string
+          strategy_template: Json
+          use_case: string
+        }
+        Update: {
+          active?: boolean | null
+          audience_type?: string
+          budget_suggestion?: string | null
+          campaign_structure?: string
+          created_at?: string | null
+          description?: string
+          icon?: string
+          id?: string
+          long_description?: string
+          name?: string
+          objective?: string
+          optimization_event?: string | null
+          slug?: string
+          strategy_template?: Json
+          use_case?: string
+        }
+        Relationships: []
+      }
       offers: {
         Row: {
           brand_id: string
@@ -173,8 +227,13 @@ export type Database = {
           kpi_benchmarks: Json | null
           messaging_framework: Json | null
           name: string
+          offer_description: string | null
+          offer_name: string | null
+          offer_price: string | null
+          offer_url: string | null
           optimization_goals: string[] | null
           status: string | null
+          template_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -187,8 +246,13 @@ export type Database = {
           kpi_benchmarks?: Json | null
           messaging_framework?: Json | null
           name: string
+          offer_description?: string | null
+          offer_name?: string | null
+          offer_price?: string | null
+          offer_url?: string | null
           optimization_goals?: string[] | null
           status?: string | null
+          template_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -201,8 +265,13 @@ export type Database = {
           kpi_benchmarks?: Json | null
           messaging_framework?: Json | null
           name?: string
+          offer_description?: string | null
+          offer_name?: string | null
+          offer_price?: string | null
+          offer_url?: string | null
           optimization_goals?: string[] | null
           status?: string | null
+          template_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -211,6 +280,13 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategies_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_templates"
             referencedColumns: ["id"]
           },
         ]
