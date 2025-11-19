@@ -160,6 +160,94 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_workspaces: {
+        Row: {
+          brand_id: string
+          created_at: string | null
+          creative_json: Json | null
+          final_answers: Json | null
+          id: string
+          meta_campaign_ids: Json | null
+          meta_campaign_status: string | null
+          name: string
+          offer_description: string | null
+          offer_name: string | null
+          offer_price: string | null
+          offer_url: string | null
+          production_checklist: Json | null
+          progress_status: string
+          strategy_id: string | null
+          strategy_json: Json | null
+          template_id: string | null
+          updated_at: string | null
+          user_uploaded_assets: Json | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string | null
+          creative_json?: Json | null
+          final_answers?: Json | null
+          id?: string
+          meta_campaign_ids?: Json | null
+          meta_campaign_status?: string | null
+          name: string
+          offer_description?: string | null
+          offer_name?: string | null
+          offer_price?: string | null
+          offer_url?: string | null
+          production_checklist?: Json | null
+          progress_status?: string
+          strategy_id?: string | null
+          strategy_json?: Json | null
+          template_id?: string | null
+          updated_at?: string | null
+          user_uploaded_assets?: Json | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string | null
+          creative_json?: Json | null
+          final_answers?: Json | null
+          id?: string
+          meta_campaign_ids?: Json | null
+          meta_campaign_status?: string | null
+          name?: string
+          offer_description?: string | null
+          offer_name?: string | null
+          offer_price?: string | null
+          offer_url?: string | null
+          production_checklist?: Json | null
+          progress_status?: string
+          strategy_id?: string | null
+          strategy_json?: Json | null
+          template_id?: string | null
+          updated_at?: string | null
+          user_uploaded_assets?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_workspaces_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_workspaces_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_workspaces_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
           ai_generated_description: boolean | null
