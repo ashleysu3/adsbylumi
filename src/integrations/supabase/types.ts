@@ -60,12 +60,14 @@ export type Database = {
       }
       brands: {
         Row: {
+          audience_psychology: Json | null
           brand_voice: string | null
           created_at: string | null
           id: string
           industry: string | null
           meta_account_id: string | null
           name: string
+          psychology_status: string | null
           target_audience: string | null
           updated_at: string | null
           user_id: string
@@ -73,12 +75,14 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          audience_psychology?: Json | null
           brand_voice?: string | null
           created_at?: string | null
           id?: string
           industry?: string | null
           meta_account_id?: string | null
           name: string
+          psychology_status?: string | null
           target_audience?: string | null
           updated_at?: string | null
           user_id: string
@@ -86,12 +90,14 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          audience_psychology?: Json | null
           brand_voice?: string | null
           created_at?: string | null
           id?: string
           industry?: string | null
           meta_account_id?: string | null
           name?: string
+          psychology_status?: string | null
           target_audience?: string | null
           updated_at?: string | null
           user_id?: string
@@ -156,31 +162,43 @@ export type Database = {
       }
       offers: {
         Row: {
+          ai_generated_description: boolean | null
+          ai_generated_price: boolean | null
           brand_id: string
           created_at: string | null
           description: string | null
           id: string
           name: string
           price_point: string | null
+          product_psychology: Json | null
           target_outcome: string | null
+          url: string | null
         }
         Insert: {
+          ai_generated_description?: boolean | null
+          ai_generated_price?: boolean | null
           brand_id: string
           created_at?: string | null
           description?: string | null
           id?: string
           name: string
           price_point?: string | null
+          product_psychology?: Json | null
           target_outcome?: string | null
+          url?: string | null
         }
         Update: {
+          ai_generated_description?: boolean | null
+          ai_generated_price?: boolean | null
           brand_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
           price_point?: string | null
+          product_psychology?: Json | null
           target_outcome?: string | null
+          url?: string | null
         }
         Relationships: [
           {
