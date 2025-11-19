@@ -22,7 +22,7 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -30,18 +30,25 @@ export default function Auth() {
         toast.success("Welcome back!");
         navigate("/dashboard");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               full_name: fullName,
             },
+            emailRedirectTo: `${window.location.origin}/onboarding`,
           },
         });
         if (error) throw error;
-        toast.success("Account created! Redirecting to onboarding...");
-        navigate("/onboarding");
+        
+        // Check if user is immediately confirmed (auto-confirm is enabled)
+        if (data.user && data.session) {
+          toast.success("Account created! Setting up your brand...");
+          navigate("/onboarding");
+        } else if (data.user && !data.session) {
+          toast.success("Account created! Please check your email to confirm.");
+        }
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred");

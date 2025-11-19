@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function Onboarding() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Please sign in to continue");
+        navigate("/auth");
+        return;
+      }
+      setAuthChecking(false);
+    };
+    
+    checkAuth();
+  }, [navigate]);
   
   // Form state
   const [brandName, setBrandName] = useState("");
@@ -69,6 +85,14 @@ export default function Onboarding() {
       setLoading(false);
     }
   };
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-gradient-editorial flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-editorial flex items-center justify-center px-4 py-12">
