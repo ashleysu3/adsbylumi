@@ -119,6 +119,29 @@ Generate a product-specific psychological profile.`;
 
     console.log('Product psychology generated and saved successfully');
 
+    // Trigger campaign template recommendation
+    console.log('Triggering campaign template recommendation...');
+    try {
+      const recommendResponse = await fetch(`${SUPABASE_URL}/functions/v1/recommend-campaign-template`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ offerId }),
+      });
+
+      if (!recommendResponse.ok) {
+        console.error('Failed to get campaign recommendation:', await recommendResponse.text());
+      } else {
+        const recommendData = await recommendResponse.json();
+        console.log('Campaign recommendation received:', recommendData);
+      }
+    } catch (recError) {
+      console.error('Error calling recommend-campaign-template:', recError);
+      // Don't fail the main request if recommendation fails
+    }
+
     return new Response(JSON.stringify({ success: true, productPsychology }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OfferDialog } from "./OfferDialog";
-import { Plus, ExternalLink, Package, Loader2 } from "lucide-react";
+import { Plus, ExternalLink, Package, Loader2, Sparkles, Rocket } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Offer {
   id: string;
@@ -13,6 +16,9 @@ interface Offer {
   description?: string | null;
   price_point?: string | null;
   product_psychology?: any;
+  recommended_template_id?: string | null;
+  recommendation_reason?: string | null;
+  recommendation_confidence?: string | null;
 }
 
 interface OfferManagerProps {
@@ -22,8 +28,23 @@ interface OfferManagerProps {
 }
 
 export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expandedOffers, setExpandedOffers] = useState<Set<string>>(new Set());
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [creatingCampaign, setCreatingCampaign] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const fetchTemplates = async () => {
+    const { data } = await supabase
+      .from('campaign_templates')
+      .select('*')
+      .eq('active', true);
+    if (data) setTemplates(data);
+  };
 
   const toggleOffer = (offerId: string) => {
     setExpandedOffers(prev => {
@@ -35,6 +56,56 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
       }
       return newSet;
     });
+  };
+
+  const createCampaignForOffer = async (offer: Offer) => {
+    if (!offer.recommended_template_id) {
+      toast.error("No campaign recommendation available");
+      return;
+    }
+
+    setCreatingCampaign(offer.id);
+    try {
+      const template = templates.find(t => t.id === offer.recommended_template_id);
+      if (!template) throw new Error("Template not found");
+
+      // Create strategy with pre-filled offer data
+      const { data: strategy, error } = await supabase
+        .from('strategies')
+        .insert({
+          brand_id: brandId,
+          template_id: template.id,
+          name: `${template.name} - ${offer.name}`,
+          campaign_type: template.slug,
+          offer_name: offer.name,
+          offer_url: offer.url,
+          offer_price: offer.price_point,
+          offer_description: offer.description,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success(`Campaign created for ${offer.name}!`);
+      navigate(`/creative?strategy=${strategy.id}`);
+    } catch (error: any) {
+      console.error('Error creating campaign:', error);
+      toast.error(error.message || 'Failed to create campaign');
+    } finally {
+      setCreatingCampaign(null);
+    }
+  };
+
+  const getConfidenceBadgeVariant = (confidence?: string | null) => {
+    if (confidence === 'high') return 'default';
+    if (confidence === 'medium') return 'secondary';
+    return 'outline';
+  };
+
+  const getRecommendedTemplate = (templateId?: string | null) => {
+    if (!templateId) return null;
+    return templates.find(t => t.id === templateId);
   };
 
   return (
@@ -81,7 +152,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
                       <div className="flex items-start justify-between">
                         <CollapsibleTrigger asChild>
                           <button className="flex-1 text-left hover:opacity-80 transition-opacity">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-semibold">{offer.name}</h4>
                               {offer.product_psychology ? (
                                 <Badge variant="default" className="text-xs">Psychology Ready</Badge>
@@ -89,6 +160,12 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
                                 <Badge variant="secondary" className="text-xs">
                                   <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                                   Generating...
+                                </Badge>
+                              )}
+                              {offer.recommended_template_id && getRecommendedTemplate(offer.recommended_template_id) && (
+                                <Badge variant={getConfidenceBadgeVariant(offer.recommendation_confidence)} className="text-xs">
+                                  <Sparkles className="mr-1 h-3 w-3" />
+                                  Best fit: {getRecommendedTemplate(offer.recommended_template_id)?.name}
                                 </Badge>
                               )}
                             </div>
@@ -162,6 +239,41 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
                               </div>
                             )}
                           </>
+                        )}
+
+                        {offer.recommended_template_id && getRecommendedTemplate(offer.recommended_template_id) && (
+                          <div className="pt-4 border-t">
+                            <p className="text-sm font-medium mb-2">Recommended Campaign</p>
+                            <div className="bg-muted/50 p-3 rounded-lg space-y-3">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-primary" />
+                                <span className="font-semibold">{getRecommendedTemplate(offer.recommended_template_id)?.name}</span>
+                              </div>
+                              {offer.recommendation_reason && (
+                                <p className="text-sm text-muted-foreground">{offer.recommendation_reason}</p>
+                              )}
+                              <Button 
+                                onClick={() => createCampaignForOffer(offer)} 
+                                disabled={creatingCampaign === offer.id}
+                                className="w-full"
+                              >
+                                {creatingCampaign === offer.id ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Creating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Rocket className="mr-2 h-4 w-4" />
+                                    Create Campaign for This Offer
+                                  </>
+                                )}
+                              </Button>
+                              <p className="text-xs text-center text-muted-foreground">
+                                Or choose a different template in Ad Planner
+                              </p>
+                            </div>
+                          </div>
                         )}
                       </CardContent>
                     </CollapsibleContent>

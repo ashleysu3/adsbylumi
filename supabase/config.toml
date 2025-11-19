@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.generate-product-psychology]
 verify_jwt = false
+
+[functions.recommend-campaign-template]
+verify_jwt = false
