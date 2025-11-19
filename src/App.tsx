@@ -11,6 +11,8 @@ import Planning from "./pages/Planning";
 import Creative from "./pages/Creative";
 import CampaignWorkspace from "./pages/CampaignWorkspace";
 import Campaigns from "./pages/Campaigns";
+import AdminKnowledge from "./pages/admin/Knowledge";
+import AdminAnalytics from "./pages/admin/Analytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/creative" element={<Creative />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/workspace/:workspaceId" element={<CampaignWorkspace />} />
+          <Route path="/admin/knowledge" element={<AdminKnowledge />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

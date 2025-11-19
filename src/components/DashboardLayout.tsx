@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Home, Lightbulb, Palette, BarChart3, FolderKanban, LogOut, Settings } from "lucide-react";
+import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 
@@ -24,6 +24,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -38,6 +39,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           .eq("id", user.id)
           .single()
           .then(({ data }) => setProfile(data));
+        
+        // Check if user is admin
+        supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .single()
+          .then(({ data }) => setIsAdmin(!!data));
       }
     });
   }, [navigate]);
@@ -90,6 +100,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <Home className="mr-2 h-4 w-4" />
                     My Brand
                   </DropdownMenuItem>
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel>Admin</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => navigate("/admin/knowledge")}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        Knowledge Base
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/admin/analytics")}>
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        Analytics
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
                     Settings

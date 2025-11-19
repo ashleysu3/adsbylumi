@@ -248,6 +248,45 @@ export type Database = {
           },
         ]
       }
+      knowledge_documents: {
+        Row: {
+          active: boolean | null
+          category: string
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          active?: boolean | null
+          category: string
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          active?: boolean | null
+          category?: string
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: []
+      }
       offers: {
         Row: {
           ai_generated_description: boolean | null
