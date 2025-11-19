@@ -278,11 +278,15 @@ export default function Creative() {
               <Button variant="ghost" size="sm" onClick={() => navigate("/planning")}><ArrowLeft className="h-4 w-4" /></Button>
               <div>
                 <h2 className="text-3xl font-bold tracking-tight">Creative Department</h2>
-                <p className="text-muted-foreground">{strategy.name} for {brand.name}</p>
+                <p className="text-muted-foreground">
+                  {strategy?.name || workspace?.name || 'Campaign'} for {brand?.name}
+                </p>
               </div>
             </div>
           </div>
-          <Badge variant="secondary">{strategy.campaign_type}</Badge>
+          {strategy?.campaign_type && (
+            <Badge variant="secondary">{strategy.campaign_type}</Badge>
+          )}
         </div>
 
         {showOfferForm && (
