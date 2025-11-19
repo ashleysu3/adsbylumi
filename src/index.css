@@ -8,52 +8,57 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Editorial Luxury Color System - Vogue-inspired */
-    --background: 40 10% 98%;
-    --foreground: 220 15% 15%;
+    /* Bold & Playful Color System - Jade Purple Brown inspired */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
     
     --card: 0 0% 100%;
-    --card-foreground: 220 15% 15%;
+    --card-foreground: 0 0% 0%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 15%;
+    --popover-foreground: 0 0% 0%;
     
-    /* Deep charcoal primary */
-    --primary: 220 15% 15%;
-    --primary-foreground: 40 10% 98%;
+    /* Hot magenta primary */
+    --primary: 328 100% 54%;
+    --primary-foreground: 0 0% 100%;
     
-    /* Warm cream secondary */
-    --secondary: 40 20% 95%;
-    --secondary-foreground: 220 15% 15%;
+    /* Royal blue secondary */
+    --secondary: 235 80% 60%;
+    --secondary-foreground: 0 0% 100%;
     
-    /* Muted tones */
-    --muted: 40 15% 92%;
-    --muted-foreground: 220 10% 45%;
+    /* Vibrant orange muted */
+    --muted: 24 100% 95%;
+    --muted-foreground: 0 0% 25%;
     
-    /* Burgundy accent */
-    --accent: 355 45% 40%;
-    --accent-foreground: 40 10% 98%;
+    /* Electric purple accent */
+    --accent: 270 85% 65%;
+    --accent-foreground: 0 0% 100%;
     
-    /* Gold accent for premium elements */
-    --gold: 45 70% 55%;
-    --gold-foreground: 220 15% 15%;
+    /* Warm coral for highlights */
+    --coral: 15 90% 65%;
+    --coral-foreground: 0 0% 0%;
     
-    --destructive: 0 75% 45%;
-    --destructive-foreground: 40 10% 98%;
+    /* Terracotta for warmth */
+    --terracotta: 16 60% 50%;
+    --terracotta-foreground: 0 0% 100%;
     
-    --border: 40 12% 88%;
-    --input: 40 12% 88%;
-    --ring: 220 15% 15%;
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
     
-    --radius: 0.75rem;
+    --border: 0 0% 90%;
+    --input: 0 0% 95%;
+    --ring: 328 100% 54%;
+    
+    --radius: 1rem;
     
     /* Gradients */
-    --gradient-editorial: linear-gradient(135deg, hsl(40 20% 95%), hsl(40 15% 92%));
-    --gradient-premium: linear-gradient(135deg, hsl(355 45% 40%), hsl(340 50% 35%));
+    --gradient-playful: linear-gradient(135deg, hsl(328 100% 54%), hsl(270 85% 65%));
+    --gradient-warm: linear-gradient(135deg, hsl(15 90% 65%), hsl(24 100% 60%));
+    --gradient-cool: linear-gradient(135deg, hsl(235 80% 60%), hsl(200 90% 55%));
     
     /* Shadows */
-    --shadow-editorial: 0 4px 24px -8px hsl(220 15% 15% / 0.08);
-    --shadow-elevated: 0 8px 32px -8px hsl(220 15% 15% / 0.12);
+    --shadow-playful: 0 8px 32px -8px hsl(328 100% 54% / 0.3);
+    --shadow-elevated: 0 12px 40px -12px hsl(0 0% 0% / 0.15);
     
     --sidebar-background: 40 10% 98%;
     --sidebar-foreground: 220 15% 15%;
@@ -66,36 +71,39 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 220 15% 12%;
-    --foreground: 40 10% 95%;
+    --background: 0 0% 8%;
+    --foreground: 0 0% 98%;
     
-    --card: 220 15% 15%;
-    --card-foreground: 40 10% 95%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 98%;
     
-    --popover: 220 15% 15%;
-    --popover-foreground: 40 10% 95%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
     
-    --primary: 40 10% 95%;
-    --primary-foreground: 220 15% 15%;
+    --primary: 328 100% 64%;
+    --primary-foreground: 0 0% 100%;
     
-    --secondary: 220 12% 20%;
-    --secondary-foreground: 40 10% 95%;
+    --secondary: 235 75% 65%;
+    --secondary-foreground: 0 0% 100%;
     
-    --muted: 220 12% 18%;
-    --muted-foreground: 40 8% 60%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 70%;
     
-    --accent: 355 50% 50%;
-    --accent-foreground: 40 10% 98%;
+    --accent: 270 80% 70%;
+    --accent-foreground: 0 0% 100%;
     
-    --gold: 45 75% 60%;
-    --gold-foreground: 220 15% 15%;
+    --coral: 15 85% 70%;
+    --coral-foreground: 0 0% 0%;
     
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 40 10% 98%;
+    --terracotta: 16 55% 55%;
+    --terracotta-foreground: 0 0% 100%;
     
-    --border: 220 12% 25%;
-    --input: 220 12% 25%;
-    --ring: 40 10% 85%;
+    --destructive: 0 80% 65%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 0 0% 25%;
+    --input: 0 0% 20%;
+    --ring: 328 100% 64%;
     
     --sidebar-background: 220 15% 15%;
     --sidebar-foreground: 40 10% 95%;
@@ -117,10 +125,11 @@ All colors MUST be HSL.
     @apply bg-background text-foreground font-sans antialiased;
   }
   
-  /* Editorial typography */
-  .font-editorial {
-    font-family: 'Playfair Display', 'Georgia', serif;
-    font-optical-sizing: auto;
+  /* Bold playful typography */
+  .font-display {
+    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
   
   .font-body {
@@ -128,5 +137,5 @@ All colors MUST be HSL.
   }
 }
 
-/* Import elegant fonts */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+/* Import bold playful fonts */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
