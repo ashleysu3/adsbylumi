@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Sparkles, Video, FileText, Image as ImageIcon, Copy, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,6 +29,11 @@ export default function Creative() {
   const [offerUrl, setOfferUrl] = useState("");
   const [offerPrice, setOfferPrice] = useState("");
   const [offerDescription, setOfferDescription] = useState("");
+  
+  const [offers, setOffers] = useState<any[]>([]);
+  const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
+  const [selectedOffer, setSelectedOffer] = useState<any>(null);
+  const [usingOfferPsychology, setUsingOfferPsychology] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -40,6 +46,15 @@ export default function Creative() {
 
       const { data: brandData } = await supabase.from("brands").select("*").eq("user_id", user.id).single();
       setBrand(brandData);
+
+      if (brandData) {
+        const { data: offersData } = await supabase
+          .from('offers')
+          .select('*')
+          .eq('brand_id', brandData.id)
+          .order('created_at', { ascending: false });
+        setOffers(offersData || []);
+      }
 
       if (strategyId) {
         const { data: strategyData } = await supabase.from("strategies").select("*").eq("id", strategyId).single();
@@ -82,15 +97,52 @@ export default function Creative() {
     }
   };
 
+  const handleOfferSelect = async (offerId: string) => {
+    const offer = offers.find(o => o.id === offerId);
+    if (!offer) return;
+    
+    setSelectedOfferId(offerId);
+    setSelectedOffer(offer);
+    
+    setOfferName(offer.name);
+    setOfferUrl(offer.url || "");
+    setOfferPrice(offer.price_point || "");
+    setOfferDescription(offer.description || "");
+    
+    if (offer.product_psychology && brand.audience_psychology) {
+      setUsingOfferPsychology(true);
+      toast.success("Enhanced with product psychology!");
+    }
+  };
+
+  const clearOfferSelection = () => {
+    setSelectedOfferId(null);
+    setSelectedOffer(null);
+    setUsingOfferPsychology(false);
+    setOfferName("");
+    setOfferUrl("");
+    setOfferPrice("");
+    setOfferDescription("");
+  };
+
   const generateCreative = async () => {
     setLoading(true);
     try {
+      const payload: any = {
+        brandName: brand.name,
+        strategyData: { ...strategy, offer_name: offerName, offer_url: offerUrl, offer_price: offerPrice, offer_description: offerDescription },
+        creativeType: 'complete'
+      };
+      
+      if (selectedOffer?.product_psychology) {
+        payload.productPsychology = selectedOffer.product_psychology;
+      }
+      if (brand?.audience_psychology) {
+        payload.audiencePsychology = brand.audience_psychology;
+      }
+      
       const { data, error } = await supabase.functions.invoke('generate-creative', {
-        body: {
-          brandName: brand.name,
-          strategyData: { ...strategy, offer_name: offerName, offer_url: offerUrl, offer_price: offerPrice, offer_description: offerDescription },
-          creativeType: 'complete'
-        }
+        body: payload
       });
 
       if (error) throw error;
@@ -157,7 +209,75 @@ export default function Creative() {
               <div className="flex items-center space-x-2"><Sparkles className="h-5 w-5 text-primary" /><CardTitle>Tell Us About Your Offer</CardTitle></div>
               <CardDescription>We need a few details to create personalized creative assets</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              
+              {offers.length > 0 && !selectedOfferId && (
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span className="font-medium">Quick Start with Existing Offer</span>
+                  </div>
+                  <Select onValueChange={handleOfferSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose from your offers..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {offers.map(offer => (
+                        <SelectItem key={offer.id} value={offer.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{offer.name}</span>
+                            {offer.price_point && (
+                              <Badge variant="secondary" className="ml-2">
+                                ${offer.price_point}
+                              </Badge>
+                            )}
+                            {offer.product_psychology && (
+                              <Badge variant="outline" className="ml-2">
+                                ✨ Psychology
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Selecting an offer will auto-fill details and enhance creative with psychology data
+                  </p>
+                </div>
+              )}
+              
+              {selectedOfferId && (
+                <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="font-medium">Using: {offerName}</p>
+                      {usingOfferPsychology && (
+                        <Badge variant="default" className="gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          Enhanced with Product Psychology
+                        </Badge>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearOfferSelection}
+                    >
+                      Clear & Enter Manually
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
+              {selectedOfferId && (
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-sm text-muted-foreground">or edit details below</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="offerName">What are you promoting? *</Label>
                 <Input id="offerName" value={offerName} onChange={(e) => setOfferName(e.target.value)} placeholder="e.g., Email Marketing Masterclass" />
