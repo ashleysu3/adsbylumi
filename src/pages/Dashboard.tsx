@@ -10,7 +10,6 @@ import { BrandEditDialog } from "@/components/BrandEditDialog";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
-import { CampaignsList } from "@/components/CampaignsList";
 import { Building2, Globe, Target, TrendingUp, Edit, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
@@ -216,9 +215,6 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Campaign Workspaces */}
-            <CampaignsList brandId={brand.id} />
 
             {/* Audience Psychology */}
             <AudiencePsychology

@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Home, Lightbulb, Palette, BarChart3, LogOut, Settings } from "lucide-react";
+import { Home, Lightbulb, Palette, BarChart3, FolderKanban, LogOut, Settings } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 
@@ -53,6 +53,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { path: "/planning", icon: Lightbulb, label: "Ad Planner" },
     { path: "/creative", icon: Palette, label: "Creative" },
     { path: "/data", icon: BarChart3, label: "Performance" },
+    { path: "/campaigns", icon: FolderKanban, label: "My Campaigns" },
   ];
 
   if (!user) return null;
