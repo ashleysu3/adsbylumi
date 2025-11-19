@@ -135,25 +135,25 @@ export default function Planning() {
     <DashboardLayout>
       <div className="space-y-8">
         <div className="space-y-2">
-          <h2 className="text-4xl font-editorial font-semibold tracking-tight">
+          <h2 className="text-3xl font-bold tracking-tight">
             Ad Planner
           </h2>
-          <p className="text-muted-foreground text-lg">
-            Psychology-driven campaign strategies for {brand.name}
+          <p className="text-muted-foreground">
+            Get a clear strategy for {brand.name}
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Strategy Generator */}
           <div className="lg:col-span-2 space-y-6">
-            <Card className="shadow-elevated">
+            <Card>
               <CardHeader>
                 <div className="flex items-center space-x-2">
-                  <Sparkles className="h-5 w-5 text-accent" />
-                  <CardTitle>Generate New Strategy</CardTitle>
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <CardTitle>Create New Strategy</CardTitle>
                 </div>
                 <CardDescription>
-                  Tell us about your campaign goals and we'll craft a strategic blueprint
+                  Tell us what you want to achieve and we'll guide you step by step
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -172,23 +172,23 @@ export default function Planning() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="campaignGoal">Campaign Goal *</Label>
+                  <Label htmlFor="campaignGoal">What do you want to achieve? *</Label>
                   <Textarea
                     id="campaignGoal"
                     value={campaignGoal}
                     onChange={(e) => setCampaignGoal(e.target.value)}
-                    placeholder="E.g., Generate qualified leads for my high-ticket coaching program targeting burnt-out executives..."
+                    placeholder="E.g., Get more leads for my coaching program from people who are burnt out at work..."
                     className="min-h-[120px] resize-none"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="additionalContext">Additional Context (Optional)</Label>
+                  <Label htmlFor="additionalContext">Anything else we should know? (Optional)</Label>
                   <Textarea
                     id="additionalContext"
                     value={additionalContext}
                     onChange={(e) => setAdditionalContext(e.target.value)}
-                    placeholder="Any specific angles, offers, or constraints we should know about..."
+                    placeholder="Any specific details about your offer or audience..."
                     className="min-h-[100px] resize-none"
                   />
                 </div>
@@ -202,12 +202,12 @@ export default function Planning() {
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Generating Strategy...
+                      Creating Your Strategy...
                     </>
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Generate Campaign Strategy
+                      Create Strategy
                     </>
                   )}
                 </Button>
@@ -216,11 +216,11 @@ export default function Planning() {
 
             {/* Generated Strategy Display */}
             {generatedStrategy && (
-              <Card className="shadow-elevated border-accent/30">
+              <Card className="border-primary/20">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center space-x-2">
-                      <CheckCircle2 className="h-5 w-5 text-accent" />
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
                       <span>{generatedStrategy.name}</span>
                     </CardTitle>
                     <Badge variant="secondary">
@@ -231,8 +231,8 @@ export default function Planning() {
                 <CardContent className="space-y-6">
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 text-sm font-medium">
-                      <MessageSquare className="h-4 w-4 text-accent" />
-                      <span>Messaging Framework</span>
+                      <MessageSquare className="h-4 w-4 text-primary" />
+                      <span>Your Messaging</span>
                     </div>
                     <div className="pl-6 space-y-2">
                       <p className="text-sm text-muted-foreground">
@@ -240,10 +240,10 @@ export default function Planning() {
                       </p>
                       {generatedStrategy.messaging_framework?.hooks && (
                         <div className="mt-3">
-                          <p className="text-sm font-medium mb-2">Hook Examples:</p>
+                          <p className="text-sm font-medium mb-2">Hook Ideas:</p>
                           <ul className="space-y-1">
                             {generatedStrategy.messaging_framework.hooks.map((hook: string, idx: number) => (
-                              <li key={idx} className="text-sm text-muted-foreground pl-4 border-l-2 border-accent/30">
+                              <li key={idx} className="text-sm text-muted-foreground pl-4 border-l-2 border-primary/30">
                                 {hook}
                               </li>
                             ))}
@@ -255,8 +255,8 @@ export default function Planning() {
 
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 text-sm font-medium">
-                      <Target className="h-4 w-4 text-accent" />
-                      <span>Audience Psychology</span>
+                      <Target className="h-4 w-4 text-primary" />
+                      <span>Who You're Talking To</span>
                     </div>
                     <div className="pl-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                       {["pain_points", "desires", "objections"].map((key) => (
@@ -278,8 +278,8 @@ export default function Planning() {
 
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2 text-sm font-medium">
-                      <TrendingUp className="h-4 w-4 text-accent" />
-                      <span>KPI Benchmarks</span>
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                      <span>What to Watch</span>
                     </div>
                     <div className="pl-6 flex flex-wrap gap-3">
                       {Object.entries(generatedStrategy.kpi_benchmarks || {}).map(([key, value]) => (
@@ -292,10 +292,10 @@ export default function Planning() {
 
                   <div className="flex space-x-3 pt-4">
                     <Button className="flex-1">
-                      Use in Creative Dashboard
+                      Create Ads
                     </Button>
                     <Button variant="outline">
-                      Export Strategy
+                      Export
                     </Button>
                   </div>
                 </CardContent>
@@ -305,11 +305,11 @@ export default function Planning() {
 
           {/* Previous Strategies Sidebar */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Previous Strategies</h3>
+            <h3 className="text-lg font-semibold">Your Strategies</h3>
             {strategies.length === 0 ? (
               <Card>
                 <CardContent className="pt-6 text-center text-sm text-muted-foreground">
-                  No strategies yet. Generate your first one!
+                  No strategies yet. Create your first one!
                 </CardContent>
               </Card>
             ) : (
@@ -317,7 +317,7 @@ export default function Planning() {
                 {strategies.map((strategy) => (
                   <Card
                     key={strategy.id}
-                    className="cursor-pointer hover:shadow-editorial transition-shadow"
+                    className="cursor-pointer hover:shadow-lg transition-shadow"
                     onClick={() => setGeneratedStrategy(strategy)}
                   >
                     <CardHeader className="pb-3">

@@ -63,8 +63,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Sparkles className="h-7 w-7 text-accent" />
-              <h1 className="text-2xl font-editorial font-semibold tracking-tight">
+              <Sparkles className="h-7 w-7 text-primary" />
+              <h1 className="text-2xl font-semibold tracking-tight">
                 Your Ad Assistant
               </h1>
             </div>
@@ -74,13 +74,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-accent text-accent-foreground">
+                      <AvatarFallback className="bg-primary/10 text-primary">
                         {profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent align="end" className="w-56 bg-card z-50">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">{profile?.full_name || "User"}</p>
@@ -112,7 +112,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     variant="ghost"
                     className={`h-12 px-6 rounded-t-lg rounded-b-none relative ${
                       isActive
-                        ? "bg-background text-foreground border-b-2 border-accent"
+                        ? "bg-background text-foreground border-b-2 border-primary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >

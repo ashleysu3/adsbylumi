@@ -89,27 +89,27 @@ export default function Dashboard() {
         {/* Brand Header */}
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <h2 className="text-4xl font-editorial font-semibold tracking-tight">
+            <h2 className="text-3xl font-bold tracking-tight">
               {brand.name}
             </h2>
-            <p className="text-muted-foreground text-lg">
-              Your strategic command center
+            <p className="text-muted-foreground">
+              Your brand at a glance
             </p>
           </div>
           {subscription && (
-            <Badge variant="secondary" className="text-base px-4 py-2">
-              {subscription.tier.replace("_", " ").toUpperCase()}
+            <Badge variant="secondary" className="text-sm px-3 py-1">
+              {subscription.tier.replace("_", " ").charAt(0).toUpperCase() + subscription.tier.replace("_", " ").slice(1)}
             </Badge>
           )}
         </div>
 
         {/* Brand Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="shadow-editorial">
+          <Card>
             <CardHeader>
               <div className="flex items-center space-x-2">
-                <Building2 className="h-5 w-5 text-accent" />
-                <CardTitle>Brand Profile</CardTitle>
+                <Building2 className="h-5 w-5 text-primary" />
+                <CardTitle>Brand Details</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -122,7 +122,7 @@ export default function Dashboard() {
                       href={brand.website_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-accent hover:underline"
+                      className="text-sm text-primary hover:underline"
                     >
                       {brand.website_url}
                     </a>
@@ -142,16 +142,16 @@ export default function Dashboard() {
               
               <Button variant="outline" className="w-full mt-4">
                 <Edit className="mr-2 h-4 w-4" />
-                Edit Brand Profile
+                Edit Details
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="shadow-editorial">
+          <Card>
             <CardHeader>
               <div className="flex items-center space-x-2">
-                <TrendingUp className="h-5 w-5 text-accent" />
-                <CardTitle>Value Proposition</CardTitle>
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <CardTitle>What You Offer</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -161,19 +161,19 @@ export default function Dashboard() {
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground italic">
-                  No value proposition set yet. Add one to help craft better ad strategies.
+                  Add your value proposition to help create better ad strategies.
                 </p>
               )}
               
               <div className="mt-6 pt-6 border-t">
-                <p className="text-sm font-medium mb-2">Target Audience</p>
+                <p className="text-sm font-medium mb-2">Who You Serve</p>
                 {brand.target_audience ? (
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {brand.target_audience}
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">
-                    Not defined yet
+                    Not set yet
                   </p>
                 )}
               </div>
@@ -182,16 +182,16 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <Card className="shadow-editorial border-accent/20">
+        <Card>
           <CardHeader>
-            <CardTitle>Ready to Plan Your Next Campaign?</CardTitle>
+            <CardTitle>Ready to plan your next campaign?</CardTitle>
             <CardDescription>
-              The Ad Planner will help you craft psychology-driven strategies for Meta Ads
+              Get a clear strategy and step-by-step plan for your Meta ads
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button size="lg" className="h-12 px-8" onClick={() => window.location.href = "/planning"}>
-              Open Ad Planner
+              Start Planning
             </Button>
           </CardContent>
         </Card>
