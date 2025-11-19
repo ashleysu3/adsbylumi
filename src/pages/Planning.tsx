@@ -40,6 +40,7 @@ export default function Planning() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [offersWithRecommendations, setOffersWithRecommendations] = useState<any[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -65,6 +66,23 @@ export default function Planning() {
         .order("created_at");
 
       setTemplates(templatesData || []);
+
+      // Fetch offers with recommendations
+      if (brandData) {
+        const { data: offersData } = await supabase
+          .from("offers")
+          .select(`
+            *,
+            campaign_templates:recommended_template_id (
+              name,
+              slug
+            )
+          `)
+          .eq("brand_id", brandData.id)
+          .not("recommended_template_id", "is", null);
+
+        setOffersWithRecommendations(offersData || []);
+      }
     } catch (error: any) {
       console.error("Error fetching data:", error);
     }
@@ -135,6 +153,26 @@ export default function Planning() {
           <p className="text-muted-foreground">Pick a pre-built strategy and we'll guide you through the rest</p>
         </div>
 
+        {offersWithRecommendations.length > 0 && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">💡</div>
+                <div className="space-y-2">
+                  <p className="font-semibold">Quick Start</p>
+                  <p className="text-sm text-muted-foreground">
+                    We've already recommended campaigns for your offers in the Brand Dashboard. 
+                    You can create campaigns instantly from there with all details pre-filled!
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
+                    View My Offers
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {templates.map((template) => {
             const Icon = iconMap[template.icon] || Video;
@@ -150,6 +188,11 @@ export default function Planning() {
                     </Button>
                   </div>
                   <CardTitle className="text-xl">{template.name}</CardTitle>
+                  {offersWithRecommendations.some(o => o.recommended_template_id === template.id) && (
+                    <Badge variant="secondary" className="text-xs mt-1">
+                      Recommended for: {offersWithRecommendations.find(o => o.recommended_template_id === template.id)?.name}
+                    </Badge>
+                  )}
                   <CardDescription className="min-h-[48px]">{template.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

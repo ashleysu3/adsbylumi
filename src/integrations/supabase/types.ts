@@ -171,6 +171,9 @@ export type Database = {
           name: string
           price_point: string | null
           product_psychology: Json | null
+          recommendation_confidence: string | null
+          recommendation_reason: string | null
+          recommended_template_id: string | null
           target_outcome: string | null
           url: string | null
         }
@@ -184,6 +187,9 @@ export type Database = {
           name: string
           price_point?: string | null
           product_psychology?: Json | null
+          recommendation_confidence?: string | null
+          recommendation_reason?: string | null
+          recommended_template_id?: string | null
           target_outcome?: string | null
           url?: string | null
         }
@@ -197,6 +203,9 @@ export type Database = {
           name?: string
           price_point?: string | null
           product_psychology?: Json | null
+          recommendation_confidence?: string | null
+          recommendation_reason?: string | null
+          recommended_template_id?: string | null
           target_outcome?: string | null
           url?: string | null
         }
@@ -206,6 +215,13 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offers_recommended_template_id_fkey"
+            columns: ["recommended_template_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_templates"
             referencedColumns: ["id"]
           },
         ]

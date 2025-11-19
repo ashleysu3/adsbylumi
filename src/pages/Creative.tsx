@@ -21,6 +21,7 @@ export default function Creative() {
   const [brand, setBrand] = useState<any>(null);
   const [strategy, setStrategy] = useState<any>(null);
   const [creativeData, setCreativeData] = useState<any>(null);
+  const [hasPrefilledOffer, setHasPrefilledOffer] = useState(false);
   
   const [showOfferForm, setShowOfferForm] = useState(true);
   const [offerName, setOfferName] = useState("");
@@ -50,6 +51,7 @@ export default function Creative() {
           setOfferPrice(strategyData.offer_price || "");
           setOfferDescription(strategyData.offer_description || "");
           setShowOfferForm(false);
+          setHasPrefilledOffer(true);
         }
       }
     } catch (error: any) {
@@ -120,6 +122,22 @@ export default function Creative() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        {hasPrefilledOffer && !showOfferForm && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="font-semibold">Creating campaign for: {offerName}</p>
+                  {offerPrice && <p className="text-sm text-muted-foreground">Price: {offerPrice}</p>}
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setShowOfferForm(true)}>
+                  Change Offer Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <div className="flex items-center space-x-3">
