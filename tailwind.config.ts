@@ -39,9 +39,13 @@ export default {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          foreground: "hsl(var(--gold-foreground))",
+        coral: {
+          DEFAULT: "hsl(var(--coral))",
+          foreground: "hsl(var(--coral-foreground))",
+        },
+        terracotta: {
+          DEFAULT: "hsl(var(--terracotta))",
+          foreground: "hsl(var(--terracotta-foreground))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -63,15 +67,16 @@ export default {
         },
       },
       fontFamily: {
-        editorial: ['Playfair Display', 'Georgia', 'serif'],
+        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
-        'gradient-editorial': 'var(--gradient-editorial)',
-        'gradient-premium': 'var(--gradient-premium)',
+        'gradient-playful': 'var(--gradient-playful)',
+        'gradient-warm': 'var(--gradient-warm)',
+        'gradient-cool': 'var(--gradient-cool)',
       },
       boxShadow: {
-        'editorial': 'var(--shadow-editorial)',
+        'playful': 'var(--shadow-playful)',
         'elevated': 'var(--shadow-elevated)',
       },
       borderRadius: {
