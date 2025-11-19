@@ -8,57 +8,57 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Bold & Playful Color System - Jade Purple Brown inspired */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
+    /* Final Color Scheme - Orange, Pink, Cream, Black */
+    --background: 30 40% 97%;
+    --foreground: 0 0% 10%;
     
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
+    --card-foreground: 0 0% 10%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
+    --popover-foreground: 0 0% 10%;
     
-    /* Hot magenta primary */
-    --primary: 328 100% 54%;
+    /* Hot pink/magenta primary */
+    --primary: 330 75% 65%;
     --primary-foreground: 0 0% 100%;
     
-    /* Royal blue secondary */
-    --secondary: 235 80% 60%;
-    --secondary-foreground: 0 0% 100%;
+    /* Light pink/lavender secondary */
+    --secondary: 300 45% 80%;
+    --secondary-foreground: 0 0% 10%;
     
-    /* Vibrant orange muted */
-    --muted: 24 100% 95%;
-    --muted-foreground: 0 0% 25%;
+    /* Cream muted */
+    --muted: 30 35% 92%;
+    --muted-foreground: 0 0% 30%;
     
-    /* Electric purple accent */
-    --accent: 270 85% 65%;
-    --accent-foreground: 0 0% 100%;
+    /* Peach accent */
+    --accent: 28 85% 68%;
+    --accent-foreground: 0 0% 10%;
     
-    /* Warm coral for highlights */
-    --coral: 15 90% 65%;
-    --coral-foreground: 0 0% 0%;
+    /* Light orange coral */
+    --coral: 28 85% 68%;
+    --coral-foreground: 0 0% 10%;
     
-    /* Terracotta for warmth */
-    --terracotta: 16 60% 50%;
+    /* Dark orange terracotta */
+    --terracotta: 15 75% 58%;
     --terracotta-foreground: 0 0% 100%;
     
     --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 0 0% 90%;
-    --input: 0 0% 95%;
-    --ring: 328 100% 54%;
+    --border: 30 25% 88%;
+    --input: 30 30% 94%;
+    --ring: 330 75% 65%;
     
     --radius: 1rem;
     
     /* Gradients */
-    --gradient-playful: linear-gradient(135deg, hsl(328 100% 54%), hsl(270 85% 65%));
-    --gradient-warm: linear-gradient(135deg, hsl(15 90% 65%), hsl(24 100% 60%));
-    --gradient-cool: linear-gradient(135deg, hsl(235 80% 60%), hsl(200 90% 55%));
+    --gradient-playful: linear-gradient(135deg, hsl(330 75% 65%), hsl(300 45% 80%));
+    --gradient-warm: linear-gradient(135deg, hsl(28 85% 68%), hsl(15 75% 58%));
+    --gradient-cool: linear-gradient(135deg, hsl(300 45% 80%), hsl(330 75% 65%));
     
     /* Shadows */
-    --shadow-playful: 0 8px 32px -8px hsl(328 100% 54% / 0.3);
-    --shadow-elevated: 0 12px 40px -12px hsl(0 0% 0% / 0.15);
+    --shadow-playful: 0 8px 32px -8px hsl(330 75% 65% / 0.3);
+    --shadow-elevated: 0 12px 40px -12px hsl(0 0% 10% / 0.15);
     
     --sidebar-background: 40 10% 98%;
     --sidebar-foreground: 220 15% 15%;
@@ -71,31 +71,31 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 0 0% 8%;
-    --foreground: 0 0% 98%;
+    --background: 0 0% 10%;
+    --foreground: 30 35% 92%;
     
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 14%;
+    --card-foreground: 30 35% 92%;
     
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 14%;
+    --popover-foreground: 30 35% 92%;
     
-    --primary: 328 100% 64%;
+    --primary: 330 75% 65%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 235 75% 65%;
+    --secondary: 300 35% 45%;
     --secondary-foreground: 0 0% 100%;
     
-    --muted: 0 0% 18%;
+    --muted: 0 0% 20%;
     --muted-foreground: 0 0% 70%;
     
-    --accent: 270 80% 70%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 28 75% 60%;
+    --accent-foreground: 0 0% 10%;
     
-    --coral: 15 85% 70%;
-    --coral-foreground: 0 0% 0%;
+    --coral: 28 75% 60%;
+    --coral-foreground: 0 0% 10%;
     
-    --terracotta: 16 55% 55%;
+    --terracotta: 15 70% 55%;
     --terracotta-foreground: 0 0% 100%;
     
     --destructive: 0 80% 65%;
@@ -103,7 +103,7 @@ All colors MUST be HSL.
     
     --border: 0 0% 25%;
     --input: 0 0% 20%;
-    --ring: 328 100% 64%;
+    --ring: 330 75% 65%;
     
     --sidebar-background: 220 15% 15%;
     --sidebar-foreground: 40 10% 95%;
