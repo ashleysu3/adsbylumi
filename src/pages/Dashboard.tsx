@@ -5,12 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { BrandEditDialog } from "@/components/BrandEditDialog";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
-import { Building2, Globe, Target, TrendingUp, Edit, ChevronDown } from "lucide-react";
+import { Building2, Globe, Target, Edit } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Dashboard() {
@@ -19,7 +18,6 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState<any>(null);
   const [offers, setOffers] = useState<any[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [offerSectionOpen, setOfferSectionOpen] = useState(false);
 
   useEffect(() => {
     fetchBrandData();
@@ -232,9 +230,8 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Right Column - Quick Actions + What You Offer Section */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Quick Actions */}
+          {/* Right Column - Quick Actions */}
+          <div className="lg:col-span-1">
             <Card>
               <CardHeader>
                 <CardTitle>Ready to plan your next campaign?</CardTitle>
@@ -248,53 +245,6 @@ export default function Dashboard() {
                 </Button>
               </CardContent>
             </Card>
-
-            {/* What You Offer Section (Collapsible) */}
-            <Collapsible open={offerSectionOpen} onOpenChange={setOfferSectionOpen}>
-              <Card>
-                <CardHeader>
-                  <CollapsibleTrigger asChild>
-                    <button className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
-                      <div className="flex items-center space-x-2">
-                        <TrendingUp className="h-5 w-5 text-primary" />
-                        <CardTitle>What You Offer & Who You Serve</CardTitle>
-                      </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${offerSectionOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                  </CollapsibleTrigger>
-                </CardHeader>
-
-                <CollapsibleContent>
-                  <CardContent className="space-y-6">
-                    <div>
-                      <p className="text-sm font-medium mb-2">What You Offer</p>
-                      {brand.value_proposition ? (
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {brand.value_proposition}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">
-                          Add your value proposition to help create better ad strategies.
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="pt-4 border-t">
-                      <p className="text-sm font-medium mb-2">Who You Serve</p>
-                      {brand.target_audience ? (
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {brand.target_audience}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground italic">
-                          Not set yet
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
           </div>
         </div>
       </div>
