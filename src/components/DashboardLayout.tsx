@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center space-x-3">
               <Button 
                 onClick={() => navigate("/campaigns")}
-                className="bg-tab-pink-dark hover:bg-tab-pink-dark/90 text-white font-semibold"
+                className="bg-tab-pink-dark hover:bg-tab-pink-dark/90 text-white font-semibold border border-tab-black"
               >
                 <FolderKanban className="mr-2 h-4 w-4" />
                 My Campaigns
