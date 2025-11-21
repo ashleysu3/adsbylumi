@@ -9,6 +9,7 @@ import { BrandEditDialog } from "@/components/BrandEditDialog";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { Building2, Globe, Target, Edit } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,6 +19,15 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState<any>(null);
   const [offers, setOffers] = useState<any[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [checklistDismissed, setChecklistDismissed] = useState(() => {
+    return localStorage.getItem('onboarding-dismissed') === 'true';
+  });
+
+  const handleDismissChecklist = () => {
+    setChecklistDismissed(true);
+    localStorage.setItem('onboarding-dismissed', 'true');
+    toast.success("You can always re-enable the checklist from settings");
+  };
 
   useEffect(() => {
     fetchBrandData();
@@ -141,12 +151,22 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* Onboarding Checklist */}
+        {!checklistDismissed && (
+          <OnboardingChecklist
+            brand={brand}
+            offers={offers}
+            onEditBrand={() => setEditDialogOpen(true)}
+            onDismiss={handleDismissChecklist}
+          />
+        )}
+
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Brand Details + Psychology + Offers */}
           <div className="lg:col-span-2 space-y-6">
             {/* Brand Details Card */}
-            <Card>
+            <Card data-section="brand-details">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -187,7 +207,7 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div className="pt-4 border-t">
+                <div className="pt-4 border-t" data-section="meta-account">
                   <p className="text-sm font-medium mb-2">Meta Ad Account</p>
                   {brand.meta_account_id ? (
                     <div className="flex items-center justify-between">
