@@ -65,6 +65,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        tab: {
+          "orange-light": "hsl(var(--tab-orange-light))",
+          "orange-dark": "hsl(var(--tab-orange-dark))",
+          "pink-light": "hsl(var(--tab-pink-light))",
+          "pink-dark": "hsl(var(--tab-pink-dark))",
+          "cream-light": "hsl(var(--tab-cream-light))",
+          "cream-dark": "hsl(var(--tab-cream-dark))",
+          black: "hsl(var(--tab-black))",
+        },
       },
       fontFamily: {
         display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],

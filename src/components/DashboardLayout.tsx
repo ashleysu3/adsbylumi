@@ -58,11 +58,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     navigate("/auth");
   };
 
-  const navItems = [
-    { path: "/planning", icon: Lightbulb, label: "Ad Planner" },
-    { path: "/creative", icon: Palette, label: "Creative" },
-    { path: "/data", icon: BarChart3, label: "Performance" },
-    { path: "/campaigns", icon: FolderKanban, label: "My Campaigns" },
+  const tabItems = [
+    { 
+      path: "/planning", 
+      icon: Lightbulb, 
+      label: "Ad Planner",
+      lightColor: "tab-orange-light",
+      darkColor: "tab-orange-dark"
+    },
+    { 
+      path: "/creative", 
+      icon: Palette, 
+      label: "Creative",
+      lightColor: "tab-pink-light",
+      darkColor: "tab-pink-dark"
+    },
+    { 
+      path: "/data", 
+      icon: BarChart3, 
+      label: "Performance",
+      lightColor: "tab-cream-light",
+      darkColor: "tab-cream-dark"
+    },
   ];
 
   if (!user) return null;
@@ -77,7 +94,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <img src={logo} alt="Your Ad Assistant" className="h-16" />
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
+              <Button 
+                onClick={() => navigate("/campaigns")}
+                className="bg-tab-pink-dark hover:bg-tab-pink-dark/90 text-white font-semibold"
+              >
+                <FolderKanban className="mr-2 h-4 w-4" />
+                My Campaigns
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
@@ -128,24 +152,35 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <nav className="flex space-x-1 mt-6 -mb-4 overflow-x-auto">
-            {navItems.map((item) => {
+          {/* Folder Tab Navigation */}
+          <nav className="flex space-x-0 mt-6 -mb-4 overflow-x-auto">
+            {tabItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               return (
                 <Link key={item.path} to={item.path}>
-                  <Button
-                    variant="ghost"
-                    className={`h-12 px-6 rounded-t-lg rounded-b-none relative ${
-                      isActive
-                        ? "bg-background text-foreground border-b-2 border-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                  <div
+                    className={`
+                      h-12 px-6 rounded-t-lg rounded-b-none relative
+                      border border-tab-black border-b-0
+                      flex items-center justify-center
+                      transition-all duration-200
+                      ${isActive
+                        ? `bg-${item.darkColor} text-white font-bold`
+                        : `bg-${item.lightColor} text-tab-black font-normal hover:bg-${item.darkColor}/20`
+                      }
+                    `}
+                    style={{
+                      backgroundColor: isActive 
+                        ? `hsl(var(--${item.darkColor}))` 
+                        : `hsl(var(--${item.lightColor}))`,
+                      color: isActive ? 'white' : 'hsl(var(--tab-black))',
+                      fontWeight: isActive ? 'bold' : 'normal'
+                    }}
                   >
                     <Icon className="mr-2 h-4 w-4" />
                     {item.label}
-                  </Button>
+                  </div>
                 </Link>
               );
             })}
