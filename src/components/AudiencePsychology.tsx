@@ -88,7 +88,7 @@ export function AudiencePsychology({ brandId, psychology, status, onUpdate }: Au
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Card>
+      <Card data-section="audience-psychology">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CollapsibleTrigger asChild>
