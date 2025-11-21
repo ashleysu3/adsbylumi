@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.recommend-campaign-template]
 verify_jwt = false
+
+[functions.meta-oauth-init]
+verify_jwt = true
+
+[functions.meta-oauth-callback]
+verify_jwt = false
