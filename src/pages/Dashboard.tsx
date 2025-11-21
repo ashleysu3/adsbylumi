@@ -232,8 +232,24 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Right Column - What You Offer Section (Collapsible) */}
-          <div className="lg:col-span-1">
+          {/* Right Column - Quick Actions + What You Offer Section */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Ready to plan your next campaign?</CardTitle>
+                <CardDescription>
+                  Get a clear strategy and step-by-step plan for your Meta ads
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button size="lg" className="h-12 px-8" onClick={() => window.location.href = "/planning"}>
+                  Start Planning
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* What You Offer Section (Collapsible) */}
             <Collapsible open={offerSectionOpen} onOpenChange={setOfferSectionOpen}>
               <Card>
                 <CardHeader>
@@ -281,21 +297,6 @@ export default function Dashboard() {
             </Collapsible>
           </div>
         </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ready to plan your next campaign?</CardTitle>
-            <CardDescription>
-              Get a clear strategy and step-by-step plan for your Meta ads
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button size="lg" className="h-12 px-8" onClick={() => window.location.href = "/planning"}>
-              Start Planning
-            </Button>
-          </CardContent>
-        </Card>
       </div>
 
       <BrandEditDialog
