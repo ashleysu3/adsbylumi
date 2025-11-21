@@ -153,7 +153,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
 
           {/* Folder Tab Navigation */}
-          <nav className="flex space-x-0 mt-6 -mb-4 overflow-x-auto">
+          <nav className="flex space-x-1 mt-6 -mb-4 overflow-x-auto">
             {tabItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
