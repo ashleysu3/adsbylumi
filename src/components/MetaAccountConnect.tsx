@@ -36,7 +36,7 @@ export function MetaAccountConnect({ brandId, currentAccountId, onUpdate }: Meta
   const handleOAuthFlow = async () => {
     setOauthLoading(true);
     try {
-      const redirectUri = `${window.location.origin}/dashboard`;
+      const redirectUri = `${window.location.origin}/meta-oauth-callback`;
 
       // Call edge function to get OAuth URL
       const { data, error } = await supabase.functions.invoke('meta-oauth-init', {
