@@ -34,7 +34,7 @@ const Sales = () => {
       <section className="pt-32 pb-20 px-4">
         <div className="container mx-auto max-w-4xl text-center">
           <div className="inline-block mb-6 px-4 py-2 bg-primary/10 rounded-full">
-            <span className="text-sm font-medium text-primary">For coaches, course creators + service providers</span>
+            <span className="text-sm font-medium text-primary">For Coaches, Course Creators + Service Providers</span>
           </div>
           <h1 className="font-display text-5xl md:text-6xl lg:text-7xl mb-6 leading-tight">
             Finally: Meta ads that feel simple, strategic, and actually doable.
