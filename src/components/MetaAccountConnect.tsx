@@ -152,20 +152,6 @@ export function MetaAccountConnect({ brandId, currentAccountId, onUpdate }: Meta
           <DialogDescription>
             Connect your Meta Business account to enable campaign creation and management.
           </DialogDescription>
-          <div className="rounded-lg bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 p-3 text-sm mt-4">
-            <p className="font-medium text-yellow-900 dark:text-yellow-100 mb-2">📋 Before connecting, verify in your Meta App:</p>
-            <ol className="list-decimal list-inside space-y-1 text-yellow-800 dark:text-yellow-200 text-xs">
-              <li>Go to <strong>App Settings → Basic</strong></li>
-              <li>Enable <strong>"Client OAuth Login"</strong> toggle (MUST be ON)</li>
-              <li>Add this URL to <strong>"Valid OAuth Redirect URIs"</strong>:</li>
-            </ol>
-            <code className="block mt-2 p-2 bg-white dark:bg-gray-900 rounded text-xs break-all border">
-              {window.location.origin}/meta-oauth-callback
-            </code>
-            <p className="mt-2 text-xs text-yellow-700 dark:text-yellow-300">
-              Also check <strong>Use Cases → Authenticate</strong> section for additional redirect URI fields.
-            </p>
-          </div>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
