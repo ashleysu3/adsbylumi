@@ -71,7 +71,7 @@ export default function DashboardLayout({
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <img alt="Your Ad Assistant" className="h-16" src="/lovable-uploads/52201aaf-7462-412b-abe5-6bafc6ea40fc.png" />
+              <img alt="Your Ad Assistant" className="h-16" src="/lovable-uploads/a7a24c2a-2692-4a35-b5ea-17ffd8f9dd0a.png" />
             </div>
 
             <div className="flex items-center space-x-3">
