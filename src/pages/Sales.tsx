@@ -33,7 +33,7 @@ const Sales = () => {
       <section className="py-16 px-4 bg-muted/30">
         <div className="container mx-auto max-w-3xl">
           <div className="prose prose-lg max-w-none">
-            <p className="text-lg leading-relaxed text-foreground/90 mb-4">
+            <p className="text-lg leading-relaxed text-foreground/90 mb-4 text-center">
               The buttons. The settings. The "random" performance swings. The 47 opinions on TikTok. The fear you'll
               mess something up and waste money.
             </p>
@@ -41,11 +41,11 @@ const Sales = () => {
               Your Ad Assistant takes all that stress and says:{" "}
               <span className="text-primary">"Let me take it from here."</span>
             </p>
-            <p className="text-lg leading-relaxed text-foreground/90">
+            <p className="text-lg leading-relaxed text-foreground/90 text-center">
               This isn't another marketing course or a complicated dashboard. It's a smart, friendly, hands-on tool that
               walks you through planning, creating, launching, and improving Meta ads — step by step.
             </p>
-            <p className="text-lg font-medium text-foreground mt-6">
+            <p className="text-lg font-medium text-foreground mt-6 text-center">
               No overwhelm. No guesswork. No Ads Manager spirals.
             </p>
           </div>
