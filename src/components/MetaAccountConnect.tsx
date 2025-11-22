@@ -209,7 +209,7 @@ export function MetaAccountConnect({ brandId, currentAccountId, onUpdate }: Meta
               </div>
 
               <RadioGroup value={selectedAccount} onValueChange={setSelectedAccount}>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                   {accounts.map((account) => (
                     <Card 
                       key={account.id}
