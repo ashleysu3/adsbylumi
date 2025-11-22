@@ -500,7 +500,7 @@ const Sales = () => {
           <h2 className="font-display text-5xl mb-8 md:text-5xl">🚀 Ready to run ads with clarity?</h2>
           <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
             Your Ad Assistant is coming. 
-            <break></break>And it's about to make your business feel lighter, simpler, and more strategic.
+            <break>And it's about to make your business feel lighter, simpler, and more strategic.</break>
           </p>
           <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8 py-6">
             Join the Waitlist
