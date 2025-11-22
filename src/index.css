@@ -145,15 +145,15 @@ All colors MUST be HSL.
   
   /* Bold playful typography */
   .font-display {
-    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    font-family: 'Red Hat Display', system-ui, sans-serif;
     font-weight: 700;
     letter-spacing: -0.02em;
   }
   
   .font-body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Red Hat Display', system-ui, sans-serif;
   }
 }
 
-/* Import bold playful fonts */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+/* Import Red Hat Display font */
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800;900&display=swap');

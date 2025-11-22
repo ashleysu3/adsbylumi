@@ -76,8 +76,8 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Red Hat Display', 'system-ui', 'sans-serif'],
+        sans: ['Red Hat Display', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
         'gradient-playful': 'var(--gradient-playful)',
