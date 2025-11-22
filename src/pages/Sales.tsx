@@ -37,7 +37,7 @@ const Sales = () => {
               The buttons. The settings. The "random" performance swings. The 47 opinions on TikTok. The fear you'll
               mess something up and waste money.
             </p>
-            <p className="text-xl font-medium text-foreground mt-8 mb-4">
+            <p className="text-xl font-medium text-foreground mt-8 mb-4 text-center">
               Your Ad Assistant takes all that stress and says:{" "}
               <span className="text-primary">"Let me take it from here."</span>
             </p>
