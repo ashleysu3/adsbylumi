@@ -67,7 +67,7 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
                   <Card key={index} className="border-l-4 border-l-primary">
                     <CardContent className="pt-4">
                       <div className="flex items-start justify-between mb-2">
-                        <p className="font-medium text-lg flex-1">{hook.text}</p>
+                        <p className="font-medium text-lg flex-1 text-foreground">{hook.text}</p>
                         <div className="flex gap-2">
                           <Button
                             size="sm"
@@ -253,7 +253,7 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
                   <div key={index} className="p-4 border rounded">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <p className="font-medium mb-1">{shot.description}</p>
+                        <p className="font-medium mb-1 text-foreground">{shot.description}</p>
                         {shot.notes && (
                           <p className="text-sm text-muted-foreground">{shot.notes}</p>
                         )}
