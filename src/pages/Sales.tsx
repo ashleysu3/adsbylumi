@@ -100,7 +100,7 @@ const Sales = () => {
                   Skip the guessing, skip the questions you don't understand, skip the "what objective do I use??"
                   panic.
                 </p>
-                <p className="text-lg font-medium mb-4">Just choose the campaign type:</p>
+                <p className="text-lg font-medium mb-4">Just select the goal of your ads:</p>
                 <ul className="space-y-2 text-lg">
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-primary" /> Webinar Signups
@@ -499,8 +499,7 @@ const Sales = () => {
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="font-display text-5xl mb-8 md:text-5xl">🚀 Ready to run ads with clarity?</h2>
           <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Your Ad Assistant is coming. 
-            <break>And it's about to make your business feel lighter, simpler, and more strategic.</break>
+            Your Ad Assistant is coming. And it's about to make your business feel lighter, simpler, and more strategic.
           </p>
           <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8 py-6">
             Join the Waitlist
