@@ -62,21 +62,21 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { 
       path: "/planning", 
       icon: Lightbulb, 
-      label: "Ad Planner",
+      label: "AD PLANNER",
       lightColor: "tab-orange-light",
       darkColor: "tab-orange-dark"
     },
     { 
       path: "/creative", 
       icon: Palette, 
-      label: "Creative",
+      label: "CREATIVE",
       lightColor: "tab-pink-light",
       darkColor: "tab-pink-dark"
     },
     { 
       path: "/data", 
       icon: BarChart3, 
-      label: "Performance",
+      label: "PERFORMANCE",
       lightColor: "tab-cream-light",
       darkColor: "tab-cream-dark"
     },
@@ -164,10 +164,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       h-12 px-6 rounded-t-lg rounded-b-none relative
                       border border-tab-black border-b-0
                       flex items-center justify-center
-                      transition-all duration-200
+                      transition-all duration-200 font-bold
                       ${isActive
-                        ? `bg-${item.darkColor} text-white font-bold`
-                        : `bg-${item.lightColor} text-tab-black font-normal hover:bg-${item.darkColor}/20`
+                        ? `bg-${item.darkColor} text-white`
+                        : `bg-${item.lightColor} text-tab-black hover:bg-${item.darkColor}/20`
                       }
                     `}
                     style={{
