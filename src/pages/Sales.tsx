@@ -465,12 +465,13 @@ Your Ad Assistant does the rest.
       {/* Final CTA */}
       <section className="py-32 px-4">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="font-display text-5xl md:text-6xl mb-8">🚀 Ready to run ads with clarity?</h2>
+          <h2 className="font-display text-5xl mb-8 md:text-5xl">🚀 Ready to run ads with clarity?</h2>
           <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Your Ad Assistant is coming. And it's about to make your business feel lighter, simpler, and more strategic.
+            Your Ad Assistant is coming. 
+And it's about to make your business feel lighter, simpler, and more strategic.
           </p>
           <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8 py-6">
-            Get Started
+            Join the Waitlist  
           </Button>
         </div>
       </section>
