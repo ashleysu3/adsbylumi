@@ -16,7 +16,7 @@ const Sales = () => {
             className="h-16"
           />
           <Button onClick={() => navigate("/auth")} variant="outline">
-            Log In
+            Log In / Sign Up
           </Button>
         </div>
       </header>
