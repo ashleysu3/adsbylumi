@@ -1,13 +1,29 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Target, Palette, FolderKanban, Rocket, BarChart3, Brain, MessageCircle, CheckCircle, X } from "lucide-react";
+import {
+  Sparkles,
+  Target,
+  Palette,
+  FolderKanban,
+  Rocket,
+  BarChart3,
+  Brain,
+  MessageCircle,
+  CheckCircle,
+  X,
+} from "lucide-react";
 const Sales = () => {
   const navigate = useNavigate();
-  return <div className="min-h-screen bg-background">
+  return (
+    <div className="min-h-screen bg-background">
       {/* Header with Login */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <img src="/lovable-uploads/a7a24c2a-2692-4a35-b5ea-17ffd8f9dd0a.png" alt="Your Ad Assistant" className="h-16" />
+          <img
+            src="/lovable-uploads/a7a24c2a-2692-4a35-b5ea-17ffd8f9dd0a.png"
+            alt="Your Ad Assistant"
+            className="h-16"
+          />
           <Button onClick={() => navigate("/auth")} variant="outline">
             Log In / Sign Up
           </Button>
@@ -24,7 +40,7 @@ const Sales = () => {
             Finally: Meta ads that feel simple, strategic, and actually doable.
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            You don't have to learn ads, to run ads.                                    
+            You don't have to learn ads, to run ads.
           </p>
         </div>
       </section>
@@ -57,9 +73,7 @@ const Sales = () => {
         <div className="container mx-auto max-w-4xl text-center">
           <div className="bg-gradient-to-br from-primary/20 to-secondary/20 p-12 rounded-3xl border border-border">
             <p className="text-2xl md:text-3xl font-display leading-relaxed">
-              If you can paste your url and upload your creative… Your Ad Assistant does the rest.
-
-Your Ad Assistant does the rest.
+              If you can paste your url and upload your creative…
               <br />
               <span className="text-primary text-5xl">Your Ad Assistant does the rest.</span>
             </p>
@@ -295,9 +309,27 @@ Your Ad Assistant does the rest.
             Your Ad Assistant is powered by thousands of hours of:
           </p>
           <div className="grid md:grid-cols-3 gap-4 text-center">
-            {["Meta ad strategy", "Creative psychology", "Performance troubleshooting", "Offer mapping", "Funnel breakdown analysis", "Script writing", "Copy frameworks", "Meta best practices", "Seasonality predictions", "Hook libraries", "Niche messaging", "Audience builder logic", "B-roll direction", "High-performing creative systems", "API-backed campaign builds"].map(item => <div key={item} className="p-4 bg-muted/30 rounded-lg border border-border">
+            {[
+              "Meta ad strategy",
+              "Creative psychology",
+              "Performance troubleshooting",
+              "Offer mapping",
+              "Funnel breakdown analysis",
+              "Script writing",
+              "Copy frameworks",
+              "Meta best practices",
+              "Seasonality predictions",
+              "Hook libraries",
+              "Niche messaging",
+              "Audience builder logic",
+              "B-roll direction",
+              "High-performing creative systems",
+              "API-backed campaign builds",
+            ].map((item) => (
+              <div key={item} className="p-4 bg-muted/30 rounded-lg border border-border">
                 <p className="text-sm">{item}</p>
-              </div>)}
+              </div>
+            ))}
           </div>
           <p className="text-xl text-center mt-12 font-medium">
             …and all of that lives inside an app that feels simple, warm, and helpful.
@@ -482,6 +514,7 @@ Your Ad Assistant does the rest.
           <p>© 2025 Your Ad Assistant. All rights reserved.</p>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
 export default Sales;
