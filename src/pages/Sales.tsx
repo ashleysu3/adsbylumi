@@ -57,7 +57,8 @@ const Sales = () => {
         <div className="container mx-auto max-w-4xl text-center">
           <div className="bg-gradient-to-br from-primary/20 to-secondary/20 p-12 rounded-3xl border border-border">
             <p className="text-2xl md:text-3xl font-display leading-relaxed">
-              If you can choose your offer and upload your creative… Your Ad Assistant does the rest.
+              If you can choose your offer and upload your creative… 
+Your Ad Assistant does the rest.
               <br />
               <span className="text-primary text-5xl">Your Ad Assistant does the rest.</span>
             </p>
