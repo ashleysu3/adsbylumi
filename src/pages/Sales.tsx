@@ -1,13 +1,29 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Target, Palette, FolderKanban, Rocket, BarChart3, Brain, MessageCircle, CheckCircle, X } from "lucide-react";
+import {
+  Sparkles,
+  Target,
+  Palette,
+  FolderKanban,
+  Rocket,
+  BarChart3,
+  Brain,
+  MessageCircle,
+  CheckCircle,
+  X,
+} from "lucide-react";
 const Sales = () => {
   const navigate = useNavigate();
-  return <div className="min-h-screen bg-background">
+  return (
+    <div className="min-h-screen bg-background">
       {/* Header with Login */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <img src="/lovable-uploads/a7a24c2a-2692-4a35-b5ea-17ffd8f9dd0a.png" alt="Your Ad Assistant" className="h-16" />
+          <img
+            src="/lovable-uploads/a7a24c2a-2692-4a35-b5ea-17ffd8f9dd0a.png"
+            alt="Your Ad Assistant"
+            className="h-16"
+          />
           <Button onClick={() => navigate("/auth")} variant="outline">
             Log In / Sign Up
           </Button>
@@ -18,7 +34,7 @@ const Sales = () => {
       <section className="pt-32 pb-20 px-4">
         <div className="container mx-auto max-w-4xl text-center">
           <div className="inline-block mb-6 px-4 py-2 bg-primary/10 rounded-full">
-            <span className="text-sm font-medium text-primary">Meta Ads...made simple (finally) </span>
+            <span className="text-sm font-medium text-primary">For coaches, course creators + service providers</span>
           </div>
           <h1 className="font-display text-5xl md:text-6xl lg:text-7xl mb-6 leading-tight">
             Finally: Meta ads that feel simple, strategic, and actually doable.
@@ -34,15 +50,16 @@ const Sales = () => {
         <div className="container mx-auto max-w-3xl">
           <div className="prose prose-lg max-w-none">
             <p className="text-lg leading-relaxed text-foreground/90 mb-4">
-              The buttons. The settings. The "random" performance swings. The 47 opinions on TikTok. 
-              The fear you'll mess something up and waste money.
+              The buttons. The settings. The "random" performance swings. The 47 opinions on TikTok. The fear you'll
+              mess something up and waste money.
             </p>
             <p className="text-xl font-medium text-foreground mt-8 mb-4">
-              Your Ad Assistant takes all that stress and says: <span className="text-primary">"Let me take it from here."</span>
+              Your Ad Assistant takes all that stress and says:{" "}
+              <span className="text-primary">"Let me take it from here."</span>
             </p>
             <p className="text-lg leading-relaxed text-foreground/90">
-              This isn't another marketing course or a complicated dashboard. It's a smart, friendly, hands-on tool 
-              that walks you through planning, creating, launching, and improving Meta ads — step by step.
+              This isn't another marketing course or a complicated dashboard. It's a smart, friendly, hands-on tool that
+              walks you through planning, creating, launching, and improving Meta ads — step by step.
             </p>
             <p className="text-lg font-medium text-foreground mt-6">
               No overwhelm. No guesswork. No Ads Manager spirals.
@@ -56,7 +73,8 @@ const Sales = () => {
         <div className="container mx-auto max-w-4xl text-center">
           <div className="bg-gradient-to-br from-primary/20 to-secondary/20 p-12 rounded-3xl border border-border">
             <p className="text-2xl md:text-3xl font-display leading-relaxed">
-              ⭐️ If you can choose your offer and upload your creative…<br />
+              ⭐️ If you can choose your offer and upload your creative…
+              <br />
               <span className="text-primary">Your Ad Assistant does the rest.</span>
             </p>
           </div>
@@ -67,7 +85,7 @@ const Sales = () => {
       <section className="py-20 px-4 bg-muted/30">
         <div className="container mx-auto max-w-5xl">
           <h2 className="font-display text-4xl text-center mb-16">Here's how:</h2>
-          
+
           <div className="space-y-16">
             {/* Step 1 */}
             <div className="flex flex-col md:flex-row gap-8 items-start">
@@ -79,16 +97,29 @@ const Sales = () => {
               <div className="flex-1">
                 <h3 className="font-display text-3xl mb-4">💡 STEP 1 — Choose What You Want to Run</h3>
                 <p className="text-lg text-muted-foreground mb-6">
-                  Skip the guessing, skip the questions you don't understand, skip the "what objective do I use??" panic.
+                  Skip the guessing, skip the questions you don't understand, skip the "what objective do I use??"
+                  panic.
                 </p>
                 <p className="text-lg font-medium mb-4">Just choose the campaign type:</p>
                 <ul className="space-y-2 text-lg">
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Webinar Signups</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Lead Magnet Downloads</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Low-Ticket Product Sales</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Book a Discovery Call</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Traffic to Instagram/Facebook</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Video Views (Trust Builder)</li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Webinar Signups
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Lead Magnet Downloads
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Low-Ticket Product Sales
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Book a Discovery Call
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Traffic to Instagram/Facebook
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Video Views (Trust Builder)
+                  </li>
                 </ul>
                 <p className="text-lg mt-6 font-medium">
                   Your Ad Assistant loads the exact structure Meta prefers in 2025. No thinking required.
@@ -108,7 +139,7 @@ const Sales = () => {
                 <p className="text-lg text-muted-foreground mb-6">
                   Once you enter your offer details… Your Creative Department generates:
                 </p>
-                
+
                 <div className="space-y-6">
                   <div>
                     <p className="font-medium text-lg mb-3">✓ TOFU ads</p>
@@ -159,7 +190,8 @@ const Sales = () => {
                 </div>
 
                 <p className="text-lg mt-6 font-medium">
-                  Everything you need to record or design the right creative — without scrolling for inspiration or guessing what to do.
+                  Everything you need to record or design the right creative — without scrolling for inspiration or
+                  guessing what to do.
                 </p>
               </div>
             </div>
@@ -177,14 +209,30 @@ const Sales = () => {
                   Each campaign gets its own workspace, where you can:
                 </p>
                 <ul className="space-y-2 text-lg">
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Save scripts</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Expand creative</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Regenerate creative you don't love</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Store your brand voice</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Upload your final videos + graphics</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Check off a production list</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> See exactly what you still need to record</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="w-5 h-5 text-primary" /> Come back any time</li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Save scripts
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Expand creative
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Regenerate creative you don't love
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Store your brand voice
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Upload your final videos + graphics
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Check off a production list
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> See exactly what you still need to record
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-primary" /> Come back any time
+                  </li>
                 </ul>
                 <p className="text-lg mt-6 font-medium">
                   It's like having a creative studio, strategist, and production manager — all inside one tidy space.
@@ -200,7 +248,9 @@ const Sales = () => {
                 </div>
               </div>
               <div className="flex-1">
-                <h3 className="font-display text-3xl mb-4">🚀 STEP 4 — Hit "Create Campaign" and Your Ad Assistant Builds It for You</h3>
+                <h3 className="font-display text-3xl mb-4">
+                  🚀 STEP 4 — Hit "Create Campaign" and Your Ad Assistant Builds It for You
+                </h3>
                 <p className="text-lg font-medium mb-6">
                   Yep. Like actually builds the entire campaign in Ads Manager using the Meta API.
                 </p>
@@ -228,9 +278,7 @@ const Sales = () => {
               </div>
               <div className="flex-1">
                 <h3 className="font-display text-3xl mb-4">📊 STEP 5 — Get Weekly Guidance (Without the Panic)</h3>
-                <p className="text-lg text-muted-foreground mb-6">
-                  Each week, Your Ad Assistant sends you:
-                </p>
+                <p className="text-lg text-muted-foreground mb-6">Each week, Your Ad Assistant sends you:</p>
                 <ul className="space-y-2 text-lg text-muted-foreground">
                   <li>• A clean, simple performance report</li>
                   <li>• CTR, CPC, CPL, CPP, ROAS</li>
@@ -246,9 +294,7 @@ const Sales = () => {
                 <p className="text-lg mt-6 font-medium">
                   Everything is written in friendly, real-person language, not data noise.
                 </p>
-                <p className="text-xl mt-6 text-primary font-medium">
-                  This isn't a dashboard. It's a partner.
-                </p>
+                <p className="text-xl mt-6 text-primary font-medium">This isn't a dashboard. It's a partner.</p>
               </div>
             </div>
           </div>
@@ -263,9 +309,27 @@ const Sales = () => {
             Your Ad Assistant is powered by thousands of hours of:
           </p>
           <div className="grid md:grid-cols-3 gap-4 text-center">
-            {["Meta ad strategy", "Creative psychology", "Performance troubleshooting", "Offer mapping", "Funnel breakdown analysis", "Script writing", "Copy frameworks", "Meta best practices", "Seasonality predictions", "Hook libraries", "Niche messaging", "Audience builder logic", "B-roll direction", "High-performing creative systems", "API-backed campaign builds"].map(item => <div key={item} className="p-4 bg-muted/30 rounded-lg border border-border">
+            {[
+              "Meta ad strategy",
+              "Creative psychology",
+              "Performance troubleshooting",
+              "Offer mapping",
+              "Funnel breakdown analysis",
+              "Script writing",
+              "Copy frameworks",
+              "Meta best practices",
+              "Seasonality predictions",
+              "Hook libraries",
+              "Niche messaging",
+              "Audience builder logic",
+              "B-roll direction",
+              "High-performing creative systems",
+              "API-backed campaign builds",
+            ].map((item) => (
+              <div key={item} className="p-4 bg-muted/30 rounded-lg border border-border">
                 <p className="text-sm">{item}</p>
-              </div>)}
+              </div>
+            ))}
           </div>
           <p className="text-xl text-center mt-12 font-medium">
             …and all of that lives inside an app that feels simple, warm, and helpful.
@@ -278,7 +342,7 @@ const Sales = () => {
         <div className="container mx-auto max-w-4xl">
           <h2 className="font-display text-4xl text-center mb-12">🧠 Think of it like this…</h2>
           <p className="text-xl text-center mb-12">Your Ad Assistant is:</p>
-          
+
           <div className="grid md:grid-cols-2 gap-6">
             <div className="p-6 bg-background rounded-xl border border-border">
               <div className="flex items-start gap-4">
@@ -341,9 +405,7 @@ const Sales = () => {
             </div>
           </div>
 
-          <p className="text-xl text-center mt-12 font-medium">
-            All in one clean, friendly tool.
-          </p>
+          <p className="text-xl text-center mt-12 font-medium">All in one clean, friendly tool.</p>
         </div>
       </section>
 
@@ -428,18 +490,14 @@ const Sales = () => {
         <div className="container mx-auto max-w-3xl text-center">
           <h2 className="font-display text-4xl mb-6">💵 Pricing</h2>
           <p className="text-2xl font-medium text-primary mb-4">COMING SOON</p>
-          <p className="text-lg text-muted-foreground">
-            (with solo, creator, and agency tiers)
-          </p>
+          <p className="text-lg text-muted-foreground">(with solo, creator, and agency tiers)</p>
         </div>
       </section>
 
       {/* Final CTA */}
       <section className="py-32 px-4">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="font-display text-5xl md:text-6xl mb-8">
-            🚀 Ready to run ads with clarity?
-          </h2>
+          <h2 className="font-display text-5xl md:text-6xl mb-8">🚀 Ready to run ads with clarity?</h2>
           <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
             Your Ad Assistant is coming. And it's about to make your business feel lighter, simpler, and more strategic.
           </p>
@@ -455,6 +513,7 @@ const Sales = () => {
           <p>© 2025 Your Ad Assistant. All rights reserved.</p>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
 export default Sales;
