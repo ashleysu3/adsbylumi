@@ -180,9 +180,6 @@ export default function CampaignWorkspace() {
                     </div>
                   </div>
                 </div>
-                <Badge variant="secondary">
-                  {progressLabels[workspace.progress_status] || workspace.progress_status}
-                </Badge>
               </div>
             </div>
           </div>
