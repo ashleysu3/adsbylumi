@@ -10,8 +10,9 @@ import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { Building2, Globe, Target, Edit } from "lucide-react";
+import { Building2, Globe, Target, Edit, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -55,6 +56,22 @@ export default function Dashboard() {
       supabase.removeChannel(channel);
     };
   }, [brand?.id]);
+
+  const calculateBrandProgress = () => {
+    const checks = [
+      !!(brand?.name && brand?.website_url && brand?.industry), // Brand basics
+      !!(brand?.value_proposition && brand?.target_audience),   // Positioning
+      brand?.psychology_status === "complete",                   // Psychology
+      offers.length > 0,                                         // Has offers
+      !!brand?.meta_account_id                                   // Meta connected
+    ];
+    
+    const completed = checks.filter(Boolean).length;
+    const total = checks.length;
+    const percentage = Math.round((completed / total) * 100);
+    
+    return { completed, total, percentage };
+  };
 
   const fetchBrandData = async () => {
     try {
@@ -144,11 +161,27 @@ export default function Dashboard() {
               Your brand at a glance
             </p>
           </div>
-          {subscription && (
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              {subscription.tier.replace("_", " ").charAt(0).toUpperCase() + subscription.tier.replace("_", " ").slice(1)}
-            </Badge>
-          )}
+          <Badge 
+            variant={
+              calculateBrandProgress().percentage === 100 ? "outline" : 
+              calculateBrandProgress().percentage >= 80 ? "default" : 
+              calculateBrandProgress().percentage >= 40 ? "secondary" : 
+              "destructive"
+            }
+            className={cn(
+              "text-sm px-3 py-1",
+              calculateBrandProgress().percentage === 100 && "border-green-500 text-green-700 dark:text-green-400"
+            )}
+          >
+            {calculateBrandProgress().percentage === 100 ? (
+              <>
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Profile Complete
+              </>
+            ) : (
+              `${calculateBrandProgress().percentage}% Complete`
+            )}
+          </Badge>
         </div>
 
         {/* Onboarding Checklist */}
