@@ -167,6 +167,7 @@ export type Database = {
           creative_json: Json | null
           final_answers: Json | null
           id: string
+          loved_concepts: Json | null
           meta_campaign_ids: Json | null
           meta_campaign_status: string | null
           name: string
@@ -188,6 +189,7 @@ export type Database = {
           creative_json?: Json | null
           final_answers?: Json | null
           id?: string
+          loved_concepts?: Json | null
           meta_campaign_ids?: Json | null
           meta_campaign_status?: string | null
           name: string
@@ -209,6 +211,7 @@ export type Database = {
           creative_json?: Json | null
           final_answers?: Json | null
           id?: string
+          loved_concepts?: Json | null
           meta_campaign_ids?: Json | null
           meta_campaign_status?: string | null
           name?: string

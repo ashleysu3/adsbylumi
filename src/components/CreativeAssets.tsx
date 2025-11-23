@@ -1,32 +1,23 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Copy, 
-  RefreshCw, 
-  Sparkles, 
+  Heart,
   ChevronDown,
   Video,
   Image as ImageIcon,
   FileText,
   Layers,
-  CheckCircle2,
-  Paperclip,
-  MoreHorizontal,
-  Lightbulb
+  Sparkles,
+  RefreshCw,
+  Eye
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface CreativeAssetsProps {
   workspace: any;
@@ -45,33 +36,24 @@ const formatIcons = {
 };
 
 const stageColors = {
-  tofu: "bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400",
-  mofu: "bg-purple-500/10 border-purple-500/20 text-purple-700 dark:text-purple-400",
-  bofu: "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400",
+  tofu: "bg-blue-500/10 border-blue-500/30",
+  mofu: "bg-purple-500/10 border-purple-500/30",
+  bofu: "bg-green-500/10 border-green-500/30",
+};
+
+const stageBadgeColors = {
+  tofu: "bg-blue-500/20 text-blue-700 border-blue-500/30 dark:text-blue-400",
+  mofu: "bg-purple-500/20 text-purple-700 border-purple-500/30 dark:text-purple-400",
+  bofu: "bg-green-500/20 text-green-700 border-green-500/30 dark:text-green-400",
 };
 
 export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat }: CreativeAssetsProps) {
   const creative = workspace.creative_json || {};
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
-  const [selectedConcepts, setSelectedConcepts] = useState<Set<string>>(new Set());
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Load existing selections from workspace
-  useEffect(() => {
-    if (workspace.production_checklist) {
-      const checklist = workspace.production_checklist;
-      const selected = new Set<string>();
-      
-      // Extract concept IDs from checklist items
-      checklist.forEach((item: any) => {
-        if (item.concept_id) {
-          selected.add(item.concept_id);
-        }
-      });
-      
-      setSelectedConcepts(selected);
-    }
-  }, [workspace.production_checklist]);
+  const [lovedConcepts, setLovedConcepts] = useState<Set<string>>(
+    new Set(workspace.loved_concepts || [])
+  );
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const toggleConcept = (conceptId: string) => {
     setExpandedConcepts(prev => {
@@ -85,172 +67,49 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
     });
   };
 
-  const generateChecklistForConcept = (concept: any, stage: string, conceptId: string) => {
-    const items: any[] = [];
+  const handleLoveIt = async (conceptId: string, concept: any, stage: string) => {
+    const isLoved = lovedConcepts.has(conceptId);
+    const newLovedSet = new Set(lovedConcepts);
     
-    // Script recording task
-    if (concept.script || concept.format === 'talking_head') {
-      const scriptLines = concept.script 
-        ? concept.script.split('\n').filter((line: string) => line.trim())
-        : ["Record talking head video following the script"];
-      
-      items.push({
-        id: `record_${conceptId}`,
-        concept_id: conceptId,
-        category: "📹 To Record",
-        title: `${stage.toUpperCase()}: ${concept.title}`,
-        details: scriptLines,
-        completed: false,
-        stage: stage,
-        format: concept.format
+    if (isLoved) {
+      newLovedSet.delete(conceptId);
+      toast.success(`Removed from favorites`);
+    } else {
+      newLovedSet.add(conceptId);
+      toast.success(`❤️ Added to favorites!`, {
+        description: concept.title
       });
     }
-
-    // B-roll recording task
-    if (concept.broll_instructions || concept.format === 'b_roll') {
-      const brollLines = concept.broll_instructions
-        ? concept.broll_instructions.split('\n').filter((line: string) => line.trim())
-        : ["Record B-roll footage"];
-      
-      items.push({
-        id: `broll_${conceptId}`,
-        concept_id: conceptId,
-        category: "📹 To Record",
-        title: `B-roll for: ${concept.title}`,
-        details: brollLines,
-        completed: false,
-        stage: stage,
-        format: 'b_roll'
-      });
+    
+    setLovedConcepts(newLovedSet);
+    
+    // Save to database
+    const { error } = await supabase
+      .from('campaign_workspaces')
+      .update({ 
+        loved_concepts: Array.from(newLovedSet),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', workspace.id);
+    
+    if (error) {
+      console.error("Error saving loved concepts:", error);
+      toast.error("Failed to save favorites");
+      return;
     }
-
-    // Carousel design task
-    if (concept.format === 'carousel') {
-      const carouselDetails = typeof concept.carousel_structure === 'string'
-        ? concept.carousel_structure.split('\n').filter((line: string) => line.trim())
-        : Array.isArray(concept.carousel_structure)
-        ? concept.carousel_structure
-        : ["Design carousel slides with consistent branding", "Include clear CTA on final slide"];
-      
-      items.push({
-        id: `carousel_${conceptId}`,
-        concept_id: conceptId,
-        category: "🎨 To Design",
-        title: `${stage.toUpperCase()} Carousel: ${concept.title}`,
-        details: carouselDetails,
-        completed: false,
-        stage: stage,
-        format: 'carousel'
-      });
-    }
-
-    // Static graphic task
-    if (concept.format === 'static') {
-      const staticDetails = concept.static_layout
-        ? concept.static_layout.split('\n').filter((line: string) => line.trim())
-        : ["Design static graphic following brand guidelines"];
-      
-      items.push({
-        id: `static_${conceptId}`,
-        concept_id: conceptId,
-        category: "🎨 To Design",
-        title: `${stage.toUpperCase()} Static: ${concept.title}`,
-        details: staticDetails,
-        completed: false,
-        stage: stage,
-        format: 'static'
-      });
-    }
-
-    // Overlay text task
-    if (concept.overlay_text) {
-      const overlayDetails = concept.overlay_text.split('\n').filter((line: string) => line.trim());
-      
-      items.push({
-        id: `overlay_${conceptId}`,
-        concept_id: conceptId,
-        category: "✂️ Post-Production",
-        title: `Add overlays for: ${concept.title}`,
-        details: overlayDetails.length > 0 ? overlayDetails : [concept.overlay_text],
-        completed: false,
-        stage: stage
-      });
-    }
-
-    return items;
+    
+    await onUpdate({ loved_concepts: Array.from(newLovedSet) });
   };
 
-  const handleConceptSelection = async (conceptId: string, concept: any, stage: string, isChecked: boolean) => {
-    setIsSaving(true);
-    
-    try {
-      let updatedChecklist = [...(workspace.production_checklist || [])];
-      
-      if (isChecked) {
-        // Add to selected
-        setSelectedConcepts(prev => new Set(prev).add(conceptId));
-        
-        // Generate checklist items for this concept
-        const newItems = generateChecklistForConcept(concept, stage, conceptId);
-        updatedChecklist = [...updatedChecklist, ...newItems];
-        
-        toast.success(`Added "${concept.title}" to production checklist`);
-      } else {
-        // Remove from selected
-        setSelectedConcepts(prev => {
-          const next = new Set(prev);
-          next.delete(conceptId);
-          return next;
-        });
-        
-        // Remove all checklist items for this concept
-        updatedChecklist = updatedChecklist.filter((item: any) => item.concept_id !== conceptId);
-        
-        toast.success(`Removed "${concept.title}" from production checklist`);
-      }
-      
-      // Save to database
-      const { error } = await supabase
-        .from('campaign_workspaces')
-        .update({ 
-          production_checklist: updatedChecklist,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', workspace.id);
-      
-      if (error) throw error;
-      
-      // Update parent component
-      await onUpdate({ production_checklist: updatedChecklist });
-      
-    } catch (error: any) {
-      console.error("Error updating checklist:", error);
-      toast.error("Failed to update checklist");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copied to clipboard`);
-  };
-
-  const handleExpand = async (conceptId: string, concept: any, stage: string, action: 'regenerate' | 'more_options' | 'expand_idea') => {
-    const actionLabels = {
-      regenerate: 'Regenerating',
-      more_options: 'Getting more options',
-      expand_idea: 'Expanding idea'
-    };
-    
-    toast.info(`${actionLabels[action]}...`);
-    setIsSaving(true);
+  const handleMoreLikeThis = async (conceptId: string, concept: any, stage: string) => {
+    toast.info('Generating variations...');
+    setIsGenerating(true);
     
     try {
       const { data, error } = await supabase.functions.invoke('expand-creative', {
         body: {
           concept,
-          action,
+          action: 'more_options',
           stage,
           brandName: workspace.brands?.name || 'Your Brand',
           audiencePsychology: workspace.brands?.audience_psychology
@@ -271,30 +130,17 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
       }
       
       const newConcepts = data.concepts || [];
-      console.log('Received expanded concepts:', newConcepts);
-      
-      // Add new concepts to the creative mix
       const updatedCreative = { ...creative };
       if (!updatedCreative.creative_mix) {
         updatedCreative.creative_mix = { tofu: [], mofu: [], bofu: [] };
       }
       
-      // Add version metadata to new concepts
-      const conceptsWithMeta = newConcepts.map((c: any, idx: number) => ({
-        ...c,
-        version: Date.now(),
-        original_id: conceptId,
-        action_taken: action,
-        variant_index: idx
-      }));
-      
-      // Insert after the original concept
+      // Add new variations
       const stageArray = updatedCreative.creative_mix[stage] || [];
       const originalIndex = parseInt(conceptId.split('-')[1]);
-      stageArray.splice(originalIndex + 1, 0, ...conceptsWithMeta);
+      stageArray.splice(originalIndex + 1, 0, ...newConcepts);
       updatedCreative.creative_mix[stage] = stageArray;
       
-      // Save to workspace
       const { error: updateError } = await supabase
         .from('campaign_workspaces')
         .update({
@@ -304,18 +150,21 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
         .eq('id', workspace.id);
       
       if (updateError) throw updateError;
-      
-      // Update parent component
       await onUpdate({ creative_json: updatedCreative });
       
-      toast.success(`Generated ${newConcepts.length} new variation${newConcepts.length > 1 ? 's' : ''}!`);
+      toast.success(`✨ Generated ${newConcepts.length} new variation${newConcepts.length > 1 ? 's' : ''}!`);
       
     } catch (error: any) {
-      console.error('Error expanding creative:', error);
-      toast.error('Failed to expand creative. Please try again.');
+      console.error('Error generating variations:', error);
+      toast.error('Failed to generate variations. Please try again.');
     } finally {
-      setIsSaving(false);
+      setIsGenerating(false);
     }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied to clipboard`);
   };
 
   if (!creative || Object.keys(creative).length === 0) {
@@ -325,9 +174,6 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
           <div className="text-center py-12">
             <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">No creative assets generated yet</p>
-            <Button onClick={() => window.location.href = `/creative?workspace=${workspace.id}`}>
-              Generate Creative
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -358,106 +204,112 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
   }
   
   const allStages = [
-    { id: "tofu", label: "TOFU Creative", items: filteredTofu, color: "border-blue-500" },
-    { id: "mofu", label: "MOFU Creative", items: filteredMofu, color: "border-purple-500" },
-    { id: "bofu", label: "BOFU Creative", items: filteredBofu, color: "border-green-500" },
+    { id: "tofu", label: "TOFU Creative", subtitle: "Awareness & Interest", items: filteredTofu },
+    { id: "mofu", label: "MOFU Creative", subtitle: "Consideration & Trust", items: filteredMofu },
+    { id: "bofu", label: "BOFU Creative", subtitle: "Decision & Action", items: filteredBofu },
   ].filter(stage => !filterStage || stage.id === filterStage);
 
   const renderConcept = (concept: any, index: number, stage: string) => {
     const conceptId = `${stage}-${index}`;
     const isExpanded = expandedConcepts.has(conceptId);
-    const isSelected = selectedConcepts.has(conceptId);
+    const isLoved = lovedConcepts.has(conceptId);
     const FormatIcon = formatIcons[concept.format as keyof typeof formatIcons] || FileText;
     
-    // Find linked assets
-    const linkedAssets = (workspace.user_uploaded_assets || []).filter(
-      (asset: any) => asset.linked_concept_id === conceptId
-    );
+    // Get main content preview
+    const getContentPreview = () => {
+      if (concept.script) {
+        const lines = concept.script.split('\n').filter((l: string) => l.trim());
+        return lines.slice(0, 3).join('\n');
+      }
+      if (concept.carousel_structure?.slides?.[0]) {
+        return concept.carousel_structure.slides[0].text || '';
+      }
+      if (concept.static_layout) {
+        return concept.static_layout.split('\n')[0];
+      }
+      return concept.title;
+    };
 
     return (
       <Card 
         key={conceptId} 
-        className={`border-l-4 transition-all ${
-          stage === 'tofu' ? 'border-l-blue-500' : 
-          stage === 'mofu' ? 'border-l-purple-500' : 
-          'border-l-green-500'
-        } ${isSelected ? 'ring-2 ring-primary/20 bg-primary/5' : ''}`}
+        className={`transition-all border-l-4 ${stageColors[stage as keyof typeof stageColors]} ${
+          isLoved ? 'ring-2 ring-pink-500/50 bg-pink-500/5' : ''
+        }`}
       >
         <Collapsible open={isExpanded} onOpenChange={() => toggleConcept(conceptId)}>
           <CardHeader className="pb-3">
-            <div className="flex items-start gap-4">
-              <div className="pt-1">
-                <Checkbox 
-                  checked={isSelected}
-                  disabled={isSaving}
-                  onCheckedChange={(checked) => 
-                    handleConceptSelection(conceptId, concept, stage, checked === true)
-                  }
-                  className="h-5 w-5"
-                />
-              </div>
-              
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <FormatIcon className="h-4 w-4 text-primary" />
-                  <h4 className="font-semibold text-base">{concept.title}</h4>
-                  {isSelected && (
-                    <Badge variant="default" className="gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Selected
-                    </Badge>
-                  )}
-                  {concept.action_taken && (
-                    <Badge variant="outline" className="bg-purple-500/10 border-purple-500/20 text-purple-700 dark:text-purple-400">
-                      {concept.action_taken === 'regenerate' && '🔄 Regenerated'}
-                      {concept.action_taken === 'more_options' && '✨ Variation'}
-                      {concept.action_taken === 'expand_idea' && '📝 Expanded'}
-                    </Badge>
-                  )}
-                  {linkedAssets.length > 0 && (
-                    <Badge variant="default" className="gap-1">
-                      <Paperclip className="h-3 w-3" />
-                      {linkedAssets.length} asset{linkedAssets.length > 1 ? 's' : ''}
-                    </Badge>
-                  )}
+            <div className="space-y-3">
+              {/* Top row: Icon, Title, Format */}
+              <div className="flex items-start gap-3">
+                <div className={`p-2 rounded-lg ${stageColors[stage as keyof typeof stageColors]}`}>
+                  <FormatIcon className="h-5 w-5" />
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className={stageColors[stage as keyof typeof stageColors]}>
-                    {stage.toUpperCase()}
-                  </Badge>
-                  <Badge variant="secondary">{concept.format}</Badge>
-                  {concept.angle && (
-                    <Badge variant="outline" className="bg-accent/50">
-                      {concept.angle}
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-base leading-tight mb-2">{concept.title}</h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className={stageBadgeColors[stage as keyof typeof stageBadgeColors]}>
+                      {stage.toUpperCase()}
                     </Badge>
-                  )}
+                    <Badge variant="secondary" className="capitalize">
+                      <FormatIcon className="h-3 w-3 mr-1" />
+                      {concept.format.replace('_', ' ')}
+                    </Badge>
+                    {concept.angle && (
+                      <Badge variant="outline" className="bg-accent/50 capitalize">
+                        {concept.angle}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="ghost" disabled={isSaving}>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => handleExpand(conceptId, concept, stage, 'regenerate')}>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Regenerate
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExpand(conceptId, concept, stage, 'more_options')}>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      More Options
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExpand(conceptId, concept, stage, 'expand_idea')}>
-                      <Lightbulb className="h-4 w-4 mr-2" />
-                      Expand Idea
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+
+              {/* Content Preview */}
+              <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+                <p className="text-sm whitespace-pre-wrap line-clamp-3">
+                  {getContentPreview()}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant={isLoved ? "default" : "outline"}
+                  onClick={() => handleLoveIt(conceptId, concept, stage)}
+                  className="gap-2"
+                  disabled={isGenerating}
+                >
+                  <Heart className={`h-4 w-4 ${isLoved ? 'fill-current' : ''}`} />
+                  {isLoved ? 'Loved' : 'Love It'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleMoreLikeThis(conceptId, concept, stage)}
+                  className="gap-2"
+                  disabled={isGenerating}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  More Like This
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const contentToCopy = concept.script || 
+                      JSON.stringify(concept.carousel_structure, null, 2) || 
+                      concept.static_layout || 
+                      concept.title;
+                    copyToClipboard(contentToCopy, "Creative content");
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
                 <CollapsibleTrigger asChild>
-                  <Button size="sm" variant="ghost">
+                  <Button size="sm" variant="ghost" className="gap-2">
+                    <Eye className="h-4 w-4" />
+                    {isExpanded ? 'Hide' : 'See'} Details
                     <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                   </Button>
                 </CollapsibleTrigger>
@@ -466,114 +318,111 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
           </CardHeader>
           
           <CollapsibleContent>
-            <CardContent className="space-y-4 pt-0">
+            <CardContent className="space-y-4 pt-0 border-t border-border/50">
               {concept.script && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-muted-foreground">Script</p>
+                    <p className="text-sm font-medium">Full Script</p>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => copyToClipboard(concept.script, "Script")}
                     >
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy
                     </Button>
                   </div>
-                  <p className="text-sm whitespace-pre-wrap bg-muted/30 p-3 rounded-md">
+                  <div className="bg-muted/30 rounded-lg p-3 text-sm whitespace-pre-wrap font-mono">
                     {concept.script}
-                  </p>
-                </div>
-              )}
-
-              {concept.overlay_text && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Overlay Text</p>
-                  <p className="text-sm bg-muted/30 p-3 rounded-md">{concept.overlay_text}</p>
+                  </div>
                 </div>
               )}
 
               {concept.broll_instructions && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">B-Roll Instructions</p>
-                  <p className="text-sm bg-muted/30 p-3 rounded-md whitespace-pre-wrap">
-                    {concept.broll_instructions}
-                  </p>
-                </div>
-              )}
-
-              {concept.carousel_structure && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Carousel Structure</p>
-                  <div className="text-sm bg-muted/30 p-3 rounded-md">
-                    {typeof concept.carousel_structure === 'string' 
-                      ? concept.carousel_structure 
-                      : JSON.stringify(concept.carousel_structure, null, 2)}
+                  <p className="text-sm font-medium">B-Roll Instructions</p>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    {Array.isArray(concept.broll_instructions) ? (
+                      <ul className="space-y-2 text-sm">
+                        {concept.broll_instructions.map((instruction: string, i: number) => (
+                          <li key={i} className="flex gap-2">
+                            <span className="text-muted-foreground">{i + 1}.</span>
+                            <span>{instruction}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{concept.broll_instructions}</p>
+                    )}
                   </div>
                 </div>
               )}
 
-              {concept.static_layout && (
+              {concept.carousel_structure?.slides && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Static Layout</p>
-                  <p className="text-sm bg-muted/30 p-3 rounded-md whitespace-pre-wrap">
-                    {concept.static_layout}
-                  </p>
-                </div>
-              )}
-
-              {concept.psychology_trigger && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Psychology Trigger</p>
-                  <p className="text-sm text-primary bg-primary/5 p-3 rounded-md">
-                    {concept.psychology_trigger}
-                  </p>
-                </div>
-              )}
-
-              {concept.why_it_works && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Why This Works</p>
-                  <p className="text-sm bg-accent/10 p-3 rounded-md">
-                    {concept.why_it_works}
-                  </p>
-                </div>
-              )}
-
-              {/* Linked Assets */}
-              {linkedAssets.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">Linked Assets</p>
-                  <div className="space-y-1">
-                    {linkedAssets.map((asset: any) => (
-                      <div key={asset.id} className="flex items-center gap-2 text-sm bg-muted/30 p-2 rounded">
-                        <Paperclip className="h-3 w-3 text-primary" />
-                        <span className="truncate">{asset.file_name}</span>
+                  <p className="text-sm font-medium">Carousel Structure ({concept.carousel_structure.slides.length} slides)</p>
+                  <div className="space-y-3">
+                    {concept.carousel_structure.slides.map((slide: any, i: number) => (
+                      <div key={i} className="bg-muted/30 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline">Slide {i + 1}</Badge>
+                        </div>
+                        <p className="text-sm font-medium">{slide.text}</p>
+                        {slide.visual && (
+                          <p className="text-xs text-muted-foreground">Visual: {slide.visual}</p>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleExpand(conceptId, concept, stage, 'more_options')}
-                  disabled={isSaving}
-                >
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  More Options
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleExpand(conceptId, concept, stage, 'expand_idea')}
-                  disabled={isSaving}
-                >
-                  <Lightbulb className="h-3 w-3 mr-1" />
-                  Expand Idea
-                </Button>
-              </div>
+              {concept.static_layout && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Static Layout</p>
+                  <div className="bg-muted/30 rounded-lg p-3 text-sm whitespace-pre-wrap">
+                    {concept.static_layout}
+                  </div>
+                </div>
+              )}
+
+              {concept.overlay_text && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Text Overlays</p>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    {Array.isArray(concept.overlay_text) ? (
+                      <ul className="space-y-1 text-sm">
+                        {concept.overlay_text.map((text: string, i: number) => (
+                          <li key={i}>• {text}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap">{concept.overlay_text}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {concept.psychology_trigger && (
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <p className="text-xs font-medium text-primary mb-1">Psychology Trigger</p>
+                  <p className="text-sm">{concept.psychology_trigger}</p>
+                </div>
+              )}
+
+              {concept.why_it_works && (
+                <div className="bg-accent/30 rounded-lg p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Why This Works</p>
+                  <p className="text-sm">{concept.why_it_works}</p>
+                </div>
+              )}
+
+              {concept.production_notes && (
+                <div className="bg-muted/30 rounded-lg p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Production Notes</p>
+                  <p className="text-sm">{concept.production_notes}</p>
+                </div>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Collapsible>
@@ -582,32 +431,30 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
   };
 
   return (
-    <ScrollArea className="h-[calc(100vh-10rem)]">
+    <ScrollArea className="h-[calc(100vh-12rem)]">
       <div className="space-y-8 p-6">
-        {allStages.map((stage) => (
-          <div key={stage.id} className="space-y-4">
-            <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-3">
-              <div className={`flex items-center gap-3 pb-3 border-b-2 ${stage.color}`}>
-                <h3 className="text-2xl font-bold">{stage.label}</h3>
-                <Badge variant="secondary" className="text-sm">
-                  {stage.items.length} concept{stage.items.length !== 1 ? 's' : ''}
-                </Badge>
+        {allStages.map(stage => (
+          stage.items.length > 0 && (
+            <div key={stage.id} className="space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-bold tracking-tight">{stage.label}</h2>
+                <p className="text-sm text-muted-foreground">{stage.subtitle}</p>
+              </div>
+              <div className="space-y-3">
+                {stage.items.map((concept: any, index: number) => 
+                  renderConcept(concept, index, stage.id)
+                )}
               </div>
             </div>
-            <div className="space-y-3">
-              {stage.items.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="py-12 text-center">
-                    <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No {stage.label.toLowerCase()} concepts yet</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                stage.items.map((concept, index) => renderConcept(concept, index, stage.id))
-              )}
-            </div>
-          </div>
+          )
         ))}
+        
+        {allStages.every(stage => stage.items.length === 0) && (
+          <div className="text-center py-12">
+            <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">No creative concepts match your filters</p>
+          </div>
+        )}
       </div>
     </ScrollArea>
   );
