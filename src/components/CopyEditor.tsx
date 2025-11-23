@@ -11,11 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Lightbulb, FileText, Sparkles, Loader2, Shuffle } from "lucide-react";
+import { Lightbulb, FileText, Sparkles, Loader2, Shuffle, Crop, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { CopyVariations } from "./CopyVariations";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface CopyEditorProps {
   concept: any;
@@ -45,9 +47,22 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
   const [showVariations, setShowVariations] = useState(false);
   const [isGeneratingVariations, setIsGeneratingVariations] = useState(false);
   const [aspectRatio, setAspectRatio] = useState<'1:1' | '9:16' | null>(null);
+  const [activePlacement, setActivePlacement] = useState<'feed' | 'stories' | 'reels'>('feed');
+  const [placementCreatives, setPlacementCreatives] = useState<Record<string, any>>({
+    feed: null,
+    stories: null,
+    reels: null
+  });
 
   useEffect(() => {
     if (!uploadedAsset?.file_url) return;
+    
+    // Initialize all placements with the uploaded asset
+    setPlacementCreatives({
+      feed: uploadedAsset,
+      stories: uploadedAsset,
+      reels: uploadedAsset
+    });
     
     if (uploadedAsset.file_type?.startsWith('video/')) {
       const video = document.createElement('video');
@@ -65,6 +80,97 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
       };
     }
   }, [uploadedAsset]);
+
+  const getPlacementRecommendations = (placement: string) => {
+    switch (placement) {
+      case 'feed':
+        return {
+          aspectRatio: '1:1',
+          maxHeadline: 40,
+          recommendedHeadline: 25,
+          showPrimaryText: true,
+          tips: [
+            'Square format (1:1) performs best in Feed',
+            'Primary text is highly visible - use it to hook attention',
+            'Users often scroll quickly - make headline count',
+            'Include clear value proposition in primary text'
+          ]
+        };
+      case 'stories':
+        return {
+          aspectRatio: '9:16',
+          maxHeadline: 40,
+          recommendedHeadline: 15,
+          showPrimaryText: false,
+          tips: [
+            'Full-screen 9:16 format required',
+            'Primary text appears above but may be hidden when tapping',
+            'Keep headline ultra-short (under 15 characters)',
+            'Visual should tell the story - minimal copy needed'
+          ]
+        };
+      case 'reels':
+        return {
+          aspectRatio: '9:16',
+          maxHeadline: 40,
+          recommendedHeadline: 20,
+          showPrimaryText: false,
+          tips: [
+            'Full-screen 9:16 video format',
+            'Sound-on environment - consider voiceover',
+            'First 3 seconds are critical for retention',
+            'Headline should create curiosity or intrigue'
+          ]
+        };
+      default:
+        return {
+          aspectRatio: '1:1',
+          maxHeadline: 40,
+          recommendedHeadline: 25,
+          showPrimaryText: true,
+          tips: []
+        };
+    }
+  };
+
+  const handleUploadPlacementCreative = async (placement: string, file: File) => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${workspace.id}/${placement}_${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError, data: urlData } = await supabase.storage
+        .from('campaign-assets')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('campaign-assets')
+        .getPublicUrl(fileName);
+
+      setPlacementCreatives(prev => ({
+        ...prev,
+        [placement]: {
+          id: `${placement}_${Date.now()}`,
+          file_name: file.name,
+          file_type: file.type,
+          file_url: publicUrl,
+          storage_path: fileName
+        }
+      }));
+
+      toast({ title: `${placement} creative uploaded!` });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({ 
+        title: 'Upload failed', 
+        description: error instanceof Error ? error.message : 'Please try again',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const getCurrentCreative = () => placementCreatives[activePlacement] || uploadedAsset;
 
   const handleApprove = () => {
     onApprove(copy);
@@ -237,98 +343,140 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
         />
       ) : (
         <>
-          {/* Preview */}
+          {/* Placement Preview */}
           <Card className="p-6 bg-muted/30">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">Ad Preview</h3>
-              {aspectRatio && (
-                <Badge variant="secondary">
-                  {aspectRatio === '1:1' ? 'Square (1:1)' : 'Story (9:16)'}
-                </Badge>
-              )}
-            </div>
+            <h3 className="font-semibold mb-4">Ad Preview by Placement</h3>
             
-            <div className="bg-background rounded-lg border p-4 space-y-3 max-w-md mx-auto">
-              {/* Brand Header */}
-              <div className="flex items-center gap-2">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                  {workspace?.name?.charAt(0) || "B"}
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-sm">{workspace?.name || "Your Brand"}</div>
-                  <div className="text-xs text-muted-foreground">Sponsored</div>
-                </div>
-              </div>
-              
-              {/* Primary Text - ONLY show for square format */}
-              {aspectRatio === '1:1' && (
-                <p className="text-sm leading-snug">
-                  {copy.primary_text || "Your primary text will appear here..."}
-                </p>
-              )}
-              
-              {/* Creative */}
-              {uploadedAsset ? (
-                uploadedAsset.file_type?.startsWith('video/') ? (
-                  <div className="relative">
-                    <video 
-                      src={uploadedAsset.file_url} 
-                      className="w-full rounded object-cover"
-                      style={{ 
-                        aspectRatio: aspectRatio === '1:1' ? '1/1' : '9/16',
-                        maxHeight: aspectRatio === '9:16' ? '500px' : '400px'
+            <Tabs value={activePlacement} onValueChange={(v) => setActivePlacement(v as any)}>
+              <TabsList className="grid w-full grid-cols-3 mb-4">
+                <TabsTrigger value="feed">Feed</TabsTrigger>
+                <TabsTrigger value="stories">Stories</TabsTrigger>
+                <TabsTrigger value="reels">Reels</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value={activePlacement} className="space-y-4">
+                {/* Placement Info */}
+                <div className="flex items-center justify-between">
+                  <Badge variant="secondary">
+                    {getPlacementRecommendations(activePlacement).aspectRatio} aspect ratio
+                  </Badge>
+                  <div className="flex gap-2">
+                    <input
+                      type="file"
+                      id={`upload-${activePlacement}`}
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadPlacementCreative(activePlacement, file);
                       }}
-                      controls
-                      muted
                     />
-                    {aspectRatio === '9:16' && (
-                      <Badge 
-                        variant="outline" 
-                        className="absolute top-2 left-2 bg-black/60 text-white border-white/20"
-                      >
-                        Full-screen video
-                      </Badge>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => document.getElementById(`upload-${activePlacement}`)?.click()}
+                    >
+                      <Upload className="h-3 w-3 mr-1" />
+                      Upload for {activePlacement}
+                    </Button>
                   </div>
-                ) : (
-                  <img 
-                    src={uploadedAsset.file_url} 
-                    className="w-full rounded object-cover"
-                    style={{ 
-                      aspectRatio: aspectRatio === '1:1' ? '1/1' : '9/16',
-                      maxHeight: aspectRatio === '9:16' ? '500px' : '400px'
-                    }}
-                    alt="Creative preview"
-                  />
-                )
-              ) : (
-                <div className="bg-muted h-64 rounded flex items-center justify-center">
-                  <p className="text-muted-foreground text-sm">Upload creative to see preview</p>
                 </div>
-              )}
-              
-              {/* Headline + Description - Always below creative */}
-              <div className="text-sm space-y-1">
-                <div className="font-semibold">{copy.headline || "Your headline here"}</div>
-                <div className="text-muted-foreground text-xs">{copy.description || "Description..."}</div>
-              </div>
-              
-              {/* CTA Button */}
-              <Button size="sm" variant="outline" className="w-full">
-                {ctaOptions.find((opt) => opt.value === copy.call_to_action)?.label || "Learn More"}
-              </Button>
-            </div>
-            
-            {/* Format-Specific Warnings */}
-            {aspectRatio === '9:16' && uploadedAsset?.file_type?.startsWith('video/') && (
-              <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-xs text-yellow-900 dark:text-yellow-100">
-                  <strong>Note:</strong> 9:16 videos display full-screen on mobile. 
-                  Primary text appears ABOVE the video in feed, but users may not see it during playback. 
-                  Keep headline punchy (&lt;20 characters recommended).
-                </p>
-              </div>
-            )}
+                {/* Preview */}
+                <div className="bg-background rounded-lg border p-4 space-y-3 max-w-md mx-auto">
+                  {/* Brand Header */}
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                      {workspace?.name?.charAt(0) || "B"}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-sm">{workspace?.name || "Your Brand"}</div>
+                      <div className="text-xs text-muted-foreground">Sponsored</div>
+                    </div>
+                  </div>
+                  
+                  {/* Primary Text - Only show for feed */}
+                  {getPlacementRecommendations(activePlacement).showPrimaryText && (
+                    <p className="text-sm leading-snug">
+                      {copy.primary_text || "Your primary text will appear here..."}
+                    </p>
+                  )}
+                  
+                  {/* Creative */}
+                  {getCurrentCreative() ? (
+                    getCurrentCreative().file_type?.startsWith('video/') ? (
+                      <div className="relative">
+                        <video 
+                          src={getCurrentCreative().file_url} 
+                          className="w-full rounded object-cover"
+                          style={{ 
+                            aspectRatio: getPlacementRecommendations(activePlacement).aspectRatio,
+                            maxHeight: activePlacement === 'feed' ? '400px' : '500px'
+                          }}
+                          controls
+                          muted
+                        />
+                        {activePlacement !== 'feed' && (
+                          <Badge 
+                            variant="outline" 
+                            className="absolute top-2 left-2 bg-black/60 text-white border-white/20"
+                          >
+                            Full-screen {activePlacement}
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <img 
+                        src={getCurrentCreative().file_url} 
+                        className="w-full rounded object-cover"
+                        style={{ 
+                          aspectRatio: getPlacementRecommendations(activePlacement).aspectRatio,
+                          maxHeight: activePlacement === 'feed' ? '400px' : '500px'
+                        }}
+                        alt="Creative preview"
+                      />
+                    )
+                  ) : (
+                    <div className="bg-muted h-64 rounded flex items-center justify-center">
+                      <p className="text-muted-foreground text-sm">Upload creative to see preview</p>
+                    </div>
+                  )}
+                  
+                  {/* Headline + Description - Always below creative */}
+                  <div className="text-sm space-y-1">
+                    <div className="font-semibold">{copy.headline || "Your headline here"}</div>
+                    <div className="text-muted-foreground text-xs">{copy.description || "Description..."}</div>
+                  </div>
+                  
+                  {/* CTA Button */}
+                  <Button size="sm" variant="outline" className="w-full">
+                    {ctaOptions.find((opt) => opt.value === copy.call_to_action)?.label || "Learn More"}
+                  </Button>
+                </div>
+
+                {/* Placement-Specific Tips */}
+                <Alert>
+                  <Lightbulb className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="space-y-2">
+                      <p className="font-semibold text-sm">
+                        {activePlacement === 'feed' ? 'Feed' : activePlacement === 'stories' ? 'Stories' : 'Reels'} Best Practices:
+                      </p>
+                      <ul className="text-xs space-y-1">
+                        {getPlacementRecommendations(activePlacement).tips.map((tip, i) => (
+                          <li key={i}>• {tip}</li>
+                        ))}
+                      </ul>
+                      {copy.headline.length > getPlacementRecommendations(activePlacement).recommendedHeadline && (
+                        <p className="text-xs text-yellow-600 pt-2 border-t">
+                          ⚠️ Your headline is {copy.headline.length} characters. 
+                          Consider shortening to {getPlacementRecommendations(activePlacement).recommendedHeadline} for {activePlacement}.
+                        </p>
+                      )}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              </TabsContent>
+            </Tabs>
           </Card>
 
       {/* Editable Fields */}
@@ -337,22 +485,28 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
           <Label htmlFor="headline">
             Headline 
             <span className="text-muted-foreground text-xs ml-1">
-              ({aspectRatio === '9:16' && uploadedAsset?.file_type?.startsWith('video/') 
-                ? '20 characters recommended for video' 
-                : '40 characters max'})
+              ({getPlacementRecommendations(activePlacement).recommendedHeadline} characters recommended for {activePlacement}, 40 max)
             </span>
           </Label>
           <Input
             id="headline"
             value={copy.headline}
             onChange={(e) => setCopy({ ...copy, headline: e.target.value.slice(0, 40) })}
-            placeholder={aspectRatio === '9:16' ? "Stop scrolling!" : "Stop scrolling if you're tired of..."}
+            placeholder={
+              activePlacement === 'feed' 
+                ? "Stop scrolling if you're tired of..." 
+                : activePlacement === 'stories'
+                ? "Stop scrolling!"
+                : "Watch this..."
+            }
             maxLength={40}
           />
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">{copy.headline.length}/40</span>
-            {aspectRatio === '9:16' && uploadedAsset?.file_type?.startsWith('video/') && copy.headline.length > 20 && (
-              <span className="text-yellow-600">Consider shortening for video</span>
+            {copy.headline.length > getPlacementRecommendations(activePlacement).recommendedHeadline && (
+              <span className="text-yellow-600">
+                Consider shortening for {activePlacement}
+              </span>
             )}
           </div>
         </div>
