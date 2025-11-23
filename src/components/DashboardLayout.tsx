@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import logo from "@/assets/logo.png";
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -22,6 +23,8 @@ export default function DashboardLayout({
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [suggestion, setSuggestion] = useState("");
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const [walkthroughSteps, setWalkthroughSteps] = useState<any[]>([]);
   useEffect(() => {
     supabase.auth.getUser().then(({
       data: {
@@ -61,13 +64,74 @@ export default function DashboardLayout({
         throw new Error(data.error);
       }
 
-      setSuggestion(data.suggestion);
-      setSuggestionOpen(true);
+      // Check if this is the first time clicking
+      const hasSeenWalkthrough = localStorage.getItem('has-seen-walkthrough');
+      
+      if (!hasSeenWalkthrough && data.context) {
+        // Build walkthrough steps from context
+        const steps = [
+          {
+            id: 'profile',
+            title: 'Complete Your Brand Profile',
+            description: 'Add your brand details, website, and target audience to help create better campaigns.',
+            completed: data.context.profileCompletion === 100,
+            action: data.context.profileCompletion < 100 ? 'Complete Profile' : undefined,
+            route: '/dashboard'
+          },
+          {
+            id: 'psychology',
+            title: 'Generate Audience Psychology',
+            description: 'Let AI analyze your audience\'s pain points, desires, and motivations for targeted messaging.',
+            completed: data.context.hasPsychology,
+            action: !data.context.hasPsychology ? 'Generate Psychology' : undefined,
+            route: '/dashboard'
+          },
+          {
+            id: 'offers',
+            title: 'Add Your Offers',
+            description: 'List your products or services to get AI-powered campaign recommendations.',
+            completed: data.context.hasOffers,
+            action: !data.context.hasOffers ? 'Add First Offer' : undefined,
+            route: '/dashboard'
+          },
+          {
+            id: 'meta',
+            title: 'Connect Meta Ad Account',
+            description: 'Link your Meta Business account to publish campaigns directly to Facebook and Instagram.',
+            completed: data.context.hasMetaAccount,
+            action: !data.context.hasMetaAccount ? 'Connect Account' : undefined,
+            route: '/dashboard'
+          },
+          {
+            id: 'campaign',
+            title: 'Create Your First Campaign',
+            description: 'Use the Ad Planner to build a strategic campaign with AI-generated creative assets.',
+            completed: data.context.campaignCount > 0,
+            action: data.context.campaignCount === 0 ? 'Start Planning' : undefined,
+            route: '/planning'
+          }
+        ];
+
+        setWalkthroughSteps(steps);
+        setWalkthroughOpen(true);
+        localStorage.setItem('has-seen-walkthrough', 'true');
+      } else {
+        // Show regular suggestion dialog
+        setSuggestion(data.suggestion);
+        setSuggestionOpen(true);
+      }
     } catch (error: any) {
       console.error('Error getting suggestion:', error);
       toast.error(error.message || 'Failed to get suggestion');
     } finally {
       setLoadingSuggestion(false);
+    }
+  };
+
+  const handleWalkthroughAction = (route?: string) => {
+    setWalkthroughOpen(false);
+    if (route) {
+      navigate(route);
     }
   };
   const tabItems = [{
@@ -220,5 +284,14 @@ export default function DashboardLayout({
           </DialogHeader>
         </DialogContent>
       </Dialog>
+
+      {/* Onboarding Walkthrough */}
+      {walkthroughOpen && (
+        <OnboardingWalkthrough
+          steps={walkthroughSteps}
+          onClose={() => setWalkthroughOpen(false)}
+          onActionClick={handleWalkthroughAction}
+        />
+      )}
     </div>;
 }
