@@ -1,5 +1,8 @@
 project_id = "sqwjbndgighjtifijgws"
 
+[functions.finalize-ad-copy]
+verify_jwt = true
+
 [functions.generate-creative]
 verify_jwt = true
 
