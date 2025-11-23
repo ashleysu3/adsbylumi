@@ -64,6 +64,23 @@ Deno.serve(async (req) => {
       (account: any) => account.account_status === 1
     );
 
+    // Store the access token in the brand record
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { error: updateError } = await supabase
+      .from('brands')
+      .update({ meta_access_token: tokenData.access_token })
+      .eq('id', brandId);
+
+    if (updateError) {
+      console.error('Error storing access token:', updateError);
+      // Don't fail the request, just log the error
+    } else {
+      console.log('Access token stored successfully for brand:', brandId);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true,
