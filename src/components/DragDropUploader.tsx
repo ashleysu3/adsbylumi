@@ -37,9 +37,10 @@ const fileValidationSchema = z.object({
 interface DragDropUploaderProps {
   workspace: any;
   onUpdate: (updates: any) => void;
+  productionItem?: any;
 }
 
-export function DragDropUploader({ workspace, onUpdate }: DragDropUploaderProps) {
+export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDropUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -160,8 +161,8 @@ export function DragDropUploader({ workspace, onUpdate }: DragDropUploaderProps)
           file_url: urlData.publicUrl,
           storage_path: filePath,
           uploaded_at: new Date().toISOString(),
-          linked_concept_id: null,
-          linked_concept_title: null
+          linked_concept_id: productionItem?.concept_id || null,
+          linked_concept_title: productionItem?.concept?.title || null
         });
 
         setUploadProgress(((i + 1) / validFiles.length) * 100);
