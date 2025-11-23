@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
@@ -23,6 +23,7 @@ export default function DashboardLayout({
   const [isAdmin, setIsAdmin] = useState(false);
   const [suggestionOpen, setSuggestionOpen] = useState(false);
   const [suggestion, setSuggestion] = useState("");
+  const [suggestionNextAction, setSuggestionNextAction] = useState<any>(null);
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [walkthroughSteps, setWalkthroughSteps] = useState<any[]>([]);
@@ -166,6 +167,7 @@ export default function DashboardLayout({
       } else {
         // Show regular suggestion dialog
         setSuggestion(data.suggestion);
+        setSuggestionNextAction(data.nextAction || null);
         setSuggestionOpen(true);
       }
     } catch (error: any) {
@@ -196,6 +198,32 @@ export default function DashboardLayout({
           setTourActive(true);
         }, route !== location.pathname ? 500 : 100);
       }
+    }
+  };
+
+  const handleNavigateToAction = () => {
+    if (!suggestionNextAction) return;
+    
+    setSuggestionOpen(false);
+    
+    const { route, targetSelector } = suggestionNextAction;
+    
+    // Navigate if on different route
+    if (route !== location.pathname) {
+      navigate(route);
+    }
+    
+    // If there's a target element, scroll to it and highlight
+    if (targetSelector) {
+      setTimeout(() => {
+        const element = document.querySelector(targetSelector);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add pulse animation
+          element.classList.add('animate-pulse');
+          setTimeout(() => element.classList.remove('animate-pulse'), 2000);
+        }
+      }, route !== location.pathname ? 500 : 100);
     }
   };
   const tabItems = [{
@@ -351,6 +379,14 @@ export default function DashboardLayout({
               {suggestion}
             </DialogDescription>
           </DialogHeader>
+          {suggestionNextAction && (
+            <DialogFooter>
+              <Button onClick={handleNavigateToAction} className="w-full">
+                <ArrowRight className="mr-2 h-4 w-4" />
+                {suggestionNextAction.buttonText}
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 

@@ -157,10 +157,74 @@ Based on this, what should I do next?`;
     const aiData = await aiResponse.json();
     const suggestion = aiData.choices[0].message.content;
 
+    // Determine next action based on context
+    let nextAction = null;
+    
+    if (profileCompletion < 100) {
+      nextAction = {
+        type: 'complete_profile',
+        route: '/dashboard',
+        buttonText: 'Complete Profile',
+        targetSelector: '[data-section="brand-details"]'
+      };
+    } else if (!hasPsychology) {
+      nextAction = {
+        type: 'generate_psychology',
+        route: '/dashboard',
+        buttonText: 'Generate Psychology',
+        targetSelector: '[data-section="audience-psychology"]'
+      };
+    } else if (!hasOffers) {
+      nextAction = {
+        type: 'add_offer',
+        route: '/dashboard',
+        buttonText: 'Add Offer',
+        targetSelector: '[data-section="offers"]'
+      };
+    } else if (!context.hasMetaAccount) {
+      nextAction = {
+        type: 'connect_meta',
+        route: '/dashboard',
+        buttonText: 'Connect Meta Account',
+        targetSelector: '[data-section="meta-account"]'
+      };
+    } else if (context.campaignCount === 0) {
+      nextAction = {
+        type: 'create_campaign',
+        route: '/planning',
+        buttonText: 'Start Planning Campaign'
+      };
+    } else if (context.latestCampaign && (context.latestCampaign.status === 'draft' || context.latestCampaign.status === 'creative_in_progress')) {
+      nextAction = {
+        type: 'continue_campaign',
+        route: '/creative',
+        buttonText: 'Continue Campaign'
+      };
+    } else if (context.latestCampaign && context.latestCampaign.status === 'waiting_for_assets') {
+      nextAction = {
+        type: 'production',
+        route: '/production',
+        buttonText: 'Go to Production'
+      };
+    } else if (context.latestCampaign && (context.latestCampaign.status === 'ready_to_publish' || context.latestCampaign.status === 'publishing_to_meta')) {
+      nextAction = {
+        type: 'build_campaign',
+        route: '/campaign-builder',
+        buttonText: 'Build Campaign'
+      };
+    } else {
+      nextAction = {
+        type: 'view_performance',
+        route: '/data',
+        buttonText: 'View Performance'
+      };
+    }
+
     return new Response(
       JSON.stringify({ 
         suggestion,
-        context 
+        context,
+        nextAction
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
