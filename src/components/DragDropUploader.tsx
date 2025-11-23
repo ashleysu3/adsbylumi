@@ -330,7 +330,7 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
         )}
 
         {/* Uploaded Assets List */}
-        {relevantAssets.length > 0 && (
+        {relevantAssets.length > 0 ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold flex items-center gap-2">
@@ -399,6 +399,20 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
                   </div>
                 );
               })}
+            </div>
+          </div>
+        ) : productionItem && (
+          <div className="rounded-lg border-2 border-dashed border-border/50 p-8 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                <FileImage className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">No assets uploaded yet</p>
+                <p className="text-xs text-muted-foreground">
+                  Upload your creative assets for "<span className="font-medium">{productionItem.concept?.title}</span>" using the area above
+                </p>
+              </div>
             </div>
           </div>
         )}
