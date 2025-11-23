@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
+import confetti from "canvas-confetti";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const [checklistDismissed, setChecklistDismissed] = useState(() => {
     return localStorage.getItem('onboarding-dismissed') === 'true';
   });
+  const hasShownConfetti = useRef(false);
 
   const handleDismissChecklist = () => {
     setChecklistDismissed(true);
@@ -57,6 +59,57 @@ export default function Dashboard() {
       supabase.removeChannel(channel);
     };
   }, [brand?.id]);
+
+  // Trigger confetti when profile reaches 100% completion
+  useEffect(() => {
+    if (!brand || !offers) return;
+    
+    const progress = calculateBrandProgress();
+    const confettiShownKey = `confetti-shown-${brand.id}`;
+    const hasShownBefore = localStorage.getItem(confettiShownKey) === 'true';
+    
+    if (progress.percentage === 100 && !hasShownBefore && !hasShownConfetti.current) {
+      hasShownConfetti.current = true;
+      
+      // Delay slightly to ensure UI has updated
+      setTimeout(() => {
+        // Fire confetti from multiple angles
+        const duration = 3000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1000 };
+
+        function randomInRange(min: number, max: number) {
+          return Math.random() * (max - min) + min;
+        }
+
+        const interval: any = setInterval(function() {
+          const timeLeft = animationEnd - Date.now();
+
+          if (timeLeft <= 0) {
+            clearInterval(interval);
+            return;
+          }
+
+          const particleCount = 50 * (timeLeft / duration);
+          
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+          });
+          confetti({
+            ...defaults,
+            particleCount,
+            origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+          });
+        }, 250);
+
+        // Store that confetti was shown
+        localStorage.setItem(confettiShownKey, 'true');
+        toast.success("🎉 Profile Complete! You're ready to create amazing campaigns!");
+      }, 300);
+    }
+  }, [brand, offers]);
 
   const calculateBrandProgress = () => {
     const checks = [
