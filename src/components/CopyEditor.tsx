@@ -16,8 +16,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { CopyVariations } from "./CopyVariations";
+import { SmartCropSuggestions } from "./SmartCropSuggestions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface CopyEditorProps {
   concept: any;
@@ -53,6 +55,8 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
     stories: null,
     reels: null
   });
+  const [showSmartCrop, setShowSmartCrop] = useState(false);
+  const [smartCropPlacement, setSmartCropPlacement] = useState<string | null>(null);
 
   useEffect(() => {
     if (!uploadedAsset?.file_url) return;
@@ -171,6 +175,51 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
   };
 
   const getCurrentCreative = () => placementCreatives[activePlacement] || uploadedAsset;
+
+  const handleSmartCrop = (placement: string) => {
+    setSmartCropPlacement(placement);
+    setShowSmartCrop(true);
+  };
+
+  const handleApplySmartCrop = async (croppedBlob: Blob) => {
+    if (!smartCropPlacement) return;
+
+    try {
+      const fileName = `${workspace.id}/${smartCropPlacement}_cropped_${Date.now()}.jpg`;
+      
+      const { error: uploadError, data: urlData } = await supabase.storage
+        .from('campaign-assets')
+        .upload(fileName, croppedBlob, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('campaign-assets')
+        .getPublicUrl(fileName);
+
+      setPlacementCreatives(prev => ({
+        ...prev,
+        [smartCropPlacement]: {
+          id: `${smartCropPlacement}_cropped_${Date.now()}`,
+          file_name: fileName,
+          file_type: 'image/jpeg',
+          file_url: publicUrl,
+          storage_path: fileName
+        }
+      }));
+
+      setShowSmartCrop(false);
+      setSmartCropPlacement(null);
+      toast({ title: `Smart crop applied to ${smartCropPlacement}!` });
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: 'Failed to save cropped image',
+        description: error instanceof Error ? error.message : 'Please try again',
+        variant: 'destructive'
+      });
+    }
+  };
 
   const handleApprove = () => {
     onApprove(copy);
@@ -361,6 +410,15 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
                     {getPlacementRecommendations(activePlacement).aspectRatio} aspect ratio
                   </Badge>
                   <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSmartCrop(activePlacement)}
+                      disabled={!uploadedAsset || uploadedAsset.file_type?.startsWith('video/')}
+                    >
+                      <Crop className="h-3 w-3 mr-1" />
+                      Smart Crop
+                    </Button>
                     <input
                       type="file"
                       id={`upload-${activePlacement}`}
@@ -377,7 +435,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
                       onClick={() => document.getElementById(`upload-${activePlacement}`)?.click()}
                     >
                       <Upload className="h-3 w-3 mr-1" />
-                      Upload for {activePlacement}
+                      Upload
                     </Button>
                   </div>
                 </div>
@@ -658,6 +716,28 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
       </div>
         </>
       )}
+
+      {/* Smart Crop Dialog */}
+      <Dialog open={showSmartCrop} onOpenChange={setShowSmartCrop}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Smart Crop for {smartCropPlacement}</DialogTitle>
+          </DialogHeader>
+          {showSmartCrop && uploadedAsset && smartCropPlacement && (
+            <SmartCropSuggestions
+              imageUrl={uploadedAsset.file_url}
+              targetAspectRatio={
+                smartCropPlacement === 'feed' ? '1:1' : '9:16'
+              }
+              onApplyCrop={handleApplySmartCrop}
+              onCancel={() => {
+                setShowSmartCrop(false);
+                setSmartCropPlacement(null);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
