@@ -50,21 +50,7 @@ export default function CampaignWorkspace() {
   };
 
   const handleWorkspaceUpdate = async (updates: any) => {
-    if (!workspace) return;
-    
-    try {
-      const { error } = await supabase
-        .from("campaign_workspaces")
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq("id", workspace.id);
-
-      if (error) throw error;
-      
-      setWorkspace({ ...workspace, ...updates });
-    } catch (error: any) {
-      console.error("Error updating workspace:", error);
-      throw error;
-    }
+    setWorkspace((prev: any) => ({ ...prev, ...updates }));
   };
 
   const generateCreative = async () => {
@@ -221,20 +207,16 @@ export default function CampaignWorkspace() {
                 </Card>
               </div>
             ) : activeSection === 'uploads' ? (
-              <div className="h-full overflow-auto p-6">
-                <CreativeUploader workspace={workspace} onUpdate={handleWorkspaceUpdate} />
+              <div className="h-full overflow-auto">
+                <div className="p-6">
+                  <CreativeUploader workspace={workspace} onUpdate={handleWorkspaceUpdate} />
+                </div>
               </div>
             ) : activeSection === 'checklist' ? (
-              <div className="h-full overflow-auto p-6">
-                {workspace.production_checklist && workspace.production_checklist.length > 0 ? (
+              <div className="h-full overflow-auto">
+                <div className="p-6">
                   <ProductionChecklist workspace={workspace} onUpdate={handleWorkspaceUpdate} />
-                ) : (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <p className="text-muted-foreground">No checklist items yet</p>
-                    </CardContent>
-                  </Card>
-                )}
+                </div>
               </div>
             ) : (
               <CreativeAssets 
