@@ -24,7 +24,15 @@ serve(async (req) => {
 
     // Get current user
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    console.log('Auth check:', { 
+      hasUser: !!user, 
+      hasError: !!userError,
+      errorMessage: userError?.message,
+      hasAuthHeader: !!req.headers.get('Authorization')
+    });
+    
     if (userError || !user) {
+      console.error('Authentication failed:', userError);
       throw new Error('User not authenticated');
     }
 

@@ -68,12 +68,36 @@ export default function DashboardLayout({
   const handleGetSuggestion = async () => {
     setLoadingSuggestion(true);
     try {
-      const { data, error } = await supabase.functions.invoke('suggest-next-action');
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (error) throw error;
+      if (!session) {
+        toast.error("Please log in to continue");
+        navigate("/auth");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('suggest-next-action', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (error) {
+        console.error('Error getting suggestion:', error);
+        
+        // Provide specific error messages
+        if (error.message?.includes('authenticated')) {
+          toast.error("Authentication error. Please try logging out and back in.");
+        } else {
+          toast.error("Failed to get suggestion. Please try again.");
+        }
+        return;
+      }
       
       if (data.error) {
-        throw new Error(data.error);
+        console.error('Error from function:', data.error);
+        toast.error(data.error);
+        return;
       }
 
       // Check if this is the first time clicking
