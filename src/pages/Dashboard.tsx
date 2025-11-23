@@ -190,11 +190,12 @@ export default function Dashboard() {
 
       setSubscription(subData);
 
-      // Fetch offers
+      // Fetch offers (exclude archived)
       const { data: offersData } = await supabase
         .from("offers")
         .select("*")
         .eq("brand_id", brandData.id)
+        .eq("archived", false)
         .order("created_at", { ascending: false });
 
       setOffers(offersData || []);
