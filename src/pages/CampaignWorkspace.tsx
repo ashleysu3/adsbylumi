@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Upload, Rocket, CheckCircle2 } from "lucide-react";
 import { ProductionChecklist } from "@/components/ProductionChecklist";
 import { CreativeAssets } from "@/components/CreativeAssets";
-import { AssetUploader } from "@/components/AssetUploader";
+import { CreativeUploader } from "@/components/CreativeUploader";
 import { MetaCampaignBuilder } from "@/components/MetaCampaignBuilder";
 import { WorkspaceHelp } from "@/components/WorkspaceHelp";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -205,9 +205,14 @@ export default function CampaignWorkspace() {
             <TabsTrigger value="checklist">
               Production Checklist
             </TabsTrigger>
-            <TabsTrigger value="uploads">
+            <TabsTrigger value="uploads" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
               Upload Assets
-              {hasAssets && <CheckCircle2 className="h-4 w-4 ml-2 text-green-500" />}
+              {workspace.user_uploaded_assets?.length > 0 && (
+                <Badge variant="default" className="ml-1">
+                  {workspace.user_uploaded_assets.length}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="publish" disabled={!canPublish}>
               Publish to Meta
@@ -230,10 +235,44 @@ export default function CampaignWorkspace() {
           </TabsContent>
 
           <TabsContent value="uploads">
-            <AssetUploader
-              workspace={workspace}
-              onUpdate={updateWorkspace}
-            />
+            <div className="space-y-6">
+              <CreativeUploader workspace={workspace} onUpdate={updateWorkspace} />
+              
+              {/* Finalization Card */}
+              {workspace.user_uploaded_assets?.length > 0 && workspace.production_checklist?.length > 0 && (
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <Rocket className="h-5 w-5 text-primary" />
+                      <CardTitle>Ready to Build Campaign?</CardTitle>
+                    </div>
+                    <CardDescription>
+                      You've selected {workspace.production_checklist.length} production items and uploaded {workspace.user_uploaded_assets.length} asset(s).
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <span>Creative concepts selected</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        <span>Assets uploaded</span>
+                      </div>
+                    </div>
+                    <Button 
+                      size="lg" 
+                      className="w-full"
+                      onClick={() => setActiveTab('publish')}
+                    >
+                      <Rocket className="h-4 w-4 mr-2" />
+                      Continue to Campaign Builder
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="publish">
