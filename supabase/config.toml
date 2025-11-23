@@ -1,5 +1,8 @@
 project_id = "sqwjbndgighjtifijgws"
 
+[functions.generate-copy-variations]
+verify_jwt = true
+
 [functions.finalize-ad-copy]
 verify_jwt = true
 
