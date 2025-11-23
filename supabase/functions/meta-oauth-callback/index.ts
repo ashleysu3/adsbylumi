@@ -79,6 +79,33 @@ Deno.serve(async (req) => {
       // Don't fail the request, just log the error
     } else {
       console.log('Access token stored successfully for brand:', brandId);
+      
+      // Check if user has already selected an account (on re-connection)
+      // If so, automatically sync their campaigns in the background
+      const { data: brand } = await supabase
+        .from('brands')
+        .select('meta_account_id')
+        .eq('id', brandId)
+        .single();
+        
+      if (brand?.meta_account_id) {
+        console.log('Meta account already selected, triggering auto-sync...');
+        // Don't await - let it run in background
+        fetch(`${supabaseUrl}/functions/v1/sync-meta-campaigns`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            brandId,
+            metaAccountId: brand.meta_account_id,
+            metaAccessToken: tokenData.access_token
+          })
+        }).catch(err => {
+          console.error('Background sync failed:', err);
+        });
+      }
     }
 
     return new Response(

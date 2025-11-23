@@ -111,7 +111,41 @@ export function MetaAccountConnect({ brandId, currentAccountId, onUpdate }: Meta
 
       if (error) throw error;
 
-      toast.success("Meta ad account connected successfully");
+      toast.success("Meta ad account connected");
+      
+      // Trigger campaign sync
+      const syncToastId = toast.loading("Syncing your active campaigns...");
+      
+      const { data: brand } = await supabase
+        .from('brands')
+        .select('meta_access_token')
+        .eq('id', brandId)
+        .single();
+      
+      const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+        'sync-meta-campaigns',
+        {
+          body: {
+            brandId,
+            metaAccountId: selectedAccount,
+            metaAccessToken: brand?.meta_access_token
+          }
+        }
+      );
+      
+      if (syncError) {
+        console.error('Sync error:', syncError);
+        toast.error("Campaign sync completed with errors", { id: syncToastId });
+      } else {
+        const count = syncResult?.synced || 0;
+        toast.success(
+          count > 0 
+            ? `Successfully synced ${count} active campaign${count !== 1 ? 's' : ''}` 
+            : "No active campaigns found to sync",
+          { id: syncToastId }
+        );
+      }
+
       onUpdate();
       setOpen(false);
       setAccounts([]);
