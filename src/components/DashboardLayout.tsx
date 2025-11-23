@@ -9,11 +9,9 @@ import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 interface DashboardLayoutProps {
   children: ReactNode;
-  fullWidth?: boolean;
 }
 export default function DashboardLayout({
-  children,
-  fullWidth = false
+  children
 }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -156,6 +154,6 @@ export default function DashboardLayout({
       </header>
 
       {/* Main Content */}
-      <main className={fullWidth ? "" : "container mx-auto px-6 py-8"}>{children}</main>
+      <main className="container mx-auto px-6 py-8">{children}</main>
     </div>;
 }
