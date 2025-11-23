@@ -24,6 +24,7 @@ interface CreativeAssetsProps {
   onUpdate: (updates: any) => Promise<void>;
   filterStage?: string;
   filterFormat?: string;
+  onGenerateCreative?: () => void;
 }
 
 const formatIcons = {
@@ -47,7 +48,7 @@ const stageBadgeColors = {
   bofu: "bg-green-500/20 text-green-700 border-green-500/30 dark:text-green-400",
 };
 
-export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat }: CreativeAssetsProps) {
+export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat, onGenerateCreative }: CreativeAssetsProps) {
   const creative = workspace.creative_json || {};
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
   const [lovedConcepts, setLovedConcepts] = useState<Set<string>>(
@@ -452,7 +453,17 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
         {allStages.every(stage => stage.items.length === 0) && (
           <div className="text-center py-12">
             <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No creative concepts match your filters</p>
+            <p className="text-muted-foreground mb-6">No creative concepts match your filters</p>
+            {onGenerateCreative && (
+              <Button 
+                onClick={onGenerateCreative}
+                variant="default"
+                className="gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Generate Creative Concepts
+              </Button>
+            )}
           </div>
         )}
       </div>
