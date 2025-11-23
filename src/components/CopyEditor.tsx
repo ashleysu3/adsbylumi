@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Lightbulb, FileText, Sparkles, Loader2, Shuffle } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { CopyVariations } from "./CopyVariations";
@@ -44,6 +44,27 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
   const [variations, setVariations] = useState<any[]>([]);
   const [showVariations, setShowVariations] = useState(false);
   const [isGeneratingVariations, setIsGeneratingVariations] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState<'1:1' | '9:16' | null>(null);
+
+  useEffect(() => {
+    if (!uploadedAsset?.file_url) return;
+    
+    if (uploadedAsset.file_type?.startsWith('video/')) {
+      const video = document.createElement('video');
+      video.src = uploadedAsset.file_url;
+      video.onloadedmetadata = () => {
+        const ratio = video.videoWidth / video.videoHeight;
+        setAspectRatio(ratio > 0.9 && ratio < 1.1 ? '1:1' : '9:16');
+      };
+    } else if (uploadedAsset.file_type?.startsWith('image/')) {
+      const img = new Image();
+      img.src = uploadedAsset.file_url;
+      img.onload = () => {
+        const ratio = img.width / img.height;
+        setAspectRatio(ratio > 0.9 && ratio < 1.1 ? '1:1' : '9:16');
+      };
+    }
+  }, [uploadedAsset]);
 
   const handleApprove = () => {
     onApprove(copy);
@@ -176,35 +197,18 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
           <Button 
             onClick={handleGenerateVariations}
             disabled={isGeneratingVariations || !uploadedAsset}
-            variant="outline"
+            size="lg"
             className="gap-2"
           >
             {isGeneratingVariations ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Shuffle className="h-4 w-4" />
-                Generate Variations
-              </>
-            )}
-          </Button>
-          <Button 
-            onClick={handleGenerateWithAI} 
-            disabled={isGenerating || !uploadedAsset}
-            className="gap-2"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating...
+                Loading Directions...
               </>
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                Generate Copy with AI
+                Choose Copy Direction
               </>
             )}
           </Button>
@@ -235,66 +239,122 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
         <>
           {/* Preview */}
           <Card className="p-6 bg-muted/30">
-        <h3 className="font-semibold mb-4">Ad Preview</h3>
-        <div className="bg-background rounded-lg border p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-              {workspace?.name?.charAt(0) || "B"}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Ad Preview</h3>
+              {aspectRatio && (
+                <Badge variant="secondary">
+                  {aspectRatio === '1:1' ? 'Square (1:1)' : 'Story (9:16)'}
+                </Badge>
+              )}
             </div>
-            <div>
-              <div className="font-semibold text-sm">{workspace?.name || "Your Brand"}</div>
-              <div className="text-xs text-muted-foreground">Sponsored</div>
+            
+            <div className="bg-background rounded-lg border p-4 space-y-3 max-w-md mx-auto">
+              {/* Brand Header */}
+              <div className="flex items-center gap-2">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                  {workspace?.name?.charAt(0) || "B"}
+                </div>
+                <div className="flex-1">
+                  <div className="font-semibold text-sm">{workspace?.name || "Your Brand"}</div>
+                  <div className="text-xs text-muted-foreground">Sponsored</div>
+                </div>
+              </div>
+              
+              {/* Primary Text - ONLY show for square format */}
+              {aspectRatio === '1:1' && (
+                <p className="text-sm leading-snug">
+                  {copy.primary_text || "Your primary text will appear here..."}
+                </p>
+              )}
+              
+              {/* Creative */}
+              {uploadedAsset ? (
+                uploadedAsset.file_type?.startsWith('video/') ? (
+                  <div className="relative">
+                    <video 
+                      src={uploadedAsset.file_url} 
+                      className="w-full rounded object-cover"
+                      style={{ 
+                        aspectRatio: aspectRatio === '1:1' ? '1/1' : '9/16',
+                        maxHeight: aspectRatio === '9:16' ? '500px' : '400px'
+                      }}
+                      controls
+                      muted
+                    />
+                    {aspectRatio === '9:16' && (
+                      <Badge 
+                        variant="outline" 
+                        className="absolute top-2 left-2 bg-black/60 text-white border-white/20"
+                      >
+                        Full-screen video
+                      </Badge>
+                    )}
+                  </div>
+                ) : (
+                  <img 
+                    src={uploadedAsset.file_url} 
+                    className="w-full rounded object-cover"
+                    style={{ 
+                      aspectRatio: aspectRatio === '1:1' ? '1/1' : '9/16',
+                      maxHeight: aspectRatio === '9:16' ? '500px' : '400px'
+                    }}
+                    alt="Creative preview"
+                  />
+                )
+              ) : (
+                <div className="bg-muted h-64 rounded flex items-center justify-center">
+                  <p className="text-muted-foreground text-sm">Upload creative to see preview</p>
+                </div>
+              )}
+              
+              {/* Headline + Description - Always below creative */}
+              <div className="text-sm space-y-1">
+                <div className="font-semibold">{copy.headline || "Your headline here"}</div>
+                <div className="text-muted-foreground text-xs">{copy.description || "Description..."}</div>
+              </div>
+              
+              {/* CTA Button */}
+              <Button size="sm" variant="outline" className="w-full">
+                {ctaOptions.find((opt) => opt.value === copy.call_to_action)?.label || "Learn More"}
+              </Button>
             </div>
-          </div>
-          <p className="text-sm">{copy.primary_text || "Your primary text will appear here..."}</p>
-          
-          {uploadedAsset ? (
-            uploadedAsset.file_type?.startsWith('video/') ? (
-              <video 
-                src={uploadedAsset.file_url} 
-                className="w-full rounded object-cover"
-                style={{ aspectRatio: '9/16', maxHeight: '400px' }}
-                controls
-                muted
-              />
-            ) : (
-              <img 
-                src={uploadedAsset.file_url} 
-                className="w-full rounded object-cover"
-                style={{ aspectRatio: '9/16', maxHeight: '400px' }}
-                alt="Creative preview"
-              />
-            )
-          ) : (
-            <div className="bg-muted h-48 rounded flex items-center justify-center text-muted-foreground text-sm">
-              Upload creative to see preview
-            </div>
-          )}
-          
-          <div className="text-sm">
-            <div className="font-semibold">{copy.headline || "Your headline here"}</div>
-            <div className="text-muted-foreground text-xs">{copy.description || "Description..."}</div>
-          </div>
-          <Button size="sm" variant="outline" className="w-full">
-            {ctaOptions.find((opt) => opt.value === copy.call_to_action)?.label || "Learn More"}
-          </Button>
-        </div>
-      </Card>
+            
+            {/* Format-Specific Warnings */}
+            {aspectRatio === '9:16' && uploadedAsset?.file_type?.startsWith('video/') && (
+              <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="text-xs text-yellow-900 dark:text-yellow-100">
+                  <strong>Note:</strong> 9:16 videos display full-screen on mobile. 
+                  Primary text appears ABOVE the video in feed, but users may not see it during playback. 
+                  Keep headline punchy (&lt;20 characters recommended).
+                </p>
+              </div>
+            )}
+          </Card>
 
       {/* Editable Fields */}
       <Card className="p-6 space-y-4">
         <div className="space-y-2">
           <Label htmlFor="headline">
-            Headline <span className="text-muted-foreground text-xs">(40 characters max)</span>
+            Headline 
+            <span className="text-muted-foreground text-xs ml-1">
+              ({aspectRatio === '9:16' && uploadedAsset?.file_type?.startsWith('video/') 
+                ? '20 characters recommended for video' 
+                : '40 characters max'})
+            </span>
           </Label>
           <Input
             id="headline"
             value={copy.headline}
             onChange={(e) => setCopy({ ...copy, headline: e.target.value.slice(0, 40) })}
-            placeholder="Stop scrolling if you're tired of..."
+            placeholder={aspectRatio === '9:16' ? "Stop scrolling!" : "Stop scrolling if you're tired of..."}
             maxLength={40}
           />
-          <div className="text-xs text-muted-foreground text-right">{copy.headline.length}/40</div>
+          <div className="flex justify-between text-xs">
+            <span className="text-muted-foreground">{copy.headline.length}/40</span>
+            {aspectRatio === '9:16' && uploadedAsset?.file_type?.startsWith('video/') && copy.headline.length > 20 && (
+              <span className="text-yellow-600">Consider shortening for video</span>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2">
