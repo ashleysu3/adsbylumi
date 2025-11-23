@@ -10,9 +10,10 @@ import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { Building2, Globe, Target, Edit, CheckCircle2 } from "lucide-react";
+import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
@@ -71,6 +72,35 @@ export default function Dashboard() {
     const percentage = Math.round((completed / total) * 100);
     
     return { completed, total, percentage };
+  };
+
+  const getIncompleteItems = () => {
+    const items = [];
+    
+    if (!(brand?.name && brand?.website_url && brand?.industry)) {
+      items.push({ label: "Complete brand basics", section: "brand-details" });
+    }
+    if (!(brand?.value_proposition && brand?.target_audience)) {
+      items.push({ label: "Add positioning details", section: "brand-details" });
+    }
+    if (brand?.psychology_status !== "complete") {
+      items.push({ label: "Generate audience psychology", section: "audience-psychology" });
+    }
+    if (offers.length === 0) {
+      items.push({ label: "Add your first offer", section: "offers" });
+    }
+    if (!brand?.meta_account_id) {
+      items.push({ label: "Connect Meta ad account", section: "meta-account" });
+    }
+    
+    return items;
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.querySelector(`[data-section="${sectionId}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   const fetchBrandData = async () => {
@@ -161,27 +191,50 @@ export default function Dashboard() {
               Your brand at a glance
             </p>
           </div>
-          <Badge 
-            variant={
-              calculateBrandProgress().percentage === 100 ? "outline" : 
-              calculateBrandProgress().percentage >= 80 ? "default" : 
-              calculateBrandProgress().percentage >= 40 ? "secondary" : 
-              "destructive"
-            }
-            className={cn(
-              "text-sm px-3 py-1",
-              calculateBrandProgress().percentage === 100 && "border-green-500 text-green-700 dark:text-green-400"
+          <Popover>
+            <PopoverTrigger asChild>
+              <Badge 
+                variant={
+                  calculateBrandProgress().percentage === 100 ? "outline" : 
+                  calculateBrandProgress().percentage >= 80 ? "default" : 
+                  calculateBrandProgress().percentage >= 40 ? "secondary" : 
+                  "destructive"
+                }
+                className={cn(
+                  "text-sm px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity",
+                  calculateBrandProgress().percentage === 100 && "border-green-500 text-green-700 dark:text-green-400"
+                )}
+              >
+                {calculateBrandProgress().percentage === 100 ? (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Profile Complete
+                  </>
+                ) : (
+                  <>
+                    {`${calculateBrandProgress().percentage}% Complete`}
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </>
+                )}
+              </Badge>
+            </PopoverTrigger>
+            {calculateBrandProgress().percentage < 100 && (
+              <PopoverContent className="w-64 p-3" align="end">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-foreground mb-3">Complete your profile:</p>
+                  {getIncompleteItems().map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() => scrollToSection(item.section)}
+                      className="w-full text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded transition-colors"
+                    >
+                      • {item.label}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
             )}
-          >
-            {calculateBrandProgress().percentage === 100 ? (
-              <>
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Profile Complete
-              </>
-            ) : (
-              `${calculateBrandProgress().percentage}% Complete`
-            )}
-          </Badge>
+          </Popover>
         </div>
 
         {/* Onboarding Checklist */}
@@ -281,19 +334,23 @@ export default function Dashboard() {
             </Card>
 
             {/* Audience Psychology */}
-            <AudiencePsychology
-              brandId={brand.id}
-              psychology={brand.audience_psychology}
-              status={brand.psychology_status}
-              onUpdate={fetchBrandData}
-            />
+            <div data-section="audience-psychology">
+              <AudiencePsychology
+                brandId={brand.id}
+                psychology={brand.audience_psychology}
+                status={brand.psychology_status}
+                onUpdate={fetchBrandData}
+              />
+            </div>
 
           {/* Offers Manager */}
-          <OfferManager
-            brandId={brand.id}
-            offers={offers}
-            onUpdate={fetchBrandData}
-          />
+          <div data-section="offers">
+            <OfferManager
+              brandId={brand.id}
+              offers={offers}
+              onUpdate={fetchBrandData}
+            />
+          </div>
         </div>
       </div>
 
