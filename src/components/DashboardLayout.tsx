@@ -356,7 +356,7 @@ export default function DashboardLayout({
               ) : (
                 <>
                   <Sparkles className="mr-2 h-4 w-4 animate-pulse group-hover:text-primary" />
-                  Tell me what to do next
+                  What's next?
                 </>
               )}
             </Button>
