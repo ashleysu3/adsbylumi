@@ -15,7 +15,7 @@ import { CreativeAssets } from "@/components/CreativeAssets";
 import { ProductionChecklist } from "@/components/ProductionChecklist";
 import { CreativeUploader } from "@/components/CreativeUploader";
 import { CreativeSidebar } from "@/components/CreativeSidebar";
-import { CreativeReviewPanel } from "@/components/CreativeReviewPanel";
+import { ProductionPanel } from "@/components/ProductionPanel";
 
 export default function CampaignWorkspace() {
   const { workspaceId } = useParams();
@@ -229,9 +229,9 @@ export default function CampaignWorkspace() {
           </div>
         </div>
 
-        {/* Review Panel */}
+        {/* Production Panel */}
         {workspace.creative_json && (
-          <CreativeReviewPanel 
+          <ProductionPanel 
             workspace={workspace}
             onFinalize={handleFinalize}
           />

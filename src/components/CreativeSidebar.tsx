@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";
 import { 
   Video, 
   Image as ImageIcon, 
@@ -10,7 +11,8 @@ import {
   CheckSquare,
   Target,
   Zap,
-  TrendingUp
+  TrendingUp,
+  Heart
 } from "lucide-react";
 
 interface CreativeSidebarProps {
@@ -22,10 +24,24 @@ interface CreativeSidebarProps {
 export function CreativeSidebar({ workspace, activeSection, onSectionChange }: CreativeSidebarProps) {
   const creative = workspace.creative_json || {};
   const creativeMix = creative.creative_mix || {};
+  const lovedConcepts = workspace.loved_concepts || [];
   
   const tofuCount = creativeMix.tofu?.length || 0;
   const mofuCount = creativeMix.mofu?.length || 0;
   const bofuCount = creativeMix.bofu?.length || 0;
+
+  // Count loved by stage
+  const lovedByStage = {
+    tofu: lovedConcepts.filter((id: string) => 
+      creativeMix.tofu?.some((c: any) => c.id === id)
+    ).length,
+    mofu: lovedConcepts.filter((id: string) => 
+      creativeMix.mofu?.some((c: any) => c.id === id)
+    ).length,
+    bofu: lovedConcepts.filter((id: string) => 
+      creativeMix.bofu?.some((c: any) => c.id === id)
+    ).length,
+  };
   
   // Count by format type
   const allConcepts = [
@@ -81,6 +97,35 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange }: C
       
       <ScrollArea className="h-[calc(100vh-12rem)]">
         <div className="p-2 space-y-6">
+          {/* Loved Creative Ideas */}
+          {lovedConcepts.length > 0 && (
+            <Card className="mx-2 p-3 bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/20 dark:to-pink-900/20 border-pink-200 dark:border-pink-800">
+              <div className="flex items-center gap-2 mb-2">
+                <Heart className="h-4 w-4 text-pink-600 dark:text-pink-400 fill-pink-600 dark:fill-pink-400" />
+                <span className="text-xs font-semibold text-pink-900 dark:text-pink-100">Loved Concepts</span>
+              </div>
+              <div className="text-3xl font-bold text-pink-900 dark:text-pink-100 mb-2">
+                {lovedConcepts.length}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {lovedByStage.tofu > 0 && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                    TOFU {lovedByStage.tofu}
+                  </Badge>
+                )}
+                {lovedByStage.mofu > 0 && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                    MOFU {lovedByStage.mofu}
+                  </Badge>
+                )}
+                {lovedByStage.bofu > 0 && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                    BOFU {lovedByStage.bofu}
+                  </Badge>
+                )}
+              </div>
+            </Card>
+          )}
           {sections.map((section) => (
             <div key={section.id} className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground px-3 py-2">
