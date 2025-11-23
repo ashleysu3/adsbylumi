@@ -367,6 +367,7 @@ export default function Creative() {
                     filterStage={['tofu', 'mofu', 'bofu'].includes(activeSection) ? activeSection : undefined}
                     filterFormat={['scripts', 'broll', 'carousels', 'static'].includes(activeSection) ? activeSection : undefined}
                     onGenerateCreative={generateCreative}
+                    isGeneratingParent={generating}
                   />
                 )}
               </div>
