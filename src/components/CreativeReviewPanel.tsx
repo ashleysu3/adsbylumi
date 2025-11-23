@@ -95,11 +95,11 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
   if (!hasReasonableProgress && hasLovedConcepts) warnings.push(`Only ${uploads.length} of ${totalNeeded} assets uploaded`);
 
   return (
-    <div className="w-80 border-l border-border bg-background/50 backdrop-blur-sm">
+    <div className="w-80 flex-shrink-0 border-l border-border bg-background/50 backdrop-blur-sm overflow-hidden">
       <div className="p-4 border-b border-border">
-        <h3 className="font-semibold flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          Your Creative Selection
+        <h3 className="font-semibold flex items-center gap-2 text-sm">
+          <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
+          <span className="truncate">Your Creative Selection</span>
         </h3>
       </div>
       
@@ -165,12 +165,12 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
                 {todoList.map((item, index) => (
                   <div 
                     key={index}
-                    className="flex items-center gap-3 p-2 rounded-lg bg-muted/30"
+                    className="flex items-start gap-3 p-2 rounded-lg bg-muted/30"
                   >
-                    <div className="p-1.5 rounded bg-primary/10">
+                    <div className="p-1.5 rounded bg-primary/10 flex-shrink-0">
                       <item.icon className="h-4 w-4 text-primary" />
                     </div>
-                    <span className="text-sm flex-1">{item.text}</span>
+                    <span className="text-sm flex-1 break-words leading-tight pt-0.5">{item.text}</span>
                   </div>
                 ))}
               </CardContent>
@@ -229,11 +229,11 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
           {/* Warnings */}
           {warnings.length > 0 && (
             <Alert variant="default" className="border-yellow-500/50 bg-yellow-500/5">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-xs">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+              <AlertDescription className="text-xs break-words">
                 <ul className="space-y-1 mt-1">
                   {warnings.map((warning, i) => (
-                    <li key={i} className="text-yellow-700 dark:text-yellow-400">
+                    <li key={i} className="text-yellow-700 dark:text-yellow-400 break-words">
                       {warning}
                     </li>
                   ))}
@@ -248,10 +248,10 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
               {isReadyToFinalize ? (
                 <>
                   <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                    <CheckCircle2 className="h-5 w-5" />
+                    <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
                     <p className="font-medium text-sm">Ready to Build!</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground break-words">
                     You've selected {lovedConcepts.length} creative idea{lovedConcepts.length !== 1 ? 's' : ''} 
                     {' '}and uploaded {uploads.length} asset{uploads.length !== 1 ? 's' : ''}.
                   </p>
@@ -259,7 +259,7 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
               ) : (
                 <>
                   <p className="text-sm font-medium">Almost There...</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground break-words">
                     {!hasLovedConcepts 
                       ? "Love some creative ideas to continue" 
                       : `Upload ${Math.ceil(totalNeeded * 0.3) - uploads.length} more asset${Math.ceil(totalNeeded * 0.3) - uploads.length !== 1 ? 's' : ''} to continue`
@@ -271,10 +271,10 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
               <Button 
                 onClick={onFinalize}
                 disabled={!isReadyToFinalize}
-                className="w-full gap-2"
+                className="w-full gap-2 text-sm"
               >
-                Continue to Campaign Builder
-                <ArrowRight className="h-4 w-4" />
+                <span className="truncate">Continue to Campaign Builder</span>
+                <ArrowRight className="h-4 w-4 flex-shrink-0" />
               </Button>
             </CardContent>
           </Card>
