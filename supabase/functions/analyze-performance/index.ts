@@ -1,0 +1,266 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { workspaceId, metricsData } = await req.json();
+
+    if (!workspaceId || !metricsData) {
+      throw new Error('Workspace ID and metrics data are required');
+    }
+
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY not configured');
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Fetch workspace with all context
+    const { data: workspace, error: workspaceError } = await supabase
+      .from('campaign_workspaces')
+      .select('*')
+      .eq('id', workspaceId)
+      .single();
+
+    if (workspaceError || !workspace) {
+      throw new Error('Workspace not found');
+    }
+
+    // Fetch all knowledge documents
+    const { data: knowledgeDocs, error: kbError } = await supabase
+      .from('knowledge_documents')
+      .select('*')
+      .eq('active', true);
+
+    if (kbError) {
+      console.error('Error fetching knowledge base:', kbError);
+    }
+
+    // Organize knowledge by category
+    const kbByCategory = (knowledgeDocs || []).reduce((acc: any, doc: any) => {
+      if (!acc[doc.category]) acc[doc.category] = [];
+      acc[doc.category].push(doc.content);
+      return acc;
+    }, {});
+
+    // Build comprehensive system prompt
+    const systemPrompt = `You are the Performance Fixer, an expert Meta Ads analyst with deep knowledge of advertising psychology, funnel optimization, and creative strategy.
+
+CONTEXT YOU HAVE ACCESS TO:
+- Real campaign performance data from Meta API
+- The campaign's strategy, creative mix, and offer details
+- 10 comprehensive knowledge bases covering Meta ads best practices
+
+YOUR KNOWLEDGE BASES:
+${Object.entries(kbByCategory).map(([category, docs]: [string, any]) => 
+  `\n=== ${category.toUpperCase()} ===\n${(docs as string[]).join('\n\n')}`
+).join('\n')}
+
+CAMPAIGN CONTEXT:
+- Offer: ${workspace.offer_name || 'Unknown'}
+- Description: ${workspace.offer_description || 'N/A'}
+- Price: ${workspace.offer_price || 'N/A'}
+- Strategy: ${JSON.stringify(workspace.strategy_json || {}, null, 2)}
+- Creative Mix: ${JSON.stringify(workspace.creative_json || {}, null, 2)}
+
+YOUR ROLE:
+Analyze the performance data and deliver a comprehensive, beginner-friendly report that includes:
+
+1. **KPI Evaluation**: For each metric (CTR, CPC, CPM, Frequency, CPL/CPP, ROAS), compare to benchmarks from your knowledge base and assign a status (excellent/healthy/needs attention/critical). Explain WHY the metric matters and what it means for this campaign.
+
+2. **Funnel Diagnosis**: Identify issues at each stage:
+   - TOFU (Top of Funnel): CTR, reach, creative variety
+   - MOFU (Middle): Click-to-conversion, landing page performance
+   - BOFU (Bottom): Warm audience conversion, offer clarity
+
+3. **Creative Troubleshooting**: Diagnose creative issues based on the data. Link low CTR to hook problems, high CPC to clarity issues, high frequency to fatigue, etc. Provide specific creative recommendations.
+
+4. **Warm Audience Health**: Evaluate retargeting audience size and stability. Is it large enough (3k+ ideal)? Growing or stagnant?
+
+5. **Seasonality Context**: Consider the current quarter and seasonal patterns. Explain if CPM increases or performance shifts are normal for this time of year.
+
+6. **Offer Diagnosis**: Based on the offer type (lead magnet, webinar, low ticket, high ticket), identify mismatches between the offer and creative/landing page.
+
+7. **Top 3 Next Steps**: Provide exactly 3 actionable, specific steps the user should take this week. Make them simple and encouraging.
+
+8. **Creative Refresh Suggestions**: Suggest 2-3 specific creative types to add or refresh, including hook patterns, script starters, and psychology triggers to use.
+
+TONE & STYLE:
+- Warm, encouraging, and supportive
+- Use "you" language (e.g., "Your CTR is healthy!")
+- No jargon - explain technical terms in plain English
+- Always explain WHY behind recommendations
+- Celebrate wins, gently guide improvements
+- Keep it actionable and specific
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON object with this exact structure:
+{
+  "kpi_evaluation": {
+    "ctr": { "value": number, "status": string, "benchmark": string, "reason": string },
+    "cpc": { "value": number, "status": string, "benchmark": string, "reason": string },
+    "cpm": { "value": number, "status": string, "benchmark": string, "reason": string },
+    "frequency": { "value": number, "status": string, "benchmark": string, "reason": string },
+    "cpl_cpp": { "value": number, "status": string, "benchmark": string, "reason": string },
+    "roas": { "value": number|null, "status": string, "benchmark": string, "reason": string }
+  },
+  "funnel_diagnosis": {
+    "tofu": string,
+    "mofu": string,
+    "bofu": string
+  },
+  "creative_diagnosis": {
+    "problem": string,
+    "cause": string,
+    "recommended_creatives_to_add": [string],
+    "recommended_creatives_to_refresh": [string],
+    "why_it_works": string
+  },
+  "warm_audience_health": {
+    "size": string,
+    "stability": string,
+    "notes": string,
+    "recommendation": string
+  },
+  "seasonality_context": {
+    "quarter": string,
+    "expected_behavior": string,
+    "notes": string,
+    "recommendation": string
+  },
+  "offer_diagnosis": {
+    "type": string,
+    "issue": string,
+    "fix": string
+  },
+  "next_steps": [string, string, string],
+  "creative_refresh_suggestions": [
+    {
+      "type": string,
+      "hook_pattern": string,
+      "script_starter": string,
+      "b_roll": string,
+      "why_it_works": string
+    }
+  ]
+}`;
+
+    const userPrompt = `Analyze this Meta Ads campaign performance data:
+
+METRICS:
+- Spend: $${metricsData.spend?.toFixed(2) || 0}
+- Impressions: ${metricsData.impressions?.toLocaleString() || 0}
+- Reach: ${metricsData.reach?.toLocaleString() || 0}
+- CTR: ${metricsData.ctr?.toFixed(2) || 0}%
+- CPC: $${metricsData.cpc?.toFixed(2) || 0}
+- CPM: $${metricsData.cpm?.toFixed(2) || 0}
+- Frequency: ${metricsData.frequency?.toFixed(2) || 0}
+- Leads: ${metricsData.leads || 0}
+- Purchases: ${metricsData.purchases || 0}
+- Add to Cart: ${metricsData.addToCart || 0}
+- Cost per Lead: $${metricsData.cpl?.toFixed(2) || 0}
+- Cost per Purchase: $${metricsData.cpp?.toFixed(2) || 0}
+- ROAS: ${metricsData.roas?.toFixed(2) || 'N/A'}
+- Link Clicks: ${metricsData.linkClicks || 0}
+- Video Views: ${metricsData.videoViews || 0}
+- Video ThruPlays: ${metricsData.videoThruPlays || 0}
+
+Provide a comprehensive analysis following the JSON structure specified.`;
+
+    console.log('Calling Lovable AI for performance analysis...');
+
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.7,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('AI API error:', aiResponse.status, errorText);
+      throw new Error(`AI analysis failed: ${errorText}`);
+    }
+
+    const aiData = await aiResponse.json();
+    const analysisText = aiData.choices?.[0]?.message?.content || '';
+
+    console.log('AI analysis received:', analysisText.substring(0, 200));
+
+    // Parse JSON from response
+    let analysis;
+    try {
+      // Try to extract JSON if wrapped in markdown
+      const jsonMatch = analysisText.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       analysisText.match(/```\s*([\s\S]*?)\s*```/);
+      const jsonText = jsonMatch ? jsonMatch[1] : analysisText;
+      analysis = JSON.parse(jsonText);
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', parseError);
+      // Try direct parse
+      try {
+        analysis = JSON.parse(analysisText);
+      } catch (e) {
+        throw new Error('AI returned invalid JSON format');
+      }
+    }
+
+    // Add timestamp
+    analysis.analyzed_at = new Date().toISOString();
+
+    // Save to database
+    const currentReports = workspace.performance_reports || [];
+    const updatedReports = [...currentReports, analysis];
+
+    await supabase
+      .from('campaign_workspaces')
+      .update({
+        performance_report_latest: analysis,
+        performance_reports: updatedReports,
+      })
+      .eq('id', workspaceId);
+
+    console.log('Analysis saved successfully');
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        analysis,
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      }
+    );
+  } catch (error: any) {
+    console.error('Error analyzing performance:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      }
+    );
+  }
+});

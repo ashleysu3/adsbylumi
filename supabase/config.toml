@@ -1,5 +1,14 @@
 project_id = "sqwjbndgighjtifijgws"
 
+[functions.fetch-meta-performance]
+verify_jwt = true
+
+[functions.analyze-performance]
+verify_jwt = true
+
+[functions.generate-weekly-report]
+verify_jwt = true
+
 [functions.generate-copy-variations]
 verify_jwt = true
 
