@@ -370,15 +370,18 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     
     // Get main content preview
     const getContentPreview = () => {
-      if (concept.script) {
+      if (concept.script && typeof concept.script === 'string') {
         const lines = concept.script.split('\n').filter((l: string) => l.trim());
         return lines.slice(0, 3).join('\n');
       }
       if (concept.carousel_structure?.slides?.[0]) {
         return concept.carousel_structure.slides[0].text || '';
       }
-      if (concept.static_layout) {
+      if (concept.static_layout && typeof concept.static_layout === 'string') {
         return concept.static_layout.split('\n')[0];
+      }
+      if (concept.static_layout && typeof concept.static_layout === 'object') {
+        return JSON.stringify(concept.static_layout).substring(0, 100) + '...';
       }
       return concept.title;
     };
