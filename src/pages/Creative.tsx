@@ -194,7 +194,7 @@ export default function Creative() {
 
   return (
     <DashboardLayout>
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-[calc(100vh-4rem)] w-full overflow-hidden">
         {/* Main Dashboard Area */}
         {!workspace ? (
           <div className="flex-1 flex flex-col">
