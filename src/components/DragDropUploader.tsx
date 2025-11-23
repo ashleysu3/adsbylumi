@@ -50,6 +50,11 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
   
   const uploadedAssets = workspace.user_uploaded_assets || [];
   
+  // Filter assets to only show those linked to this specific concept
+  const relevantAssets = productionItem?.concept_id 
+    ? uploadedAssets.filter((asset: any) => asset.linked_concept_id === productionItem.concept_id)
+    : uploadedAssets;
+  
   // Get all available concepts from creative_mix
   const creativeMix = workspace.creative_json?.creative_mix || {};
   const allConcepts = [
@@ -325,16 +330,16 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
         )}
 
         {/* Uploaded Assets List */}
-        {uploadedAssets.length > 0 && (
+        {relevantAssets.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                Uploaded Assets ({uploadedAssets.length})
+                Uploaded Assets ({relevantAssets.length})
               </h4>
             </div>
             <div className="space-y-2 max-h-96 overflow-y-auto">
-              {uploadedAssets.map((asset: any) => {
+              {relevantAssets.map((asset: any) => {
                 const FileIcon = getFileIcon(asset.file_type);
 
                 return (
