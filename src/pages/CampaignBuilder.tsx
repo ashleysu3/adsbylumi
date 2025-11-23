@@ -7,7 +7,18 @@ import { CampaignSummary } from "@/components/CampaignSummary";
 import { CampaignReview } from "@/components/CampaignReview";
 import { CampaignSuccess } from "@/components/CampaignSuccess";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CampaignBuilder() {
@@ -127,6 +138,30 @@ export default function CampaignBuilder() {
     setStage('chat');
   };
 
+  const handleRestart = async () => {
+    try {
+      // Clear chat history and answers in database
+      await supabase
+        .from('campaign_workspaces')
+        .update({ 
+          chat_history: [],
+          campaign_builder_answers: {},
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workspaceId);
+
+      // Reset local state
+      setChatHistory([]);
+      setAnswers({});
+      setStage('chat');
+      
+      toast.success("Campaign builder restarted");
+    } catch (error: any) {
+      console.error('Error restarting builder:', error);
+      toast.error("Failed to restart");
+    }
+  };
+
   const handlePublish = async () => {
     setStage('publishing');
     setPublishing(true);
@@ -222,6 +257,32 @@ export default function CampaignBuilder() {
               <h1 className="text-3xl font-bold">Campaign Builder</h1>
               <p className="text-muted-foreground">{workspace.name}</p>
             </div>
+            
+            {/* Restart Button - only show during chat or review stages */}
+            {(stage === 'chat' || stage === 'review') && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Restart
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Restart Campaign Builder?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will clear all your answers and chat history. You'll start from the beginning with a fresh conversation. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleRestart}>
+                      Yes, Restart
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
 
           {/* Progress Steps */}
