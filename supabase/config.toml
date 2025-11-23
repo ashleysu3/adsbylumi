@@ -32,3 +32,12 @@ verify_jwt = true
 
 [functions.meta-oauth-callback]
 verify_jwt = false
+
+[functions.campaign-builder-chat]
+verify_jwt = true
+
+[functions.build-meta-campaign]
+verify_jwt = true
+
+[functions.upload-creative-to-meta]
+verify_jwt = true

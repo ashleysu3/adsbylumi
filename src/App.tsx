@@ -12,6 +12,7 @@ import Planning from "./pages/Planning";
 import Creative from "./pages/Creative";
 import Production from "./pages/Production";
 import CampaignWorkspace from "./pages/CampaignWorkspace";
+import CampaignBuilder from "./pages/CampaignBuilder";
 import Campaigns from "./pages/Campaigns";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import AdminKnowledge from "./pages/admin/Knowledge";
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/production" element={<Production />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/workspace/:workspaceId" element={<CampaignWorkspace />} />
+          <Route path="/campaigns/build" element={<CampaignBuilder />} />
           <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
           <Route path="/admin/knowledge" element={<AdminKnowledge />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
