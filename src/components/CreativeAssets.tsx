@@ -227,9 +227,86 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
     toast.success(`${label} copied to clipboard`);
   };
 
-  const handleExpand = (conceptId: string, action: string) => {
-    toast.info(`${action}...`);
-    // Future: Call edge function to regenerate/expand
+  const handleExpand = async (conceptId: string, concept: any, stage: string, action: 'regenerate' | 'more_options' | 'expand_idea') => {
+    const actionLabels = {
+      regenerate: 'Regenerating',
+      more_options: 'Getting more options',
+      expand_idea: 'Expanding idea'
+    };
+    
+    toast.info(`${actionLabels[action]}...`);
+    setIsSaving(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('expand-creative', {
+        body: {
+          concept,
+          action,
+          stage,
+          brandName: workspace.brands?.name || 'Your Brand',
+          audiencePsychology: workspace.brands?.audience_psychology
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.error) {
+        if (data.error.includes('429')) {
+          toast.error('Rate limit exceeded. Please wait a moment.');
+        } else if (data.error.includes('402')) {
+          toast.error('AI credits depleted. Please add credits in Settings.');
+        } else {
+          toast.error(data.error);
+        }
+        return;
+      }
+      
+      const newConcepts = data.concepts || [];
+      console.log('Received expanded concepts:', newConcepts);
+      
+      // Add new concepts to the creative mix
+      const updatedCreative = { ...creative };
+      if (!updatedCreative.creative_mix) {
+        updatedCreative.creative_mix = { tofu: [], mofu: [], bofu: [] };
+      }
+      
+      // Add version metadata to new concepts
+      const conceptsWithMeta = newConcepts.map((c: any, idx: number) => ({
+        ...c,
+        version: Date.now(),
+        original_id: conceptId,
+        action_taken: action,
+        variant_index: idx
+      }));
+      
+      // Insert after the original concept
+      const stageArray = updatedCreative.creative_mix[stage] || [];
+      const originalIndex = parseInt(conceptId.split('-')[1]);
+      stageArray.splice(originalIndex + 1, 0, ...conceptsWithMeta);
+      updatedCreative.creative_mix[stage] = stageArray;
+      
+      // Save to workspace
+      const { error: updateError } = await supabase
+        .from('campaign_workspaces')
+        .update({
+          creative_json: updatedCreative,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workspace.id);
+      
+      if (updateError) throw updateError;
+      
+      // Update parent component
+      await onUpdate({ creative_json: updatedCreative });
+      
+      toast.success(`Generated ${newConcepts.length} new variation${newConcepts.length > 1 ? 's' : ''}!`);
+      
+    } catch (error: any) {
+      console.error('Error expanding creative:', error);
+      toast.error('Failed to expand creative. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!creative || Object.keys(creative).length === 0) {
@@ -298,6 +375,13 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
                       Selected
                     </Badge>
                   )}
+                  {concept.action_taken && (
+                    <Badge variant="outline" className="bg-purple-500/10 border-purple-500/20 text-purple-700 dark:text-purple-400">
+                      {concept.action_taken === 'regenerate' && '🔄 Regenerated'}
+                      {concept.action_taken === 'more_options' && '✨ Variation'}
+                      {concept.action_taken === 'expand_idea' && '📝 Expanded'}
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline" className={stageColors[stage as keyof typeof stageColors]}>
@@ -316,9 +400,11 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleExpand(conceptId, "Regenerating")}
+                  onClick={() => handleExpand(conceptId, concept, stage, 'regenerate')}
+                  disabled={isSaving}
+                  title="Regenerate this concept with a new angle"
                 >
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className={`h-4 w-4 ${isSaving ? 'animate-spin' : ''}`} />
                 </Button>
                 <CollapsibleTrigger asChild>
                   <Button size="sm" variant="ghost">
@@ -407,7 +493,8 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleExpand(conceptId, "Getting more options")}
+                  onClick={() => handleExpand(conceptId, concept, stage, 'more_options')}
+                  disabled={isSaving}
                 >
                   <Sparkles className="h-3 w-3 mr-1" />
                   More Options
@@ -415,7 +502,8 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => handleExpand(conceptId, "Expanding this idea")}
+                  onClick={() => handleExpand(conceptId, concept, stage, 'expand_idea')}
+                  disabled={isSaving}
                 >
                   <HelpCircle className="h-3 w-3 mr-1" />
                   Expand Idea
