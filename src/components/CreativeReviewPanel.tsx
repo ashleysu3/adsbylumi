@@ -96,7 +96,7 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
 
   return (
     <div className="w-80 flex-shrink-0 border-l border-border bg-background/50 backdrop-blur-sm overflow-hidden">
-      <div className="p-4 border-b border-border">
+      <div className="px-4 py-4 border-b border-border">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
           <span className="truncate">Your Creative Selection</span>
@@ -104,7 +104,7 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
       </div>
       
       <ScrollArea className="h-[calc(100vh-12rem)]">
-        <div className="p-4 space-y-4">
+        <div className="pl-4 pr-4 py-4 space-y-4">
           
           {/* Loved Creative Count */}
           <Card className={lovedConcepts.length > 0 ? "border-pink-500/30 bg-pink-500/5" : ""}>
