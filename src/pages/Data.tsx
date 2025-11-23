@@ -242,10 +242,10 @@ export default function Data() {
           return;
         }
         
-        // Check if campaign not published
-        if (errorMsg.includes('not been published') || errorMsg.includes('Invalid Meta campaign ID')) {
-          toast.error('Campaign not published', {
-            description: 'This campaign needs to be published to Meta before you can view performance data.',
+        // Check if campaign uses placeholder ID or not published
+        if (errorMsg.includes('placeholder ID') || errorMsg.includes('not been published') || errorMsg.includes('Invalid Meta campaign ID')) {
+          toast.error('Campaign not built in Meta', {
+            description: 'This campaign needs to be built and published to Meta before you can view performance data. Go to the campaign workspace and complete the build process.',
             action: {
               label: 'View Campaigns',
               onClick: () => navigate('/campaigns'),
@@ -257,7 +257,7 @@ export default function Data() {
         // Check if Meta API error (campaign doesn't exist)
         if (errorMsg.includes('Meta API error') || errorMsg.includes('does not exist')) {
           toast.error('Campaign not found in Meta', {
-            description: 'This campaign may have been deleted from Meta Ads Manager or was not properly published.',
+            description: 'This campaign may have been deleted from Meta Ads Manager or the campaign ID is incorrect.',
           });
           return;
         }
