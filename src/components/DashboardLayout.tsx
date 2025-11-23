@@ -60,6 +60,11 @@ export default function DashboardLayout({
     navigate("/auth");
   };
 
+  const handleShowWalkthrough = () => {
+    localStorage.removeItem('has-seen-walkthrough');
+    handleGetSuggestion();
+  };
+
   const handleGetSuggestion = async () => {
     setLoadingSuggestion(true);
     try {
@@ -246,6 +251,11 @@ export default function DashboardLayout({
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleShowWalkthrough}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Show Walkthrough Again
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
