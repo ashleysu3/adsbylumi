@@ -165,6 +165,8 @@ export type Database = {
       }
       campaign_workspaces: {
         Row: {
+          archived: boolean | null
+          archived_at: string | null
           brand_id: string
           campaign_builder_answers: Json | null
           chat_history: Json | null
@@ -198,6 +200,8 @@ export type Database = {
           weekly_report_draft: string | null
         }
         Insert: {
+          archived?: boolean | null
+          archived_at?: string | null
           brand_id: string
           campaign_builder_answers?: Json | null
           chat_history?: Json | null
@@ -231,6 +235,8 @@ export type Database = {
           weekly_report_draft?: string | null
         }
         Update: {
+          archived?: boolean | null
+          archived_at?: string | null
           brand_id?: string
           campaign_builder_answers?: Json | null
           chat_history?: Json | null
