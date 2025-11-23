@@ -28,6 +28,7 @@ interface CreativeAssetsProps {
   filterStage?: string;
   filterFormat?: string;
   onGenerateCreative?: () => void;
+  isGeneratingParent?: boolean;
 }
 
 const formatIcons = {
@@ -51,7 +52,7 @@ const stageBadgeColors = {
   bofu: "bg-green-500/20 text-green-700 border-green-500/30 dark:text-green-400",
 };
 
-export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat, onGenerateCreative }: CreativeAssetsProps) {
+export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat, onGenerateCreative, isGeneratingParent }: CreativeAssetsProps) {
   const creative = workspace.creative_json || {};
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
   const [lovedConcepts, setLovedConcepts] = useState<Set<string>>(
@@ -633,9 +634,10 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
                 onClick={onGenerateCreative}
                 variant="default"
                 className="gap-2"
+                disabled={isGenerating || isGeneratingParent}
               >
                 <Sparkles className="h-4 w-4" />
-                Generate Creative Concepts
+                {(isGenerating || isGeneratingParent) ? 'Generating...' : 'Generate Creative Concepts'}
               </Button>
             )}
           </div>
