@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Sparkles, ArrowLeft, Rocket } from "lucide-react";
+import { Loader2, Sparkles, ArrowLeft, Rocket, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { toast } from "sonner";
 import { CreativeAssets } from "@/components/CreativeAssets";
 import { ProductionChecklist } from "@/components/ProductionChecklist";
@@ -24,6 +24,7 @@ export default function Creative() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [workspace, setWorkspace] = useState<any>(null);
   const [activeSection, setActiveSection] = useState("tofu");
+  const [showReviewPanel, setShowReviewPanel] = useState(true);
 
   useEffect(() => {
     fetchInitialData();
@@ -335,9 +336,26 @@ export default function Creative() {
                         {workspace.offer_name || "Campaign Workspace"}
                       </p>
                     </div>
-                    <Badge variant="secondary">
-                      {progressLabels[workspace.progress_status] || workspace.progress_status}
-                    </Badge>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary">
+                        {progressLabels[workspace.progress_status] || workspace.progress_status}
+                      </Badge>
+                      {workspace.creative_json && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShowReviewPanel(!showReviewPanel)}
+                          className="hidden md:flex"
+                          title={showReviewPanel ? "Hide review panel" : "Show review panel"}
+                        >
+                          {showReviewPanel ? (
+                            <PanelRightClose className="h-5 w-5" />
+                          ) : (
+                            <PanelRightOpen className="h-5 w-5" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -386,7 +404,7 @@ export default function Creative() {
             </div>
 
             {/* Right Panel - Review - Hidden on mobile */}
-            {workspace.creative_json && (
+            {workspace.creative_json && showReviewPanel && (
               <div className="hidden md:flex w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-border flex-col overflow-hidden">
                 <CreativeReviewPanel
                   workspace={workspace}
