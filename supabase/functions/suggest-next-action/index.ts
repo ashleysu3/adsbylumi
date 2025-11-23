@@ -90,7 +90,7 @@ serve(async (req) => {
     ];
     const completedFields = profileFields.filter(f => f).length;
     const profileCompletion = Math.round((completedFields / profileFields.length) * 100);
-    const hasPsychology = brand.psychology_status === 'complete';
+    const hasPsychology = brand.psychology_status === 'completed';
     const hasOffers = offers && offers.length > 0;
 
     // Build context for AI
