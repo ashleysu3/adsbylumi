@@ -57,6 +57,24 @@ Deno.serve(async (req) => {
 
     console.log(`Creating campaign with ${approvedConcepts.length} approved concepts`);
 
+    // Build campaign names using YAA format
+    const productName = workspace.offer_name || 'Campaign';
+    const startDate = answers.startDate || new Date().toISOString().split('T')[0];
+    
+    // Map optimization event to friendly objective name
+    const objectiveMap: { [key: string]: string } = {
+      'LEAD_GENERATION': 'Leads',
+      'CONVERSIONS': 'Conversions',
+      'LINK_CLICKS': 'Traffic',
+      'VIDEO_VIEWS': 'Video Views',
+      'LANDING_PAGE_VIEWS': 'Landing Page Views',
+      'REACH': 'Reach',
+      'IMPRESSIONS': 'Impressions'
+    };
+    const objectiveName = objectiveMap[answers.optimizationEvent] || 'Leads';
+    
+    const campaignBaseName = `YAA // ${objectiveName} - ${productName} - ${startDate}`;
+
     try {
       // Step 1: Create Campaign
       const campaignResponse = await fetch(
@@ -65,7 +83,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: answers.campaignName,
+            name: campaignBaseName,
             objective: 'OUTCOME_LEADS',
             status: 'PAUSED',
             special_ad_categories: [],
@@ -95,7 +113,7 @@ Deno.serve(async (req) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             campaign_id: campaignId,
-            name: `${answers.campaignName} - Cold`,
+            name: `YAA // ${objectiveName} - Cold - ${productName} - ${startDate}`,
             optimization_goal: answers.optimizationEvent || 'LEAD_GENERATION',
             billing_event: 'IMPRESSIONS',
             bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
@@ -130,7 +148,7 @@ Deno.serve(async (req) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               campaign_id: campaignId,
-              name: `${answers.campaignName} - Warm`,
+              name: `YAA // ${objectiveName} - Warm - ${productName} - ${startDate}`,
               optimization_goal: answers.optimizationEvent || 'LEAD_GENERATION',
               billing_event: 'IMPRESSIONS',
               bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
