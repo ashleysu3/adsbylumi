@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
+import { GuidedTour } from "@/components/GuidedTour";
 import logo from "@/assets/logo.png";
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -25,6 +26,12 @@ export default function DashboardLayout({
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [walkthroughSteps, setWalkthroughSteps] = useState<any[]>([]);
+  const [tourActive, setTourActive] = useState(false);
+  const [tourConfig, setTourConfig] = useState<{
+    targetSelector: string;
+    title: string;
+    description: string;
+  } | null>(null);
   useEffect(() => {
     supabase.auth.getUser().then(({
       data: {
@@ -76,7 +83,10 @@ export default function DashboardLayout({
             description: 'Add your brand details, website, and target audience to help create better campaigns.',
             completed: data.context.profileCompletion === 100,
             action: data.context.profileCompletion < 100 ? 'Complete Profile' : undefined,
-            route: '/dashboard'
+            route: '/dashboard',
+            targetSelector: '[data-section="brand-details"]',
+            tourTitle: 'Edit Your Brand Details',
+            tourDescription: 'Click the "Edit Details" button to add your website, industry, and other brand information.'
           },
           {
             id: 'psychology',
@@ -84,7 +94,10 @@ export default function DashboardLayout({
             description: 'Let AI analyze your audience\'s pain points, desires, and motivations for targeted messaging.',
             completed: data.context.hasPsychology,
             action: !data.context.hasPsychology ? 'Generate Psychology' : undefined,
-            route: '/dashboard'
+            route: '/dashboard',
+            targetSelector: '[data-section="audience-psychology"]',
+            tourTitle: 'Generate Audience Insights',
+            tourDescription: 'Click "Generate Psychology" to let AI analyze your target audience and create detailed psychological profiles.'
           },
           {
             id: 'offers',
@@ -92,7 +105,10 @@ export default function DashboardLayout({
             description: 'List your products or services to get AI-powered campaign recommendations.',
             completed: data.context.hasOffers,
             action: !data.context.hasOffers ? 'Add First Offer' : undefined,
-            route: '/dashboard'
+            route: '/dashboard',
+            targetSelector: '[data-section="offers"]',
+            tourTitle: 'Create Your First Offer',
+            tourDescription: 'Click "Add Offer" to list your product or service. The AI will analyze it and recommend the best campaign strategy.'
           },
           {
             id: 'meta',
@@ -100,7 +116,10 @@ export default function DashboardLayout({
             description: 'Link your Meta Business account to publish campaigns directly to Facebook and Instagram.',
             completed: data.context.hasMetaAccount,
             action: !data.context.hasMetaAccount ? 'Connect Account' : undefined,
-            route: '/dashboard'
+            route: '/dashboard',
+            targetSelector: '[data-section="meta-account"]',
+            tourTitle: 'Link Your Meta Account',
+            tourDescription: 'Click "Connect Meta Account" to authorize access to your Facebook/Instagram ad account for campaign publishing.'
           },
           {
             id: 'campaign',
@@ -128,10 +147,26 @@ export default function DashboardLayout({
     }
   };
 
-  const handleWalkthroughAction = (route?: string) => {
+  const handleWalkthroughAction = (route?: string, targetSelector?: string, tourTitle?: string, tourDescription?: string) => {
     setWalkthroughOpen(false);
+    
     if (route) {
-      navigate(route);
+      // Navigate first
+      if (route !== location.pathname) {
+        navigate(route);
+      }
+      
+      // Show guided tour if target element specified
+      if (targetSelector && tourTitle && tourDescription) {
+        setTimeout(() => {
+          setTourConfig({
+            targetSelector,
+            title: tourTitle,
+            description: tourDescription
+          });
+          setTourActive(true);
+        }, route !== location.pathname ? 500 : 100);
+      }
     }
   };
   const tabItems = [{
@@ -291,6 +326,19 @@ export default function DashboardLayout({
           steps={walkthroughSteps}
           onClose={() => setWalkthroughOpen(false)}
           onActionClick={handleWalkthroughAction}
+        />
+      )}
+
+      {/* Guided Tour */}
+      {tourActive && tourConfig && (
+        <GuidedTour
+          targetSelector={tourConfig.targetSelector}
+          title={tourConfig.title}
+          description={tourConfig.description}
+          onClose={() => {
+            setTourActive(false);
+            setTourConfig(null);
+          }}
         />
       )}
     </div>;

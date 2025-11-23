@@ -11,12 +11,15 @@ interface OnboardingStep {
   completed: boolean;
   action?: string;
   route?: string;
+  targetSelector?: string;
+  tourTitle?: string;
+  tourDescription?: string;
 }
 
 interface OnboardingWalkthroughProps {
   steps: OnboardingStep[];
   onClose: () => void;
-  onActionClick: (route?: string) => void;
+  onActionClick: (route?: string, targetSelector?: string, tourTitle?: string, tourDescription?: string) => void;
 }
 
 export function OnboardingWalkthrough({ steps, onClose, onActionClick }: OnboardingWalkthroughProps) {
@@ -119,7 +122,7 @@ export function OnboardingWalkthrough({ steps, onClose, onActionClick }: Onboard
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => onActionClick(step.route)}
+                        onClick={() => onActionClick(step.route, step.targetSelector, step.tourTitle, step.tourDescription)}
                         className="mt-2 h-8 px-3 text-xs font-medium hover:bg-primary/10 group/btn"
                       >
                         {step.action}
