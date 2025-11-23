@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { ProductionPanel } from "@/components/ProductionPanel";
+import { DragDropUploader } from "@/components/DragDropUploader";
 import { toast } from "sonner";
 
 export default function Production() {
@@ -107,6 +108,12 @@ export default function Production() {
             </div>
           </div>
         </div>
+
+        {/* Drag and Drop Uploader */}
+        <DragDropUploader 
+          workspace={workspace}
+          onUpdate={handleWorkspaceUpdate}
+        />
 
         {/* Production Panel */}
         <ProductionPanel 
