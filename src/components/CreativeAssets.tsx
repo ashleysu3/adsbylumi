@@ -8,7 +8,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Copy, 
   RefreshCw, 
-  HelpCircle, 
   Sparkles, 
   ChevronDown,
   Video,
@@ -16,14 +15,24 @@ import {
   FileText,
   Layers,
   CheckCircle2,
-  Paperclip
+  Paperclip,
+  MoreHorizontal,
+  Lightbulb
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CreativeAssetsProps {
   workspace: any;
   onUpdate: (updates: any) => Promise<void>;
+  filterStage?: string;
+  filterFormat?: string;
 }
 
 const formatIcons = {
@@ -41,10 +50,9 @@ const stageColors = {
   bofu: "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400",
 };
 
-export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
+export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat }: CreativeAssetsProps) {
   const creative = workspace.creative_json || {};
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
-  const [activeStage, setActiveStage] = useState<string>("tofu");
   const [selectedConcepts, setSelectedConcepts] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
 
@@ -331,11 +339,29 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
   const mofuCreative = creativeMix.mofu || [];
   const bofuCreative = creativeMix.bofu || [];
 
+  // Apply filters
+  let filteredTofu = tofuCreative;
+  let filteredMofu = mofuCreative;
+  let filteredBofu = bofuCreative;
+  
+  if (filterFormat) {
+    const formatFilter = (c: any) => {
+      if (filterFormat === 'scripts') return c.format === 'talking_head' || c.script;
+      if (filterFormat === 'broll') return c.format === 'b_roll' || c.broll_instructions;
+      if (filterFormat === 'carousels') return c.format === 'carousel';
+      if (filterFormat === 'static') return c.format === 'static';
+      return true;
+    };
+    filteredTofu = filteredTofu.filter(formatFilter);
+    filteredMofu = filteredMofu.filter(formatFilter);
+    filteredBofu = filteredBofu.filter(formatFilter);
+  }
+  
   const allStages = [
-    { id: "tofu", label: "TOFU (Awareness)", items: tofuCreative, color: "border-blue-500" },
-    { id: "mofu", label: "MOFU (Consideration)", items: mofuCreative, color: "border-purple-500" },
-    { id: "bofu", label: "BOFU (Conversion)", items: bofuCreative, color: "border-green-500" },
-  ];
+    { id: "tofu", label: "TOFU Creative", items: filteredTofu, color: "border-blue-500" },
+    { id: "mofu", label: "MOFU Creative", items: filteredMofu, color: "border-purple-500" },
+    { id: "bofu", label: "BOFU Creative", items: filteredBofu, color: "border-green-500" },
+  ].filter(stage => !filterStage || stage.id === filterStage);
 
   const renderConcept = (concept: any, index: number, stage: string) => {
     const conceptId = `${stage}-${index}`;
@@ -409,15 +435,27 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
               </div>
               
               <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleExpand(conceptId, concept, stage, 'regenerate')}
-                  disabled={isSaving}
-                  title="Regenerate this concept with a new angle"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isSaving ? 'animate-spin' : ''}`} />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="ghost" disabled={isSaving}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => handleExpand(conceptId, concept, stage, 'regenerate')}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Regenerate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExpand(conceptId, concept, stage, 'more_options')}>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      More Options
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExpand(conceptId, concept, stage, 'expand_idea')}>
+                      <Lightbulb className="h-4 w-4 mr-2" />
+                      Expand Idea
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <CollapsibleTrigger asChild>
                   <Button size="sm" variant="ghost">
                     <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -532,7 +570,7 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
                   onClick={() => handleExpand(conceptId, concept, stage, 'expand_idea')}
                   disabled={isSaving}
                 >
-                  <HelpCircle className="h-3 w-3 mr-1" />
+                  <Lightbulb className="h-3 w-3 mr-1" />
                   Expand Idea
                 </Button>
               </div>
@@ -544,102 +582,33 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
   };
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-12rem)]">
-      {/* Sidebar Navigation */}
-      <div className="w-64 flex-shrink-0 space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Funnel Stages</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 p-3">
-            {allStages.map((stage) => {
-              const selectedInStage = stage.items.filter((_: any, idx: number) => 
-                selectedConcepts.has(`${stage.id}-${idx}`)
-              ).length;
-              
-              return (
-                <Button
-                  key={stage.id}
-                  variant={activeStage === stage.id ? "default" : "ghost"}
-                  className="w-full justify-start"
-                  onClick={() => setActiveStage(stage.id)}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-sm">{stage.label}</span>
-                    <div className="flex items-center gap-1">
-                      {selectedInStage > 0 && (
-                        <Badge variant="default" className="h-5 min-w-5 px-1">
-                          {selectedInStage}
-                        </Badge>
-                      )}
-                      <Badge variant="secondary" className="ml-1">
-                        {stage.items.length}
-                      </Badge>
-                    </div>
-                  </div>
-                </Button>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        {/* Selection Summary */}
-        {selectedConcepts.size > 0 && (
-          <Card className="bg-primary/5 border-primary/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" />
-                Selected Creative
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total selected:</span>
-                <Badge variant="default">{selectedConcepts.size}</Badge>
+    <ScrollArea className="h-[calc(100vh-10rem)]">
+      <div className="space-y-8 p-6">
+        {allStages.map((stage) => (
+          <div key={stage.id} className="space-y-4">
+            <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-3">
+              <div className={`flex items-center gap-3 pb-3 border-b-2 ${stage.color}`}>
+                <h3 className="text-2xl font-bold">{stage.label}</h3>
+                <Badge variant="secondary" className="text-sm">
+                  {stage.items.length} concept{stage.items.length !== 1 ? 's' : ''}
+                </Badge>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Production checklist items have been auto-generated for selected concepts.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 min-w-0">
-        <ScrollArea className="h-full">
-          <div className="space-y-6 pr-4">
-            {allStages
-              .filter(stage => activeStage === "all" || stage.id === activeStage)
-              .map((stage) => (
-                <div key={stage.id}>
-                  <div className="mb-4">
-                    <h3 className="text-2xl font-bold mb-1">{stage.label}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {stage.id === "tofu" && "Awareness stage: Hooks and curiosity-driven creative"}
-                      {stage.id === "mofu" && "Consideration stage: Story, proof, and authority"}
-                      {stage.id === "bofu" && "Conversion stage: Clear offers and calls-to-action"}
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {stage.items.length > 0 ? (
-                      stage.items.map((concept: any, index: number) => 
-                        renderConcept(concept, index, stage.id)
-                      )
-                    ) : (
-                      <Card>
-                        <CardContent className="py-8 text-center text-muted-foreground">
-                          No {stage.id.toUpperCase()} creative generated yet
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                </div>
-              ))}
+            </div>
+            <div className="space-y-3">
+              {stage.items.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="py-12 text-center">
+                    <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">No {stage.label.toLowerCase()} concepts yet</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                stage.items.map((concept, index) => renderConcept(concept, index, stage.id))
+              )}
+            </div>
           </div>
-        </ScrollArea>
+        ))}
       </div>
-    </div>
+    </ScrollArea>
   );
 }
