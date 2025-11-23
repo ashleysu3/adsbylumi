@@ -230,13 +230,83 @@ export default function Creative() {
   };
   
   const generateProductionChecklist = (creative: any) => {
-    const items = [];
-    if (creative.hooks) items.push({ id: "hooks", category: "📹 To Record", title: "Film hook variations", completed: false });
-    if (creative.scripts) items.push({ id: "scripts", category: "📹 To Record", title: "Record scripts", completed: false });
-    if (creative.broll) items.push({ id: "broll", category: "📹 To Record", title: "Capture B-roll", completed: false });
-    if (creative.graphics) items.push({ id: "graphics", category: "🎨 To Design", title: "Create graphics", completed: false });
-    items.push({ id: "edit", category: "✂️ Post-Production", title: "Edit videos", completed: false });
-    items.push({ id: "formats", category: "✂️ Post-Production", title: "Export formats", completed: false });
+    const items: any[] = [];
+    
+    // Generate checklist from full-funnel creative mix
+    if (creative.creative_mix) {
+      const { tofu = [], mofu = [], bofu = [] } = creative.creative_mix;
+      const allConcepts = [...tofu, ...mofu, ...bofu];
+      
+      allConcepts.forEach((concept: any, idx: number) => {
+        if (concept.format === 'talking_head' || concept.format === 'script') {
+          items.push({
+            id: `record_${concept.stage}_${idx}`,
+            category: "📹 To Record",
+            title: `${concept.stage.toUpperCase()}: ${concept.title}`,
+            details: concept.script,
+            completed: false,
+            stage: concept.stage
+          });
+        }
+        if (concept.format === 'carousel') {
+          items.push({
+            id: `design_carousel_${concept.stage}_${idx}`,
+            category: "🎨 To Design",
+            title: `${concept.stage.toUpperCase()} Carousel: ${concept.title}`,
+            details: concept.carousel_structure,
+            completed: false,
+            stage: concept.stage
+          });
+        }
+        if (concept.format === 'static') {
+          items.push({
+            id: `design_static_${concept.stage}_${idx}`,
+            category: "🎨 To Design",
+            title: `${concept.stage.toUpperCase()} Static: ${concept.title}`,
+            details: concept.static_layout,
+            completed: false,
+            stage: concept.stage
+          });
+        }
+        if (concept.broll_instructions) {
+          items.push({
+            id: `broll_${concept.stage}_${idx}`,
+            category: "📹 To Record",
+            title: `B-roll for: ${concept.title}`,
+            details: concept.broll_instructions,
+            completed: false,
+            stage: concept.stage
+          });
+        }
+      });
+    }
+    
+    // Add general production tasks
+    if (creative.scripts?.length > 0) {
+      items.push({
+        id: "edit_videos",
+        category: "✂️ Post-Production",
+        title: "Edit all video scripts",
+        completed: false
+      });
+    }
+    
+    if (creative.carousels?.length > 0 || creative.static_graphics?.length > 0) {
+      items.push({
+        id: "export_graphics",
+        category: "✂️ Post-Production",
+        title: "Export graphics in correct formats (9:16, 4:5, 1:1)",
+        completed: false
+      });
+    }
+    
+    items.push({
+      id: "final_review",
+      category: "✅ Review",
+      title: "Final creative review & approval",
+      completed: false
+    });
+    
     return items;
   };
 
