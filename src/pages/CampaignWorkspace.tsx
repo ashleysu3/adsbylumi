@@ -156,6 +156,7 @@ export default function CampaignWorkspace() {
           workspace={workspace}
           activeSection={activeSection}
           onSectionChange={setActiveSection}
+          onNavigateToProduction={() => navigate("/production")}
         />
 
         {/* Main Content Area */}

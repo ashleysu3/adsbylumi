@@ -273,84 +273,50 @@ export default function Creative() {
                 workspace={workspace}
                 activeSection={activeSection}
                 onSectionChange={setActiveSection}
+                onNavigateToProduction={() => navigate("/production")}
               />
             </div>
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-              {/* Campaign Selector */}
-              <div className="border-b border-border bg-background/95 backdrop-blur-sm p-4">
-                <Label htmlFor="campaign-select" className="text-sm font-medium mb-2 block">
-                  Select Campaign
-                </Label>
-                <Select
-                  value={selectedCampaignId}
-                  onValueChange={handleCampaignSelect}
-                >
-                  <SelectTrigger id="campaign-select" className="w-full text-left">
-                    <SelectValue
-                      placeholder={
-                        campaigns.length === 0
-                          ? "Start with the ad planner"
-                          : "Choose a campaign..."
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {campaigns.length === 0 ? (
-                      <SelectItem value="new">
-                        <div className="flex items-center gap-2">
-                          <Rocket className="h-4 w-4" />
-                          <span>Start with the ad planner</span>
+              {/* Header with Campaign Dropdown */}
+              <div className="border-b border-border bg-background/95 backdrop-blur-sm p-6">
+                <div className="flex items-center justify-between gap-4">
+                  {/* Campaign Dropdown */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <Select
+                      value={selectedCampaignId}
+                      onValueChange={handleCampaignSelect}
+                    >
+                      <SelectTrigger className="w-auto border-0 p-0 h-auto hover:bg-transparent focus:ring-0 shadow-none gap-2">
+                        <div className="flex flex-col items-start gap-1">
+                          <h1 className="text-2xl font-bold truncate">{workspace.name}</h1>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {workspace.offer_name || "Campaign Workspace"}
+                          </p>
                         </div>
-                      </SelectItem>
-                    ) : (
-                      campaigns.map((campaign) => (
-                        <SelectItem key={campaign.id} value={campaign.id}>
-                          <div className="flex flex-col gap-0.5 py-0.5">
-                            <span className="font-medium text-sm truncate">
-                              {campaign.name}
-                            </span>
-                            {campaign.offer_name && (
-                              <span className="text-xs text-muted-foreground truncate">
-                                {campaign.offer_name}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Header */}
-              <div className="border-b border-border bg-background/95 backdrop-blur-sm">
-                <div className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <h1 className="text-2xl font-bold">{workspace.name}</h1>
-                      <p className="text-sm text-muted-foreground">
-                        {workspace.offer_name || "Campaign Workspace"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="secondary">
-                        {progressLabels[workspace.progress_status] || workspace.progress_status}
-                      </Badge>
-                      {workspace.creative_json && workspace.loved_concepts?.length > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate("/production")}
-                          className="gap-2"
-                        >
-                          <Clipboard className="h-4 w-4" />
-                          View Production
-                        </Button>
-                      )}
-                    </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {campaigns.map((campaign) => (
+                          <SelectItem key={campaign.id} value={campaign.id}>
+                            <div className="flex flex-col gap-0.5 py-0.5">
+                              <span className="font-medium text-sm">{campaign.name}</span>
+                              {campaign.offer_name && (
+                                <span className="text-xs text-muted-foreground">
+                                  {campaign.offer_name}
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+                  
+                  {/* Status Badge */}
+                  <Badge variant="secondary" className="shrink-0">
+                    {progressLabels[workspace.progress_status] || workspace.progress_status}
+                  </Badge>
                 </div>
               </div>
 

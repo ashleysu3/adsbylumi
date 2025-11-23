@@ -12,16 +12,18 @@ import {
   Target,
   Zap,
   TrendingUp,
-  Heart
+  Heart,
+  Clipboard
 } from "lucide-react";
 
 interface CreativeSidebarProps {
   workspace: any;
   activeSection: string;
   onSectionChange: (section: string) => void;
+  onNavigateToProduction: () => void;
 }
 
-export function CreativeSidebar({ workspace, activeSection, onSectionChange }: CreativeSidebarProps) {
+export function CreativeSidebar({ workspace, activeSection, onSectionChange, onNavigateToProduction }: CreativeSidebarProps) {
   const creative = workspace.creative_json || {};
   const creativeMix = creative.creative_mix || {};
   const lovedConcepts = workspace.loved_concepts || [];
@@ -90,7 +92,7 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange }: C
   ];
 
   return (
-    <div className="w-56 shrink-0 border-r border-border bg-background/50 backdrop-blur-sm">
+    <div className="w-72 shrink-0 border-r border-border bg-background/50 backdrop-blur-sm">
       <div className="p-4 border-b border-border">
         <h3 className="font-semibold text-sm text-muted-foreground">Creative Dashboard</h3>
       </div>
@@ -99,33 +101,45 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange }: C
         <div className="p-2 space-y-6">
           {/* Loved Creative Ideas */}
           {lovedConcepts.length > 0 && (
-            <Card className="mx-2 p-3 bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/20 dark:to-pink-900/20 border-pink-200 dark:border-pink-800">
-              <div className="flex items-center gap-2 mb-2">
-                <Heart className="h-4 w-4 text-pink-600 dark:text-pink-400 fill-pink-600 dark:fill-pink-400" />
-                <span className="text-xs font-semibold text-pink-900 dark:text-pink-100">Loved Concepts</span>
-              </div>
-              <div className="text-3xl font-bold text-pink-900 dark:text-pink-100 mb-2">
-                {lovedConcepts.length}
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {lovedByStage.tofu > 0 && (
-                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                    TOFU {lovedByStage.tofu}
-                  </Badge>
-                )}
-                {lovedByStage.mofu > 0 && (
-                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                    MOFU {lovedByStage.mofu}
-                  </Badge>
-                )}
-                {lovedByStage.bofu > 0 && (
-                  <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                    BOFU {lovedByStage.bofu}
-                  </Badge>
-                )}
-              </div>
-            </Card>
+            <>
+              <Card className="mx-2 mt-2 p-3 bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/20 dark:to-pink-900/20 border-pink-200 dark:border-pink-800">
+                <div className="flex items-center gap-2 mb-2">
+                  <Heart className="h-4 w-4 text-pink-600 dark:text-pink-400 fill-pink-600 dark:fill-pink-400" />
+                  <span className="text-xs font-semibold text-pink-900 dark:text-pink-100">Loved Concepts</span>
+                </div>
+                <div className="text-3xl font-bold text-pink-900 dark:text-pink-100 mb-2">
+                  {lovedConcepts.length}
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {lovedByStage.tofu > 0 && (
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                      TOFU {lovedByStage.tofu}
+                    </Badge>
+                  )}
+                  {lovedByStage.mofu > 0 && (
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                      MOFU {lovedByStage.mofu}
+                    </Badge>
+                  )}
+                  {lovedByStage.bofu > 0 && (
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                      BOFU {lovedByStage.bofu}
+                    </Badge>
+                  )}
+                </div>
+              </Card>
+              
+              <Button
+                variant="default"
+                className="mx-2 w-[calc(100%-1rem)] bg-pink-600 hover:bg-pink-700 dark:bg-pink-700 dark:hover:bg-pink-600 gap-2 mb-8"
+                onClick={onNavigateToProduction}
+              >
+                <Clipboard className="h-4 w-4" />
+                View Production
+              </Button>
+            </>
           )}
+          
           {sections.map((section) => (
             <div key={section.id} className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground px-3 py-2">
