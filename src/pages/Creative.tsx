@@ -276,7 +276,7 @@ export default function Creative() {
             />
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
               {/* Campaign Selector */}
               <div className="border-b border-border bg-background/95 backdrop-blur-sm p-4">
                 <Label htmlFor="campaign-select" className="text-sm font-medium mb-2 block">
@@ -385,7 +385,7 @@ export default function Creative() {
 
             {/* Right Panel - Review */}
             {workspace.creative_json && (
-              <div className="w-80 border-l border-border flex flex-col">
+              <div className="w-80 shrink-0 border-l border-border flex flex-col overflow-hidden">
                 <CreativeReviewPanel
                   workspace={workspace}
                   onFinalize={handleFinalize}
