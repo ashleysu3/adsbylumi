@@ -238,8 +238,8 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
         }`}
       >
         <Collapsible open={isExpanded} onOpenChange={() => toggleConcept(conceptId)}>
-          <CardHeader className="pb-3">
-            <div className="space-y-3">
+          <CardHeader className="pb-4">
+            <div className="space-y-4">
               {/* Top row: Icon, Title, Format */}
               <div className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg ${stageColors[stage as keyof typeof stageColors]}`}>
@@ -265,14 +265,14 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
               </div>
 
               {/* Content Preview */}
-              <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
+              <div className="bg-muted/30 rounded-lg p-4 border border-border/50">
                 <p className="text-sm whitespace-pre-wrap line-clamp-3">
                   {getContentPreview()}
                 </p>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
                 <Button
                   size="sm"
                   variant={isLoved ? "default" : "outline"}
@@ -318,7 +318,7 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
           </CardHeader>
           
           <CollapsibleContent>
-            <CardContent className="space-y-4 pt-0 border-t border-border/50">
+            <CardContent className="space-y-6 pt-6 border-t border-border/50">
               {concept.script && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -432,15 +432,15 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat 
 
   return (
     <ScrollArea className="h-[calc(100vh-12rem)]">
-      <div className="space-y-8 p-6">
+      <div className="space-y-8 p-6 pb-12">
         {allStages.map(stage => (
           stage.items.length > 0 && (
-            <div key={stage.id} className="space-y-4">
-              <div className="space-y-1">
+            <div key={stage.id} className="space-y-6">
+              <div className="space-y-2">
                 <h2 className="text-2xl font-bold tracking-tight">{stage.label}</h2>
                 <p className="text-sm text-muted-foreground">{stage.subtitle}</p>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-6">
                 {stage.items.map((concept: any, index: number) => 
                   renderConcept(concept, index, stage.id)
                 )}
