@@ -163,6 +163,8 @@ export type Database = {
       campaign_workspaces: {
         Row: {
           brand_id: string
+          campaign_builder_answers: Json | null
+          chat_history: Json | null
           created_at: string | null
           creative_feedback: Json | null
           creative_json: Json | null
@@ -171,6 +173,7 @@ export type Database = {
           loved_concepts: Json | null
           meta_campaign_ids: Json | null
           meta_campaign_status: string | null
+          meta_errors: Json | null
           name: string
           offer_description: string | null
           offer_name: string | null
@@ -179,6 +182,7 @@ export type Database = {
           production_checklist: Json | null
           production_items: Json | null
           progress_status: string
+          published_at: string | null
           strategy_id: string | null
           strategy_json: Json | null
           template_id: string | null
@@ -187,6 +191,8 @@ export type Database = {
         }
         Insert: {
           brand_id: string
+          campaign_builder_answers?: Json | null
+          chat_history?: Json | null
           created_at?: string | null
           creative_feedback?: Json | null
           creative_json?: Json | null
@@ -195,6 +201,7 @@ export type Database = {
           loved_concepts?: Json | null
           meta_campaign_ids?: Json | null
           meta_campaign_status?: string | null
+          meta_errors?: Json | null
           name: string
           offer_description?: string | null
           offer_name?: string | null
@@ -203,6 +210,7 @@ export type Database = {
           production_checklist?: Json | null
           production_items?: Json | null
           progress_status?: string
+          published_at?: string | null
           strategy_id?: string | null
           strategy_json?: Json | null
           template_id?: string | null
@@ -211,6 +219,8 @@ export type Database = {
         }
         Update: {
           brand_id?: string
+          campaign_builder_answers?: Json | null
+          chat_history?: Json | null
           created_at?: string | null
           creative_feedback?: Json | null
           creative_json?: Json | null
@@ -219,6 +229,7 @@ export type Database = {
           loved_concepts?: Json | null
           meta_campaign_ids?: Json | null
           meta_campaign_status?: string | null
+          meta_errors?: Json | null
           name?: string
           offer_description?: string | null
           offer_name?: string | null
@@ -227,6 +238,7 @@ export type Database = {
           production_checklist?: Json | null
           production_items?: Json | null
           progress_status?: string
+          published_at?: string | null
           strategy_id?: string | null
           strategy_json?: Json | null
           template_id?: string | null

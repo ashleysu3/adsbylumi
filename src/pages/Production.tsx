@@ -82,7 +82,7 @@ export default function Production() {
       toast.error(`You need at least 3 approved concepts. Currently have ${approvedCount}.`);
       return;
     }
-    navigate(`/workspace/${workspace.id}`);
+    navigate(`/campaigns/build?workspace=${workspace.id}`);
   };
 
   const statusCounts = {
