@@ -12,23 +12,26 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get current user
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    // Get user from JWT (already verified by Supabase since verify_jwt = true)
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
     console.log('Auth check:', { 
       hasUser: !!user, 
       hasError: !!userError,
       errorMessage: userError?.message,
-      hasAuthHeader: !!req.headers.get('Authorization')
+      userId: user?.id
     });
     
     if (userError || !user) {
@@ -37,7 +40,7 @@ serve(async (req) => {
     }
 
     // Fetch brand data
-    const { data: brand, error: brandError } = await supabaseClient
+    const { data: brand, error: brandError } = await supabaseAdmin
       .from('brands')
       .select('*')
       .eq('user_id', user.id)
@@ -58,7 +61,7 @@ serve(async (req) => {
     }
 
     // Fetch offers (exclude archived)
-    const { data: offers, error: offersError } = await supabaseClient
+    const { data: offers, error: offersError } = await supabaseAdmin
       .from('offers')
       .select('*')
       .eq('brand_id', brand.id)
@@ -67,7 +70,7 @@ serve(async (req) => {
     if (offersError) throw offersError;
 
     // Fetch campaigns (exclude archived)
-    const { data: campaigns, error: campaignsError } = await supabaseClient
+    const { data: campaigns, error: campaignsError } = await supabaseAdmin
       .from('campaign_workspaces')
       .select('*')
       .eq('brand_id', brand.id)
