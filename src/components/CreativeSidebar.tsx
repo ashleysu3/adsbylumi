@@ -74,7 +74,7 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange }: C
   ];
 
   return (
-    <div className="w-64 shrink-0 border-r border-border bg-background/50 backdrop-blur-sm">
+    <div className="w-56 shrink-0 border-r border-border bg-background/50 backdrop-blur-sm">
       <div className="p-4 border-b border-border">
         <h3 className="font-semibold text-sm text-muted-foreground">Creative Dashboard</h3>
       </div>
