@@ -164,6 +164,7 @@ export type Database = {
         Row: {
           brand_id: string
           created_at: string | null
+          creative_feedback: Json | null
           creative_json: Json | null
           final_answers: Json | null
           id: string
@@ -186,6 +187,7 @@ export type Database = {
         Insert: {
           brand_id: string
           created_at?: string | null
+          creative_feedback?: Json | null
           creative_json?: Json | null
           final_answers?: Json | null
           id?: string
@@ -208,6 +210,7 @@ export type Database = {
         Update: {
           brand_id?: string
           created_at?: string | null
+          creative_feedback?: Json | null
           creative_json?: Json | null
           final_answers?: Json | null
           id?: string
