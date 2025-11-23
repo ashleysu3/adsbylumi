@@ -267,13 +267,15 @@ export default function Creative() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-1 overflow-hidden">
-            {/* Sidebar */}
-            <CreativeSidebar
-              workspace={workspace}
-              activeSection={activeSection}
-              onSectionChange={setActiveSection}
-            />
+          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+            {/* Sidebar - Hidden on mobile */}
+            <div className="hidden md:block">
+              <CreativeSidebar
+                workspace={workspace}
+                activeSection={activeSection}
+                onSectionChange={setActiveSection}
+              />
+            </div>
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
@@ -383,9 +385,9 @@ export default function Creative() {
               </div>
             </div>
 
-            {/* Right Panel - Review */}
+            {/* Right Panel - Review - Hidden on mobile */}
             {workspace.creative_json && (
-              <div className="w-80 shrink-0 border-l border-border flex flex-col overflow-hidden">
+              <div className="hidden md:flex w-full md:w-80 shrink-0 border-t md:border-t-0 md:border-l border-border flex-col overflow-hidden">
                 <CreativeReviewPanel
                   workspace={workspace}
                   onFinalize={handleFinalize}
