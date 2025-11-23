@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard } from "lucide-react";
+import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 interface DashboardLayoutProps {
@@ -132,27 +132,37 @@ export default function DashboardLayout({
           </div>
 
           {/* Folder Tab Navigation */}
-          <nav className="flex space-x-1 mt-6 -mb-4 overflow-x-auto">
-            {tabItems.map(item => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return <Link key={item.path} to={item.path}>
-                  <div className={`
-                      h-12 px-6 rounded-t-lg rounded-b-none relative
-                      border border-tab-black border-b-0
-                      flex items-center justify-center
-                      transition-all duration-200 font-bold
-                      ${isActive ? `bg-${item.darkColor} text-white` : `bg-${item.lightColor} text-tab-black hover:bg-${item.darkColor}/20`}
-                    `} style={{
-                backgroundColor: isActive ? `hsl(var(--${item.darkColor}))` : `hsl(var(--${item.lightColor}))`,
-                color: isActive ? 'white' : 'hsl(var(--tab-black))',
-                fontWeight: isActive ? 'bold' : 'normal'
-              }}>
-                    <Icon className="mr-2 h-4 w-4" />
-                    {item.label}
-                  </div>
-                </Link>;
-          })}
+          <nav className="flex items-end justify-between mt-6 -mb-4 overflow-x-auto">
+            <div className="flex space-x-1">
+              {tabItems.map(item => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return <Link key={item.path} to={item.path}>
+                    <div className={`
+                        h-12 px-6 rounded-t-lg rounded-b-none relative
+                        border border-tab-black border-b-0
+                        flex items-center justify-center
+                        transition-all duration-200 font-bold
+                        ${isActive ? `bg-${item.darkColor} text-white` : `bg-${item.lightColor} text-tab-black hover:bg-${item.darkColor}/20`}
+                      `} style={{
+                  backgroundColor: isActive ? `hsl(var(--${item.darkColor}))` : `hsl(var(--${item.lightColor}))`,
+                  color: isActive ? 'white' : 'hsl(var(--tab-black))',
+                  fontWeight: isActive ? 'bold' : 'normal'
+                }}>
+                      <Icon className="mr-2 h-4 w-4" />
+                      {item.label}
+                    </div>
+                  </Link>;
+            })}
+            </div>
+            
+            <Button 
+              variant="ghost" 
+              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors group mb-2"
+            >
+              <Sparkles className="mr-2 h-4 w-4 animate-pulse group-hover:text-primary" />
+              Tell me what to do next
+            </Button>
           </nav>
         </div>
       </header>
