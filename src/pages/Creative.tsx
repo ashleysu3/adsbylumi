@@ -194,76 +194,79 @@ export default function Creative() {
 
   return (
     <DashboardLayout>
-      <div className="flex h-[calc(100vh-4rem)] flex-col">
-        {/* Campaign Selector */}
-        <div className="border-b border-border bg-background/95 backdrop-blur-sm px-6 py-4">
-          <div className="max-w-md">
-            <Label htmlFor="campaign-select" className="text-sm font-medium mb-2 block">
-              Select Campaign
-            </Label>
-            <Select
-              value={selectedCampaignId}
-              onValueChange={handleCampaignSelect}
-            >
-              <SelectTrigger id="campaign-select" className="w-full">
-                <SelectValue
-                  placeholder={
-                    campaigns.length === 0
-                      ? "Start with the ad planner"
-                      : "Choose a campaign..."
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {campaigns.length === 0 ? (
-                  <SelectItem value="new">
-                    <div className="flex items-center gap-2">
-                      <Rocket className="h-4 w-4" />
-                      <span>Start with the ad planner</span>
-                    </div>
-                  </SelectItem>
-                ) : (
-                  campaigns.map((campaign) => (
-                    <SelectItem key={campaign.id} value={campaign.id}>
-                      <div className="flex flex-col gap-0.5 py-0.5">
-                        <span className="font-medium text-sm truncate">
-                          {campaign.name}
-                        </span>
-                        {campaign.offer_name && (
-                          <span className="text-xs text-muted-foreground truncate">
-                            {campaign.offer_name}
-                          </span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
+      <div className="flex h-[calc(100vh-4rem)]">
         {/* Main Dashboard Area */}
         {!workspace ? (
-          <div className="flex-1 flex items-center justify-center p-6">
-            <Card className="max-w-md">
-              <CardHeader>
-                <CardTitle>No Campaign Selected</CardTitle>
-                <CardDescription>
-                  {campaigns.length === 0
-                    ? "Create your first campaign in the Ad Planner to generate creative assets."
-                    : "Select a campaign from the dropdown above to get started."}
-                </CardDescription>
-              </CardHeader>
-              {campaigns.length === 0 && (
-                <CardContent>
-                  <Button onClick={() => navigate("/planning")} className="w-full">
-                    <Rocket className="mr-2 h-4 w-4" />
-                    Go to Ad Planner
-                  </Button>
-                </CardContent>
-              )}
-            </Card>
+          <div className="flex-1 flex">
+            {/* Empty state for main area */}
+            <div className="flex-1 flex items-center justify-center p-6">
+              <Card className="max-w-md">
+                <CardHeader>
+                  <CardTitle>No Campaign Selected</CardTitle>
+                  <CardDescription>
+                    {campaigns.length === 0
+                      ? "Create your first campaign in the Ad Planner to generate creative assets."
+                      : "Select a campaign from the dropdown on the right to get started."}
+                  </CardDescription>
+                </CardHeader>
+                {campaigns.length === 0 && (
+                  <CardContent>
+                    <Button onClick={() => navigate("/planning")} className="w-full">
+                      <Rocket className="mr-2 h-4 w-4" />
+                      Go to Ad Planner
+                    </Button>
+                  </CardContent>
+                )}
+              </Card>
+            </div>
+
+            {/* Right Panel - Campaign Selector */}
+            <div className="w-80 border-l border-border">
+              <div className="border-b border-border bg-background/95 backdrop-blur-sm p-4">
+                <Label htmlFor="campaign-select" className="text-sm font-medium mb-2 block">
+                  Select Campaign
+                </Label>
+                <Select
+                  value={selectedCampaignId}
+                  onValueChange={handleCampaignSelect}
+                >
+                  <SelectTrigger id="campaign-select" className="w-full">
+                    <SelectValue
+                      placeholder={
+                        campaigns.length === 0
+                          ? "Start with the ad planner"
+                          : "Choose a campaign..."
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {campaigns.length === 0 ? (
+                      <SelectItem value="new">
+                        <div className="flex items-center gap-2">
+                          <Rocket className="h-4 w-4" />
+                          <span>Start with the ad planner</span>
+                        </div>
+                      </SelectItem>
+                    ) : (
+                      campaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.id}>
+                          <div className="flex flex-col gap-0.5 py-0.5">
+                            <span className="font-medium text-sm truncate">
+                              {campaign.name}
+                            </span>
+                            {campaign.offer_name && (
+                              <span className="text-xs text-muted-foreground truncate">
+                                {campaign.offer_name}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-1 overflow-hidden">
@@ -336,13 +339,62 @@ export default function Creative() {
               </div>
             </div>
 
-            {/* Review Panel */}
-            {workspace.creative_json && (
-              <CreativeReviewPanel
-                workspace={workspace}
-                onFinalize={handleFinalize}
-              />
-            )}
+            {/* Right Panel - Campaign Selector & Review */}
+            <div className="w-80 border-l border-border flex flex-col">
+              {/* Campaign Selector */}
+              <div className="border-b border-border bg-background/95 backdrop-blur-sm p-4">
+                <Label htmlFor="campaign-select" className="text-sm font-medium mb-2 block">
+                  Select Campaign
+                </Label>
+                <Select
+                  value={selectedCampaignId}
+                  onValueChange={handleCampaignSelect}
+                >
+                  <SelectTrigger id="campaign-select" className="w-full">
+                    <SelectValue
+                      placeholder={
+                        campaigns.length === 0
+                          ? "Start with the ad planner"
+                          : "Choose a campaign..."
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {campaigns.length === 0 ? (
+                      <SelectItem value="new">
+                        <div className="flex items-center gap-2">
+                          <Rocket className="h-4 w-4" />
+                          <span>Start with the ad planner</span>
+                        </div>
+                      </SelectItem>
+                    ) : (
+                      campaigns.map((campaign) => (
+                        <SelectItem key={campaign.id} value={campaign.id}>
+                          <div className="flex flex-col gap-0.5 py-0.5">
+                            <span className="font-medium text-sm truncate">
+                              {campaign.name}
+                            </span>
+                            {campaign.offer_name && (
+                              <span className="text-xs text-muted-foreground truncate">
+                                {campaign.offer_name}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Review Panel */}
+              {workspace?.creative_json && (
+                <CreativeReviewPanel
+                  workspace={workspace}
+                  onFinalize={handleFinalize}
+                />
+              )}
+            </div>
           </div>
         )}
       </div>
