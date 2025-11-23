@@ -107,6 +107,28 @@ export function CampaignsList({ brandId }: CampaignsListProps) {
     ).join(" ");
   };
 
+  const getNavigationRoute = (campaign: Campaign): string => {
+    switch (campaign.progress_status) {
+      case 'draft':
+      case 'creative_in_progress':
+        return '/creative';
+      
+      case 'waiting_for_assets':
+        return '/production';
+      
+      case 'ready_to_publish':
+      case 'publishing_to_meta':
+        return `/campaigns/build?workspace=${campaign.id}`;
+      
+      case 'live':
+      case 'completed':
+        return '/data';
+      
+      default:
+        return `/workspace/${campaign.id}`;
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -169,7 +191,7 @@ export function CampaignsList({ brandId }: CampaignsListProps) {
                   <div className="flex items-center justify-between gap-4">
                     <div 
                       className="flex-1 cursor-pointer"
-                      onClick={() => navigate(`/workspace/${campaign.id}`)}
+                      onClick={() => navigate(getNavigationRoute(campaign))}
                     >
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-semibold">{campaign.name}</h4>
@@ -222,7 +244,7 @@ export function CampaignsList({ brandId }: CampaignsListProps) {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        onClick={() => navigate(`/workspace/${campaign.id}`)}
+                        onClick={() => navigate(getNavigationRoute(campaign))}
                       >
                         <ArrowRight className="h-5 w-5 text-muted-foreground" />
                       </Button>
