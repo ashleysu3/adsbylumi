@@ -18,7 +18,7 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { concept, action, stage, brandName, audiencePsychology, existingConcepts, strategyData } = await req.json();
+    const { concept, action, stage, brandName, audiencePsychology, existingConcepts, strategyData, creativeFeedback } = await req.json();
     
     console.log(`Expanding creative: ${action} for stage "${stage}"`);
     
@@ -33,6 +33,31 @@ serve(async (req) => {
       acc[doc.category].push({ title: doc.title, content: doc.content });
       return acc;
     }, {});
+    
+    // Build feedback insights
+    let feedbackContext = '';
+    if (creativeFeedback?.hated_concepts?.length > 0) {
+      const relevantFeedback = creativeFeedback.hated_concepts
+        .filter((f: any) => f.stage === stage)
+        .slice(-5); // Last 5 feedback items for this stage
+      
+      if (relevantFeedback.length > 0) {
+        feedbackContext = `\n\nUSER PREFERENCE LEARNING:
+The user has provided feedback on concepts they disliked. Learn from these patterns:
+${relevantFeedback.map((f: any, i: number) => 
+  `${i + 1}. Disliked: "${f.concept.title}"
+     Reason: ${f.feedback}
+     Format: ${f.concept.format}
+`).join('\n')}
+
+IMPORTANT: While respecting these preferences, gently push back when user feedback conflicts with Meta's proven best practices. For example:
+- If they dislike "curiosity gaps" but that's working in Meta - include them but explain why
+- If they want overly formal language but conversational works better - find middle ground
+- Balance their preferences with current Meta performance data
+
+Your goal: Educate while respecting their voice.`;
+      }
+    }
     
     // Build context-specific prompt based on action
     let actionPrompt = '';
@@ -50,6 +75,8 @@ serve(async (req) => {
 
 Goal: ${stageInfo.goal}
 
+${feedbackContext}
+
 ${existingConcepts ? `Previous concepts (for reference only - generate DIFFERENT ideas):\n${JSON.stringify(existingConcepts, null, 2)}` : ''}
 
 ${strategyData ? `Strategy Context:\n${JSON.stringify(strategyData, null, 2)}` : ''}
@@ -59,11 +86,17 @@ Requirements:
 - Use diverse formats (talking_head, b_roll, carousel, static)
 - Apply appropriate psychology triggers for ${stage.toUpperCase()}
 - Include complete production instructions
-- Make each concept unique and production-ready`;
+- Make each concept unique and production-ready
+- Learn from what the user dislikes, but prioritize Meta best practices`;
     } else if (action === 'regenerate') {
       actionPrompt = `Regenerate this ${stage.toUpperCase()} creative concept with a completely different angle and approach. Keep the same format (${concept.format}) but change the core message, hook, and psychology trigger.\n\nOriginal concept:\n${JSON.stringify(concept, null, 2)}`;
     } else if (action === 'more_options') {
-      actionPrompt = `Generate 2-3 alternative variations of this ${stage.toUpperCase()} creative concept. Keep the same core angle but vary the execution, wording, and specific psychology triggers.\n\nOriginal concept:\n${JSON.stringify(concept, null, 2)}`;
+      actionPrompt = `Generate 2-3 alternative variations of this ${stage.toUpperCase()} creative concept. Keep the same core angle but vary the execution, wording, and specific psychology triggers.
+
+${feedbackContext}
+
+Original concept:
+${JSON.stringify(concept, null, 2)}`;
     } else if (action === 'expand_idea') {
       actionPrompt = `Expand this ${stage.toUpperCase()} creative concept into a more detailed, production-ready version with:\n- More detailed script or copy\n- Specific filming/design instructions\n- Additional overlay text or b-roll suggestions\n- Enhanced psychology explanation\n\nOriginal concept:\n${JSON.stringify(concept, null, 2)}`;
     }

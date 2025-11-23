@@ -14,10 +14,13 @@ import {
   Layers,
   Sparkles,
   RefreshCw,
-  Eye
+  Eye,
+  ThumbsDown
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CreativeAssetsProps {
   workspace: any;
@@ -55,6 +58,13 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     new Set(workspace.loved_concepts || [])
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const [feedbackDialog, setFeedbackDialog] = useState<{
+    open: boolean;
+    conceptId: string;
+    concept: any;
+    stage: string;
+  } | null>(null);
+  const [feedbackText, setFeedbackText] = useState('');
 
   const toggleConcept = (conceptId: string) => {
     setExpandedConcepts(prev => {
@@ -102,6 +112,84 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     await onUpdate({ loved_concepts: Array.from(newLovedSet) });
   };
 
+  const getMetaBestPracticeReminder = (stage: string) => {
+    const reminders = {
+      tofu: "authentic, conversational hooks with pattern interrupts and curiosity gaps",
+      mofu: "trust-building through social proof, testimonials, and educational value",
+      bofu: "clear CTAs with urgency and specific outcomes, addressing final objections"
+    };
+    return reminders[stage as keyof typeof reminders] || "authentic, engaging content";
+  };
+
+  const handleHateIt = async (
+    dialogData: { conceptId: string; concept: any; stage: string },
+    feedback: string
+  ) => {
+    setIsGenerating(true);
+    
+    try {
+      const { conceptId, concept, stage } = dialogData;
+      
+      // Get existing feedback data
+      const existingFeedback = workspace.creative_feedback || { hated_concepts: [] };
+      
+      // If feedback provided, store it
+      if (feedback.trim()) {
+        existingFeedback.hated_concepts.push({
+          conceptId,
+          concept,
+          stage,
+          feedback: feedback.trim(),
+          timestamp: new Date().toISOString()
+        });
+        
+        toast.success("Feedback saved! We'll use this to improve future concepts.", {
+          description: "The AI will learn from your preferences."
+        });
+      } else {
+        toast.info("Concept removed without feedback");
+      }
+      
+      // Remove concept from creative_json
+      const updatedCreative = { ...workspace.creative_json };
+      if (!updatedCreative.creative_mix) {
+        updatedCreative.creative_mix = { tofu: [], mofu: [], bofu: [] };
+      }
+      
+      const stageArray = updatedCreative.creative_mix[stage] || [];
+      const conceptIndex = parseInt(conceptId.split('-')[1]);
+      stageArray.splice(conceptIndex, 1);
+      updatedCreative.creative_mix[stage] = stageArray;
+      
+      // Update database
+      const { error } = await supabase
+        .from('campaign_workspaces')
+        .update({
+          creative_json: updatedCreative,
+          creative_feedback: existingFeedback,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workspace.id);
+      
+      if (error) throw error;
+      
+      await onUpdate({ 
+        creative_json: updatedCreative,
+        creative_feedback: existingFeedback 
+      });
+      
+      // Close dialog and reset
+      setFeedbackDialog(null);
+      setFeedbackText('');
+      
+    } catch (error: any) {
+      console.error('Error handling hate it:', error);
+      toast.error('Failed to process feedback. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleMoreLikeThis = async (conceptId: string, concept: any, stage: string) => {
     toast.info('Generating variations...');
     setIsGenerating(true);
@@ -113,7 +201,8 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
           action: 'more_options',
           stage,
           brandName: workspace.brands?.name || 'Your Brand',
-          audiencePsychology: workspace.brands?.audience_psychology
+          audiencePsychology: workspace.brands?.audience_psychology,
+          creativeFeedback: workspace.creative_feedback
         }
       });
       
@@ -177,7 +266,8 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
           brandName: workspace.brands?.name || 'Your Brand',
           audiencePsychology: workspace.brands?.audience_psychology,
           existingConcepts,
-          strategyData: workspace.strategy_json
+          strategyData: workspace.strategy_json,
+          creativeFeedback: workspace.creative_feedback
         }
       });
       
@@ -347,6 +437,16 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
                 </Button>
                 <Button
                   size="sm"
+                  variant="outline"
+                  onClick={() => setFeedbackDialog({ open: true, conceptId, concept, stage })}
+                  className="gap-2 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950"
+                  disabled={isGenerating}
+                >
+                  <ThumbsDown className="h-4 w-4" />
+                  Hate It
+                </Button>
+                <Button
+                  size="sm"
                   variant="ghost"
                   onClick={() => handleMoreLikeThis(conceptId, concept, stage)}
                   className="gap-2"
@@ -493,7 +593,8 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
   };
 
   return (
-    <ScrollArea className="h-[calc(100vh-12rem)]">
+    <>
+      <ScrollArea className="h-[calc(100vh-12rem)]">
       <div className="space-y-8 p-6 pb-12">
         {allStages.map(stage => (
           stage.items.length > 0 && (
@@ -541,5 +642,64 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
         )}
       </div>
     </ScrollArea>
+    
+    <Dialog 
+      open={feedbackDialog?.open || false} 
+      onOpenChange={(open) => !open && setFeedbackDialog(null)}
+    >
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Help Us Learn Your Preferences</DialogTitle>
+          <DialogDescription>
+            What didn't work for you about this concept? Your feedback helps us generate 
+            better creative that aligns with your brand voice and goals.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          <div className="bg-muted/30 rounded-lg p-4 border">
+            <p className="text-sm font-medium mb-1">{feedbackDialog?.concept?.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {feedbackDialog?.concept?.format?.replace('_', ' ')} • {feedbackDialog?.stage?.toUpperCase()}
+            </p>
+          </div>
+          
+          <Textarea
+            placeholder="What specifically didn't resonate with you? (e.g., 'Too aggressive', 'Doesn't match brand voice', 'Angle feels off-target')"
+            value={feedbackText}
+            onChange={(e) => setFeedbackText(e.target.value)}
+            rows={4}
+            className="resize-none"
+          />
+          
+          {feedbackText.length > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-3">
+              <p className="text-xs text-blue-800 dark:text-blue-300">
+                💡 <strong>Note:</strong> While we value your preferences, remember that Meta's 
+                current best practices favor {getMetaBestPracticeReminder(feedbackDialog?.stage || '')}. 
+                We'll balance your feedback with what's working now.
+              </p>
+            </div>
+          )}
+        </div>
+        
+        <DialogFooter className="gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => handleHateIt(feedbackDialog!, '')}
+          >
+            Skip & Remove
+          </Button>
+          <Button
+            variant="default"
+            onClick={() => handleHateIt(feedbackDialog!, feedbackText)}
+            disabled={isGenerating}
+          >
+            Submit Feedback
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
