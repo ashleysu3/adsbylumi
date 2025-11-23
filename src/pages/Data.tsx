@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -110,6 +110,7 @@ interface PerformanceAnalysis {
 
 export default function Data() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const workspaceIdFromUrl = searchParams.get('workspace');
 
   const [workspaces, setWorkspaces] = useState<any[]>([]);
@@ -120,6 +121,7 @@ export default function Data() {
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
   const [analysis, setAnalysis] = useState<PerformanceAnalysis | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [metaConnected, setMetaConnected] = useState<boolean>(false);
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     to: new Date(),
@@ -164,11 +166,15 @@ export default function Data() {
 
       const { data: brand } = await supabase
         .from('brands')
-        .select('id')
+        .select('id, meta_access_token, meta_account_id')
         .eq('user_id', user.id)
         .single();
 
       if (!brand) return;
+
+      // Check if Meta is properly connected
+      const isMetaConnected = !!(brand.meta_access_token && brand.meta_account_id);
+      setMetaConnected(isMetaConnected);
 
       const { data, error } = await supabase
         .from('campaign_workspaces')
@@ -193,6 +199,18 @@ export default function Data() {
 
   const fetchPerformanceData = async (silent = false) => {
     if (!selectedWorkspaceId) return;
+
+    // Check if Meta is connected before attempting to fetch
+    if (!metaConnected) {
+      toast.error('Meta account not connected', {
+        description: 'Please reconnect your Meta ad account in the Dashboard.',
+        action: {
+          label: 'Go to Dashboard',
+          onClick: () => navigate('/dashboard'),
+        },
+      });
+      return;
+    }
     
     if (!silent) setSyncing(true);
 
@@ -209,7 +227,20 @@ export default function Data() {
         }
       );
 
-      if (metricsError) throw metricsError;
+      if (metricsError) {
+        // Check if it's a Meta connection issue
+        if (metricsError.message?.includes('Meta account not connected')) {
+          toast.error('Meta account not connected', {
+            description: 'Please connect your Meta ad account in the Dashboard to view performance data.',
+            action: {
+              label: 'Go to Dashboard',
+              onClick: () => navigate('/dashboard'),
+            },
+          });
+          return;
+        }
+        throw metricsError;
+      }
 
       if (metricsData?.metrics) {
         setMetrics(metricsData.metrics);
@@ -382,6 +413,19 @@ export default function Data() {
         {/* Campaign Selector & Date Range */}
         <Card>
           <CardContent className="pt-6">
+            {!metaConnected && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Meta Account Not Connected</AlertTitle>
+                <AlertDescription className="flex items-center justify-between">
+                  <span>Your Meta ad account needs to be reconnected to view performance data.</span>
+                  <Button onClick={() => navigate('/dashboard')} size="sm" variant="outline" className="ml-4">
+                    Go to Dashboard
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Campaign</label>
