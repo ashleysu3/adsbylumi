@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 interface DashboardLayoutProps {
@@ -18,6 +19,9 @@ export default function DashboardLayout({
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [suggestionOpen, setSuggestionOpen] = useState(false);
+  const [suggestion, setSuggestion] = useState("");
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   useEffect(() => {
     supabase.auth.getUser().then(({
       data: {
@@ -44,6 +48,27 @@ export default function DashboardLayout({
     await supabase.auth.signOut();
     toast.success("Signed out successfully");
     navigate("/auth");
+  };
+
+  const handleGetSuggestion = async () => {
+    setLoadingSuggestion(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-next-action');
+      
+      if (error) throw error;
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setSuggestion(data.suggestion);
+      setSuggestionOpen(true);
+    } catch (error: any) {
+      console.error('Error getting suggestion:', error);
+      toast.error(error.message || 'Failed to get suggestion');
+    } finally {
+      setLoadingSuggestion(false);
+    }
   };
   const tabItems = [{
     path: "/planning",
@@ -158,10 +183,21 @@ export default function DashboardLayout({
             
             <Button 
               variant="ghost" 
+              onClick={handleGetSuggestion}
+              disabled={loadingSuggestion}
               className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors group mb-2"
             >
-              <Sparkles className="mr-2 h-4 w-4 animate-pulse group-hover:text-primary" />
-              Tell me what to do next
+              {loadingSuggestion ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Thinking...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4 animate-pulse group-hover:text-primary" />
+                  Tell me what to do next
+                </>
+              )}
             </Button>
           </nav>
         </div>
@@ -169,5 +205,20 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-8">{children}</main>
+
+      {/* AI Suggestion Dialog */}
+      <Dialog open={suggestionOpen} onOpenChange={setSuggestionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Your Next Best Action
+            </DialogTitle>
+            <DialogDescription className="pt-4 text-base text-foreground">
+              {suggestion}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>;
 }

@@ -50,3 +50,6 @@ verify_jwt = true
 
 [functions.upload-creative-to-meta]
 verify_jwt = true
+
+[functions.suggest-next-action]
+verify_jwt = true
