@@ -22,10 +22,10 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Fetch workspace with brand info
+    // Fetch workspace
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*, brand:brands(*)')
+      .select('*')
       .eq('id', workspaceId)
       .single();
 
@@ -33,9 +33,19 @@ Deno.serve(async (req) => {
       throw new Error('Workspace not found');
     }
 
-    const brand = workspace.brand;
+    // Fetch brand separately
+    const { data: brand, error: brandError } = await supabase
+      .from('brands')
+      .select('*')
+      .eq('id', workspace.brand_id)
+      .single();
+
+    if (brandError || !brand) {
+      throw new Error('Brand not found');
+    }
+
     if (!brand.meta_access_token || !brand.meta_account_id) {
-      throw new Error('Meta account not connected');
+      throw new Error('Meta account not connected. Please connect your Meta ad account in the Dashboard first.');
     }
 
     const metaCampaignIds = workspace.meta_campaign_ids as any;
