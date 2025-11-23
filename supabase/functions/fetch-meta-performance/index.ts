@@ -58,7 +58,25 @@ Deno.serve(async (req) => {
       throw new Error('Campaign not published to Meta yet');
     }
 
-    const campaignId = metaCampaignIds.campaignId;
+    let campaignId = metaCampaignIds.campaignId;
+    
+    // Strip any prefixes (like 'camp_') if present - these are placeholder IDs
+    if (typeof campaignId === 'string' && campaignId.includes('_')) {
+      const parts = campaignId.split('_');
+      const numericPart = parts[parts.length - 1];
+      
+      // Check if this looks like a timestamp (placeholder ID) rather than a real Meta campaign ID
+      const timestamp = parseInt(numericPart);
+      const now = Date.now();
+      const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
+      
+      if (timestamp > oneYearAgo && timestamp <= now) {
+        throw new Error('This campaign uses a placeholder ID and has not been published to Meta yet. Please build and publish your campaign first.');
+      }
+      
+      // Use the numeric part
+      campaignId = numericPart;
+    }
     
     // Validate campaign ID format (Meta campaign IDs should be numeric)
     if (!campaignId || !/^\d+$/.test(campaignId)) {
