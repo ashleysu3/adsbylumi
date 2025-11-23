@@ -329,6 +329,52 @@ export default function Data() {
     }
   };
 
+  const handleManualSync = async () => {
+    setSyncing(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: brand } = await supabase
+        .from('brands')
+        .select('id, meta_access_token, meta_account_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!brand?.meta_access_token || !brand?.meta_account_id) {
+        toast.error('Meta account not connected');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke(
+        'sync-meta-campaigns',
+        {
+          body: {
+            brandId: brand.id,
+            metaAccountId: brand.meta_account_id,
+            metaAccessToken: brand.meta_access_token
+          }
+        }
+      );
+
+      if (error) throw error;
+
+      const count = data?.synced || 0;
+      toast.success(
+        count > 0 
+          ? `Synced ${count} new campaign${count !== 1 ? 's' : ''}` 
+          : "All campaigns are up to date"
+      );
+      
+      await fetchWorkspaces(); // Refresh the list
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      toast.error('Failed to sync campaigns');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const generateWeeklyReport = async () => {
     if (!selectedWorkspaceId) return;
 
@@ -450,6 +496,16 @@ export default function Data() {
                 Live
               </Badge>
             )}
+            
+            <Button
+              onClick={handleManualSync}
+              disabled={syncing || analyzing}
+              size="sm"
+              variant="outline"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+              Sync Campaigns
+            </Button>
             
             <Button
               onClick={() => fetchPerformanceData()}
