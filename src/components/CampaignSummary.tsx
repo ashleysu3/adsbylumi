@@ -20,6 +20,24 @@ interface CampaignSummaryProps {
 
 export function CampaignSummary({ workspace, answers, stage }: CampaignSummaryProps) {
   const hasAnswer = (key: string) => answers && answers[key] !== undefined && answers[key] !== null;
+  
+  // Define all required questions in the campaign builder flow
+  const requiredQuestions = [
+    'budget',
+    'startDate',
+    'endDate',
+    'metaAdvantage',
+    'campaignName',
+    'finalUrl',
+    'placements',
+    'optimizationEvent',
+    'warmRetargeting'
+  ];
+  
+  // Calculate progress
+  const answeredCount = requiredQuestions.filter(q => hasAnswer(q)).length;
+  const totalQuestions = requiredQuestions.length;
+  const progressPercentage = Math.round((answeredCount / totalQuestions) * 100);
 
   return (
     <Card className="sticky top-6">
@@ -213,18 +231,27 @@ export function CampaignSummary({ workspace, answers, stage }: CampaignSummaryPr
         {/* Progress Indicator */}
         {stage !== 'success' && (
           <div className="pt-4 border-t">
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-              <span>Progress</span>
-              <span>
-                {Object.keys(answers).length}/8 questions
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium">Campaign Setup Progress</span>
+              <span className="text-sm font-bold text-primary">
+                {progressPercentage}%
               </span>
             </div>
-            <div className="w-full bg-muted rounded-full h-2">
+            <div className="w-full bg-muted rounded-full h-3 mb-2">
               <div 
-                className="bg-primary h-2 rounded-full transition-all duration-500"
-                style={{ width: `${(Object.keys(answers).length / 8) * 100}%` }}
-              />
+                className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                style={{ width: `${progressPercentage}%` }}
+              >
+                {progressPercentage > 15 && (
+                  <span className="text-[10px] font-bold text-primary-foreground">
+                    {progressPercentage}%
+                  </span>
+                )}
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              {answeredCount} of {totalQuestions} questions answered
+            </p>
           </div>
         )}
       </CardContent>
