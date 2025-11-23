@@ -225,10 +225,12 @@ export default function Creative() {
                 ) : (
                   campaigns.map((campaign) => (
                     <SelectItem key={campaign.id} value={campaign.id}>
-                      <div className="flex items-center justify-between gap-3 w-full">
-                        <span className="font-medium">{campaign.name}</span>
+                      <div className="flex flex-col gap-0.5 py-0.5">
+                        <span className="font-medium text-sm truncate">
+                          {campaign.name}
+                        </span>
                         {campaign.offer_name && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground truncate">
                             {campaign.offer_name}
                           </span>
                         )}
