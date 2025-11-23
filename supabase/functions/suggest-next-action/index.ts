@@ -33,23 +33,37 @@ serve(async (req) => {
       .from('brands')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (brandError) throw brandError;
+    
+    if (!brand) {
+      return new Response(
+        JSON.stringify({ 
+          suggestion: "Let's get started! First, complete your brand profile by adding your website URL, industry, and target audience. This will help me create better campaigns for you.",
+          context: { profileCompletion: 0 }
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
-    // Fetch offers
+    // Fetch offers (exclude archived)
     const { data: offers, error: offersError } = await supabaseClient
       .from('offers')
       .select('*')
-      .eq('brand_id', brand.id);
+      .eq('brand_id', brand.id)
+      .eq('archived', false);
 
     if (offersError) throw offersError;
 
-    // Fetch campaigns
+    // Fetch campaigns (exclude archived)
     const { data: campaigns, error: campaignsError } = await supabaseClient
       .from('campaign_workspaces')
       .select('*')
       .eq('brand_id', brand.id)
+      .eq('archived', false)
       .order('updated_at', { ascending: false });
 
     if (campaignsError) throw campaignsError;
