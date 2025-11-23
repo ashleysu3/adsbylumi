@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Upload, 
   X, 
@@ -10,7 +12,10 @@ import {
   FileImage, 
   FileText,
   Check,
-  AlertCircle
+  AlertCircle,
+  Link2,
+  Eye,
+  PlayCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +28,17 @@ interface CreativeUploaderProps {
 export function CreativeUploader({ workspace, onUpdate }: CreativeUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewAsset, setPreviewAsset] = useState<any>(null);
+  const [linkingAsset, setLinkingAsset] = useState<any>(null);
   const uploadedAssets = workspace.user_uploaded_assets || [];
+  
+  // Get all available concepts from creative_mix
+  const creativeMix = workspace.creative_json?.creative_mix || {};
+  const allConcepts = [
+    ...(creativeMix.tofu || []).map((c: any, i: number) => ({ ...c, conceptId: `tofu-${i}`, stage: 'TOFU' })),
+    ...(creativeMix.mofu || []).map((c: any, i: number) => ({ ...c, conceptId: `mofu-${i}`, stage: 'MOFU' })),
+    ...(creativeMix.bofu || []).map((c: any, i: number) => ({ ...c, conceptId: `bofu-${i}`, stage: 'BOFU' })),
+  ];
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('video/')) return FileVideo;
@@ -97,7 +112,9 @@ export function CreativeUploader({ workspace, onUpdate }: CreativeUploaderProps)
           file_size: file.size,
           file_url: urlData.publicUrl,
           storage_path: filePath,
-          uploaded_at: new Date().toISOString()
+          uploaded_at: new Date().toISOString(),
+          linked_concept_id: null,
+          linked_concept_title: null
         });
 
         setUploadProgress(((i + 1) / validFiles.length) * 100);
@@ -160,6 +177,36 @@ export function CreativeUploader({ workspace, onUpdate }: CreativeUploaderProps)
       console.error('Delete error:', error);
       toast.error('Failed to delete asset');
     }
+  };
+
+  const handleLinkConcept = async (conceptId: string) => {
+    if (!linkingAsset) return;
+    
+    const concept = allConcepts.find(c => c.conceptId === conceptId);
+    if (!concept) return;
+    
+    const updatedAssets = uploadedAssets.map((a: any) => 
+      a.id === linkingAsset.id 
+        ? { ...a, linked_concept_id: conceptId, linked_concept_title: concept.title }
+        : a
+    );
+    
+    const { error } = await supabase
+      .from('campaign_workspaces')
+      .update({
+        user_uploaded_assets: updatedAssets,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', workspace.id);
+    
+    if (error) {
+      toast.error('Failed to link asset');
+      return;
+    }
+    
+    await onUpdate({ user_uploaded_assets: updatedAssets });
+    setLinkingAsset(null);
+    toast.success('Asset linked to concept');
   };
 
   const getStageFromFileName = (fileName: string) => {
@@ -241,9 +288,37 @@ export function CreativeUploader({ workspace, onUpdate }: CreativeUploaderProps)
                             </Badge>
                           )}
                         </div>
+                        {asset.linked_concept_title && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Link2 className="h-3 w-3 text-primary" />
+                            <span className="text-xs text-primary">{asset.linked_concept_title}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      {/* Preview button */}
+                      {(asset.file_type.startsWith('image/') || asset.file_type.startsWith('video/')) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setPreviewAsset(asset)}
+                          title="Preview"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                      
+                      {/* Link to concept button */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setLinkingAsset(asset)}
+                        title="Link to concept"
+                      >
+                        <Link2 className="h-4 w-4" />
+                      </Button>
+                      
                       <Check className="h-4 w-4 text-green-500" />
                       <Button
                         size="sm"
@@ -264,13 +339,89 @@ export function CreativeUploader({ workspace, onUpdate }: CreativeUploaderProps)
         <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
           <AlertCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
           <div className="text-xs space-y-1">
-            <p className="font-medium">Tip: Include stage in filename</p>
+            <p className="font-medium">Tip: Link assets to concepts</p>
             <p className="text-muted-foreground">
-              Add "TOFU", "MOFU", or "BOFU" to your filename for automatic categorization
+              Click the link icon to connect each asset to a specific creative concept for better organization
             </p>
           </div>
         </div>
       </CardContent>
+
+      {/* Preview Dialog */}
+      <Dialog open={!!previewAsset} onOpenChange={() => setPreviewAsset(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{previewAsset?.file_name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex items-center justify-center bg-muted/20 rounded-lg overflow-hidden min-h-[400px]">
+            {previewAsset?.file_type.startsWith('image/') && (
+              <img 
+                src={previewAsset.file_url} 
+                alt={previewAsset.file_name}
+                className="max-w-full max-h-[70vh] object-contain"
+              />
+            )}
+            {previewAsset?.file_type.startsWith('video/') && (
+              <video 
+                controls 
+                src={previewAsset.file_url}
+                className="max-w-full max-h-[70vh]"
+              >
+                Your browser does not support the video tag.
+              </video>
+            )}
+          </div>
+          {previewAsset?.linked_concept_title && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Link2 className="h-4 w-4" />
+              Linked to: <span className="font-medium text-foreground">{previewAsset.linked_concept_title}</span>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Link to Concept Dialog */}
+      <Dialog open={!!linkingAsset} onOpenChange={() => setLinkingAsset(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link Asset to Concept</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Choose which creative concept this asset is for:
+            </p>
+            <Select onValueChange={handleLinkConcept}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a creative concept..." />
+              </SelectTrigger>
+              <SelectContent>
+                {allConcepts.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground">
+                    No creative concepts generated yet
+                  </div>
+                ) : (
+                  allConcepts.map((concept: any) => (
+                    <SelectItem key={concept.conceptId} value={concept.conceptId}>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {concept.stage}
+                        </Badge>
+                        <span className="truncate">{concept.title}</span>
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            {linkingAsset?.linked_concept_title && (
+              <div className="p-3 bg-muted/50 rounded text-sm">
+                <p className="text-muted-foreground">Currently linked to:</p>
+                <p className="font-medium">{linkingAsset.linked_concept_title}</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
