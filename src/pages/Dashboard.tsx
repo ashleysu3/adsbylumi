@@ -11,7 +11,7 @@ import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown } from "lucide-react";
+import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [checklistDismissed, setChecklistDismissed] = useState(() => {
     return localStorage.getItem('onboarding-dismissed') === 'true';
   });
+  const [progressPopoverOpen, setProgressPopoverOpen] = useState(false);
   const hasShownConfetti = useRef(false);
 
   const handleDismissChecklist = () => {
@@ -131,19 +132,19 @@ export default function Dashboard() {
     const items = [];
     
     if (!(brand?.name && brand?.website_url && brand?.industry)) {
-      items.push({ label: "Complete brand basics", section: "brand-details" });
+      items.push({ label: "Complete brand basics", section: "brand-details", icon: Building2 });
     }
     if (!(brand?.value_proposition && brand?.target_audience)) {
-      items.push({ label: "Add positioning details", section: "brand-details" });
+      items.push({ label: "Add positioning details", section: "brand-details", icon: Target });
     }
     if (brand?.psychology_status !== "complete") {
-      items.push({ label: "Generate audience psychology", section: "audience-psychology" });
+      items.push({ label: "Generate audience psychology", section: "audience-psychology", icon: Brain });
     }
     if (offers.length === 0) {
-      items.push({ label: "Add your first offer", section: "offers" });
+      items.push({ label: "Add your first offer", section: "offers", icon: Package });
     }
     if (!brand?.meta_account_id) {
-      items.push({ label: "Connect Meta ad account", section: "meta-account" });
+      items.push({ label: "Connect Meta ad account", section: "meta-account", icon: Link });
     }
     
     return items;
@@ -152,7 +153,14 @@ export default function Dashboard() {
   const scrollToSection = (sectionId: string) => {
     const element = document.querySelector(`[data-section="${sectionId}"]`);
     if (element) {
+      setProgressPopoverOpen(false);
       element.scrollIntoView({ behavior: "smooth", block: "start" });
+      
+      // Add pulse animation to highlight the section
+      setTimeout(() => {
+        element.classList.add('animate-pulse');
+        setTimeout(() => element.classList.remove('animate-pulse'), 1000);
+      }, 500);
     }
   };
 
@@ -244,7 +252,7 @@ export default function Dashboard() {
               Your brand at a glance
             </p>
           </div>
-          <Popover>
+          <Popover open={progressPopoverOpen} onOpenChange={setProgressPopoverOpen}>
             <PopoverTrigger asChild>
               <Badge 
                 variant={
@@ -273,17 +281,21 @@ export default function Dashboard() {
             </PopoverTrigger>
             {calculateBrandProgress().percentage < 100 && (
               <PopoverContent className="w-64 p-3" align="end">
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <p className="text-sm font-medium text-foreground mb-3">Complete your profile:</p>
-                  {getIncompleteItems().map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() => scrollToSection(item.section)}
-                      className="w-full text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-1.5 rounded transition-colors"
-                    >
-                      • {item.label}
-                    </button>
-                  ))}
+                  {getIncompleteItems().map((item, index) => {
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => scrollToSection(item.section)}
+                        className="w-full flex items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-2 rounded transition-colors group"
+                      >
+                        <Icon className="h-4 w-4 flex-shrink-0 group-hover:text-primary transition-colors" />
+                        <span>{item.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </PopoverContent>
             )}
