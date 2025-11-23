@@ -163,6 +163,67 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     }
   };
 
+  const handleRegenerateStage = async (stage: string) => {
+    toast.info(`Regenerating all ${stage.toUpperCase()} concepts...`);
+    setIsGenerating(true);
+    
+    try {
+      const existingConcepts = creative.creative_mix?.[stage] || [];
+      
+      const { data, error } = await supabase.functions.invoke('expand-creative', {
+        body: {
+          action: 'regenerate_stage',
+          stage,
+          brandName: workspace.brands?.name || 'Your Brand',
+          audiencePsychology: workspace.brands?.audience_psychology,
+          existingConcepts,
+          strategyData: workspace.strategy_json
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.error) {
+        if (data.error.includes('429')) {
+          toast.error('Rate limit exceeded. Please wait a moment.');
+        } else if (data.error.includes('402')) {
+          toast.error('AI credits depleted. Please add credits in Settings.');
+        } else {
+          toast.error(data.error);
+        }
+        return;
+      }
+      
+      const newConcepts = data.concepts || [];
+      const updatedCreative = { ...creative };
+      if (!updatedCreative.creative_mix) {
+        updatedCreative.creative_mix = { tofu: [], mofu: [], bofu: [] };
+      }
+      
+      // Replace all concepts for this stage
+      updatedCreative.creative_mix[stage] = newConcepts;
+      
+      const { error: updateError } = await supabase
+        .from('campaign_workspaces')
+        .update({
+          creative_json: updatedCreative,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workspace.id);
+      
+      if (updateError) throw updateError;
+      await onUpdate({ creative_json: updatedCreative });
+      
+      toast.success(`✨ Regenerated ${newConcepts.length} ${stage.toUpperCase()} concept${newConcepts.length > 1 ? 's' : ''}!`);
+      
+    } catch (error: any) {
+      console.error('Error regenerating stage:', error);
+      toast.error('Failed to regenerate concepts. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
@@ -437,9 +498,21 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
         {allStages.map(stage => (
           stage.items.length > 0 && (
             <div key={stage.id} className="space-y-6">
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold tracking-tight">{stage.label}</h2>
-                <p className="text-sm text-muted-foreground">{stage.subtitle}</p>
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold tracking-tight">{stage.label}</h2>
+                  <p className="text-sm text-muted-foreground">{stage.subtitle}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleRegenerateStage(stage.id)}
+                  disabled={isGenerating}
+                  className="gap-2 shrink-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                  Regenerate All
+                </Button>
               </div>
               <div className="space-y-6">
                 {stage.items.map((concept: any, index: number) => 
