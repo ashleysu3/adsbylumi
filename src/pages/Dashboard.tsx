@@ -161,11 +161,24 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Brand Details + Psychology + Offers */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Brand Details Card */}
+        {/* Campaign Planning Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ready to plan your next campaign?</CardTitle>
+            <CardDescription>
+              Get a clear strategy and step-by-step plan for your Meta ads
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button size="lg" className="h-12 px-8" onClick={() => window.location.href = "/planning"}>
+              Start Planning
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Main Content - Single Column */}
+        <div className="space-y-6">
+          {/* Brand Details Card */}
             <Card data-section="brand-details">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -242,30 +255,12 @@ export default function Dashboard() {
               onUpdate={fetchBrandData}
             />
 
-            {/* Offers Manager */}
-            <OfferManager
-              brandId={brand.id}
-              offers={offers}
-              onUpdate={fetchBrandData}
-            />
-          </div>
-
-          {/* Right Column - Quick Actions */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Ready to plan your next campaign?</CardTitle>
-                <CardDescription>
-                  Get a clear strategy and step-by-step plan for your Meta ads
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button size="lg" className="h-12 px-8" onClick={() => window.location.href = "/planning"}>
-                  Start Planning
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+          {/* Offers Manager */}
+          <OfferManager
+            brandId={brand.id}
+            offers={offers}
+            onUpdate={fetchBrandData}
+          />
         </div>
       </div>
 
