@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings } from "lucide-react";
+import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.png";
 interface DashboardLayoutProps {
@@ -78,6 +78,10 @@ export default function DashboardLayout({
               <Button onClick={() => navigate("/campaigns")} className="bg-tab-pink-dark hover:bg-tab-pink-dark/90 text-white font-semibold border border-tab-black">
                 <FolderKanban className="mr-2 h-4 w-4" />
                 My Campaigns
+              </Button>
+              <Button onClick={() => navigate("/production")} variant="outline" className="font-semibold border-2">
+                <Clipboard className="mr-2 h-4 w-4" />
+                Production
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

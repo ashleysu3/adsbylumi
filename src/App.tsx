@@ -10,6 +10,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Planning from "./pages/Planning";
 import Creative from "./pages/Creative";
+import Production from "./pages/Production";
 import CampaignWorkspace from "./pages/CampaignWorkspace";
 import Campaigns from "./pages/Campaigns";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/planning" element={<Planning />} />
           <Route path="/creative" element={<Creative />} />
+          <Route path="/production" element={<Production />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/workspace/:workspaceId" element={<CampaignWorkspace />} />
           <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
