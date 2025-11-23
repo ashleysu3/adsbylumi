@@ -1,48 +1,29 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Upload, Rocket, CheckCircle2 } from "lucide-react";
-import { ProductionChecklist } from "@/components/ProductionChecklist";
+import { 
+  Sparkles, 
+  ArrowLeft, 
+  Loader2
+} from "lucide-react";
+import { toast } from "sonner";
 import { CreativeAssets } from "@/components/CreativeAssets";
+import { ProductionChecklist } from "@/components/ProductionChecklist";
 import { CreativeUploader } from "@/components/CreativeUploader";
-import { MetaCampaignBuilder } from "@/components/MetaCampaignBuilder";
-import { WorkspaceHelp } from "@/components/WorkspaceHelp";
-import { Skeleton } from "@/components/ui/skeleton";
-
-interface CampaignWorkspace {
-  id: string;
-  name: string;
-  brand_id: string;
-  template_id: string | null;
-  strategy_id: string | null;
-  strategy_json: any;
-  creative_json: any;
-  offer_name: string | null;
-  offer_url: string | null;
-  offer_price: string | null;
-  offer_description: string | null;
-  progress_status: string;
-  user_uploaded_assets: any;
-  production_checklist: any;
-  meta_campaign_status: string | null;
-  meta_campaign_ids: any;
-  final_answers: any;
-  created_at: string;
-  updated_at: string;
-}
+import { CreativeSidebar } from "@/components/CreativeSidebar";
+import { CreativeReviewPanel } from "@/components/CreativeReviewPanel";
 
 export default function CampaignWorkspace() {
   const { workspaceId } = useParams();
   const navigate = useNavigate();
+  const [workspace, setWorkspace] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [workspace, setWorkspace] = useState<CampaignWorkspace | null>(null);
-  const [activeTab, setActiveTab] = useState("creative");
+  const [generating, setGenerating] = useState(false);
+  const [activeSection, setActiveSection] = useState("tofu");
 
   useEffect(() => {
     if (workspaceId) {
@@ -54,13 +35,13 @@ export default function CampaignWorkspace() {
     try {
       const { data, error } = await supabase
         .from("campaign_workspaces")
-        .select("*")
+        .select("*, brands(*)")
         .eq("id", workspaceId)
         .single();
 
       if (error) throw error;
       setWorkspace(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching workspace:", error);
       toast.error("Failed to load campaign workspace");
     } finally {
@@ -68,50 +49,98 @@ export default function CampaignWorkspace() {
     }
   };
 
-  const updateWorkspace = async (updates: Partial<CampaignWorkspace>) => {
+  const handleWorkspaceUpdate = async (updates: any) => {
     if (!workspace) return;
-
+    
     try {
       const { error } = await supabase
         .from("campaign_workspaces")
-        .update(updates)
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("id", workspace.id);
 
       if (error) throw error;
       
       setWorkspace({ ...workspace, ...updates });
-      toast.success("Progress saved");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating workspace:", error);
-      toast.error("Failed to save progress");
+      throw error;
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      draft: "bg-secondary",
-      creative_in_progress: "bg-blue-500",
-      waiting_for_assets: "bg-yellow-500",
-      ready_to_publish: "bg-green-500",
-      publishing_to_meta: "bg-purple-500",
-      live: "bg-primary",
-      completed: "bg-gray-500",
-    };
-    return colors[status] || "bg-secondary";
+  const generateCreative = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-creative', {
+        body: {
+          brandName: workspace.brands?.name || workspace.name,
+          strategyData: workspace.strategy_json,
+          creativeType: 'complete',
+          audiencePsychology: workspace.brands?.audience_psychology
+        }
+      });
+
+      if (error) throw error;
+      
+      await handleWorkspaceUpdate({
+        creative_json: data,
+        progress_status: "waiting_for_assets",
+        production_checklist: generateProductionChecklist(data),
+      });
+      
+      toast.success("Creative assets generated!");
+    } catch (error: any) {
+      console.error("Error generating creative:", error);
+      if (error.message?.includes("429")) toast.error("Rate limit exceeded. Please wait a moment.");
+      else if (error.message?.includes("402")) toast.error("AI credits depleted. Please add credits in Settings.");
+      else toast.error(error.message || "Failed to generate creative");
+    } finally {
+      setGenerating(false);
+    }
   };
 
-  const getStatusLabel = (status: string) => {
-    return status.split("_").map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(" ");
+  const generateProductionChecklist = (creative: any) => {
+    const items: any[] = [];
+    if (creative.creative_mix) {
+      const { tofu = [], mofu = [], bofu = [] } = creative.creative_mix;
+      const allConcepts = [...tofu, ...mofu, ...bofu];
+      
+      allConcepts.forEach((concept: any, idx: number) => {
+        const stage = concept.stage || 'tofu';
+        if (concept.format === 'talking_head' || concept.script) {
+          items.push({
+            id: `record_${stage}_${idx}`,
+            category: "📹 To Record",
+            title: `${stage.toUpperCase()}: ${concept.title}`,
+            details: concept.script,
+            completed: false,
+            stage
+          });
+        }
+      });
+    }
+    return items;
+  };
+
+  const handleFinalize = () => {
+    toast.success("Ready to build campaign!");
+    navigate(`/campaigns/build?workspace=${workspaceId}`);
+  };
+
+  const progressLabels: Record<string, string> = {
+    draft: "Draft",
+    creative_in_progress: "Creative in Progress",
+    waiting_for_assets: "Waiting for Assets",
+    ready_to_publish: "Ready to Publish",
+    publishing_to_meta: "Publishing",
+    live: "Live",
+    completed: "Completed"
   };
 
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto px-6 py-8">
-          <Skeleton className="h-8 w-64 mb-4" />
-          <Skeleton className="h-64 w-full" />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </DashboardLayout>
     );
@@ -120,168 +149,111 @@ export default function CampaignWorkspace() {
   if (!workspace) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto px-6 py-8">
-          <Card>
-            <CardContent className="pt-6">
-              <p>Workspace not found</p>
-              <Button onClick={() => navigate("/dashboard")} className="mt-4">
-                Back to Dashboard
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Workspace not found</p>
+            <Button onClick={() => navigate("/campaigns")} className="mt-4">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Campaigns
+            </Button>
+          </CardContent>
+        </Card>
       </DashboardLayout>
     );
   }
 
-  const hasCreative = workspace.creative_json && Object.keys(workspace.creative_json).length > 0;
-  const assets = Array.isArray(workspace.user_uploaded_assets) ? workspace.user_uploaded_assets : [];
-  const hasAssets = assets.length > 0;
-  const canPublish = hasCreative && hasAssets && workspace.progress_status === "ready_to_publish";
-
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => navigate("/dashboard")}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">{workspace.name}</h1>
-              <p className="text-muted-foreground">Campaign Workspace</p>
+      <div className="flex h-[calc(100vh-4rem)]">
+        {/* Sidebar */}
+        <CreativeSidebar 
+          workspace={workspace}
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+        />
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="border-b border-border bg-background/95 backdrop-blur-sm">
+            <div className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => navigate("/campaigns")}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <div>
+                      <h1 className="text-2xl font-bold">{workspace.name}</h1>
+                      <p className="text-sm text-muted-foreground">Campaign Workspace</p>
+                    </div>
+                  </div>
+                </div>
+                <Badge variant="secondary">
+                  {progressLabels[workspace.progress_status] || workspace.progress_status}
+                </Badge>
+              </div>
             </div>
           </div>
-          <Badge className={getStatusColor(workspace.progress_status)}>
-            {getStatusLabel(workspace.progress_status)}
-          </Badge>
-        </div>
 
-        <WorkspaceHelp />
-
-        {workspace.offer_name && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Offer Details</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Name</p>
-                  <p className="font-medium">{workspace.offer_name}</p>
-                </div>
-                {workspace.offer_price && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Price</p>
-                    <p className="font-medium">{workspace.offer_price}</p>
-                  </div>
-                )}
-                {workspace.offer_url && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-muted-foreground">URL</p>
-                    <p className="font-medium break-all">{workspace.offer_url}</p>
-                  </div>
-                )}
-                {workspace.offer_description && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-muted-foreground">Description</p>
-                    <p>{workspace.offer_description}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="creative">
-              Creative Assets
-            </TabsTrigger>
-            <TabsTrigger value="checklist">
-              Production Checklist
-            </TabsTrigger>
-            <TabsTrigger value="uploads" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Upload Assets
-              {workspace.user_uploaded_assets?.length > 0 && (
-                <Badge variant="default" className="ml-1">
-                  {workspace.user_uploaded_assets.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="publish" disabled={!canPublish}>
-              Publish to Meta
-              <Rocket className="h-4 w-4 ml-2" />
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="creative">
-            <CreativeAssets
-              workspace={workspace}
-              onUpdate={updateWorkspace}
-            />
-          </TabsContent>
-
-          <TabsContent value="checklist">
-            <ProductionChecklist
-              workspace={workspace}
-              onUpdate={updateWorkspace}
-            />
-          </TabsContent>
-
-          <TabsContent value="uploads">
-            <div className="space-y-6">
-              <CreativeUploader workspace={workspace} onUpdate={updateWorkspace} />
-              
-              {/* Finalization Card */}
-              {workspace.user_uploaded_assets?.length > 0 && workspace.production_checklist?.length > 0 && (
-                <Card className="border-primary/20 bg-primary/5">
+          {/* Main Panel */}
+          <div className="flex-1 overflow-hidden">
+            {!workspace.creative_json ? (
+              <div className="h-full flex items-center justify-center p-6">
+                <Card className="max-w-lg">
                   <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <Rocket className="h-5 w-5 text-primary" />
-                      <CardTitle>Ready to Build Campaign?</CardTitle>
-                    </div>
+                    <CardTitle>Generate Creative Assets</CardTitle>
                     <CardDescription>
-                      You've selected {workspace.production_checklist.length} production items and uploaded {workspace.user_uploaded_assets.length} asset(s).
+                      Start by generating your creative concepts and copy
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        <span>Creative concepts selected</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        <span>Assets uploaded</span>
-                      </div>
-                    </div>
-                    <Button 
-                      size="lg" 
-                      className="w-full"
-                      onClick={() => setActiveTab('publish')}
-                    >
-                      <Rocket className="h-4 w-4 mr-2" />
-                      Continue to Campaign Builder
+                  <CardContent>
+                    <Button onClick={generateCreative} disabled={generating}>
+                      {generating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Generate Creative Mix
                     </Button>
                   </CardContent>
                 </Card>
-              )}
-            </div>
-          </TabsContent>
+              </div>
+            ) : activeSection === 'uploads' ? (
+              <div className="h-full overflow-auto p-6">
+                <CreativeUploader workspace={workspace} onUpdate={handleWorkspaceUpdate} />
+              </div>
+            ) : activeSection === 'checklist' ? (
+              <div className="h-full overflow-auto p-6">
+                {workspace.production_checklist && workspace.production_checklist.length > 0 ? (
+                  <ProductionChecklist workspace={workspace} onUpdate={handleWorkspaceUpdate} />
+                ) : (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <p className="text-muted-foreground">No checklist items yet</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            ) : (
+              <CreativeAssets 
+                workspace={workspace} 
+                onUpdate={handleWorkspaceUpdate}
+                filterStage={['tofu', 'mofu', 'bofu'].includes(activeSection) ? activeSection : undefined}
+                filterFormat={['scripts', 'broll', 'carousels', 'static'].includes(activeSection) ? activeSection : undefined}
+              />
+            )}
+          </div>
+        </div>
 
-          <TabsContent value="publish">
-            <MetaCampaignBuilder
-              workspace={workspace}
-              onUpdate={updateWorkspace}
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Review Panel */}
+        {workspace.creative_json && (
+          <CreativeReviewPanel 
+            workspace={workspace}
+            onFinalize={handleFinalize}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
