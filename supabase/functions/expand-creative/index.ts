@@ -18,9 +18,9 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { concept, action, stage, brandName, audiencePsychology } = await req.json();
+    const { concept, action, stage, brandName, audiencePsychology, existingConcepts, strategyData } = await req.json();
     
-    console.log(`Expanding creative: ${action} for "${concept.title}"`);
+    console.log(`Expanding creative: ${action} for stage "${stage}"`);
     
     // Fetch all knowledge bases
     const { data: kbDocs } = await supabase
@@ -38,7 +38,29 @@ serve(async (req) => {
     let actionPrompt = '';
     let systemPrompt = `You are the Creative Department AI for ${brandName}. You generate high-converting Meta ad creative using proven psychology and frameworks.`;
     
-    if (action === 'regenerate') {
+    if (action === 'regenerate_stage') {
+      const stageInfoMap: Record<string, { label: string; count: string; goal: string }> = {
+        tofu: { label: 'TOFU (Top of Funnel)', count: '3-5', goal: 'Interrupt scroll, create awareness, spark interest' },
+        mofu: { label: 'MOFU (Middle of Funnel)', count: '2-4', goal: 'Build trust, provide value, address objections' },
+        bofu: { label: 'BOFU (Bottom of Funnel)', count: '2-3', goal: 'Drive action, overcome final objections, close the sale' }
+      };
+      const stageInfo = stageInfoMap[stage] || { label: stage.toUpperCase(), count: '2-4', goal: 'Create engaging creative' };
+      
+      actionPrompt = `Generate ${stageInfo.count} COMPLETELY NEW ${stageInfo.label} creative concepts.
+
+Goal: ${stageInfo.goal}
+
+${existingConcepts ? `Previous concepts (for reference only - generate DIFFERENT ideas):\n${JSON.stringify(existingConcepts, null, 2)}` : ''}
+
+${strategyData ? `Strategy Context:\n${JSON.stringify(strategyData, null, 2)}` : ''}
+
+Requirements:
+- Generate fresh angles and approaches
+- Use diverse formats (talking_head, b_roll, carousel, static)
+- Apply appropriate psychology triggers for ${stage.toUpperCase()}
+- Include complete production instructions
+- Make each concept unique and production-ready`;
+    } else if (action === 'regenerate') {
       actionPrompt = `Regenerate this ${stage.toUpperCase()} creative concept with a completely different angle and approach. Keep the same format (${concept.format}) but change the core message, hook, and psychology trigger.\n\nOriginal concept:\n${JSON.stringify(concept, null, 2)}`;
     } else if (action === 'more_options') {
       actionPrompt = `Generate 2-3 alternative variations of this ${stage.toUpperCase()} creative concept. Keep the same core angle but vary the execution, wording, and specific psychology triggers.\n\nOriginal concept:\n${JSON.stringify(concept, null, 2)}`;
@@ -57,6 +79,7 @@ ${kbByCategory['Copy Formulas'] ? `\nCopy Formulas:\n${kbByCategory['Copy Formul
 
 IMPORTANT RULES:
 - Return valid JSON only
+- For "regenerate_stage": return 3-5 (TOFU) or 2-4 (MOFU) or 2-3 (BOFU) completely new concepts
 - For "regenerate": return 1 completely new concept
 - For "more_options": return array of 2-3 variations
 - For "expand_idea": return 1 enhanced version with more detail
@@ -69,11 +92,12 @@ Return JSON structure:
   "concepts": [
     {
       "title": "...",
-      "format": "${concept.format}",
+      "format": "talking_head | b_roll | carousel | static",
       "stage": "${stage}",
       "angle": "...",
       "psychology_trigger": "...",
       "why_it_works": "...",
+      "production_notes": "...",
       "script": "..." (if talking_head),
       "broll_instructions": "..." (if applicable),
       "carousel_structure": "..." (if carousel),
