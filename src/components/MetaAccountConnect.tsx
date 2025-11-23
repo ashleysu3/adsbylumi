@@ -60,7 +60,7 @@ export function MetaAccountConnect({ brandId, currentAccountId, onUpdate }: Meta
           const { code } = event.data;
           popup?.close();
 
-          // Exchange code for accounts
+          // Exchange code for accounts and store token
           const { data: callbackData, error: callbackError } = await supabase.functions.invoke(
             'meta-oauth-callback',
             {

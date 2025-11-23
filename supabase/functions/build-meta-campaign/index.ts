@@ -34,12 +34,18 @@ Deno.serve(async (req) => {
 
     const brand = workspace.brands;
     const metaAccountId = brand.meta_account_id;
+    const metaAccessToken = brand.meta_access_token;
     
     if (!metaAccountId) {
       throw new Error('Meta account not connected for this brand');
     }
 
+    if (!metaAccessToken) {
+      throw new Error('Meta access token not found. Please reconnect your Meta account.');
+    }
+
     console.log('Building campaign for workspace:', workspaceId);
+    console.log('Meta Account ID:', metaAccountId);
     console.log('Answers:', answers);
 
     // Get approved production items
@@ -49,88 +55,223 @@ Deno.serve(async (req) => {
       throw new Error('At least 3 approved concepts are required');
     }
 
-    // For this MVP, we'll simulate campaign creation
-    // In production, you would:
-    // 1. Upload creative assets to Meta
-    // 2. Create Campaign via Meta Graph API
-    // 3. Create Ad Set(s)
-    // 4. Create Ads
+    console.log(`Creating campaign with ${approvedConcepts.length} approved concepts`);
 
-    // Simulated campaign IDs
-    const campaignIds = {
-      campaignId: `camp_${Date.now()}`,
-      adSetIds: [
-        `adset_cold_${Date.now()}`,
-        answers.warmRetargeting ? `adset_warm_${Date.now()}` : null
-      ].filter(Boolean),
-      adIds: approvedConcepts.map((_: any, i: number) => `ad_${Date.now()}_${i}`)
-    };
+    try {
+      // Step 1: Create Campaign
+      const campaignResponse = await fetch(
+        `https://graph.facebook.com/v18.0/act_${metaAccountId}/campaigns`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: answers.campaignName,
+            objective: 'OUTCOME_LEADS',
+            status: 'PAUSED',
+            special_ad_categories: [],
+            access_token: metaAccessToken
+          })
+        }
+      );
 
-    console.log('Campaign created (simulated):', campaignIds);
-
-    // In production, you would make these Meta API calls:
-    /*
-    // 1. Create Campaign
-    const campaignResponse = await fetch(`https://graph.facebook.com/v18.0/act_${metaAccountId}/campaigns`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: answers.campaignName,
-        objective: 'OUTCOME_LEADS',
-        status: 'PAUSED',
-        special_ad_categories: [],
-        access_token: metaAccessToken
-      })
-    });
-
-    // 2. Create Ad Set
-    const adSetResponse = await fetch(`https://graph.facebook.com/v18.0/act_${metaAccountId}/adsets`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        campaign_id: campaignId,
-        name: `${answers.campaignName} - Cold`,
-        optimization_goal: answers.optimizationEvent,
-        billing_event: 'IMPRESSIONS',
-        bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-        daily_budget: answers.budget * 100, // cents
-        targeting: { geo_locations: { countries: ['US'] } },
-        status: 'PAUSED',
-        access_token: metaAccessToken
-      })
-    });
-
-    // 3. Create Ads (for each concept)
-    for (const concept of approvedConcepts) {
-      await fetch(`https://graph.facebook.com/v18.0/act_${metaAccountId}/ads`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          adset_id: adSetId,
-          name: concept.concept.title,
-          creative: {
-            // ... creative spec
-          },
-          status: 'PAUSED',
-          access_token: metaAccessToken
-        })
-      });
-    }
-    */
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        campaignIds,
-        message: 'Campaign created successfully'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+      if (!campaignResponse.ok) {
+        const error = await campaignResponse.json();
+        console.error('Campaign creation failed:', error);
+        throw new Error(`Failed to create campaign: ${error.error?.message || 'Unknown error'}`);
       }
-    );
+
+      const campaignData = await campaignResponse.json();
+      const campaignId = campaignData.id;
+      console.log('Campaign created:', campaignId);
+
+      // Step 2: Create Ad Sets
+      const adSetIds: string[] = [];
+      
+      // Create Cold Audience Ad Set
+      const coldAdSetResponse = await fetch(
+        `https://graph.facebook.com/v18.0/act_${metaAccountId}/adsets`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            campaign_id: campaignId,
+            name: `${answers.campaignName} - Cold`,
+            optimization_goal: answers.optimizationEvent || 'LEAD_GENERATION',
+            billing_event: 'IMPRESSIONS',
+            bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+            daily_budget: Math.round(answers.budget * 100), // Convert to cents
+            targeting: { 
+              geo_locations: { countries: ['US'] },
+              age_min: 18,
+              age_max: 65
+            },
+            status: 'PAUSED',
+            access_token: metaAccessToken
+          })
+        }
+      );
+
+      if (!coldAdSetResponse.ok) {
+        const error = await coldAdSetResponse.json();
+        console.error('Cold ad set creation failed:', error);
+        throw new Error(`Failed to create cold ad set: ${error.error?.message || 'Unknown error'}`);
+      }
+
+      const coldAdSetData = await coldAdSetResponse.json();
+      adSetIds.push(coldAdSetData.id);
+      console.log('Cold ad set created:', coldAdSetData.id);
+
+      // Create Warm Retargeting Ad Set (if enabled)
+      if (answers.warmRetargeting) {
+        const warmAdSetResponse = await fetch(
+          `https://graph.facebook.com/v18.0/act_${metaAccountId}/adsets`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaign_id: campaignId,
+              name: `${answers.campaignName} - Warm`,
+              optimization_goal: answers.optimizationEvent || 'LEAD_GENERATION',
+              billing_event: 'IMPRESSIONS',
+              bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+              daily_budget: Math.round(answers.budget * 100 * 0.5), // 50% of budget
+              targeting: { 
+                geo_locations: { countries: ['US'] },
+                age_min: 18,
+                age_max: 65
+              },
+              status: 'PAUSED',
+              access_token: metaAccessToken
+            })
+          }
+        );
+
+        if (!warmAdSetResponse.ok) {
+          const error = await warmAdSetResponse.json();
+          console.error('Warm ad set creation failed:', error);
+          // Don't throw - warm ad set is optional
+        } else {
+          const warmAdSetData = await warmAdSetResponse.json();
+          adSetIds.push(warmAdSetData.id);
+          console.log('Warm ad set created:', warmAdSetData.id);
+        }
+      }
+
+      // Step 3: Create Ads for each approved concept
+      const adIds: string[] = [];
+      const primaryAdSetId = adSetIds[0]; // Use cold ad set for all ads
+
+      for (const concept of approvedConcepts) {
+        const adName = concept.concept?.title || concept.title || `Ad ${adIds.length + 1}`;
+        
+        // Build creative from concept data
+        const creative: any = {
+          object_story_spec: {
+            page_id: metaAccountId.replace('act_', ''), // Extract page ID
+            link_data: {
+              link: answers.finalUrl,
+              message: concept.concept?.primaryCopy || concept.primaryCopy || '',
+              name: concept.concept?.headline || concept.headline || adName,
+              description: concept.concept?.description || concept.description || '',
+              call_to_action: {
+                type: 'LEARN_MORE'
+              }
+            }
+          }
+        };
+
+        // Create ad creative first
+        const creativeResponse = await fetch(
+          `https://graph.facebook.com/v18.0/act_${metaAccountId}/adcreatives`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...creative,
+              access_token: metaAccessToken
+            })
+          }
+        );
+
+        if (!creativeResponse.ok) {
+          const error = await creativeResponse.json();
+          console.error(`Creative creation failed for ${adName}:`, error);
+          continue; // Skip this ad but continue with others
+        }
+
+        const creativeData = await creativeResponse.json();
+        const creativeId = creativeData.id;
+        console.log(`Creative created for ${adName}:`, creativeId);
+
+        // Create the ad
+        const adResponse = await fetch(
+          `https://graph.facebook.com/v18.0/act_${metaAccountId}/ads`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              adset_id: primaryAdSetId,
+              name: adName,
+              creative: { creative_id: creativeId },
+              status: 'PAUSED',
+              access_token: metaAccessToken
+            })
+          }
+        );
+
+        if (!adResponse.ok) {
+          const error = await adResponse.json();
+          console.error(`Ad creation failed for ${adName}:`, error);
+          continue; // Skip this ad but continue with others
+        }
+
+        const adData = await adResponse.json();
+        adIds.push(adData.id);
+        console.log(`Ad created for ${adName}:`, adData.id);
+      }
+
+      if (adIds.length === 0) {
+        throw new Error('Failed to create any ads. Please check your creative content.');
+      }
+
+      const campaignIds = {
+        campaignId,
+        adSetIds,
+        adIds
+      };
+
+      console.log('Campaign created successfully:', campaignIds);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          campaignIds,
+          message: 'Campaign created successfully in Meta Ads Manager'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    } catch (error: any) {
+      console.error('Error during campaign creation:', error);
+      
+      // Return detailed error for debugging
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: error.message,
+          details: error.toString()
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      );
+    }
   } catch (error: any) {
     console.error('Error building campaign:', error);
+
     return new Response(
       JSON.stringify({
         success: false,

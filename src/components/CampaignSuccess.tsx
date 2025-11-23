@@ -59,7 +59,9 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
               {campaignIds.adSetIds.map((id: string, index: number) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Ad Set {index + 1}</p>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      {index === 0 ? 'Cold Audience' : 'Warm Retargeting'}
+                    </p>
                     <p className="font-mono text-xs">{id}</p>
                   </div>
                   <Button
@@ -75,7 +77,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
           )}
 
           <div className="flex items-center gap-2 pt-2">
-            <Badge variant="secondary">Status: Review Pending</Badge>
+            <Badge variant="secondary">Status: Paused (Ready to Activate)</Badge>
             <Badge variant="outline">
               {campaignIds?.adIds?.length || 0} Ads Created
             </Badge>
@@ -145,10 +147,23 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
       <div className="flex items-center justify-between pt-4">
         <Button
           variant="outline"
-          onClick={() => window.open(metaAdsManagerUrl, '_blank')}
+          onClick={() => {
+            const metaAccountId = workspace?.brands?.meta_account_id;
+            const campaignId = campaignIds?.campaignId;
+            if (metaAccountId && campaignId) {
+              // Link directly to the campaign in Ads Manager
+              window.open(
+                `https://business.facebook.com/adsmanager/manage/campaigns?act=${metaAccountId}&selected_campaign_ids=${campaignId}`,
+                '_blank'
+              );
+            } else {
+              // Fallback to general Ads Manager
+              window.open(metaAdsManagerUrl, '_blank');
+            }
+          }}
         >
           <ExternalLink className="h-4 w-4 mr-2" />
-          View in Ads Manager
+          View Campaign in Ads Manager
         </Button>
         <Button onClick={onBackToDashboard} size="lg">
           Back to Dashboard

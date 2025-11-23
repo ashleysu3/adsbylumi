@@ -65,6 +65,7 @@ export type Database = {
           created_at: string | null
           id: string
           industry: string | null
+          meta_access_token: string | null
           meta_account_id: string | null
           name: string
           psychology_status: string | null
@@ -80,6 +81,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           industry?: string | null
+          meta_access_token?: string | null
           meta_account_id?: string | null
           name: string
           psychology_status?: string | null
@@ -95,6 +97,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           industry?: string | null
+          meta_access_token?: string | null
           meta_account_id?: string | null
           name?: string
           psychology_status?: string | null
