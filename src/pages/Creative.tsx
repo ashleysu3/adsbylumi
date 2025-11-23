@@ -324,18 +324,26 @@ export default function Creative() {
               <div className="flex-1 overflow-hidden">
                 {!workspace.creative_json ? (
                   <div className="h-full flex items-center justify-center p-6">
-                    <Card className="max-w-lg">
-                      <CardHeader>
-                        <CardTitle>Generate Creative Assets</CardTitle>
-                        <CardDescription>
-                          Start by generating your creative concepts and copy
+                    <Card className="max-w-xl border-2 shadow-lg">
+                      <CardHeader className="text-center space-y-3">
+                        <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                          <Sparkles className="h-8 w-8 text-white" />
+                        </div>
+                        <CardTitle className="text-2xl">Generate Creative Assets</CardTitle>
+                        <CardDescription className="text-base">
+                          Create AI-powered creative concepts, scripts, and copy tailored to your campaign strategy
                         </CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <Button onClick={generateCreative} disabled={generating}>
-                          {generating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          Generate Creative Mix
+                      <CardContent className="flex justify-center pb-8">
+                        <Button 
+                          onClick={generateCreative} 
+                          disabled={generating}
+                          size="lg"
+                          className="w-full max-w-xs gap-2"
+                        >
+                          {generating && <Loader2 className="h-5 w-5 animate-spin" />}
+                          {!generating && <Sparkles className="h-5 w-5" />}
+                          {generating ? "Generating..." : "Generate Creative Mix"}
                         </Button>
                       </CardContent>
                     </Card>
