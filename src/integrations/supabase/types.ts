@@ -177,11 +177,15 @@ export type Database = {
           meta_campaign_ids: Json | null
           meta_campaign_status: string | null
           meta_errors: Json | null
+          meta_insights_last_sync: string | null
           name: string
           offer_description: string | null
           offer_name: string | null
           offer_price: string | null
           offer_url: string | null
+          performance_history: Json | null
+          performance_report_latest: Json | null
+          performance_reports: Json | null
           production_checklist: Json | null
           production_items: Json | null
           progress_status: string
@@ -191,6 +195,7 @@ export type Database = {
           template_id: string | null
           updated_at: string | null
           user_uploaded_assets: Json | null
+          weekly_report_draft: string | null
         }
         Insert: {
           brand_id: string
@@ -205,11 +210,15 @@ export type Database = {
           meta_campaign_ids?: Json | null
           meta_campaign_status?: string | null
           meta_errors?: Json | null
+          meta_insights_last_sync?: string | null
           name: string
           offer_description?: string | null
           offer_name?: string | null
           offer_price?: string | null
           offer_url?: string | null
+          performance_history?: Json | null
+          performance_report_latest?: Json | null
+          performance_reports?: Json | null
           production_checklist?: Json | null
           production_items?: Json | null
           progress_status?: string
@@ -219,6 +228,7 @@ export type Database = {
           template_id?: string | null
           updated_at?: string | null
           user_uploaded_assets?: Json | null
+          weekly_report_draft?: string | null
         }
         Update: {
           brand_id?: string
@@ -233,11 +243,15 @@ export type Database = {
           meta_campaign_ids?: Json | null
           meta_campaign_status?: string | null
           meta_errors?: Json | null
+          meta_insights_last_sync?: string | null
           name?: string
           offer_description?: string | null
           offer_name?: string | null
           offer_price?: string | null
           offer_url?: string | null
+          performance_history?: Json | null
+          performance_report_latest?: Json | null
+          performance_reports?: Json | null
           production_checklist?: Json | null
           production_items?: Json | null
           progress_status?: string
@@ -247,6 +261,7 @@ export type Database = {
           template_id?: string | null
           updated_at?: string | null
           user_uploaded_assets?: Json | null
+          weekly_report_draft?: string | null
         }
         Relationships: [
           {
