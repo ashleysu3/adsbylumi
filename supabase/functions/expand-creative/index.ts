@@ -51,9 +51,9 @@ serve(async (req) => {
 ${audiencePsychology ? `\nAudience Psychology:\n${JSON.stringify(audiencePsychology, null, 2)}` : ''}
 
 Knowledge Base References:
-${kbByCategory['Creative Department'] ? `\nCreative Framework:\n${kbByCategory['Creative Department'][0]?.content?.substring(0, 3000)}` : ''}
-${kbByCategory['Hooks'] ? `\nHook Patterns:\n${kbByCategory['Hooks'][0]?.content?.substring(0, 2000)}` : ''}
-${kbByCategory['Copy Formulas'] ? `\nCopy Formulas:\n${kbByCategory['Copy Formulas'][0]?.content?.substring(0, 2000)}` : ''}
+${kbByCategory['Creative Department'] ? `\nCreative Framework:\n${kbByCategory['Creative Department'][0]?.content?.substring(0, 2000)}` : ''}
+${kbByCategory['Hooks'] ? `\nHook Patterns:\n${kbByCategory['Hooks'][0]?.content?.substring(0, 1500)}` : ''}
+${kbByCategory['Copy Formulas'] ? `\nCopy Formulas:\n${kbByCategory['Copy Formulas'][0]?.content?.substring(0, 1500)}` : ''}
 
 IMPORTANT RULES:
 - Return valid JSON only
@@ -85,40 +85,91 @@ Return JSON structure:
     
     console.log('Calling Lovable AI...');
     
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: fullPrompt }
-        ],
-        temperature: 0.9,
-      }),
-    });
+    // Retry logic for transient errors
+    let response;
+    let lastError;
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second base delay
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${lovableApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: fullPrompt }
+            ],
+            temperature: 0.9,
+            max_tokens: 4000, // Limit response size
+          }),
+          signal: AbortSignal.timeout(30000), // 30 second timeout
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please wait a moment and try again.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        if (response.ok) {
+          break; // Success, exit retry loop
+        }
+
+        // Handle specific error codes
+        if (response.status === 429) {
+          console.log(`Rate limit hit on attempt ${attempt}, waiting...`);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+            continue;
+          }
+          return new Response(
+            JSON.stringify({ error: 'Rate limit exceeded. Please wait a moment and try again.' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        if (response.status === 402) {
+          return new Response(
+            JSON.stringify({ error: 'AI credits depleted. Please check your account.' }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // 500 errors - retry with exponential backoff
+        if (response.status === 500 || response.status === 503) {
+          const errorText = await response.text();
+          console.error(`AI service error (attempt ${attempt}/${maxRetries}):`, response.status, errorText.substring(0, 200));
+          lastError = `AI service temporarily unavailable (${response.status})`;
+          
+          if (attempt < maxRetries) {
+            const backoffDelay = retryDelay * Math.pow(2, attempt - 1);
+            console.log(`Retrying in ${backoffDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, backoffDelay));
+            continue;
+          }
+        } else {
+          // Other errors - don't retry
+          const errorText = await response.text();
+          console.error('Lovable AI error:', response.status, errorText.substring(0, 500));
+          throw new Error(`AI error: ${response.status}`);
+        }
+        
+      } catch (fetchError: any) {
+        console.error(`Fetch error on attempt ${attempt}:`, fetchError.message);
+        lastError = fetchError.message;
+        
+        if (attempt < maxRetries) {
+          const backoffDelay = retryDelay * Math.pow(2, attempt - 1);
+          console.log(`Retrying in ${backoffDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          continue;
+        }
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits depleted. Please add credits in Settings.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      throw new Error(`Lovable AI error: ${response.status}`);
+    }
+
+    // If all retries failed
+    if (!response || !response.ok) {
+      throw new Error(`Failed after ${maxRetries} attempts: ${lastError || 'Unknown error'}`);
     }
 
     const data = await response.json();
@@ -154,9 +205,26 @@ Return JSON structure:
     
   } catch (error: any) {
     console.error('Error in expand-creative:', error);
+    
+    // Provide user-friendly error messages
+    let errorMessage = 'Failed to expand creative';
+    let statusCode = 500;
+    
+    if (error.message?.includes('timeout') || error.message?.includes('aborted')) {
+      errorMessage = 'AI service timeout. The request took too long. Please try again with a simpler prompt.';
+      statusCode = 504;
+    } else if (error.message?.includes('Failed after')) {
+      errorMessage = 'AI service temporarily unavailable. Please try again in a few moments.';
+      statusCode = 503;
+    } else if (error.message?.includes('parse')) {
+      errorMessage = 'Failed to process AI response. Please try regenerating.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return new Response(
-      JSON.stringify({ error: error.message || 'Failed to expand creative' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: errorMessage }),
+      { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
