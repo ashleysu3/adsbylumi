@@ -24,7 +24,7 @@ export default function CampaignBuilder() {
   const [campaignIds, setCampaignIds] = useState<any>(null);
 
   useEffect(() => {
-    if (workspaceId) {
+    if (workspaceId && !workspace) {
       fetchWorkspace();
     }
   }, [workspaceId]);

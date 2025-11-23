@@ -29,10 +29,12 @@ export function CampaignChat({
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    // If no messages yet, send initial greeting
-    if (messages.length === 0) {
+    // If no messages yet and not initialized, send initial greeting
+    if (messages.length === 0 && !initializedRef.current) {
+      initializedRef.current = true;
       sendInitialMessage();
     }
   }, []);
@@ -145,7 +147,9 @@ export function CampaignChat({
   };
 
   const handleQuickReply = (recommendation: any) => {
-    sendMessage(recommendation.label);
+    // Send the actual value, not the label
+    const valueToSend = String(recommendation.value);
+    sendMessage(valueToSend);
   };
 
   return (
