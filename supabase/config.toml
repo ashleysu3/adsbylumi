@@ -3,6 +3,9 @@ project_id = "sqwjbndgighjtifijgws"
 [functions.generate-creative]
 verify_jwt = true
 
+[functions.expand-creative]
+verify_jwt = true
+
 [functions.extract-brand-info]
 verify_jwt = true
 
