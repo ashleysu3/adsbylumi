@@ -177,6 +177,7 @@ export type Database = {
           offer_price: string | null
           offer_url: string | null
           production_checklist: Json | null
+          production_items: Json | null
           progress_status: string
           strategy_id: string | null
           strategy_json: Json | null
@@ -200,6 +201,7 @@ export type Database = {
           offer_price?: string | null
           offer_url?: string | null
           production_checklist?: Json | null
+          production_items?: Json | null
           progress_status?: string
           strategy_id?: string | null
           strategy_json?: Json | null
@@ -223,6 +225,7 @@ export type Database = {
           offer_price?: string | null
           offer_url?: string | null
           production_checklist?: Json | null
+          production_items?: Json | null
           progress_status?: string
           strategy_id?: string | null
           strategy_json?: Json | null
