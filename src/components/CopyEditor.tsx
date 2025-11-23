@@ -11,10 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Lightbulb, FileText, Sparkles, Loader2 } from "lucide-react";
+import { Lightbulb, FileText, Sparkles, Loader2, Shuffle } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { CopyVariations } from "./CopyVariations";
 
 interface CopyEditorProps {
   concept: any;
@@ -40,6 +41,9 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiResponse, setAiResponse] = useState<any>(null);
   const [generationSource, setGenerationSource] = useState<'ai' | 'manual'>('manual');
+  const [variations, setVariations] = useState<any[]>([]);
+  const [showVariations, setShowVariations] = useState(false);
+  const [isGeneratingVariations, setIsGeneratingVariations] = useState(false);
 
   const handleApprove = () => {
     onApprove(copy);
@@ -96,6 +100,57 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
     setGenerationSource('manual');
   };
 
+  const handleGenerateVariations = async () => {
+    setIsGeneratingVariations(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-copy-variations', {
+        body: {
+          concept,
+          stage: concept.stage || 'tofu',
+          uploadedAssetUrl: uploadedAsset?.file_url,
+          brandInfo: {
+            name: workspace?.name || 'Your Brand',
+            voice: workspace?.brand_voice,
+            audience: workspace?.target_audience
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      setVariations(data.variations || []);
+      setShowVariations(true);
+      toast({ title: `Generated ${data.variations?.length || 0} copy variations!` });
+    } catch (error) {
+      console.error('Variations generation error:', error);
+      toast({ 
+        title: 'Failed to generate variations', 
+        description: error instanceof Error ? error.message : 'Please try again',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsGeneratingVariations(false);
+    }
+  };
+
+  const handleSelectVariation = (variation: any) => {
+    setCopy({
+      headline: variation.headline,
+      primary_text: variation.primary_text,
+      description: variation.description,
+      call_to_action: variation.call_to_action
+    });
+    setAiResponse({
+      ...variation,
+      why_this_works: variation.why_this_angle,
+      knowledge_applied: [variation.framework_used],
+      cta_reasoning: `Using ${variation.call_to_action} because this is a ${concept.stage || 'tofu'} stage ad.`
+    });
+    setGenerationSource('ai');
+    setShowVariations(false);
+    toast({ title: `Applied ${variation.variation_name}!` });
+  };
+
   const ctaOptions = [
     { value: "LEARN_MORE", label: "Learn More" },
     { value: "SHOP_NOW", label: "Shop Now" },
@@ -118,6 +173,24 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
           </div>
         </div>
         <div className="flex gap-2">
+          <Button 
+            onClick={handleGenerateVariations}
+            disabled={isGeneratingVariations || !uploadedAsset}
+            variant="outline"
+            className="gap-2"
+          >
+            {isGeneratingVariations ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Shuffle className="h-4 w-4" />
+                Generate Variations
+              </>
+            )}
+          </Button>
           <Button 
             onClick={handleGenerateWithAI} 
             disabled={isGenerating || !uploadedAsset}
@@ -150,8 +223,18 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
         </Badge>
       )}
 
-      {/* Preview */}
-      <Card className="p-6 bg-muted/30">
+      {/* Show Variations UI */}
+      {showVariations && variations.length > 0 ? (
+        <CopyVariations
+          variations={variations}
+          onSelect={handleSelectVariation}
+          onCancel={() => setShowVariations(false)}
+          currentCopy={copy}
+        />
+      ) : (
+        <>
+          {/* Preview */}
+          <Card className="p-6 bg-muted/30">
         <h3 className="font-semibold mb-4">Ad Preview</h3>
         <div className="bg-background rounded-lg border p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -359,6 +442,8 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
         </Button>
         <Button onClick={handleApprove}>Approve & Mark Ready →</Button>
       </div>
+        </>
+      )}
     </div>
   );
 }
