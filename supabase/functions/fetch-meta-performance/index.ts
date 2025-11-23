@@ -48,12 +48,22 @@ Deno.serve(async (req) => {
       throw new Error('Meta account not connected. Please connect your Meta ad account in the Dashboard first.');
     }
 
+    // Check if campaign is actually published to Meta
+    if (!workspace.meta_campaign_status || workspace.meta_campaign_status === 'draft') {
+      throw new Error('Campaign has not been published to Meta yet. Please publish your campaign first.');
+    }
+
     const metaCampaignIds = workspace.meta_campaign_ids as any;
     if (!metaCampaignIds || !metaCampaignIds.campaignId) {
       throw new Error('Campaign not published to Meta yet');
     }
 
     const campaignId = metaCampaignIds.campaignId;
+    
+    // Validate campaign ID format (Meta campaign IDs should be numeric)
+    if (!campaignId || !/^\d+$/.test(campaignId)) {
+      throw new Error('Invalid Meta campaign ID format. This campaign may not have been properly published to Meta.');
+    }
     const adSetIds = metaCampaignIds.adSetIds || [];
     const adIds = metaCampaignIds.adIds || [];
 

@@ -228,8 +228,10 @@ export default function Data() {
       );
 
       if (metricsError) {
+        const errorMsg = metricsError.message || '';
+        
         // Check if it's a Meta connection issue
-        if (metricsError.message?.includes('Meta account not connected')) {
+        if (errorMsg.includes('Meta account not connected')) {
           toast.error('Meta account not connected', {
             description: 'Please connect your Meta ad account in the Dashboard to view performance data.',
             action: {
@@ -239,6 +241,27 @@ export default function Data() {
           });
           return;
         }
+        
+        // Check if campaign not published
+        if (errorMsg.includes('not been published') || errorMsg.includes('Invalid Meta campaign ID')) {
+          toast.error('Campaign not published', {
+            description: 'This campaign needs to be published to Meta before you can view performance data.',
+            action: {
+              label: 'View Campaigns',
+              onClick: () => navigate('/campaigns'),
+            },
+          });
+          return;
+        }
+        
+        // Check if Meta API error (campaign doesn't exist)
+        if (errorMsg.includes('Meta API error') || errorMsg.includes('does not exist')) {
+          toast.error('Campaign not found in Meta', {
+            description: 'This campaign may have been deleted from Meta Ads Manager or was not properly published.',
+          });
+          return;
+        }
+        
         throw metricsError;
       }
 
