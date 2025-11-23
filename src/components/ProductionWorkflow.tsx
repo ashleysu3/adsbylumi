@@ -55,7 +55,28 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
   };
 
   const handleUploadComplete = async () => {
+    // Find the most recently uploaded asset for this concept
+    const latestAsset = workspace.user_uploaded_assets?.find(
+      (asset: any) => asset.linked_concept_id === item.concept_id
+    );
+    
+    if (latestAsset) {
+      // Update production item with uploaded_asset_id
+      const productionItems = workspace.production_items || [];
+      const updatedItems = productionItems.map((pi: any) =>
+        pi.id === item.id ? { ...pi, uploaded_asset_id: latestAsset.id } : pi
+      );
+      
+      await supabase
+        .from("campaign_workspaces")
+        .update({ production_items: updatedItems })
+        .eq("id", workspace.id);
+      
+      setUpdatedItem({ ...updatedItem, uploaded_asset_id: latestAsset.id });
+    }
+    
     handleNext("copy");
+    onUpdate();
   };
 
   const handleCopyApprove = async (copy: any) => {
@@ -213,7 +234,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                 </p>
               </div>
 
-              <DragDropUploader workspace={workspace} onUpdate={onUpdate} />
+              <DragDropUploader workspace={workspace} onUpdate={onUpdate} productionItem={item} />
 
               <div className="flex gap-3 justify-between pt-4">
                 <Button variant="outline" onClick={() => handleNext("create")}>
