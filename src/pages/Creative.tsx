@@ -230,7 +230,7 @@ export default function Creative() {
                   value={selectedCampaignId}
                   onValueChange={handleCampaignSelect}
                 >
-                  <SelectTrigger id="campaign-select" className="w-full">
+                  <SelectTrigger id="campaign-select" className="w-full text-left">
                     <SelectValue
                       placeholder={
                         campaigns.length === 0
@@ -350,7 +350,7 @@ export default function Creative() {
                   value={selectedCampaignId}
                   onValueChange={handleCampaignSelect}
                 >
-                  <SelectTrigger id="campaign-select" className="w-full">
+                  <SelectTrigger id="campaign-select" className="w-full text-left">
                     <SelectValue
                       placeholder={
                         campaigns.length === 0
