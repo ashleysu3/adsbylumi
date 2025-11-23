@@ -153,10 +153,10 @@ export function CampaignChat({
   };
 
   return (
-    <Card className="h-[calc(100vh-280px)] flex flex-col">
+    <Card className="h-[calc(100vh-220px)] flex flex-col">
       <CardContent className="flex-1 flex flex-col p-0">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-8">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -170,13 +170,13 @@ export function CampaignChat({
               
               <div className={`flex-1 ${message.role === 'user' ? 'flex justify-end' : ''}`}>
                 <div
-                  className={`rounded-lg px-4 py-3 max-w-[80%] ${
+                  className={`rounded-lg px-4 py-3 max-w-[85%] break-words ${
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                 </div>
               </div>
             </div>
@@ -215,9 +215,9 @@ export function CampaignChat({
                   variant="outline"
                   size="sm"
                   onClick={() => handleQuickReply(rec)}
-                  className="text-xs"
+                  className="text-xs whitespace-normal h-auto py-2"
                 >
-                  {rec.label}
+                  <span className="break-words">{rec.label}</span>
                   {rec.reason && (
                     <span className="ml-2 text-muted-foreground">• {rec.reason}</span>
                   )}
