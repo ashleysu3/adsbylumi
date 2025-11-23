@@ -547,7 +547,42 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Static Layout</p>
                   <div className="bg-muted/30 rounded-lg p-3 text-sm whitespace-pre-wrap">
-                    {concept.static_layout}
+                    {typeof concept.static_layout === 'string' ? (
+                      concept.static_layout
+                    ) : (
+                      <div className="space-y-2">
+                        {concept.static_layout.headline_text && (
+                          <div>
+                            <span className="font-semibold">Headline: </span>
+                            {concept.static_layout.headline_text}
+                          </div>
+                        )}
+                        {concept.static_layout.sub_headline_text && (
+                          <div>
+                            <span className="font-semibold">Sub-headline: </span>
+                            {concept.static_layout.sub_headline_text}
+                          </div>
+                        )}
+                        {concept.static_layout.body_text_section && (
+                          <div>
+                            <span className="font-semibold">Body: </span>
+                            {concept.static_layout.body_text_section}
+                          </div>
+                        )}
+                        {concept.static_layout.call_to_action && (
+                          <div>
+                            <span className="font-semibold">CTA: </span>
+                            {concept.static_layout.call_to_action}
+                          </div>
+                        )}
+                        {concept.static_layout.background_visual && (
+                          <div>
+                            <span className="font-semibold">Visual: </span>
+                            {concept.static_layout.background_visual}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
