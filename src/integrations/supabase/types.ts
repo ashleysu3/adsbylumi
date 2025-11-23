@@ -336,6 +336,8 @@ export type Database = {
         Row: {
           ai_generated_description: boolean | null
           ai_generated_price: boolean | null
+          archived: boolean | null
+          archived_at: string | null
           brand_id: string
           created_at: string | null
           description: string | null
@@ -352,6 +354,8 @@ export type Database = {
         Insert: {
           ai_generated_description?: boolean | null
           ai_generated_price?: boolean | null
+          archived?: boolean | null
+          archived_at?: string | null
           brand_id: string
           created_at?: string | null
           description?: string | null
@@ -368,6 +372,8 @@ export type Database = {
         Update: {
           ai_generated_description?: boolean | null
           ai_generated_price?: boolean | null
+          archived?: boolean | null
+          archived_at?: string | null
           brand_id?: string
           created_at?: string | null
           description?: string | null

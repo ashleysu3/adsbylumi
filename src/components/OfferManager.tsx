@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OfferDialog } from "./OfferDialog";
-import { Plus, ExternalLink, Package, Loader2, Sparkles, Rocket, Trash2 } from "lucide-react";
+import { Plus, ExternalLink, Package, Loader2, Sparkles, Rocket, Archive, ArchiveRestore } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,8 @@ interface Offer {
   recommended_template_id?: string | null;
   recommendation_reason?: string | null;
   recommendation_confidence?: string | null;
+  archived?: boolean;
+  archived_at?: string | null;
 }
 
 interface OfferManagerProps {
@@ -34,8 +36,9 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
   const [expandedOffers, setExpandedOffers] = useState<Set<string>>(new Set());
   const [templates, setTemplates] = useState<any[]>([]);
   const [creatingCampaign, setCreatingCampaign] = useState<string | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [offerToDelete, setOfferToDelete] = useState<Offer | null>(null);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [offerToArchive, setOfferToArchive] = useState<Offer | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
@@ -131,27 +134,33 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
     return templates.find(t => t.id === templateId);
   };
 
-  const handleDeleteOffer = async () => {
-    if (!offerToDelete) return;
+  const handleArchiveOffer = async () => {
+    if (!offerToArchive) return;
 
     try {
+      const isArchiving = !offerToArchive.archived;
       const { error } = await supabase
         .from('offers')
-        .delete()
-        .eq('id', offerToDelete.id);
+        .update({
+          archived: isArchiving,
+          archived_at: isArchiving ? new Date().toISOString() : null,
+        })
+        .eq('id', offerToArchive.id);
 
       if (error) throw error;
 
-      toast.success(`${offerToDelete.name} deleted successfully`);
+      toast.success(isArchiving ? `${offerToArchive.name} archived` : `${offerToArchive.name} restored`);
       onUpdate();
     } catch (error: any) {
-      console.error('Error deleting offer:', error);
-      toast.error(error.message || 'Failed to delete offer');
+      console.error('Error archiving offer:', error);
+      toast.error(error.message || 'Failed to archive offer');
     } finally {
-      setDeleteDialogOpen(false);
-      setOfferToDelete(null);
+      setArchiveDialogOpen(false);
+      setOfferToArchive(null);
     }
   };
+
+  const filteredOffers = showArchived ? offers : offers.filter(offer => !offer.archived);
 
   return (
     <>
@@ -162,10 +171,24 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
               <Package className="h-5 w-5 text-primary" />
               <CardTitle>Your Offers & Products</CardTitle>
             </div>
-            <Button size="sm" onClick={() => setDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Offer
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="show-archived-offers"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  className="rounded border-input"
+                />
+                <label htmlFor="show-archived-offers" className="text-sm text-muted-foreground cursor-pointer">
+                  Show Archived
+                </label>
+              </div>
+              <Button size="sm" onClick={() => setDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Offer
+              </Button>
+            </div>
           </div>
           <CardDescription>
             Manage your offers and their product-specific psychological profiles
@@ -173,11 +196,11 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
         </CardHeader>
 
         <CardContent>
-          {offers.length === 0 ? (
+          {filteredOffers.length === 0 ? (
             <div className="text-center py-8">
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground mb-4">
-                No offers added yet. Add your first offer to get started.
+                {showArchived ? "No archived offers" : "No offers added yet. Add your first offer to get started."}
               </p>
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -186,19 +209,22 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
             </div>
           ) : (
             <div className="space-y-3">
-              {offers.map((offer) => (
+              {filteredOffers.map((offer) => (
                 <Collapsible
                   key={offer.id}
                   open={expandedOffers.has(offer.id)}
                   onOpenChange={() => toggleOffer(offer.id)}
                 >
-                  <Card className="border-2">
+                  <Card className={`border-2 ${offer.archived ? 'opacity-60' : ''}`}>
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <CollapsibleTrigger asChild>
                           <button className="flex-1 text-left hover:opacity-80 transition-opacity">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-semibold">{offer.name}</h4>
+                              {offer.archived && (
+                                <Badge variant="outline" className="text-xs">Archived</Badge>
+                              )}
                               {offer.product_psychology ? (
                                 <Badge variant="default" className="text-xs">Psychology Ready</Badge>
                               ) : (
@@ -234,14 +260,19 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            className="h-8 w-8 p-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setOfferToDelete(offer);
-                              setDeleteDialogOpen(true);
+                              setOfferToArchive(offer);
+                              setArchiveDialogOpen(true);
                             }}
+                            title={offer.archived ? "Restore offer" : "Archive offer"}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {offer.archived ? (
+                              <ArchiveRestore className="h-4 w-4" />
+                            ) : (
+                              <Archive className="h-4 w-4" />
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -351,18 +382,22 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
         onSuccess={onUpdate}
       />
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Offer</AlertDialogTitle>
+            <AlertDialogTitle>
+              {offerToArchive?.archived ? "Restore Offer" : "Archive Offer"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{offerToDelete?.name}"? This action cannot be undone.
+              {offerToArchive?.archived
+                ? `Are you sure you want to restore "${offerToArchive?.name}"? It will be available for new campaigns.`
+                : `Are you sure you want to archive "${offerToArchive?.name}"? Campaigns with this offer will remain visible if they're live or completed.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteOffer} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogAction onClick={handleArchiveOffer}>
+              {offerToArchive?.archived ? "Restore" : "Archive"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

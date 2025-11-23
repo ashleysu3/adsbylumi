@@ -58,7 +58,38 @@ export default function Creative() {
         .eq("brand_id", brandData.id)
         .order("updated_at", { ascending: false });
 
-      setCampaigns(campaignsData || []);
+      // Filter campaigns based on offer archive status
+      if (campaignsData && campaignsData.length > 0) {
+        const filteredCampaigns = await Promise.all(
+          campaignsData.map(async (campaign) => {
+            if (!campaign.offer_name) return campaign;
+            
+            // Check if offer is archived
+            const { data: offer } = await supabase
+              .from('offers')
+              .select('archived')
+              .eq('brand_id', brandData.id)
+              .eq('name', campaign.offer_name)
+              .maybeSingle();
+            
+            // Show campaign if:
+            // 1. Offer doesn't exist in offers table (legacy)
+            // 2. Offer is not archived
+            // 3. Campaign is live/completed (performance tracking)
+            if (!offer || 
+                !offer.archived || 
+                ['live', 'completed'].includes(campaign.progress_status)) {
+              return campaign;
+            }
+            
+            return null;
+          })
+        );
+
+        setCampaigns(filteredCampaigns.filter(Boolean) as any[]);
+      } else {
+        setCampaigns([]);
+      }
 
       // Auto-select most recent campaign if available
       if (campaignsData && campaignsData.length > 0) {
