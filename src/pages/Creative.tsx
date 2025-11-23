@@ -184,7 +184,7 @@ export default function Creative() {
 
   if (loading && campaigns.length === 0) {
     return (
-      <DashboardLayout>
+      <DashboardLayout fullWidth={true}>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -193,7 +193,7 @@ export default function Creative() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout fullWidth={true}>
       <div className="flex h-[calc(100vh-4rem)] w-full overflow-hidden">
         {/* Main Dashboard Area */}
         {!workspace ? (
