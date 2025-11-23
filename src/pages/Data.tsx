@@ -178,16 +178,45 @@ export default function Data() {
 
       const { data, error } = await supabase
         .from('campaign_workspaces')
-        .select('id, name, meta_campaign_ids, meta_insights_last_sync, performance_report_latest')
+        .select('id, name, meta_campaign_ids, meta_campaign_status, meta_insights_last_sync, performance_report_latest')
         .eq('brand_id', brand.id)
         .not('meta_campaign_ids', 'is', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setWorkspaces(data || []);
-      if (data && data.length > 0 && !selectedWorkspaceId) {
-        setSelectedWorkspaceId(data[0].id);
+      // Filter out campaigns with placeholder IDs (unpublished)
+      const publishedWorkspaces = (data || []).filter(workspace => {
+        if (!workspace.meta_campaign_ids) return false;
+        
+        const campaignId = (workspace.meta_campaign_ids as any)?.campaignId;
+        if (!campaignId) return false;
+        
+        // Check if campaign ID is a placeholder (contains underscore + timestamp)
+        if (typeof campaignId === 'string' && campaignId.includes('_')) {
+          const parts = campaignId.split('_');
+          const numericPart = parts[parts.length - 1];
+          const timestamp = parseInt(numericPart);
+          const now = Date.now();
+          const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
+          
+          // If it looks like a timestamp, it's a placeholder
+          if (timestamp > oneYearAgo && timestamp <= now) {
+            return false;
+          }
+        }
+        
+        // Also filter out campaigns with 'draft' status
+        if (workspace.meta_campaign_status === 'draft') {
+          return false;
+        }
+        
+        return true;
+      });
+
+      setWorkspaces(publishedWorkspaces);
+      if (publishedWorkspaces.length > 0 && !selectedWorkspaceId) {
+        setSelectedWorkspaceId(publishedWorkspaces[0].id);
       }
     } catch (error: any) {
       console.error('Error fetching workspaces:', error);
@@ -382,9 +411,15 @@ export default function Data() {
           <CardHeader>
             <CardTitle>No Published Campaigns</CardTitle>
             <CardDescription>
-              You need to publish a campaign to Meta before you can view performance data.
+              Build and publish a campaign to Meta to view performance data here.
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate('/campaigns')} className="w-full sm:w-auto">
+              <ArrowRight className="mr-2 h-4 w-4" />
+              Go to Campaigns
+            </Button>
+          </CardContent>
         </Card>
       </DashboardLayout>
     );
