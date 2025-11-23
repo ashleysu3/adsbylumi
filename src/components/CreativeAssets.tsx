@@ -81,12 +81,16 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
     
     // Script recording task
     if (concept.script || concept.format === 'talking_head') {
+      const scriptLines = concept.script 
+        ? concept.script.split('\n').filter((line: string) => line.trim())
+        : ["Record talking head video following the script"];
+      
       items.push({
         id: `record_${conceptId}`,
         concept_id: conceptId,
         category: "📹 To Record",
         title: `${stage.toUpperCase()}: ${concept.title}`,
-        details: concept.script || "Record talking head video",
+        details: scriptLines,
         completed: false,
         stage: stage,
         format: concept.format
@@ -95,12 +99,16 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
 
     // B-roll recording task
     if (concept.broll_instructions || concept.format === 'b_roll') {
+      const brollLines = concept.broll_instructions
+        ? concept.broll_instructions.split('\n').filter((line: string) => line.trim())
+        : ["Record B-roll footage"];
+      
       items.push({
         id: `broll_${conceptId}`,
         concept_id: conceptId,
         category: "📹 To Record",
         title: `B-roll for: ${concept.title}`,
-        details: concept.broll_instructions || "Record B-roll footage",
+        details: brollLines,
         completed: false,
         stage: stage,
         format: 'b_roll'
@@ -109,12 +117,18 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
 
     // Carousel design task
     if (concept.format === 'carousel') {
+      const carouselDetails = typeof concept.carousel_structure === 'string'
+        ? concept.carousel_structure.split('\n').filter((line: string) => line.trim())
+        : Array.isArray(concept.carousel_structure)
+        ? concept.carousel_structure
+        : ["Design carousel slides with consistent branding", "Include clear CTA on final slide"];
+      
       items.push({
         id: `carousel_${conceptId}`,
         concept_id: conceptId,
         category: "🎨 To Design",
         title: `${stage.toUpperCase()} Carousel: ${concept.title}`,
-        details: concept.carousel_structure || "Design carousel slides",
+        details: carouselDetails,
         completed: false,
         stage: stage,
         format: 'carousel'
@@ -123,12 +137,16 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
 
     // Static graphic task
     if (concept.format === 'static') {
+      const staticDetails = concept.static_layout
+        ? concept.static_layout.split('\n').filter((line: string) => line.trim())
+        : ["Design static graphic following brand guidelines"];
+      
       items.push({
         id: `static_${conceptId}`,
         concept_id: conceptId,
         category: "🎨 To Design",
         title: `${stage.toUpperCase()} Static: ${concept.title}`,
-        details: concept.static_layout || "Design static graphic",
+        details: staticDetails,
         completed: false,
         stage: stage,
         format: 'static'
@@ -137,12 +155,14 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
 
     // Overlay text task
     if (concept.overlay_text) {
+      const overlayDetails = concept.overlay_text.split('\n').filter((line: string) => line.trim());
+      
       items.push({
         id: `overlay_${conceptId}`,
         concept_id: conceptId,
         category: "✂️ Post-Production",
         title: `Add overlays for: ${concept.title}`,
-        details: concept.overlay_text,
+        details: overlayDetails.length > 0 ? overlayDetails : [concept.overlay_text],
         completed: false,
         stage: stage
       });
