@@ -15,7 +15,8 @@ import {
   Image as ImageIcon,
   FileText,
   Layers,
-  CheckCircle2
+  CheckCircle2,
+  Paperclip
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -341,6 +342,11 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
     const isExpanded = expandedConcepts.has(conceptId);
     const isSelected = selectedConcepts.has(conceptId);
     const FormatIcon = formatIcons[concept.format as keyof typeof formatIcons] || FileText;
+    
+    // Find linked assets
+    const linkedAssets = (workspace.user_uploaded_assets || []).filter(
+      (asset: any) => asset.linked_concept_id === conceptId
+    );
 
     return (
       <Card 
@@ -380,6 +386,12 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
                       {concept.action_taken === 'regenerate' && '🔄 Regenerated'}
                       {concept.action_taken === 'more_options' && '✨ Variation'}
                       {concept.action_taken === 'expand_idea' && '📝 Expanded'}
+                    </Badge>
+                  )}
+                  {linkedAssets.length > 0 && (
+                    <Badge variant="default" className="gap-1">
+                      <Paperclip className="h-3 w-3" />
+                      {linkedAssets.length} asset{linkedAssets.length > 1 ? 's' : ''}
                     </Badge>
                   )}
                 </div>
@@ -486,6 +498,21 @@ export function CreativeAssets({ workspace, onUpdate }: CreativeAssetsProps) {
                   <p className="text-sm bg-accent/10 p-3 rounded-md">
                     {concept.why_it_works}
                   </p>
+                </div>
+              )}
+
+              {/* Linked Assets */}
+              {linkedAssets.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Linked Assets</p>
+                  <div className="space-y-1">
+                    {linkedAssets.map((asset: any) => (
+                      <div key={asset.id} className="flex items-center gap-2 text-sm bg-muted/30 p-2 rounded">
+                        <Paperclip className="h-3 w-3 text-primary" />
+                        <span className="truncate">{asset.file_name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
