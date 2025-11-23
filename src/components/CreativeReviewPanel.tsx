@@ -95,7 +95,7 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
   if (!hasReasonableProgress && hasLovedConcepts) warnings.push(`Only ${uploads.length} of ${totalNeeded} assets uploaded`);
 
   return (
-    <div className="w-96 flex-shrink-0 border-l border-border bg-background/50 backdrop-blur-sm overflow-hidden">
+    <div className="w-80 md:w-96 flex-shrink-0 border-l border-border bg-background/50 backdrop-blur-sm overflow-hidden overflow-x-hidden">
       <div className="px-4 py-4 border-b border-border">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
@@ -271,9 +271,9 @@ export function CreativeReviewPanel({ workspace, onFinalize }: CreativeReviewPan
               <Button 
                 onClick={onFinalize}
                 disabled={!isReadyToFinalize}
-                className="w-full gap-2 text-sm"
+                className="w-full gap-2 text-sm flex-nowrap"
               >
-                <span>Continue to Campaign Builder</span>
+                <span className="whitespace-nowrap">Continue to Campaign Builder</span>
                 <ArrowRight className="h-4 w-4 flex-shrink-0" />
               </Button>
             </CardContent>
