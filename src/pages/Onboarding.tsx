@@ -71,8 +71,29 @@ export default function Onboarding() {
       return;
     }
 
-    if (!valueProposition && !extracting) {
-      await handleExtractBrandInfo();
+    // If we don't have extracted info yet, extract it before proceeding
+    if (!valueProposition || !targetAudience || !industry) {
+      setExtracting(true);
+      toast.info("Analyzing your website before continuing...");
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('extract-brand-info', {
+          body: { websiteUrl }
+        });
+
+        if (error) throw error;
+
+        setValueProposition(data.value_proposition);
+        setTargetAudience(data.target_audience);
+        setIndustry(data.industry);
+
+        toast.success("Brand info extracted successfully");
+      } catch (error: any) {
+        console.error('Error extracting brand info:', error);
+        toast.error("Could not auto-extract info. Please fill in manually on the next step.");
+      } finally {
+        setExtracting(false);
+      }
     }
 
     setStep(2);
@@ -204,8 +225,19 @@ export default function Onboarding() {
                 />
               </div>
 
-              <Button onClick={handleStep1Next} className="w-full">
-                Next
+              <Button 
+                onClick={handleStep1Next} 
+                disabled={extracting}
+                className="w-full"
+              >
+                {extracting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing website...
+                  </>
+                ) : (
+                  "Next"
+                )}
               </Button>
             </div>
           ) : (

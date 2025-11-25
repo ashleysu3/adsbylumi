@@ -133,6 +133,10 @@ export function CampaignsList({ brandId }: CampaignsListProps) {
     return colors[status] || "bg-secondary";
   };
 
+  const isPublished = (status: string) => {
+    return ['live', 'completed'].includes(status);
+  };
+
   const getStatusLabel = (status: string) => {
     return status.split("_").map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
@@ -229,6 +233,11 @@ export function CampaignsList({ brandId }: CampaignsListProps) {
                         <h4 className="font-semibold">{campaign.name}</h4>
                         {campaign.archived && (
                           <Badge variant="outline">Archived</Badge>
+                        )}
+                        {!isPublished(campaign.progress_status) && (
+                          <Badge variant="outline" className="border-yellow-500/50 text-yellow-700 dark:text-yellow-400">
+                            Draft
+                          </Badge>
                         )}
                         <Badge className={getStatusColor(campaign.progress_status)}>
                           {getStatusLabel(campaign.progress_status)}

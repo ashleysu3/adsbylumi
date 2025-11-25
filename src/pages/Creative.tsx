@@ -276,20 +276,25 @@ export default function Creative() {
 
             {/* Empty state */}
             <div className="flex-1 flex items-center justify-center p-6">
-              <Card className="max-w-md">
-                <CardHeader>
-                  <CardTitle>No Campaign Selected</CardTitle>
+              <Card className="max-w-md border-2">
+                <CardHeader className="text-center space-y-3">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <Clipboard className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <CardTitle>
+                    {campaigns.length === 0 ? "No Campaigns Yet" : "Select a Campaign"}
+                  </CardTitle>
                   <CardDescription>
                     {campaigns.length === 0
-                      ? "Create your first campaign in the Ad Planner to generate creative assets."
-                      : "Select a campaign from the dropdown above to get started."}
+                      ? "Start by creating your first campaign strategy in the Ad Planner. Once you have a strategy, you'll generate creative assets here."
+                      : "Choose a campaign from the dropdown above to view and generate creative assets. If your campaign doesn't have creative yet, you'll be able to generate it."}
                   </CardDescription>
                 </CardHeader>
                 {campaigns.length === 0 && (
-                  <CardContent>
-                    <Button onClick={() => navigate("/planning")} className="w-full">
+                  <CardContent className="flex justify-center pb-6">
+                    <Button onClick={() => navigate("/planning")} size="lg">
                       <Rocket className="mr-2 h-4 w-4" />
-                      Go to Ad Planner
+                      Start in Ad Planner
                     </Button>
                   </CardContent>
                 )}
