@@ -18,6 +18,7 @@ import Campaigns from "./pages/Campaigns";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import AdminKnowledge from "./pages/admin/Knowledge";
 import AdminAnalytics from "./pages/admin/Analytics";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
           <Route path="/workspace/:workspaceId" element={<CampaignWorkspace />} />
           <Route path="/campaigns/build" element={<CampaignBuilder />} />
           <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/admin/knowledge" element={<AdminKnowledge />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -113,8 +113,8 @@ export function MetaAccountConnect({ brandId, currentAccountId, onUpdate }: Meta
 
       toast.success("Meta ad account connected");
       
-      // Trigger campaign sync
-      const syncToastId = toast.loading("Syncing your active campaigns...");
+      // Trigger campaign sync with detailed progress
+      const syncToastId = toast.loading("Syncing campaigns from Meta...");
       
       const { data: brand } = await supabase
         .from('brands')
@@ -135,15 +135,30 @@ export function MetaAccountConnect({ brandId, currentAccountId, onUpdate }: Meta
       
       if (syncError) {
         console.error('Sync error:', syncError);
-        toast.error("Campaign sync completed with errors", { id: syncToastId });
+        toast.error("Campaign sync failed", { 
+          id: syncToastId,
+          description: "You can manually sync campaigns from the Data page"
+        });
       } else {
         const count = syncResult?.synced || 0;
-        toast.success(
-          count > 0 
-            ? `Successfully synced ${count} active campaign${count !== 1 ? 's' : ''}` 
-            : "No active campaigns found to sync",
-          { id: syncToastId }
-        );
+        const skipped = syncResult?.skipped || 0;
+        
+        if (count > 0) {
+          toast.success(`✓ Synced ${count} campaign${count !== 1 ? 's' : ''}`, { 
+            id: syncToastId,
+            description: skipped > 0 ? `${skipped} campaign${skipped !== 1 ? 's were' : ' was'} already synced` : undefined
+          });
+        } else if (skipped > 0) {
+          toast.success("All campaigns are up to date", { 
+            id: syncToastId,
+            description: `${skipped} campaign${skipped !== 1 ? 's' : ''} already in workspace`
+          });
+        } else {
+          toast.info("No active campaigns found", { 
+            id: syncToastId,
+            description: "Create campaigns in Meta Ads Manager to sync them here"
+          });
+        }
       }
 
       onUpdate();
