@@ -331,6 +331,8 @@ export default function Data() {
 
   const handleManualSync = async () => {
     setSyncing(true);
+    toast.loading('Syncing campaigns from Meta...', { id: 'manual-sync' });
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -342,6 +344,7 @@ export default function Data() {
         .single();
 
       if (!brand?.meta_access_token || !brand?.meta_account_id) {
+        toast.dismiss('manual-sync');
         toast.error('Meta account not connected');
         return;
       }
@@ -357,18 +360,29 @@ export default function Data() {
         }
       );
 
+      toast.dismiss('manual-sync');
+
       if (error) throw error;
 
       const count = data?.synced || 0;
-      toast.success(
-        count > 0 
-          ? `Synced ${count} new campaign${count !== 1 ? 's' : ''}` 
-          : "All campaigns are up to date"
-      );
+      const skipped = data?.skipped || 0;
+
+      if (count > 0) {
+        toast.success(`✓ Synced ${count} campaign${count !== 1 ? 's' : ''}`, {
+          description: skipped > 0 ? `${skipped} campaign${skipped !== 1 ? 's' : ''} already synced` : undefined
+        });
+      } else if (skipped > 0) {
+        toast.success('All campaigns are up to date', {
+          description: `${skipped} campaign${skipped !== 1 ? 's' : ''} already in workspace`
+        });
+      } else {
+        toast.info('No active campaigns found');
+      }
       
       await fetchWorkspaces(); // Refresh the list
     } catch (error: any) {
       console.error('Sync error:', error);
+      toast.dismiss('manual-sync');
       toast.error('Failed to sync campaigns');
     } finally {
       setSyncing(false);
