@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 
 const iconMap: Record<string, any> = {
   Video,
@@ -166,6 +167,7 @@ export default function Planning() {
 
   return (
     <DashboardLayout>
+      <CampaignFlowBreadcrumb currentStep="planning" />
       <div className="space-y-8">
         <div className="space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Choose Your Campaign Type</h2>
