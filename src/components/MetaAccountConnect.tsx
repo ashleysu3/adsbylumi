@@ -114,7 +114,7 @@ export function MetaAccountConnect({ brandId, currentAccountId, onUpdate }: Meta
       toast.success("Meta ad account connected");
       
       // Trigger campaign sync with detailed progress
-      const syncToastId = toast.loading("Syncing campaigns from Meta...");
+      const syncToastId = toast.loading("Syncing campaigns and performance data from Meta...");
       
       const { data: brand } = await supabase
         .from('brands')
@@ -142,11 +142,17 @@ export function MetaAccountConnect({ brandId, currentAccountId, onUpdate }: Meta
       } else {
         const count = syncResult?.synced || 0;
         const skipped = syncResult?.skipped || 0;
+        const campaigns = syncResult?.campaigns || [];
+        const withPerformanceData = campaigns.filter((c: any) => c.hasPerformanceData).length;
         
         if (count > 0) {
           toast.success(`✓ Synced ${count} campaign${count !== 1 ? 's' : ''}`, { 
             id: syncToastId,
-            description: skipped > 0 ? `${skipped} campaign${skipped !== 1 ? 's were' : ' was'} already synced` : undefined
+            description: withPerformanceData > 0 
+              ? `Performance data loaded for ${withPerformanceData} campaign${withPerformanceData !== 1 ? 's' : ''}. View in Data Dashboard.`
+              : skipped > 0 
+                ? `${skipped} campaign${skipped !== 1 ? 's were' : ' was'} already synced` 
+                : "View campaigns in Data Dashboard"
           });
         } else if (skipped > 0) {
           toast.success("All campaigns are up to date", { 

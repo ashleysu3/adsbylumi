@@ -88,6 +88,61 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${existingCampaignIds.size} existing campaign workspaces`);
 
+    // Helper function to fetch performance data for a campaign
+    const fetchCampaignPerformance = async (campaignId: string, accessToken: string) => {
+      try {
+        const timeRange = 'date_preset=last_7d';
+        const insightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${accessToken}`;
+        
+        const response = await fetch(insightsUrl);
+        const data = await response.json();
+        
+        if (data.error) {
+          console.error(`Performance fetch error for ${campaignId}:`, data.error);
+          return null;
+        }
+        
+        const metrics = data.data?.[0] || {};
+        
+        // Extract helper functions
+        const extractMetric = (obj: any, field: string, defaultVal = 0) => {
+          return parseFloat(obj[field]) || defaultVal;
+        };
+        
+        const extractAction = (actions: any[], actionType: string) => {
+          if (!Array.isArray(actions)) return 0;
+          const action = actions.find((a: any) => a.action_type === actionType);
+          return action ? parseFloat(action.value) || 0 : 0;
+        };
+        
+        const extractCostPerAction = (costPerActions: any[], actionType: string) => {
+          if (!Array.isArray(costPerActions)) return 0;
+          const action = costPerActions.find((a: any) => a.action_type === actionType);
+          return action ? parseFloat(action.value) || 0 : 0;
+        };
+        
+        return {
+          spend: extractMetric(metrics, 'spend'),
+          impressions: extractMetric(metrics, 'impressions'),
+          reach: extractMetric(metrics, 'reach'),
+          clicks: extractMetric(metrics, 'clicks'),
+          ctr: extractMetric(metrics, 'ctr'),
+          cpc: extractMetric(metrics, 'cpc'),
+          cpm: extractMetric(metrics, 'cpm'),
+          frequency: extractMetric(metrics, 'frequency'),
+          leads: extractAction(metrics.actions, 'lead'),
+          purchases: extractAction(metrics.actions, 'purchase'),
+          addToCart: extractAction(metrics.actions, 'add_to_cart'),
+          cpl: extractCostPerAction(metrics.cost_per_action_type, 'lead'),
+          cpp: extractCostPerAction(metrics.cost_per_action_type, 'purchase'),
+          roas: metrics.purchase_roas ? extractMetric(metrics, 'purchase_roas') : null,
+        };
+      } catch (error) {
+        console.error(`Failed to fetch performance for campaign ${campaignId}:`, error);
+        return null;
+      }
+    };
+
     // Sync campaigns
     let synced = 0;
     let skipped = 0;
@@ -101,7 +156,21 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Create new workspace record
+      // Fetch initial performance data
+      console.log(`Fetching performance data for: ${campaign.name} (${campaign.id})`);
+      const performanceMetrics = await fetchCampaignPerformance(campaign.id, metaAccessToken);
+      
+      // Prepare initial performance snapshot if data was fetched
+      const initialPerformanceHistory = performanceMetrics ? [{
+        metrics: performanceMetrics,
+        dateRange: {
+          start: 'last_7d',
+          end: 'last_7d',
+        },
+        syncedAt: new Date().toISOString(),
+      }] : [];
+
+      // Create new workspace record with initial performance data
       const { data: newWorkspace, error: insertError } = await supabase
         .from('campaign_workspaces')
         .insert({
@@ -111,6 +180,8 @@ Deno.serve(async (req) => {
           meta_campaign_status: 'active',
           progress_status: 'live',
           published_at: new Date().toISOString(),
+          performance_history: initialPerformanceHistory,
+          meta_insights_last_sync: performanceMetrics ? new Date().toISOString() : null,
           // Leave strategy_json and creative_json as null initially
         })
         .select()
@@ -122,12 +193,13 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      console.log(`Synced campaign: ${campaign.name} (${campaign.id})`);
+      console.log(`Synced campaign with performance data: ${campaign.name} (${campaign.id})`);
       synced++;
       syncedCampaigns.push({
         id: campaign.id,
         name: campaign.name,
         workspaceId: newWorkspace.id,
+        hasPerformanceData: !!performanceMetrics,
       });
     }
 
