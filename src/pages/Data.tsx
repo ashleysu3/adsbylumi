@@ -32,6 +32,7 @@ import {
   Info
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { CampaignFlowBreadcrumb } from '@/components/CampaignFlowBreadcrumb';
 
 interface PerformanceMetrics {
   spend: number;
@@ -490,6 +491,11 @@ export default function Data() {
 
   return (
     <DashboardLayout>
+      <CampaignFlowBreadcrumb 
+        currentStep="data" 
+        campaignId={selectedWorkspaceId}
+        progressStatus={selectedWorkspace?.progress_status}
+      />
       <div className="space-y-6 pb-12">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

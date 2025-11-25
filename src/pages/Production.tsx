@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 
 export default function Production() {
   const navigate = useNavigate();
@@ -133,6 +134,11 @@ export default function Production() {
 
   return (
     <DashboardLayout>
+      <CampaignFlowBreadcrumb 
+        currentStep="production" 
+        campaignId={workspace?.id}
+        progressStatus={workspace?.progress_status}
+      />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

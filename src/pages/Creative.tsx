@@ -13,6 +13,7 @@ import { CreativeAssets } from "@/components/CreativeAssets";
 import { ProductionChecklist } from "@/components/ProductionChecklist";
 import { CreativeUploader } from "@/components/CreativeUploader";
 import { CreativeSidebar } from "@/components/CreativeSidebar";
+import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 
 export default function Creative() {
   const navigate = useNavigate();
@@ -224,7 +225,12 @@ export default function Creative() {
 
   return (
     <DashboardLayout>
-      <div className="flex h-[calc(100vh-4rem)] w-full overflow-hidden">
+      <CampaignFlowBreadcrumb 
+        currentStep="creative" 
+        campaignId={selectedCampaignId}
+        progressStatus={workspace?.progress_status}
+      />
+      <div className="flex h-[calc(100vh-4rem-53px)] w-full overflow-hidden">
         {/* Main Dashboard Area */}
         {!workspace ? (
           <div className="flex-1 flex flex-col">
