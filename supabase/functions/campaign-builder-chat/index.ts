@@ -5,6 +5,133 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// URL validation helper
+function validateUrl(url: string): { isValid: boolean; sanitizedUrl: string; warning?: string } {
+  // Remove leading/trailing whitespace
+  let sanitizedUrl = url.trim();
+  
+  // Check for dangerous characters
+  const dangerousPatterns = [
+    /javascript:/i,
+    /data:/i,
+    /<script/i,
+    /onclick/i,
+    /onerror/i,
+    /\s/g, // spaces in URL
+  ];
+  
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(sanitizedUrl)) {
+      return { isValid: false, sanitizedUrl: '', warning: 'URL contains invalid characters or patterns.' };
+    }
+  }
+  
+  // Add https:// if missing protocol
+  if (!sanitizedUrl.match(/^https?:\/\//i)) {
+    sanitizedUrl = `https://${sanitizedUrl}`;
+  }
+  
+  // Check if it's HTTP (not HTTPS)
+  const isHttp = sanitizedUrl.toLowerCase().startsWith('http://');
+  
+  // Validate URL format
+  try {
+    const urlObj = new URL(sanitizedUrl);
+    
+    // Must have a valid hostname
+    if (!urlObj.hostname || urlObj.hostname.length < 3) {
+      return { isValid: false, sanitizedUrl: '', warning: 'Please enter a valid website URL.' };
+    }
+    
+    // Check for valid TLD (basic check)
+    const hostname = urlObj.hostname;
+    if (!hostname.includes('.') || hostname.endsWith('.')) {
+      return { isValid: false, sanitizedUrl: '', warning: 'URL must include a valid domain (e.g., example.com).' };
+    }
+    
+    // Force HTTPS for security
+    if (isHttp) {
+      sanitizedUrl = sanitizedUrl.replace(/^http:/i, 'https:');
+      return { 
+        isValid: true, 
+        sanitizedUrl, 
+        warning: 'I upgraded your URL to HTTPS for security. Meta requires secure URLs.' 
+      };
+    }
+    
+    return { isValid: true, sanitizedUrl };
+  } catch (e) {
+    return { isValid: false, sanitizedUrl: '', warning: 'Please enter a valid URL (e.g., https://example.com).' };
+  }
+}
+
+// Budget parsing helper
+function parseBudget(message: string): { amount: number | null; warning?: string } {
+  // Remove currency symbols and common text
+  let cleaned = message
+    .replace(/[$€£¥]/g, '')
+    .replace(/per\s*day/gi, '')
+    .replace(/daily/gi, '')
+    .replace(/budget/gi, '')
+    .replace(/,/g, '') // Remove commas (1,000 -> 1000)
+    .trim();
+  
+  // Extract number
+  const match = cleaned.match(/(\d+(?:\.\d{1,2})?)/);
+  
+  if (!match) {
+    return { amount: null };
+  }
+  
+  const amount = parseFloat(match[1]);
+  
+  // Validate budget range
+  if (amount < 5) {
+    return { amount: null, warning: 'Minimum daily budget is $5. Please enter a higher amount.' };
+  }
+  
+  if (amount > 10000) {
+    return { amount: null, warning: 'Maximum daily budget is $10,000. Please enter a lower amount.' };
+  }
+  
+  // Round to nearest dollar for simplicity
+  return { amount: Math.round(amount) };
+}
+
+// Date parsing helper
+function parseDate(message: string): string {
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 86400000);
+  
+  // Check for ISO format first
+  const isoMatch = message.match(/\d{4}-\d{2}-\d{2}/);
+  if (isoMatch) {
+    return isoMatch[0];
+  }
+  
+  // Check for relative dates
+  const lowerMessage = message.toLowerCase();
+  if (lowerMessage.includes('today') || lowerMessage === 'today') {
+    return today.toISOString().split('T')[0];
+  }
+  if (lowerMessage.includes('tomorrow') || lowerMessage === 'tomorrow') {
+    return tomorrow.toISOString().split('T')[0];
+  }
+  
+  // Try to parse as date
+  try {
+    const parsed = new Date(message);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().split('T')[0];
+    }
+  } catch (e) {
+    // Fall through to default
+  }
+  
+  // Default to today if unparseable
+  return today.toISOString().split('T')[0];
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -66,10 +193,10 @@ Deno.serve(async (req) => {
       // Parse user's message and update answers
       switch (nextQuestion) {
         case 'budget':
-          // Parse budget from message
-          const budgetMatch = message.match(/\d+/);
-          if (budgetMatch) {
-            currentAnswers.budget = parseInt(budgetMatch[0]);
+          // Parse budget with improved validation
+          const budgetResult = parseBudget(message);
+          if (budgetResult.amount) {
+            currentAnswers.budget = budgetResult.amount;
             currentAnswers.budgetType = 'daily';
             responseMessage = `Perfect! I've set your daily budget at $${currentAnswers.budget}. When would you like your campaign to start?`;
             recommendations = [
@@ -77,7 +204,7 @@ Deno.serve(async (req) => {
               { label: "Tomorrow", value: new Date(Date.now() + 86400000).toISOString().split('T')[0], reason: "Give time to review" }
             ];
           } else {
-            responseMessage = "I need a budget amount. How much would you like to spend per day?";
+            responseMessage = budgetResult.warning || "I need a budget amount. How much would you like to spend per day? (Minimum $5)";
             recommendations = [
               { label: "$15/day", value: 15, reason: "Starter" },
               { label: "$20/day", value: 20, reason: "Recommended" },
@@ -87,13 +214,15 @@ Deno.serve(async (req) => {
           break;
 
         case 'startDate':
-          // Parse date
-          if (message.match(/\d{4}-\d{2}-\d{2}/)) {
-            currentAnswers.startDate = message;
-          } else {
-            currentAnswers.startDate = message;
-          }
-          responseMessage = `Great! Starting ${currentAnswers.startDate}. Should your campaign run continuously or have an end date?`;
+          // Parse date with improved handling
+          const parsedDate = parseDate(message);
+          currentAnswers.startDate = parsedDate;
+          const displayDate = new Date(parsedDate).toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'short', 
+            day: 'numeric' 
+          });
+          responseMessage = `Great! Starting ${displayDate}. Should your campaign run continuously or have an end date?`;
           recommendations = [
             { label: "Run continuously", value: 'continuous', reason: "Best for testing" },
             { label: "7 days", value: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0], reason: "Short test" },
@@ -129,16 +258,25 @@ Deno.serve(async (req) => {
           break;
 
         case 'finalUrl':
-          currentAnswers.finalUrl = message.startsWith('http') ? message : `https://${message}`;
-          if (!currentAnswers.finalUrl.startsWith('https://')) {
-            responseMessage = `⚠️ Your URL should include "https://" - I've added it: ${currentAnswers.finalUrl}. Proceeding with placements...`;
+          // Validate URL with improved validation
+          const urlResult = validateUrl(message);
+          if (urlResult.isValid) {
+            currentAnswers.finalUrl = urlResult.sanitizedUrl;
+            if (urlResult.warning) {
+              responseMessage = `⚠️ ${urlResult.warning}\n\nUsing: ${urlResult.sanitizedUrl}\n\nShould I use Advantage+ placements for maximum reach? (Recommended)`;
+            } else {
+              responseMessage = `Great! Should I use Advantage+ placements for maximum reach? (Recommended)`;
+            }
+            recommendations = [
+              { label: "Enable Advantage+", value: 'Advantage+', reason: "Maximum reach" },
+              { label: "Manual placements", value: 'Manual', reason: "Choose specific" }
+            ];
           } else {
-            responseMessage = `Great! Should I use Advantage+ placements for maximum reach? (Recommended)`;
+            responseMessage = `⚠️ ${urlResult.warning}\n\nPlease enter a valid landing page URL starting with https://`;
+            recommendations = workspace.offer_url ? [
+              { label: "Use workspace URL", value: workspace.offer_url, reason: "From your workspace" }
+            ] : [];
           }
-          recommendations = [
-            { label: "Enable Advantage+", value: 'Advantage+', reason: "Maximum reach" },
-            { label: "Manual placements", value: 'Manual', reason: "Choose specific" }
-          ];
           break;
 
         case 'placements':
