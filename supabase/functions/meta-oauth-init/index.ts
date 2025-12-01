@@ -4,7 +4,6 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -23,15 +22,16 @@ Deno.serve(async (req) => {
 
     console.log('Initiating Meta OAuth for brand:', brandId);
 
-    // Build Meta OAuth URL
+    // Build Meta OAuth URL with all required permissions for ad creation
     const oauthUrl = new URL('https://www.facebook.com/v18.0/dialog/oauth');
     oauthUrl.searchParams.set('client_id', META_APP_ID);
     oauthUrl.searchParams.set('redirect_uri', redirectUri);
-    oauthUrl.searchParams.set('state', brandId); // Pass brand ID in state
-    oauthUrl.searchParams.set('scope', 'ads_management,ads_read,business_management');
+    oauthUrl.searchParams.set('state', brandId);
+    // Include pages permissions required for ad creative creation
+    oauthUrl.searchParams.set('scope', 'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list');
     oauthUrl.searchParams.set('response_type', 'code');
 
-    console.log('OAuth URL generated:', oauthUrl.toString());
+    console.log('OAuth URL generated with pages permissions');
 
     return new Response(
       JSON.stringify({ authUrl: oauthUrl.toString() }),
