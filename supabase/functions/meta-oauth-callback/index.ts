@@ -6,7 +6,6 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -45,8 +44,8 @@ Deno.serve(async (req) => {
 
     console.log('Access token obtained successfully');
 
-    // Get user's ad accounts using the access token
-    const adAccountsUrl = `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status&access_token=${tokenData.access_token}`;
+    // Get user's ad accounts
+    const adAccountsUrl = `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status,currency,business_name&access_token=${tokenData.access_token}`;
     
     console.log('Fetching ad accounts...');
     const adAccountsResponse = await fetch(adAccountsUrl);
@@ -57,12 +56,26 @@ Deno.serve(async (req) => {
       throw new Error(adAccountsData.error?.message || 'Failed to fetch ad accounts');
     }
 
-    console.log('Ad accounts fetched:', adAccountsData.data?.length || 0);
-
     // Filter only active accounts
     const activeAccounts = (adAccountsData.data || []).filter(
       (account: any) => account.account_status === 1
     );
+    console.log('Active ad accounts found:', activeAccounts.length);
+
+    // Get user's Facebook Pages (required for ad creative creation)
+    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,category&access_token=${tokenData.access_token}`;
+    
+    console.log('Fetching Facebook Pages...');
+    const pagesResponse = await fetch(pagesUrl);
+    const pagesData = await pagesResponse.json();
+
+    let pages: any[] = [];
+    if (pagesResponse.ok && pagesData.data) {
+      pages = pagesData.data;
+      console.log('Facebook Pages found:', pages.length);
+    } else {
+      console.error('Failed to fetch pages:', pagesData);
+    }
 
     // Store the access token in the brand record
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -71,17 +84,18 @@ Deno.serve(async (req) => {
 
     const { error: updateError } = await supabase
       .from('brands')
-      .update({ meta_access_token: tokenData.access_token })
+      .update({ 
+        meta_access_token: tokenData.access_token,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', brandId);
 
     if (updateError) {
       console.error('Error storing access token:', updateError);
-      // Don't fail the request, just log the error
     } else {
       console.log('Access token stored successfully for brand:', brandId);
       
       // Check if user has already selected an account (on re-connection)
-      // If so, automatically sync their campaigns in the background
       const { data: brand } = await supabase
         .from('brands')
         .select('meta_account_id')
@@ -90,7 +104,6 @@ Deno.serve(async (req) => {
         
       if (brand?.meta_account_id) {
         console.log('Meta account already selected, triggering auto-sync...');
-        // Don't await - let it run in background
         fetch(`${supabaseUrl}/functions/v1/sync-meta-campaigns`, {
           method: 'POST',
           headers: {
@@ -112,7 +125,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true,
         accounts: activeAccounts,
-        accessToken: tokenData.access_token // Include for potential future use
+        pages: pages
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

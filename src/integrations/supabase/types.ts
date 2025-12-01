@@ -68,6 +68,8 @@ export type Database = {
           meta_access_token: string | null
           meta_account_id: string | null
           name: string
+          page_id: string | null
+          page_name: string | null
           psychology_status: string | null
           target_audience: string | null
           updated_at: string | null
@@ -84,6 +86,8 @@ export type Database = {
           meta_access_token?: string | null
           meta_account_id?: string | null
           name: string
+          page_id?: string | null
+          page_name?: string | null
           psychology_status?: string | null
           target_audience?: string | null
           updated_at?: string | null
@@ -100,6 +104,8 @@ export type Database = {
           meta_access_token?: string | null
           meta_account_id?: string | null
           name?: string
+          page_id?: string | null
+          page_name?: string | null
           psychology_status?: string | null
           target_audience?: string | null
           updated_at?: string | null
