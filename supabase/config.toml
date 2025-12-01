@@ -59,3 +59,6 @@ verify_jwt = true
 
 [functions.check-campaign-status]
 verify_jwt = true
+
+[functions.fetch-custom-audiences]
+verify_jwt = true

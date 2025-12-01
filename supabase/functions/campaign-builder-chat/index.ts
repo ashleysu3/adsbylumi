@@ -207,6 +207,8 @@ Deno.serve(async (req) => {
       if (!currentAnswers.placements) return 'placements';
       if (!currentAnswers.optimizationEvent) return 'optimizationEvent';
       if (currentAnswers.warmRetargeting === undefined) return 'warmRetargeting';
+      // Only ask about audience selection if warm retargeting is enabled
+      if (currentAnswers.warmRetargeting === true && !currentAnswers.selectedAudiences) return 'audienceSelection';
       return 'complete';
     };
 
@@ -350,8 +352,90 @@ Deno.serve(async (req) => {
           break;
 
         case 'warmRetargeting':
-          currentAnswers.warmRetargeting = message === 'true' || message.toLowerCase().includes('include') || message.toLowerCase().includes('yes');
-          responseMessage = `🎉 Perfect! You're all set. Ready to review your campaign and publish to Meta?`;
+          const wantsWarm = message === 'true' || message.toLowerCase().includes('include') || message.toLowerCase().includes('yes');
+          currentAnswers.warmRetargeting = wantsWarm;
+          
+          if (wantsWarm) {
+            // Fetch custom audiences from Meta
+            try {
+              const audienceResponse = await fetch(`${supabaseUrl}/functions/v1/fetch-custom-audiences`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({ brandId: workspace.brand_id }),
+              });
+              
+              const audienceData = await audienceResponse.json();
+              
+              if (audienceData.success && audienceData.audiences.length > 0) {
+                // Store available audiences in answers for reference
+                currentAnswers.availableAudiences = audienceData.audiences;
+                
+                // Create recommendations from top audiences
+                const topAudiences = audienceData.audiences.slice(0, 4);
+                recommendations = topAudiences.map((aud: any) => ({
+                  label: aud.name.substring(0, 30) + (aud.name.length > 30 ? '...' : ''),
+                  value: aud.id,
+                  reason: aud.approximate_count ? `~${(aud.approximate_count / 1000).toFixed(0)}K people` : aud.subtype || 'Custom'
+                }));
+                
+                // Add option to use all warm audiences
+                if (audienceData.audiences.length > 4) {
+                  recommendations.push({
+                    label: "Use all warm audiences",
+                    value: 'all',
+                    reason: `${audienceData.audiences.length} audiences total`
+                  });
+                }
+                
+                responseMessage = `Great! I found ${audienceData.audiences.length} custom audience(s) in your Meta account. Which would you like to use for retargeting?`;
+              } else {
+                // No audiences found - skip audience selection
+                currentAnswers.selectedAudiences = [];
+                responseMessage = `I couldn't find any custom audiences in your Meta account. I'll create a warm ad set targeting engaged users based on your Page and Instagram activity.\n\n🎉 Perfect! You're all set. Ready to review your campaign and publish to Meta?`;
+                recommendations = [];
+                stage = 'complete';
+              }
+            } catch (audienceError: any) {
+              console.error('Error fetching audiences:', audienceError);
+              currentAnswers.selectedAudiences = [];
+              responseMessage = `Couldn't fetch custom audiences (${audienceError.message}). I'll use default warm targeting.\n\n🎉 You're all set. Ready to review your campaign and publish to Meta?`;
+              recommendations = [];
+              stage = 'complete';
+            }
+          } else {
+            // Cold traffic only
+            responseMessage = `🎉 Perfect! You're all set. Ready to review your campaign and publish to Meta?`;
+            recommendations = [];
+            stage = 'complete';
+          }
+          break;
+
+        case 'audienceSelection':
+          // Handle audience selection
+          if (message === 'all') {
+            // Use all available audiences
+            currentAnswers.selectedAudiences = (currentAnswers.availableAudiences || []).map((a: any) => a.id);
+            responseMessage = `Great! I'll use all ${currentAnswers.selectedAudiences.length} audiences for your warm retargeting.\n\n🎉 Perfect! You're all set. Ready to review your campaign and publish to Meta?`;
+          } else {
+            // Parse selected audience IDs (could be single or comma-separated)
+            const selectedIds = message.split(',').map((id: string) => id.trim()).filter(Boolean);
+            currentAnswers.selectedAudiences = selectedIds;
+            
+            // Find audience names for confirmation
+            const selectedNames = (currentAnswers.availableAudiences || [])
+              .filter((a: any) => selectedIds.includes(a.id))
+              .map((a: any) => a.name);
+            
+            if (selectedNames.length > 0) {
+              responseMessage = `Got it! Using "${selectedNames.join('", "')}" for warm retargeting.\n\n🎉 Perfect! You're all set. Ready to review your campaign and publish to Meta?`;
+            } else {
+              // Fallback if we couldn't match names
+              responseMessage = `Got it! I'll use your selected audience for warm retargeting.\n\n🎉 Perfect! You're all set. Ready to review your campaign and publish to Meta?`;
+            }
+          }
           recommendations = [];
           stage = 'complete';
           break;
