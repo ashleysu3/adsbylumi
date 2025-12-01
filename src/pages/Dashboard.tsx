@@ -376,10 +376,17 @@ export default function Dashboard() {
                   <p className="text-sm font-medium mb-2">Meta Ad Account</p>
                   {brand.meta_account_id ? (
                     <div className="flex items-center justify-between">
-                      <code className="text-xs bg-muted px-2 py-1 rounded">{brand.meta_account_id}</code>
+                      <div className="space-y-1">
+                        <code className="text-xs bg-muted px-2 py-1 rounded">{brand.meta_account_id}</code>
+                        {brand.page_name && (
+                          <p className="text-xs text-muted-foreground">Page: {brand.page_name}</p>
+                        )}
+                      </div>
                       <MetaAccountConnect 
                         brandId={brand.id} 
                         currentAccountId={brand.meta_account_id}
+                        currentPageId={brand.page_id}
+                        currentPageName={brand.page_name}
                         onUpdate={fetchBrandData}
                       />
                     </div>
@@ -391,6 +398,8 @@ export default function Dashboard() {
                       <MetaAccountConnect 
                         brandId={brand.id} 
                         currentAccountId={brand.meta_account_id}
+                        currentPageId={brand.page_id}
+                        currentPageName={brand.page_name}
                         onUpdate={fetchBrandData}
                       />
                     </div>

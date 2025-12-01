@@ -22,8 +22,23 @@ interface CampaignReviewProps {
 }
 
 export function CampaignReview({ workspace, answers, onBack, onPublish }: CampaignReviewProps) {
+  // Get approved concepts that have both linkedAsset AND finalCopy
   const approvedConcepts = workspace.production_items?.filter((item: any) => item.status === 'approved') || [];
-  const canPublish = approvedConcepts.length >= 3 && answers.budget && answers.startDate;
+  const readyConcepts = approvedConcepts.filter((item: any) => {
+    const hasAsset = item.linkedAsset?.url || item.uploaded_asset_id;
+    const hasCopy = item.finalCopy?.headline || item.final_copy?.headline;
+    return hasAsset && hasCopy;
+  });
+  
+  // Concepts that are approved but missing asset or copy
+  const incompleteConcepts = approvedConcepts.filter((item: any) => {
+    const hasAsset = item.linkedAsset?.url || item.uploaded_asset_id;
+    const hasCopy = item.finalCopy?.headline || item.final_copy?.headline;
+    return !hasAsset || !hasCopy;
+  });
+  
+  // Need at least 1 ready concept, budget, and start date to publish
+  const canPublish = readyConcepts.length >= 1 && answers.budget && answers.startDate;
 
   return (
     <div className="space-y-6">
@@ -40,9 +55,19 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {approvedConcepts.length < 3 && "You need at least 3 approved concepts to publish. "}
+                {readyConcepts.length < 1 && "You need at least 1 approved concept with asset + copy to publish. "}
                 {!answers.budget && "Budget is required. "}
                 {!answers.startDate && "Start date is required."}
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Incomplete concepts warning */}
+          {incompleteConcepts.length > 0 && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {incompleteConcepts.length} approved concept(s) are missing assets or copy and won't be included.
               </AlertDescription>
             </Alert>
           )}
@@ -155,25 +180,37 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Image className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Creative Concepts</h3>
+              <h3 className="text-sm font-semibold">Creative Concepts ({readyConcepts.length} ready)</h3>
             </div>
             <div className="space-y-2">
-              {approvedConcepts.length > 0 ? (
-                approvedConcepts.map((item: any, index: number) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{item.concept?.title}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {item.concept?.hook}
-                      </p>
+              {readyConcepts.length > 0 ? (
+                readyConcepts.map((item: any, index: number) => {
+                  const hasAsset = item.linkedAsset?.url || item.uploaded_asset_id;
+                  const hasCopy = item.finalCopy?.headline || item.final_copy?.headline;
+                  return (
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{item.concept?.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {item.concept?.hook}
+                        </p>
+                        <div className="flex gap-2 mt-1">
+                          <Badge variant={hasAsset ? "default" : "destructive"} className="text-xs">
+                            {hasAsset ? '✓ Asset' : '✗ No Asset'}
+                          </Badge>
+                          <Badge variant={hasCopy ? "default" : "destructive"} className="text-xs">
+                            {hasCopy ? '✓ Copy' : '✗ No Copy'}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {item.concept?.stage || 'TOFU'}
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      {item.concept?.stage || 'TOFU'}
-                    </Badge>
-                  </div>
-                ))
+                  );
+                })
               ) : (
-                <p className="text-sm text-muted-foreground">No approved concepts</p>
+                <p className="text-sm text-muted-foreground">No concepts ready (need asset + copy)</p>
               )}
             </div>
           </div>
