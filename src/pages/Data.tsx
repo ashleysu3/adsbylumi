@@ -29,8 +29,10 @@ import {
   Download,
   Mail,
   ArrowRight,
-  Info
+  Info,
+  Settings2
 } from 'lucide-react';
+import { CampaignStatusCard } from '@/components/CampaignStatusCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CampaignFlowBreadcrumb } from '@/components/CampaignFlowBreadcrumb';
 
@@ -123,6 +125,7 @@ export default function Data() {
   const [analysis, setAnalysis] = useState<PerformanceAnalysis | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [metaConnected, setMetaConnected] = useState<boolean>(false);
+  const [metaAccountId, setMetaAccountId] = useState<string>('');
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     to: new Date(),
@@ -176,6 +179,7 @@ export default function Data() {
       // Check if Meta is properly connected
       const isMetaConnected = !!(brand.meta_access_token && brand.meta_account_id);
       setMetaConnected(isMetaConnected);
+      setMetaAccountId(brand.meta_account_id || '');
 
       const { data, error } = await supabase
         .from('campaign_workspaces')
@@ -629,6 +633,28 @@ export default function Data() {
             )}
           </CardContent>
         </Card>
+
+        {/* Campaign Status Management */}
+        {selectedWorkspace && metaConnected && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings2 className="h-5 w-5" />
+                Campaign Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CampaignStatusCard
+                workspaceId={selectedWorkspaceId}
+                workspaceName={selectedWorkspace.name}
+                metaCampaignIds={selectedWorkspace.meta_campaign_ids}
+                metaAccountId={metaAccountId}
+                initialStatus={selectedWorkspace.meta_campaign_status}
+                onStatusChange={() => fetchPerformanceData()}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {syncing || analyzing ? (
           <Card>

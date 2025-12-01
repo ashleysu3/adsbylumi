@@ -56,3 +56,6 @@ verify_jwt = true
 
 [functions.suggest-next-action]
 verify_jwt = true
+
+[functions.check-campaign-status]
+verify_jwt = true
