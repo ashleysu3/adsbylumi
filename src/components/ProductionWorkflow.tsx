@@ -61,10 +61,21 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
     );
     
     if (latestAsset) {
-      // Update production item with uploaded_asset_id
+      // Update production item with full asset object (not just ID)
+      // This is required by build-meta-campaign to upload to Meta
       const productionItems = workspace.production_items || [];
       const updatedItems = productionItems.map((pi: any) =>
-        pi.id === item.id ? { ...pi, uploaded_asset_id: latestAsset.id } : pi
+        pi.id === item.id ? { 
+          ...pi, 
+          uploaded_asset_id: latestAsset.id,
+          linkedAsset: {
+            id: latestAsset.id,
+            url: latestAsset.file_url,
+            storagePath: latestAsset.storage_path,
+            type: latestAsset.file_type,
+            fileName: latestAsset.file_name
+          }
+        } : pi
       );
       
       await supabase
@@ -72,7 +83,17 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
         .update({ production_items: updatedItems })
         .eq("id", workspace.id);
       
-      setUpdatedItem({ ...updatedItem, uploaded_asset_id: latestAsset.id });
+      setUpdatedItem({ 
+        ...updatedItem, 
+        uploaded_asset_id: latestAsset.id,
+        linkedAsset: {
+          id: latestAsset.id,
+          url: latestAsset.file_url,
+          storagePath: latestAsset.storage_path,
+          type: latestAsset.file_type,
+          fileName: latestAsset.file_name
+        }
+      });
     }
     
     handleNext("copy");
@@ -80,11 +101,22 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
   };
 
   const handleCopyApprove = async (copy: any) => {
-    // Update status to "approved" and save final copy
+    // Update status to "approved" and save final copy with consistent field names
+    // Field names must match what build-meta-campaign expects: headline, primaryText, description, cta
     const productionItems = workspace.production_items || [];
     const updatedItems = productionItems.map((pi: any) =>
       pi.id === item.id
-        ? { ...pi, status: "approved", copy_finalized: true, final_copy: copy }
+        ? { 
+            ...pi, 
+            status: "approved", 
+            copy_finalized: true, 
+            finalCopy: {
+              headline: copy.headline,
+              primaryText: copy.primary_text || copy.primaryText,
+              description: copy.description,
+              cta: copy.call_to_action || copy.cta
+            }
+          }
         : pi
     );
 
@@ -93,7 +125,18 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
       .update({ production_items: updatedItems })
       .eq("id", workspace.id);
 
-    toast.success("Concept approved and ready for campaign!");
+    // Check if we now have 3+ approved concepts to auto-update status
+    const approvedCount = updatedItems.filter((i: any) => i.status === "approved").length;
+    if (approvedCount >= 3 && workspace.progress_status !== "ready_to_publish") {
+      await supabase
+        .from("campaign_workspaces")
+        .update({ progress_status: "ready_to_publish" })
+        .eq("id", workspace.id);
+      toast.success("🎉 You have 3+ approved concepts! Ready to build your campaign!");
+    } else {
+      toast.success("Concept approved and ready for campaign!");
+    }
+    
     handleNext("done");
     onUpdate();
   };

@@ -14,13 +14,49 @@ interface ProductionItem {
     url: string;
     storagePath?: string;
     type: string;
+    fileName?: string;
   };
+  // New field naming (preferred)
   finalCopy?: {
     headline: string;
     primaryText: string;
     description: string;
     cta: string;
   };
+  // Legacy field naming (backward compatibility)
+  final_copy?: {
+    headline: string;
+    primary_text?: string;
+    primaryText?: string;
+    description: string;
+    call_to_action?: string;
+    cta?: string;
+  };
+  // Legacy asset linking
+  uploaded_asset_id?: string;
+}
+
+// Helper to normalize production item copy fields
+function normalizeCopy(item: ProductionItem): { headline: string; primaryText: string; description: string; cta: string } | null {
+  // Try new naming first
+  if (item.finalCopy) {
+    return {
+      headline: item.finalCopy.headline || '',
+      primaryText: item.finalCopy.primaryText || '',
+      description: item.finalCopy.description || '',
+      cta: item.finalCopy.cta || 'LEARN_MORE',
+    };
+  }
+  // Fall back to legacy naming
+  if (item.final_copy) {
+    return {
+      headline: item.final_copy.headline || '',
+      primaryText: item.final_copy.primaryText || item.final_copy.primary_text || '',
+      description: item.final_copy.description || '',
+      cta: item.final_copy.cta || item.final_copy.call_to_action || 'LEARN_MORE',
+    };
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
@@ -76,7 +112,15 @@ Deno.serve(async (req) => {
 
     // Get approved production items with linked assets and final copy
     const approvedConcepts: ProductionItem[] = (workspace.production_items || []).filter(
-      (item: ProductionItem) => item.status === 'approved' && item.linkedAsset && item.finalCopy
+      (item: ProductionItem) => {
+        // Check status
+        if (item.status !== 'approved') return false;
+        // Check for asset (new or legacy)
+        const hasAsset = item.linkedAsset || item.uploaded_asset_id;
+        // Check for copy (new or legacy)
+        const hasCopy = item.finalCopy || item.final_copy;
+        return hasAsset && hasCopy;
+      }
     );
     
     if (approvedConcepts.length < 1) {
@@ -276,6 +320,13 @@ Deno.serve(async (req) => {
       const { item, assetId, assetType } = uploadedAssets[i];
       const adName = `Ad ${i + 1} - ${item.concept?.hookLabel || item.concept?.title || 'Creative'}`;
       
+      // Normalize copy fields (handles both old and new naming)
+      const copy = normalizeCopy(item);
+      if (!copy) {
+        console.error(`No copy found for ${adName}, skipping...`);
+        continue;
+      }
+      
       // Build object_story_spec based on asset type
       let objectStorySpec: any;
       
@@ -284,11 +335,11 @@ Deno.serve(async (req) => {
           page_id: pageId,
           video_data: {
             video_id: assetId,
-            title: item.finalCopy?.headline || 'Watch Now',
-            message: item.finalCopy?.primaryText || '',
-            link_description: item.finalCopy?.description || '',
+            title: copy.headline || 'Watch Now',
+            message: copy.primaryText || '',
+            link_description: copy.description || '',
             call_to_action: {
-              type: (item.finalCopy?.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_'),
+              type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_'),
               value: { link: answers?.finalUrl || workspace.offer_url || '' }
             }
           }
@@ -299,11 +350,11 @@ Deno.serve(async (req) => {
           link_data: {
             image_hash: assetId,
             link: answers?.finalUrl || workspace.offer_url || '',
-            message: item.finalCopy?.primaryText || '',
-            name: item.finalCopy?.headline || '',
-            description: item.finalCopy?.description || '',
+            message: copy.primaryText || '',
+            name: copy.headline || '',
+            description: copy.description || '',
             call_to_action: {
-              type: (item.finalCopy?.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_')
+              type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_')
             }
           }
         };

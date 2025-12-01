@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,9 @@ import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 
 export default function Production() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const workspaceIdParam = searchParams.get("workspace");
+  
   const [loading, setLoading] = useState(true);
   const [workspace, setWorkspace] = useState<any>(null);
   const [productionItems, setProductionItems] = useState<any[]>([]);
@@ -30,7 +33,7 @@ export default function Production() {
 
   useEffect(() => {
     fetchWorkspace();
-  }, []);
+  }, [workspaceIdParam]);
 
   const fetchWorkspace = async () => {
     try {
@@ -40,22 +43,42 @@ export default function Production() {
         return;
       }
 
-      // Get the most recent workspace with production_items
-      const { data: workspaces, error } = await supabase
-        .from("campaign_workspaces")
-        .select("*")
-        .not("production_items", "is", null)
-        .order("updated_at", { ascending: false })
-        .limit(1);
+      let workspaceData;
 
-      if (error) throw error;
+      // If workspace ID is provided in URL, fetch that specific workspace
+      if (workspaceIdParam) {
+        const { data, error } = await supabase
+          .from("campaign_workspaces")
+          .select("*")
+          .eq("id", workspaceIdParam)
+          .single();
 
-      if (workspaces && workspaces.length > 0) {
-        setWorkspace(workspaces[0]);
-        const items = Array.isArray(workspaces[0].production_items) 
-          ? workspaces[0].production_items 
+        if (error) throw error;
+        workspaceData = data;
+      } else {
+        // Otherwise, get the most recent workspace with production_items
+        const { data: workspaces, error } = await supabase
+          .from("campaign_workspaces")
+          .select("*")
+          .not("production_items", "is", null)
+          .order("updated_at", { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+        workspaceData = workspaces?.[0];
+      }
+
+      if (workspaceData) {
+        setWorkspace(workspaceData);
+        const items = Array.isArray(workspaceData.production_items) 
+          ? workspaceData.production_items 
           : [];
         setProductionItems(items);
+        
+        // If no production items but workspace exists, show helpful message
+        if (items.length === 0) {
+          toast.info("No production items yet. Send concepts to production from the Creative dashboard.");
+        }
       } else {
         toast.info("No production items found. Go to Creative dashboard and send concepts to production.");
         navigate("/creative");
@@ -149,7 +172,7 @@ export default function Production() {
             <div>
               <h1 className="text-3xl font-bold">Production Dashboard</h1>
               <p className="text-muted-foreground mt-1">
-                Working on: {statusCounts.total} concepts
+                {workspace.name} • {statusCounts.total} concepts
               </p>
             </div>
           </div>
@@ -203,8 +226,19 @@ export default function Production() {
           </CardContent>
         </Card>
 
-        {/* Concept Cards Grid */}
-        {filteredItems.length === 0 ? (
+        {/* Empty State for no production items */}
+        {productionItems.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground mb-4">
+                No concepts in production yet. Send concepts from the Creative dashboard to start producing.
+              </p>
+              <Button onClick={() => navigate("/creative")}>
+                Go to Creative Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        ) : filteredItems.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">
