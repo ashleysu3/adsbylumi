@@ -315,7 +315,7 @@ export default function Creative() {
                 workspace={workspace}
                 activeSection={activeSection}
                 onSectionChange={setActiveSection}
-                onNavigateToProduction={() => navigate("/production")}
+                onNavigateToProduction={() => navigate(`/production?workspace=${workspace.id}`)}
               />
             </div>
 

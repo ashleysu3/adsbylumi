@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { 
   Video, 
   FileText, 
@@ -23,6 +24,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 
 const iconMap: Record<string, any> = {
@@ -42,6 +50,8 @@ export default function Planning() {
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [offersWithRecommendations, setOffersWithRecommendations] = useState<any[]>([]);
+  const [offers, setOffers] = useState<any[]>([]);
+  const [selectedOfferId, setSelectedOfferId] = useState<string>("");
 
   useEffect(() => {
     fetchData();
@@ -68,7 +78,7 @@ export default function Planning() {
 
       setTemplates(templatesData || []);
 
-      // Fetch offers with recommendations
+      // Fetch all offers (not archived)
       if (brandData) {
         const { data: offersData } = await supabase
           .from("offers")
@@ -80,9 +90,14 @@ export default function Planning() {
             )
           `)
           .eq("brand_id", brandData.id)
-          .not("recommended_template_id", "is", null);
+          .or("archived.is.null,archived.eq.false")
+          .order("created_at", { ascending: false });
 
-        setOffersWithRecommendations(offersData || []);
+        setOffers(offersData || []);
+        
+        // Filter offers with recommendations
+        const recommended = (offersData || []).filter(o => o.recommended_template_id);
+        setOffersWithRecommendations(recommended);
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -97,6 +112,9 @@ export default function Planning() {
 
     setLoading(true);
     try {
+      // Get selected offer data if one is selected
+      const selectedOffer = offers.find(o => o.id === selectedOfferId);
+
       // Create strategy first
       const strategyData = {
         brand_id: brand.id,
@@ -109,6 +127,11 @@ export default function Planning() {
         kpi_benchmarks: template.strategy_template.kpi_benchmarks,
         contextual_keywords: [],
         status: "active",
+        // Include offer data in strategy
+        offer_name: selectedOffer?.name || null,
+        offer_url: selectedOffer?.url || null,
+        offer_price: selectedOffer?.price_point || null,
+        offer_description: selectedOffer?.description || null,
       };
 
       const { data: newStrategy, error: strategyError } = await supabase
@@ -119,14 +142,19 @@ export default function Planning() {
 
       if (strategyError) throw strategyError;
 
-      // Create campaign workspace
+      // Create campaign workspace with offer data pre-filled
       const workspaceData = {
         brand_id: brand.id,
         template_id: template.id,
         strategy_id: newStrategy.id,
-        name: template.name,
+        name: selectedOffer ? `${template.name} - ${selectedOffer.name}` : template.name,
         strategy_json: template.strategy_template,
         progress_status: "creative_in_progress",
+        // Pre-fill offer data for campaign builder
+        offer_name: selectedOffer?.name || null,
+        offer_url: selectedOffer?.url || null,
+        offer_price: selectedOffer?.price_point || null,
+        offer_description: selectedOffer?.description || null,
       };
 
       const { data: newWorkspace, error: workspaceError } = await supabase
@@ -174,6 +202,47 @@ export default function Planning() {
           <p className="text-muted-foreground">Pick a pre-built strategy and we'll guide you through the rest</p>
         </div>
 
+        {/* Offer Selection */}
+        {offers.length > 0 && (
+          <Card className="border-primary/20">
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                <Label htmlFor="offer-select" className="text-base font-semibold">
+                  Which offer is this campaign for?
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Select an offer to pre-fill your campaign with landing page URL and pricing
+                </p>
+                <Select value={selectedOfferId} onValueChange={setSelectedOfferId}>
+                  <SelectTrigger id="offer-select" className="w-full max-w-md">
+                    <SelectValue placeholder="Select an offer (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No specific offer</SelectItem>
+                    {offers.map((offer) => (
+                      <SelectItem key={offer.id} value={offer.id}>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium">{offer.name}</span>
+                          {offer.price_point && (
+                            <span className="text-xs text-muted-foreground">{offer.price_point}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedOfferId && selectedOfferId !== "none" && (
+                  <div className="flex items-center gap-2 text-sm text-primary">
+                    <Badge variant="secondary">
+                      ✓ Campaign will use: {offers.find(o => o.id === selectedOfferId)?.url || "No URL set"}
+                    </Badge>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {offersWithRecommendations.length > 0 && (
           <Card className="border-primary/20 bg-primary/5">
             <CardContent className="pt-6">
@@ -197,8 +266,23 @@ export default function Planning() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {templates.map((template) => {
             const Icon = iconMap[template.icon] || Video;
+            const isRecommendedForSelectedOffer = selectedOfferId && 
+              offers.find(o => o.id === selectedOfferId)?.recommended_template_id === template.id;
+            
             return (
-              <Card key={template.id} className="cursor-pointer hover:shadow-lg transition-all hover:border-primary/50 relative">
+              <Card 
+                key={template.id} 
+                className={`cursor-pointer hover:shadow-lg transition-all relative ${
+                  isRecommendedForSelectedOffer 
+                    ? "border-primary ring-2 ring-primary/20" 
+                    : "hover:border-primary/50"
+                }`}
+              >
+                {isRecommendedForSelectedOffer && (
+                  <Badge className="absolute -top-2 -right-2 bg-primary">
+                    Recommended
+                  </Badge>
+                )}
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
                     <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -209,7 +293,7 @@ export default function Planning() {
                     </Button>
                   </div>
                   <CardTitle className="text-xl">{template.name}</CardTitle>
-                  {offersWithRecommendations.some(o => o.recommended_template_id === template.id) && (
+                  {offersWithRecommendations.some(o => o.recommended_template_id === template.id) && !isRecommendedForSelectedOffer && (
                     <Badge variant="secondary" className="text-xs mt-1">
                       Recommended for: {offersWithRecommendations.find(o => o.recommended_template_id === template.id)?.name}
                     </Badge>

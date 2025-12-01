@@ -15,7 +15,8 @@ import {
   Sparkles,
   RefreshCw,
   Eye,
-  ThumbsDown
+  ThumbsDown,
+  Send
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -320,6 +321,76 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     toast.success(`${label} copied to clipboard`);
   };
 
+  const handleSendToProduction = async (conceptId: string, concept: any, stage: string) => {
+    try {
+      // Generate unique ID for production item
+      const productionItemId = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Get existing production items
+      const existingItems = workspace.production_items || [];
+      
+      // Check if concept is already in production
+      const alreadyInProduction = existingItems.some(
+        (item: any) => item.concept_id === conceptId
+      );
+      
+      if (alreadyInProduction) {
+        toast.info("This concept is already in production!");
+        return;
+      }
+      
+      // Determine format
+      const format = concept.format || 
+        (concept.script ? 'talking_head' : 
+         concept.broll_instructions ? 'broll' : 
+         concept.carousel_structure ? 'carousel' : 
+         concept.static_layout ? 'static' : 'unknown');
+      
+      // Create production item with proper structure
+      const productionItem = {
+        id: productionItemId,
+        concept_id: conceptId,
+        concept: concept,
+        format: format,
+        stage: stage,
+        status: 'pending',
+        created_at: new Date().toISOString()
+      };
+      
+      const updatedItems = [...existingItems, productionItem];
+      
+      // Update database
+      const { error } = await supabase
+        .from('campaign_workspaces')
+        .update({
+          production_items: updatedItems,
+          progress_status: 'waiting_for_assets',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workspace.id);
+      
+      if (error) throw error;
+      
+      await onUpdate({ 
+        production_items: updatedItems,
+        progress_status: 'waiting_for_assets'
+      });
+      
+      toast.success(`✨ "${concept.title}" sent to production!`, {
+        description: "Go to Production dashboard to record/design and upload"
+      });
+      
+    } catch (error: any) {
+      console.error('Error sending to production:', error);
+      toast.error('Failed to send to production. Please try again.');
+    }
+  };
+
+  const isInProduction = (conceptId: string) => {
+    const existingItems = workspace.production_items || [];
+    return existingItems.some((item: any) => item.concept_id === conceptId);
+  };
+
   if (!creative || Object.keys(creative).length === 0) {
     return (
       <Card>
@@ -429,6 +500,17 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
 
               {/* Action Buttons */}
               <div className="flex items-center gap-3 flex-wrap">
+                {/* Send to Production - Primary action */}
+                <Button
+                  size="sm"
+                  variant={isInProduction(conceptId) ? "secondary" : "default"}
+                  onClick={() => handleSendToProduction(conceptId, concept, stage)}
+                  className="gap-2"
+                  disabled={isGenerating || isInProduction(conceptId)}
+                >
+                  <Send className="h-4 w-4" />
+                  {isInProduction(conceptId) ? 'In Production' : 'Send to Production'}
+                </Button>
                 <Button
                   size="sm"
                   variant={isLoved ? "default" : "outline"}
