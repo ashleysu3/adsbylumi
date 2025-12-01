@@ -10,9 +10,12 @@ import {
   Target, 
   Image,
   Zap,
-  AlertCircle
+  AlertCircle,
+  Eye
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AdPreview } from "./AdPreview";
+import { useState } from "react";
 
 interface CampaignReviewProps {
   workspace: any;
@@ -22,6 +25,8 @@ interface CampaignReviewProps {
 }
 
 export function CampaignReview({ workspace, answers, onBack, onPublish }: CampaignReviewProps) {
+  const [showPreviews, setShowPreviews] = useState(true);
+  
   // Get approved concepts that have both linkedAsset AND finalCopy
   const approvedConcepts = workspace.production_items?.filter((item: any) => item.status === 'approved') || [];
   const readyConcepts = approvedConcepts.filter((item: any) => {
@@ -39,6 +44,10 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   
   // Need at least 1 ready concept, budget, and start date to publish
   const canPublish = readyConcepts.length >= 1 && answers.budget && answers.startDate;
+
+  // Get brand info for preview
+  const brandName = workspace.brand?.name || "Your Brand";
+  const websiteUrl = workspace.offer_url;
 
   return (
     <div className="space-y-6">
@@ -178,9 +187,20 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
 
           {/* Creative Assets */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Image className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Creative Concepts ({readyConcepts.length} ready)</h3>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Image className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Creative Concepts ({readyConcepts.length} ready)</h3>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowPreviews(!showPreviews)}
+                className="gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                {showPreviews ? 'Hide Previews' : 'Show Previews'}
+              </Button>
             </div>
             <div className="space-y-2">
               {readyConcepts.length > 0 ? (
@@ -216,6 +236,29 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           </div>
         </CardContent>
       </Card>
+
+      {/* Ad Previews */}
+      {showPreviews && readyConcepts.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Eye className="h-5 w-5 text-primary" />
+            Ad Previews
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            See how your ads will appear on Facebook and Instagram
+          </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {readyConcepts.map((item: any, index: number) => (
+              <AdPreview 
+                key={index}
+                concept={item}
+                brandName={brandName}
+                websiteUrl={websiteUrl}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-between">
