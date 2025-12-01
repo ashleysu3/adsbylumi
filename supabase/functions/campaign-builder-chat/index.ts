@@ -65,6 +65,39 @@ function validateUrl(url: string): { isValid: boolean; sanitizedUrl: string; war
   }
 }
 
+// URL reachability check helper
+async function checkUrlReachability(url: string): Promise<{ isReachable: boolean; statusCode?: number; error?: string }> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    const response = await fetch(url, {
+      method: 'HEAD', // Use HEAD to avoid downloading full page
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; AdBot/1.0; +https://youradassistant.com)',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      return { isReachable: true, statusCode: response.status };
+    } else if (response.status >= 400 && response.status < 500) {
+      return { isReachable: false, statusCode: response.status, error: `Page returned ${response.status} error` };
+    } else if (response.status >= 500) {
+      return { isReachable: false, statusCode: response.status, error: `Server error (${response.status})` };
+    }
+    
+    return { isReachable: true, statusCode: response.status };
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      return { isReachable: false, error: 'Request timed out - page took too long to respond' };
+    }
+    return { isReachable: false, error: 'Could not reach the page - please verify the URL is correct' };
+  }
+}
+
 // Budget parsing helper
 function parseBudget(message: string): { amount: number | null; warning?: string } {
   // Remove currency symbols and common text
@@ -261,16 +294,34 @@ Deno.serve(async (req) => {
           // Validate URL with improved validation
           const urlResult = validateUrl(message);
           if (urlResult.isValid) {
-            currentAnswers.finalUrl = urlResult.sanitizedUrl;
-            if (urlResult.warning) {
-              responseMessage = `⚠️ ${urlResult.warning}\n\nUsing: ${urlResult.sanitizedUrl}\n\nShould I use Advantage+ placements for maximum reach? (Recommended)`;
+            // Check if URL is reachable
+            const reachabilityResult = await checkUrlReachability(urlResult.sanitizedUrl);
+            
+            if (reachabilityResult.isReachable) {
+              currentAnswers.finalUrl = urlResult.sanitizedUrl;
+              let warningText = urlResult.warning ? `⚠️ ${urlResult.warning}\n\n` : '';
+              responseMessage = `${warningText}✅ URL verified and reachable! Should I use Advantage+ placements for maximum reach? (Recommended)`;
+              recommendations = [
+                { label: "Enable Advantage+", value: 'Advantage+', reason: "Maximum reach" },
+                { label: "Manual placements", value: 'Manual', reason: "Choose specific" }
+              ];
             } else {
-              responseMessage = `Great! Should I use Advantage+ placements for maximum reach? (Recommended)`;
+              // URL format is valid but not reachable
+              responseMessage = `⚠️ I couldn't reach your landing page: ${reachabilityResult.error}\n\nURL: ${urlResult.sanitizedUrl}\n\nPlease verify the URL is correct and the page is live. You can try again or use it anyway.`;
+              recommendations = [
+                { label: "Use anyway", value: urlResult.sanitizedUrl, reason: "I'll verify manually" },
+                { label: "Enter different URL", value: 'retry', reason: "Try another URL" }
+              ];
+              // Store it anyway if they want to proceed
+              if (message === urlResult.sanitizedUrl || message.toLowerCase().includes('anyway')) {
+                currentAnswers.finalUrl = urlResult.sanitizedUrl;
+                responseMessage = `Got it, using ${urlResult.sanitizedUrl}. Should I use Advantage+ placements for maximum reach? (Recommended)`;
+                recommendations = [
+                  { label: "Enable Advantage+", value: 'Advantage+', reason: "Maximum reach" },
+                  { label: "Manual placements", value: 'Manual', reason: "Choose specific" }
+                ];
+              }
             }
-            recommendations = [
-              { label: "Enable Advantage+", value: 'Advantage+', reason: "Maximum reach" },
-              { label: "Manual placements", value: 'Manual', reason: "Choose specific" }
-            ];
           } else {
             responseMessage = `⚠️ ${urlResult.warning}\n\nPlease enter a valid landing page URL starting with https://`;
             recommendations = workspace.offer_url ? [
