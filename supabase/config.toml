@@ -62,3 +62,6 @@ verify_jwt = true
 
 [functions.fetch-custom-audiences]
 verify_jwt = true
+
+[functions.send-weekly-reports]
+verify_jwt = false
