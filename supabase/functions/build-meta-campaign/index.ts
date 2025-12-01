@@ -317,6 +317,24 @@ Deno.serve(async (req) => {
     // Create Warm Retargeting Ad Set (if enabled)
     let warmAdSetId: string | null = null;
     if (answers?.warmRetargeting) {
+      // Build targeting with selected custom audiences
+      let warmTargeting: any = { 
+        geo_locations: { countries: ['US'] },
+        age_min: 18,
+        age_max: 65
+      };
+      
+      // Add custom audiences if selected
+      const selectedAudiences = answers?.selectedAudiences || [];
+      if (selectedAudiences.length > 0 && selectedAudiences[0] !== '') {
+        warmTargeting.custom_audiences = selectedAudiences.map((id: string) => ({ id }));
+        console.log(`Using ${selectedAudiences.length} custom audience(s) for warm targeting`);
+      } else {
+        // Default to engaged IG/FB audience if no custom audiences
+        // This uses flexible_spec for engagement-based targeting
+        console.log('No custom audiences selected, using default warm targeting');
+      }
+      
       const warmAdSetResponse = await fetch(
         `https://graph.facebook.com/v18.0/act_${accountId}/adsets`,
         {
@@ -324,16 +342,12 @@ Deno.serve(async (req) => {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: new URLSearchParams({
             campaign_id: result.campaignId!,
-            name: `Warm - Engaged - ${productName}`,
+            name: `Warm - Retargeting - ${productName}`,
             optimization_goal: optimizationGoal,
             billing_event: 'IMPRESSIONS',
             bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
             daily_budget: Math.round(dailyBudgetCents * 0.5).toString(),
-            targeting: JSON.stringify({ 
-              geo_locations: { countries: ['US'] },
-              age_min: 18,
-              age_max: 65
-            }),
+            targeting: JSON.stringify(warmTargeting),
             status: 'PAUSED',
             access_token: metaAccessToken
           })
@@ -347,7 +361,7 @@ Deno.serve(async (req) => {
         console.log('Warm ad set created:', warmAdSetData.id);
       } else {
         console.log('Warm ad set skipped:', warmAdSetData.error.message);
-        result.warnings.push('Warm audience ad set could not be created - using cold audience only.');
+        result.warnings.push(`Warm audience ad set could not be created: ${warmAdSetData.error.message}`);
       }
     }
 
