@@ -16,6 +16,11 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
     toast.success(`${label} copied to clipboard`);
   };
 
+  // Handle both naming conventions from build-meta-campaign
+  const campaignId = campaignIds?.campaignId || campaignIds?.campaign_id;
+  const adSetIds = campaignIds?.adSetIds || campaignIds?.ad_set_ids || [];
+  const adIds = campaignIds?.adIds || campaignIds?.ad_ids || [];
+
   const metaAdsManagerUrl = `https://business.facebook.com/adsmanager`;
 
   return (
@@ -37,26 +42,26 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
           <CardTitle>Campaign Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {campaignIds?.campaignId && (
+          {campaignId && (
             <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Campaign ID</p>
-                <p className="font-mono text-sm">{campaignIds.campaignId}</p>
+                <p className="font-mono text-sm">{campaignId}</p>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => copyToClipboard(campaignIds.campaignId, 'Campaign ID')}
+                onClick={() => copyToClipboard(campaignId, 'Campaign ID')}
               >
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
           )}
 
-          {campaignIds?.adSetIds && campaignIds.adSetIds.length > 0 && (
+          {adSetIds.length > 0 && (
             <div className="space-y-2">
               <p className="text-sm font-medium">Ad Sets</p>
-              {campaignIds.adSetIds.map((id: string, index: number) => (
+              {adSetIds.map((id: string, index: number) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">
@@ -79,7 +84,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
           <div className="flex items-center gap-2 pt-2">
             <Badge variant="secondary">Status: Paused (Ready to Activate)</Badge>
             <Badge variant="outline">
-              {campaignIds?.adIds?.length || 0} Ads Created
+              {adIds.length} Ads Created
             </Badge>
           </div>
         </CardContent>
@@ -149,7 +154,6 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
           variant="outline"
           onClick={() => {
             const metaAccountId = workspace?.brands?.meta_account_id;
-            const campaignId = campaignIds?.campaignId;
             if (metaAccountId && campaignId) {
               // Link directly to the campaign in Ads Manager
               window.open(
