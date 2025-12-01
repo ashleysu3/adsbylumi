@@ -11,9 +11,10 @@ import {
   Image,
   Zap,
   AlertCircle,
-  Eye
+  Eye,
+  AlertTriangle
 } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AdPreview } from "./AdPreview";
 import { useState } from "react";
 
@@ -26,6 +27,11 @@ interface CampaignReviewProps {
 
 export function CampaignReview({ workspace, answers, onBack, onPublish }: CampaignReviewProps) {
   const [showPreviews, setShowPreviews] = useState(true);
+  const [confirmRepublish, setConfirmRepublish] = useState(false);
+  
+  // Check if campaign was already published
+  const existingCampaignIds = workspace.meta_campaign_ids;
+  const isAlreadyPublished = existingCampaignIds?.campaign_id;
   
   // Get approved concepts that have both linkedAsset AND finalCopy
   const approvedConcepts = workspace.production_items?.filter((item: any) => item.status === 'approved') || [];
@@ -44,10 +50,21 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   
   // Need at least 1 ready concept, budget, and start date to publish
   const canPublish = readyConcepts.length >= 1 && answers.budget && answers.startDate;
+  
+  // For republish, need confirmation
+  const canProceed = canPublish && (!isAlreadyPublished || confirmRepublish);
 
   // Get brand info for preview
   const brandName = workspace.brand?.name || "Your Brand";
   const websiteUrl = workspace.offer_url;
+
+  const handlePublishClick = () => {
+    if (isAlreadyPublished && !confirmRepublish) {
+      setConfirmRepublish(true);
+      return;
+    }
+    onPublish();
+  };
 
   return (
     <div className="space-y-6">
@@ -59,6 +76,23 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Already Published Warning */}
+          {isAlreadyPublished && (
+            <Alert variant="default" className="border-amber-500/50 bg-amber-500/10">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertTitle className="text-amber-600">Campaign Already Published</AlertTitle>
+              <AlertDescription className="text-amber-600/90">
+                This workspace already has a published campaign (ID: {existingCampaignIds.campaign_id}). 
+                Publishing again will create a <strong>duplicate campaign</strong> in your Meta Ads account.
+                {confirmRepublish && (
+                  <span className="block mt-2 font-medium">
+                    ✓ You've confirmed you want to create a new campaign. Click "Publish to Meta" to proceed.
+                  </span>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {/* Warnings */}
           {!canPublish && (
             <Alert variant="destructive">
@@ -266,15 +300,31 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Chat
         </Button>
-        <Button 
-          onClick={onPublish} 
-          disabled={!canPublish}
-          size="lg"
-          className="gap-2"
-        >
-          <Rocket className="h-4 w-4" />
-          Publish to Meta
-        </Button>
+        <div className="flex gap-2">
+          {isAlreadyPublished && !confirmRepublish && (
+            <Button 
+              variant="outline"
+              onClick={() => setConfirmRepublish(true)}
+              className="gap-2"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Create New Campaign Anyway
+            </Button>
+          )}
+          <Button 
+            onClick={handlePublishClick} 
+            disabled={!canProceed}
+            size="lg"
+            className="gap-2"
+            variant={isAlreadyPublished ? "destructive" : "default"}
+          >
+            <Rocket className="h-4 w-4" />
+            {isAlreadyPublished 
+              ? (confirmRepublish ? 'Publish Duplicate Campaign' : 'Campaign Already Published')
+              : 'Publish to Meta'
+            }
+          </Button>
+        </div>
       </div>
     </div>
   );
