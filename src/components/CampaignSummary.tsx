@@ -25,6 +25,9 @@ export function CampaignSummary({ workspace, answers, stage }: CampaignSummaryPr
   const hasAnswer = (key: string) => answers && answers[key] !== undefined && answers[key] !== null;
   const confettiTriggeredRef = useRef(false);
   
+  // Get template info
+  const template = workspace.campaign_templates;
+  
   // Define all required questions in the campaign builder flow
   const requiredQuestions = [
     'budget',
@@ -92,6 +95,27 @@ export function CampaignSummary({ workspace, answers, stage }: CampaignSummaryPr
         <CardTitle className="text-lg">Campaign Summary</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Campaign Type from Template */}
+        {template && (
+          <>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Target className="h-4 w-4 text-primary" />
+                <span>Campaign Type</span>
+              </div>
+              <div className="ml-6">
+                <Badge variant="outline" className="text-xs font-semibold">
+                  {template.name}
+                </Badge>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {template.objective} • {template.audience_type}
+                </p>
+              </div>
+            </div>
+            <Separator />
+          </>
+        )}
+
         {/* Offer Info */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium">
