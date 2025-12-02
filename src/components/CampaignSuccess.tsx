@@ -153,7 +153,11 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
         <Button
           variant="outline"
           onClick={() => {
-            const metaAccountId = workspace?.brands?.meta_account_id;
+            // Access meta_account_id from the brand (brands is a single object from the join)
+            const rawAccountId = workspace?.brands?.meta_account_id;
+            // Strip "act_" prefix if present - Meta URLs need just the numeric ID
+            const metaAccountId = rawAccountId?.replace(/^act_/, '');
+            
             if (metaAccountId && campaignId) {
               // Link directly to the campaign in Ads Manager
               window.open(
