@@ -30,13 +30,29 @@ Deno.serve(async (req) => {
     // Fetch workspace with all context
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*')
+      .select('*, template_id')
       .eq('id', workspaceId)
       .single();
 
     if (workspaceError || !workspace) {
       throw new Error('Workspace not found');
     }
+
+    // Fetch the campaign template if available
+    let template = null;
+    if (workspace.template_id) {
+      const { data: templateData, error: templateError } = await supabase
+        .from('campaign_templates')
+        .select('name, objective, purpose, kpi_priorities')
+        .eq('id', workspace.template_id)
+        .single();
+      
+      if (!templateError && templateData) {
+        template = templateData;
+      }
+    }
+
+    console.log('Template data:', template);
 
     // Fetch all knowledge documents
     const { data: knowledgeDocs, error: kbError } = await supabase
@@ -55,6 +71,29 @@ Deno.serve(async (req) => {
       return acc;
     }, {});
 
+    // Build campaign context section with template purpose
+    const campaignTypeContext = template ? `
+CAMPAIGN TYPE & PURPOSE:
+- Campaign Type: ${template.name || 'Unknown'}
+- Objective: ${template.objective || 'Unknown'}
+${template.purpose ? `
+CAMPAIGN PURPOSE (USE THIS TO GUIDE YOUR ANALYSIS):
+${template.purpose}
+` : ''}
+${template.kpi_priorities && template.kpi_priorities.length > 0 ? `
+PRIORITY KPIs (evaluate these FIRST and weight most heavily):
+${template.kpi_priorities.map((kpi: string, idx: number) => `  ${idx + 1}. ${kpi.toUpperCase()}`).join('\n')}
+
+CRITICAL EVALUATION RULES:
+- Your analysis MUST be aligned with this campaign's purpose
+- Do NOT mark KPIs as "critical" or "needs attention" if they are NOT in the priority list above
+- KPIs not in the priority list should be labeled as "tracking only" - do not flag them as problems
+- For example, if this is a Traffic campaign with CPC/CTR/CPM as priorities:
+  - ROAS of 0 is EXPECTED and should NOT be flagged as a problem
+  - CPL/CPP not relevant - mark as "N/A for this campaign type"
+- Focus your analysis and recommendations on the priority KPIs only
+` : ''}` : '';
+
     // Build comprehensive system prompt
     const systemPrompt = `You are the Performance Fixer, an expert Meta Ads analyst with deep knowledge of advertising psychology, funnel optimization, and creative strategy.
 
@@ -62,6 +101,9 @@ CONTEXT YOU HAVE ACCESS TO:
 - Real campaign performance data from Meta API
 - The campaign's strategy, creative mix, and offer details
 - 10 comprehensive knowledge bases covering Meta ads best practices
+- THE CAMPAIGN'S SPECIFIC PURPOSE AND PRIORITY KPIs
+
+${campaignTypeContext}
 
 YOUR KNOWLEDGE BASES:
 ${Object.entries(kbByCategory).map(([category, docs]: [string, any]) => 
@@ -78,12 +120,16 @@ CAMPAIGN CONTEXT:
 YOUR ROLE:
 Analyze the performance data and deliver a comprehensive, beginner-friendly report that includes:
 
-1. **KPI Evaluation**: For each metric (CTR, CPC, CPM, Frequency, CPL/CPP, ROAS), compare to benchmarks from your knowledge base and assign a status (excellent/healthy/needs attention/critical). Explain WHY the metric matters and what it means for this campaign.
+1. **KPI Evaluation**: For each metric, compare to benchmarks from your knowledge base and assign a status.
+   - IMPORTANT: Only mark KPIs as "critical" or "needs attention" if they are in the campaign's priority KPI list
+   - For KPIs NOT in the priority list, use status "tracking_only" or "not_applicable"
+   - Explain WHY the metric matters (or doesn't matter) for THIS specific campaign type
 
 2. **Funnel Diagnosis**: Identify issues at each stage:
    - TOFU (Top of Funnel): CTR, reach, creative variety
    - MOFU (Middle): Click-to-conversion, landing page performance
    - BOFU (Bottom): Warm audience conversion, offer clarity
+   - Focus on the funnel stages that are RELEVANT to this campaign type
 
 3. **Creative Troubleshooting**: Diagnose creative issues based on the data. Link low CTR to hook problems, high CPC to clarity issues, high frequency to fatigue, etc. Provide specific creative recommendations.
 
@@ -93,7 +139,7 @@ Analyze the performance data and deliver a comprehensive, beginner-friendly repo
 
 6. **Offer Diagnosis**: Based on the offer type (lead magnet, webinar, low ticket, high ticket), identify mismatches between the offer and creative/landing page.
 
-7. **Top 3 Next Steps**: Provide exactly 3 actionable, specific steps the user should take this week. Make them simple and encouraging.
+7. **Top 3 Next Steps**: Provide exactly 3 actionable, specific steps the user should take this week. Make them simple and encouraging. ONLY recommend actions related to the campaign's actual purpose and priority KPIs.
 
 8. **Creative Refresh Suggestions**: Suggest 2-3 specific creative types to add or refresh, including hook patterns, script starters, and psychology triggers to use.
 
@@ -104,6 +150,7 @@ TONE & STYLE:
 - Always explain WHY behind recommendations
 - Celebrate wins, gently guide improvements
 - Keep it actionable and specific
+- DO NOT alarm the user about metrics that are not relevant to their campaign goal
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON object with this exact structure:
@@ -155,7 +202,11 @@ Return ONLY a valid JSON object with this exact structure:
       "why_it_works": string
     }
   ]
-}`;
+}
+
+For the "status" field, use one of: "excellent", "healthy", "needs_attention", "critical", "tracking_only", "not_applicable"
+Use "tracking_only" for metrics being monitored but not the campaign's focus
+Use "not_applicable" for metrics that don't apply to this campaign type (e.g., ROAS for traffic campaigns)`;
 
     const userPrompt = `Analyze this Meta Ads campaign performance data:
 
@@ -176,6 +227,8 @@ METRICS:
 - Link Clicks: ${metricsData.linkClicks || 0}
 - Video Views: ${metricsData.videoViews || 0}
 - Video ThruPlays: ${metricsData.videoThruPlays || 0}
+
+${template ? `REMEMBER: This is a "${template.name}" campaign with objective "${template.objective}". Focus your analysis on the campaign's purpose and priority KPIs. Do not flag irrelevant metrics as problems.` : ''}
 
 Provide a comprehensive analysis following the JSON structure specified.`;
 
@@ -226,8 +279,11 @@ Provide a comprehensive analysis following the JSON structure specified.`;
       }
     }
 
-    // Add timestamp
+    // Add timestamp and template info
     analysis.analyzed_at = new Date().toISOString();
+    analysis.campaign_type = template?.name || null;
+    analysis.campaign_objective = template?.objective || null;
+    analysis.priority_kpis = template?.kpi_priorities || [];
 
     // Save to database
     const currentReports = workspace.performance_reports || [];
