@@ -178,34 +178,75 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch workspace data
+    // Fetch workspace data with template
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
       .select(`
         *,
-        brands!inner(*)
+        brands!inner(*),
+        campaign_templates(*)
       `)
       .eq('id', workspaceId)
       .single();
 
     if (workspaceError) throw workspaceError;
 
-    // Determine what to ask next based on collected answers
+    // Get template defaults if available
+    const template = workspace.campaign_templates;
+    const strategyTemplate = template?.strategy_template as any || {};
+    
+    // Pre-populate answers from template
     const currentAnswers = answers || {};
+    
+    // Apply template defaults on first load (when no answers exist)
+    const isFirstLoad = Object.keys(currentAnswers).length === 0;
+    
+    if (isFirstLoad && template) {
+      // Set optimization event from template
+      if (template.optimization_event) {
+        currentAnswers.optimizationEvent = template.optimization_event === 'Purchase' ? 'PURCHASE' : 
+                                            template.optimization_event === 'Lead' ? 'LEAD_GENERATION' : 
+                                            template.optimization_event;
+      }
+      
+      // Set placements from strategy template
+      if (strategyTemplate.placements?.includes('Advantage+')) {
+        currentAnswers.placements = 'Advantage+';
+      }
+      
+      // Set warm retargeting based on audience type
+      if (template.audience_type) {
+        currentAnswers.warmRetargeting = template.audience_type.toLowerCase().includes('warm');
+      }
+      
+      // Default to no end date for evergreen campaigns
+      if (strategyTemplate.campaign_type === 'cold' || template.audience_type?.includes('Broad')) {
+        currentAnswers.endDate = null; // Continuous
+      }
+      
+      // Default Advantage+ ON
+      currentAnswers.metaAdvantage = true;
+    }
+    
     let responseMessage = '';
     let recommendations: any[] = [];
     let stage = 'chat';
 
-    // Question flow logic
+    // Question flow logic - skip questions that have template defaults
     const getNextQuestion = () => {
       if (!currentAnswers.budget) return 'budget';
       if (!currentAnswers.startDate) return 'startDate';
+      // Only ask about end date if not pre-set by template
       if (currentAnswers.endDate === undefined) return 'endDate';
+      // Skip metaAdvantage if template set it
       if (currentAnswers.metaAdvantage === undefined) return 'metaAdvantage';
       if (!currentAnswers.campaignName) return 'campaignName';
       if (!currentAnswers.finalUrl) return 'finalUrl';
+      // Skip placements if template set it
       if (!currentAnswers.placements) return 'placements';
+      // Skip optimization if template set it
       if (!currentAnswers.optimizationEvent) return 'optimizationEvent';
+      // Skip warm retargeting if template set it
       if (currentAnswers.warmRetargeting === undefined) return 'warmRetargeting';
       // Only ask about audience selection if warm retargeting is enabled
       if (currentAnswers.warmRetargeting === true && !currentAnswers.selectedAudiences) return 'audienceSelection';
@@ -216,14 +257,54 @@ Deno.serve(async (req) => {
 
     // Initial greeting or handle user response
     if (!message) {
-      // Initial greeting
-      responseMessage = `Hi! 👋 I'm excited to help you launch your Meta Ads campaign for "${workspace.offer_name || 'your offer'}." Let's start with your daily budget. Most campaigns like yours work great with $20-30/day.`;
+      // Build template summary if available
+      let templateSummary = '';
+      if (template) {
+        const presets: string[] = [];
+        if (currentAnswers.optimizationEvent) {
+          const eventName = currentAnswers.optimizationEvent === 'PURCHASE' ? 'Purchases' : 
+                           currentAnswers.optimizationEvent === 'LEAD_GENERATION' ? 'Leads' : 
+                           currentAnswers.optimizationEvent;
+          presets.push(`Optimizing for **${eventName}**`);
+        }
+        if (currentAnswers.placements) presets.push(`**${currentAnswers.placements}** placements`);
+        if (currentAnswers.warmRetargeting !== undefined) {
+          presets.push(currentAnswers.warmRetargeting ? '**Warm retargeting** included' : '**Cold traffic** only');
+        }
+        if (currentAnswers.endDate === null) presets.push('Running **continuously**');
+        if (currentAnswers.metaAdvantage) presets.push('**Advantage+** creative ON');
+        
+        if (presets.length > 0) {
+          templateSummary = `\n\n📋 Based on your **${template.name}** campaign type, I've pre-configured:\n• ${presets.join('\n• ')}\n\n`;
+        }
+      }
       
-      recommendations = [
-        { label: "$15/day", value: 15, reason: "Starter budget" },
-        { label: "$20/day", value: 20, reason: "Most popular" },
-        { label: "$30/day", value: 30, reason: "For faster results" }
-      ];
+      // Get budget suggestion from template
+      let budgetSuggestion = '$20-30/day';
+      if (template?.budget_suggestion) {
+        budgetSuggestion = template.budget_suggestion;
+      }
+      
+      responseMessage = `Hi! 👋 I'm excited to help you launch your Meta Ads campaign for "${workspace.offer_name || 'your offer'}."${templateSummary}Let's start with your daily budget. For this campaign type, I recommend **${budgetSuggestion}**.`;
+      
+      // Parse budget suggestion for recommendations
+      const budgetMatch = budgetSuggestion.match(/\$(\d+)-(\d+)/);
+      if (budgetMatch) {
+        const low = parseInt(budgetMatch[1]);
+        const high = parseInt(budgetMatch[2]);
+        const mid = Math.round((low + high) / 2);
+        recommendations = [
+          { label: `$${low}/day`, value: low, reason: "Starter budget" },
+          { label: `$${mid}/day`, value: mid, reason: "Recommended" },
+          { label: `$${high}/day`, value: high, reason: "For faster results" }
+        ];
+      } else {
+        recommendations = [
+          { label: "$15/day", value: 15, reason: "Starter budget" },
+          { label: "$20/day", value: 20, reason: "Most popular" },
+          { label: "$30/day", value: 30, reason: "For faster results" }
+        ];
+      }
     } else {
       // Parse user's message and update answers
       switch (nextQuestion) {

@@ -52,9 +52,8 @@ export default function CampaignBuilder() {
         .from('campaign_workspaces')
         .select(`
           *,
-          brands!inner(
-            *
-          )
+          brands!inner(*),
+          campaign_templates(*)
         `)
         .eq('id', workspaceId)
         .single();
