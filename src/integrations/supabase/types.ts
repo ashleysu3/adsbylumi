@@ -129,6 +129,7 @@ export type Database = {
           name: string
           objective: string
           optimization_event: string | null
+          prepopulated_fields: Json | null
           slug: string
           strategy_template: Json
           use_case: string
@@ -146,6 +147,7 @@ export type Database = {
           name: string
           objective: string
           optimization_event?: string | null
+          prepopulated_fields?: Json | null
           slug: string
           strategy_template: Json
           use_case: string
@@ -163,6 +165,7 @@ export type Database = {
           name?: string
           objective?: string
           optimization_event?: string | null
+          prepopulated_fields?: Json | null
           slug?: string
           strategy_template?: Json
           use_case?: string
