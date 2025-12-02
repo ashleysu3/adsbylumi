@@ -2,139 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Phantom-inspired Design System - Purple/Lavender palette */
 
 @layer base {
   :root {
-    /* Final Color Scheme - Orange, Pink, Cream, Black */
-    --background: 30 40% 97%;
-    --foreground: 0 0% 10%;
+    /* Phantom-inspired color scheme */
+    --background: 260 30% 97%;
+    --foreground: 260 50% 20%;
     
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 260 50% 20%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 260 50% 20%;
     
-    /* Hot pink/magenta primary */
-    --primary: 330 75% 65%;
+    /* Deep violet primary */
+    --primary: 260 60% 50%;
     --primary-foreground: 0 0% 100%;
     
-    /* Light pink/lavender secondary */
-    --secondary: 300 45% 80%;
-    --secondary-foreground: 0 0% 10%;
+    /* Soft lavender secondary */
+    --secondary: 260 40% 92%;
+    --secondary-foreground: 260 50% 20%;
     
-    /* Cream muted */
-    --muted: 30 35% 92%;
-    --muted-foreground: 0 0% 30%;
+    /* Light purple muted */
+    --muted: 260 25% 94%;
+    --muted-foreground: 260 20% 45%;
     
-    /* Peach accent */
-    --accent: 28 85% 68%;
-    --accent-foreground: 0 0% 10%;
+    /* Coral/pink accent */
+    --accent: 340 80% 60%;
+    --accent-foreground: 0 0% 100%;
     
-    /* Light orange coral */
-    --coral: 28 85% 68%;
-    --coral-foreground: 0 0% 10%;
+    /* Warm coral */
+    --coral: 15 85% 60%;
+    --coral-foreground: 0 0% 100%;
     
-    /* Dark orange terracotta */
-    --terracotta: 15 75% 58%;
+    /* Deep purple terracotta alternative */
+    --terracotta: 280 60% 45%;
     --terracotta-foreground: 0 0% 100%;
     
     --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 30 25% 88%;
-    --input: 30 30% 94%;
-    --ring: 330 75% 65%;
+    --border: 260 20% 90%;
+    --input: 260 20% 96%;
+    --ring: 260 60% 50%;
     
     --radius: 1rem;
     
-    /* Gradients */
-    --gradient-playful: linear-gradient(135deg, hsl(330 75% 65%), hsl(300 45% 80%));
-    --gradient-warm: linear-gradient(135deg, hsl(28 85% 68%), hsl(15 75% 58%));
-    --gradient-cool: linear-gradient(135deg, hsl(300 45% 80%), hsl(330 75% 65%));
+    /* Phantom-style gradients */
+    --gradient-phantom: linear-gradient(135deg, hsl(260 60% 55%), hsl(340 80% 65%));
+    --gradient-card: linear-gradient(135deg, hsl(340 70% 65%), hsl(260 50% 60%), hsl(200 70% 60%));
+    --gradient-subtle: linear-gradient(180deg, hsl(260 30% 97%), hsl(260 25% 94%));
+    --gradient-hero: linear-gradient(135deg, hsl(260 40% 92%) 0%, hsl(260 30% 97%) 100%);
     
     /* Shadows */
-    --shadow-playful: 0 8px 32px -8px hsl(330 75% 65% / 0.3);
-    --shadow-elevated: 0 12px 40px -12px hsl(0 0% 10% / 0.15);
+    --shadow-soft: 0 4px 24px -4px hsl(260 60% 50% / 0.1);
+    --shadow-elevated: 0 20px 60px -20px hsl(260 60% 50% / 0.2);
+    --shadow-glow: 0 0 40px hsl(260 60% 50% / 0.15);
     
-    /* Folder Tab Brand Colors */
+    /* Folder Tab Brand Colors - Updated for Phantom style */
     --tab-orange-light: 31 98% 50%;
     --tab-orange-dark: 20 100% 50%;
-    --tab-pink-light: 319 72% 83%;
-    --tab-pink-dark: 7 81% 52%;
-    --tab-purple-light: 270 60% 85%;
-    --tab-purple-dark: 270 65% 55%;
-    --tab-cream-light: 30 82% 96%;
-    --tab-cream-dark: 29 88% 90%;
-    --tab-black: 216 8% 12%;
+    --tab-pink-light: 340 70% 90%;
+    --tab-pink-dark: 340 80% 60%;
+    --tab-purple-light: 260 50% 90%;
+    --tab-purple-dark: 260 60% 50%;
+    --tab-cream-light: 260 30% 97%;
+    --tab-cream-dark: 260 40% 92%;
+    --tab-black: 260 50% 20%;
     
-    --sidebar-background: 40 10% 98%;
-    --sidebar-foreground: 220 15% 15%;
-    --sidebar-primary: 220 15% 15%;
-    --sidebar-primary-foreground: 40 10% 98%;
-    --sidebar-accent: 40 20% 95%;
-    --sidebar-accent-foreground: 220 15% 15%;
-    --sidebar-border: 40 12% 88%;
-    --sidebar-ring: 220 15% 15%;
+    --sidebar-background: 260 30% 98%;
+    --sidebar-foreground: 260 50% 20%;
+    --sidebar-primary: 260 60% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 260 25% 94%;
+    --sidebar-accent-foreground: 260 50% 20%;
+    --sidebar-border: 260 20% 90%;
+    --sidebar-ring: 260 60% 50%;
   }
 
   .dark {
-    --background: 0 0% 10%;
-    --foreground: 30 35% 92%;
+    --background: 260 30% 8%;
+    --foreground: 260 20% 95%;
     
-    --card: 0 0% 14%;
-    --card-foreground: 30 35% 92%;
+    --card: 260 25% 12%;
+    --card-foreground: 260 20% 95%;
     
-    --popover: 0 0% 14%;
-    --popover-foreground: 30 35% 92%;
+    --popover: 260 25% 12%;
+    --popover-foreground: 260 20% 95%;
     
-    --primary: 330 75% 65%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 260 70% 65%;
+    --primary-foreground: 260 30% 8%;
     
-    --secondary: 300 35% 45%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 260 30% 20%;
+    --secondary-foreground: 260 20% 95%;
     
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 70%;
+    --muted: 260 25% 18%;
+    --muted-foreground: 260 15% 60%;
     
-    --accent: 28 75% 60%;
-    --accent-foreground: 0 0% 10%;
+    --accent: 340 75% 55%;
+    --accent-foreground: 0 0% 100%;
     
-    --coral: 28 75% 60%;
-    --coral-foreground: 0 0% 10%;
+    --coral: 15 80% 55%;
+    --coral-foreground: 0 0% 100%;
     
-    --terracotta: 15 70% 55%;
+    --terracotta: 280 55% 55%;
     --terracotta-foreground: 0 0% 100%;
     
-    --destructive: 0 80% 65%;
+    --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 0 0% 25%;
-    --input: 0 0% 20%;
-    --ring: 330 75% 65%;
+    --border: 260 25% 20%;
+    --input: 260 25% 15%;
+    --ring: 260 70% 65%;
     
     /* Folder Tab Brand Colors - Dark Mode */
-    --tab-orange-light: 31 98% 50%;
-    --tab-orange-dark: 20 100% 50%;
-    --tab-pink-light: 319 72% 83%;
-    --tab-pink-dark: 7 81% 52%;
-    --tab-purple-light: 270 60% 85%;
-    --tab-purple-dark: 270 65% 55%;
-    --tab-cream-light: 30 82% 96%;
-    --tab-cream-dark: 29 88% 90%;
-    --tab-black: 216 8% 12%;
+    --tab-orange-light: 31 90% 45%;
+    --tab-orange-dark: 20 95% 45%;
+    --tab-pink-light: 340 60% 35%;
+    --tab-pink-dark: 340 75% 55%;
+    --tab-purple-light: 260 40% 30%;
+    --tab-purple-dark: 260 70% 65%;
+    --tab-cream-light: 260 25% 18%;
+    --tab-cream-dark: 260 30% 25%;
+    --tab-black: 260 20% 90%;
     
-    --sidebar-background: 220 15% 15%;
-    --sidebar-foreground: 40 10% 95%;
-    --sidebar-primary: 355 45% 45%;
-    --sidebar-primary-foreground: 40 10% 98%;
-    --sidebar-accent: 220 12% 20%;
-    --sidebar-accent-foreground: 40 10% 95%;
-    --sidebar-border: 220 12% 25%;
-    --sidebar-ring: 355 45% 45%;
+    --sidebar-background: 260 25% 10%;
+    --sidebar-foreground: 260 20% 95%;
+    --sidebar-primary: 260 70% 65%;
+    --sidebar-primary-foreground: 260 30% 8%;
+    --sidebar-accent: 260 25% 18%;
+    --sidebar-accent-foreground: 260 20% 95%;
+    --sidebar-border: 260 25% 20%;
+    --sidebar-ring: 260 70% 65%;
   }
 }
 
@@ -147,17 +147,107 @@ All colors MUST be HSL.
     @apply bg-background text-foreground font-sans antialiased;
   }
   
-  /* Bold playful typography */
+  /* Typography */
   .font-display {
-    font-family: 'Red Hat Display', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
   }
   
   .font-body {
-    font-family: 'Red Hat Display', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 }
 
-/* Import Red Hat Display font */
-@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800;900&display=swap');
+@layer utilities {
+  /* Phantom-style animations */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-float-delayed {
+    animation: float 6s ease-in-out infinite 2s;
+  }
+  
+  .animate-fade-up {
+    animation: fadeUp 0.8s ease-out forwards;
+  }
+  
+  .animate-fade-up-delayed {
+    animation: fadeUp 0.8s ease-out 0.2s forwards;
+    opacity: 0;
+  }
+  
+  .animate-scale-in {
+    animation: scaleIn 0.5s ease-out forwards;
+  }
+  
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradientShift 8s ease infinite;
+  }
+  
+  .hover-lift {
+    @apply transition-all duration-300;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-elevated);
+  }
+  
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+  }
+  
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-phantom);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
