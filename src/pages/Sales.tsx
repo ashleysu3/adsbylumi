@@ -487,10 +487,34 @@ const Sales = () => {
 
       {/* Pricing */}
       <section className="py-20 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-3xl text-center">
-          <h2 className="font-display text-4xl mb-6">💵 Pricing</h2>
-          <p className="text-2xl font-medium text-primary mb-4">COMING SOON</p>
-          <p className="text-lg text-muted-foreground">(with solo, creator, and agency tiers)</p>
+        <div className="container mx-auto max-w-4xl text-center">
+          <h2 className="font-display text-4xl mb-6">💵 Simple, Transparent Pricing</h2>
+          <p className="text-xl text-muted-foreground mb-8">
+            Choose the plan that fits your business. Save 2 months with annual billing.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="p-6 bg-background rounded-xl border border-border">
+              <h3 className="font-display text-2xl mb-2">Solo</h3>
+              <p className="text-3xl font-bold mb-2">$147<span className="text-lg font-normal text-muted-foreground">/mo</span></p>
+              <p className="text-sm text-muted-foreground">1 brand, 1 ad account</p>
+            </div>
+            <div className="p-6 bg-background rounded-xl border-2 border-primary relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full">
+                Most Popular
+              </div>
+              <h3 className="font-display text-2xl mb-2">Creator</h3>
+              <p className="text-3xl font-bold mb-2">$299<span className="text-lg font-normal text-muted-foreground">/mo</span></p>
+              <p className="text-sm text-muted-foreground">Up to 3 brands & ad accounts</p>
+            </div>
+            <div className="p-6 bg-background rounded-xl border border-border">
+              <h3 className="font-display text-2xl mb-2">Agency</h3>
+              <p className="text-3xl font-bold mb-2">Custom</p>
+              <p className="text-sm text-muted-foreground">Unlimited + white-label</p>
+            </div>
+          </div>
+          <Button size="lg" onClick={() => navigate("/pricing")} variant="outline">
+            View Full Pricing Details
+          </Button>
         </div>
       </section>
 
