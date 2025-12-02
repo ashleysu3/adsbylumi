@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
       : `date_preset=last_7d`;
 
     // Fetch Campaign-level insights
-    const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_plays,video_p100_watched_actions&${timeRange}&access_token=${brand.meta_access_token}`;
+    const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions&${timeRange}&access_token=${brand.meta_access_token}`;
     
     const campaignResponse = await fetch(campaignInsightsUrl);
     const campaignData = await campaignResponse.json();
