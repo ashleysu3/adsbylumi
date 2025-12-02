@@ -60,32 +60,34 @@ export default function DashboardLayout({
     toast.success("Signed out successfully");
     navigate("/auth");
   };
-
   const handleShowWalkthrough = () => {
     localStorage.removeItem('has-seen-walkthrough');
     handleGetSuggestion();
   };
-
   const handleGetSuggestion = async () => {
     setLoadingSuggestion(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: {
+          session
+        }
+      } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Please log in to continue");
         navigate("/auth");
         return;
       }
-
-      const { data, error } = await supabase.functions.invoke('suggest-next-action', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('suggest-next-action', {
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
       });
-      
       if (error) {
         console.error('Error getting suggestion:', error);
-        
+
         // Provide specific error messages
         if (error.message?.includes('authenticated')) {
           toast.error("Authentication error. Please try logging out and back in.");
@@ -94,7 +96,6 @@ export default function DashboardLayout({
         }
         return;
       }
-      
       if (data.error) {
         console.error('Error from function:', data.error);
         toast.error(data.error);
@@ -103,64 +104,56 @@ export default function DashboardLayout({
 
       // Check if this is the first time clicking
       const hasSeenWalkthrough = localStorage.getItem('has-seen-walkthrough');
-      
       if (!hasSeenWalkthrough && data.context) {
         // Build walkthrough steps from context
-        const steps = [
-          {
-            id: 'profile',
-            title: 'Complete Your Brand Profile',
-            description: 'Add your brand details, website, and target audience to help create better campaigns.',
-            completed: data.context.profileCompletion === 100,
-            action: data.context.profileCompletion < 100 ? 'Complete Profile' : undefined,
-            route: '/dashboard',
-            targetSelector: '[data-section="brand-details"]',
-            tourTitle: 'Edit Your Brand Details',
-            tourDescription: 'Click the "Edit Details" button to add your website, industry, and other brand information.'
-          },
-          {
-            id: 'psychology',
-            title: 'Generate Audience Psychology',
-            description: 'Let AI analyze your audience\'s pain points, desires, and motivations for targeted messaging.',
-            completed: data.context.hasPsychology,
-            action: !data.context.hasPsychology ? 'Generate Psychology' : undefined,
-            route: '/dashboard',
-            targetSelector: '[data-section="audience-psychology"]',
-            tourTitle: 'Generate Audience Insights',
-            tourDescription: 'Click "Generate Psychology" to let AI analyze your target audience and create detailed psychological profiles.'
-          },
-          {
-            id: 'offers',
-            title: 'Add Your Offers',
-            description: 'List your products or services to get AI-powered campaign recommendations.',
-            completed: data.context.hasOffers,
-            action: !data.context.hasOffers ? 'Add First Offer' : undefined,
-            route: '/dashboard',
-            targetSelector: '[data-section="offers"]',
-            tourTitle: 'Create Your First Offer',
-            tourDescription: 'Click "Add Offer" to list your product or service. The AI will analyze it and recommend the best campaign strategy.'
-          },
-          {
-            id: 'meta',
-            title: 'Connect Meta Ad Account',
-            description: 'Link your Meta Business account to publish campaigns directly to Facebook and Instagram.',
-            completed: data.context.hasMetaAccount,
-            action: !data.context.hasMetaAccount ? 'Connect Account' : undefined,
-            route: '/dashboard',
-            targetSelector: '[data-section="meta-account"]',
-            tourTitle: 'Link Your Meta Account',
-            tourDescription: 'Click "Connect Meta Account" to authorize access to your Facebook/Instagram ad account for campaign publishing.'
-          },
-          {
-            id: 'campaign',
-            title: 'Create Your First Campaign',
-            description: 'Use the Ad Planner to build a strategic campaign with AI-generated creative assets.',
-            completed: data.context.campaignCount > 0,
-            action: data.context.campaignCount === 0 ? 'Start Planning' : undefined,
-            route: '/planning'
-          }
-        ];
-
+        const steps = [{
+          id: 'profile',
+          title: 'Complete Your Brand Profile',
+          description: 'Add your brand details, website, and target audience to help create better campaigns.',
+          completed: data.context.profileCompletion === 100,
+          action: data.context.profileCompletion < 100 ? 'Complete Profile' : undefined,
+          route: '/dashboard',
+          targetSelector: '[data-section="brand-details"]',
+          tourTitle: 'Edit Your Brand Details',
+          tourDescription: 'Click the "Edit Details" button to add your website, industry, and other brand information.'
+        }, {
+          id: 'psychology',
+          title: 'Generate Audience Psychology',
+          description: 'Let AI analyze your audience\'s pain points, desires, and motivations for targeted messaging.',
+          completed: data.context.hasPsychology,
+          action: !data.context.hasPsychology ? 'Generate Psychology' : undefined,
+          route: '/dashboard',
+          targetSelector: '[data-section="audience-psychology"]',
+          tourTitle: 'Generate Audience Insights',
+          tourDescription: 'Click "Generate Psychology" to let AI analyze your target audience and create detailed psychological profiles.'
+        }, {
+          id: 'offers',
+          title: 'Add Your Offers',
+          description: 'List your products or services to get AI-powered campaign recommendations.',
+          completed: data.context.hasOffers,
+          action: !data.context.hasOffers ? 'Add First Offer' : undefined,
+          route: '/dashboard',
+          targetSelector: '[data-section="offers"]',
+          tourTitle: 'Create Your First Offer',
+          tourDescription: 'Click "Add Offer" to list your product or service. The AI will analyze it and recommend the best campaign strategy.'
+        }, {
+          id: 'meta',
+          title: 'Connect Meta Ad Account',
+          description: 'Link your Meta Business account to publish campaigns directly to Facebook and Instagram.',
+          completed: data.context.hasMetaAccount,
+          action: !data.context.hasMetaAccount ? 'Connect Account' : undefined,
+          route: '/dashboard',
+          targetSelector: '[data-section="meta-account"]',
+          tourTitle: 'Link Your Meta Account',
+          tourDescription: 'Click "Connect Meta Account" to authorize access to your Facebook/Instagram ad account for campaign publishing.'
+        }, {
+          id: 'campaign',
+          title: 'Create Your First Campaign',
+          description: 'Use the Ad Planner to build a strategic campaign with AI-generated creative assets.',
+          completed: data.context.campaignCount > 0,
+          action: data.context.campaignCount === 0 ? 'Start Planning' : undefined,
+          route: '/planning'
+        }];
         setWalkthroughSteps(steps);
         setWalkthroughOpen(true);
         localStorage.setItem('has-seen-walkthrough', 'true');
@@ -177,16 +170,14 @@ export default function DashboardLayout({
       setLoadingSuggestion(false);
     }
   };
-
   const handleWalkthroughAction = (route?: string, targetSelector?: string, tourTitle?: string, tourDescription?: string) => {
     setWalkthroughOpen(false);
-    
     if (route) {
       // Navigate first
       if (route !== location.pathname) {
         navigate(route);
       }
-      
+
       // Show guided tour if target element specified
       if (targetSelector && tourTitle && tourDescription) {
         setTimeout(() => {
@@ -200,25 +191,28 @@ export default function DashboardLayout({
       }
     }
   };
-
   const handleNavigateToAction = () => {
     if (!suggestionNextAction) return;
-    
     setSuggestionOpen(false);
-    
-    const { route, targetSelector } = suggestionNextAction;
-    
+    const {
+      route,
+      targetSelector
+    } = suggestionNextAction;
+
     // Navigate if on different route
     if (route !== location.pathname) {
       navigate(route);
     }
-    
+
     // If there's a target element, scroll to it and highlight
     if (targetSelector) {
       setTimeout(() => {
         const element = document.querySelector(targetSelector);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          });
           // Add pulse animation
           element.classList.add('animate-pulse');
           setTimeout(() => element.classList.remove('animate-pulse'), 2000);
@@ -252,7 +246,7 @@ export default function DashboardLayout({
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <img alt="Your Ad Assistant" className="h-16" src="/lovable-uploads/a7a24c2a-2692-4a35-b5ea-17ffd8f9dd0a.png" />
+              <img alt="Your Ad Assistant" src="/lovable-uploads/e77c5ad9-ea26-4318-a400-e40c4fe17f27.png" className="h-16 object-contain" />
             </div>
 
             <div className="flex items-center space-x-3">
@@ -346,23 +340,14 @@ export default function DashboardLayout({
             })}
             </div>
             
-            <Button 
-              variant="ghost" 
-              onClick={handleGetSuggestion}
-              disabled={loadingSuggestion}
-              className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors group mb-2"
-            >
-              {loadingSuggestion ? (
-                <>
+            <Button variant="ghost" onClick={handleGetSuggestion} disabled={loadingSuggestion} className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors group mb-2">
+              {loadingSuggestion ? <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Thinking...
-                </>
-              ) : (
-                <>
+                </> : <>
                   <Sparkles className="mr-2 h-4 w-4 animate-pulse group-hover:text-primary" />
                   What's next?
-                </>
-              )}
+                </>}
             </Button>
           </nav>
         </div>
@@ -383,37 +368,22 @@ export default function DashboardLayout({
               {suggestion}
             </DialogDescription>
           </DialogHeader>
-          {suggestionNextAction && (
-            <DialogFooter>
+          {suggestionNextAction && <DialogFooter>
               <Button onClick={handleNavigateToAction} className="w-full">
                 <ArrowRight className="mr-2 h-4 w-4" />
                 {suggestionNextAction.buttonText}
               </Button>
-            </DialogFooter>
-          )}
+            </DialogFooter>}
         </DialogContent>
       </Dialog>
 
       {/* Onboarding Walkthrough */}
-      {walkthroughOpen && (
-        <OnboardingWalkthrough
-          steps={walkthroughSteps}
-          onClose={() => setWalkthroughOpen(false)}
-          onActionClick={handleWalkthroughAction}
-        />
-      )}
+      {walkthroughOpen && <OnboardingWalkthrough steps={walkthroughSteps} onClose={() => setWalkthroughOpen(false)} onActionClick={handleWalkthroughAction} />}
 
       {/* Guided Tour */}
-      {tourActive && tourConfig && (
-        <GuidedTour
-          targetSelector={tourConfig.targetSelector}
-          title={tourConfig.title}
-          description={tourConfig.description}
-          onClose={() => {
-            setTourActive(false);
-            setTourConfig(null);
-          }}
-        />
-      )}
+      {tourActive && tourConfig && <GuidedTour targetSelector={tourConfig.targetSelector} title={tourConfig.title} description={tourConfig.description} onClose={() => {
+      setTourActive(false);
+      setTourConfig(null);
+    }} />}
     </div>;
 }
