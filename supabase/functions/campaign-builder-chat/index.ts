@@ -251,6 +251,11 @@ Deno.serve(async (req) => {
       if (prepopFields.finalUrl?.skip && workspace.offer_url) {
         currentAnswers.finalUrl = workspace.offer_url;
       }
+      
+      // Auto-generate campaign name: "Objective - Audience Type - Offer Name"
+      const audienceLabel = template.audience_type?.toLowerCase().includes('warm') ? 'Warm' : 'Cold';
+      const offerName = workspace.offer_name || 'Campaign';
+      currentAnswers.campaignName = `${template.objective} - ${audienceLabel} - ${offerName}`;
     }
     
     let responseMessage = '';
@@ -266,7 +271,8 @@ Deno.serve(async (req) => {
       if (currentAnswers.endDate === undefined && !prepopFields.endDate?.skip) return 'endDate';
       // Meta Advantage - skip if prepopulated and skip=true
       if (currentAnswers.metaAdvantage === undefined && !prepopFields.metaAdvantage?.skip) return 'metaAdvantage';
-      if (!currentAnswers.campaignName) return 'campaignName';
+      // Campaign name - skip if auto-generated from template or prepopulated
+      if (!currentAnswers.campaignName && !prepopFields.campaignName?.skip) return 'campaignName';
       // Final URL - skip if prepopulated and skip=true
       if (!currentAnswers.finalUrl && !prepopFields.finalUrl?.skip) return 'finalUrl';
       // Placements - skip if prepopulated and skip=true
