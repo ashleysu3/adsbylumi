@@ -252,10 +252,8 @@ Deno.serve(async (req) => {
         currentAnswers.finalUrl = workspace.offer_url;
       }
       
-      // Auto-generate campaign name: "Objective - Audience Type - Offer Name"
-      const audienceLabel = template.audience_type?.toLowerCase().includes('warm') ? 'Warm' : 'Cold';
-      const offerName = workspace.offer_name || 'Campaign';
-      currentAnswers.campaignName = `${template.objective} - ${audienceLabel} - ${offerName}`;
+      // Campaign name will be auto-generated after start date is provided
+      // Store template info for later name generation
     }
     
     let responseMessage = '';
@@ -371,6 +369,15 @@ Deno.serve(async (req) => {
             month: 'short', 
             day: 'numeric' 
           });
+          
+          // Auto-generate campaign name with date if template exists
+          if (template && !currentAnswers.campaignName) {
+            const audienceLabel = template.audience_type?.toLowerCase().includes('warm') ? 'Warm' : 'Cold';
+            const offerName = workspace.offer_name || 'Campaign';
+            const shortDate = new Date(parsedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            currentAnswers.campaignName = `${template.objective} - ${audienceLabel} - ${offerName} (${shortDate})`;
+          }
+          
           responseMessage = `Great! Starting ${displayDate}. Should your campaign run continuously or have an end date?`;
           recommendations = [
             { label: "Run continuously", value: 'continuous', reason: "Best for testing" },
