@@ -33,6 +33,12 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   const existingCampaignIds = workspace.meta_campaign_ids;
   const isAlreadyPublished = existingCampaignIds?.campaign_id;
   
+  // Check Meta connection status
+  const brand = workspace.brands;
+  const hasMetaAccount = !!brand?.meta_account_id;
+  const hasFacebookPage = !!brand?.page_id;
+  const isMetaReady = hasMetaAccount && hasFacebookPage;
+  
   // Get approved concepts that have both linkedAsset AND finalCopy
   const approvedConcepts = workspace.production_items?.filter((item: any) => item.status === 'approved') || [];
   const readyConcepts = approvedConcepts.filter((item: any) => {
@@ -48,8 +54,8 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
     return !hasAsset || !hasCopy;
   });
   
-  // Need at least 1 ready concept, budget, and start date to publish
-  const canPublish = readyConcepts.length >= 1 && answers.budget && answers.startDate;
+  // Need at least 1 ready concept, budget, start date, AND Meta fully connected to publish
+  const canPublish = readyConcepts.length >= 1 && answers.budget && answers.startDate && isMetaReady;
   
   // For republish, need confirmation
   const canProceed = canPublish && (!isAlreadyPublished || confirmRepublish);
@@ -76,6 +82,29 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Meta Connection Warning */}
+          {!isMetaReady && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Meta Connection Incomplete</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>
+                  {!hasMetaAccount && "No Meta Ad Account connected. "}
+                  {hasMetaAccount && !hasFacebookPage && "No Facebook Page selected. "}
+                  To create ads, you need both an Ad Account and a Facebook Page connected.
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => window.location.href = '/dashboard'}
+                >
+                  Go to Brand Settings
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Already Published Warning */}
           {isAlreadyPublished && (
             <Alert variant="default" className="border-amber-500/50 bg-amber-500/10">
@@ -94,7 +123,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           )}
           
           {/* Warnings */}
-          {!canPublish && (
+          {isMetaReady && !canPublish && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
