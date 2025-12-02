@@ -2,139 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Brand Design System - Cream/Red palette */
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
 
 @layer base {
   :root {
-    /* Brand color scheme */
-    --background: 36 12% 92%;
-    --foreground: 0 100% 0%;
+    /* Final Color Scheme - Orange, Pink, Cream, Black */
+    --background: 30 40% 97%;
+    --foreground: 0 0% 10%;
     
-    --card: 36 15% 96%;
-    --card-foreground: 0 100% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
     
-    --popover: 36 15% 96%;
-    --popover-foreground: 0 100% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
     
-    /* Brand red primary */
-    --primary: 7 78% 52%;
-    --primary-foreground: 36 12% 92%;
+    /* Hot pink/magenta primary */
+    --primary: 330 75% 65%;
+    --primary-foreground: 0 0% 100%;
     
-    /* Soft cream secondary */
-    --secondary: 36 10% 88%;
-    --secondary-foreground: 0 100% 0%;
+    /* Light pink/lavender secondary */
+    --secondary: 300 45% 80%;
+    --secondary-foreground: 0 0% 10%;
     
-    /* Muted cream */
-    --muted: 36 8% 85%;
-    --muted-foreground: 0 0% 40%;
+    /* Cream muted */
+    --muted: 30 35% 92%;
+    --muted-foreground: 0 0% 30%;
     
-    /* Accent red */
-    --accent: 7 78% 52%;
-    --accent-foreground: 36 12% 92%;
+    /* Peach accent */
+    --accent: 28 85% 68%;
+    --accent-foreground: 0 0% 10%;
     
-    /* Warm coral variation */
-    --coral: 15 85% 55%;
-    --coral-foreground: 36 12% 92%;
+    /* Light orange coral */
+    --coral: 28 85% 68%;
+    --coral-foreground: 0 0% 10%;
     
-    /* Deep red terracotta */
-    --terracotta: 7 70% 45%;
-    --terracotta-foreground: 36 12% 92%;
+    /* Dark orange terracotta */
+    --terracotta: 15 75% 58%;
+    --terracotta-foreground: 0 0% 100%;
     
-    --destructive: 0 85% 50%;
-    --destructive-foreground: 36 12% 92%;
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
     
-    --border: 36 8% 85%;
-    --input: 36 10% 90%;
-    --ring: 7 78% 52%;
+    --border: 30 25% 88%;
+    --input: 30 30% 94%;
+    --ring: 330 75% 65%;
     
     --radius: 1rem;
     
-    /* Brand gradients */
-    --gradient-phantom: linear-gradient(135deg, hsl(7 78% 52%), hsl(15 85% 55%));
-    --gradient-card: linear-gradient(135deg, hsl(7 78% 52%), hsl(20 80% 50%), hsl(30 85% 55%));
-    --gradient-subtle: linear-gradient(180deg, hsl(36 12% 92%), hsl(36 10% 88%));
-    --gradient-hero: linear-gradient(135deg, hsl(36 10% 88%) 0%, hsl(36 12% 92%) 100%);
+    /* Gradients */
+    --gradient-playful: linear-gradient(135deg, hsl(330 75% 65%), hsl(300 45% 80%));
+    --gradient-warm: linear-gradient(135deg, hsl(28 85% 68%), hsl(15 75% 58%));
+    --gradient-cool: linear-gradient(135deg, hsl(300 45% 80%), hsl(330 75% 65%));
     
     /* Shadows */
-    --shadow-soft: 0 4px 24px -4px hsl(0 0% 0% / 0.08);
-    --shadow-elevated: 0 20px 60px -20px hsl(0 0% 0% / 0.15);
-    --shadow-glow: 0 0 40px hsl(7 78% 52% / 0.2);
+    --shadow-playful: 0 8px 32px -8px hsl(330 75% 65% / 0.3);
+    --shadow-elevated: 0 12px 40px -12px hsl(0 0% 10% / 0.15);
     
     /* Folder Tab Brand Colors */
     --tab-orange-light: 31 98% 50%;
     --tab-orange-dark: 20 100% 50%;
-    --tab-pink-light: 7 60% 90%;
-    --tab-pink-dark: 7 78% 52%;
-    --tab-purple-light: 280 40% 90%;
-    --tab-purple-dark: 280 50% 50%;
-    --tab-cream-light: 36 12% 92%;
-    --tab-cream-dark: 36 10% 85%;
-    --tab-black: 0 100% 0%;
+    --tab-pink-light: 319 72% 83%;
+    --tab-pink-dark: 7 81% 52%;
+    --tab-purple-light: 270 60% 85%;
+    --tab-purple-dark: 270 65% 55%;
+    --tab-cream-light: 30 82% 96%;
+    --tab-cream-dark: 29 88% 90%;
+    --tab-black: 216 8% 12%;
     
-    --sidebar-background: 36 12% 94%;
-    --sidebar-foreground: 0 100% 0%;
-    --sidebar-primary: 7 78% 52%;
-    --sidebar-primary-foreground: 36 12% 92%;
-    --sidebar-accent: 36 8% 88%;
-    --sidebar-accent-foreground: 0 100% 0%;
-    --sidebar-border: 36 8% 85%;
-    --sidebar-ring: 7 78% 52%;
+    --sidebar-background: 40 10% 98%;
+    --sidebar-foreground: 220 15% 15%;
+    --sidebar-primary: 220 15% 15%;
+    --sidebar-primary-foreground: 40 10% 98%;
+    --sidebar-accent: 40 20% 95%;
+    --sidebar-accent-foreground: 220 15% 15%;
+    --sidebar-border: 40 12% 88%;
+    --sidebar-ring: 220 15% 15%;
   }
 
   .dark {
-    --background: 0 0% 5%;
-    --foreground: 36 12% 92%;
+    --background: 0 0% 10%;
+    --foreground: 30 35% 92%;
     
-    --card: 0 0% 8%;
-    --card-foreground: 36 12% 92%;
+    --card: 0 0% 14%;
+    --card-foreground: 30 35% 92%;
     
-    --popover: 0 0% 8%;
-    --popover-foreground: 36 12% 92%;
+    --popover: 0 0% 14%;
+    --popover-foreground: 30 35% 92%;
     
-    --primary: 7 78% 52%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 330 75% 65%;
+    --primary-foreground: 0 0% 100%;
     
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 36 12% 92%;
+    --secondary: 300 35% 45%;
+    --secondary-foreground: 0 0% 100%;
     
-    --muted: 0 0% 12%;
-    --muted-foreground: 36 8% 60%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 70%;
     
-    --accent: 7 78% 52%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 28 75% 60%;
+    --accent-foreground: 0 0% 10%;
     
-    --coral: 15 80% 50%;
-    --coral-foreground: 0 0% 5%;
+    --coral: 28 75% 60%;
+    --coral-foreground: 0 0% 10%;
     
-    --terracotta: 7 70% 50%;
-    --terracotta-foreground: 0 0% 5%;
+    --terracotta: 15 70% 55%;
+    --terracotta-foreground: 0 0% 100%;
     
-    --destructive: 0 75% 50%;
-    --destructive-foreground: 36 12% 92%;
+    --destructive: 0 80% 65%;
+    --destructive-foreground: 0 0% 100%;
     
-    --border: 0 0% 18%;
-    --input: 0 0% 12%;
-    --ring: 7 78% 52%;
+    --border: 0 0% 25%;
+    --input: 0 0% 20%;
+    --ring: 330 75% 65%;
     
     /* Folder Tab Brand Colors - Dark Mode */
-    --tab-orange-light: 31 90% 45%;
-    --tab-orange-dark: 20 95% 45%;
-    --tab-pink-light: 7 50% 30%;
-    --tab-pink-dark: 7 78% 52%;
-    --tab-purple-light: 280 30% 25%;
-    --tab-purple-dark: 280 50% 55%;
-    --tab-cream-light: 0 0% 12%;
-    --tab-cream-dark: 0 0% 20%;
-    --tab-black: 36 12% 92%;
+    --tab-orange-light: 31 98% 50%;
+    --tab-orange-dark: 20 100% 50%;
+    --tab-pink-light: 319 72% 83%;
+    --tab-pink-dark: 7 81% 52%;
+    --tab-purple-light: 270 60% 85%;
+    --tab-purple-dark: 270 65% 55%;
+    --tab-cream-light: 30 82% 96%;
+    --tab-cream-dark: 29 88% 90%;
+    --tab-black: 216 8% 12%;
     
-    --sidebar-background: 0 0% 7%;
-    --sidebar-foreground: 36 12% 92%;
-    --sidebar-primary: 7 78% 52%;
-    --sidebar-primary-foreground: 0 0% 5%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 36 12% 92%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 7 78% 52%;
+    --sidebar-background: 220 15% 15%;
+    --sidebar-foreground: 40 10% 95%;
+    --sidebar-primary: 355 45% 45%;
+    --sidebar-primary-foreground: 40 10% 98%;
+    --sidebar-accent: 220 12% 20%;
+    --sidebar-accent-foreground: 40 10% 95%;
+    --sidebar-border: 220 12% 25%;
+    --sidebar-ring: 355 45% 45%;
   }
 }
 
@@ -147,107 +147,17 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
   
-  /* Typography */
+  /* Bold playful typography */
   .font-display {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Red Hat Display', system-ui, sans-serif;
     font-weight: 700;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
   }
   
   .font-body {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Red Hat Display', system-ui, sans-serif;
   }
 }
 
-@layer utilities {
-  /* Phantom-style animations */
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-  
-  .animate-float-delayed {
-    animation: float 6s ease-in-out infinite 2s;
-  }
-  
-  .animate-fade-up {
-    animation: fadeUp 0.8s ease-out forwards;
-  }
-  
-  .animate-fade-up-delayed {
-    animation: fadeUp 0.8s ease-out 0.2s forwards;
-    opacity: 0;
-  }
-  
-  .animate-scale-in {
-    animation: scaleIn 0.5s ease-out forwards;
-  }
-  
-  .animate-gradient {
-    background-size: 200% 200%;
-    animation: gradientShift 8s ease infinite;
-  }
-  
-  .hover-lift {
-    @apply transition-all duration-300;
-  }
-  
-  .hover-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-elevated);
-  }
-  
-  .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
-  }
-  
-  .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-phantom);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* Import Inter font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+/* Import Red Hat Display font */
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800;900&display=swap');
