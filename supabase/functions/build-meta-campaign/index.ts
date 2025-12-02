@@ -166,16 +166,53 @@ Deno.serve(async (req) => {
     // Determine Meta API objective
     let metaObjective = 'OUTCOME_TRAFFIC';
     let optimizationGoal = 'LINK_CLICKS';
+    let needsPixel = false;
+    let conversionEvent = 'PURCHASE';
     
     if (answers?.optimizationEvent === 'PURCHASE' || answers?.optimizationEvent === 'CONVERSIONS') {
       metaObjective = 'OUTCOME_SALES';
       optimizationGoal = 'OFFSITE_CONVERSIONS';
+      needsPixel = true;
+      conversionEvent = 'PURCHASE';
     } else if (answers?.optimizationEvent === 'LEAD' || answers?.optimizationEvent === 'LEAD_GENERATION') {
       metaObjective = 'OUTCOME_LEADS';
       optimizationGoal = 'LEAD_GENERATION';
+      needsPixel = true;
+      conversionEvent = 'LEAD';
     } else if (answers?.optimizationEvent === 'LANDING_PAGE_VIEWS') {
       metaObjective = 'OUTCOME_TRAFFIC';
       optimizationGoal = 'LANDING_PAGE_VIEWS';
+    }
+
+    // Fetch pixel if needed for conversion optimization
+    let pixelId: string | null = null;
+    if (needsPixel) {
+      console.log('Fetching Meta pixel for conversion tracking...');
+      try {
+        const pixelResponse = await fetch(
+          `https://graph.facebook.com/v18.0/act_${metaAccountId.replace('act_', '')}/adspixels?fields=id,name&access_token=${metaAccessToken}`
+        );
+        const pixelData = await pixelResponse.json();
+        
+        if (pixelData.data && pixelData.data.length > 0) {
+          pixelId = pixelData.data[0].id;
+          console.log('Found Meta pixel:', pixelId, pixelData.data[0].name);
+        } else {
+          console.log('No pixel found, falling back to traffic optimization');
+          // Fall back to traffic optimization if no pixel is set up
+          metaObjective = 'OUTCOME_TRAFFIC';
+          optimizationGoal = 'LINK_CLICKS';
+          needsPixel = false;
+          result.warnings.push('No Meta Pixel found on your ad account. Campaign will optimize for link clicks instead of conversions. Set up a pixel in Meta Ads Manager for conversion tracking.');
+        }
+      } catch (pixelError) {
+        console.error('Error fetching pixel:', pixelError);
+        // Fall back to traffic optimization
+        metaObjective = 'OUTCOME_TRAFFIC';
+        optimizationGoal = 'LINK_CLICKS';
+        needsPixel = false;
+        result.warnings.push('Could not fetch Meta Pixel. Campaign will optimize for link clicks instead of conversions.');
+      }
     }
 
     // Parse budget (default to $20/day) - improved parsing
@@ -280,27 +317,40 @@ Deno.serve(async (req) => {
     console.log('Campaign created:', result.campaignId);
 
     // Step 3: Create Ad Sets
+    // Build promoted_object if we have a pixel
+    const promotedObject = pixelId ? {
+      pixel_id: pixelId,
+      custom_event_type: conversionEvent
+    } : null;
+
     // Create Cold Audience Ad Set
+    const coldAdSetParams: Record<string, string> = {
+      campaign_id: result.campaignId!,
+      name: `Cold - Broad - ${productName}`,
+      optimization_goal: optimizationGoal,
+      billing_event: 'IMPRESSIONS',
+      bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+      daily_budget: dailyBudgetCents.toString(),
+      targeting: JSON.stringify({ 
+        geo_locations: { countries: ['US'] },
+        age_min: 18,
+        age_max: 65
+      }),
+      status: 'PAUSED',
+      access_token: metaAccessToken
+    };
+
+    // Add promoted_object if we have a pixel for conversion tracking
+    if (promotedObject) {
+      coldAdSetParams.promoted_object = JSON.stringify(promotedObject);
+    }
+
     const coldAdSetResponse = await fetch(
       `https://graph.facebook.com/v18.0/act_${accountId}/adsets`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          campaign_id: result.campaignId!,
-          name: `Cold - Broad - ${productName}`,
-          optimization_goal: optimizationGoal,
-          billing_event: 'IMPRESSIONS',
-          bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-          daily_budget: dailyBudgetCents.toString(),
-          targeting: JSON.stringify({ 
-            geo_locations: { countries: ['US'] },
-            age_min: 18,
-            age_max: 65
-          }),
-          status: 'PAUSED',
-          access_token: metaAccessToken
-        })
+        body: new URLSearchParams(coldAdSetParams)
       }
     );
 
@@ -335,22 +385,29 @@ Deno.serve(async (req) => {
         console.log('No custom audiences selected, using default warm targeting');
       }
       
+      const warmAdSetParams: Record<string, string> = {
+        campaign_id: result.campaignId!,
+        name: `Warm - Retargeting - ${productName}`,
+        optimization_goal: optimizationGoal,
+        billing_event: 'IMPRESSIONS',
+        bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+        daily_budget: Math.round(dailyBudgetCents * 0.5).toString(),
+        targeting: JSON.stringify(warmTargeting),
+        status: 'PAUSED',
+        access_token: metaAccessToken
+      };
+
+      // Add promoted_object if we have a pixel for conversion tracking
+      if (promotedObject) {
+        warmAdSetParams.promoted_object = JSON.stringify(promotedObject);
+      }
+
       const warmAdSetResponse = await fetch(
         `https://graph.facebook.com/v18.0/act_${accountId}/adsets`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            campaign_id: result.campaignId!,
-            name: `Warm - Retargeting - ${productName}`,
-            optimization_goal: optimizationGoal,
-            billing_event: 'IMPRESSIONS',
-            bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-            daily_budget: Math.round(dailyBudgetCents * 0.5).toString(),
-            targeting: JSON.stringify(warmTargeting),
-            status: 'PAUSED',
-            access_token: metaAccessToken
-          })
+          body: new URLSearchParams(warmAdSetParams)
         }
       );
 
