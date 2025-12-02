@@ -236,8 +236,8 @@ export default function DashboardLayout({
     path: "/production",
     icon: Clipboard,
     label: "PRODUCTION",
-    lightColor: "tab-pink-light",
-    darkColor: "tab-pink-dark"
+    lightColor: "tab-purple-light",
+    darkColor: "tab-purple-dark"
   }, {
     path: "/data",
     icon: BarChart3,

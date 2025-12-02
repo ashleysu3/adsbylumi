@@ -70,6 +70,8 @@ export default {
           "orange-dark": "hsl(var(--tab-orange-dark))",
           "pink-light": "hsl(var(--tab-pink-light))",
           "pink-dark": "hsl(var(--tab-pink-dark))",
+          "purple-light": "hsl(var(--tab-purple-light))",
+          "purple-dark": "hsl(var(--tab-purple-dark))",
           "cream-light": "hsl(var(--tab-cream-light))",
           "cream-dark": "hsl(var(--tab-cream-dark))",
           black: "hsl(var(--tab-black))",
