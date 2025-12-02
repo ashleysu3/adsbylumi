@@ -2,139 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Phantom-inspired Design System - Purple/Lavender palette */
+/* Brand Design System - Cream/Red palette */
 
 @layer base {
   :root {
-    /* Phantom-inspired color scheme */
-    --background: 260 30% 97%;
-    --foreground: 260 50% 20%;
+    /* Brand color scheme */
+    --background: 36 12% 92%;
+    --foreground: 0 100% 0%;
     
-    --card: 0 0% 100%;
-    --card-foreground: 260 50% 20%;
+    --card: 36 15% 96%;
+    --card-foreground: 0 100% 0%;
     
-    --popover: 0 0% 100%;
-    --popover-foreground: 260 50% 20%;
+    --popover: 36 15% 96%;
+    --popover-foreground: 0 100% 0%;
     
-    /* Deep violet primary */
-    --primary: 260 60% 50%;
-    --primary-foreground: 0 0% 100%;
+    /* Brand red primary */
+    --primary: 7 78% 52%;
+    --primary-foreground: 36 12% 92%;
     
-    /* Soft lavender secondary */
-    --secondary: 260 40% 92%;
-    --secondary-foreground: 260 50% 20%;
+    /* Soft cream secondary */
+    --secondary: 36 10% 88%;
+    --secondary-foreground: 0 100% 0%;
     
-    /* Light purple muted */
-    --muted: 260 25% 94%;
-    --muted-foreground: 260 20% 45%;
+    /* Muted cream */
+    --muted: 36 8% 85%;
+    --muted-foreground: 0 0% 40%;
     
-    /* Coral/pink accent */
-    --accent: 340 80% 60%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent red */
+    --accent: 7 78% 52%;
+    --accent-foreground: 36 12% 92%;
     
-    /* Warm coral */
-    --coral: 15 85% 60%;
-    --coral-foreground: 0 0% 100%;
+    /* Warm coral variation */
+    --coral: 15 85% 55%;
+    --coral-foreground: 36 12% 92%;
     
-    /* Deep purple terracotta alternative */
-    --terracotta: 280 60% 45%;
-    --terracotta-foreground: 0 0% 100%;
+    /* Deep red terracotta */
+    --terracotta: 7 70% 45%;
+    --terracotta-foreground: 36 12% 92%;
     
-    --destructive: 0 85% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 85% 50%;
+    --destructive-foreground: 36 12% 92%;
     
-    --border: 260 20% 90%;
-    --input: 260 20% 96%;
-    --ring: 260 60% 50%;
+    --border: 36 8% 85%;
+    --input: 36 10% 90%;
+    --ring: 7 78% 52%;
     
     --radius: 1rem;
     
-    /* Phantom-style gradients */
-    --gradient-phantom: linear-gradient(135deg, hsl(260 60% 55%), hsl(340 80% 65%));
-    --gradient-card: linear-gradient(135deg, hsl(340 70% 65%), hsl(260 50% 60%), hsl(200 70% 60%));
-    --gradient-subtle: linear-gradient(180deg, hsl(260 30% 97%), hsl(260 25% 94%));
-    --gradient-hero: linear-gradient(135deg, hsl(260 40% 92%) 0%, hsl(260 30% 97%) 100%);
+    /* Brand gradients */
+    --gradient-phantom: linear-gradient(135deg, hsl(7 78% 52%), hsl(15 85% 55%));
+    --gradient-card: linear-gradient(135deg, hsl(7 78% 52%), hsl(20 80% 50%), hsl(30 85% 55%));
+    --gradient-subtle: linear-gradient(180deg, hsl(36 12% 92%), hsl(36 10% 88%));
+    --gradient-hero: linear-gradient(135deg, hsl(36 10% 88%) 0%, hsl(36 12% 92%) 100%);
     
     /* Shadows */
-    --shadow-soft: 0 4px 24px -4px hsl(260 60% 50% / 0.1);
-    --shadow-elevated: 0 20px 60px -20px hsl(260 60% 50% / 0.2);
-    --shadow-glow: 0 0 40px hsl(260 60% 50% / 0.15);
+    --shadow-soft: 0 4px 24px -4px hsl(0 0% 0% / 0.08);
+    --shadow-elevated: 0 20px 60px -20px hsl(0 0% 0% / 0.15);
+    --shadow-glow: 0 0 40px hsl(7 78% 52% / 0.2);
     
-    /* Folder Tab Brand Colors - Updated for Phantom style */
+    /* Folder Tab Brand Colors */
     --tab-orange-light: 31 98% 50%;
     --tab-orange-dark: 20 100% 50%;
-    --tab-pink-light: 340 70% 90%;
-    --tab-pink-dark: 340 80% 60%;
-    --tab-purple-light: 260 50% 90%;
-    --tab-purple-dark: 260 60% 50%;
-    --tab-cream-light: 260 30% 97%;
-    --tab-cream-dark: 260 40% 92%;
-    --tab-black: 260 50% 20%;
+    --tab-pink-light: 7 60% 90%;
+    --tab-pink-dark: 7 78% 52%;
+    --tab-purple-light: 280 40% 90%;
+    --tab-purple-dark: 280 50% 50%;
+    --tab-cream-light: 36 12% 92%;
+    --tab-cream-dark: 36 10% 85%;
+    --tab-black: 0 100% 0%;
     
-    --sidebar-background: 260 30% 98%;
-    --sidebar-foreground: 260 50% 20%;
-    --sidebar-primary: 260 60% 50%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 260 25% 94%;
-    --sidebar-accent-foreground: 260 50% 20%;
-    --sidebar-border: 260 20% 90%;
-    --sidebar-ring: 260 60% 50%;
+    --sidebar-background: 36 12% 94%;
+    --sidebar-foreground: 0 100% 0%;
+    --sidebar-primary: 7 78% 52%;
+    --sidebar-primary-foreground: 36 12% 92%;
+    --sidebar-accent: 36 8% 88%;
+    --sidebar-accent-foreground: 0 100% 0%;
+    --sidebar-border: 36 8% 85%;
+    --sidebar-ring: 7 78% 52%;
   }
 
   .dark {
-    --background: 260 30% 8%;
-    --foreground: 260 20% 95%;
+    --background: 0 0% 5%;
+    --foreground: 36 12% 92%;
     
-    --card: 260 25% 12%;
-    --card-foreground: 260 20% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 36 12% 92%;
     
-    --popover: 260 25% 12%;
-    --popover-foreground: 260 20% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 36 12% 92%;
     
-    --primary: 260 70% 65%;
-    --primary-foreground: 260 30% 8%;
+    --primary: 7 78% 52%;
+    --primary-foreground: 0 0% 5%;
     
-    --secondary: 260 30% 20%;
-    --secondary-foreground: 260 20% 95%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 36 12% 92%;
     
-    --muted: 260 25% 18%;
-    --muted-foreground: 260 15% 60%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 36 8% 60%;
     
-    --accent: 340 75% 55%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 7 78% 52%;
+    --accent-foreground: 0 0% 5%;
     
-    --coral: 15 80% 55%;
-    --coral-foreground: 0 0% 100%;
+    --coral: 15 80% 50%;
+    --coral-foreground: 0 0% 5%;
     
-    --terracotta: 280 55% 55%;
-    --terracotta-foreground: 0 0% 100%;
+    --terracotta: 7 70% 50%;
+    --terracotta-foreground: 0 0% 5%;
     
-    --destructive: 0 75% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 75% 50%;
+    --destructive-foreground: 36 12% 92%;
     
-    --border: 260 25% 20%;
-    --input: 260 25% 15%;
-    --ring: 260 70% 65%;
+    --border: 0 0% 18%;
+    --input: 0 0% 12%;
+    --ring: 7 78% 52%;
     
     /* Folder Tab Brand Colors - Dark Mode */
     --tab-orange-light: 31 90% 45%;
     --tab-orange-dark: 20 95% 45%;
-    --tab-pink-light: 340 60% 35%;
-    --tab-pink-dark: 340 75% 55%;
-    --tab-purple-light: 260 40% 30%;
-    --tab-purple-dark: 260 70% 65%;
-    --tab-cream-light: 260 25% 18%;
-    --tab-cream-dark: 260 30% 25%;
-    --tab-black: 260 20% 90%;
+    --tab-pink-light: 7 50% 30%;
+    --tab-pink-dark: 7 78% 52%;
+    --tab-purple-light: 280 30% 25%;
+    --tab-purple-dark: 280 50% 55%;
+    --tab-cream-light: 0 0% 12%;
+    --tab-cream-dark: 0 0% 20%;
+    --tab-black: 36 12% 92%;
     
-    --sidebar-background: 260 25% 10%;
-    --sidebar-foreground: 260 20% 95%;
-    --sidebar-primary: 260 70% 65%;
-    --sidebar-primary-foreground: 260 30% 8%;
-    --sidebar-accent: 260 25% 18%;
-    --sidebar-accent-foreground: 260 20% 95%;
-    --sidebar-border: 260 25% 20%;
-    --sidebar-ring: 260 70% 65%;
+    --sidebar-background: 0 0% 7%;
+    --sidebar-foreground: 36 12% 92%;
+    --sidebar-primary: 7 78% 52%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 36 12% 92%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 7 78% 52%;
   }
 }
 
