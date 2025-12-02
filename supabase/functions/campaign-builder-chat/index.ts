@@ -194,6 +194,7 @@ Deno.serve(async (req) => {
     // Get template defaults if available
     const template = workspace.campaign_templates;
     const strategyTemplate = template?.strategy_template as any || {};
+    const prepopFields = template?.prepopulated_fields as any || {};
     
     // Pre-populate answers from template
     const currentAnswers = answers || {};
@@ -202,52 +203,78 @@ Deno.serve(async (req) => {
     const isFirstLoad = Object.keys(currentAnswers).length === 0;
     
     if (isFirstLoad && template) {
-      // Set optimization event from template
-      if (template.optimization_event) {
+      // Apply prepopulated_fields from admin config
+      if (prepopFields.optimizationEvent?.value) {
+        currentAnswers.optimizationEvent = prepopFields.optimizationEvent.value;
+      } else if (template.optimization_event) {
+        // Fallback to template optimization_event
         currentAnswers.optimizationEvent = template.optimization_event === 'Purchase' ? 'PURCHASE' : 
                                             template.optimization_event === 'Lead' ? 'LEAD_GENERATION' : 
                                             template.optimization_event;
       }
       
-      // Set placements from strategy template
-      if (strategyTemplate.placements?.includes('Advantage+')) {
+      // Placements
+      if (prepopFields.placements?.value) {
+        currentAnswers.placements = prepopFields.placements.value;
+      } else if (strategyTemplate.placements?.includes('Advantage+')) {
         currentAnswers.placements = 'Advantage+';
       }
       
-      // Set warm retargeting based on audience type
-      if (template.audience_type) {
+      // Warm retargeting
+      if (prepopFields.warmRetargeting?.value !== undefined) {
+        currentAnswers.warmRetargeting = prepopFields.warmRetargeting.value;
+      } else if (template.audience_type) {
         currentAnswers.warmRetargeting = template.audience_type.toLowerCase().includes('warm');
       }
       
-      // Default to no end date for evergreen campaigns
-      if (strategyTemplate.campaign_type === 'cold' || template.audience_type?.includes('Broad')) {
+      // End date
+      if (prepopFields.endDate?.value !== undefined) {
+        currentAnswers.endDate = prepopFields.endDate.value;
+      } else if (strategyTemplate.campaign_type === 'cold' || template.audience_type?.includes('Broad')) {
         currentAnswers.endDate = null; // Continuous
       }
       
-      // Default Advantage+ ON
-      currentAnswers.metaAdvantage = true;
+      // Meta Advantage+
+      if (prepopFields.metaAdvantage?.value !== undefined) {
+        currentAnswers.metaAdvantage = prepopFields.metaAdvantage.value;
+      } else {
+        currentAnswers.metaAdvantage = true; // Default ON
+      }
+      
+      // Budget (if set and skipped)
+      if (prepopFields.budget?.value && prepopFields.budget?.skip) {
+        currentAnswers.budget = prepopFields.budget.value;
+        currentAnswers.budgetType = 'daily';
+      }
+      
+      // Final URL (if skipped, use offer URL)
+      if (prepopFields.finalUrl?.skip && workspace.offer_url) {
+        currentAnswers.finalUrl = workspace.offer_url;
+      }
     }
     
     let responseMessage = '';
     let recommendations: any[] = [];
     let stage = 'chat';
 
-    // Question flow logic - skip questions that have template defaults
+    // Question flow logic - skip questions that have template defaults with skip=true
     const getNextQuestion = () => {
-      if (!currentAnswers.budget) return 'budget';
+      // Budget - skip if prepopulated and skip=true
+      if (!currentAnswers.budget && !prepopFields.budget?.skip) return 'budget';
       if (!currentAnswers.startDate) return 'startDate';
-      // Only ask about end date if not pre-set by template
-      if (currentAnswers.endDate === undefined) return 'endDate';
-      // Skip metaAdvantage if template set it
-      if (currentAnswers.metaAdvantage === undefined) return 'metaAdvantage';
+      // End date - skip if prepopulated and skip=true  
+      if (currentAnswers.endDate === undefined && !prepopFields.endDate?.skip) return 'endDate';
+      // Meta Advantage - skip if prepopulated and skip=true
+      if (currentAnswers.metaAdvantage === undefined && !prepopFields.metaAdvantage?.skip) return 'metaAdvantage';
       if (!currentAnswers.campaignName) return 'campaignName';
-      if (!currentAnswers.finalUrl) return 'finalUrl';
-      // Skip placements if template set it
-      if (!currentAnswers.placements) return 'placements';
-      // Skip optimization if template set it
-      if (!currentAnswers.optimizationEvent) return 'optimizationEvent';
-      // Skip warm retargeting if template set it
-      if (currentAnswers.warmRetargeting === undefined) return 'warmRetargeting';
+      // Final URL - skip if prepopulated and skip=true
+      if (!currentAnswers.finalUrl && !prepopFields.finalUrl?.skip) return 'finalUrl';
+      // Placements - skip if prepopulated and skip=true
+      if (!currentAnswers.placements && !prepopFields.placements?.skip) return 'placements';
+      // Optimization event - skip if prepopulated and skip=true
+      if (!currentAnswers.optimizationEvent && !prepopFields.optimizationEvent?.skip) return 'optimizationEvent';
+      // Warm retargeting - skip if prepopulated and skip=true
+      if (currentAnswers.warmRetargeting === undefined && !prepopFields.warmRetargeting?.skip) return 'warmRetargeting';
       // Only ask about audience selection if warm retargeting is enabled
       if (currentAnswers.warmRetargeting === true && !currentAnswers.selectedAudiences) return 'audienceSelection';
       return 'complete';
