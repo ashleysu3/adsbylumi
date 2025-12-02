@@ -30,11 +30,19 @@ import {
   Mail,
   ArrowRight,
   Info,
-  Settings2
+  Settings2,
+  Goal
 } from 'lucide-react';
 import { CampaignStatusCard } from '@/components/CampaignStatusCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CampaignFlowBreadcrumb } from '@/components/CampaignFlowBreadcrumb';
+import { 
+  getKPIConfigForObjective, 
+  getKPIPriority, 
+  formatKPIValue, 
+  getGoalDescription,
+  getKPILabel 
+} from '@/lib/campaign-kpi-config';
 
 interface PerformanceMetrics {
   spend: number;
@@ -183,7 +191,21 @@ export default function Data() {
 
       const { data, error } = await supabase
         .from('campaign_workspaces')
-        .select('id, name, meta_campaign_ids, meta_campaign_status, meta_insights_last_sync, performance_report_latest')
+        .select(`
+          id, 
+          name, 
+          meta_campaign_ids, 
+          meta_campaign_status, 
+          meta_insights_last_sync, 
+          performance_report_latest,
+          template_id,
+          strategy_json,
+          campaign_templates!campaign_workspaces_template_id_fkey (
+            id,
+            name,
+            objective
+          )
+        `)
         .eq('brand_id', brand.id)
         .not('meta_campaign_ids', 'is', null)
         .order('created_at', { ascending: false });
@@ -492,6 +514,24 @@ export default function Data() {
 
   const selectedWorkspace = workspaces.find(w => w.id === selectedWorkspaceId);
   const isLive = lastSyncTime && (Date.now() - new Date(lastSyncTime).getTime()) < 2 * 60 * 1000;
+  
+  // Get campaign objective from template
+  const campaignObjective = (selectedWorkspace?.campaign_templates as any)?.objective || null;
+  const campaignTemplateName = (selectedWorkspace?.campaign_templates as any)?.name || 'Campaign';
+  const kpiConfig = getKPIConfigForObjective(campaignObjective);
+  
+  // Sort KPIs by priority
+  const getSortedKPIs = () => {
+    if (!analysis?.kpi_evaluation) return [];
+    
+    const entries = Object.entries(analysis.kpi_evaluation);
+    return entries.sort((a, b) => {
+      const priorityOrder = { primary: 0, secondary: 1, other: 2, irrelevant: 3 };
+      const aPriority = priorityOrder[getKPIPriority(campaignObjective, a[0])];
+      const bPriority = priorityOrder[getKPIPriority(campaignObjective, b[0])];
+      return aPriority - bPriority;
+    });
+  };
 
   return (
     <DashboardLayout>
@@ -678,42 +718,127 @@ export default function Data() {
           </Card>
         ) : (
           <>
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(analysis.kpi_evaluation).map(([key, kpi]) => (
-                <Card key={key} className={`border-2 ${getStatusColor(kpi.status)}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium uppercase tracking-wide">
-                        {key === 'cpl_cpp' ? 'Cost per Result' : key.toUpperCase()}
-                      </CardTitle>
-                      {getStatusIcon(kpi.status)}
+            {/* Campaign Goal Header */}
+            <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-background">
+              <CardContent className="pt-6">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+                  {/* Goal Info */}
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Goal className="h-5 w-5 text-primary" />
+                      <Badge variant="secondary" className="text-sm font-medium">
+                        {campaignObjective || 'General'} Campaign
+                      </Badge>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-bold">
-                          {key.includes('cost') || key.includes('cp') ? '$' : ''}
-                          {kpi.value?.toFixed(2) || '0.00'}
-                          {key === 'ctr' ? '%' : ''}
+                    <h2 className="text-xl font-semibold">{campaignTemplateName}</h2>
+                    <p className="text-muted-foreground">{getGoalDescription(campaignObjective)}</p>
+                  </div>
+                  
+                  {/* Primary KPI - Large Display */}
+                  {analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation] && (
+                    <div className="lg:text-right space-y-1 p-4 rounded-lg bg-background border-2 min-w-[200px]">
+                      <p className="text-sm text-muted-foreground font-medium">
+                        PRIMARY METRIC: {kpiConfig.primaryLabel}
+                      </p>
+                      <div className="flex items-baseline gap-2 lg:justify-end">
+                        <span className="text-4xl font-bold">
+                          {formatKPIValue(analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.value, kpiConfig.primary)}
                         </span>
-                        {kpi.status === 'excellent' && <TrendingUp className="h-4 w-4 text-green-600" />}
-                        {kpi.status === 'critical' && <TrendingDown className="h-4 w-4 text-red-600" />}
+                        {analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.status === 'excellent' && (
+                          <CheckCircle2 className="h-6 w-6 text-green-600" />
+                        )}
+                        {analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.status === 'critical' && (
+                          <AlertCircle className="h-6 w-6 text-red-600" />
+                        )}
                       </div>
-                      
-                      <Progress value={getProgressValue(kpi.status)} className="h-2" />
-                      
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground mb-1">
-                          Benchmark: {kpi.benchmark}
-                        </p>
-                        <p className="text-sm">{kpi.reason}</p>
-                      </div>
+                      <p className="text-sm">
+                        Benchmark: {kpiConfig.benchmarks[kpiConfig.primary]?.min && kpiConfig.benchmarks[kpiConfig.primary]?.max 
+                          ? `${kpiConfig.benchmarks[kpiConfig.primary].unit}${kpiConfig.benchmarks[kpiConfig.primary].min} - ${kpiConfig.benchmarks[kpiConfig.primary].unit}${kpiConfig.benchmarks[kpiConfig.primary].max}`
+                          : analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.benchmark}
+                      </p>
+                      <Badge 
+                        variant={
+                          analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.status === 'excellent' ? 'default' :
+                          analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.status === 'healthy' ? 'secondary' :
+                          analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.status === 'critical' ? 'destructive' : 'outline'
+                        }
+                      >
+                        {analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.status === 'excellent' && '✓ Hitting Goal'}
+                        {analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.status === 'healthy' && '→ On Track'}
+                        {analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.status === 'needs attention' && '⚠ Needs Work'}
+                        {analysis.kpi_evaluation[kpiConfig.primary as keyof typeof analysis.kpi_evaluation]?.status === 'critical' && '✗ Below Target'}
+                      </Badge>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Supporting KPIs - Sorted by Priority */}
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">Supporting Metrics</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {getSortedKPIs()
+                  .filter(([key]) => key !== kpiConfig.primary) // Don't show primary again
+                  .map(([key, kpi]) => {
+                    const priority = getKPIPriority(campaignObjective, key);
+                    const isIrrelevant = priority === 'irrelevant';
+                    
+                    return (
+                      <Card 
+                        key={key} 
+                        className={`border-2 ${isIrrelevant ? 'opacity-60 border-muted' : getStatusColor(kpi.status)}`}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-sm font-medium uppercase tracking-wide">
+                                {getKPILabel(key)}
+                              </CardTitle>
+                              {priority === 'secondary' && (
+                                <Badge variant="outline" className="text-[10px] py-0">Key</Badge>
+                              )}
+                            </div>
+                            {!isIrrelevant && getStatusIcon(kpi.status)}
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {isIrrelevant ? (
+                              <div className="text-center py-2">
+                                <span className="text-2xl font-bold text-muted-foreground">
+                                  {formatKPIValue(kpi.value, key)}
+                                </span>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  N/A for {campaignObjective || 'this'} campaigns
+                                </p>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-baseline gap-2">
+                                  <span className="text-3xl font-bold">
+                                    {formatKPIValue(kpi.value, key)}
+                                  </span>
+                                  {kpi.status === 'excellent' && <TrendingUp className="h-4 w-4 text-green-600" />}
+                                  {kpi.status === 'critical' && <TrendingDown className="h-4 w-4 text-red-600" />}
+                                </div>
+                                
+                                <Progress value={getProgressValue(kpi.status)} className="h-2" />
+                                
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                                    Benchmark: {kpi.benchmark}
+                                  </p>
+                                  <p className="text-sm">{kpi.reason}</p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
             </div>
 
             {/* Top 3 Next Steps - Prominent */}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,10 +56,19 @@ export function CampaignStatusCard({
   onStatusChange
 }: CampaignStatusCardProps) {
   const [status, setStatus] = useState<CampaignStatus | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start loading by default
   const [toggling, setToggling] = useState(false);
 
   const campaignId = metaCampaignIds?.campaignId || metaCampaignIds?.campaign_id;
+
+  // Auto-fetch status on mount
+  useEffect(() => {
+    if (campaignId) {
+      fetchStatus();
+    } else {
+      setLoading(false);
+    }
+  }, [campaignId]);
 
   const fetchStatus = async () => {
     if (!campaignId) return;
@@ -247,13 +256,14 @@ export function CampaignStatusCard({
               </div>
             )}
           </>
-        ) : (
+        ) : !campaignId ? (
           <div className="text-center py-4">
-            <p className="text-sm text-muted-foreground mb-2">Click refresh to check status</p>
-            <Button onClick={fetchStatus} size="sm" variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Check Status
-            </Button>
+            <p className="text-sm text-muted-foreground">No campaign ID available</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-4 w-full" />
           </div>
         )}
       </CardContent>
