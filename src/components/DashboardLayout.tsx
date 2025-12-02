@@ -9,7 +9,6 @@ import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Sett
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
-import logo from "@/assets/logo.png";
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -252,7 +251,7 @@ export default function DashboardLayout({
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <img alt="Your Ad Assistant" className="h-14 md:h-28 object-contain my-2 mx-4" src="/lovable-uploads/82f0195b-d6a7-443a-a86e-a18f8721ac42.png" />
+              <img alt="Your Ad Assistant" className="h-10 md:h-16 object-contain my-2 mx-4" src="/lovable-uploads/your-ad-assistant-logo.png" />
             </div>
 
             <div className="flex items-center space-x-3">
