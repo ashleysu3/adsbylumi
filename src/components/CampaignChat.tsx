@@ -228,7 +228,19 @@ export function CampaignChat({
         )}
 
         {/* Input */}
-        <div className="border-t p-4">
+        <div className="border-t p-4 space-y-3">
+          {/* Review Campaign Button - show when ready */}
+          {answers.budget && answers.startDate && !loading && (
+            <Button 
+              onClick={onComplete}
+              className="w-full gap-2"
+              size="lg"
+            >
+              <Sparkles className="h-4 w-4" />
+              Review Campaign
+            </Button>
+          )}
+          
           <form
             onSubmit={(e) => {
               e.preventDefault();
