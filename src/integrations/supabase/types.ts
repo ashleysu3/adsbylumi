@@ -125,11 +125,13 @@ export type Database = {
           description: string
           icon: string
           id: string
+          kpi_priorities: Json | null
           long_description: string
           name: string
           objective: string
           optimization_event: string | null
           prepopulated_fields: Json | null
+          purpose: string | null
           slug: string
           strategy_template: Json
           use_case: string
@@ -143,11 +145,13 @@ export type Database = {
           description: string
           icon: string
           id?: string
+          kpi_priorities?: Json | null
           long_description: string
           name: string
           objective: string
           optimization_event?: string | null
           prepopulated_fields?: Json | null
+          purpose?: string | null
           slug: string
           strategy_template: Json
           use_case: string
@@ -161,11 +165,13 @@ export type Database = {
           description?: string
           icon?: string
           id?: string
+          kpi_priorities?: Json | null
           long_description?: string
           name?: string
           objective?: string
           optimization_event?: string | null
           prepopulated_fields?: Json | null
+          purpose?: string | null
           slug?: string
           strategy_template?: Json
           use_case?: string

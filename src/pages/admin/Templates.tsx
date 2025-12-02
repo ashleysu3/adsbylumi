@@ -35,7 +35,22 @@ interface CampaignTemplate {
   prepopulated_fields: PrepopulatedFields;
   active: boolean;
   created_at: string;
+  purpose?: string;
+  kpi_priorities?: string[];
 }
+
+const KPI_OPTIONS = [
+  { value: "cpc", label: "CPC (Cost Per Click)" },
+  { value: "ctr", label: "CTR (Click-Through Rate)" },
+  { value: "cpm", label: "CPM (Cost Per 1000 Impressions)" },
+  { value: "cpl", label: "CPL (Cost Per Lead)" },
+  { value: "cpp", label: "CPP (Cost Per Purchase)" },
+  { value: "roas", label: "ROAS (Return On Ad Spend)" },
+  { value: "frequency", label: "Frequency" },
+  { value: "link_clicks", label: "Link Clicks" },
+  { value: "video_views", label: "Video Views" },
+  { value: "thruplay", label: "ThruPlay (Video)" },
+];
 
 interface PrepopulatedFields {
   budget?: { value?: number; skip?: boolean };
@@ -111,6 +126,8 @@ export default function AdminTemplates() {
   const [formUseCase, setFormUseCase] = useState("");
   const [formStrategyTemplate, setFormStrategyTemplate] = useState("{}");
   const [formPrepopulated, setFormPrepopulated] = useState<PrepopulatedFields>({});
+  const [formPurpose, setFormPurpose] = useState("");
+  const [formKpiPriorities, setFormKpiPriorities] = useState<string[]>([]);
 
   useEffect(() => {
     fetchTemplates();
@@ -180,6 +197,8 @@ export default function AdminTemplates() {
         use_case: formUseCase,
         strategy_template: strategyTemplate as Json,
         prepopulated_fields: formPrepopulated as Json,
+        purpose: formPurpose || null,
+        kpi_priorities: formKpiPriorities as Json,
       };
 
       if (editingTemplate) {
@@ -223,6 +242,8 @@ export default function AdminTemplates() {
     setFormUseCase(template.use_case);
     setFormStrategyTemplate(JSON.stringify(template.strategy_template, null, 2));
     setFormPrepopulated(template.prepopulated_fields || {});
+    setFormPurpose(template.purpose || "");
+    setFormKpiPriorities(template.kpi_priorities || []);
     setDialogOpen(true);
   };
 
@@ -275,6 +296,38 @@ export default function AdminTemplates() {
     setFormUseCase("");
     setFormStrategyTemplate("{}");
     setFormPrepopulated({});
+    setFormPurpose("");
+    setFormKpiPriorities([]);
+  };
+
+  const toggleKpiPriority = (kpi: string) => {
+    setFormKpiPriorities(prev => {
+      if (prev.includes(kpi)) {
+        return prev.filter(k => k !== kpi);
+      }
+      if (prev.length >= 3) {
+        return prev; // Max 3 KPIs
+      }
+      return [...prev, kpi];
+    });
+  };
+
+  const moveKpiUp = (index: number) => {
+    if (index === 0) return;
+    setFormKpiPriorities(prev => {
+      const newArr = [...prev];
+      [newArr[index - 1], newArr[index]] = [newArr[index], newArr[index - 1]];
+      return newArr;
+    });
+  };
+
+  const moveKpiDown = (index: number) => {
+    setFormKpiPriorities(prev => {
+      if (index >= prev.length - 1) return prev;
+      const newArr = [...prev];
+      [newArr[index], newArr[index + 1]] = [newArr[index + 1], newArr[index]];
+      return newArr;
+    });
   };
 
   const updatePrepopField = (field: keyof PrepopulatedFields, key: "value" | "skip", val: any) => {
@@ -416,6 +469,118 @@ export default function AdminTemplates() {
                       <p className="text-xs text-muted-foreground mt-1">
                         This helps AI know when to recommend this campaign type
                       </p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Section B2: Campaign Purpose & Performance Evaluation */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Campaign Purpose & Performance Evaluation
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Define what success looks like for this campaign type. The AI will use this to evaluate performance accurately.
+                    </p>
+                    
+                    <div>
+                      <Label>Campaign Purpose & Success Definition</Label>
+                      <Textarea
+                        value={formPurpose}
+                        onChange={(e) => setFormPurpose(e.target.value)}
+                        placeholder={`Example for a Traffic campaign:
+
+This campaign is designed to drive traffic to existing content to increase visibility and warm up potential buyers.
+
+SUCCESS LOOKS LIKE:
+- Low cost per click (CPC) under $0.50
+- High click-through rate (CTR) above 2%
+- Growing engaged audience for future retargeting
+
+THIS CAMPAIGN IS NOT FOR:
+- Direct sales (don't evaluate ROAS)
+- Lead generation (don't evaluate CPL)
+
+EVALUATION PRIORITY:
+1. CPC - Are clicks affordable?
+2. CTR - Is content engaging?
+3. Link Clicks - Are people taking action?`}
+                        rows={10}
+                        className="font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Be specific about what metrics matter and what metrics are NOT relevant for this campaign type.
+                        The AI will reference this when giving performance feedback.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label>Priority KPIs (select up to 3, in order of importance)</Label>
+                      <div className="mt-2 space-y-2">
+                        {/* Selected KPIs with order */}
+                        {formKpiPriorities.length > 0 && (
+                          <div className="space-y-1 mb-3">
+                            <p className="text-xs text-muted-foreground">Selected (in order):</p>
+                            {formKpiPriorities.map((kpi, idx) => {
+                              const kpiOption = KPI_OPTIONS.find(k => k.value === kpi);
+                              return (
+                                <div key={kpi} className="flex items-center gap-2 bg-primary/10 rounded-md p-2">
+                                  <Badge variant="outline" className="font-mono">{idx + 1}</Badge>
+                                  <span className="flex-1 text-sm">{kpiOption?.label || kpi}</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => moveKpiUp(idx)}
+                                    disabled={idx === 0}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    ↑
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => moveKpiDown(idx)}
+                                    disabled={idx === formKpiPriorities.length - 1}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    ↓
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleKpiPriority(kpi)}
+                                    className="h-6 w-6 p-0 text-destructive"
+                                  >
+                                    ×
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {/* Available KPIs */}
+                        <div className="flex flex-wrap gap-2">
+                          {KPI_OPTIONS.filter(k => !formKpiPriorities.includes(k.value)).map((kpi) => (
+                            <Badge
+                              key={kpi.value}
+                              variant="outline"
+                              className={`cursor-pointer hover:bg-primary/10 ${
+                                formKpiPriorities.length >= 3 ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                              onClick={() => formKpiPriorities.length < 3 && toggleKpiPriority(kpi.value)}
+                            >
+                              + {kpi.label}
+                            </Badge>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          These KPIs will be evaluated first and weighted most heavily in performance analysis.
+                        </p>
+                      </div>
                     </div>
                   </div>
 
