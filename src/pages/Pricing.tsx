@@ -85,9 +85,9 @@ export default function Pricing() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <img
-            src="/lovable-uploads/a7a24c2a-2692-4a35-b5ea-17ffd8f9dd0a.png"
+            src="/lovable-uploads/your-ad-assistant-logo.png"
             alt="Your Ad Assistant"
-            className="h-16 cursor-pointer"
+            className="h-12 cursor-pointer"
             onClick={() => navigate("/")}
           />
           <Button onClick={() => navigate("/auth")} variant="outline">

@@ -61,9 +61,11 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-editorial px-4">
       <Card className="w-full max-w-md shadow-elevated">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-3xl font-editorial tracking-tight">
-            Your Ad Assistant
-          </CardTitle>
+          <img 
+            src="/lovable-uploads/your-ad-assistant-logo.png" 
+            alt="Your Ad Assistant" 
+            className="h-12 mx-auto mb-2"
+          />
           <CardDescription className="text-base">
             {isLogin
               ? "Welcome back to your strategic command center"
