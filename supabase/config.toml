@@ -65,3 +65,6 @@ verify_jwt = true
 
 [functions.send-weekly-reports]
 verify_jwt = false
+
+[functions.check-generation-readiness]
+verify_jwt = true

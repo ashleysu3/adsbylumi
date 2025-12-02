@@ -25,18 +25,17 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch active knowledge documents
+    // Fetch ALL active knowledge documents - no truncation
     const { data: kbDocs, error: kbError } = await supabase
       .from('knowledge_documents')
       .select('category, title, content')
-      .eq('active', true)
-      .in('category', ['copy_formulas', 'meta_best_practices', 'psychology', 'hooks']);
+      .eq('active', true);
 
     if (kbError) {
       console.error('Error fetching knowledge:', kbError);
     }
 
-    // Organize KB by category
+    // Organize KB by category with FULL content
     const knowledgeByCategory: Record<string, any[]> = {};
     (kbDocs || []).forEach(doc => {
       if (!knowledgeByCategory[doc.category]) {
@@ -44,21 +43,44 @@ serve(async (req) => {
       }
       knowledgeByCategory[doc.category].push({
         title: doc.title,
-        content: doc.content
+        content: doc.content // FULL content
       });
     });
 
-    // Build knowledge base context
+    // Build comprehensive knowledge base context
     let kbContext = "=== YOUR KNOWLEDGE BASE ===\n\n";
     for (const [category, docs] of Object.entries(knowledgeByCategory)) {
       kbContext += `[${category.toUpperCase().replace('_', ' ')}]\n`;
       docs.forEach(doc => {
-        kbContext += `\n${doc.title}:\n${doc.content.substring(0, 400)}...\n`;
+        kbContext += `\n${doc.title}:\n${doc.content}\n`;
       });
       kbContext += "\n";
     }
 
-    const systemPrompt = `You are a Meta Ads copywriter specializing in creating multiple high-converting variations.
+    // Extract offer-specific context from brandInfo
+    const offer = brandInfo?.offer || {};
+    const messagingGuidelines = offer?.messaging_guidelines || {};
+    const productPsychology = offer?.product_psychology || {};
+
+    const systemPrompt = `You are a Meta Ads copywriter specializing in creating multiple high-converting variations for ${brandInfo?.name || 'this brand'}.
+
+## BRAND CONTEXT
+- Brand Voice: ${brandInfo?.voice || 'Not specified'}
+- Target Audience: ${brandInfo?.audience || 'Not specified'}
+
+## OFFER-SPECIFIC MESSAGING GUIDELINES
+${messagingGuidelines.core_message ? `Core Message: ${messagingGuidelines.core_message}` : ''}
+${messagingGuidelines.key_benefits?.length ? `Key Benefits:\n${messagingGuidelines.key_benefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
+${messagingGuidelines.tone_notes ? `Tone Notes: ${messagingGuidelines.tone_notes}` : ''}
+${messagingGuidelines.dont_say?.length ? `\n⚠️ NEVER USE:\n${messagingGuidelines.dont_say.map((d: string) => `- "${d}"`).join('\n')}` : ''}
+${messagingGuidelines.always_include?.length ? `\n✅ ALWAYS INCLUDE:\n${messagingGuidelines.always_include.map((a: string) => `- ${a}`).join('\n')}` : ''}
+${messagingGuidelines.approved_examples?.length ? `\n📝 Approved Examples:\n${messagingGuidelines.approved_examples.map((ex: any) => `- [${ex.type}] "${ex.text}"`).join('\n')}` : ''}
+
+## PRODUCT PSYCHOLOGY
+${productPsychology.pain_points?.length ? `Pain Points: ${productPsychology.pain_points.join(', ')}` : ''}
+${productPsychology.desires?.length ? `Desires: ${productPsychology.desires.join(', ')}` : ''}
+${productPsychology.objections?.length ? `Objections: ${productPsychology.objections.join(', ')}` : ''}
+${productPsychology.buying_triggers?.length ? `Triggers: ${productPsychology.buying_triggers.join(', ')}` : ''}
 
 ${kbContext}
 
@@ -82,6 +104,7 @@ Each variation must:
 2. Have a unique angle while staying true to the concept
 3. Maintain Meta compliance
 4. Be optimized for the stage (${stage.toUpperCase()})
+5. STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")
 
 Return JSON array with this structure:
 [
@@ -108,7 +131,6 @@ Script/Copy: ${concept.script || concept.primary_copy || 'Not provided'}
 Psychology Trigger: ${concept.psychology_trigger || 'Not provided'}
 Format: ${concept.format}
 Stage: ${stage.toUpperCase()}
-Brand: ${brandInfo.name}
 
 Create variations using DIFFERENT frameworks from the KB. Make each one unique in angle and approach.`;
 
