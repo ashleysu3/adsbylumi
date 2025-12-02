@@ -25,18 +25,17 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch active knowledge documents
+    // Fetch ALL active knowledge documents - no truncation
     const { data: kbDocs, error: kbError } = await supabase
       .from('knowledge_documents')
       .select('category, title, content')
-      .eq('active', true)
-      .in('category', ['copy_formulas', 'meta_best_practices', 'psychology', 'hooks', 'creative_department']);
+      .eq('active', true);
 
     if (kbError) {
       console.error('Error fetching knowledge:', kbError);
     }
 
-    // Organize KB by category
+    // Organize KB by category with FULL content
     const knowledgeByCategory: Record<string, any[]> = {};
     (kbDocs || []).forEach(doc => {
       if (!knowledgeByCategory[doc.category]) {
@@ -44,21 +43,48 @@ serve(async (req) => {
       }
       knowledgeByCategory[doc.category].push({
         title: doc.title,
-        content: doc.content
+        content: doc.content // FULL content, no truncation
       });
     });
 
-    // Build knowledge base context
+    // Build comprehensive knowledge base context
     let kbContext = "=== YOUR KNOWLEDGE BASE ===\n\n";
     for (const [category, docs] of Object.entries(knowledgeByCategory)) {
       kbContext += `[${category.toUpperCase().replace('_', ' ')}]\n`;
       docs.forEach(doc => {
-        kbContext += `\n${doc.title}:\n${doc.content.substring(0, 500)}...\n`;
+        kbContext += `\n${doc.title}:\n${doc.content}\n`;
       });
       kbContext += "\n";
     }
 
+    // Extract offer-specific context from brandInfo
+    const offer = brandInfo?.offer || {};
+    const messagingGuidelines = offer?.messaging_guidelines || {};
+    const productPsychology = offer?.product_psychology || {};
+
     const systemPrompt = `You are a Meta Ads copywriter specializing in high-converting ad copy that complies with Meta's policies.
+
+## BRAND CONTEXT
+- Brand Name: ${brandInfo?.name || 'Not specified'}
+- Brand Voice: ${brandInfo?.voice || 'Not specified'}
+- Target Audience: ${brandInfo?.audience || 'Not specified'}
+- Value Proposition: ${brandInfo?.value_proposition || 'Not specified'}
+
+## OFFER-SPECIFIC MESSAGING GUIDELINES
+${messagingGuidelines.core_message ? `Core Message: ${messagingGuidelines.core_message}` : ''}
+${messagingGuidelines.key_benefits?.length ? `Key Benefits to Highlight:\n${messagingGuidelines.key_benefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
+${messagingGuidelines.tone_notes ? `Tone Notes: ${messagingGuidelines.tone_notes}` : ''}
+${messagingGuidelines.dont_say?.length ? `\n⚠️ DO NOT USE these words/phrases:\n${messagingGuidelines.dont_say.map((d: string) => `- "${d}"`).join('\n')}` : ''}
+${messagingGuidelines.always_include?.length ? `\n✅ ALWAYS include these elements:\n${messagingGuidelines.always_include.map((a: string) => `- ${a}`).join('\n')}` : ''}
+${messagingGuidelines.competitor_differentiation ? `\nKey Differentiation: ${messagingGuidelines.competitor_differentiation}` : ''}
+${messagingGuidelines.approved_examples?.length ? `\n📝 Approved Copy Examples to Learn From:\n${messagingGuidelines.approved_examples.map((ex: any) => `- [${ex.type}] "${ex.text}"`).join('\n')}` : ''}
+
+## PRODUCT PSYCHOLOGY
+${productPsychology.positioning ? `Positioning: ${productPsychology.positioning}` : ''}
+${productPsychology.pain_points?.length ? `Pain Points to Address:\n${productPsychology.pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
+${productPsychology.desires?.length ? `Desires to Tap Into:\n${productPsychology.desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
+${productPsychology.objections?.length ? `Objections to Overcome:\n${productPsychology.objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
+${productPsychology.buying_triggers?.length ? `Buying Triggers:\n${productPsychology.buying_triggers.map((t: string) => `- ${t}`).join('\n')}` : ''}
 
 ${kbContext}
 
@@ -100,9 +126,6 @@ Your job: Generate Meta-compliant ad copy fields. Return JSON with:
 - compliance_check (object with passed: boolean, notes: string)
 
 Stage context: ${stage.toUpperCase()}
-Brand: ${brandInfo.name}
-Brand Voice: ${brandInfo.voice || 'Not specified'}
-Target Audience: ${brandInfo.audience || 'Not specified'}
 `;
 
     const userPrompt = `Generate final Meta ad copy for this concept:
@@ -120,7 +143,8 @@ Generate headline, primary_text, description, and call_to_action that:
 2. References relevant frameworks from the Knowledge Base
 3. Defaults to LEARN_MORE for TOFU unless there's strong reason otherwise
 4. Passes Meta compliance checks
-5. Applies proven copy formulas from the KB`;
+5. Applies proven copy formulas from the KB
+6. STRICTLY FOLLOWS the messaging guidelines (especially "don't say" and "always include")`;
 
     console.log('Calling Lovable AI for copy generation...');
 

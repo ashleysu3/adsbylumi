@@ -351,6 +351,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          messaging_guidelines: Json | null
           name: string
           price_point: string | null
           product_psychology: Json | null
@@ -369,6 +370,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          messaging_guidelines?: Json | null
           name: string
           price_point?: string | null
           product_psychology?: Json | null
@@ -387,6 +389,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          messaging_guidelines?: Json | null
           name?: string
           price_point?: string | null
           product_psychology?: Json | null

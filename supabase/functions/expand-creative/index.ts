@@ -18,11 +18,11 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { concept, action, stage, brandName, audiencePsychology, existingConcepts, strategyData, creativeFeedback } = await req.json();
+    const { concept, action, stage, brandName, brandData, audiencePsychology, existingConcepts, strategyData, creativeFeedback } = await req.json();
     
     console.log(`Expanding creative: ${action} for stage "${stage}"`);
     
-    // Fetch all knowledge bases
+    // Fetch ALL knowledge bases - FULL content
     const { data: kbDocs } = await supabase
       .from('knowledge_documents')
       .select('category, title, content')
@@ -30,16 +30,31 @@ serve(async (req) => {
     
     const kbByCategory = (kbDocs || []).reduce((acc: any, doc: any) => {
       if (!acc[doc.category]) acc[doc.category] = [];
-      acc[doc.category].push({ title: doc.title, content: doc.content });
+      acc[doc.category].push({ title: doc.title, content: doc.content }); // FULL content
       return acc;
     }, {});
+    
+    // Build comprehensive KB context
+    let kbContext = "=== YOUR KNOWLEDGE BASE ===\n\n";
+    for (const [category, docs] of Object.entries(kbByCategory)) {
+      kbContext += `[${(category as string).toUpperCase().replace('_', ' ')}]\n`;
+      (docs as any[]).forEach(doc => {
+        kbContext += `\n${doc.title}:\n${doc.content}\n`;
+      });
+      kbContext += "\n";
+    }
+    
+    // Extract offer-specific context
+    const offer = brandData?.offer || {};
+    const messagingGuidelines = offer?.messaging_guidelines || {};
+    const productPsychology = offer?.product_psychology || {};
     
     // Build feedback insights
     let feedbackContext = '';
     if (creativeFeedback?.hated_concepts?.length > 0) {
       const relevantFeedback = creativeFeedback.hated_concepts
         .filter((f: any) => f.stage === stage)
-        .slice(-5); // Last 5 feedback items for this stage
+        .slice(-5);
       
       if (relevantFeedback.length > 0) {
         feedbackContext = `\n\nUSER PREFERENCE LEARNING:
@@ -50,18 +65,40 @@ ${relevantFeedback.map((f: any, i: number) =>
      Format: ${f.concept.format}
 `).join('\n')}
 
-IMPORTANT: While respecting these preferences, gently push back when user feedback conflicts with Meta's proven best practices. For example:
-- If they dislike "curiosity gaps" but that's working in Meta - include them but explain why
-- If they want overly formal language but conversational works better - find middle ground
-- Balance their preferences with current Meta performance data
-
-Your goal: Educate while respecting their voice.`;
+IMPORTANT: While respecting these preferences, gently push back when user feedback conflicts with Meta's proven best practices.`;
       }
     }
     
+    // Build system prompt with full context
+    let systemPrompt = `You are the Creative Department AI for ${brandName || brandData?.name || 'this brand'}.
+
+## BRAND CONTEXT
+- Brand Voice: ${brandData?.voice || 'Not specified'}
+- Target Audience: ${brandData?.audience || 'Not specified'}
+- Value Proposition: ${brandData?.value_proposition || 'Not specified'}
+
+## OFFER-SPECIFIC MESSAGING GUIDELINES
+${messagingGuidelines.core_message ? `Core Message: ${messagingGuidelines.core_message}` : ''}
+${messagingGuidelines.key_benefits?.length ? `Key Benefits:\n${messagingGuidelines.key_benefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
+${messagingGuidelines.tone_notes ? `Tone Notes: ${messagingGuidelines.tone_notes}` : ''}
+${messagingGuidelines.dont_say?.length ? `\n⚠️ NEVER USE:\n${messagingGuidelines.dont_say.map((d: string) => `- "${d}"`).join('\n')}` : ''}
+${messagingGuidelines.always_include?.length ? `\n✅ ALWAYS INCLUDE:\n${messagingGuidelines.always_include.map((a: string) => `- ${a}`).join('\n')}` : ''}
+${messagingGuidelines.competitor_differentiation ? `\nDifferentiation: ${messagingGuidelines.competitor_differentiation}` : ''}
+${messagingGuidelines.approved_examples?.length ? `\n📝 Approved Examples:\n${messagingGuidelines.approved_examples.map((ex: any) => `- [${ex.type}] "${ex.text}"`).join('\n')}` : ''}
+
+## PRODUCT PSYCHOLOGY
+${productPsychology.positioning ? `Positioning: ${productPsychology.positioning}` : ''}
+${productPsychology.pain_points?.length ? `Pain Points:\n${productPsychology.pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
+${productPsychology.desires?.length ? `Desires:\n${productPsychology.desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
+${productPsychology.objections?.length ? `Objections:\n${productPsychology.objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
+${productPsychology.buying_triggers?.length ? `Triggers:\n${productPsychology.buying_triggers.map((t: string) => `- ${t}`).join('\n')}` : ''}
+
+${kbContext}
+
+You generate high-converting Meta ad creative using proven psychology and frameworks.`;
+    
     // Build context-specific prompt based on action
     let actionPrompt = '';
-    let systemPrompt = `You are the Creative Department AI for ${brandName}. You generate high-converting Meta ad creative using proven psychology and frameworks.`;
     
     if (action === 'regenerate_stage') {
       const stageInfoMap: Record<string, { label: string; count: string; goal: string }> = {
@@ -87,7 +124,7 @@ Requirements:
 - Apply appropriate psychology triggers for ${stage.toUpperCase()}
 - Include complete production instructions
 - Make each concept unique and production-ready
-- Learn from what the user dislikes, but prioritize Meta best practices`;
+- STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")`;
     } else if (action === 'regenerate') {
       actionPrompt = `Regenerate this ${stage.toUpperCase()} creative concept with a completely different angle and approach. Keep the same format (${concept.format}) but change the core message, hook, and psychology trigger.\n\nOriginal concept:\n${JSON.stringify(concept, null, 2)}`;
     } else if (action === 'more_options') {
@@ -104,11 +141,6 @@ ${JSON.stringify(concept, null, 2)}`;
     const fullPrompt = `${actionPrompt}
 
 ${audiencePsychology ? `\nAudience Psychology:\n${JSON.stringify(audiencePsychology, null, 2)}` : ''}
-
-Knowledge Base References:
-${kbByCategory['Creative Department'] ? `\nCreative Framework:\n${kbByCategory['Creative Department'][0]?.content?.substring(0, 2000)}` : ''}
-${kbByCategory['Hooks'] ? `\nHook Patterns:\n${kbByCategory['Hooks'][0]?.content?.substring(0, 1500)}` : ''}
-${kbByCategory['Copy Formulas'] ? `\nCopy Formulas:\n${kbByCategory['Copy Formulas'][0]?.content?.substring(0, 1500)}` : ''}
 
 IMPORTANT RULES:
 - Return valid JSON only
@@ -146,7 +178,7 @@ Return JSON structure:
     let response;
     let lastError;
     const maxRetries = 3;
-    const retryDelay = 1000; // 1 second base delay
+    const retryDelay = 1000;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -163,16 +195,15 @@ Return JSON structure:
               { role: 'user', content: fullPrompt }
             ],
             temperature: 0.9,
-            max_tokens: 4000, // Limit response size
+            max_tokens: 4000,
           }),
-          signal: AbortSignal.timeout(30000), // 30 second timeout
+          signal: AbortSignal.timeout(30000),
         });
 
         if (response.ok) {
-          break; // Success, exit retry loop
+          break;
         }
 
-        // Handle specific error codes
         if (response.status === 429) {
           console.log(`Rate limit hit on attempt ${attempt}, waiting...`);
           if (attempt < maxRetries) {
@@ -192,7 +223,6 @@ Return JSON structure:
           );
         }
 
-        // 500 errors - retry with exponential backoff
         if (response.status === 500 || response.status === 503) {
           const errorText = await response.text();
           console.error(`AI service error (attempt ${attempt}/${maxRetries}):`, response.status, errorText.substring(0, 200));
@@ -205,7 +235,6 @@ Return JSON structure:
             continue;
           }
         } else {
-          // Other errors - don't retry
           const errorText = await response.text();
           console.error('Lovable AI error:', response.status, errorText.substring(0, 500));
           throw new Error(`AI error: ${response.status}`);
@@ -224,7 +253,6 @@ Return JSON structure:
       }
     }
 
-    // If all retries failed
     if (!response || !response.ok) {
       throw new Error(`Failed after ${maxRetries} attempts: ${lastError || 'Unknown error'}`);
     }
@@ -234,7 +262,6 @@ Return JSON structure:
     
     console.log('AI response received, parsing...');
     
-    // Extract JSON from response
     let expandedConcepts;
     try {
       const jsonMatch = content.match(/\{[\s\S]*"concepts"[\s\S]*\}/);
@@ -263,7 +290,6 @@ Return JSON structure:
   } catch (error: any) {
     console.error('Error in expand-creative:', error);
     
-    // Provide user-friendly error messages
     let errorMessage = 'Failed to expand creative';
     let statusCode = 500;
     
