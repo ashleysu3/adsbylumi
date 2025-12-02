@@ -7,7 +7,7 @@ const Sales = () => {
       {/* Header with Login */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <img alt="Your Ad Assistant" className="h-16" src="/lovable-uploads/b889f1ac-a7d9-4440-948a-2e7d3dda359f.png" />
+          <img alt="Your Ad Assistant" className="h-12" src="/lovable-uploads/your-ad-assistant-logo.png" />
           <Button onClick={() => navigate("/auth")} variant="outline">
             Log In / Sign Up
           </Button>
