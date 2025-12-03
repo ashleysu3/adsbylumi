@@ -169,13 +169,31 @@ export default function Creative() {
         }
       }
 
+      // Fetch campaign template to get the template slug for CTA context
+      let templateData = null;
+      if (workspace.template_id) {
+        const { data: template } = await supabase
+          .from('campaign_templates')
+          .select('name, slug')
+          .eq('id', workspace.template_id)
+          .maybeSingle();
+        
+        if (template) {
+          templateData = {
+            name: template.name,
+            slug: template.slug
+          };
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-creative', {
         body: {
           brandName: workspace.brands?.name || workspace.name,
           strategyData: workspace.strategy_json,
           creativeType: 'complete',
           audiencePsychology: workspace.brands?.audience_psychology,
-          offerData: offerData
+          offerData: offerData,
+          templateData: templateData
         }
       });
 
