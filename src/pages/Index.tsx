@@ -59,75 +59,188 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Hero Section */}
-      <section ref={heroRef} className="container mx-auto px-4 py-16 md:py-24 max-w-6xl min-h-[80vh] flex items-center relative">
-        <motion.div 
-          className="w-full text-center mb-12"
-          style={{ opacity: heroOpacity, scale: heroScale }}
-        >
+      {/* Hero Section with Animated Gradient Background */}
+      <section ref={heroRef} className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Animated Gradient Mesh Background */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* Base gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-secondary/20" />
+          
+          {/* Animated gradient orbs */}
+          <motion.div
+            className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/20 blur-[120px]"
+            animate={{
+              x: [0, 100, 50, 0],
+              y: [0, 50, 100, 0],
+              scale: [1, 1.2, 0.9, 1],
+            }}
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+          <motion.div
+            className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-secondary/30 blur-[100px]"
+            animate={{
+              x: [0, -80, -40, 0],
+              y: [0, -60, -120, 0],
+              scale: [1, 0.9, 1.1, 1],
+            }}
+            transition={{
+              duration: 25,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+          <motion.div
+            className="absolute top-[40%] right-[20%] w-[40%] h-[40%] rounded-full bg-accent/20 blur-[80px]"
+            animate={{
+              x: [0, -60, 30, 0],
+              y: [0, 80, -40, 0],
+              scale: [1, 1.1, 0.95, 1],
+            }}
+            transition={{
+              duration: 18,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+          <motion.div
+            className="absolute bottom-[20%] left-[15%] w-[35%] h-[35%] rounded-full bg-coral/15 blur-[90px]"
+            animate={{
+              x: [0, 70, -30, 0],
+              y: [0, -50, 60, 0],
+              scale: [1, 0.95, 1.15, 1],
+            }}
+            transition={{
+              duration: 22,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+          
+          {/* Noise texture overlay for depth */}
+          <div className="absolute inset-0 opacity-[0.015] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNhKSIvPjwvc3ZnPg==')]" />
+        </div>
+        
+        {/* Content */}
+        <div className="container mx-auto px-4 max-w-6xl relative z-10">
           <motion.div 
-            className="inline-flex items-center gap-2 bg-secondary px-4 py-2 rounded-full mb-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            className="w-full text-center"
+            style={{ opacity: heroOpacity, scale: heroScale }}
           >
-            <span className="text-sm font-medium">Your Ad Assistant</span>
+            <motion.div 
+              className="inline-flex items-center gap-2 bg-background/80 backdrop-blur-sm border border-border/50 px-4 py-2 rounded-full mb-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <motion.span 
+                className="w-2 h-2 rounded-full bg-primary"
+                animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <span className="text-sm font-medium">Your Ad Assistant</span>
+            </motion.div>
+
+            <motion.h1 
+              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              Tell us what you want to run.
+              <br />
+              <span className="text-muted-foreground">We'll tell you <GradientText>exactly how</GradientText>.</span>
+            </motion.h1>
+
+            <motion.p 
+              className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              Your step-by-step guide to setting up, monitoring, and improving Meta ads — 
+              with clear KPIs and creative ideas that work.
+            </motion.p>
+
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+            >
+              <MagneticButton>
+                <Button
+                  variant="playful"
+                  size="lg"
+                  className="text-base shadow-lg"
+                  onClick={() => navigate("/auth")}
+                >
+                  Get Started Free
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </MagneticButton>
+
+              <MagneticButton>
+                <Button variant="outline" size="lg" className="text-base bg-background/50 backdrop-blur-sm">
+                  Watch Demo
+                </Button>
+              </MagneticButton>
+            </motion.div>
           </motion.div>
+        </div>
 
-          <motion.h1 
-            className="text-4xl md:text-6xl font-bold mb-6 leading-tight"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-          >
-            Tell us what you want to run.
-            <br />
-            <span className="text-muted-foreground">We'll tell you <GradientText>exactly how</GradientText>.</span>
-          </motion.h1>
-
-          <motion.p 
-            className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
-            Your step-by-step guide to setting up, monitoring, and improving Meta ads — 
-            with clear KPIs and creative ideas that work.
-          </motion.p>
-
+        {/* Floating decorative elements */}
+        <FloatingElement className="absolute top-1/4 left-[5%] hidden lg:block" delay={0} distance={15}>
           <motion.div 
-            className="flex flex-col sm:flex-row gap-4 justify-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
+            className="w-3 h-3 rounded-full bg-primary/60"
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          />
+        </FloatingElement>
+        <FloatingElement className="absolute top-1/3 right-[10%] hidden lg:block" delay={0.5} distance={20}>
+          <motion.div 
+            className="w-2 h-2 rounded-full bg-secondary"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 4, repeat: Infinity }}
+          />
+        </FloatingElement>
+        <FloatingElement className="absolute bottom-1/3 left-[15%] hidden lg:block" delay={1} distance={12}>
+          <motion.div 
+            className="w-4 h-4 rounded-full bg-accent/50"
+            animate={{ opacity: [0.3, 0.8, 0.3] }}
+            transition={{ duration: 5, repeat: Infinity }}
+          />
+        </FloatingElement>
+        <FloatingElement className="absolute bottom-1/4 right-[8%] hidden lg:block" delay={1.5} distance={18}>
+          <motion.div 
+            className="w-2.5 h-2.5 rounded-full bg-coral/60"
+            animate={{ opacity: [0.6, 1, 0.6] }}
+            transition={{ duration: 3.5, repeat: Infinity }}
+          />
+        </FloatingElement>
+        
+        {/* Scroll indicator */}
+        <motion.div 
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5 }}
+        >
+          <motion.div
+            className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2"
+            animate={{ y: [0, 5, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
           >
-            <MagneticButton>
-              <Button
-                variant="playful"
-                size="lg"
-                className="text-base"
-                onClick={() => navigate("/auth")}
-              >
-                Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </MagneticButton>
-
-            <MagneticButton>
-              <Button variant="outline" size="lg" className="text-base">
-                Watch Demo
-              </Button>
-            </MagneticButton>
+            <motion.div 
+              className="w-1 h-2 rounded-full bg-muted-foreground/50"
+              animate={{ y: [0, 8, 0], opacity: [1, 0, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
           </motion.div>
         </motion.div>
-
-        {/* Decorative floating elements */}
-        <FloatingElement className="absolute top-1/4 left-10 opacity-20 hidden lg:block" delay={0}>
-          <div className="w-16 h-16 rounded-full bg-primary/30 blur-xl" />
-        </FloatingElement>
-        <FloatingElement className="absolute bottom-1/4 right-10 opacity-20 hidden lg:block" delay={1}>
-          <div className="w-24 h-24 rounded-full bg-secondary/50 blur-2xl" />
-        </FloatingElement>
       </section>
 
       {/* Features Section */}
