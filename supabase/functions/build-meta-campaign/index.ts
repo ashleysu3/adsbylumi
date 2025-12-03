@@ -164,6 +164,8 @@ Deno.serve(async (req) => {
     const campaignBaseName = `YAA // ${objectiveName} - ${productName} - ${startDate}`;
 
     // Determine Meta API objective
+    // Note: LEAD_GENERATION optimization_goal is for Facebook Instant Forms only.
+    // For offsite lead conversions, use OFFSITE_CONVERSIONS with LEAD event.
     let metaObjective = 'OUTCOME_TRAFFIC';
     let optimizationGoal = 'LINK_CLICKS';
     let needsPixel = false;
@@ -175,8 +177,9 @@ Deno.serve(async (req) => {
       needsPixel = true;
       conversionEvent = 'PURCHASE';
     } else if (answers?.optimizationEvent === 'LEAD' || answers?.optimizationEvent === 'LEAD_GENERATION') {
+      // For offsite leads (landing page forms), use OUTCOME_LEADS with OFFSITE_CONVERSIONS
       metaObjective = 'OUTCOME_LEADS';
-      optimizationGoal = 'LEAD_GENERATION';
+      optimizationGoal = 'OFFSITE_CONVERSIONS';
       needsPixel = true;
       conversionEvent = 'LEAD';
     } else if (answers?.optimizationEvent === 'LANDING_PAGE_VIEWS') {
