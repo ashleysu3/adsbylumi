@@ -222,7 +222,7 @@ export default function DashboardLayout({
   const tabItems = [{
     path: "/planning",
     icon: Lightbulb,
-    label: "AD PLANNER",
+    label: "PLANNER",
     lightColor: "tab-orange-light",
     darkColor: "tab-orange-dark"
   }, {
