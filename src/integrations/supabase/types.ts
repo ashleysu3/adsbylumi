@@ -207,6 +207,7 @@ export type Database = {
           production_items: Json | null
           progress_status: string
           published_at: string | null
+          selected_copy: Json | null
           strategy_id: string | null
           strategy_json: Json | null
           template_id: string | null
@@ -242,6 +243,7 @@ export type Database = {
           production_items?: Json | null
           progress_status?: string
           published_at?: string | null
+          selected_copy?: Json | null
           strategy_id?: string | null
           strategy_json?: Json | null
           template_id?: string | null
@@ -277,6 +279,7 @@ export type Database = {
           production_items?: Json | null
           progress_status?: string
           published_at?: string | null
+          selected_copy?: Json | null
           strategy_id?: string | null
           strategy_json?: Json | null
           template_id?: string | null

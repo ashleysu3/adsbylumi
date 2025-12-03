@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Copy, Check, Type, AlignLeft, MessageSquare, Smartphone, Target, Zap, TrendingUp } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Copy, Check, Type, AlignLeft, MessageSquare, Smartphone, Target, Zap, TrendingUp, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdCopyLibraryProps {
   workspace: any;
@@ -24,7 +26,10 @@ const stageIcons: Record<string, React.ElementType> = {
   bofu: TrendingUp,
 };
 
-export function AdCopyLibrary({ workspace }: AdCopyLibraryProps) {
+// Max selections per category for Meta Ads Manager
+const MAX_SELECTIONS = 5;
+
+export function AdCopyLibrary({ workspace, onUpdate }: AdCopyLibraryProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const creative = workspace.creative_json || {};
   
@@ -34,6 +39,127 @@ export function AdCopyLibrary({ workspace }: AdCopyLibraryProps) {
   const descriptions = adCopyLibrary.descriptions || creative.descriptions || [];
   const storyReelCopy = adCopyLibrary.story_reel_copy || {};
 
+  // Selection state - load from workspace or initialize
+  const savedSelections = workspace.selected_copy || {};
+  const [selectedHeadlines, setSelectedHeadlines] = useState<string[]>(savedSelections.headlines || []);
+  const [selectedPrimaryCopy, setSelectedPrimaryCopy] = useState<string[]>(savedSelections.primary_copy || []);
+  const [selectedDescriptions, setSelectedDescriptions] = useState<string[]>(savedSelections.descriptions || []);
+
+  // AI recommendations based on variety (mix of stages and angles)
+  const getAiRecommendedIds = (items: any[], prefix: string, maxRecommend = 5) => {
+    if (!items.length) return [];
+    
+    const recommended: string[] = [];
+    const stages = ['tofu', 'mofu', 'bofu'];
+    
+    // Try to get one from each stage first for variety
+    for (const stage of stages) {
+      const stageItems = items.filter(item => item.stage === stage);
+      if (stageItems.length > 0 && recommended.length < maxRecommend) {
+        const idx = items.findIndex(i => i === stageItems[0]);
+        recommended.push(`${prefix}_${idx}`);
+      }
+    }
+    
+    // Fill remaining slots with highest quality (shortest headlines, varied angles)
+    const remaining = items.filter((item, idx) => !recommended.includes(`${prefix}_${idx}`));
+    for (const item of remaining) {
+      if (recommended.length >= maxRecommend) break;
+      const idx = items.findIndex(i => i === item);
+      recommended.push(`${prefix}_${idx}`);
+    }
+    
+    return recommended;
+  };
+
+  const recommendedHeadlines = getAiRecommendedIds(headlines, 'headline');
+  const recommendedPrimaryCopy = getAiRecommendedIds(
+    [...(primaryCopy.short || []), ...(primaryCopy.medium || []), ...(primaryCopy.long || [])].slice(0, 15),
+    'primary'
+  );
+  const recommendedDescriptions = getAiRecommendedIds(descriptions, 'desc');
+
+  // Save selections to database
+  const saveSelections = async (type: string, ids: string[]) => {
+    const newSelections = {
+      ...savedSelections,
+      [type]: ids
+    };
+    
+    try {
+      await supabase
+        .from('campaign_workspaces')
+        .update({ 
+          selected_copy: newSelections,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workspace.id);
+      
+      onUpdate({ selected_copy: newSelections });
+    } catch (error) {
+      console.error('Error saving selections:', error);
+    }
+  };
+
+  const toggleSelection = (id: string, type: 'headlines' | 'primary_copy' | 'descriptions') => {
+    let currentSelection: string[];
+    let setSelection: React.Dispatch<React.SetStateAction<string[]>>;
+    
+    switch (type) {
+      case 'headlines':
+        currentSelection = selectedHeadlines;
+        setSelection = setSelectedHeadlines;
+        break;
+      case 'primary_copy':
+        currentSelection = selectedPrimaryCopy;
+        setSelection = setSelectedPrimaryCopy;
+        break;
+      case 'descriptions':
+        currentSelection = selectedDescriptions;
+        setSelection = setSelectedDescriptions;
+        break;
+    }
+
+    let newSelection: string[];
+    if (currentSelection.includes(id)) {
+      newSelection = currentSelection.filter(i => i !== id);
+    } else {
+      if (currentSelection.length >= MAX_SELECTIONS) {
+        toast.error(`Maximum ${MAX_SELECTIONS} selections allowed for Meta Ads`);
+        return;
+      }
+      newSelection = [...currentSelection, id];
+    }
+    
+    setSelection(newSelection);
+    saveSelections(type, newSelection);
+  };
+
+  const selectAiRecommended = (type: 'headlines' | 'primary_copy' | 'descriptions') => {
+    let recommendations: string[];
+    let setSelection: React.Dispatch<React.SetStateAction<string[]>>;
+    
+    switch (type) {
+      case 'headlines':
+        recommendations = recommendedHeadlines;
+        setSelection = setSelectedHeadlines;
+        break;
+      case 'primary_copy':
+        recommendations = recommendedPrimaryCopy;
+        setSelection = setSelectedPrimaryCopy;
+        break;
+      case 'descriptions':
+        recommendations = recommendedDescriptions;
+        setSelection = setSelectedDescriptions;
+        break;
+    }
+    
+    const newSelection = recommendations.slice(0, MAX_SELECTIONS);
+    setSelection(newSelection);
+    saveSelections(type, newSelection);
+    toast.success("AI recommendations selected!");
+  };
+
   const copyToClipboard = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -41,19 +167,45 @@ export function AdCopyLibrary({ workspace }: AdCopyLibraryProps) {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const copyAllToClipboard = async (items: any[], type: string) => {
-    const text = items.map((item, i) => `${i + 1}. ${item.text}`).join("\n\n");
+  const copySelectedToClipboard = async (items: any[], selectedIds: string[], prefix: string, type: string) => {
+    const selectedItems = items.filter((_, idx) => selectedIds.includes(`${prefix}_${idx}`));
+    if (selectedItems.length === 0) {
+      toast.error("No items selected");
+      return;
+    }
+    const text = selectedItems.map((item, i) => `${i + 1}. ${item.text}`).join("\n\n");
     await navigator.clipboard.writeText(text);
-    toast.success(`All ${type} copied!`);
+    toast.success(`${selectedItems.length} selected ${type} copied!`);
   };
 
-  const renderCopyCard = (item: any, id: string, showCharCount = true) => {
+  const renderCopyCard = (
+    item: any, 
+    id: string, 
+    type: 'headlines' | 'primary_copy' | 'descriptions',
+    isRecommended: boolean,
+    isSelected: boolean,
+    showCharCount = true
+  ) => {
     const StageIcon = stageIcons[item.stage] || Target;
     return (
-      <Card key={id} className="group relative hover:shadow-md transition-shadow">
+      <Card 
+        key={id} 
+        className={`group relative transition-all cursor-pointer ${
+          isSelected 
+            ? 'ring-2 ring-primary bg-primary/5' 
+            : 'hover:shadow-md'
+        }`}
+        onClick={() => toggleSelection(id, type)}
+      >
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-center gap-2 flex-wrap">
+              <Checkbox 
+                checked={isSelected}
+                onCheckedChange={() => toggleSelection(id, type)}
+                onClick={(e) => e.stopPropagation()}
+                className="mr-1"
+              />
               <Badge className={`text-xs ${stageBadgeColors[item.stage] || stageBadgeColors.tofu}`}>
                 <StageIcon className="h-3 w-3 mr-1" />
                 {item.stage?.toUpperCase()}
@@ -68,12 +220,21 @@ export function AdCopyLibrary({ workspace }: AdCopyLibraryProps) {
                   {item.length}
                 </Badge>
               )}
+              {isRecommended && (
+                <Badge className="text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 gap-1">
+                  <Star className="h-3 w-3 fill-current" />
+                  AI Pick
+                </Badge>
+              )}
             </div>
             <Button
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0 shrink-0"
-              onClick={() => copyToClipboard(item.text, id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                copyToClipboard(item.text, id);
+              }}
             >
               {copiedId === id ? (
                 <Check className="h-4 w-4 text-green-600" />
@@ -103,6 +264,9 @@ export function AdCopyLibrary({ workspace }: AdCopyLibraryProps) {
   const longCopy = Array.isArray(primaryCopy.long) ? primaryCopy.long :
                    Array.isArray(primaryCopy) ? primaryCopy.filter((c: any) => c.length === 'long') : [];
 
+  // Combined primary copy for indexing
+  const allPrimaryCopy = [...shortCopy, ...mediumCopy, ...longCopy];
+
   const hasNoContent = headlines.length === 0 && descriptions.length === 0 && 
                        shortCopy.length === 0 && mediumCopy.length === 0 && longCopy.length === 0;
 
@@ -126,10 +290,16 @@ export function AdCopyLibrary({ workspace }: AdCopyLibraryProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold">Copy Library</h2>
-          <p className="text-muted-foreground">All copy variations ready for Meta Ads Manager</p>
+          <p className="text-muted-foreground">Select up to 5 variations per category for Meta Ads</p>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Badge variant="outline" className="gap-1">
+            <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+            AI Recommended
+          </Badge>
         </div>
       </div>
 
@@ -138,17 +308,23 @@ export function AdCopyLibrary({ workspace }: AdCopyLibraryProps) {
           <TabsTrigger value="headlines" className="gap-2">
             <Type className="h-4 w-4" />
             <span className="hidden sm:inline">Headlines</span>
-            <Badge variant="secondary" className="ml-1">{headlines.length}</Badge>
+            <Badge variant={selectedHeadlines.length > 0 ? "default" : "secondary"} className="ml-1">
+              {selectedHeadlines.length}/{headlines.length}
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="primary" className="gap-2">
             <AlignLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Primary</span>
-            <Badge variant="secondary" className="ml-1">{shortCopy.length + mediumCopy.length + longCopy.length}</Badge>
+            <Badge variant={selectedPrimaryCopy.length > 0 ? "default" : "secondary"} className="ml-1">
+              {selectedPrimaryCopy.length}/{allPrimaryCopy.length}
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="descriptions" className="gap-2">
             <MessageSquare className="h-4 w-4" />
             <span className="hidden sm:inline">Descriptions</span>
-            <Badge variant="secondary" className="ml-1">{descriptions.length}</Badge>
+            <Badge variant={selectedDescriptions.length > 0 ? "default" : "secondary"} className="ml-1">
+              {selectedDescriptions.length}/{descriptions.length}
+            </Badge>
           </TabsTrigger>
           <TabsTrigger value="story-reel" className="gap-2">
             <Smartphone className="h-4 w-4" />
@@ -160,29 +336,48 @@ export function AdCopyLibrary({ workspace }: AdCopyLibraryProps) {
         <TabsContent value="headlines">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <CardTitle className="text-lg">Headlines</CardTitle>
-                  <CardDescription>Short, punchy headlines for your ads (max 40 chars)</CardDescription>
+                  <CardDescription>Select up to 5 headlines (max 40 chars)</CardDescription>
                 </div>
-                {headlines.length > 0 && (
+                <div className="flex gap-2">
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => copyAllToClipboard(headlines, "headlines")}
+                    onClick={() => selectAiRecommended('headlines')}
+                    className="gap-1"
                   >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy All
+                    <Sparkles className="h-4 w-4" />
+                    Use AI Picks
                   </Button>
-                )}
+                  {selectedHeadlines.length > 0 && (
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={() => copySelectedToClipboard(headlines, selectedHeadlines, 'headline', 'headlines')}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Selected ({selectedHeadlines.length})
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[500px] pr-4">
                 <div className="grid gap-3">
-                  {headlines.map((item: any, idx: number) => 
-                    renderCopyCard(item, `headline_${idx}`, true)
-                  )}
+                  {headlines.map((item: any, idx: number) => {
+                    const id = `headline_${idx}`;
+                    return renderCopyCard(
+                      item, 
+                      id, 
+                      'headlines',
+                      recommendedHeadlines.includes(id),
+                      selectedHeadlines.includes(id),
+                      true
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </CardContent>
@@ -191,147 +386,157 @@ export function AdCopyLibrary({ workspace }: AdCopyLibraryProps) {
 
         {/* Primary Copy Tab */}
         <TabsContent value="primary">
-          <Tabs defaultValue="short" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="short">
-                Short
-                <Badge variant="secondary" className="ml-2">{shortCopy.length}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="medium">
-                Medium
-                <Badge variant="secondary" className="ml-2">{mediumCopy.length}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="long">
-                Long
-                <Badge variant="secondary" className="ml-2">{longCopy.length}</Badge>
-              </TabsTrigger>
-            </TabsList>
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <CardTitle className="text-lg">Primary Copy</CardTitle>
+                  <CardDescription>Select up to 5 variations across all lengths</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => selectAiRecommended('primary_copy')}
+                    className="gap-1"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Use AI Picks
+                  </Button>
+                  {selectedPrimaryCopy.length > 0 && (
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={() => copySelectedToClipboard(allPrimaryCopy, selectedPrimaryCopy, 'primary', 'primary copy')}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Selected ({selectedPrimaryCopy.length})
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="short" className="w-full">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="short">
+                    Short (~125)
+                    <Badge variant="secondary" className="ml-2">{shortCopy.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="medium">
+                    Medium (~300)
+                    <Badge variant="secondary" className="ml-2">{mediumCopy.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="long">
+                    Long (500+)
+                    <Badge variant="secondary" className="ml-2">{longCopy.length}</Badge>
+                  </TabsTrigger>
+                </TabsList>
 
-            <TabsContent value="short">
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">Short Primary Copy</CardTitle>
-                      <CardDescription>~125 characters - great for quick impact</CardDescription>
-                    </div>
-                    {shortCopy.length > 0 && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => copyAllToClipboard(shortCopy, "short copy")}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy All
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
+                <TabsContent value="short">
                   <ScrollArea className="h-[400px] pr-4">
                     <div className="grid gap-3">
-                      {shortCopy.map((item: any, idx: number) => 
-                        renderCopyCard(item, `short_${idx}`, true)
-                      )}
+                      {shortCopy.map((item: any, idx: number) => {
+                        const id = `primary_${idx}`;
+                        return renderCopyCard(
+                          { ...item, length: 'short' },
+                          id,
+                          'primary_copy',
+                          recommendedPrimaryCopy.includes(id),
+                          selectedPrimaryCopy.includes(id),
+                          true
+                        );
+                      })}
                     </div>
                   </ScrollArea>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                </TabsContent>
 
-            <TabsContent value="medium">
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">Medium Primary Copy</CardTitle>
-                      <CardDescription>~300 characters - balanced storytelling</CardDescription>
-                    </div>
-                    {mediumCopy.length > 0 && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => copyAllToClipboard(mediumCopy, "medium copy")}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy All
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
+                <TabsContent value="medium">
                   <ScrollArea className="h-[400px] pr-4">
                     <div className="grid gap-3">
-                      {mediumCopy.map((item: any, idx: number) => 
-                        renderCopyCard(item, `medium_${idx}`, true)
-                      )}
+                      {mediumCopy.map((item: any, idx: number) => {
+                        const id = `primary_${shortCopy.length + idx}`;
+                        return renderCopyCard(
+                          { ...item, length: 'medium' },
+                          id,
+                          'primary_copy',
+                          recommendedPrimaryCopy.includes(id),
+                          selectedPrimaryCopy.includes(id),
+                          true
+                        );
+                      })}
                     </div>
                   </ScrollArea>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                </TabsContent>
 
-            <TabsContent value="long">
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">Long Primary Copy</CardTitle>
-                      <CardDescription>500+ characters - full storytelling</CardDescription>
-                    </div>
-                    {longCopy.length > 0 && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => copyAllToClipboard(longCopy, "long copy")}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy All
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
+                <TabsContent value="long">
                   <ScrollArea className="h-[400px] pr-4">
                     <div className="grid gap-3">
-                      {longCopy.map((item: any, idx: number) => 
-                        renderCopyCard(item, `long_${idx}`, true)
-                      )}
+                      {longCopy.map((item: any, idx: number) => {
+                        const id = `primary_${shortCopy.length + mediumCopy.length + idx}`;
+                        return renderCopyCard(
+                          { ...item, length: 'long' },
+                          id,
+                          'primary_copy',
+                          recommendedPrimaryCopy.includes(id),
+                          selectedPrimaryCopy.includes(id),
+                          true
+                        );
+                      })}
                     </div>
                   </ScrollArea>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Descriptions Tab */}
         <TabsContent value="descriptions">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <CardTitle className="text-lg">Descriptions</CardTitle>
-                  <CardDescription>Link descriptions for your ads (max 30 chars)</CardDescription>
+                  <CardDescription>Select up to 5 descriptions (max 30 chars)</CardDescription>
                 </div>
-                {descriptions.length > 0 && (
+                <div className="flex gap-2">
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => copyAllToClipboard(descriptions, "descriptions")}
+                    onClick={() => selectAiRecommended('descriptions')}
+                    className="gap-1"
                   >
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy All
+                    <Sparkles className="h-4 w-4" />
+                    Use AI Picks
                   </Button>
-                )}
+                  {selectedDescriptions.length > 0 && (
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={() => copySelectedToClipboard(descriptions, selectedDescriptions, 'desc', 'descriptions')}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Selected ({selectedDescriptions.length})
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[500px] pr-4">
                 <div className="grid gap-3">
-                  {descriptions.map((item: any, idx: number) => 
-                    renderCopyCard(item, `desc_${idx}`, true)
-                  )}
+                  {descriptions.map((item: any, idx: number) => {
+                    const id = `desc_${idx}`;
+                    return renderCopyCard(
+                      item,
+                      id,
+                      'descriptions',
+                      recommendedDescriptions.includes(id),
+                      selectedDescriptions.includes(id),
+                      true
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </CardContent>
