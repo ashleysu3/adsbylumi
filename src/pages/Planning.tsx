@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
+import { GeneratingModal } from "@/components/GeneratingModal";
 
 const iconMap: Record<string, any> = {
   Video,
@@ -367,6 +368,19 @@ export default function Planning() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Generating Modal for strategy creation */}
+        <GeneratingModal 
+          isOpen={loading} 
+          title="Creating Campaign Strategy"
+          steps={[
+            "Setting up campaign workspace...",
+            "Loading template configuration...",
+            "Applying messaging framework...",
+            "Configuring KPI benchmarks...",
+            "Preparing creative workspace..."
+          ]}
+        />
       </div>
     </DashboardLayout>
   );
