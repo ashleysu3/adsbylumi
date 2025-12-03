@@ -20,6 +20,23 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
+    // Validate required data
+    if (!strategyData) {
+      console.error('Missing strategyData in request');
+      return new Response(
+        JSON.stringify({ error: 'Strategy data is required. Please complete your campaign strategy first.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!strategyData.campaign_type) {
+      console.error('Missing campaign_type in strategyData:', strategyData);
+      return new Response(
+        JSON.stringify({ error: 'Campaign type is missing from strategy. Please select a campaign template.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Initialize Supabase client to fetch knowledge base
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;

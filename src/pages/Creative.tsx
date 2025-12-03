@@ -138,6 +138,12 @@ export default function Creative() {
   const generateCreative = async () => {
     if (!workspace) return;
 
+    // Check if strategy data exists
+    if (!workspace.strategy_json) {
+      toast.error("Please complete your campaign strategy in the Planner first.");
+      return;
+    }
+
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-creative', {
