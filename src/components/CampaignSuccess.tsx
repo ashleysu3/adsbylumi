@@ -153,10 +153,12 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
         <Button
           variant="outline"
           onClick={() => {
-            // Access meta_account_id from the brand (brands is a single object from the join)
-            const rawAccountId = workspace?.brands?.meta_account_id;
+            // Access meta_account_id from the brand - check both nested 'brands' and direct brand_meta_account_id
+            const rawAccountId = workspace?.brands?.meta_account_id || workspace?.brand_meta_account_id;
             // Strip "act_" prefix if present - Meta URLs need just the numeric ID
             const metaAccountId = rawAccountId?.replace(/^act_/, '');
+            
+            console.log('Opening Ads Manager:', { rawAccountId, metaAccountId, campaignId, workspace });
             
             if (metaAccountId && campaignId) {
               // Link directly to the campaign in Ads Manager
@@ -164,8 +166,15 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
                 `https://business.facebook.com/adsmanager/manage/campaigns?act=${metaAccountId}&selected_campaign_ids=${campaignId}`,
                 '_blank'
               );
+            } else if (metaAccountId) {
+              // At least link to the correct ad account
+              window.open(
+                `https://business.facebook.com/adsmanager/manage/campaigns?act=${metaAccountId}`,
+                '_blank'
+              );
             } else {
               // Fallback to general Ads Manager
+              console.warn('No meta_account_id found in workspace:', workspace);
               window.open(metaAdsManagerUrl, '_blank');
             }
           }}
