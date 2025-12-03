@@ -153,10 +153,10 @@ export function CampaignChat({
   };
 
   return (
-    <Card className="h-[calc(100vh-220px)] flex flex-col">
-      <CardContent className="flex-1 flex flex-col p-0">
+    <Card className="h-[calc(100vh-280px)] min-h-[400px] flex flex-col">
+      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 pb-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 min-h-0">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -203,8 +203,8 @@ export function CampaignChat({
 
         {/* Quick Replies */}
         {recommendations.length > 0 && !loading && (
-          <div className="border-t bg-muted/30 p-4">
-            <div className="flex items-center gap-2 mb-3">
+          <div className="border-t bg-muted/30 p-3 shrink-0">
+            <div className="flex items-center gap-2 mb-2">
               <Sparkles className="h-4 w-4 text-primary" />
               <p className="text-xs font-medium text-muted-foreground">Recommended Options</p>
             </div>
@@ -215,7 +215,7 @@ export function CampaignChat({
                   variant="outline"
                   size="sm"
                   onClick={() => handleQuickReply(rec)}
-                  className="text-xs whitespace-normal h-auto py-2"
+                  className="text-xs whitespace-normal h-auto py-1.5 px-3"
                 >
                   <span className="break-words">{rec.label}</span>
                   {rec.reason && (
@@ -228,13 +228,13 @@ export function CampaignChat({
         )}
 
         {/* Input */}
-        <div className="border-t p-4 space-y-3">
+        <div className="border-t p-3 space-y-2 shrink-0">
           {/* Review Campaign Button - show when ready */}
           {answers.budget && answers.startDate && !loading && (
             <Button 
               onClick={onComplete}
               className="w-full gap-2"
-              size="lg"
+              size="default"
             >
               <Sparkles className="h-4 w-4" />
               Review Campaign
@@ -255,7 +255,7 @@ export function CampaignChat({
               disabled={loading}
               className="flex-1"
             />
-            <Button type="submit" disabled={loading || !input.trim()}>
+            <Button type="submit" disabled={loading || !input.trim()} size="icon">
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
