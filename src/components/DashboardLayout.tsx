@@ -8,6 +8,8 @@ import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Sett
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
+import { LumiChat } from "@/components/LumiChat";
+import { LumiCharacter } from "@/components/LumiCharacter";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -20,6 +22,7 @@ export default function DashboardLayout({
   const location = useLocation();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [brand, setBrand] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [walkthroughSteps, setWalkthroughSteps] = useState<any[]>([]);
@@ -29,6 +32,18 @@ export default function DashboardLayout({
     title: string;
     description: string;
   } | null>(null);
+
+  // Determine context based on current route
+  const getContextFromRoute = (): 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production' => {
+    if (location.pathname.includes('/creative')) return 'creative';
+    if (location.pathname.includes('/planning')) return 'planning';
+    if (location.pathname.includes('/data')) return 'data';
+    if (location.pathname.includes('/production')) return 'production';
+    if (location.pathname.includes('/campaigns')) return 'campaigns';
+    if (location.pathname.includes('/settings')) return 'settings';
+    if (location.pathname.includes('/workspace')) return 'campaign';
+    return 'dashboard';
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({
@@ -43,6 +58,10 @@ export default function DashboardLayout({
         supabase.from("profiles").select("*").eq("id", user.id).single().then(({
           data
         }) => setProfile(data));
+
+        supabase.from("brands").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).single().then(({
+          data
+        }) => setBrand(data));
 
         supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single().then(({
           data
@@ -185,6 +204,16 @@ export default function DashboardLayout({
 
   if (!user) return null;
 
+  // Custom trigger for Lumi in nav bar
+  const lumiNavTrigger = (
+    <button className="flex items-center gap-2 text-sm font-medium transition-colors group mb-2 hover:opacity-80">
+      <LumiCharacter size="xs" state="idle" glow className="group-hover:animate-none" />
+      <span className="bg-gradient-to-r from-amber-600 to-amber-500 bg-clip-text text-transparent font-semibold">
+        Talk to Lumi
+      </span>
+    </button>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -279,6 +308,12 @@ export default function DashboardLayout({
                   </Link>;
             })}
             </div>
+            
+            <LumiChat 
+              context={getContextFromRoute()} 
+              brand={brand}
+              trigger={lumiNavTrigger}
+            />
           </nav>
         </div>
       </header>

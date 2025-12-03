@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
-import { LumiChat } from "@/components/LumiChat";
 import confetti from "canvas-confetti";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -452,8 +451,6 @@ export default function Dashboard() {
         brand={brand}
         onUpdate={fetchBrandData}
       />
-      
-      <LumiChat context="dashboard" brand={brand} />
     </DashboardLayout>
   );
 }

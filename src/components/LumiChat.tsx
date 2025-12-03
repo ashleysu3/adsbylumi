@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,6 +12,7 @@ interface LumiChatProps {
   context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production';
   workspace?: any;
   brand?: any;
+  trigger?: ReactNode;
 }
 
 interface Message {
@@ -70,7 +71,7 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
   ],
 };
 
-export function LumiChat({ context, workspace, brand }: LumiChatProps) {
+export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -137,22 +138,27 @@ export function LumiChat({ context, workspace, brand }: LumiChatProps) {
     sendMessage(message);
   };
 
+  // Default trigger if none provided
+  const defaultTrigger = (
+    <Button
+      className="fixed bottom-6 right-6 h-14 px-5 rounded-full shadow-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-amber-950 gap-2 z-50 group"
+      size="lg"
+    >
+      <LumiCharacter size="sm" state="idle" className="group-hover:animate-none" />
+      <span className="font-medium">Talk to Lumi</span>
+    </Button>
+  );
+
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button
-          className="fixed bottom-6 right-6 h-14 px-5 rounded-full shadow-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-amber-950 gap-2 z-50 group"
-          size="lg"
-        >
-          <LumiCharacter size="sm" state="idle" className="group-hover:animate-none" />
-          <span className="font-medium">Talk to Lumi</span>
-        </Button>
+        {trigger || defaultTrigger}
       </DrawerTrigger>
       <DrawerContent className="h-[85vh] max-h-[85vh]">
         <DrawerHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <LumiCharacter size="md" state={isLoading ? "thinking" : "idle"} />
+              <LumiCharacter size="md" state={isLoading ? "thinking" : "idle"} glow />
               <div>
                 <DrawerTitle className="text-lg">Lumi</DrawerTitle>
                 <p className="text-xs text-muted-foreground">Your Ad Assistant</p>
@@ -169,7 +175,7 @@ export function LumiChat({ context, workspace, brand }: LumiChatProps) {
             {messages.length === 0 ? (
               <div className="space-y-6">
                 <div className="text-center py-8">
-                  <LumiCharacter size="lg" state="idle" className="mx-auto mb-4" />
+                  <LumiCharacter size="lg" state="idle" glow className="mx-auto mb-4" />
                   <h3 className="font-semibold mb-2">Hey! I'm Lumi 👋</h3>
                   <p className="text-sm text-muted-foreground max-w-md mx-auto">
                     I'm here to help you create better ads. Ask me anything about your creative, strategy, or campaign performance.
