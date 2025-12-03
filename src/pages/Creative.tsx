@@ -14,6 +14,7 @@ import { ProductionChecklist } from "@/components/ProductionChecklist";
 import { CreativeUploader } from "@/components/CreativeUploader";
 import { CreativeSidebar } from "@/components/CreativeSidebar";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
+import { GeneratingModal } from "@/components/GeneratingModal";
 
 export default function Creative() {
   const navigate = useNavigate();
@@ -465,6 +466,20 @@ export default function Creative() {
           </div>
         )}
       </div>
+
+      {/* Generating Modal */}
+      <GeneratingModal 
+        isOpen={generating} 
+        title="Generating Creative Assets"
+        steps={[
+          "Analyzing your brand psychology...",
+          "Crafting hook variations...",
+          "Writing compelling scripts...",
+          "Generating ad copy...",
+          "Building your creative mix...",
+          "Finalizing production notes..."
+        ]}
+      />
     </DashboardLayout>
   );
 }
