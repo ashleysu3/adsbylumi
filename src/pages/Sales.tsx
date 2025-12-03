@@ -10,6 +10,90 @@ import { FloatingElement } from "@/components/animations/FloatingElement";
 import { MagneticButton, GradientText } from "@/components/animations/SmoothScroll";
 import { CursorGlow } from "@/components/animations/CursorTrail";
 import { useRef } from "react";
+import { MotionValue } from "framer-motion";
+
+interface StepData {
+  emoji: string;
+  title: string;
+  description: string;
+  items: string[];
+  footer: string;
+}
+
+interface StepCardProps {
+  step: StepData;
+  index: number;
+  totalSteps: number;
+  stepsProgress: MotionValue<number>;
+  stepStart: number;
+  stepEnd: number;
+}
+
+const StepCard = ({ step, index, totalSteps, stepsProgress, stepStart, stepEnd }: StepCardProps) => {
+  const stepOpacity = useTransform(
+    stepsProgress,
+    [
+      Math.max(0, stepStart - 0.05),
+      stepStart + 0.05,
+      stepEnd - 0.05,
+      Math.min(1, stepEnd + 0.05)
+    ],
+    [index === 0 ? 1 : 0.3, 1, 1, index === totalSteps - 1 ? 1 : 0.3]
+  );
+  
+  const stepScale = useTransform(
+    stepsProgress,
+    [stepStart, (stepStart + stepEnd) / 2, stepEnd],
+    [0.95, 1, 0.95]
+  );
+  
+  return (
+    <motion.div
+      className="flex-shrink-0 h-full flex items-center justify-center px-4 md:px-8"
+      style={{ 
+        width: `${100 / totalSteps}%`,
+        opacity: stepOpacity
+      }}
+    >
+      <motion.div 
+        className="max-w-4xl w-full"
+        style={{ scale: stepScale }}
+      >
+        <div className="flex flex-col md:flex-row gap-8 items-start">
+          <motion.div 
+            className="flex-shrink-0"
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-4xl">
+              {step.emoji}
+            </div>
+          </motion.div>
+          <div className="flex-1">
+            <h3 className="font-display text-2xl md:text-3xl mb-4">{step.title}</h3>
+            <p className="text-lg text-muted-foreground mb-6">{step.description}</p>
+            <div className="bg-background/80 backdrop-blur-sm rounded-xl p-6 border border-border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {step.items.map((item, i) => (
+                  <div 
+                    key={i}
+                    className="flex items-center gap-2"
+                  >
+                    <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />
+                    <span className="text-foreground/80">{item}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground mt-4 pt-4 border-t border-border">
+                {step.footer}
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 const Sales = () => {
   const navigate = useNavigate();
@@ -23,15 +107,15 @@ const Sales = () => {
   
   const { scrollYProgress: stepsProgress } = useScroll({
     target: stepsRef,
-    offset: ["start start", "end start"],
+    offset: ["start start", "end end"],
   });
   
   const heroOpacity = useTransform(heroProgress, [0, 0.5], [1, 0]);
   const heroScale = useTransform(heroProgress, [0, 0.5], [1, 0.95]);
   const heroY = useTransform(heroProgress, [0, 0.5], [0, 50]);
   
-  // Dynamic calculation: 5 steps means we need to move -400% (4 * 100%)
-  const stepsX = useTransform(stepsProgress, [0, 1], ["0%", `-${(5 - 1) * 100}%`]);
+  const numSteps = 5;
+  const stepsX = useTransform(stepsProgress, [0, 1], ["0%", `-${(numSteps - 1) * 100}%`]);
   const progressWidth = useTransform(stepsProgress, [0, 1], ["0%", "100%"]);
 
   const steps = [
@@ -309,9 +393,9 @@ const Sales = () => {
       <section 
         ref={stepsRef} 
         className="relative bg-muted/30"
-        style={{ height: "300vh" }}
+        style={{ height: "400vh" }}
       >
-        <div className="sticky top-0 h-screen overflow-hidden flex flex-col">
+        <div className="sticky top-0 h-screen overflow-hidden flex flex-col justify-center">
           {/* Progress bar */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-border z-20">
             <motion.div 
@@ -321,7 +405,7 @@ const Sales = () => {
           </div>
 
           {/* Header */}
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 z-20 text-center">
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 text-center">
             <h2 className="font-display text-3xl md:text-4xl mb-4">Here's how:</h2>
             <div className="flex gap-2 justify-center">
               {steps.map((_, index) => {
@@ -330,7 +414,7 @@ const Sales = () => {
                 return (
                   <motion.div
                     key={index}
-                    className="w-3 h-3 rounded-full bg-border"
+                    className="w-3 h-3 rounded-full"
                     style={{
                       backgroundColor: useTransform(
                         stepsProgress,
@@ -346,60 +430,27 @@ const Sales = () => {
 
           {/* Horizontal scrolling container */}
           <motion.div 
-            className="flex flex-1 items-center"
-            style={{ x: stepsX }}
+            className="flex items-center"
+            style={{ 
+              x: stepsX,
+              width: `${steps.length * 100}%`
+            }}
           >
             {steps.map((step, index) => {
               const stepStart = index / steps.length;
               const stepEnd = (index + 1) / steps.length;
+              const stepMid = (stepStart + stepEnd) / 2;
               
               return (
-                <motion.div
+                <StepCard 
                   key={index}
-                  className="min-w-full h-full flex items-center justify-center px-4 md:px-8"
-                >
-                  <motion.div 
-                    className="max-w-4xl w-full"
-                    initial={{ opacity: 0, y: 50 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    viewport={{ once: false, amount: 0.5 }}
-                  >
-                    <div className="flex flex-col md:flex-row gap-8 items-start">
-                      <motion.div 
-                        className="flex-shrink-0"
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                      >
-                        <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-4xl">
-                          {step.emoji}
-                        </div>
-                      </motion.div>
-                      <div className="flex-1">
-                        <h3 className="font-display text-2xl md:text-3xl mb-4">{step.title}</h3>
-                        <p className="text-lg text-muted-foreground mb-6">{step.description}</p>
-                        <div className="bg-background/80 backdrop-blur-sm rounded-xl p-6 border border-border">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {step.items.map((item, i) => (
-                              <motion.div 
-                                key={i}
-                                className="flex items-center gap-2"
-                                initial={{ opacity: 0, x: -10 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                transition={{ delay: i * 0.05 }}
-                                viewport={{ once: false }}
-                              >
-                                <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
-                                <span>{item}</span>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-lg mt-6 font-medium">{step.footer}</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                </motion.div>
+                  step={step}
+                  index={index}
+                  totalSteps={steps.length}
+                  stepsProgress={stepsProgress}
+                  stepStart={stepStart}
+                  stepEnd={stepEnd}
+                />
               );
             })}
           </motion.div>
