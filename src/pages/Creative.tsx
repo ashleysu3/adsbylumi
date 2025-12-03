@@ -15,6 +15,7 @@ import { CreativeUploader } from "@/components/CreativeUploader";
 import { CreativeSidebar } from "@/components/CreativeSidebar";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { GeneratingModal } from "@/components/GeneratingModal";
+import { AdCopyLibrary } from "@/components/AdCopyLibrary";
 
 export default function Creative() {
   const navigate = useNavigate();
@@ -449,6 +450,12 @@ export default function Creative() {
                   <div className="h-full overflow-auto">
                     <div className="p-6">
                       <ProductionChecklist workspace={workspace} onUpdate={handleWorkspaceUpdate} />
+                    </div>
+                  </div>
+                ) : activeSection === 'copy' ? (
+                  <div className="h-full overflow-auto">
+                    <div className="p-6">
+                      <AdCopyLibrary workspace={workspace} onUpdate={handleWorkspaceUpdate} />
                     </div>
                   </div>
                 ) : (

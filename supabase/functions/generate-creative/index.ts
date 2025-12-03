@@ -205,7 +205,7 @@ You MUST return a valid JSON object with this EXACT structure:
     {
       "id": "headline_1",
       "stage": "tofu" | "mofu" | "bofu",
-      "text": "Headline text (<25 chars)",
+      "text": "Headline text (<40 chars)",
       "angle": "curiosity" etc,
       "use_case": "When to use this"
     }
@@ -224,10 +224,55 @@ You MUST return a valid JSON object with this EXACT structure:
   "descriptions": [
     {
       "stage": "tofu" | "mofu" | "bofu",
-      "text": "Description text",
+      "text": "Description text (<30 chars)",
       "angle": "curiosity" etc
     }
   ],
+  "ad_copy_library": {
+    "headlines": [
+      { "id": "h1", "text": "Headline 1 (<40 chars)", "angle": "curiosity", "stage": "tofu" },
+      { "id": "h2", "text": "Headline 2", "angle": "pain", "stage": "tofu" },
+      { "id": "h3", "text": "Headline 3", "angle": "proof", "stage": "mofu" },
+      { "id": "h4", "text": "Headline 4", "angle": "desire", "stage": "bofu" },
+      { "id": "h5", "text": "Headline 5", "angle": "urgency", "stage": "bofu" }
+    ],
+    "primary_copy": {
+      "short": [
+        { "id": "pc_s1", "stage": "tofu", "text": "Short copy variation 1 (~125 chars)", "angle": "curiosity", "length": "short" },
+        { "id": "pc_s2", "stage": "mofu", "text": "Short copy variation 2", "angle": "proof", "length": "short" }
+      ],
+      "medium": [
+        { "id": "pc_m1", "stage": "tofu", "text": "Medium copy variation 1 (~300 chars)", "angle": "pain", "length": "medium" },
+        { "id": "pc_m2", "stage": "mofu", "text": "Medium copy variation 2", "angle": "clarity", "length": "medium" }
+      ],
+      "long": [
+        { "id": "pc_l1", "stage": "bofu", "text": "Long copy variation 1 (500+ chars)", "angle": "desire", "length": "long" }
+      ]
+    },
+    "descriptions": [
+      { "id": "d1", "text": "Description 1 (<30 chars)", "stage": "tofu", "angle": "curiosity" },
+      { "id": "d2", "text": "Description 2", "stage": "mofu", "angle": "proof" },
+      { "id": "d3", "text": "Description 3", "stage": "bofu", "angle": "desire" },
+      { "id": "d4", "text": "Description 4", "stage": "tofu", "angle": "pain" },
+      { "id": "d5", "text": "Description 5", "stage": "bofu", "angle": "urgency" }
+    ],
+    "story_reel_copy": {
+      "super_short_headlines": [
+        { "id": "ssh1", "text": "Very short (<20 chars)", "for_placement": "9:16" },
+        { "id": "ssh2", "text": "Super brief", "for_placement": "9:16" },
+        { "id": "ssh3", "text": "Punchy short", "for_placement": "9:16" }
+      ],
+      "overlay_text": [
+        { "id": "ot1", "lines": ["Line 1", "Line 2"], "style": "bold" },
+        { "id": "ot2", "lines": ["Attention grabber", "Quick benefit"], "style": "minimal" }
+      ],
+      "cta_stickers": [
+        { "id": "cta1", "text": "Tap to learn more" },
+        { "id": "cta2", "text": "Link in bio" },
+        { "id": "cta3", "text": "Swipe up" }
+      ]
+    }
+  },
   "ctas": [
     {
       "stage": "tofu" | "mofu" | "bofu",
@@ -377,7 +422,7 @@ Audience Desires: ${JSON.stringify(audiencePsychology.desires || [])}
 Audience Objections: ${JSON.stringify(audiencePsychology.objections || [])}`;
     }
 
-    userPrompt += `\n\n=== YOUR TASK ===
+userPrompt += `\n\n=== YOUR TASK ===
 
 Generate a COMPLETE full-funnel creative system for this campaign that SELLS THE OFFER.
 
@@ -387,6 +432,17 @@ CRITICAL REQUIREMENTS:
 3. Use the product psychology triggers to craft compelling angles
 4. STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")
 5. Reference the hooks KB and copy_formulas KB for proven frameworks
+
+⚠️ AD COPY LIBRARY REQUIREMENT:
+Generate EXACTLY 5 variations for each copy type in the ad_copy_library:
+- 5 headlines (mix of TOFU, MOFU, BOFU stages, max 40 chars each)
+- 5 short primary copy (~125 chars each)
+- 5 medium primary copy (~300 chars each)  
+- 5 long primary copy (500+ chars each)
+- 5 descriptions (max 30 chars each)
+- 3 super short headlines for 9:16 Stories/Reels (max 20 chars)
+- 2-3 overlay text options with 2 lines each
+- 3 CTA sticker text options
 
 ⚠️ CRITICAL CTA REQUIREMENT:
 This is a "${templateData?.name || strategyData.campaign_type}" campaign.
