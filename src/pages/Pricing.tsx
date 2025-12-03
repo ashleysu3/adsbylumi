@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Check, Sparkles, ArrowRight, Loader2 } from "lucide-react";
+import { Check, Sparkles, ArrowRight, Loader2, X, Building2, GraduationCap, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -125,6 +125,116 @@ export default function Pricing() {
                   Save 2 months
                 </Badge>
               )}
+            </div>
+          </div>
+
+          {/* Cost Comparison Section */}
+          <div className="mb-16">
+            <h2 className="font-display text-2xl md:text-3xl text-center mb-8">
+              The smart alternative to expensive agencies & time-consuming courses
+            </h2>
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* Agency Card */}
+              <Card className="border-border bg-muted/30 opacity-80">
+                <CardHeader className="text-center pb-2">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                    <Building2 className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <CardTitle className="text-xl text-muted-foreground">Hire an Agency</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="text-center mb-4">
+                    <span className="text-2xl font-bold text-muted-foreground line-through">$2,000 - $5,000+</span>
+                    <span className="text-muted-foreground">/mo</span>
+                  </div>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                      <span>+ 10-20% of ad spend fees</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                      <span>6-month contracts typical</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                      <span>You're one of many clients</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                      <span>No control over your strategy</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              {/* Course Card */}
+              <Card className="border-border bg-muted/30 opacity-80">
+                <CardHeader className="text-center pb-2">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                    <GraduationCap className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <CardTitle className="text-xl text-muted-foreground">Learn It Yourself</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="text-center mb-4">
+                    <span className="text-2xl font-bold text-muted-foreground line-through">$500 - $3,000</span>
+                    <span className="text-muted-foreground"> course</span>
+                  </div>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start gap-2">
+                      <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                      <span>40+ hours just to learn basics</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                      <span>10-20 hrs/week to implement</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                      <span>Costly trial & error mistakes</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                      <span>Information often outdated</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              {/* Your Ad Assistant Card */}
+              <Card className="border-primary bg-primary/5 shadow-md">
+                <CardHeader className="text-center pb-2">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <Zap className="w-6 h-6 text-primary" />
+                  </div>
+                  <CardTitle className="text-xl">Your Ad Assistant</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="text-center mb-4">
+                    <span className="text-2xl font-bold text-primary">Starting at $147</span>
+                    <span className="text-muted-foreground">/mo</span>
+                  </div>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span>Launch campaigns in minutes</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span>AI-powered strategy & creative</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span>Psychology-driven approach</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="font-medium">14-day free trial included</span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
             </div>
           </div>
 
