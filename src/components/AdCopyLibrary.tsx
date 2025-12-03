@@ -5,12 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Copy, Check, Type, AlignLeft, MessageSquare, Smartphone, Target, Zap, TrendingUp, Sparkles, Star } from "lucide-react";
+import { Copy, Check, Type, AlignLeft, MessageSquare, Smartphone, Target, Zap, TrendingUp, Sparkles, Star, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AdCopyLibraryProps {
   workspace: any;
+  brand?: any;
   onUpdate: (updates: any) => void;
 }
 
@@ -29,8 +30,9 @@ const stageIcons: Record<string, React.ElementType> = {
 // Max selections per category for Meta Ads Manager
 const MAX_SELECTIONS = 5;
 
-export function AdCopyLibrary({ workspace, onUpdate }: AdCopyLibraryProps) {
+export function AdCopyLibrary({ workspace, brand, onUpdate }: AdCopyLibraryProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const creative = workspace.creative_json || {};
   
   const adCopyLibrary = creative.ad_copy_library || {};
@@ -38,6 +40,56 @@ export function AdCopyLibrary({ workspace, onUpdate }: AdCopyLibraryProps) {
   const primaryCopy = adCopyLibrary.primary_copy || creative.primary_copy || {};
   const descriptions = adCopyLibrary.descriptions || creative.descriptions || [];
   const storyReelCopy = adCopyLibrary.story_reel_copy || {};
+
+  const handleGenerateCopy = async () => {
+    setIsGenerating(true);
+    try {
+      const strategyJson = workspace.strategy_json || {};
+      const audiencePsychology = brand?.audience_psychology || strategyJson.audience_psychology || {};
+      
+      const { data, error } = await supabase.functions.invoke('generate-creative', {
+        body: {
+          strategy: strategyJson,
+          offer: {
+            name: workspace.offer_name || strategyJson.offer_name,
+            description: workspace.offer_description || strategyJson.offer_description,
+            price: workspace.offer_price || strategyJson.offer_price,
+            url: workspace.offer_url || strategyJson.offer_url,
+          },
+          audiencePsychology,
+          brandVoice: brand?.brand_voice || '',
+          regenerateCopyOnly: true,
+        }
+      });
+
+      if (error) throw error;
+
+      // Merge new copy with existing creative, keeping scripts/visuals
+      const updatedCreative = {
+        ...creative,
+        ad_copy_library: data.ad_copy_library || {},
+        headlines: data.headlines || [],
+        primary_copy: data.primary_copy || {},
+        descriptions: data.descriptions || [],
+      };
+
+      await supabase
+        .from('campaign_workspaces')
+        .update({ 
+          creative_json: updatedCreative,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workspace.id);
+
+      onUpdate({ creative_json: updatedCreative });
+      toast.success("Copy variations regenerated!");
+    } catch (error) {
+      console.error('Error generating copy:', error);
+      toast.error("Failed to generate copy. Please try again.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Selection state - load from workspace or initialize
   const savedSelections = workspace.selected_copy || {};
@@ -279,9 +331,22 @@ export function AdCopyLibrary({ workspace, onUpdate }: AdCopyLibraryProps) {
               <Type className="h-6 w-6 text-muted-foreground" />
             </div>
             <CardTitle>No Copy Available</CardTitle>
-            <CardDescription>
-              Generate creative assets first to populate the copy library with headlines, descriptions, and primary copy.
+            <CardDescription className="mb-4">
+              Generate ad copy variations including headlines, descriptions, and primary copy for your campaign.
             </CardDescription>
+            <Button onClick={handleGenerateCopy} disabled={isGenerating}>
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Copy
+                </>
+              )}
+            </Button>
           </CardHeader>
         </Card>
       </div>
@@ -295,11 +360,29 @@ export function AdCopyLibrary({ workspace, onUpdate }: AdCopyLibraryProps) {
           <h2 className="text-2xl font-bold">Copy Library</h2>
           <p className="text-muted-foreground">Select up to 5 variations per category for Meta Ads</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3">
           <Badge variant="outline" className="gap-1">
             <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
             AI Recommended
           </Badge>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleGenerateCopy} 
+            disabled={isGenerating}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Regenerating...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Regenerate Copy
+              </>
+            )}
+          </Button>
         </div>
       </div>
 

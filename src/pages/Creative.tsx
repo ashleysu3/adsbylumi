@@ -455,7 +455,7 @@ export default function Creative() {
                 ) : activeSection === 'copy' ? (
                   <div className="h-full overflow-auto">
                     <div className="p-6">
-                      <AdCopyLibrary workspace={workspace} onUpdate={handleWorkspaceUpdate} />
+                      <AdCopyLibrary workspace={workspace} brand={brand} onUpdate={handleWorkspaceUpdate} />
                     </div>
                   </div>
                 ) : (
