@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, productPsychology, audiencePsychology } = await req.json();
+    const { brandName, strategyData, productPsychology, audiencePsychology, offerData } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -255,62 +255,87 @@ Every creative must include:
 
 Generate a complete, production-ready creative system that covers the full funnel.`;
 
+    // Extract rich offer data
+    const offer = offerData || {};
+    const offerPsychology = offer.product_psychology || productPsychology || {};
+    const messagingGuidelines = offer.messaging_guidelines || {};
+
     let userPrompt = `Brand: ${brandName}
 Campaign Type: ${strategyData.campaign_type}
-Goal: ${strategyData.name}
+Campaign Goal: ${strategyData.name}
 
-Offer Details:
-${strategyData.offer_name ? `Name: ${strategyData.offer_name}` : ''}
-${strategyData.offer_url ? `URL: ${strategyData.offer_url}` : ''}
-${strategyData.offer_price ? `Price: ${strategyData.offer_price}` : ''}
-${strategyData.offer_description ? `Description: ${strategyData.offer_description}` : ''}
+=== OFFER DETAILS (CRITICAL - ALL CREATIVE MUST SELL THIS OFFER) ===
+Offer Name: ${offer.name || strategyData.offer_name || 'Not specified'}
+Offer URL: ${offer.url || strategyData.offer_url || 'Not specified'}
+Price Point: ${offer.price_point || strategyData.offer_price || 'Not specified'}
 
-Messaging Framework:
+OFFER DESCRIPTION (use this to understand what we're selling):
+${offer.description || strategyData.offer_description || 'Not specified'}
+
+TARGET OUTCOME/TRANSFORMATION (the result the customer wants):
+${offer.target_outcome || 'Not specified'}
+
+=== OFFER-SPECIFIC MESSAGING GUIDELINES ===
+${messagingGuidelines.core_message ? `Core Message: ${messagingGuidelines.core_message}` : ''}
+${messagingGuidelines.key_benefits?.length ? `Key Benefits to Highlight:\n${messagingGuidelines.key_benefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
+${messagingGuidelines.tone_notes ? `Tone Notes: ${messagingGuidelines.tone_notes}` : ''}
+${messagingGuidelines.dont_say?.length ? `\n⚠️ NEVER SAY (compliance/brand rules):\n${messagingGuidelines.dont_say.map((d: string) => `- "${d}"`).join('\n')}` : ''}
+${messagingGuidelines.always_include?.length ? `\n✅ ALWAYS INCLUDE in messaging:\n${messagingGuidelines.always_include.map((a: string) => `- ${a}`).join('\n')}` : ''}
+${messagingGuidelines.competitor_differentiation ? `\nKey Differentiation from Competitors: ${messagingGuidelines.competitor_differentiation}` : ''}
+${messagingGuidelines.approved_examples?.length ? `\n📝 Approved Copy Examples:\n${messagingGuidelines.approved_examples.map((ex: any) => `- [${ex.type}] "${ex.text}"`).join('\n')}` : ''}
+
+=== PRODUCT PSYCHOLOGY (use these triggers in creative) ===
+${offerPsychology.positioning ? `Positioning Statement: ${offerPsychology.positioning}` : ''}
+${offerPsychology.pain_points?.length ? `\nPain Points to Address:\n${offerPsychology.pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
+${offerPsychology.product_pain_points?.length ? `\nProduct-Specific Pain Points:\n${offerPsychology.product_pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
+${offerPsychology.desires?.length ? `\nDesires to Tap Into:\n${offerPsychology.desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
+${offerPsychology.product_desires?.length ? `\nProduct-Specific Desires:\n${offerPsychology.product_desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
+${offerPsychology.objections?.length ? `\nObjections to Overcome:\n${offerPsychology.objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
+${offerPsychology.product_objections?.length ? `\nProduct-Specific Objections:\n${offerPsychology.product_objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
+${offerPsychology.buying_triggers?.length ? `\nBuying Triggers:\n${offerPsychology.buying_triggers.map((t: string) => `- ${t}`).join('\n')}` : ''}
+
+Strategy Messaging Framework:
 ${JSON.stringify(strategyData.messaging_framework, null, 2)}
 
 Strategy Audience Psychology:
 ${JSON.stringify(strategyData.audience_psychology, null, 2)}`;
 
-    // Add deep psychology insights if available
-    if (audiencePsychology || productPsychology) {
-      userPrompt += `\n\n=== DEEP PSYCHOLOGY INSIGHTS ===\n`;
-      
-      if (audiencePsychology) {
-        userPrompt += `\nAUDIENCE PROFILE:
+    // Add brand-level audience psychology if available
+    if (audiencePsychology) {
+      userPrompt += `\n\n=== BRAND AUDIENCE PROFILE ===
 Demographics: ${audiencePsychology.demographics || 'Not specified'}
 Psychographics: ${audiencePsychology.psychographics || 'Not specified'}
-Pain Points: ${JSON.stringify(audiencePsychology.pain_points || [])}
-Desires: ${JSON.stringify(audiencePsychology.desires || [])}
-Objections: ${JSON.stringify(audiencePsychology.objections || [])}`;
-      }
-      
-      if (productPsychology) {
-        userPrompt += `\n\nPRODUCT POSITIONING:
-${productPsychology.positioning || 'Not specified'}
-
-Buying Triggers: ${productPsychology.buying_triggers || 'Not specified'}
-Product Desires: ${JSON.stringify(productPsychology.product_desires || [])}
-Product Objections: ${JSON.stringify(productPsychology.product_objections || [])}
-Product Pain Points: ${JSON.stringify(productPsychology.product_pain_points || [])}`;
-      }
+Audience Pain Points: ${JSON.stringify(audiencePsychology.pain_points || [])}
+Audience Desires: ${JSON.stringify(audiencePsychology.desires || [])}
+Audience Objections: ${JSON.stringify(audiencePsychology.objections || [])}`;
     }
 
     userPrompt += `\n\n=== YOUR TASK ===
 
-Generate a COMPLETE full-funnel creative system for this campaign:
-1. Create 3-5 TOFU concepts (awareness/interest)
-2. Create 2-4 MOFU concepts (consideration/trust)
-3. Create 2-3 BOFU concepts (conversion/action)
+Generate a COMPLETE full-funnel creative system for this campaign that SELLS THE OFFER.
+
+CRITICAL REQUIREMENTS:
+1. Every concept MUST directly connect to the offer's value proposition
+2. Every script/copy MUST address the target outcome the customer wants
+3. Use the product psychology triggers to craft compelling angles
+4. STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")
+5. Reference the hooks KB and copy_formulas KB for proven frameworks
+
+CREATE:
+1. 3-5 TOFU concepts (awareness/interest) - focus on pain points and curiosity
+2. 2-4 MOFU concepts (consideration/trust) - focus on proof and transformation
+3. 2-3 BOFU concepts (conversion/action) - focus on the offer and urgency
 
 Each creative concept must:
-- Reference specific psychology triggers
+- Directly relate to selling the specific offer
+- Reference specific psychology triggers from the offer's product_psychology
 - Include complete production instructions
-- Explain why it works for this audience
+- Explain why it works for this audience and offer
 - Be ready to film/produce immediately
 
-Use the knowledge base guidelines, adapt to the niche, and create creative that will perform on Meta.
-
 Return ONLY the JSON object with the complete creative system.`;
+
+    console.log('Generating creative with offer data:', offer.name || strategyData.offer_name);
 
     console.log('Generating full-funnel creative with all knowledge bases...');
 

@@ -146,12 +146,36 @@ export default function Creative() {
 
     setGenerating(true);
     try {
+      // Fetch full offer data from offers table
+      let offerData = null;
+      if (workspace.offer_name && brand?.id) {
+        const { data: offer } = await supabase
+          .from('offers')
+          .select('*')
+          .eq('brand_id', brand.id)
+          .eq('name', workspace.offer_name)
+          .maybeSingle();
+        
+        if (offer) {
+          offerData = {
+            name: offer.name,
+            description: offer.description,
+            price_point: offer.price_point,
+            url: offer.url,
+            target_outcome: offer.target_outcome,
+            product_psychology: offer.product_psychology,
+            messaging_guidelines: offer.messaging_guidelines
+          };
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-creative', {
         body: {
           brandName: workspace.brands?.name || workspace.name,
           strategyData: workspace.strategy_json,
           creativeType: 'complete',
-          audiencePsychology: workspace.brands?.audience_psychology
+          audiencePsychology: workspace.brands?.audience_psychology,
+          offerData: offerData
         }
       });
 
