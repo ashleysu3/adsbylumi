@@ -1,10 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ArrowRight, Target, BarChart3, Palette, CheckCircle2 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { ArrowRight, Target, BarChart3, Palette, CheckCircle2, Check, X, Building2, GraduationCap, Zap, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, useScroll, useTransform } from "framer-motion";
+import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { StaggerChildren, StaggerItem } from "@/components/animations/StaggerChildren";
 import { ScaleOnScroll } from "@/components/animations/ScaleOnScroll";
@@ -12,6 +16,143 @@ import { FloatingElement } from "@/components/animations/FloatingElement";
 import { MagneticButton, GradientText } from "@/components/animations/SmoothScroll";
 import { ParallaxSection } from "@/components/animations/ParallaxSection";
 import { CursorGlow } from "@/components/animations/CursorTrail";
+
+// Pricing Cards Component
+const PricingCards = ({ navigate }: { navigate: (path: string) => void }) => {
+  const [isAnnual, setIsAnnual] = useState(false);
+
+  const tiers = [
+    {
+      key: "solo" as const,
+      name: "Solo",
+      description: "Perfect for solo coaches and course creators",
+      monthlyPrice: 147,
+      annualPrice: 1470,
+      popular: false,
+      features: SUBSCRIPTION_TIERS.solo.features,
+      cta: "Get Started",
+    },
+    {
+      key: "creator" as const,
+      name: "Creator",
+      description: "For growing creators and service providers",
+      monthlyPrice: 299,
+      annualPrice: 2990,
+      popular: true,
+      features: SUBSCRIPTION_TIERS.creator.features,
+      cta: "Get Started",
+    },
+    {
+      key: "agency" as const,
+      name: "Agency",
+      description: "For agencies and white-label solutions",
+      monthlyPrice: null,
+      annualPrice: null,
+      popular: false,
+      features: SUBSCRIPTION_TIERS.agency.features,
+      cta: "Contact Sales",
+    },
+  ];
+
+  return (
+    <ScrollReveal delay={0.2}>
+      {/* Billing Toggle */}
+      <div className="flex items-center justify-center gap-4 mb-8">
+        <Label htmlFor="billing-toggle-main" className={!isAnnual ? "font-medium" : "text-muted-foreground"}>
+          Monthly
+        </Label>
+        <Switch
+          id="billing-toggle-main"
+          checked={isAnnual}
+          onCheckedChange={setIsAnnual}
+        />
+        <Label htmlFor="billing-toggle-main" className={isAnnual ? "font-medium" : "text-muted-foreground"}>
+          Annual
+        </Label>
+        {isAnnual && (
+          <Badge variant="secondary" className="bg-primary/10 text-primary">
+            Save 2 months
+          </Badge>
+        )}
+      </div>
+
+      {/* Pricing Cards */}
+      <div className="grid md:grid-cols-3 gap-8">
+        {tiers.map((tier) => (
+          <Card
+            key={tier.key}
+            className={`relative flex flex-col ${
+              tier.popular
+                ? "border-primary shadow-lg scale-105"
+                : "border-border"
+            }`}
+          >
+            {tier.popular && (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <Badge className="bg-primary text-primary-foreground px-4 py-1">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Most Popular
+                </Badge>
+              </div>
+            )}
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-2xl">{tier.name}</CardTitle>
+              <CardDescription>{tier.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col">
+              <div className="text-center mb-6">
+                {tier.monthlyPrice ? (
+                  <>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="text-4xl font-bold">
+                        ${isAnnual ? Math.round(tier.annualPrice! / 12) : tier.monthlyPrice}
+                      </span>
+                      <span className="text-muted-foreground">/mo</span>
+                    </div>
+                    {isAnnual && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        ${tier.annualPrice}/year billed annually
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-2xl font-bold text-muted-foreground">
+                    Custom Pricing
+                  </div>
+                )}
+              </div>
+
+              <ul className="space-y-3 mb-8 flex-1">
+                {tier.features.map((feature, i) => (
+                  <li key={i} className="flex items-start gap-2">
+                    <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <span className="text-sm">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                className="w-full gap-2"
+                variant={tier.popular ? "default" : "outline"}
+                size="lg"
+                onClick={() => {
+                  if (tier.key === "agency") {
+                    window.location.href = "mailto:hello@afterorganic.com?subject=Agency Plan Inquiry";
+                  } else {
+                    navigate("/auth");
+                  }
+                }}
+              >
+                {tier.cta}
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </ScrollReveal>
+  );
+};
 
 const Index = () => {
   const navigate = useNavigate();
@@ -371,6 +512,146 @@ const Index = () => {
                 </CardContent>
               </Card>
             </ScaleOnScroll>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="py-16 md:py-24 px-4 bg-secondary/30">
+        <div className="container mx-auto max-w-6xl">
+          <ScrollReveal>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Simple, transparent pricing
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Choose the plan that fits your business. Upgrade or downgrade anytime.
+              </p>
+            </div>
+          </ScrollReveal>
+
+          {/* Cost Comparison */}
+          <ScrollReveal delay={0.1}>
+            <div className="mb-16">
+              <h3 className="text-2xl md:text-3xl font-bold text-center mb-8">
+                The smart alternative to expensive agencies & time-consuming courses
+              </h3>
+              <div className="grid md:grid-cols-3 gap-6">
+                {/* Agency Card */}
+                <Card className="border-border bg-muted/30 opacity-80">
+                  <CardHeader className="text-center pb-2">
+                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                      <Building2 className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <CardTitle className="text-xl text-muted-foreground">Hire an Agency</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-center mb-4">
+                      <span className="text-2xl font-bold text-muted-foreground line-through">$2,000 - $5,000+</span>
+                      <span className="text-muted-foreground">/mo</span>
+                    </div>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      <li className="flex items-start gap-2">
+                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                        <span>+ 10-20% of ad spend fees</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                        <span>6-month contracts typical</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                        <span>You're one of many clients</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                        <span>No control over your strategy</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Course Card */}
+                <Card className="border-border bg-muted/30 opacity-80">
+                  <CardHeader className="text-center pb-2">
+                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                      <GraduationCap className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <CardTitle className="text-xl text-muted-foreground">Learn It Yourself</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-center mb-4">
+                      <span className="text-2xl font-bold text-muted-foreground line-through">$500 - $3,000</span>
+                      <span className="text-muted-foreground"> course</span>
+                    </div>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      <li className="flex items-start gap-2">
+                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                        <span>40+ hours just to learn basics</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                        <span>10-20 hrs/week to implement</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                        <span>Costly trial & error mistakes</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                        <span>Information often outdated</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Your Ad Assistant Card */}
+                <Card className="border-primary bg-primary/5 shadow-md">
+                  <CardHeader className="text-center pb-2">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                      <Zap className="w-6 h-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-xl">Your Ad Assistant</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="text-center mb-4">
+                      <span className="text-2xl font-bold text-primary">Starting at $147</span>
+                      <span className="text-muted-foreground">/mo</span>
+                    </div>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                        <span>Launch campaigns in minutes</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                        <span>AI-powered strategy & creative</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                        <span>Psychology-driven approach</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                        <span className="font-medium">14-day free trial included</span>
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Pricing Cards */}
+          <PricingCards navigate={navigate} />
+
+          {/* Trial Info */}
+          <ScrollReveal delay={0.3}>
+            <div className="mt-12 text-center">
+              <p className="text-muted-foreground">
+                All plans include a 14-day free trial. Credit card required, but you won't be charged until your trial ends.
+              </p>
+            </div>
           </ScrollReveal>
         </div>
       </section>
