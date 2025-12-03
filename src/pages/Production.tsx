@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
-import { LumiChat } from "@/components/LumiChat";
 
 export default function Production() {
   const navigate = useNavigate();
@@ -269,8 +268,6 @@ export default function Production() {
           />
         )}
       </div>
-      
-      <LumiChat context="production" workspace={workspace} />
     </DashboardLayout>
   );
 }

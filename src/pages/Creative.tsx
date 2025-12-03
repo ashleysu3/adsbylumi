@@ -16,7 +16,6 @@ import { CreativeSidebar } from "@/components/CreativeSidebar";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { GeneratingModal } from "@/components/GeneratingModal";
 import { AdCopyLibrary } from "@/components/AdCopyLibrary";
-import { LumiChat } from "@/components/LumiChat";
 import { SavedConcepts } from "@/components/SavedConcepts";
 
 export default function Creative() {
@@ -501,11 +500,6 @@ export default function Creative() {
           "Finalizing production notes..."
         ]}
       />
-
-      {/* Lumi Chat */}
-      {workspace && (
-        <LumiChat context="creative" workspace={workspace} brand={brand} />
-      )}
     </DashboardLayout>
   );
 }

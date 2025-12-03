@@ -1,13 +1,15 @@
 import { cn } from "@/lib/utils";
 
 interface LumiCharacterProps {
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   state?: "idle" | "talking" | "thinking";
+  glow?: boolean;
   className?: string;
 }
 
-export function LumiCharacter({ size = "md", state = "idle", className }: LumiCharacterProps) {
+export function LumiCharacter({ size = "md", state = "idle", glow = false, className }: LumiCharacterProps) {
   const sizeClasses = {
+    xs: "w-5 h-5",
     sm: "w-8 h-8",
     md: "w-12 h-12",
     lg: "w-16 h-16",
@@ -21,11 +23,15 @@ export function LumiCharacter({ size = "md", state = "idle", className }: LumiCh
 
   return (
     <div className={cn("relative", sizeClasses[size], animationClass[state], className)}>
+      {/* Glow effect behind the bulb */}
+      {glow && (
+        <div className="absolute inset-0 rounded-full bg-amber-400/40 blur-md animate-pulse" />
+      )}
       <svg
         viewBox="0 0 64 64"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full drop-shadow-lg"
+        className="w-full h-full drop-shadow-lg relative z-10"
       >
         {/* Glow effect */}
         <defs>
@@ -42,10 +48,17 @@ export function LumiCharacter({ size = "md", state = "idle", className }: LumiCh
             <stop offset="0%" stopColor="#9CA3AF" />
             <stop offset="100%" stopColor="#6B7280" />
           </linearGradient>
+          <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
         </defs>
 
         {/* Outer glow */}
-        <circle cx="32" cy="26" r="24" fill="url(#bulbGlow)" className="animate-pulse" />
+        {glow && <circle cx="32" cy="26" r="24" fill="url(#bulbGlow)" className="animate-pulse" />}
 
         {/* Main bulb body */}
         <path
@@ -53,6 +66,7 @@ export function LumiCharacter({ size = "md", state = "idle", className }: LumiCh
           fill="url(#bulbGradient)"
           stroke="#D97706"
           strokeWidth="1.5"
+          filter={glow ? "url(#glowFilter)" : undefined}
         />
 
         {/* Light reflection */}

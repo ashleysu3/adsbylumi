@@ -12,7 +12,6 @@ import { User, Bell, Shield, CreditCard, LogOut, Loader2, ExternalLink, Crown } 
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
-import { LumiChat } from '@/components/LumiChat';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -358,8 +357,6 @@ export default function Settings() {
           </TabsContent>
         </Tabs>
       </div>
-      
-      <LumiChat context="settings" />
     </DashboardLayout>
   );
 }

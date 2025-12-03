@@ -36,7 +36,6 @@ import {
 import { CampaignStatusCard } from '@/components/CampaignStatusCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import { CampaignFlowBreadcrumb } from '@/components/CampaignFlowBreadcrumb';
-import { LumiChat } from '@/components/LumiChat';
 import { 
   getKPIConfigForObjective, 
   getKPIPriority, 
@@ -1036,8 +1035,6 @@ export default function Data() {
           </>
         )}
       </div>
-      
-      <LumiChat context="data" />
     </DashboardLayout>
   );
 }

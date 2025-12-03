@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/select";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { GeneratingModal } from "@/components/GeneratingModal";
-import { LumiChat } from "@/components/LumiChat";
 
 const iconMap: Record<string, any> = {
   Video,
@@ -383,8 +382,6 @@ export default function Planning() {
           ]}
         />
       </div>
-      
-      <LumiChat context="planning" brand={brand} />
     </DashboardLayout>
   );
 }
