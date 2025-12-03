@@ -16,6 +16,8 @@ import { CreativeSidebar } from "@/components/CreativeSidebar";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { GeneratingModal } from "@/components/GeneratingModal";
 import { AdCopyLibrary } from "@/components/AdCopyLibrary";
+import { LumiChat } from "@/components/LumiChat";
+import { SavedConcepts } from "@/components/SavedConcepts";
 
 export default function Creative() {
   const navigate = useNavigate();
@@ -458,6 +460,18 @@ export default function Creative() {
                       <AdCopyLibrary workspace={workspace} brand={brand} onUpdate={handleWorkspaceUpdate} />
                     </div>
                   </div>
+                ) : activeSection === 'saved-concepts' ? (
+                  <div className="h-full overflow-auto">
+                    <div className="p-6">
+                      <SavedConcepts workspace={workspace} type="concepts" />
+                    </div>
+                  </div>
+                ) : activeSection === 'saved-copy' ? (
+                  <div className="h-full overflow-auto">
+                    <div className="p-6">
+                      <SavedConcepts workspace={workspace} type="copy" />
+                    </div>
+                  </div>
                 ) : (
                   <CreativeAssets
                     workspace={workspace}
@@ -487,6 +501,11 @@ export default function Creative() {
           "Finalizing production notes..."
         ]}
       />
+
+      {/* Lumi Chat */}
+      {workspace && (
+        <LumiChat context="creative" workspace={workspace} brand={brand} />
+      )}
     </DashboardLayout>
   );
 }
