@@ -23,14 +23,15 @@ const Sales = () => {
   
   const { scrollYProgress: stepsProgress } = useScroll({
     target: stepsRef,
-    offset: ["start start", "end end"],
+    offset: ["start start", "end start"],
   });
   
   const heroOpacity = useTransform(heroProgress, [0, 0.5], [1, 0]);
   const heroScale = useTransform(heroProgress, [0, 0.5], [1, 0.95]);
   const heroY = useTransform(heroProgress, [0, 0.5], [0, 50]);
   
-  const stepsX = useTransform(stepsProgress, [0, 1], ["0%", "-400%"]);
+  // Dynamic calculation: 5 steps means we need to move -400% (4 * 100%)
+  const stepsX = useTransform(stepsProgress, [0, 1], ["0%", `-${(5 - 1) * 100}%`]);
   const progressWidth = useTransform(stepsProgress, [0, 1], ["0%", "100%"]);
 
   const steps = [
@@ -308,9 +309,9 @@ const Sales = () => {
       <section 
         ref={stepsRef} 
         className="relative bg-muted/30"
-        style={{ height: "500vh" }}
+        style={{ height: "300vh" }}
       >
-        <div className="sticky top-0 h-screen overflow-hidden">
+        <div className="sticky top-0 h-screen overflow-hidden flex flex-col">
           {/* Progress bar */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-border z-20">
             <motion.div 
@@ -345,7 +346,7 @@ const Sales = () => {
 
           {/* Horizontal scrolling container */}
           <motion.div 
-            className="flex h-full pt-32 pb-16"
+            className="flex flex-1 items-center"
             style={{ x: stepsX }}
           >
             {steps.map((step, index) => {
