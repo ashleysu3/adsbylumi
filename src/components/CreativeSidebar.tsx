@@ -13,7 +13,8 @@ import {
   Zap,
   TrendingUp,
   Heart,
-  Clipboard
+  Clipboard,
+  Type
 } from "lucide-react";
 
 interface CreativeSidebarProps {
@@ -61,6 +62,16 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
   const checklistCount = workspace.production_checklist?.length || 0;
   const checklistCompleted = workspace.production_checklist?.filter((i: any) => i.completed).length || 0;
 
+  // Count copy items
+  const adCopyLibrary = creative.ad_copy_library || {};
+  const headlinesCount = (adCopyLibrary.headlines || creative.headlines || []).length;
+  const primaryCopyObj = adCopyLibrary.primary_copy || creative.primary_copy || {};
+  const primaryCopyCount = Array.isArray(primaryCopyObj) 
+    ? primaryCopyObj.length 
+    : (primaryCopyObj.short?.length || 0) + (primaryCopyObj.medium?.length || 0) + (primaryCopyObj.long?.length || 0);
+  const descriptionsCount = (adCopyLibrary.descriptions || creative.descriptions || []).length;
+  const totalCopyCount = headlinesCount + primaryCopyCount + descriptionsCount;
+
   const sections = [
     { 
       id: "funnel", 
@@ -79,6 +90,13 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
         { id: "broll", label: "B-Roll", icon: Video, count: brollCount },
         { id: "carousels", label: "Carousels", icon: Layers, count: carouselsCount },
         { id: "static", label: "Static Graphics", icon: ImageIcon, count: staticsCount },
+      ]
+    },
+    {
+      id: "copy",
+      label: "Ad Copy",
+      items: [
+        { id: "copy", label: "Copy Library", icon: Type, count: totalCopyCount, color: "text-amber-600 dark:text-amber-400" },
       ]
     },
     {
