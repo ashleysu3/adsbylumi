@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { GeneratingModal } from "@/components/GeneratingModal";
 
 interface CreativeAssetsProps {
   workspace: any;
@@ -822,6 +823,19 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Generating Modal for expand-creative operations */}
+    <GeneratingModal 
+      isOpen={isGenerating} 
+      title="Generating Variations"
+      steps={[
+        "Analyzing concept structure...",
+        "Applying your preferences...",
+        "Creating new variations...",
+        "Optimizing for funnel stage...",
+        "Finalizing concepts..."
+      ]}
+    />
     </>
   );
 }
