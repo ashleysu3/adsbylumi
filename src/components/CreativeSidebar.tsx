@@ -14,7 +14,9 @@ import {
   TrendingUp,
   Heart,
   Clipboard,
-  Type
+  Type,
+  Bookmark,
+  Star
 } from "lucide-react";
 
 interface CreativeSidebarProps {
@@ -72,7 +74,22 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
   const descriptionsCount = (adCopyLibrary.descriptions || creative.descriptions || []).length;
   const totalCopyCount = headlinesCount + primaryCopyCount + descriptionsCount;
 
+  // Count saved concepts (selected copy)
+  const selectedCopy = workspace.selected_copy || {};
+  const savedHeadlines = selectedCopy.headlines?.length || 0;
+  const savedPrimary = selectedCopy.primary_copy?.length || 0;
+  const savedDescriptions = selectedCopy.descriptions?.length || 0;
+  const totalSavedCopy = savedHeadlines + savedPrimary + savedDescriptions;
+
   const sections = [
+    {
+      id: "saved",
+      label: "Saved",
+      items: [
+        { id: "saved-concepts", label: "Saved Concepts", icon: Bookmark, count: lovedConcepts.length, color: "text-pink-600 dark:text-pink-400" },
+        { id: "saved-copy", label: "Saved Copy", icon: Star, count: totalSavedCopy, color: "text-amber-600 dark:text-amber-400" },
+      ]
+    },
     { 
       id: "funnel", 
       label: "Funnel Stages", 

@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.check-generation-readiness]
 verify_jwt = true
+
+[functions.lumi-chat]
+verify_jwt = true
