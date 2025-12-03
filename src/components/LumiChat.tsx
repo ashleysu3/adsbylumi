@@ -1,16 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { MessageCircle, Send, Sparkles, Loader2, X, Lightbulb } from "lucide-react";
+import { Send, Loader2, X, Lightbulb } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { LumiCharacter } from "./LumiCharacter";
 
 interface LumiChatProps {
-  context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard';
+  context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production';
   workspace?: any;
   brand?: any;
 }
@@ -51,6 +50,24 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
     { label: "Best practices", message: "What are the top Meta Ads best practices I should follow?" },
     { label: "Creative tips", message: "Give me some quick tips to improve my ad creative." },
   ],
+  settings: [
+    { label: "Account setup", message: "What do I need to set up to get started with Meta Ads?" },
+    { label: "Billing questions", message: "Help me understand the billing and subscription options." },
+    { label: "Best practices", message: "What are some best practices for managing my ad account?" },
+    { label: "Getting started", message: "I'm new here. Where should I start?" },
+  ],
+  campaigns: [
+    { label: "Campaign review", message: "Help me review my active campaigns and see what's working." },
+    { label: "Create new campaign", message: "I want to create a new campaign. Where do I start?" },
+    { label: "Archive advice", message: "How do I know when to archive or pause a campaign?" },
+    { label: "Campaign strategy", message: "How should I organize my campaigns for best results?" },
+  ],
+  production: [
+    { label: "Recording tips", message: "Give me tips for recording my ad videos at home." },
+    { label: "Equipment advice", message: "What basic equipment do I need for good video ads?" },
+    { label: "Editing help", message: "How should I edit my videos for maximum engagement?" },
+    { label: "B-roll ideas", message: "What kind of b-roll footage should I capture?" },
+  ],
 };
 
 export function LumiChat({ context, workspace, brand }: LumiChatProps) {
@@ -76,7 +93,6 @@ export function LumiChat({ context, workspace, brand }: LumiChatProps) {
     setIsLoading(true);
 
     try {
-      // Build context for the AI
       const contextInfo = {
         context,
         workspace: workspace ? {
@@ -125,10 +141,10 @@ export function LumiChat({ context, workspace, brand }: LumiChatProps) {
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
         <Button
-          className="fixed bottom-6 right-6 h-14 px-5 rounded-full shadow-lg bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 gap-2 z-50"
+          className="fixed bottom-6 right-6 h-14 px-5 rounded-full shadow-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-amber-950 gap-2 z-50 group"
           size="lg"
         >
-          <Sparkles className="h-5 w-5" />
+          <LumiCharacter size="sm" state="idle" className="group-hover:animate-none" />
           <span className="font-medium">Talk to Lumi</span>
         </Button>
       </DrawerTrigger>
@@ -136,9 +152,7 @@ export function LumiChat({ context, workspace, brand }: LumiChatProps) {
         <DrawerHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary-foreground" />
-              </div>
+              <LumiCharacter size="md" state={isLoading ? "thinking" : "idle"} />
               <div>
                 <DrawerTitle className="text-lg">Lumi</DrawerTitle>
                 <p className="text-xs text-muted-foreground">Your Ad Assistant</p>
@@ -151,21 +165,17 @@ export function LumiChat({ context, workspace, brand }: LumiChatProps) {
         </DrawerHeader>
 
         <div className="flex flex-col h-[calc(85vh-120px)]">
-          {/* Messages Area */}
           <ScrollArea className="flex-1 p-4" ref={scrollRef}>
             {messages.length === 0 ? (
               <div className="space-y-6">
                 <div className="text-center py-8">
-                  <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                    <MessageCircle className="h-8 w-8 text-primary" />
-                  </div>
+                  <LumiCharacter size="lg" state="idle" className="mx-auto mb-4" />
                   <h3 className="font-semibold mb-2">Hey! I'm Lumi 👋</h3>
                   <p className="text-sm text-muted-foreground max-w-md mx-auto">
                     I'm here to help you create better ads. Ask me anything about your creative, strategy, or campaign performance.
                   </p>
                 </div>
 
-                {/* Conversation Starters */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
                     <Lightbulb className="h-4 w-4" />
@@ -192,6 +202,9 @@ export function LumiChat({ context, workspace, brand }: LumiChatProps) {
                     key={idx}
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
+                    {message.role === 'assistant' && (
+                      <LumiCharacter size="sm" state="idle" className="mr-2 flex-shrink-0 mt-1" />
+                    )}
                     <div
                       className={`max-w-[80%] rounded-2xl px-4 py-3 ${
                         message.role === 'user'
@@ -205,6 +218,7 @@ export function LumiChat({ context, workspace, brand }: LumiChatProps) {
                 ))}
                 {isLoading && (
                   <div className="flex justify-start">
+                    <LumiCharacter size="sm" state="thinking" className="mr-2" />
                     <div className="bg-muted rounded-2xl px-4 py-3">
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
@@ -214,7 +228,6 @@ export function LumiChat({ context, workspace, brand }: LumiChatProps) {
             )}
           </ScrollArea>
 
-          {/* Input Area */}
           <div className="border-t p-4">
             <form
               onSubmit={(e) => {

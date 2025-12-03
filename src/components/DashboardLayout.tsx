@@ -4,14 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, Loader2, ArrowRight, LayoutTemplate } from "lucide-react";
+import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, LayoutTemplate } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
+
 interface DashboardLayoutProps {
   children: ReactNode;
 }
+
 export default function DashboardLayout({
   children
 }: DashboardLayoutProps) {
@@ -20,10 +21,6 @@ export default function DashboardLayout({
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [suggestionOpen, setSuggestionOpen] = useState(false);
-  const [suggestion, setSuggestion] = useState("");
-  const [suggestionNextAction, setSuggestionNextAction] = useState<any>(null);
-  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [walkthroughSteps, setWalkthroughSteps] = useState<any[]>([]);
   const [tourActive, setTourActive] = useState(false);
@@ -32,6 +29,7 @@ export default function DashboardLayout({
     title: string;
     description: string;
   } | null>(null);
+
   useEffect(() => {
     supabase.auth.getUser().then(({
       data: {
@@ -42,69 +40,46 @@ export default function DashboardLayout({
         navigate("/auth");
       } else {
         setUser(user);
-        // Fetch profile
         supabase.from("profiles").select("*").eq("id", user.id).single().then(({
           data
         }) => setProfile(data));
 
-        // Check if user is admin
         supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single().then(({
           data
         }) => setIsAdmin(!!data));
       }
     });
   }, [navigate]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     toast.success("Signed out successfully");
     navigate("/auth");
   };
-  const handleShowWalkthrough = () => {
+
+  const handleShowWalkthrough = async () => {
     localStorage.removeItem('has-seen-walkthrough');
-    handleGetSuggestion();
-  };
-  const handleGetSuggestion = async () => {
-    setLoadingSuggestion(true);
+    
     try {
-      const {
-        data: {
-          session
-        }
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Please log in to continue");
         navigate("/auth");
         return;
       }
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('suggest-next-action', {
+      
+      const { data, error } = await supabase.functions.invoke('suggest-next-action', {
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
       });
-      if (error) {
-        console.error('Error getting suggestion:', error);
-
-        // Provide specific error messages
-        if (error.message?.includes('authenticated')) {
-          toast.error("Authentication error. Please try logging out and back in.");
-        } else {
-          toast.error("Failed to get suggestion. Please try again.");
-        }
+      
+      if (error || data.error) {
+        console.error('Error getting walkthrough:', error || data.error);
         return;
       }
-      if (data.error) {
-        console.error('Error from function:', data.error);
-        toast.error(data.error);
-        return;
-      }
-
-      // Check if this is the first time clicking
-      const hasSeenWalkthrough = localStorage.getItem('has-seen-walkthrough');
-      if (!hasSeenWalkthrough && data.context) {
-        // Build walkthrough steps from context
+      
+      if (data.context) {
         const steps = [{
           id: 'profile',
           title: 'Complete Your Brand Profile',
@@ -156,28 +131,19 @@ export default function DashboardLayout({
         setWalkthroughSteps(steps);
         setWalkthroughOpen(true);
         localStorage.setItem('has-seen-walkthrough', 'true');
-      } else {
-        // Show regular suggestion dialog
-        setSuggestion(data.suggestion);
-        setSuggestionNextAction(data.nextAction || null);
-        setSuggestionOpen(true);
       }
     } catch (error: any) {
-      console.error('Error getting suggestion:', error);
-      toast.error(error.message || 'Failed to get suggestion');
-    } finally {
-      setLoadingSuggestion(false);
+      console.error('Error showing walkthrough:', error);
     }
   };
+
   const handleWalkthroughAction = (route?: string, targetSelector?: string, tourTitle?: string, tourDescription?: string) => {
     setWalkthroughOpen(false);
     if (route) {
-      // Navigate first
       if (route !== location.pathname) {
         navigate(route);
       }
 
-      // Show guided tour if target element specified
       if (targetSelector && tourTitle && tourDescription) {
         setTimeout(() => {
           setTourConfig({
@@ -190,35 +156,7 @@ export default function DashboardLayout({
       }
     }
   };
-  const handleNavigateToAction = () => {
-    if (!suggestionNextAction) return;
-    setSuggestionOpen(false);
-    const {
-      route,
-      targetSelector
-    } = suggestionNextAction;
 
-    // Navigate if on different route
-    if (route !== location.pathname) {
-      navigate(route);
-    }
-
-    // If there's a target element, scroll to it and highlight
-    if (targetSelector) {
-      setTimeout(() => {
-        const element = document.querySelector(targetSelector);
-        if (element) {
-          element.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
-          });
-          // Add pulse animation
-          element.classList.add('animate-pulse');
-          setTimeout(() => element.classList.remove('animate-pulse'), 2000);
-        }
-      }, route !== location.pathname ? 500 : 100);
-    }
-  };
   const tabItems = [{
     path: "/planning",
     icon: Lightbulb,
@@ -244,9 +182,11 @@ export default function DashboardLayout({
     lightColor: "tab-cream-light",
     darkColor: "tab-cream-dark"
   }];
+
   if (!user) return null;
-  return <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
+
+  return (
+    <div className="min-h-screen bg-background">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -316,7 +256,6 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* Folder Tab Navigation */}
           <nav className="flex items-end justify-between mt-6 -mb-4 overflow-x-auto">
             <div className="flex space-x-1">
               {tabItems.map(item => {
@@ -340,51 +279,18 @@ export default function DashboardLayout({
                   </Link>;
             })}
             </div>
-            
-            <Button variant="ghost" onClick={handleGetSuggestion} disabled={loadingSuggestion} className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors group mb-2">
-              {loadingSuggestion ? <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Thinking...
-                </> : <>
-                  <Sparkles className="mr-2 h-4 w-4 animate-pulse group-hover:text-primary" />
-                  What's next?
-                </>}
-            </Button>
           </nav>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-6 py-8">{children}</main>
 
-      {/* AI Suggestion Dialog */}
-      <Dialog open={suggestionOpen} onOpenChange={setSuggestionOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Your Next Best Action
-            </DialogTitle>
-            <DialogDescription className="pt-4 text-base text-foreground">
-              {suggestion}
-            </DialogDescription>
-          </DialogHeader>
-          {suggestionNextAction && <DialogFooter>
-              <Button onClick={handleNavigateToAction} className="w-full">
-                <ArrowRight className="mr-2 h-4 w-4" />
-                {suggestionNextAction.buttonText}
-              </Button>
-            </DialogFooter>}
-        </DialogContent>
-      </Dialog>
-
-      {/* Onboarding Walkthrough */}
       {walkthroughOpen && <OnboardingWalkthrough steps={walkthroughSteps} onClose={() => setWalkthroughOpen(false)} onActionClick={handleWalkthroughAction} />}
 
-      {/* Guided Tour */}
       {tourActive && tourConfig && <GuidedTour targetSelector={tourConfig.targetSelector} title={tourConfig.title} description={tourConfig.description} onClose={() => {
       setTourActive(false);
       setTourConfig(null);
     }} />}
-    </div>;
+    </div>
+  );
 }
