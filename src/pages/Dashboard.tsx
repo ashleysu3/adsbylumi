@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import confetti from "canvas-confetti";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function Dashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
@@ -27,6 +29,20 @@ export default function Dashboard() {
   });
   const [progressPopoverOpen, setProgressPopoverOpen] = useState(false);
   const hasShownConfetti = useRef(false);
+  const hasHandledCheckout = useRef(false);
+
+  // Handle checkout success
+  useEffect(() => {
+    const checkoutStatus = searchParams.get("checkout");
+    if (checkoutStatus === "success" && !hasHandledCheckout.current) {
+      hasHandledCheckout.current = true;
+      toast.success("Welcome to Your Ad Assistant! Your subscription is now active.", {
+        duration: 5000,
+      });
+      // Clear the query param
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleDismissChecklist = () => {
     setChecklistDismissed(true);
