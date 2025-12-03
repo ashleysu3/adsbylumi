@@ -13,8 +13,55 @@ serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, productPsychology, audiencePsychology, offerData } = await req.json();
+    const { brandName, strategyData, productPsychology, audiencePsychology, offerData, templateData } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+
+    // Verbal CTA mapping by campaign template type
+    const VERBAL_CTA_BY_CAMPAIGN: Record<string, { phrases: string[]; scriptEnding: string; primaryAction: string }> = {
+      'discovery-call': {
+        phrases: ['Book your free call', 'Schedule your session', 'Apply to work with me', 'Book a call today', 'Click below to book your call', 'Let\'s hop on a quick call'],
+        scriptEnding: 'Every talking head script MUST end with a verbal CTA encouraging the viewer to book a call. Examples: "Click the link below to book your free call", "Hit that button and let\'s chat", "Schedule your session today"',
+        primaryAction: 'booking a discovery call or application'
+      },
+      'lead-magnet': {
+        phrases: ['Download your free guide', 'Grab your copy', 'Get instant access', 'Download it now', 'Click to get your free [resource]', 'Get your hands on this'],
+        scriptEnding: 'Every talking head script MUST end with a verbal CTA encouraging the viewer to download the free resource. Examples: "Click the link to download your free guide", "Grab your copy below", "Get instant access now"',
+        primaryAction: 'downloading a free resource'
+      },
+      'webinar-signups': {
+        phrases: ['Save your seat', 'Register now', 'Claim your spot', 'Sign up for the free training', 'Reserve your spot', 'Join us live'],
+        scriptEnding: 'Every talking head script MUST end with a verbal CTA encouraging the viewer to register for the webinar. Examples: "Click below to save your seat", "Register now before spots fill up", "Reserve your spot today"',
+        primaryAction: 'registering for a webinar or training'
+      },
+      'social-traffic': {
+        phrases: ['Follow for more', 'Check out my profile', 'See more on my page', 'Follow along', 'Hit follow for more tips'],
+        scriptEnding: 'Every talking head script should end with a soft CTA encouraging engagement. Examples: "Follow for more tips like this", "Check out my profile for more"',
+        primaryAction: 'following or engaging with social content'
+      },
+      'video-views': {
+        phrases: ['Watch the full video', 'See more', 'Learn more', 'Stay tuned', 'Keep watching'],
+        scriptEnding: 'Scripts should encourage continued engagement. Examples: "Stay tuned for more", "Watch to the end for the best part"',
+        primaryAction: 'watching more video content'
+      },
+      'low-ticket-sales': {
+        phrases: ['Get it now', 'Buy today', 'Grab yours', 'Start now', 'Get started for just $X', 'Click to get yours'],
+        scriptEnding: 'Every talking head script MUST end with a verbal CTA encouraging immediate purchase. Examples: "Click the link to get started for just $X", "Grab yours before it\'s gone", "Get instant access today"',
+        primaryAction: 'making a purchase'
+      },
+      'high-ticket-sales': {
+        phrases: ['Apply now', 'Book your call', 'Join us', 'Get started today', 'Take the next step'],
+        scriptEnding: 'Every talking head script MUST end with a verbal CTA encouraging the viewer to take the next step. Examples: "Apply now to see if this is right for you", "Book your call to learn more", "Take the first step today"',
+        primaryAction: 'applying or booking a sales call'
+      }
+    };
+
+    // Get the verbal CTA context for this campaign type
+    const templateSlug = templateData?.slug || '';
+    const verbalCtaContext = VERBAL_CTA_BY_CAMPAIGN[templateSlug] || {
+      phrases: ['Learn more', 'Click the link', 'Check it out', 'Take action today'],
+      scriptEnding: 'Every talking head script should end with a clear verbal call-to-action that matches the campaign goal.',
+      primaryAction: 'taking the desired action'
+    };
 
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
@@ -253,6 +300,26 @@ Every creative must include:
 6. CTA placement and delivery
 7. Why it works (psychology explanation)
 
+=== VERBAL CTA REQUIREMENTS (CRITICAL) ===
+
+Campaign Type: ${templateData?.name || strategyData.campaign_type}
+Template: ${templateSlug || 'general'}
+
+Required Verbal CTA Phrases (use variations of these):
+${verbalCtaContext.phrases.map((p: string) => `- "${p}"`).join('\n')}
+
+${verbalCtaContext.scriptEnding}
+
+Primary Action for This Campaign: ${verbalCtaContext.primaryAction}
+
+RULES FOR ALL CREATIVE:
+1. Every talking head script MUST end with a verbal call-to-action that matches the campaign goal
+2. The final 5-10 seconds of every script should be the CTA delivery
+3. Ad copy should naturally weave in the appropriate action phrase
+4. CTAs should feel natural to the brand voice, not forced or generic
+5. Vary the CTA wording across concepts but keep the same intent (${verbalCtaContext.primaryAction})
+6. The CTA in the "cta" field of scripts MUST match these verbal CTA patterns
+
 Generate a complete, production-ready creative system that covers the full funnel.`;
 
     // Extract rich offer data
@@ -321,6 +388,13 @@ CRITICAL REQUIREMENTS:
 4. STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")
 5. Reference the hooks KB and copy_formulas KB for proven frameworks
 
+⚠️ CRITICAL CTA REQUIREMENT:
+This is a "${templateData?.name || strategyData.campaign_type}" campaign.
+- Every talking head script MUST END with a verbal CTA like: ${verbalCtaContext.phrases.slice(0, 3).join(', ')}
+- All copy should guide the viewer toward: ${verbalCtaContext.primaryAction}
+- Make the CTA feel natural to the brand voice
+- The "cta" field in scripts must contain the actual verbal CTA phrase the person will say
+
 CREATE:
 1. 3-5 TOFU concepts (awareness/interest) - focus on pain points and curiosity
 2. 2-4 MOFU concepts (consideration/trust) - focus on proof and transformation
@@ -330,6 +404,7 @@ Each creative concept must:
 - Directly relate to selling the specific offer
 - Reference specific psychology triggers from the offer's product_psychology
 - Include complete production instructions
+- END WITH A VERBAL CTA that matches the campaign type (${verbalCtaContext.primaryAction})
 - Explain why it works for this audience and offer
 - Be ready to film/produce immediately
 
