@@ -216,7 +216,7 @@ export default function Pricing() {
           {/* FAQ or Additional Info */}
           <div className="mt-16 text-center">
             <p className="text-muted-foreground">
-              All plans include a 14-day free trial. No credit card required to start.
+              Questions? Reach out to us at hello@afterorganic.com
             </p>
             <Button
               variant="link"
