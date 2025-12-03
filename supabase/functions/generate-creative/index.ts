@@ -344,22 +344,22 @@ ${offer.target_outcome || 'Not specified'}
 
 === OFFER-SPECIFIC MESSAGING GUIDELINES ===
 ${messagingGuidelines.core_message ? `Core Message: ${messagingGuidelines.core_message}` : ''}
-${messagingGuidelines.key_benefits?.length ? `Key Benefits to Highlight:\n${messagingGuidelines.key_benefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
+${Array.isArray(messagingGuidelines.key_benefits) && messagingGuidelines.key_benefits.length ? `Key Benefits to Highlight:\n${messagingGuidelines.key_benefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
 ${messagingGuidelines.tone_notes ? `Tone Notes: ${messagingGuidelines.tone_notes}` : ''}
-${messagingGuidelines.dont_say?.length ? `\n⚠️ NEVER SAY (compliance/brand rules):\n${messagingGuidelines.dont_say.map((d: string) => `- "${d}"`).join('\n')}` : ''}
-${messagingGuidelines.always_include?.length ? `\n✅ ALWAYS INCLUDE in messaging:\n${messagingGuidelines.always_include.map((a: string) => `- ${a}`).join('\n')}` : ''}
+${Array.isArray(messagingGuidelines.dont_say) && messagingGuidelines.dont_say.length ? `\n⚠️ NEVER SAY (compliance/brand rules):\n${messagingGuidelines.dont_say.map((d: string) => `- "${d}"`).join('\n')}` : ''}
+${Array.isArray(messagingGuidelines.always_include) && messagingGuidelines.always_include.length ? `\n✅ ALWAYS INCLUDE in messaging:\n${messagingGuidelines.always_include.map((a: string) => `- ${a}`).join('\n')}` : ''}
 ${messagingGuidelines.competitor_differentiation ? `\nKey Differentiation from Competitors: ${messagingGuidelines.competitor_differentiation}` : ''}
-${messagingGuidelines.approved_examples?.length ? `\n📝 Approved Copy Examples:\n${messagingGuidelines.approved_examples.map((ex: any) => `- [${ex.type}] "${ex.text}"`).join('\n')}` : ''}
+${Array.isArray(messagingGuidelines.approved_examples) && messagingGuidelines.approved_examples.length ? `\n📝 Approved Copy Examples:\n${messagingGuidelines.approved_examples.map((ex: any) => `- [${ex.type}] "${ex.text}"`).join('\n')}` : ''}
 
 === PRODUCT PSYCHOLOGY (use these triggers in creative) ===
 ${offerPsychology.positioning ? `Positioning Statement: ${offerPsychology.positioning}` : ''}
-${offerPsychology.pain_points?.length ? `\nPain Points to Address:\n${offerPsychology.pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
-${offerPsychology.product_pain_points?.length ? `\nProduct-Specific Pain Points:\n${offerPsychology.product_pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
-${offerPsychology.desires?.length ? `\nDesires to Tap Into:\n${offerPsychology.desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
-${offerPsychology.product_desires?.length ? `\nProduct-Specific Desires:\n${offerPsychology.product_desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
-${offerPsychology.objections?.length ? `\nObjections to Overcome:\n${offerPsychology.objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
-${offerPsychology.product_objections?.length ? `\nProduct-Specific Objections:\n${offerPsychology.product_objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
-${offerPsychology.buying_triggers?.length ? `\nBuying Triggers:\n${offerPsychology.buying_triggers.map((t: string) => `- ${t}`).join('\n')}` : ''}
+${Array.isArray(offerPsychology.pain_points) && offerPsychology.pain_points.length ? `\nPain Points to Address:\n${offerPsychology.pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
+${Array.isArray(offerPsychology.product_pain_points) && offerPsychology.product_pain_points.length ? `\nProduct-Specific Pain Points:\n${offerPsychology.product_pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
+${Array.isArray(offerPsychology.desires) && offerPsychology.desires.length ? `\nDesires to Tap Into:\n${offerPsychology.desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
+${Array.isArray(offerPsychology.product_desires) && offerPsychology.product_desires.length ? `\nProduct-Specific Desires:\n${offerPsychology.product_desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
+${Array.isArray(offerPsychology.objections) && offerPsychology.objections.length ? `\nObjections to Overcome:\n${offerPsychology.objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
+${Array.isArray(offerPsychology.product_objections) && offerPsychology.product_objections.length ? `\nProduct-Specific Objections:\n${offerPsychology.product_objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
+${Array.isArray(offerPsychology.buying_triggers) && offerPsychology.buying_triggers.length ? `\nBuying Triggers:\n${offerPsychology.buying_triggers.map((t: string) => `- ${t}`).join('\n')}` : ''}
 
 Strategy Messaging Framework:
 ${JSON.stringify(strategyData.messaging_framework, null, 2)}
