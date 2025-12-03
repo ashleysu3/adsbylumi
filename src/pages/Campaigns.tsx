@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignsList } from "@/components/CampaignsList";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { LumiChat } from "@/components/LumiChat";
 
 export default function Campaigns() {
   const navigate = useNavigate();
@@ -74,6 +75,8 @@ export default function Campaigns() {
 
         <CampaignsList brandId={brandId} />
       </div>
+      
+      <LumiChat context="campaigns" />
     </DashboardLayout>
   );
 }
