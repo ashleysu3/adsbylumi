@@ -1,508 +1,628 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { Sparkles, Target, Palette, FolderKanban, Rocket, BarChart3, Brain, MessageCircle, CheckCircle, X } from "lucide-react";
+import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { ParallaxSection } from "@/components/animations/ParallaxSection";
+import { StaggerChildren, StaggerItem } from "@/components/animations/StaggerChildren";
+import { ScaleOnScroll } from "@/components/animations/ScaleOnScroll";
+import { FloatingElement } from "@/components/animations/FloatingElement";
+import { MagneticButton, GradientText } from "@/components/animations/SmoothScroll";
+import { useRef } from "react";
+
 const Sales = () => {
   const navigate = useNavigate();
-  return <div className="min-h-screen bg-background">
+  const heroRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
+  const heroY = useTransform(scrollYProgress, [0, 0.5], [0, 50]);
+
+  return (
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header with Login */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+      <motion.header 
+        className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border"
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <img alt="Your Ad Assistant" className="h-12" src="/lovable-uploads/your-ad-assistant-logo.png" />
-          <Button onClick={() => navigate("/auth")} variant="outline">
-            Log In / Sign Up
-          </Button>
+          <motion.img 
+            alt="Your Ad Assistant" 
+            className="h-12" 
+            src="/lovable-uploads/your-ad-assistant-logo.png"
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 400 }}
+          />
+          <MagneticButton>
+            <Button onClick={() => navigate("/auth")} variant="outline">
+              Log In / Sign Up
+            </Button>
+          </MagneticButton>
         </div>
-      </header>
+      </motion.header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
-        <div className="container mx-auto max-w-4xl text-center">
-          <div className="inline-block mb-6 px-4 py-2 bg-primary/10 rounded-full">
+      <section ref={heroRef} className="pt-32 pb-20 px-4 relative min-h-[90vh] flex items-center">
+        <motion.div 
+          className="container mx-auto max-w-4xl text-center"
+          style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
+        >
+          <motion.div 
+            className="inline-block mb-6 px-4 py-2 bg-primary/10 rounded-full"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             <span className="text-sm font-medium text-primary">For Coaches, Course Creators + Service Providers</span>
-          </div>
-          <h1 className="font-display text-5xl md:text-6xl lg:text-7xl mb-6 leading-tight">
-            Finally: Meta ads that feel simple, strategic, and actually doable.
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          </motion.div>
+          
+          <motion.h1 
+            className="font-display text-5xl md:text-6xl lg:text-7xl mb-6 leading-tight"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+          >
+            Finally: Meta ads that feel{" "}
+            <GradientText>simple, strategic</GradientText>, and actually doable.
+          </motion.h1>
+          
+          <motion.p 
+            className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
             You don't have to learn ads, to run ads.
-          </p>
-        </div>
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.7 }}
+            className="mt-8"
+          >
+            <MagneticButton>
+              <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8">
+                Get Started Free
+              </Button>
+            </MagneticButton>
+          </motion.div>
+        </motion.div>
+
+        {/* Decorative floating elements */}
+        <FloatingElement className="absolute top-1/4 left-10 opacity-20 hidden lg:block" delay={0}>
+          <div className="w-20 h-20 rounded-full bg-primary/30 blur-xl" />
+        </FloatingElement>
+        <FloatingElement className="absolute bottom-1/4 right-10 opacity-20 hidden lg:block" delay={1}>
+          <div className="w-32 h-32 rounded-full bg-secondary/50 blur-2xl" />
+        </FloatingElement>
       </section>
 
       {/* Problem Section */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-3xl">
-          <div className="prose prose-lg max-w-none">
+      <section className="py-24 px-4 bg-muted/30 relative">
+        <ParallaxSection className="absolute inset-0 opacity-5" offset={30}>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary rounded-full blur-3xl" />
+        </ParallaxSection>
+        
+        <div className="container mx-auto max-w-3xl relative">
+          <ScrollReveal>
             <p className="text-lg leading-relaxed text-foreground/90 mb-4 text-center">
               The buttons. The settings. The "random" performance swings. The 47 opinions on TikTok. The fear you'll
               mess something up and waste money.
             </p>
+          </ScrollReveal>
+          
+          <ScrollReveal delay={0.2}>
             <p className="text-xl font-medium text-foreground mt-8 mb-4 text-center">
               Your Ad Assistant takes all that stress and says:{" "}
               <span className="text-primary">"Let me take it from here."</span>
             </p>
+          </ScrollReveal>
+          
+          <ScrollReveal delay={0.3}>
             <p className="text-lg leading-relaxed text-foreground/90 text-center">
               This isn't another marketing course or a complicated dashboard. It's a smart, friendly, hands-on tool that
               walks you through planning, creating, launching, and improving Meta ads — step by step.
             </p>
+          </ScrollReveal>
+          
+          <ScrollReveal delay={0.4}>
             <p className="text-lg font-medium text-foreground mt-6 text-center">
               No overwhelm. No guesswork. No Ads Manager spirals.
             </p>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Key Promise */}
-      <section className="py-20 px-4">
+      <section className="py-24 px-4">
         <div className="container mx-auto max-w-4xl text-center">
-          <div className="bg-gradient-to-br from-primary/20 to-secondary/20 p-12 rounded-3xl border border-border">
-            <p className="text-2xl md:text-3xl font-display leading-relaxed">
-              If you can paste your url and upload your creative…
-              <br />
-              <span className="text-primary text-5xl">Your Ad Assistant does the rest.</span>
-            </p>
-          </div>
+          <ScaleOnScroll scaleRange={[0.9, 1]}>
+            <div className="bg-gradient-to-br from-primary/20 to-secondary/20 p-12 rounded-3xl border border-border relative overflow-hidden">
+              <ParallaxSection className="absolute inset-0 opacity-30" offset={20}>
+                <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
+              </ParallaxSection>
+              <p className="text-2xl md:text-3xl font-display leading-relaxed relative z-10">
+                If you can paste your url and upload your creative…
+                <br />
+                <motion.span 
+                  className="text-primary text-4xl md:text-5xl inline-block mt-4"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  viewport={{ once: true }}
+                >
+                  Your Ad Assistant does the rest.
+                </motion.span>
+              </p>
+            </div>
+          </ScaleOnScroll>
         </div>
       </section>
 
       {/* Steps Section */}
-      <section className="py-20 px-4 bg-muted/30">
+      <section className="py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-5xl">
-          <h2 className="font-display text-4xl text-center mb-16">Here's how:</h2>
+          <ScrollReveal>
+            <h2 className="font-display text-4xl text-center mb-16">Here's how:</h2>
+          </ScrollReveal>
 
-          <div className="space-y-16">
+          <div className="space-y-24">
             {/* Step 1 */}
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <Target className="w-8 h-8 text-primary" />
+            <ScrollReveal direction="left">
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <motion.div 
+                  className="flex-shrink-0"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <Target className="w-8 h-8 text-primary" />
+                  </div>
+                </motion.div>
+                <div className="flex-1">
+                  <h3 className="font-display text-3xl mb-4">💡 STEP 1 — Choose What You Want to Run</h3>
+                  <p className="text-lg text-muted-foreground mb-6">
+                    Skip the guessing, skip the questions you don't understand, skip the "what objective do I use??"
+                    panic.
+                  </p>
+                  <p className="text-lg font-medium mb-4">Just select the goal of your ads:</p>
+                  <StaggerChildren staggerDelay={0.08} className="space-y-2">
+                    {["Webinar Signups", "Lead Magnet Downloads", "Low-Ticket Product Sales", "Book a Discovery Call", "Traffic to Instagram/Facebook", "Video Views (Trust Builder)"].map((item) => (
+                      <StaggerItem key={item}>
+                        <div className="flex items-center gap-2 text-lg">
+                          <CheckCircle className="w-5 h-5 text-primary" /> {item}
+                        </div>
+                      </StaggerItem>
+                    ))}
+                  </StaggerChildren>
+                  <p className="text-lg mt-6 font-medium">
+                    Your Ad Assistant loads the exact structure Meta prefers in 2025. No thinking required.
+                  </p>
                 </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-display text-3xl mb-4">💡 STEP 1 — Choose What You Want to Run</h3>
-                <p className="text-lg text-muted-foreground mb-6">
-                  Skip the guessing, skip the questions you don't understand, skip the "what objective do I use??"
-                  panic.
-                </p>
-                <p className="text-lg font-medium mb-4">Just select the goal of your ads:</p>
-                <ul className="space-y-2 text-lg">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Webinar Signups
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Lead Magnet Downloads
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Low-Ticket Product Sales
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Book a Discovery Call
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Traffic to Instagram/Facebook
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Video Views (Trust Builder)
-                  </li>
-                </ul>
-                <p className="text-lg mt-6 font-medium">
-                  Your Ad Assistant loads the exact structure Meta prefers in 2025. No thinking required.
-                </p>
-              </div>
-            </div>
+            </ScrollReveal>
 
             {/* Step 2 */}
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <Palette className="w-8 h-8 text-primary" />
+            <ScrollReveal direction="right">
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <motion.div 
+                  className="flex-shrink-0"
+                  whileHover={{ scale: 1.1, rotate: -5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <Palette className="w-8 h-8 text-primary" />
+                  </div>
+                </motion.div>
+                <div className="flex-1">
+                  <h3 className="font-display text-3xl mb-4">🎨 STEP 2 — Get Your Full-Funnel Creative Plan</h3>
+                  <p className="text-lg text-muted-foreground mb-6">
+                    Once you enter your offer details… Your Creative Department generates:
+                  </p>
+
+                  <StaggerChildren staggerDelay={0.15} className="space-y-6">
+                    <StaggerItem>
+                      <div>
+                        <p className="font-medium text-lg mb-3">✓ TOFU ads</p>
+                        <ul className="space-y-1 text-muted-foreground ml-6">
+                          <li>• Hooks</li>
+                          <li>• Talking-head scripts</li>
+                          <li>• B-roll shot lists</li>
+                          <li>• Pattern interrupts</li>
+                          <li>• Curiosity angles</li>
+                        </ul>
+                      </div>
+                    </StaggerItem>
+
+                    <StaggerItem>
+                      <div>
+                        <p className="font-medium text-lg mb-3">✓ MOFU ads</p>
+                        <ul className="space-y-1 text-muted-foreground ml-6">
+                          <li>• Story-based scripts</li>
+                          <li>• Teaching carousels</li>
+                          <li>• Trust-building visuals</li>
+                          <li>• Proof-driven messages</li>
+                        </ul>
+                      </div>
+                    </StaggerItem>
+
+                    <StaggerItem>
+                      <div>
+                        <p className="font-medium text-lg mb-3">✓ BOFU ads</p>
+                        <ul className="space-y-1 text-muted-foreground ml-6">
+                          <li>• Offer breakdown graphics</li>
+                          <li>• Benefits carousels</li>
+                          <li>• CTA-focused creative</li>
+                          <li>• "What's Included" visuals</li>
+                        </ul>
+                      </div>
+                    </StaggerItem>
+                  </StaggerChildren>
+
+                  <ScrollReveal delay={0.3}>
+                    <div className="mt-8 p-6 bg-background rounded-xl border border-border">
+                      <p className="font-medium text-lg mb-3">AND THEN — You also get:</p>
+                      <div className="grid md:grid-cols-2 gap-2 text-muted-foreground">
+                        {["Text overlays", "Additional variations", "\"Give me more ideas\" expansion", "Niche-specific messaging", "Psychology-aligned hooks", "Production checklists", "Aspect ratios + recording guidance", "B-roll examples", "Filming tips", "Script alternates"].map((item) => (
+                          <div key={item}>• {item}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </ScrollReveal>
+
+                  <p className="text-lg mt-6 font-medium">
+                    Everything you need to record or design the right creative — without scrolling for inspiration or
+                    guessing what to do.
+                  </p>
                 </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-display text-3xl mb-4">🎨 STEP 2 — Get Your Full-Funnel Creative Plan</h3>
-                <p className="text-lg text-muted-foreground mb-6">
-                  Once you enter your offer details… Your Creative Department generates:
-                </p>
-
-                <div className="space-y-6">
-                  <div>
-                    <p className="font-medium text-lg mb-3">✓ TOFU ads</p>
-                    <ul className="space-y-1 text-muted-foreground ml-6">
-                      <li>• Hooks</li>
-                      <li>• Talking-head scripts</li>
-                      <li>• B-roll shot lists</li>
-                      <li>• Pattern interrupts</li>
-                      <li>• Curiosity angles</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <p className="font-medium text-lg mb-3">✓ MOFU ads</p>
-                    <ul className="space-y-1 text-muted-foreground ml-6">
-                      <li>• Story-based scripts</li>
-                      <li>• Teaching carousels</li>
-                      <li>• Trust-building visuals</li>
-                      <li>• Proof-driven messages</li>
-                    </ul>
-                  </div>
-
-                  <div>
-                    <p className="font-medium text-lg mb-3">✓ BOFU ads</p>
-                    <ul className="space-y-1 text-muted-foreground ml-6">
-                      <li>• Offer breakdown graphics</li>
-                      <li>• Benefits carousels</li>
-                      <li>• CTA-focused creative</li>
-                      <li>• "What's Included" visuals</li>
-                    </ul>
-                  </div>
-
-                  <div className="mt-8 p-6 bg-background rounded-xl border border-border">
-                    <p className="font-medium text-lg mb-3">AND THEN — You also get:</p>
-                    <ul className="grid md:grid-cols-2 gap-2 text-muted-foreground">
-                      <li>• Text overlays</li>
-                      <li>• Additional variations</li>
-                      <li>• "Give me more ideas" expansion</li>
-                      <li>• Niche-specific messaging</li>
-                      <li>• Psychology-aligned hooks</li>
-                      <li>• Production checklists</li>
-                      <li>• Aspect ratios + recording guidance</li>
-                      <li>• B-roll examples</li>
-                      <li>• Filming tips</li>
-                      <li>• Script alternates</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <p className="text-lg mt-6 font-medium">
-                  Everything you need to record or design the right creative — without scrolling for inspiration or
-                  guessing what to do.
-                </p>
-              </div>
-            </div>
+            </ScrollReveal>
 
             {/* Step 3 */}
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <FolderKanban className="w-8 h-8 text-primary" />
+            <ScrollReveal direction="left">
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <motion.div 
+                  className="flex-shrink-0"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <FolderKanban className="w-8 h-8 text-primary" />
+                  </div>
+                </motion.div>
+                <div className="flex-1">
+                  <h3 className="font-display text-3xl mb-4">🗂 STEP 3 — Save Your Campaign & Track Your Progress</h3>
+                  <p className="text-lg text-muted-foreground mb-6">
+                    Each campaign gets its own workspace, where you can:
+                  </p>
+                  <StaggerChildren staggerDelay={0.08} className="space-y-2">
+                    {["Save scripts", "Expand creative", "Regenerate creative you don't love", "Store your brand voice", "Upload your final videos + graphics", "Check off a production list", "See exactly what you still need to record", "Come back any time"].map((item) => (
+                      <StaggerItem key={item}>
+                        <div className="flex items-center gap-2 text-lg">
+                          <CheckCircle className="w-5 h-5 text-primary" /> {item}
+                        </div>
+                      </StaggerItem>
+                    ))}
+                  </StaggerChildren>
+                  <p className="text-lg mt-6 font-medium">
+                    It's like having a creative studio, strategist, and production manager — all inside one tidy space.
+                  </p>
                 </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-display text-3xl mb-4">🗂 STEP 3 — Save Your Campaign & Track Your Progress</h3>
-                <p className="text-lg text-muted-foreground mb-6">
-                  Each campaign gets its own workspace, where you can:
-                </p>
-                <ul className="space-y-2 text-lg">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Save scripts
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Expand creative
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Regenerate creative you don't love
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Store your brand voice
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Upload your final videos + graphics
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Check off a production list
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> See exactly what you still need to record
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" /> Come back any time
-                  </li>
-                </ul>
-                <p className="text-lg mt-6 font-medium">
-                  It's like having a creative studio, strategist, and production manager — all inside one tidy space.
-                </p>
-              </div>
-            </div>
+            </ScrollReveal>
 
             {/* Step 4 */}
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <Rocket className="w-8 h-8 text-primary" />
+            <ScrollReveal direction="right">
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <motion.div 
+                  className="flex-shrink-0"
+                  whileHover={{ scale: 1.1, rotate: -5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <Rocket className="w-8 h-8 text-primary" />
+                  </div>
+                </motion.div>
+                <div className="flex-1">
+                  <h3 className="font-display text-3xl mb-4">
+                    🚀 STEP 4 — Hit "Create Campaign" and Your Ad Assistant Builds It for You
+                  </h3>
+                  <p className="text-lg font-medium mb-6">
+                    Yep. Like actually builds the entire campaign in Ads Manager using the Meta API.
+                  </p>
+                  <p className="text-lg mb-4">Your Ad Assistant:</p>
+                  <ul className="space-y-2 text-lg text-muted-foreground">
+                    <li>• Combines your creative with your strategy</li>
+                    <li>• Pulls all required fields</li>
+                    <li>• Asks you a few simple questions (budget, dates, anything Meta needs)</li>
+                    <li>• Recommends beginner-friendly settings</li>
+                    <li>• Double-checks everything is correct</li>
+                    <li>• Pushes the campaign live for you</li>
+                  </ul>
+                  <p className="text-lg mt-6 font-medium">
+                    You never have to go into Ads Manager. (No toggles, no hidden settings, no fifteen screens.)
+                  </p>
                 </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-display text-3xl mb-4">
-                  🚀 STEP 4 — Hit "Create Campaign" and Your Ad Assistant Builds It for You
-                </h3>
-                <p className="text-lg font-medium mb-6">
-                  Yep. Like actually builds the entire campaign in Ads Manager using the Meta API.
-                </p>
-                <p className="text-lg mb-4">Your Ad Assistant:</p>
-                <ul className="space-y-2 text-lg text-muted-foreground">
-                  <li>• Combines your creative with your strategy</li>
-                  <li>• Pulls all required fields</li>
-                  <li>• Asks you a few simple questions (budget, dates, anything Meta needs)</li>
-                  <li>• Recommends beginner-friendly settings</li>
-                  <li>• Double-checks everything is correct</li>
-                  <li>• Pushes the campaign live for you</li>
-                </ul>
-                <p className="text-lg mt-6 font-medium">
-                  You never have to go into Ads Manager. (No toggles, no hidden settings, no fifteen screens.)
-                </p>
-              </div>
-            </div>
+            </ScrollReveal>
 
             {/* Step 5 */}
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-              <div className="flex-shrink-0">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <BarChart3 className="w-8 h-8 text-primary" />
+            <ScrollReveal direction="left">
+              <div className="flex flex-col md:flex-row gap-8 items-start">
+                <motion.div 
+                  className="flex-shrink-0"
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <BarChart3 className="w-8 h-8 text-primary" />
+                  </div>
+                </motion.div>
+                <div className="flex-1">
+                  <h3 className="font-display text-3xl mb-4">📊 STEP 5 — Get Weekly Guidance (Without the Panic)</h3>
+                  <p className="text-lg text-muted-foreground mb-6">Each week, Your Ad Assistant sends you:</p>
+                  <ul className="space-y-2 text-lg text-muted-foreground">
+                    <li>• A clean, simple performance report</li>
+                    <li>• CTR, CPC, CPL, CPP, ROAS</li>
+                    <li>• Warm audience health</li>
+                    <li>• Creative fatigue alerts</li>
+                    <li>• Full-funnel diagnostics</li>
+                    <li>• "What's working + why"</li>
+                    <li>• "What needs attention + why"</li>
+                    <li>• Seasonal context ("Don't worry — July CPMs always spike")</li>
+                    <li>• New creative ideas based on what's underperforming</li>
+                    <li>• Benchmarks based on your niche + campaign type</li>
+                  </ul>
+                  <p className="text-lg mt-6 font-medium">
+                    Everything is written in friendly, real-person language, not data noise.
+                  </p>
+                  <p className="text-xl mt-6 text-primary font-medium">This isn't a dashboard. It's a partner.</p>
                 </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-display text-3xl mb-4">📊 STEP 5 — Get Weekly Guidance (Without the Panic)</h3>
-                <p className="text-lg text-muted-foreground mb-6">Each week, Your Ad Assistant sends you:</p>
-                <ul className="space-y-2 text-lg text-muted-foreground">
-                  <li>• A clean, simple performance report</li>
-                  <li>• CTR, CPC, CPL, CPP, ROAS</li>
-                  <li>• Warm audience health</li>
-                  <li>• Creative fatigue alerts</li>
-                  <li>• Full-funnel diagnostics</li>
-                  <li>• "What's working + why"</li>
-                  <li>• "What needs attention + why"</li>
-                  <li>• Seasonal context ("Don't worry — July CPMs always spike")</li>
-                  <li>• New creative ideas based on what's underperforming</li>
-                  <li>• Benchmarks based on your niche + campaign type</li>
-                </ul>
-                <p className="text-lg mt-6 font-medium">
-                  Everything is written in friendly, real-person language, not data noise.
-                </p>
-                <p className="text-xl mt-6 text-primary font-medium">This isn't a dashboard. It's a partner.</p>
-              </div>
-            </div>
+            </ScrollReveal>
           </div>
         </div>
       </section>
 
       {/* Why It Works */}
-      <section className="py-20 px-4">
+      <section className="py-24 px-4">
         <div className="container mx-auto max-w-4xl">
-          <h2 className="font-display text-4xl text-center mb-12">🌟 Why It Works So Well</h2>
-          <p className="text-xl text-center text-muted-foreground mb-12">
-            Your Ad Assistant is powered by thousands of hours of:
-          </p>
-          <div className="grid md:grid-cols-3 gap-4 text-center">
-            {["Meta ad strategy", "Creative psychology", "Performance troubleshooting", "Offer mapping", "Funnel breakdown analysis", "Script writing", "Copy frameworks", "Meta best practices", "Seasonality predictions", "Hook libraries", "Niche messaging", "Audience builder logic", "B-roll direction", "High-performing creative systems", "API-backed campaign builds"].map(item => <div key={item} className="p-4 bg-muted/30 rounded-lg border border-border">
-                <p className="text-sm">{item}</p>
-              </div>)}
-          </div>
-          <p className="text-xl text-center mt-12 font-medium">
-            …and all of that lives inside an app that feels simple, warm, and helpful.
-          </p>
+          <ScrollReveal>
+            <h2 className="font-display text-4xl text-center mb-12">🌟 Why It Works So Well</h2>
+          </ScrollReveal>
+          <ScrollReveal delay={0.1}>
+            <p className="text-xl text-center text-muted-foreground mb-12">
+              Your Ad Assistant is powered by thousands of hours of:
+            </p>
+          </ScrollReveal>
+          <StaggerChildren staggerDelay={0.05} className="grid md:grid-cols-3 gap-4 text-center">
+            {["Meta ad strategy", "Creative psychology", "Performance troubleshooting", "Offer mapping", "Funnel breakdown analysis", "Script writing", "Copy frameworks", "Meta best practices", "Seasonality predictions", "Hook libraries", "Niche messaging", "Audience builder logic", "B-roll direction", "High-performing creative systems", "API-backed campaign builds"].map(item => (
+              <StaggerItem key={item}>
+                <motion.div 
+                  className="p-4 bg-muted/30 rounded-lg border border-border"
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <p className="text-sm">{item}</p>
+                </motion.div>
+              </StaggerItem>
+            ))}
+          </StaggerChildren>
+          <ScrollReveal delay={0.3}>
+            <p className="text-xl text-center mt-12 font-medium">
+              …and all of that lives inside an app that feels simple, warm, and helpful.
+            </p>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Think of it like this */}
-      <section className="py-20 px-4 bg-muted/30">
+      <section className="py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-4xl">
-          <h2 className="font-display text-4xl text-center mb-12">🧠 Think of it like this…</h2>
-          <p className="text-xl text-center mb-12">Your Ad Assistant is:</p>
+          <ScrollReveal>
+            <h2 className="font-display text-4xl text-center mb-12">🧠 Think of it like this…</h2>
+          </ScrollReveal>
+          <ScrollReveal delay={0.1}>
+            <p className="text-xl text-center mb-12">Your Ad Assistant is:</p>
+          </ScrollReveal>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="p-6 bg-background rounded-xl border border-border">
-              <div className="flex items-start gap-4">
-                <MessageCircle className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-medium text-lg mb-2">💬 Your strategist</p>
-                  <p className="text-muted-foreground">Telling you exactly which campaign to run.</p>
-                </div>
-              </div>
-            </div>
+          <StaggerChildren staggerDelay={0.1} className="grid md:grid-cols-2 gap-6">
+            {[
+              { icon: MessageCircle, emoji: "💬", title: "Your strategist", desc: "Telling you exactly which campaign to run." },
+              { icon: Palette, emoji: "🎨", title: "Your creative director", desc: "Giving you hooks, scripts, b-roll, and graphics." },
+              { icon: Target, emoji: "🎥", title: "Your producer", desc: "Showing you how to film and what to record." },
+              { icon: Rocket, emoji: "🛠", title: "Your campaign builder", desc: "Creating everything directly in Ads Manager." },
+              { icon: BarChart3, emoji: "📊", title: "Your analyst", desc: "Reviewing your data and telling you what to fix." },
+              { icon: Brain, emoji: "✨", title: "Your supportive business bestie", desc: "Encouraging you and keeping things simple." },
+            ].map((item) => (
+              <StaggerItem key={item.title}>
+                <motion.div 
+                  className="p-6 bg-background rounded-xl border border-border"
+                  whileHover={{ scale: 1.02, y: -5 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <div className="flex items-start gap-4">
+                    <item.icon className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+                    <div>
+                      <p className="font-medium text-lg mb-2">{item.emoji} {item.title}</p>
+                      <p className="text-muted-foreground">{item.desc}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              </StaggerItem>
+            ))}
+          </StaggerChildren>
 
-            <div className="p-6 bg-background rounded-xl border border-border">
-              <div className="flex items-start gap-4">
-                <Palette className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-medium text-lg mb-2">🎨 Your creative director</p>
-                  <p className="text-muted-foreground">Giving you hooks, scripts, b-roll, and graphics.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 bg-background rounded-xl border border-border">
-              <div className="flex items-start gap-4">
-                <Target className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-medium text-lg mb-2">🎥 Your producer</p>
-                  <p className="text-muted-foreground">Showing you how to film and what to record.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 bg-background rounded-xl border border-border">
-              <div className="flex items-start gap-4">
-                <Rocket className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-medium text-lg mb-2">🛠 Your campaign builder</p>
-                  <p className="text-muted-foreground">Creating everything directly in Ads Manager.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 bg-background rounded-xl border border-border">
-              <div className="flex items-start gap-4">
-                <BarChart3 className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-medium text-lg mb-2">📊 Your analyst</p>
-                  <p className="text-muted-foreground">Reviewing your data and telling you what to fix.</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 bg-background rounded-xl border border-border">
-              <div className="flex items-start gap-4">
-                <Brain className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-                <div>
-                  <p className="font-medium text-lg mb-2">✨ Your supportive business bestie</p>
-                  <p className="text-muted-foreground">Encouraging you and keeping things simple.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <p className="text-xl text-center mt-12 font-medium">All in one clean, friendly tool.</p>
+          <ScrollReveal delay={0.4}>
+            <p className="text-xl text-center mt-12 font-medium">All in one clean, friendly tool.</p>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Who It's For */}
-      <section className="py-20 px-4">
+      <section className="py-24 px-4">
         <div className="container mx-auto max-w-4xl">
           <div className="grid md:grid-cols-2 gap-12">
-            <div>
-              <h2 className="font-display text-3xl mb-6">🎯 Who It's For</h2>
-              <p className="text-lg mb-6">
-                Coaches, course creators, service providers, creators, and small business owners who:
-              </p>
-              <ul className="space-y-3">
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <span>Want better ads</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <span>Are tired of guessing</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <span>Want to save time</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <span>Want someone (or something) to tell them what to do</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <span>Want clarity, not chaos</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <span>Want ads that feel doable, not overwhelming</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                  <span>Want a tool that meets them where they are</span>
-                </li>
-              </ul>
-              <p className="text-lg mt-6 font-medium">
-                If you're ready to run ads with confidence — without becoming a media buyer — this is for you.
-              </p>
-            </div>
+            <ScrollReveal direction="left">
+              <div>
+                <h2 className="font-display text-3xl mb-6">🎯 Who It's For</h2>
+                <p className="text-lg mb-6">
+                  Coaches, course creators, service providers, creators, and small business owners who:
+                </p>
+                <StaggerChildren staggerDelay={0.08} className="space-y-3">
+                  {["Want better ads", "Are tired of guessing", "Want to save time", "Want someone (or something) to tell them what to do", "Want clarity, not chaos", "Want ads that feel doable, not overwhelming", "Want a tool that meets them where they are"].map((item) => (
+                    <StaggerItem key={item}>
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
+                        <span>{item}</span>
+                      </div>
+                    </StaggerItem>
+                  ))}
+                </StaggerChildren>
+                <p className="text-lg mt-6 font-medium">
+                  If you're ready to run ads with confidence — without becoming a media buyer — this is for you.
+                </p>
+              </div>
+            </ScrollReveal>
 
-            <div>
-              <h2 className="font-display text-3xl mb-6">❌ Who It's Not For</h2>
-              <ul className="space-y-3">
-                <li className="flex items-start gap-3">
-                  <X className="w-5 h-5 text-destructive flex-shrink-0 mt-1" />
-                  <span>People looking for hacks</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <X className="w-5 h-5 text-destructive flex-shrink-0 mt-1" />
-                  <span>People who won't record any creative at all</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <X className="w-5 h-5 text-destructive flex-shrink-0 mt-1" />
-                  <span>People who want to manually tweak every toggle</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <X className="w-5 h-5 text-destructive flex-shrink-0 mt-1" />
-                  <span>People who expect results without testing</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <X className="w-5 h-5 text-destructive flex-shrink-0 mt-1" />
-                  <span>Agencies who only run 30-adset Frankenstein structures</span>
-                </li>
-              </ul>
-              <p className="text-lg mt-6 font-medium">
-                This is for people who want smart, simple, strategic ads — done the right way.
-              </p>
-            </div>
+            <ScrollReveal direction="right">
+              <div>
+                <h2 className="font-display text-3xl mb-6">❌ Who It's Not For</h2>
+                <StaggerChildren staggerDelay={0.08} className="space-y-3">
+                  {["People looking for hacks", "People who won't record any creative at all", "People who want to manually tweak every toggle", "People who expect results without testing", "Agencies who only run 30-adset Frankenstein structures"].map((item) => (
+                    <StaggerItem key={item}>
+                      <div className="flex items-start gap-3">
+                        <X className="w-5 h-5 text-destructive flex-shrink-0 mt-1" />
+                        <span>{item}</span>
+                      </div>
+                    </StaggerItem>
+                  ))}
+                </StaggerChildren>
+                <p className="text-lg mt-6 font-medium">
+                  This is for people who want smart, simple, strategic ads — done the right way.
+                </p>
+              </div>
+            </ScrollReveal>
           </div>
         </div>
       </section>
 
       {/* Pricing */}
-      <section className="py-20 px-4 bg-muted/30">
+      <section className="py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="font-display text-4xl mb-6">💵 Simple, Transparent Pricing</h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            Choose the plan that fits your business. Save 2 months with annual billing.
-          </p>
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="p-6 bg-background rounded-xl border border-border">
-              <h3 className="font-display text-2xl mb-2">Solo</h3>
-              <p className="text-3xl font-bold mb-2">$147<span className="text-lg font-normal text-muted-foreground">/mo</span></p>
-              <p className="text-sm text-muted-foreground">1 brand, 1 ad account</p>
-            </div>
-            <div className="p-6 bg-background rounded-xl border-2 border-primary relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full">
-                Most Popular
-              </div>
-              <h3 className="font-display text-2xl mb-2">Creator</h3>
-              <p className="text-3xl font-bold mb-2">$299<span className="text-lg font-normal text-muted-foreground">/mo</span></p>
-              <p className="text-sm text-muted-foreground">Up to 3 brands & ad accounts</p>
-            </div>
-            <div className="p-6 bg-background rounded-xl border border-border">
-              <h3 className="font-display text-2xl mb-2">Agency</h3>
-              <p className="text-3xl font-bold mb-2">Custom</p>
-              <p className="text-sm text-muted-foreground">Unlimited + white-label</p>
-            </div>
-          </div>
-          <Button size="lg" onClick={() => navigate("/pricing")} variant="outline">
-            View Full Pricing Details
-          </Button>
+          <ScrollReveal>
+            <h2 className="font-display text-4xl mb-6">💵 Simple, Transparent Pricing</h2>
+          </ScrollReveal>
+          <ScrollReveal delay={0.1}>
+            <p className="text-xl text-muted-foreground mb-8">
+              Choose the plan that fits your business. Save 2 months with annual billing.
+            </p>
+          </ScrollReveal>
+          <StaggerChildren staggerDelay={0.15} className="grid md:grid-cols-3 gap-6 mb-8">
+            <StaggerItem>
+              <motion.div 
+                className="p-6 bg-background rounded-xl border border-border h-full"
+                whileHover={{ scale: 1.03, y: -10 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <h3 className="font-display text-2xl mb-2">Solo</h3>
+                <p className="text-3xl font-bold mb-2">$147<span className="text-lg font-normal text-muted-foreground">/mo</span></p>
+                <p className="text-sm text-muted-foreground">1 brand, 1 ad account</p>
+              </motion.div>
+            </StaggerItem>
+            <StaggerItem>
+              <motion.div 
+                className="p-6 bg-background rounded-xl border-2 border-primary relative h-full"
+                whileHover={{ scale: 1.05, y: -10 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <motion.div 
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-full"
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  Most Popular
+                </motion.div>
+                <h3 className="font-display text-2xl mb-2">Creator</h3>
+                <p className="text-3xl font-bold mb-2">$299<span className="text-lg font-normal text-muted-foreground">/mo</span></p>
+                <p className="text-sm text-muted-foreground">Up to 3 brands & ad accounts</p>
+              </motion.div>
+            </StaggerItem>
+            <StaggerItem>
+              <motion.div 
+                className="p-6 bg-background rounded-xl border border-border h-full"
+                whileHover={{ scale: 1.03, y: -10 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <h3 className="font-display text-2xl mb-2">Agency</h3>
+                <p className="text-3xl font-bold mb-2">Custom</p>
+                <p className="text-sm text-muted-foreground">Unlimited + white-label</p>
+              </motion.div>
+            </StaggerItem>
+          </StaggerChildren>
+          <ScrollReveal delay={0.3}>
+            <MagneticButton className="inline-block">
+              <Button size="lg" onClick={() => navigate("/pricing")} variant="outline">
+                View Full Pricing Details
+              </Button>
+            </MagneticButton>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="py-32 px-4">
-        <div className="container mx-auto max-w-4xl text-center">
-          <h2 className="font-display text-5xl mb-8 md:text-5xl">🚀 Ready to run ads with clarity?</h2>
-          <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Your Ad Assistant is coming. And it's about to make your business feel lighter, simpler, and more strategic.
-          </p>
-          <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8 py-6">
-            Join the Waitlist
-          </Button>
+      <section className="py-32 px-4 relative overflow-hidden">
+        <ParallaxSection className="absolute inset-0" offset={40}>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl" />
+        </ParallaxSection>
+        
+        <div className="container mx-auto max-w-4xl text-center relative z-10">
+          <ScaleOnScroll scaleRange={[0.9, 1]}>
+            <motion.h2 
+              className="font-display text-5xl mb-8 md:text-6xl"
+              whileInView={{ opacity: [0, 1], y: [30, 0] }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+            >
+              🚀 Ready to run ads with clarity?
+            </motion.h2>
+          </ScaleOnScroll>
+          <ScrollReveal delay={0.2}>
+            <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
+              Your Ad Assistant is coming. And it's about to make your business feel lighter, simpler, and more strategic.
+            </p>
+          </ScrollReveal>
+          <ScrollReveal delay={0.4}>
+            <MagneticButton className="inline-block">
+              <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8 py-6">
+                Join the Waitlist
+              </Button>
+            </MagneticButton>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-4 border-t border-border">
+      <motion.footer 
+        className="py-12 px-4 border-t border-border"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        viewport={{ once: true }}
+      >
         <div className="container mx-auto text-center text-sm text-muted-foreground">
           <p>© 2025 Your Ad Assistant. All rights reserved.</p>
         </div>
-      </footer>
-    </div>;
+      </motion.footer>
+    </div>
+  );
 };
+
 export default Sales;
