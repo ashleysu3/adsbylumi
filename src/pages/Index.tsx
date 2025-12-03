@@ -11,6 +11,7 @@ import { ScaleOnScroll } from "@/components/animations/ScaleOnScroll";
 import { FloatingElement } from "@/components/animations/FloatingElement";
 import { MagneticButton, GradientText } from "@/components/animations/SmoothScroll";
 import { ParallaxSection } from "@/components/animations/ParallaxSection";
+import { CursorGlow } from "@/components/animations/CursorTrail";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -59,6 +60,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      {/* Cursor Glow Effect */}
+      <CursorGlow />
+      
       {/* Hero Section with Animated Gradient Background */}
       <section ref={heroRef} className="relative min-h-screen flex items-center overflow-hidden">
         {/* Animated Gradient Mesh Background */}
