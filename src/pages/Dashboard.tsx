@@ -36,7 +36,7 @@ export default function Dashboard() {
     const checkoutStatus = searchParams.get("checkout");
     if (checkoutStatus === "success" && !hasHandledCheckout.current) {
       hasHandledCheckout.current = true;
-      toast.success("Welcome to Your Ad Assistant! Your subscription is now active.", {
+      toast.success("Welcome to Your Ad Assistant! Your 14-day free trial has started.", {
         duration: 5000,
       });
       // Clear the query param
