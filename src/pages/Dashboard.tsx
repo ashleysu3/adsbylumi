@@ -132,7 +132,7 @@ export default function Dashboard() {
     const checks = [
       !!(brand?.name && brand?.website_url && brand?.industry), // Brand basics
       !!(brand?.value_proposition && brand?.target_audience),   // Positioning
-      brand?.psychology_status === "completed",                   // Psychology
+      brand?.psychology_status === "approved",                   // Psychology approved
       offers.length > 0,                                         // Has offers
       !!brand?.meta_account_id                                   // Meta connected
     ];
@@ -153,8 +153,8 @@ export default function Dashboard() {
     if (!(brand?.value_proposition && brand?.target_audience)) {
       items.push({ label: "Add positioning details", section: "brand-details", icon: Target });
     }
-    if (brand?.psychology_status !== "completed") {
-      items.push({ label: "Generate audience psychology", section: "audience-psychology", icon: Brain });
+    if (brand?.psychology_status !== "approved") {
+      items.push({ label: "Approve audience psychology", section: "audience-psychology", icon: Brain });
     }
     if (offers.length === 0) {
       items.push({ label: "Add your first offer", section: "offers", icon: Package });
