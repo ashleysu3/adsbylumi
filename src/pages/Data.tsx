@@ -70,12 +70,16 @@ export default function Data() {
   // Date range state
   const [globalDateRange, setGlobalDateRange] = useState<string>('7');
   const [detailDateRange, setDetailDateRange] = useState<string>('7');
+  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(null);
 
   // User goals stored locally and loaded from DB
   const [userGoals, setUserGoals] = useState<Record<string, number>>({});
 
   // Convert date range string to actual dates
-  const getDateRange = (rangeValue: string): { from: Date; to: Date } => {
+  const getDateRange = (rangeValue: string, custom?: { from: Date; to: Date } | null): { from: Date; to: Date } => {
+    if (rangeValue === 'custom' && custom?.from && custom?.to) {
+      return { from: startOfDay(custom.from), to: endOfDay(custom.to) };
+    }
     const now = new Date();
     switch (rangeValue) {
       case '1':
@@ -103,7 +107,7 @@ export default function Data() {
     if (view === 'home' && campaigns.length > 0) {
       fetchAllMetrics();
     }
-  }, [globalDateRange]);
+  }, [globalDateRange, customDateRange]);
 
   // Fetch campaign for detail view
   useEffect(() => {
@@ -200,8 +204,8 @@ export default function Data() {
   };
 
   // Get previous period date range for trend comparison
-  const getPreviousPeriodRange = (rangeValue: string): { from: Date; to: Date } => {
-    const current = getDateRange(rangeValue);
+  const getPreviousPeriodRange = (rangeValue: string, custom?: { from: Date; to: Date } | null): { from: Date; to: Date } => {
+    const current = getDateRange(rangeValue, custom);
     const daysDiff = Math.ceil((current.to.getTime() - current.from.getTime()) / (1000 * 60 * 60 * 24));
     return {
       from: subDays(current.from, daysDiff),
@@ -214,8 +218,8 @@ export default function Data() {
     if (list.length === 0) return;
 
     setSyncing(true);
-    const dateRange = getDateRange(globalDateRange);
-    const prevDateRange = getPreviousPeriodRange(globalDateRange);
+    const dateRange = getDateRange(globalDateRange, customDateRange);
+    const prevDateRange = getPreviousPeriodRange(globalDateRange, customDateRange);
 
     try {
       const updatedCampaigns = await Promise.all(
@@ -393,6 +397,10 @@ export default function Data() {
     setGlobalDateRange(range);
   };
 
+  const handleCustomDateRangeChange = (range: { from: Date; to: Date } | null) => {
+    setCustomDateRange(range);
+  };
+
   // FIX: Handle campaign-level date range change
   const handleDetailDateRangeChange = (range: string) => {
     setDetailDateRange(range);
@@ -450,7 +458,9 @@ export default function Data() {
           <InsightsHome
             campaigns={campaigns}
             dateRange={globalDateRange}
+            customDateRange={customDateRange}
             onDateRangeChange={handleDateRangeChange}
+            onCustomDateRangeChange={handleCustomDateRangeChange}
             onViewInsights={handleViewInsights}
             onUpdateGoal={handleUpdateGoal}
             isLoading={loading || syncing}

@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Eye, 
   Sparkles, 
@@ -22,6 +21,7 @@ import {
 } from '@/lib/lumi-kpi-config';
 import { KPIProgressBar } from './KPIProgressBar';
 import { KPITrendIndicator } from './KPITrendIndicator';
+import { DateRangePicker } from './DateRangePicker';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -55,19 +55,13 @@ interface Campaign {
 interface InsightsHomeProps {
   campaigns: Campaign[];
   dateRange: string;
+  customDateRange?: { from: Date; to: Date } | null;
   onDateRangeChange: (range: string) => void;
+  onCustomDateRangeChange?: (range: { from: Date; to: Date } | null) => void;
   onViewInsights: (campaignId: string) => void;
   onUpdateGoal: (campaignId: string, goal: number) => void;
   isLoading: boolean;
 }
-
-const dateRangeOptions = [
-  { value: '7', label: 'Last 7 days' },
-  { value: '1', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: '3', label: 'Last 3 days' },
-  { value: '14', label: 'Last 14 days' },
-];
 
 // Helper to extract the primary KPI value from metrics
 function getPrimaryKPIValue(metrics: CampaignMetrics | null, primaryKey: string): number | null {
@@ -89,7 +83,9 @@ function getPrimaryKPIValue(metrics: CampaignMetrics | null, primaryKey: string)
 export function InsightsHome({ 
   campaigns, 
   dateRange, 
+  customDateRange,
   onDateRangeChange, 
+  onCustomDateRangeChange,
   onViewInsights,
   onUpdateGoal,
   isLoading 
@@ -140,18 +136,12 @@ export function InsightsHome({
               <Calendar className="h-4 w-4" />
               <span>Viewing data for:</span>
             </div>
-            <Select value={dateRange} onValueChange={onDateRangeChange}>
-              <SelectTrigger className="w-[180px] rounded-xl border-[hsl(var(--fog-grey))]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                {dateRangeOptions.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DateRangePicker
+              dateRange={dateRange}
+              customDateRange={customDateRange}
+              onDateRangeChange={onDateRangeChange}
+              onCustomDateRangeChange={onCustomDateRangeChange}
+            />
           </div>
         </CardContent>
       </Card>
