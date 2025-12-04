@@ -11,9 +11,9 @@ interface TypingHeadlineProps {
 export const TypingHeadline = ({
   staticText = "Meta Ads,",
   rotatingWords = ["Simplified.", "Reimagined.", "Lumi-Fied.", "Powered by Psychology."],
-  typingSpeed = 80,
-  deletingSpeed = 50,
-  pauseTime = 1200,
+  typingSpeed = 120,
+  deletingSpeed = 70,
+  pauseTime = 1800,
 }: TypingHeadlineProps) => {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
