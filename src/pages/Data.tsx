@@ -68,8 +68,9 @@ export default function Data() {
 
   // Date range state
   const [globalDateRange, setGlobalDateRange] = useState<string>('7');
+  const [detailDateRange, setDetailDateRange] = useState<string>('7');
 
-  // User goals stored locally (in real app, would be in DB)
+  // User goals stored locally and loaded from DB
   const [userGoals, setUserGoals] = useState<Record<string, number>>({});
 
   // Convert date range string to actual dates
@@ -96,9 +97,9 @@ export default function Data() {
     fetchCampaigns();
   }, []);
 
-  // Refetch when date range changes
+  // Refetch when global date range changes (home view)
   useEffect(() => {
-    if (campaigns.length > 0) {
+    if (view === 'home' && campaigns.length > 0) {
       fetchAllMetrics();
     }
   }, [globalDateRange]);
@@ -106,7 +107,7 @@ export default function Data() {
   // Fetch campaign for detail view
   useEffect(() => {
     if (view === 'detail' && selectedCampaignId) {
-      fetchCampaignDetail(selectedCampaignId);
+      fetchCampaignDetail(selectedCampaignId, detailDateRange);
     }
   }, [view, selectedCampaignId]);
 
@@ -134,6 +135,7 @@ export default function Data() {
           meta_campaign_ids, 
           meta_campaign_status,
           template_id,
+          final_answers,
           campaign_templates!campaign_workspaces_template_id_fkey (
             id,
             name,
@@ -163,13 +165,23 @@ export default function Data() {
         return true;
       });
 
+      // Load user goals from final_answers
+      const loadedGoals: Record<string, number> = {};
+      publishedWorkspaces.forEach(w => {
+        const finalAnswers = w.final_answers as any;
+        if (finalAnswers?.userKpiGoal) {
+          loadedGoals[w.id] = finalAnswers.userKpiGoal;
+        }
+      });
+      setUserGoals(prev => ({ ...prev, ...loadedGoals }));
+
       const campaignData: CampaignData[] = publishedWorkspaces.map(w => ({
         id: w.id,
         name: w.name,
         templateName: (w.campaign_templates as any)?.name || null,
         objective: (w.campaign_templates as any)?.objective || null,
         metrics: null,
-        userGoal: userGoals[w.id] || null,
+        userGoal: loadedGoals[w.id] || null,
       }));
 
       setCampaigns(campaignData);
@@ -239,9 +251,9 @@ export default function Data() {
     }
   };
 
-  const fetchCampaignDetail = async (campaignId: string) => {
+  const fetchCampaignDetail = async (campaignId: string, dateRangeValue?: string) => {
     setSyncing(true);
-    const dateRange = getDateRange(globalDateRange);
+    const dateRange = getDateRange(dateRangeValue || detailDateRange);
 
     try {
       // Fetch metrics
@@ -307,6 +319,7 @@ export default function Data() {
   const handleViewInsights = (campaignId: string) => {
     setSelectedCampaignId(campaignId);
     setAnalysis(null);
+    setDetailDateRange(globalDateRange); // Start with global date range
     setView('detail');
   };
 
@@ -316,18 +329,46 @@ export default function Data() {
     setAnalysis(null);
   };
 
+  // FIX: Persist user goals to database
   const handleUpdateGoal = async (campaignId: string, goal: number) => {
     setUserGoals(prev => ({ ...prev, [campaignId]: goal }));
     setCampaigns(prev => prev.map(c => 
       c.id === campaignId ? { ...c, userGoal: goal } : c
     ));
     
-    // In a real app, save to database here
-    toast.success('Goal updated!');
+    // Save to database in final_answers
+    try {
+      const { data: workspace } = await supabase
+        .from('campaign_workspaces')
+        .select('final_answers')
+        .eq('id', campaignId)
+        .single();
+
+      const currentAnswers = (workspace?.final_answers as any) || {};
+      const updatedAnswers = { ...currentAnswers, userKpiGoal: goal };
+
+      await supabase
+        .from('campaign_workspaces')
+        .update({ final_answers: updatedAnswers })
+        .eq('id', campaignId);
+
+      toast.success('Goal saved!');
+    } catch (error) {
+      console.error('Error saving goal:', error);
+      toast.error('Failed to save goal');
+    }
   };
 
   const handleDateRangeChange = (range: string) => {
     setGlobalDateRange(range);
+  };
+
+  // FIX: Handle campaign-level date range change
+  const handleDetailDateRangeChange = (range: string) => {
+    setDetailDateRange(range);
+    if (selectedCampaignId) {
+      fetchCampaignDetail(selectedCampaignId, range);
+    }
   };
 
   // Get selected campaign for detail view
@@ -391,6 +432,7 @@ export default function Data() {
             globalDateRange={globalDateRange}
             onBack={handleBackToHome}
             onUpdateGoal={(goal) => handleUpdateGoal(selectedCampaign.id, goal)}
+            onDateRangeChange={handleDetailDateRangeChange}
             isLoading={syncing}
           />
         ) : (

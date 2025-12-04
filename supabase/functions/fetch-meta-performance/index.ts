@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
       ? `time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}`
       : `date_preset=last_7d`;
 
-    // Fetch Campaign-level insights
+    // Fetch Campaign-level insights - including video_p100_watched_actions for thruplay data
     const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions&${timeRange}&access_token=${brand.meta_access_token}`;
     
     const campaignResponse = await fetch(campaignInsightsUrl);
@@ -152,8 +152,23 @@ Deno.serve(async (req) => {
       return action ? parseFloat(action.value) || 0 : 0;
     };
 
+    // FIX: Extract video thruplay count from video_p100_watched_actions array
+    const extractVideoThruPlays = (videoActions: any[]) => {
+      if (!Array.isArray(videoActions)) return 0;
+      // The video_p100_watched_actions is an array with action_type and value
+      const thruPlayAction = videoActions.find((a: any) => a.action_type === 'video_view');
+      return thruPlayAction ? parseFloat(thruPlayAction.value) || 0 : 0;
+    };
+
+    // Get video thruplay count - check both dedicated field and actions
+    const videoThruPlays = campaignMetrics.video_p100_watched_actions
+      ? extractVideoThruPlays(campaignMetrics.video_p100_watched_actions)
+      : extractAction(campaignMetrics.actions, 'video_view'); // Fallback to video_view if no thruplay data
+
+    const spend = extractMetric(campaignMetrics, 'spend');
+
     const processedMetrics = {
-      spend: extractMetric(campaignMetrics, 'spend'),
+      spend,
       impressions: extractMetric(campaignMetrics, 'impressions'),
       reach: extractMetric(campaignMetrics, 'reach'),
       clicks: extractMetric(campaignMetrics, 'clicks'),
@@ -168,13 +183,17 @@ Deno.serve(async (req) => {
       addToCart: extractAction(campaignMetrics.actions, 'add_to_cart'),
       linkClicks: extractAction(campaignMetrics.actions, 'link_click'),
       videoViews: extractAction(campaignMetrics.actions, 'video_view'),
-      videoThruPlays: extractAction(campaignMetrics.actions, 'video_play_100'),
-      profileVisits: extractAction(campaignMetrics.actions, 'onsite_web_app_visit'),
+      videoThruPlays,
+      profileVisits: extractAction(campaignMetrics.actions, 'onsite_conversion.messaging_first_reply') || 
+                     extractAction(campaignMetrics.actions, 'landing_page_view'),
       
       // Cost per actions
       cpl: extractCostPerAction(campaignMetrics.cost_per_action_type, 'lead'),
       cpp: extractCostPerAction(campaignMetrics.cost_per_action_type, 'purchase'),
       costPerAddToCart: extractCostPerAction(campaignMetrics.cost_per_action_type, 'add_to_cart'),
+      
+      // Calculate cost per thruplay
+      costPerThruPlay: videoThruPlays > 0 ? spend / videoThruPlays : 0,
       
       // ROAS calculation
       roas: campaignMetrics.purchase_roas ? extractMetric(campaignMetrics, 'purchase_roas') : null,

@@ -17,7 +17,8 @@ import {
   formatLumiKPIValue, 
   getLumiKPIStatus,
   getLumiStatusDot,
-  getLumiStatusLabel
+  getLumiStatusLabel,
+  formatBenchmarkRange
 } from '@/lib/lumi-kpi-config';
 
 interface CampaignMetrics {
@@ -63,7 +64,6 @@ const dateRangeOptions = [
   { value: 'yesterday', label: 'Yesterday' },
   { value: '3', label: 'Last 3 days' },
   { value: '14', label: 'Last 14 days' },
-  { value: 'custom', label: 'Custom range' },
 ];
 
 // Helper to extract the primary KPI value from metrics
@@ -214,13 +214,13 @@ export function InsightsHome({
                         </p>
                       </div>
 
-                      {/* Benchmark */}
+                      {/* Benchmark - FIX: use formatBenchmarkRange */}
                       <div className="space-y-1">
                         <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                           Benchmark
                         </p>
                         <p className="text-lg text-muted-foreground">
-                          {kpiConfig.benchmark.unit}{kpiConfig.benchmark.min.toFixed(2)} – {kpiConfig.benchmark.unit}{kpiConfig.benchmark.max.toFixed(2)}
+                          {formatBenchmarkRange(kpiConfig.benchmark)}
                         </p>
                       </div>
 
@@ -262,7 +262,12 @@ export function InsightsHome({
                             className="flex items-center gap-2 text-lg text-muted-foreground hover:text-foreground transition-colors group"
                           >
                             {campaign.userGoal ? (
-                              <span>{kpiConfig.benchmark.unit}{campaign.userGoal.toFixed(2)}</span>
+                              <span>
+                                {kpiConfig.benchmark.unit === 'x' 
+                                  ? `${campaign.userGoal.toFixed(2)}x` 
+                                  : `${kpiConfig.benchmark.unit}${campaign.userGoal.toFixed(2)}`
+                                }
+                              </span>
                             ) : (
                               <span className="text-muted-foreground/50">Set goal</span>
                             )}
