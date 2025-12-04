@@ -89,67 +89,76 @@ export function CampaignFlowBreadcrumb({
     navigate(step.route);
   };
 
+  // Calculate height for spacer
+  const barHeight = offerName ? 'h-[72px]' : 'h-[44px]';
+
   return (
-    <div className={cn("sticky top-0 z-40", className)}>
-      {/* Offer name bar */}
-      {offerName && (
-        <div className="bg-muted/50 border-b border-border/50 py-1.5 px-4">
-          <p className="text-xs text-muted-foreground text-center">
-            <span className="font-medium text-foreground/70">{offerName}</span>
-          </p>
-        </div>
-      )}
+    <>
+      {/* Fixed announcement bar at very top */}
+      <div className={cn("fixed top-0 left-0 right-0 z-[60]", className)}>
+        {/* Offer name bar */}
+        {offerName && (
+          <div className="bg-muted/80 backdrop-blur-sm border-b border-border/50 py-1.5 px-4">
+            <p className="text-xs text-muted-foreground text-center truncate">
+              <span className="font-medium text-foreground/80">{offerName}</span>
+            </p>
+          </div>
+        )}
+        
+        {/* Progress announcement bar */}
+        <nav
+          aria-label="Campaign progress"
+          className="bg-background/95 backdrop-blur-sm border-b border-border shadow-sm"
+        >
+          <div className="container mx-auto px-4 py-2">
+            <ol className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
+              {steps.map((step, index) => {
+                const isCompleted = step.status === "completed";
+                const isCurrent = step.status === "current";
+                const isDisabled = step.status === "disabled";
+                const isLast = index === steps.length - 1;
+
+                return (
+                  <li key={step.id} className="flex items-center gap-1 sm:gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleStepClick(step)}
+                      disabled={isDisabled}
+                      className={cn(
+                        "flex items-center gap-1.5 h-auto py-1.5 px-2 sm:px-3 transition-all rounded-full",
+                        isCurrent && "bg-primary/15 text-primary font-semibold shadow-sm",
+                        isCompleted && "text-muted-foreground hover:text-foreground",
+                        isDisabled && "opacity-40 cursor-not-allowed"
+                      )}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <Circle
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            isCurrent && "fill-primary text-primary",
+                            !isCurrent && !isCompleted && "text-muted-foreground"
+                          )}
+                        />
+                      )}
+                      <span className="text-xs sm:text-sm">{step.label}</span>
+                    </Button>
+
+                    {!isLast && (
+                      <ArrowRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </nav>
+      </div>
       
-      {/* Progress announcement bar */}
-      <nav
-        aria-label="Campaign progress"
-        className="bg-background/95 backdrop-blur-sm border-b border-border shadow-sm"
-      >
-        <div className="container mx-auto px-4 py-2">
-          <ol className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
-            {steps.map((step, index) => {
-              const isCompleted = step.status === "completed";
-              const isCurrent = step.status === "current";
-              const isDisabled = step.status === "disabled";
-              const isLast = index === steps.length - 1;
-
-              return (
-                <li key={step.id} className="flex items-center gap-1 sm:gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleStepClick(step)}
-                    disabled={isDisabled}
-                    className={cn(
-                      "flex items-center gap-1.5 h-auto py-1.5 px-2 sm:px-3 transition-all rounded-full",
-                      isCurrent && "bg-primary/15 text-primary font-semibold shadow-sm",
-                      isCompleted && "text-muted-foreground hover:text-foreground",
-                      isDisabled && "opacity-40 cursor-not-allowed"
-                    )}
-                  >
-                    {isCompleted ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                    ) : (
-                      <Circle
-                        className={cn(
-                          "h-3.5 w-3.5",
-                          isCurrent && "fill-primary text-primary",
-                          !isCurrent && !isCompleted && "text-muted-foreground"
-                        )}
-                      />
-                    )}
-                    <span className="text-xs sm:text-sm">{step.label}</span>
-                  </Button>
-
-                  {!isLast && (
-                    <ArrowRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      </nav>
-    </div>
+      {/* Spacer to push content below fixed bar */}
+      <div className={barHeight} />
+    </>
   );
 }
