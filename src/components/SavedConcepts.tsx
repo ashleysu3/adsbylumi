@@ -14,12 +14,28 @@ interface SavedConceptsProps {
 }
 
 const stageBadgeColors: Record<string, string> = {
+  grow: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  nurture: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  convert: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  // Legacy support
   tofu: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   mofu: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
   bofu: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
 };
 
+const stageDisplayNames: Record<string, string> = {
+  grow: "Grow",
+  nurture: "Nurture",
+  convert: "Convert",
+  tofu: "Grow",
+  mofu: "Nurture",
+  bofu: "Convert",
+};
+
 const stageIcons: Record<string, React.ElementType> = {
+  grow: Target,
+  nurture: Zap,
+  convert: TrendingUp,
   tofu: Target,
   mofu: Zap,
   bofu: TrendingUp,
@@ -35,7 +51,7 @@ const formatIcons: Record<string, React.ElementType> = {
 export function SavedConcepts({ workspace, type, onUpdate }: SavedConceptsProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const creative = workspace.creative_json || {};
-  const creativeMix = creative.creative_mix || {};
+  const creativeMix = creative.creative_mix || creative.customer_journey || {};
   const lovedConcepts = workspace.loved_concepts || [];
   const selectedCopy = workspace.selected_copy || {};
 
@@ -46,13 +62,38 @@ export function SavedConcepts({ workspace, type, onUpdate }: SavedConceptsProps)
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Get all loved concepts
-  const allConcepts = [
-    ...(creativeMix.tofu || []).map((c: any) => ({ ...c, stage: 'tofu' })),
-    ...(creativeMix.mofu || []).map((c: any) => ({ ...c, stage: 'mofu' })),
-    ...(creativeMix.bofu || []).map((c: any) => ({ ...c, stage: 'bofu' })),
-  ];
-  const savedConceptsList = allConcepts.filter(c => lovedConcepts.includes(c.id));
+  // Get all concepts with proper IDs (support both old and new naming)
+  const growConcepts = (creativeMix.grow || creativeMix.tofu || []).map((c: any, idx: number) => ({ 
+    ...c, 
+    stage: 'grow',
+    conceptId: `grow-${idx}`
+  }));
+  const nurtureConcepts = (creativeMix.nurture || creativeMix.mofu || []).map((c: any, idx: number) => ({ 
+    ...c, 
+    stage: 'nurture',
+    conceptId: `nurture-${idx}`
+  }));
+  const convertConcepts = (creativeMix.convert || creativeMix.bofu || []).map((c: any, idx: number) => ({ 
+    ...c, 
+    stage: 'convert',
+    conceptId: `convert-${idx}`
+  }));
+  
+  // Also check legacy tofu/mofu/bofu IDs in lovedConcepts
+  const allConcepts = [...growConcepts, ...nurtureConcepts, ...convertConcepts];
+  
+  // Filter for loved concepts - check both new IDs and legacy IDs
+  const savedConceptsList = allConcepts.filter(c => {
+    // Check direct match
+    if (lovedConcepts.includes(c.conceptId)) return true;
+    // Check legacy format (tofu-0, mofu-1, etc.)
+    const legacyStage = c.stage === 'grow' ? 'tofu' : c.stage === 'nurture' ? 'mofu' : 'bofu';
+    const legacyId = c.conceptId.replace(c.stage, legacyStage);
+    if (lovedConcepts.includes(legacyId)) return true;
+    // Check if concept has its own id property
+    if (c.id && lovedConcepts.includes(c.id)) return true;
+    return false;
+  });
 
   // Get saved copy
   const adCopyLibrary = creative.ad_copy_library || {};
@@ -116,7 +157,7 @@ export function SavedConcepts({ workspace, type, onUpdate }: SavedConceptsProps)
                   <div className="flex items-center gap-2 flex-wrap mb-2">
                     <Badge className={stageBadgeColors[concept.stage]}>
                       <StageIcon className="h-3 w-3 mr-1" />
-                      {concept.stage?.toUpperCase()}
+                      {stageDisplayNames[concept.stage] || concept.stage?.toUpperCase()}
                     </Badge>
                     <Badge variant="outline" className="gap-1">
                       <FormatIcon className="h-3 w-3" />
