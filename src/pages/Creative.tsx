@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Sparkles, ArrowLeft, Rocket, Clipboard } from "lucide-react";
+import { Sparkles, ArrowLeft, Rocket, Clipboard } from "lucide-react";
 import { toast } from "sonner";
 import { CreativeAssets } from "@/components/CreativeAssets";
 import { ProductionChecklist } from "@/components/ProductionChecklist";
@@ -17,11 +17,15 @@ import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { GeneratingModal } from "@/components/GeneratingModal";
 import { AdCopyLibrary } from "@/components/AdCopyLibrary";
 import { SavedConcepts } from "@/components/SavedConcepts";
+import { LumiSuccess } from "@/components/LumiSuccess";
+import { LumiLoader } from "@/components/LumiLoader";
+import { LumiCharacter } from "@/components/LumiCharacter";
 
 export default function Creative() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [brand, setBrand] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
@@ -214,6 +218,7 @@ export default function Creative() {
         .eq("id", workspace.id);
 
       await handleWorkspaceUpdate(updatedData);
+      setShowSuccess(true);
       toast.success("Creative assets generated!");
     } catch (error: any) {
       console.error("Error generating creative:", error);
@@ -268,7 +273,7 @@ export default function Creative() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <LumiLoader size="lg" message="Loading Lumi Creative..." />
         </div>
       </DashboardLayout>
     );
@@ -276,6 +281,14 @@ export default function Creative() {
 
   return (
     <DashboardLayout>
+      {/* Success celebration */}
+      <LumiSuccess 
+        show={showSuccess}
+        title="Creative generated! ✨"
+        message="Lumi created scripts, hooks, and copy tailored to your strategy."
+        onComplete={() => setShowSuccess(false)}
+      />
+      
       <CampaignFlowBreadcrumb 
         currentStep="creative" 
         campaignId={selectedCampaignId}
@@ -435,7 +448,7 @@ export default function Creative() {
                           variant="lumi"
                           className="w-full max-w-xs gap-2"
                         >
-                          {generating && <Loader2 className="h-5 w-5 animate-spin" />}
+                          {generating && <LumiCharacter size="xs" state="loading" className="mr-1" />}
                           {!generating && <Sparkles className="h-5 w-5" />}
                           {generating ? "Lumi is thinking..." : "Generate Creative ✨"}
                         </Button>

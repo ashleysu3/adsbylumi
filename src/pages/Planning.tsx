@@ -13,10 +13,11 @@ import {
   PhoneCall, 
   TrendingUp, 
   Play,
-  Loader2,
   Info
 } from "lucide-react";
 import { toast } from "sonner";
+import { LumiLoader } from "@/components/LumiLoader";
+import { LumiCharacter } from "@/components/LumiCharacter";
 import {
   Dialog,
   DialogContent,
@@ -315,7 +316,7 @@ export default function Planning() {
                   <div className="pt-2 border-t">
                     <p className="text-xs text-muted-foreground mb-3"><strong>Use this for:</strong> {template.use_case}</p>
                     <Button className="w-full" variant="lumi" onClick={() => handleTemplateClick(template)} disabled={loading}>
-                      {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Setting up...</> : "Let's Go"}
+                      {loading ? <><LumiCharacter size="xs" state="loading" className="mr-2" />Setting up...</> : "Let's Go"}
                     </Button>
                   </div>
                 </CardContent>
@@ -359,8 +360,8 @@ export default function Planning() {
                   </ul>
                 </div>
                 <div className="flex space-x-3 pt-4">
-                  <Button className="flex-1" onClick={() => { setShowDetails(false); handleTemplateClick(selectedTemplate); }} disabled={loading}>
-                    {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading...</> : "Choose This Template"}
+                  <Button className="flex-1" variant="lumi" onClick={() => { setShowDetails(false); handleTemplateClick(selectedTemplate); }} disabled={loading}>
+                    {loading ? <><LumiCharacter size="xs" state="loading" className="mr-2" />Loading...</> : "Choose This Template"}
                   </Button>
                   <Button variant="outline" onClick={() => setShowDetails(false)}>Cancel</Button>
                 </div>

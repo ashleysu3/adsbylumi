@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Rocket, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Rocket, AlertCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { LumiLoader } from "./LumiLoader";
+import { LumiSuccess } from "./LumiSuccess";
+import { LumiCharacter } from "./LumiCharacter";
 
 interface MetaCampaignBuilderProps {
   workspace: any;
@@ -64,18 +67,37 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
 
   if (step > totalSteps) {
     return (
-      <Card>
+      <Card className="rounded-2xl overflow-hidden">
         <CardContent className="pt-6">
-          <div className="text-center py-12">
-            <CheckCircle2 className="h-16 w-16 mx-auto text-green-500 mb-4" />
-            <h3 className="text-2xl font-bold mb-2">Campaign Published! 🎉</h3>
-            <p className="text-muted-foreground mb-6">
-              Your campaign is now live in Meta Ads Manager
-            </p>
-            <div className="space-y-2 text-sm">
-              <p><strong>Campaign ID:</strong> {workspace.meta_campaign_ids?.campaign_id}</p>
-              <p><strong>Ad Set ID:</strong> {workspace.meta_campaign_ids?.adset_id}</p>
-              <p><strong>Status:</strong> {workspace.meta_campaign_status}</p>
+          <div className="text-center py-12 relative">
+            {/* Success glow background */}
+            <div className="absolute inset-0 bg-glow/10 blur-3xl" />
+            
+            <div className="relative">
+              <div className="mb-6 flex justify-center">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-glow/40 blur-xl rounded-full animate-pulse" />
+                  <LumiCharacter size="xl" state="talking" glow />
+                </div>
+              </div>
+              
+              <h3 className="text-2xl font-display font-bold mb-2">Your campaign is live! ✨</h3>
+              <p className="text-muted-foreground mb-6">
+                Nice work — Lumi will keep an eye on things and let you know what's working.
+              </p>
+              
+              <Card className="max-w-sm mx-auto bg-muted/50 rounded-xl">
+                <CardContent className="py-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Campaign ID:</span>
+                    <span className="font-medium">{workspace.meta_campaign_ids?.campaign_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    <span className="font-medium text-green-600">Active</span>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </CardContent>
@@ -354,15 +376,16 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
                   <Button
                     onClick={handlePublish}
                     disabled={!canPublish || publishing}
+                    variant="lumi"
                   >
                     {publishing ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <LumiCharacter size="xs" state="loading" className="mr-2" />
                         Publishing...
                       </>
                     ) : (
                       <>
-                        <Rocket className="h-4 w-4 mr-2" />
+                        <Sparkles className="h-4 w-4 mr-2" />
                         Publish to Meta
                       </>
                     )}

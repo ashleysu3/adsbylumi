@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignsList } from "@/components/CampaignsList";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LumiLoader } from "@/components/LumiLoader";
 import { toast } from "sonner";
 
 export default function Campaigns() {
@@ -44,9 +44,8 @@ export default function Campaigns() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="space-y-6">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-64 w-full" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LumiLoader size="lg" message="Loading your campaigns..." />
         </div>
       </DashboardLayout>
     );
