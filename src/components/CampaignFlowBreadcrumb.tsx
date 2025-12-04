@@ -73,7 +73,7 @@ export function CampaignFlowBreadcrumb({
     navigate(step.route);
   };
   return <nav aria-label="Campaign progress" className={cn("border-b border-border bg-background/95 backdrop-blur-sm", className)}>
-      <div className="container mx-auto px-4 py-[22px]">
+      <div className="container mx-auto px-4 py-[16px] pt-0">
         <ol className="flex items-center justify-center gap-2 flex-wrap">
           {steps.map((step, index) => {
           const isCompleted = step.status === "completed";
