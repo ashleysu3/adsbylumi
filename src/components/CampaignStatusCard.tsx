@@ -84,7 +84,7 @@ export function CampaignStatusCard({
         body: { workspaceId }
       });
 
-      // Check for token expiration in error or response
+      // Check for token expiration in error or response body
       const errorMsg = error?.message || '';
       const dataError = data?.error || '';
       const fullError = `${errorMsg} ${dataError}`;
@@ -97,7 +97,11 @@ export function CampaignStatusCard({
         return;
       }
 
-      if (error) throw error;
+      // Handle any other errors
+      if (error || data?.error) {
+        console.error('Error fetching status:', fullError);
+        return;
+      }
       
       setTokenExpired(false);
       if (data?.status) {
@@ -105,10 +109,6 @@ export function CampaignStatusCard({
       }
     } catch (error: any) {
       console.error('Error fetching status:', error);
-      // Don't show toast for token errors - we show the UI instead
-      if (!tokenExpired) {
-        toast.error('Failed to fetch campaign status');
-      }
     } finally {
       setLoading(false);
     }
