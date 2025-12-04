@@ -7,6 +7,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ALL Knowledge Base categories that must be fetched and applied
+const ALL_KB_CATEGORIES = [
+  'creative',
+  'copy',
+  'visual',
+  'meta_best_practices',
+  'ad_strategy',
+  'customer_journey',
+  'buyer_psychology',
+  'creative_troubleshooting',
+  'format_rules',
+  'offer_mapping',
+  'niche',
+  'trends',
+  'hook_library',
+  'compliance'
+];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -35,26 +53,34 @@ serve(async (req) => {
       console.error('Error fetching knowledge:', kbError);
     }
 
-    // Organize KB by category with FULL content
-    const knowledgeByCategory: Record<string, any[]> = {};
-    (kbDocs || []).forEach(doc => {
-      if (!knowledgeByCategory[doc.category]) {
-        knowledgeByCategory[doc.category] = [];
-      }
-      knowledgeByCategory[doc.category].push({
-        title: doc.title,
-        content: doc.content // FULL content
-      });
+    // Organize KB content by category for structured access
+    const kbByCategory: Record<string, Array<{title: string, content: string}>> = {};
+    (kbDocs || []).forEach((doc: any) => {
+      if (!kbByCategory[doc.category]) kbByCategory[doc.category] = [];
+      kbByCategory[doc.category].push({ title: doc.title, content: doc.content });
     });
 
-    // Build comprehensive knowledge base context
-    let kbContext = "=== YOUR KNOWLEDGE BASE ===\n\n";
-    for (const [category, docs] of Object.entries(knowledgeByCategory)) {
-      kbContext += `[${category.toUpperCase().replace('_', ' ')}]\n`;
+    // Build comprehensive KB sections
+    const customerJourneyKB = kbByCategory['customer_journey']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const psychologyKB = kbByCategory['buyer_psychology']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const creativeKB = kbByCategory['creative']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const copyKB = kbByCategory['copy']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const visualKB = kbByCategory['visual']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const hookLibraryKB = kbByCategory['hook_library']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const offerMappingKB = kbByCategory['offer_mapping']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const nicheKB = kbByCategory['niche']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const metaBestPracticesKB = kbByCategory['meta_best_practices']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const adStrategyKB = kbByCategory['ad_strategy']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const complianceKB = kbByCategory['compliance']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+
+    // Build full KB context
+    let kbContext = "=== LUMI'S COMPLETE KNOWLEDGE BASE ===\n\n";
+    for (const [category, docs] of Object.entries(kbByCategory)) {
+      kbContext += `[${(category as string).toUpperCase().replace(/_/g, ' ')}]\n`;
       docs.forEach(doc => {
         kbContext += `\n${doc.title}:\n${doc.content}\n`;
       });
-      kbContext += "\n";
+      kbContext += "\n---\n";
     }
 
     // Extract offer-specific context from brandInfo
@@ -63,6 +89,20 @@ serve(async (req) => {
     const productPsychology = offer?.product_psychology || {};
 
     const systemPrompt = `You are a Meta Ads copywriter specializing in creating multiple high-converting variations for ${brandInfo?.name || 'this brand'}.
+
+## LUMI'S COPY PHILOSOPHY
+Every copy variation you generate MUST be informed by ALL of Lumi's Knowledge Bases. You are not a generic copywriter - you are Lumi's Copy Department, with deep expertise in Meta advertising psychology and proven copy frameworks.
+
+## MANDATORY KB INTEGRATION FOR COPY
+Every variation MUST demonstrate application of:
+1. Copy Formula KB - Use DIFFERENT frameworks (PAS, AIDA, Hook-Story-Offer, Fear-Agitation-Solution, etc.)
+2. Buyer Psychology KB - Specific psychological triggers appropriate for the stage
+3. Customer Journey KB - Stage-appropriate messaging (Grow/Nurture/Convert)
+4. Hook Library KB - Proven hook patterns for first lines
+5. Offer Mapping KB - Copy adjusted for offer type
+6. Niche KB - Industry-specific language patterns
+7. Meta Best Practices KB - Platform compliance and performance rules
+8. Compliance KB - Avoiding problematic claims
 
 ## BRAND CONTEXT
 - Brand Voice: ${brandInfo?.voice || 'Not specified'}
@@ -77,34 +117,52 @@ ${messagingGuidelines.always_include?.length ? `\n✅ ALWAYS INCLUDE:\n${messagi
 ${messagingGuidelines.approved_examples?.length ? `\n📝 Approved Examples:\n${messagingGuidelines.approved_examples.map((ex: any) => `- [${ex.type}] "${ex.text}"`).join('\n')}` : ''}
 
 ## PRODUCT PSYCHOLOGY
-${productPsychology.pain_points?.length ? `Pain Points: ${productPsychology.pain_points.join(', ')}` : ''}
-${productPsychology.desires?.length ? `Desires: ${productPsychology.desires.join(', ')}` : ''}
-${productPsychology.objections?.length ? `Objections: ${productPsychology.objections.join(', ')}` : ''}
-${productPsychology.buying_triggers?.length ? `Triggers: ${productPsychology.buying_triggers.join(', ')}` : ''}
+${productPsychology.positioning ? `Positioning: ${productPsychology.positioning}` : ''}
+${productPsychology.pain_points?.length ? `Pain Points:\n${productPsychology.pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
+${productPsychology.desires?.length ? `Desires:\n${productPsychology.desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
+${productPsychology.objections?.length ? `Objections:\n${productPsychology.objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
+${productPsychology.buying_triggers?.length ? `Triggers:\n${productPsychology.buying_triggers.map((t: string) => `- ${t}`).join('\n')}` : ''}
 
 ${kbContext}
 
-=== META COMPLIANCE ===
+## MULTI-KB VALIDATION FOR COPY
+Before including ANY variation, validate it passes ALL checks:
+
+✔ FRAMEWORK DIVERSITY - Each variation uses a DIFFERENT copy framework
+✔ PSYCHOLOGY ACCURACY - Trigger matches stage and audience state
+✔ STAGE ALIGNMENT - Copy tone matches Grow/Nurture/Convert intent
+✔ HOOK EFFECTIVENESS - Opening uses proven Hook Library patterns
+✔ OFFER RELEVANCE - Copy properly represents this specific offer
+✔ NICHE LANGUAGE - Uses industry-appropriate terminology
+✔ COMPLIANCE CHECK - No banned phrases or problematic claims
+✔ CHARACTER LIMITS - Headlines <40, Descriptions <30
+
+If ANY check fails → regenerate before including.
+
+## META COMPLIANCE
 - No guarantees or income claims
 - No personal attribute targeting
 - No shocking/sensational language
 
-=== CHARACTER LIMITS ===
+## CHARACTER LIMITS
 - Headline: Max 40 characters
 - Primary Text: 125-200 characters recommended
 - Description: Max 30 characters
 
-=== CTA HIERARCHY ===
+## CTA HIERARCHY
 LEARN_MORE is best for Grow stage (default), SIGN_UP for Nurture, SHOP_NOW for Convert
 
 Your job: Generate 3-5 distinct copy variations, each using a DIFFERENT framework from the Knowledge Base.
 
 Each variation must:
-1. Use a specific framework (PAS, AIDA, Hook-Story-Offer, Fear-Agitation-Solution, etc.)
+1. Use a specific framework (PAS, AIDA, Hook-Story-Offer, Fear-Agitation-Solution, Before-After-Bridge, etc.)
 2. Have a unique angle while staying true to the concept
-3. Maintain Meta compliance
-4. Be optimized for the stage (${stage.toUpperCase()})
-5. STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")
+3. Apply a DIFFERENT psychology trigger from Buyer Psychology KB
+4. Use hooks from Hook Library KB
+5. Maintain Meta compliance
+6. Be optimized for the stage (${stage.toUpperCase()})
+7. STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")
+8. Include kb_references showing which KBs informed this variation
 
 Return JSON array with this structure:
 [
@@ -115,13 +173,17 @@ Return JSON array with this structure:
     "description": "...",
     "call_to_action": "LEARN_MORE",
     "framework_used": "Problem-Agitate-Solution",
-    "why_this_angle": "This variation leads with the core problem, agitates the pain, then presents your offer as the solution. Works well for pain-aware audiences.",
-    "best_for": "Audiences who already know they have a problem"
+    "psychology_trigger": "Specific trigger from Buyer Psychology KB",
+    "hook_pattern": "Hook pattern used from Hook Library KB",
+    "why_this_angle": "KB-informed explanation of why this works",
+    "best_for": "Audiences who already know they have a problem",
+    "kb_references": ["copy", "buyer_psychology", "hook_library", "customer_journey"],
+    "validation_passed": true
   },
-  // ... 2-4 more variations
+  // ... 2-4 more variations using DIFFERENT frameworks
 ]
 
-Make each variation distinctly different in approach, tone, and messaging angle.`;
+Make each variation distinctly different in approach, tone, framework, and messaging angle.`;
 
     const userPrompt = `Generate 3-5 copy variations for this concept:
 
@@ -131,10 +193,28 @@ Script/Copy: ${concept.script || concept.primary_copy || 'Not provided'}
 Psychology Trigger: ${concept.psychology_trigger || 'Not provided'}
 Format: ${concept.format}
 Stage: ${stage.toUpperCase()}
+Content Type: ${concept.content_type || 'Not specified'}
 
-Create variations using DIFFERENT frameworks from the KB. Make each one unique in angle and approach.`;
+Offer Details:
+- Name: ${offer.name || 'Not specified'}
+- Description: ${offer.description || 'Not specified'}
+- Price: ${offer.price_point || 'Not specified'}
+- Target Outcome: ${offer.target_outcome || 'Not specified'}
 
-    console.log('Calling Lovable AI for copy variations...');
+Audience Psychology:
+- Pain Points: ${productPsychology.pain_points?.join(', ') || 'Not specified'}
+- Desires: ${productPsychology.desires?.join(', ') || 'Not specified'}
+- Objections: ${productPsychology.objections?.join(', ') || 'Not specified'}
+
+Create variations using DIFFERENT frameworks from the Copy KB. Each must:
+- Use a unique copy formula (no repeating frameworks)
+- Apply different psychology triggers
+- Use different hook patterns from Hook Library KB
+- Be uniquely angled while on-brand
+
+Include kb_references array for each variation showing KB compliance.`;
+
+    console.log('Calling Lovable AI for KB-informed copy variations...');
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -153,6 +233,18 @@ Create variations using DIFFERENT frameworks from the KB. Make each one unique i
     });
 
     if (!aiResponse.ok) {
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Rate limit exceeded. Please wait a moment and try again.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits depleted. Please check your account.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       const errorText = await aiResponse.text();
       console.error('AI API error:', aiResponse.status, errorText);
       throw new Error(`AI generation failed: ${errorText}`);
@@ -165,7 +257,7 @@ Create variations using DIFFERENT frameworks from the KB. Make each one unique i
     // The AI might return an object with a variations array, or just an array
     const variations = Array.isArray(parsedContent) ? parsedContent : parsedContent.variations;
 
-    console.log(`Successfully generated ${variations.length} copy variations`);
+    console.log(`Successfully generated ${variations.length} KB-informed copy variations`);
 
     return new Response(JSON.stringify({ variations }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

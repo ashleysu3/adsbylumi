@@ -6,6 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ALL Knowledge Base categories that must be fetched and applied
+const ALL_KB_CATEGORIES = [
+  'creative',
+  'copy',
+  'visual',
+  'meta_best_practices',
+  'ad_strategy',
+  'customer_journey',
+  'buyer_psychology',
+  'creative_troubleshooting',
+  'format_rules',
+  'offer_mapping',
+  'niche',
+  'trends',
+  'hook_library',
+  'compliance'
+];
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -22,26 +40,43 @@ serve(async (req) => {
     
     console.log(`Expanding creative: ${action} for stage "${stage}"`);
     
-    // Fetch ALL knowledge bases - FULL content
+    // Fetch ALL knowledge bases - FULL content for comprehensive creative generation
     const { data: kbDocs } = await supabase
       .from('knowledge_documents')
       .select('category, title, content')
       .eq('active', true);
     
-    const kbByCategory = (kbDocs || []).reduce((acc: any, doc: any) => {
-      if (!acc[doc.category]) acc[doc.category] = [];
-      acc[doc.category].push({ title: doc.title, content: doc.content }); // FULL content
-      return acc;
-    }, {});
+    // Organize KB content by category for structured access
+    const kbByCategory: Record<string, Array<{title: string, content: string}>> = {};
+    (kbDocs || []).forEach((doc: any) => {
+      if (!kbByCategory[doc.category]) kbByCategory[doc.category] = [];
+      kbByCategory[doc.category].push({ title: doc.title, content: doc.content });
+    });
     
-    // Build comprehensive KB context
-    let kbContext = "=== YOUR KNOWLEDGE BASE ===\n\n";
+    // Build comprehensive KB sections
+    const customerJourneyKB = kbByCategory['customer_journey']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const psychologyKB = kbByCategory['buyer_psychology']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const creativeKB = kbByCategory['creative']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const copyKB = kbByCategory['copy']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const visualKB = kbByCategory['visual']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const troubleshootingKB = kbByCategory['creative_troubleshooting']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const formatRulesKB = kbByCategory['format_rules']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const offerMappingKB = kbByCategory['offer_mapping']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const nicheKB = kbByCategory['niche']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const trendsKB = kbByCategory['trends']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const hookLibraryKB = kbByCategory['hook_library']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const metaBestPracticesKB = kbByCategory['meta_best_practices']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const adStrategyKB = kbByCategory['ad_strategy']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const complianceKB = kbByCategory['compliance']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    
+    // Build full KB context for prompt
+    let kbContext = "=== LUMI'S COMPLETE KNOWLEDGE BASE ===\n\n";
     for (const [category, docs] of Object.entries(kbByCategory)) {
-      kbContext += `[${(category as string).toUpperCase().replace('_', ' ')}]\n`;
-      (docs as any[]).forEach(doc => {
+      kbContext += `[${(category as string).toUpperCase().replace(/_/g, ' ')}]\n`;
+      docs.forEach(doc => {
         kbContext += `\n${doc.title}:\n${doc.content}\n`;
       });
-      kbContext += "\n";
+      kbContext += "\n---\n";
     }
     
     // Extract offer-specific context
@@ -69,8 +104,24 @@ IMPORTANT: While respecting these preferences, gently push back when user feedba
       }
     }
     
-    // Build system prompt with full context
-    let systemPrompt = `You are the Creative Department AI for ${brandName || brandData?.name || 'this brand'}.
+    // Build comprehensive system prompt with ALL KB integration
+    const systemPrompt = `You are the Creative Department AI for ${brandName || brandData?.name || 'this brand'}.
+
+## LUMI'S CREATIVE PHILOSOPHY
+Every creative concept you generate MUST be informed by ALL of Lumi's Knowledge Bases. You are not a generic AI - you are Lumi, with deep expertise in Meta advertising psychology and proven frameworks.
+
+## MANDATORY KB INTEGRATION
+Every concept MUST demonstrate application of:
+1. Customer Journey KB - Correct stage targeting (Grow/Nurture/Convert)
+2. Buyer Psychology KB - Specific psychological triggers
+3. Creative Best Practices KB - Platform-proven performance principles
+4. Copy Formula KB - Proven hook and CTA formulas
+5. Visual Guidelines KB - Format-specific visual rules
+6. Format Rules KB - Talking head, b-roll, carousel, static requirements
+7. Offer Mapping KB - Adjustments based on offer type
+8. Niche KB - Industry-specific patterns
+9. Hook Library KB - Proven hook structures
+10. Trends KB - Optional but available for trend content
 
 ## BRAND CONTEXT
 - Brand Voice: ${brandData?.voice || 'Not specified'}
@@ -95,7 +146,28 @@ ${productPsychology.buying_triggers?.length ? `Triggers:\n${productPsychology.bu
 
 ${kbContext}
 
-You generate high-converting Meta ad creative using proven psychology and frameworks.`;
+## MULTI-KB VALIDATION RULES
+Before including ANY concept in your output, validate it passes ALL checks:
+
+✔ JOURNEY STAGE ACCURACY - Does it match the psychological state of ${stage.toUpperCase()} stage?
+✔ PSYCHOLOGICAL TRIGGER ACCURACY - Is the psychology trigger specific and correctly applied?
+✔ FORMAT SUITABILITY - Does the format match the content type and stage?
+✔ OFFER ALIGNMENT - Does it properly represent this specific offer?
+✔ NICHE RELEVANCE - Does it incorporate industry-specific patterns?
+✔ BEST PRACTICES COMPLIANCE - Does it follow Meta's proven performance principles?
+✔ COPY FORMULA INTEGRATION - Are hooks, CTAs, and copy using proven formulas?
+✔ VISUAL GUIDELINES - Do visual directions follow platform best practices?
+✔ TREND RELEVANCE - If using trends, are they properly adapted to brand?
+
+If ANY check fails → regenerate the concept before including it.
+
+## KB APPLICATION RULES
+- Customer Journey: Grow = attention/awareness, Nurture = trust/value, Convert = action/urgency
+- Psychology: Each concept needs a SPECIFIC trigger (not generic like "emotional appeal")
+- Formats: talking_head needs script, carousel needs slide structure, static needs layout
+- Copy: Use frameworks like PAS, AIDA, Before-After-Bridge from Copy KB
+- Hooks: First 3 seconds are critical - use Hook Library patterns
+- Visuals: Follow platform-specific size and format rules`;
     
     // Build context-specific prompt based on action
     let actionPrompt = '';
@@ -105,7 +177,6 @@ You generate high-converting Meta ad creative using proven psychology and framew
         grow: { label: 'Grow (Attract New People)', count: '3-5', goal: 'Interrupt scroll, spark interest, attract new audiences' },
         nurture: { label: 'Nurture (Build Trust)', count: '2-4', goal: 'Build trust, provide value, deepen understanding' },
         convert: { label: 'Convert (Inspire Action)', count: '2-3', goal: 'Drive action, overcome final objections, guide to purchase' },
-        // Backward compatibility
         tofu: { label: 'Grow (Attract New People)', count: '3-5', goal: 'Interrupt scroll, spark interest, attract new audiences' },
         mofu: { label: 'Nurture (Build Trust)', count: '2-4', goal: 'Build trust, provide value, deepen understanding' },
         bofu: { label: 'Convert (Inspire Action)', count: '2-3', goal: 'Drive action, overcome final objections, guide to purchase' }
@@ -123,40 +194,68 @@ ${existingConcepts ? `Previous concepts (for reference only - generate DIFFERENT
 ${strategyData ? `Strategy Context:\n${JSON.stringify(strategyData, null, 2)}` : ''}
 
 Requirements:
-- Generate fresh angles and approaches
+- Generate fresh angles using DIFFERENT frameworks from the KB
+- Apply ALL relevant Knowledge Bases to each concept
 - Use diverse formats (talking_head, b_roll, carousel, static)
-- Apply appropriate psychology triggers for ${stage.toUpperCase()}
-- Include complete production instructions
+- Apply stage-appropriate psychology triggers from Buyer Psychology KB
+- Include complete production instructions following Format Rules KB
+- Use hooks from Hook Library KB
 - Make each concept unique and production-ready
-- STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")`;
+- STRICTLY FOLLOW messaging guidelines`;
     } else if (action === 'regenerate') {
-      actionPrompt = `Regenerate this ${stage.toUpperCase()} creative concept with a completely different angle and approach. Keep the same format (${concept.format}) but change the core message, hook, and psychology trigger.\n\nOriginal concept:\n${JSON.stringify(concept, null, 2)}`;
+      actionPrompt = `Regenerate this ${stage.toUpperCase()} creative concept using a DIFFERENT framework from the KB.
+
+Keep the same format (${concept.format}) but change:
+- Core angle (use different psychology trigger)
+- Hook approach (try different Hook Library pattern)
+- Copy formula (use different framework from Copy KB)
+
+Original concept:
+${JSON.stringify(concept, null, 2)}
+
+Apply ALL Knowledge Bases to create a truly different approach while maintaining format.`;
     } else if (action === 'more_options') {
-      actionPrompt = `Generate 2-3 alternative variations of this ${stage.toUpperCase()} creative concept. Keep the same core angle but vary the execution, wording, and specific psychology triggers.
+      actionPrompt = `Generate 2-3 alternative variations using DIFFERENT KB frameworks.
 
 ${feedbackContext}
 
 Original concept:
-${JSON.stringify(concept, null, 2)}`;
+${JSON.stringify(concept, null, 2)}
+
+For each variation:
+- Use a different psychology trigger from Buyer Psychology KB
+- Apply a different copy formula from Copy KB
+- Try different hook patterns from Hook Library KB
+- Maintain the core angle but vary the execution`;
     } else if (action === 'expand_idea') {
-      actionPrompt = `Expand this ${stage.toUpperCase()} creative concept into a more detailed, production-ready version with:\n- More detailed script or copy\n- Specific filming/design instructions\n- Additional overlay text or b-roll suggestions\n- Enhanced psychology explanation\n\nOriginal concept:\n${JSON.stringify(concept, null, 2)}`;
+      actionPrompt = `Expand this ${stage.toUpperCase()} concept into a fully production-ready version.
+
+Original concept:
+${JSON.stringify(concept, null, 2)}
+
+Enhance with:
+- Complete script/copy using Copy Formula KB frameworks
+- Detailed filming/design instructions from Format Rules KB
+- Specific b-roll/overlay suggestions from Visual Guidelines KB
+- Psychology explanation referencing Buyer Psychology KB
+- Hook optimization using Hook Library KB
+- Any relevant trend adaptations from Trends KB`;
     }
     
     const fullPrompt = `${actionPrompt}
 
 ${audiencePsychology ? `\nAudience Psychology:\n${JSON.stringify(audiencePsychology, null, 2)}` : ''}
 
-IMPORTANT RULES:
+CRITICAL OUTPUT REQUIREMENTS:
 - Return valid JSON only
-- For "regenerate_stage": return 3-5 (Grow) or 2-4 (Nurture) or 2-3 (Convert) completely new concepts
-- For "regenerate": return 1 completely new concept
-- For "more_options": return array of 2-3 variations
-- For "expand_idea": return 1 enhanced version with more detail
-- Each concept must have: title, format, stage, angle, psychology_trigger, why_it_works
-- Include format-specific fields: script, broll_instructions, carousel_structure, static_layout, overlay_text (as applicable)
+- Each concept must include: title, format, stage, angle, psychology_trigger, why_it_works, content_type, kb_references
+- content_type: story | transformation | identity | emotional | authority | educational | objection
+- kb_references: array of KB names that informed this concept
+- Include format-specific fields: script, broll_instructions, carousel_structure, static_layout, overlay_text
+- Include hooks array with 2-3 hook variations
 - Keep ${stage.toUpperCase()} stage appropriate
 
-Return JSON structure:
+JSON Structure:
 {
   "concepts": [
     {
@@ -164,19 +263,27 @@ Return JSON structure:
       "format": "talking_head | b_roll | carousel | static",
       "stage": "${stage}",
       "angle": "...",
-      "psychology_trigger": "...",
-      "why_it_works": "...",
+      "content_type": "story | transformation | identity | emotional | authority | educational | objection",
+      "psychology_trigger": "Specific trigger from Buyer Psychology KB",
+      "why_it_works": "KB-informed explanation",
+      "kb_references": ["customer_journey", "buyer_psychology", "creative", "copy", ...],
+      "hooks": ["Hook 1", "Hook 2"],
       "production_notes": "...",
       "script": "..." (if talking_head),
       "broll_instructions": "..." (if applicable),
       "carousel_structure": "..." (if carousel),
       "static_layout": "..." (if static),
-      "overlay_text": "..." (if applicable)
+      "overlay_text": "..." (if applicable),
+      "validation_passed": true
     }
-  ]
+  ],
+  "kb_compliance_report": {
+    "kbs_applied": ["list of KBs used"],
+    "validation_status": "passed"
+  }
 }`;
     
-    console.log('Calling Lovable AI...');
+    console.log('Calling Lovable AI with full KB integration...');
     
     // Retry logic for transient errors
     let response;
@@ -199,9 +306,9 @@ Return JSON structure:
               { role: 'user', content: fullPrompt }
             ],
             temperature: 0.9,
-            max_tokens: 4000,
+            max_tokens: 6000,
           }),
-          signal: AbortSignal.timeout(30000),
+          signal: AbortSignal.timeout(45000),
         });
 
         if (response.ok) {
@@ -277,11 +384,11 @@ Return JSON structure:
       }
     } catch (parseError) {
       console.error('JSON parsing error:', parseError);
-      console.log('Raw content:', content);
+      console.log('Raw content:', content.substring(0, 500));
       throw new Error('Failed to parse AI response');
     }
     
-    console.log(`Generated ${expandedConcepts.length} expanded concept(s)`);
+    console.log(`Generated ${expandedConcepts.length} KB-informed expanded concept(s)`);
     
     return new Response(
       JSON.stringify({ 
