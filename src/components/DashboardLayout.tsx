@@ -309,7 +309,7 @@ export default function DashboardLayout({
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-0">{children}</main>
+      <main className="container mx-auto px-6 py-[24px]">{children}</main>
 
       {walkthroughOpen && <OnboardingWalkthrough steps={walkthroughSteps} onClose={() => setWalkthroughOpen(false)} onActionClick={handleWalkthroughAction} />}
 
