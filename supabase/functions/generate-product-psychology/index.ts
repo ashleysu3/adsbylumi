@@ -7,13 +7,44 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUUID(id: string): boolean {
+  return typeof id === 'string' && UUID_REGEX.test(id);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { offerId, brandId } = await req.json();
+    const body = await req.json();
+    const { offerId, brandId } = body;
+
+    // Input validation
+    if (!offerId) {
+      return new Response(
+        JSON.stringify({ error: 'offerId is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!isValidUUID(offerId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid offerId format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (brandId && !isValidUUID(brandId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid brandId format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('Generating product psychology for offer:', offerId);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -26,22 +57,35 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch offer and brand data
+    // Fetch offer and verify it exists
     const { data: offer, error: offerError } = await supabase
       .from('offers')
       .select('*')
       .eq('id', offerId)
       .single();
 
-    if (offerError) throw offerError;
+    if (offerError || !offer) {
+      return new Response(
+        JSON.stringify({ error: 'Offer not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use brandId from offer if not provided
+    const actualBrandId = brandId || offer.brand_id;
 
     const { data: brand, error: brandError } = await supabase
       .from('brands')
       .select('*')
-      .eq('id', brandId)
+      .eq('id', actualBrandId)
       .single();
 
-    if (brandError) throw brandError;
+    if (brandError || !brand) {
+      return new Response(
+        JSON.stringify({ error: 'Brand not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const systemPrompt = `You are an expert in product positioning and buyer psychology.
 Your task is to create a product-specific psychological profile that combines the general audience psychology with this specific offer.

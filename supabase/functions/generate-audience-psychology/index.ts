@@ -7,13 +7,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUUID(id: string): boolean {
+  return typeof id === 'string' && UUID_REGEX.test(id);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let parsedBrandId: string | null = null;
+
   try {
-    const { brandId } = await req.json();
+    const body = await req.json();
+    const { brandId } = body;
+
+    // Input validation
+    if (!brandId) {
+      return new Response(
+        JSON.stringify({ error: 'brandId is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!isValidUUID(brandId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid brandId format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    parsedBrandId = brandId;
     console.log('Generating audience psychology for brand:', brandId);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -25,6 +52,20 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Verify brand exists before proceeding
+    const { data: brandCheck, error: checkError } = await supabase
+      .from('brands')
+      .select('id')
+      .eq('id', brandId)
+      .single();
+
+    if (checkError || !brandCheck) {
+      return new Response(
+        JSON.stringify({ error: 'Brand not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Update status to generating
     await supabase
@@ -126,20 +167,21 @@ Generate a deep, actionable psychological profile.`;
     console.error('Error in generate-audience-psychology:', error);
     
     // Try to update status to error if we have brandId
-    try {
-      const { brandId } = await req.json();
-      const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-      
-      if (brandId && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-        await supabase
-          .from('brands')
-          .update({ psychology_status: 'error' })
-          .eq('id', brandId);
+    if (parsedBrandId) {
+      try {
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+        const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+        
+        if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+          const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+          await supabase
+            .from('brands')
+            .update({ psychology_status: 'error' })
+            .eq('id', parsedBrandId);
+        }
+      } catch (e) {
+        console.error('Failed to update error status:', e);
       }
-    } catch (e) {
-      console.error('Failed to update error status:', e);
     }
 
     return new Response(
