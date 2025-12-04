@@ -16,23 +16,35 @@ import {
   getLumiKPIConfig, 
   formatLumiKPIValue, 
   getLumiKPIStatus,
-  getLumiStatusDot
+  getLumiStatusDot,
+  getLumiStatusLabel
 } from '@/lib/lumi-kpi-config';
+
+interface CampaignMetrics {
+  cpl?: number;
+  cpp?: number;
+  roas?: number | null;
+  cpc?: number;
+  cpm?: number;
+  spend?: number;
+  impressions?: number;
+  clicks?: number;
+  leads?: number;
+  purchases?: number;
+  linkClicks?: number;
+  videoViews?: number;
+  videoThruPlays?: number;
+  profileVisits?: number;
+  costPerThruPlay?: number;
+  [key: string]: number | null | undefined;
+}
 
 interface Campaign {
   id: string;
   name: string;
   templateName: string | null;
   objective: string | null;
-  metrics: {
-    cpl?: number;
-    cpp?: number;
-    roas?: number;
-    cpc?: number;
-    cpm?: number;
-    profile_visit_cost?: number;
-    cost_per_thruplay?: number;
-  } | null;
+  metrics: CampaignMetrics | null;
   userGoal?: number | null;
 }
 
@@ -53,6 +65,23 @@ const dateRangeOptions = [
   { value: '14', label: 'Last 14 days' },
   { value: 'custom', label: 'Custom range' },
 ];
+
+// Helper to extract the primary KPI value from metrics
+function getPrimaryKPIValue(metrics: CampaignMetrics | null, primaryKey: string): number | null {
+  if (!metrics) return null;
+  
+  // Direct match
+  if (primaryKey in metrics && metrics[primaryKey] !== undefined) {
+    return metrics[primaryKey] as number;
+  }
+  
+  // Calculate costPerThruPlay if not present
+  if (primaryKey === 'costPerThruPlay' && metrics.spend && metrics.videoThruPlays) {
+    return metrics.videoThruPlays > 0 ? metrics.spend / metrics.videoThruPlays : null;
+  }
+  
+  return null;
+}
 
 export function InsightsHome({ 
   campaigns, 
@@ -148,10 +177,12 @@ export function InsightsHome({
       ) : (
         <div className="space-y-4">
           {campaigns.map(campaign => {
-            const kpiConfig = getLumiKPIConfig(campaign.objective);
-            const primaryValue = campaign.metrics?.[kpiConfig.primary as keyof typeof campaign.metrics] as number | undefined;
+            // Get KPI config using objective, template name, and campaign name
+            const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
+            const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
             const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
             const statusDot = getLumiStatusDot(status);
+            const statusLabel = getLumiStatusLabel(status);
 
             return (
               <Card 
@@ -189,7 +220,7 @@ export function InsightsHome({
                           Benchmark
                         </p>
                         <p className="text-lg text-muted-foreground">
-                          {kpiConfig.benchmark.unit}{kpiConfig.benchmark.min} – {kpiConfig.benchmark.unit}{kpiConfig.benchmark.max}
+                          {kpiConfig.benchmark.unit}{kpiConfig.benchmark.min.toFixed(2)} – {kpiConfig.benchmark.unit}{kpiConfig.benchmark.max.toFixed(2)}
                         </p>
                       </div>
 
@@ -231,7 +262,7 @@ export function InsightsHome({
                             className="flex items-center gap-2 text-lg text-muted-foreground hover:text-foreground transition-colors group"
                           >
                             {campaign.userGoal ? (
-                              <span>{kpiConfig.benchmark.unit}{campaign.userGoal}</span>
+                              <span>{kpiConfig.benchmark.unit}{campaign.userGoal.toFixed(2)}</span>
                             ) : (
                               <span className="text-muted-foreground/50">Set goal</span>
                             )}
@@ -248,11 +279,10 @@ export function InsightsHome({
                           ${status === 'healthy' ? 'bg-green-50 text-green-700 border-green-200' : ''}
                           ${status === 'attention' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
                           ${status === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                          ${status === 'no-data' ? 'bg-gray-50 text-gray-600 border-gray-200' : ''}
                         `}
                       >
-                        {status === 'healthy' && 'Healthy'}
-                        {status === 'attention' && 'Needs Attention'}
-                        {status === 'critical' && 'Critical'}
+                        {statusLabel}
                       </Badge>
 
                       {/* View Button */}

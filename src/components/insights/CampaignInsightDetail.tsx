@@ -26,8 +26,45 @@ import {
   getLumiKPIConfig, 
   formatLumiKPIValue, 
   getLumiKPIStatus,
-  getLumiStatusColor
+  getLumiStatusColor,
+  getLumiStatusLabel
 } from '@/lib/lumi-kpi-config';
+
+interface CampaignMetrics {
+  cpl?: number;
+  cpp?: number;
+  roas?: number | null;
+  cpc?: number;
+  cpm?: number;
+  spend?: number;
+  impressions?: number;
+  clicks?: number;
+  leads?: number;
+  purchases?: number;
+  linkClicks?: number;
+  videoViews?: number;
+  videoThruPlays?: number;
+  profileVisits?: number;
+  costPerThruPlay?: number;
+  [key: string]: number | null | undefined;
+}
+
+// Helper to extract the primary KPI value from metrics
+function getPrimaryKPIValue(metrics: CampaignMetrics | null, primaryKey: string): number | null {
+  if (!metrics) return null;
+  
+  // Direct match
+  if (primaryKey in metrics && metrics[primaryKey] !== undefined) {
+    return metrics[primaryKey] as number;
+  }
+  
+  // Calculate costPerThruPlay if not present
+  if (primaryKey === 'costPerThruPlay' && metrics.spend && metrics.videoThruPlays) {
+    return metrics.videoThruPlays > 0 ? metrics.spend / metrics.videoThruPlays : null;
+  }
+  
+  return null;
+}
 
 interface PerformanceAnalysis {
   kpi_evaluation?: Record<string, {
@@ -63,7 +100,7 @@ interface CampaignInsightDetailProps {
     name: string;
     templateName: string | null;
     objective: string | null;
-    metrics: Record<string, number> | null;
+    metrics: CampaignMetrics | null;
     userGoal?: number | null;
   };
   analysis: PerformanceAnalysis | null;
@@ -94,10 +131,11 @@ export function CampaignInsightDetail({
   const [editingGoal, setEditingGoal] = useState(false);
   const [goalValue, setGoalValue] = useState<string>(campaign.userGoal?.toString() || '');
 
-  const kpiConfig = getLumiKPIConfig(campaign.objective);
-  const primaryValue = campaign.metrics?.[kpiConfig.primary] as number | undefined;
+  const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
+  const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
   const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
   const statusColorClass = getLumiStatusColor(status);
+  const statusLabel = getLumiStatusLabel(status);
 
   const handleSaveGoal = () => {
     const numValue = parseFloat(goalValue);
@@ -199,6 +237,7 @@ export function CampaignInsightDetail({
                     {status === 'healthy' && <CheckCircle2 className="h-8 w-8 text-green-600" />}
                     {status === 'attention' && <AlertTriangle className="h-8 w-8 text-amber-600" />}
                     {status === 'critical' && <AlertTriangle className="h-8 w-8 text-red-600" />}
+                    {status === 'no-data' && <Info className="h-8 w-8 text-gray-400" />}
                     <div>
                       <p className="text-sm uppercase tracking-wider text-muted-foreground font-medium">
                         Primary KPI: {kpiConfig.primaryLabel}
@@ -219,7 +258,7 @@ export function CampaignInsightDetail({
                   <div className="space-y-1 p-4 rounded-xl bg-white/50">
                     <p className="text-xs uppercase tracking-wider text-muted-foreground">Benchmark</p>
                     <p className="text-xl font-semibold">
-                      {kpiConfig.benchmark.unit}{kpiConfig.benchmark.min} – {kpiConfig.benchmark.unit}{kpiConfig.benchmark.max}
+                      {kpiConfig.benchmark.unit}{kpiConfig.benchmark.min.toFixed(2)} – {kpiConfig.benchmark.unit}{kpiConfig.benchmark.max.toFixed(2)}
                     </p>
                   </div>
 
