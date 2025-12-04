@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Check, Sparkles, ArrowRight, Loader2, X, Building2, GraduationCap, Zap } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Check, Sparkles, ArrowRight, Loader2, X, Building2, GraduationCap, Zap, Tag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ export default function Pricing() {
   const navigate = useNavigate();
   const [isAnnual, setIsAnnual] = useState(false);
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState("");
 
   const handleSubscribe = async (tierKey: "solo" | "creator") => {
     try {
@@ -31,7 +33,7 @@ export default function Pricing() {
       const priceId = isAnnual ? tier.annualPriceId : tier.monthlyPriceId;
 
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId },
+        body: { priceId, promoCode: promoCode.trim() || undefined },
       });
 
       if (error) throw error;
@@ -324,8 +326,30 @@ export default function Pricing() {
             ))}
           </div>
 
+          {/* Promo Code Section */}
+          <div className="mt-12 max-w-md mx-auto">
+            <div className="flex items-center gap-2 mb-2">
+              <Tag className="w-4 h-4 text-muted-foreground" />
+              <Label htmlFor="promo-code" className="text-sm font-medium">Have a promo code?</Label>
+            </div>
+            <Input
+              id="promo-code"
+              type="text"
+              placeholder="Enter promo code"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              className="text-center uppercase tracking-wider"
+              maxLength={20}
+            />
+            {promoCode && (
+              <p className="text-xs text-muted-foreground mt-1 text-center">
+                Code will be applied at checkout
+              </p>
+            )}
+          </div>
+
           {/* FAQ or Additional Info */}
-          <div className="mt-16 text-center">
+          <div className="mt-12 text-center">
             <p className="text-muted-foreground">
               All plans include a 14-day free trial. Credit card required, but you won't be charged until your trial ends.
             </p>

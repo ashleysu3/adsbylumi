@@ -25,9 +25,9 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { priceId } = await req.json();
+    const { priceId, promoCode } = await req.json();
     if (!priceId) throw new Error("Price ID is required");
-    logStep("Price ID received", { priceId });
+    logStep("Price ID received", { priceId, promoCode: promoCode || "none" });
 
     const authHeader = req.headers.get("Authorization")!;
     const token = authHeader.replace("Bearer ", "");
@@ -49,8 +49,9 @@ serve(async (req) => {
       logStep("No existing Stripe customer");
     }
 
+    // Build checkout session options
     const origin = req.headers.get("origin") || "http://localhost:3000";
-    const session = await stripe.checkout.sessions.create({
+    const sessionOptions: any = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
@@ -68,7 +69,17 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
       },
-    });
+    };
+
+    // Add promo code if provided
+    if (promoCode) {
+      sessionOptions.discounts = [{ coupon: promoCode }];
+      // Remove trial when using a promo code (especially for free access)
+      delete sessionOptions.subscription_data.trial_period_days;
+      logStep("Promo code applied", { promoCode });
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionOptions);
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 
