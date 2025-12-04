@@ -125,6 +125,8 @@ export type Database = {
           description: string
           icon: string
           id: string
+          journey_stages: Json | null
+          kpi_benchmarks: Json | null
           kpi_priorities: Json | null
           long_description: string
           name: string
@@ -145,6 +147,8 @@ export type Database = {
           description: string
           icon: string
           id?: string
+          journey_stages?: Json | null
+          kpi_benchmarks?: Json | null
           kpi_priorities?: Json | null
           long_description: string
           name: string
@@ -165,6 +169,8 @@ export type Database = {
           description?: string
           icon?: string
           id?: string
+          journey_stages?: Json | null
+          kpi_benchmarks?: Json | null
           kpi_priorities?: Json | null
           long_description?: string
           name?: string
