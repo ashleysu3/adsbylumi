@@ -470,11 +470,63 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     const isLoved = lovedConcepts.has(conceptId);
     const FormatIcon = formatIcons[concept.format as keyof typeof formatIcons] || FileText;
     
+    // Helper to format script for copying
+    const formatScriptForCopy = (script: any): string => {
+      if (typeof script === 'string') return script;
+      if (Array.isArray(script)) {
+        return script.map((segment: any) => {
+          const speaker = segment.speaker ? `[${segment.speaker}]` : '';
+          const timing = segment.timing ? ` (${segment.timing})` : '';
+          const text = segment.dialogue || segment.text || '';
+          return `${speaker}${timing}: ${text}`;
+        }).join('\n\n');
+      }
+      return JSON.stringify(script, null, 2);
+    };
+
+    // Helper to render script with proper formatting
+    const renderScript = (script: any) => {
+      if (typeof script === 'string') {
+        return <span>{script}</span>;
+      }
+      if (Array.isArray(script)) {
+        return (
+          <div className="space-y-3">
+            {script.map((segment: any, i: number) => (
+              <div key={i} className="border-l-2 border-primary/30 pl-3">
+                <div className="flex items-center gap-2 mb-1">
+                  {segment.speaker && (
+                    <span className="font-semibold text-primary">{segment.speaker}</span>
+                  )}
+                  {segment.timing && (
+                    <Badge variant="outline" className="text-xs">{segment.timing}</Badge>
+                  )}
+                </div>
+                <p>{segment.dialogue || segment.text || ''}</p>
+              </div>
+            ))}
+          </div>
+        );
+      }
+      return <span>{JSON.stringify(script, null, 2)}</span>;
+    };
+
     // Get main content preview
     const getContentPreview = () => {
-      if (concept.script && typeof concept.script === 'string') {
-        const lines = concept.script.split('\n').filter((l: string) => l.trim());
-        return lines.slice(0, 3).join('\n');
+      if (concept.script) {
+        // Handle array format (speaker/dialogue/timing objects)
+        if (Array.isArray(concept.script)) {
+          return concept.script
+            .slice(0, 2)
+            .map((segment: any) => segment.dialogue || segment.text || '')
+            .filter(Boolean)
+            .join(' ');
+        }
+        // Handle string format
+        if (typeof concept.script === 'string') {
+          const lines = concept.script.split('\n').filter((l: string) => l.trim());
+          return lines.slice(0, 3).join('\n');
+        }
       }
       if (concept.carousel_structure?.slides?.[0]) {
         return concept.carousel_structure.slides[0].text || '';
@@ -576,10 +628,11 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    const contentToCopy = concept.script || 
-                      JSON.stringify(concept.carousel_structure, null, 2) || 
-                      concept.static_layout || 
-                      concept.title;
+                    const contentToCopy = concept.script 
+                      ? formatScriptForCopy(concept.script)
+                      : concept.carousel_structure
+                        ? JSON.stringify(concept.carousel_structure, null, 2)
+                        : concept.static_layout || concept.title;
                     copyToClipboard(contentToCopy, "Creative content");
                   }}
                 >
@@ -605,14 +658,14 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => copyToClipboard(concept.script, "Script")}
+                      onClick={() => copyToClipboard(formatScriptForCopy(concept.script), "Script")}
                     >
                       <Copy className="h-3 w-3 mr-1" />
                       Copy
                     </Button>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-3 text-sm whitespace-pre-wrap font-mono">
-                    {concept.script}
+                    {renderScript(concept.script)}
                   </div>
                 </div>
               )}
