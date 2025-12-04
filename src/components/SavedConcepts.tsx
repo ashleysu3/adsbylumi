@@ -3,9 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Heart, Copy, Check, Video, FileText, Layers, Image as ImageIcon, Target, Zap, TrendingUp, Star, Type } from "lucide-react";
+import { Heart, HeartOff, Copy, Check, Video, FileText, Layers, Image as ImageIcon, Target, Zap, TrendingUp, Star, Type } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SavedConceptsProps {
   workspace: any;
@@ -149,10 +150,44 @@ export function SavedConcepts({ workspace, type, onUpdate }: SavedConceptsProps)
             const FormatIcon = formatIcons[concept.format] || FileText;
             
             return (
-              <Card key={concept.id} className="relative">
-                <div className="absolute top-3 right-3">
-                  <Heart className="h-5 w-5 text-pink-500 fill-pink-500" />
-                </div>
+              <Card key={concept.conceptId} className="relative group">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-2 right-2 h-8 w-8 p-0 opacity-70 hover:opacity-100 hover:bg-pink-50 dark:hover:bg-pink-950"
+                  onClick={async () => {
+                    // Remove from loved concepts
+                    const newLoved = lovedConcepts.filter((id: string) => {
+                      if (id === concept.conceptId) return false;
+                      // Also check legacy format
+                      const legacyStage = concept.stage === 'grow' ? 'tofu' : concept.stage === 'nurture' ? 'mofu' : 'bofu';
+                      const legacyId = concept.conceptId.replace(concept.stage, legacyStage);
+                      if (id === legacyId) return false;
+                      if (concept.id && id === concept.id) return false;
+                      return true;
+                    });
+                    
+                    const { error } = await supabase
+                      .from('campaign_workspaces')
+                      .update({ 
+                        loved_concepts: newLoved,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('id', workspace.id);
+                    
+                    if (error) {
+                      toast.error("Failed to remove from favorites");
+                      return;
+                    }
+                    
+                    if (onUpdate) {
+                      await onUpdate({ loved_concepts: newLoved });
+                    }
+                    toast.success("Removed from favorites");
+                  }}
+                >
+                  <HeartOff className="h-4 w-4 text-pink-500" />
+                </Button>
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-2 flex-wrap mb-2">
                     <Badge className={stageBadgeColors[concept.stage]}>
@@ -167,7 +202,7 @@ export function SavedConcepts({ workspace, type, onUpdate }: SavedConceptsProps)
                       <Badge variant="secondary">{concept.hook_type}</Badge>
                     )}
                   </div>
-                  <CardTitle className="text-base">{concept.name || concept.hook}</CardTitle>
+                  <CardTitle className="text-base">{concept.title || concept.name || concept.hook}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {concept.hook && (
@@ -187,11 +222,11 @@ export function SavedConcepts({ workspace, type, onUpdate }: SavedConceptsProps)
                     size="sm"
                     className="w-full"
                     onClick={() => copyToClipboard(
-                      concept.script || concept.hook || concept.name,
-                      concept.id
+                      concept.script || concept.hook || concept.name || concept.title,
+                      concept.conceptId
                     )}
                   >
-                    {copiedId === concept.id ? (
+                    {copiedId === concept.conceptId ? (
                       <>
                         <Check className="h-4 w-4 mr-2 text-green-600" />
                         Copied!
