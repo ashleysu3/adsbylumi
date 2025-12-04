@@ -149,11 +149,11 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
   // Default trigger if none provided
   const defaultTrigger = (
     <Button
-      className="fixed bottom-6 right-6 h-14 px-5 rounded-full shadow-glow bg-gradient-lumi hover:opacity-90 text-white gap-2 z-50 group"
+      className="fixed bottom-6 right-6 h-16 px-6 rounded-full shadow-glow bg-gradient-lumi hover:opacity-90 text-white gap-3 z-50 group"
       size="lg"
     >
-      <LumiCharacter size="sm" state="idle" className="group-hover:animate-none" />
-      <span className="font-medium">Ask Lumi</span>
+      <LumiCharacter size="md" state="idle" glow className="group-hover:animate-none" />
+      <span className="font-semibold text-base">Ask Lumi</span>
     </Button>
   );
 

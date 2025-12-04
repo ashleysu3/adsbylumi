@@ -207,9 +207,9 @@ export default function DashboardLayout({
 
   // Custom trigger for Lumi in nav bar
   const lumiNavTrigger = (
-    <button className="flex items-center gap-2 text-sm font-medium transition-colors group mb-2 hover:opacity-80">
-      <LumiCharacter size="xs" state="idle" glow className="group-hover:animate-none" />
-      <span className="bg-gradient-to-r from-primary to-lumi-orange-3 bg-clip-text text-transparent font-semibold">
+    <button className="flex items-center gap-3 text-base font-medium transition-colors group mb-2 hover:opacity-80">
+      <LumiCharacter size="sm" state="idle" glow className="group-hover:animate-none" />
+      <span className="bg-gradient-to-r from-primary to-lumi-orange-3 bg-clip-text text-transparent font-bold text-lg">
         Ask Lumi
       </span>
     </button>
