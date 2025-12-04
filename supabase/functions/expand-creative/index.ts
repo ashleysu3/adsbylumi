@@ -102,9 +102,13 @@ You generate high-converting Meta ad creative using proven psychology and framew
     
     if (action === 'regenerate_stage') {
       const stageInfoMap: Record<string, { label: string; count: string; goal: string }> = {
-        tofu: { label: 'TOFU (Top of Funnel)', count: '3-5', goal: 'Interrupt scroll, create awareness, spark interest' },
-        mofu: { label: 'MOFU (Middle of Funnel)', count: '2-4', goal: 'Build trust, provide value, address objections' },
-        bofu: { label: 'BOFU (Bottom of Funnel)', count: '2-3', goal: 'Drive action, overcome final objections, close the sale' }
+        grow: { label: 'Grow (Attract New People)', count: '3-5', goal: 'Interrupt scroll, spark interest, attract new audiences' },
+        nurture: { label: 'Nurture (Build Trust)', count: '2-4', goal: 'Build trust, provide value, deepen understanding' },
+        convert: { label: 'Convert (Inspire Action)', count: '2-3', goal: 'Drive action, overcome final objections, guide to purchase' },
+        // Backward compatibility
+        tofu: { label: 'Grow (Attract New People)', count: '3-5', goal: 'Interrupt scroll, spark interest, attract new audiences' },
+        mofu: { label: 'Nurture (Build Trust)', count: '2-4', goal: 'Build trust, provide value, deepen understanding' },
+        bofu: { label: 'Convert (Inspire Action)', count: '2-3', goal: 'Drive action, overcome final objections, guide to purchase' }
       };
       const stageInfo = stageInfoMap[stage] || { label: stage.toUpperCase(), count: '2-4', goal: 'Create engaging creative' };
       
@@ -144,7 +148,7 @@ ${audiencePsychology ? `\nAudience Psychology:\n${JSON.stringify(audiencePsychol
 
 IMPORTANT RULES:
 - Return valid JSON only
-- For "regenerate_stage": return 3-5 (TOFU) or 2-4 (MOFU) or 2-3 (BOFU) completely new concepts
+- For "regenerate_stage": return 3-5 (Grow) or 2-4 (Nurture) or 2-3 (Convert) completely new concepts
 - For "regenerate": return 1 completely new concept
 - For "more_options": return array of 2-3 variations
 - For "expand_idea": return 1 enhanced version with more detail

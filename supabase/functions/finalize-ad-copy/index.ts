@@ -96,14 +96,14 @@ ${kbContext}
 - No "you" targeting that references personal characteristics
 
 === CTA PERFORMANCE HIERARCHY (Meta best practices) ===
-- LEARN_MORE: Best for cold traffic (TOFU), low commitment, highest CTR - DEFAULT CHOICE
-- SIGN_UP: Good for MOFU when trust is established
-- SHOP_NOW: Only for BOFU with clear product showcase
-- GET_QUOTE: Service-based businesses, MOFU/BOFU
-- BOOK_NOW: Appointment-based, BOFU
-- DOWNLOAD: Lead magnets, MOFU
-- WATCH_MORE: Video content series, TOFU/MOFU
-- APPLY_NOW: High-commitment (jobs, programs), BOFU
+- LEARN_MORE: Best for cold traffic (Grow stage), low commitment, highest CTR - DEFAULT CHOICE
+- SIGN_UP: Good for Nurture stage when trust is established
+- SHOP_NOW: Only for Convert stage with clear product showcase
+- GET_QUOTE: Service-based businesses, Nurture/Convert
+- BOOK_NOW: Appointment-based, Convert stage
+- DOWNLOAD: Lead magnets, Nurture stage
+- WATCH_MORE: Video content series, Grow/Nurture
+- APPLY_NOW: High-commitment (jobs, programs), Convert stage
 
 === CONTINUITY PRINCIPLE ===
 - Headline must connect to the first 3 seconds of video or top text of static
@@ -119,7 +119,7 @@ Your job: Generate Meta-compliant ad copy fields. Return JSON with:
 - headline (max 40 chars)
 - primary_text (125+ chars)
 - description (max 30 chars)
-- call_to_action (one of the Meta CTAs above, default to LEARN_MORE for TOFU)
+- call_to_action (one of the Meta CTAs above, default to LEARN_MORE for Grow stage)
 - cta_reasoning (explain your CTA choice and reference KB frameworks)
 - why_this_works (explain copy strategy and which KB frameworks you applied)
 - knowledge_applied (array of KB titles you referenced)
@@ -141,7 +141,7 @@ ${uploadedAssetUrl ? `Creative Type: ${uploadedAssetUrl.includes('video') ? 'Vid
 Generate headline, primary_text, description, and call_to_action that:
 1. Maintains continuity with the hook/script
 2. References relevant frameworks from the Knowledge Base
-3. Defaults to LEARN_MORE for TOFU unless there's strong reason otherwise
+3. Defaults to LEARN_MORE for Grow stage unless there's strong reason otherwise
 4. Passes Meta compliance checks
 5. Applies proven copy formulas from the KB
 6. STRICTLY FOLLOWS the messaging guidelines (especially "don't say" and "always include")`;
