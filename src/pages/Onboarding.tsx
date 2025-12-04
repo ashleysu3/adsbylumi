@@ -158,11 +158,11 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted">
-      <Card className="w-full max-w-2xl">
+      <Card className="w-full max-w-2xl rounded-2xl shadow-card">
         <CardHeader>
-          <CardTitle>Welcome to Lumi</CardTitle>
+          <CardTitle className="font-display text-2xl">Welcome to Lumi! ✨</CardTitle>
           <CardDescription>
-            {step === 1 ? "Let's start with the basics" : "Review your brand details"}
+            {step === 1 ? "Let's get to know your brand" : "Here's what Lumi found — feel free to tweak anything"}
           </CardDescription>
         </CardHeader>
 
@@ -211,7 +211,7 @@ export default function Onboarding() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  We'll analyze your website to extract brand details
+                  Lumi will analyze your website to understand your brand better
                 </p>
               </div>
 
@@ -243,24 +243,24 @@ export default function Onboarding() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="valueProposition">What You Offer</Label>
+                <Label htmlFor="valueProposition">What do you offer?</Label>
                 <Textarea
                   id="valueProposition"
                   value={valueProposition}
                   onChange={(e) => setValueProposition(e.target.value)}
                   rows={3}
-                  placeholder="Describe what your business provides..."
+                  placeholder="Lumi recommends describing your main product or service..."
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="targetAudience">Who You Serve</Label>
+                <Label htmlFor="targetAudience">Who do you serve?</Label>
                 <Textarea
                   id="targetAudience"
                   value={targetAudience}
                   onChange={(e) => setTargetAudience(e.target.value)}
                   rows={3}
-                  placeholder="Describe your ideal customer..."
+                  placeholder="Tell Lumi about your ideal customer..."
                 />
               </div>
 
@@ -282,14 +282,14 @@ export default function Onboarding() {
                 <Button type="button" variant="outline" onClick={() => setStep(1)}>
                   Back
                 </Button>
-                <Button type="submit" disabled={loading} className="flex-1">
+                <Button type="submit" disabled={loading} className="flex-1" variant="lumi">
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
+                      Setting things up...
                     </>
                   ) : (
-                    "Complete Setup"
+                    "Let's Go! ✨"
                   )}
                 </Button>
               </div>

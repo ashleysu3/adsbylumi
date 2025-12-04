@@ -149,11 +149,11 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
   // Default trigger if none provided
   const defaultTrigger = (
     <Button
-      className="fixed bottom-6 right-6 h-14 px-5 rounded-full shadow-lg bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-amber-950 gap-2 z-50 group"
+      className="fixed bottom-6 right-6 h-14 px-5 rounded-full shadow-glow bg-gradient-lumi hover:opacity-90 text-white gap-2 z-50 group"
       size="lg"
     >
       <LumiCharacter size="sm" state="idle" className="group-hover:animate-none" />
-      <span className="font-medium">Talk to Lumi</span>
+      <span className="font-medium">Ask Lumi</span>
     </Button>
   );
 
@@ -168,8 +168,8 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
             <div className="flex items-center gap-3">
               <LumiCharacter size="md" state={isLoading ? "thinking" : "idle"} glow />
               <div>
-                <DrawerTitle className="text-lg">Lumi</DrawerTitle>
-                <p className="text-xs text-muted-foreground">Your AI Ad Assistant</p>
+                <DrawerTitle className="text-lg font-display">Lumi</DrawerTitle>
+                <p className="text-xs text-muted-foreground">Meta Ads, Simplified.</p>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
@@ -184,9 +184,9 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
               <div className="space-y-6">
                 <div className="text-center py-8">
                   <LumiCharacter size="lg" state="idle" glow className="mx-auto mb-4" />
-                  <h3 className="font-semibold mb-2">Hey! I'm Lumi 👋</h3>
+                  <h3 className="font-display font-semibold mb-2">Hey there! 👋</h3>
                   <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                    I'm here to help you create better ads. Ask me anything about your creative, strategy, or campaign performance.
+                    I'm Lumi — here to make Meta Ads simple. Ask me anything about strategy, creative, or performance.
                   </p>
                 </div>
 

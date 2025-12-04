@@ -262,11 +262,11 @@ export default function Dashboard() {
         {/* Brand Header */}
         <div className="flex items-start justify-between">
           <div className="space-y-1">
-            <h2 className="text-3xl font-bold tracking-tight">
+            <h2 className="text-3xl font-display tracking-tight">
               {brand.name}
             </h2>
             <p className="text-muted-foreground">
-              Your brand at a glance
+              Your Lumi Home — everything about your brand at a glance.
             </p>
           </div>
           <Popover open={progressPopoverOpen} onOpenChange={setProgressPopoverOpen}>
@@ -330,16 +330,16 @@ export default function Dashboard() {
         )}
 
         {/* Campaign Planning Card */}
-        <Card>
+        <Card className="rounded-2xl border-primary/20 bg-gradient-to-br from-background to-primary/5">
           <CardHeader>
-            <CardTitle>Ready to plan your next campaign?</CardTitle>
+            <CardTitle className="font-display">Ready to shine? ✨</CardTitle>
             <CardDescription>
-              Get a clear strategy and step-by-step plan for your Meta ads
+              Lumi will guide you through creating a clear strategy for your next Meta campaign.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button size="lg" className="h-12 px-8" onClick={() => window.location.href = "/planning"}>
-              Start Planning
+            <Button size="lg" className="h-12 px-8" variant="lumi" onClick={() => window.location.href = "/planning"}>
+              Start with Lumi Strategy
             </Button>
           </CardContent>
         </Card>

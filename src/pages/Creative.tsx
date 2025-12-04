@@ -339,19 +339,19 @@ export default function Creative() {
                     <Clipboard className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <CardTitle>
-                    {campaigns.length === 0 ? "No Campaigns Yet" : "Select a Campaign"}
+                    {campaigns.length === 0 ? "Ready to shine? ✨" : "Select a Campaign"}
                   </CardTitle>
                   <CardDescription>
                     {campaigns.length === 0
-                      ? "Start by creating your first campaign strategy in the Ad Planner. Once you have a strategy, you'll generate creative assets here."
-                      : "Choose a campaign from the dropdown above to view and generate creative assets. If your campaign doesn't have creative yet, you'll be able to generate it."}
+                      ? "Start by creating your first campaign in Lumi Strategy. Once you've got a plan, Lumi will generate creative ideas here."
+                      : "Choose a campaign from the dropdown above. If it doesn't have creative yet, Lumi can generate it for you."}
                   </CardDescription>
                 </CardHeader>
                 {campaigns.length === 0 && (
                   <CardContent className="flex justify-center pb-6">
-                    <Button onClick={() => navigate("/planning")} size="lg">
+                    <Button onClick={() => navigate("/planning")} size="lg" variant="lumi">
                       <Rocket className="mr-2 h-4 w-4" />
-                      Start in Ad Planner
+                      Start in Lumi Strategy
                     </Button>
                   </CardContent>
                 )}
@@ -417,14 +417,14 @@ export default function Creative() {
               <div className="flex-1 overflow-hidden">
                 {!workspace.creative_json ? (
                   <div className="h-full flex items-center justify-center p-6">
-                    <Card className="max-w-xl border-2 shadow-lg">
+                    <Card className="max-w-xl border-2 shadow-lg rounded-2xl">
                       <CardHeader className="text-center space-y-3">
-                        <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <div className="mx-auto w-16 h-16 rounded-full bg-gradient-lumi flex items-center justify-center shadow-glow">
                           <Sparkles className="h-8 w-8 text-white" />
                         </div>
-                        <CardTitle className="text-2xl">Generate Creative Assets</CardTitle>
+                        <CardTitle className="text-2xl font-display">Lumi Creative</CardTitle>
                         <CardDescription className="text-base">
-                          Create AI-powered creative concepts, scripts, and copy tailored to your campaign strategy
+                          Ready when you are! Lumi will generate scripts, copy, and creative direction tailored to your strategy.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="flex justify-center pb-8">
@@ -432,11 +432,12 @@ export default function Creative() {
                           onClick={generateCreative} 
                           disabled={generating}
                           size="lg"
+                          variant="lumi"
                           className="w-full max-w-xs gap-2"
                         >
                           {generating && <Loader2 className="h-5 w-5 animate-spin" />}
                           {!generating && <Sparkles className="h-5 w-5" />}
-                          {generating ? "Generating..." : "Generate Creative Mix"}
+                          {generating ? "Lumi is thinking..." : "Generate Creative ✨"}
                         </Button>
                       </CardContent>
                     </Card>

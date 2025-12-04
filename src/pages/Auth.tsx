@@ -80,18 +80,18 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-editorial px-4">
-      <Card className="w-full max-w-md shadow-elevated">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-primary/5 px-4">
+      <Card className="w-full max-w-md shadow-elevated rounded-2xl">
         <CardHeader className="space-y-1 text-center">
           <img 
             src={lumiLogo}
             alt="Lumi" 
-            className="h-12 mx-auto mb-2"
+            className="h-14 mx-auto mb-2"
           />
           <CardDescription className="text-base">
             {isLogin
-              ? "Welcome back to your strategic command center"
-              : "Begin your journey to Meta Ads mastery"}
+              ? "Welcome back! Let's keep building."
+              : "Meta Ads, Simplified. Let's get started."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -149,17 +149,18 @@ export default function Auth() {
             <Button
               type="submit"
               className="w-full h-11 text-base"
+              variant="lumi"
               disabled={loading}
             >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isLogin ? "Signing in..." : "Creating account..."}
+                  {isLogin ? "Signing in..." : "Setting things up..."}
                 </>
               ) : isLogin ? (
                 "Sign In"
               ) : (
-                "Create Account"
+                "Let's Go ✨"
               )}
             </Button>
           </form>

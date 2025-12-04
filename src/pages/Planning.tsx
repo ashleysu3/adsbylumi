@@ -199,8 +199,8 @@ export default function Planning() {
       <CampaignFlowBreadcrumb currentStep="planning" />
       <div className="space-y-8">
         <div className="space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Choose Your Campaign Type</h2>
-          <p className="text-muted-foreground">Pick a pre-built strategy and we'll guide you through the rest</p>
+          <h2 className="text-3xl font-display tracking-tight">Lumi Strategy</h2>
+          <p className="text-muted-foreground">Let's keep this simple: pick a campaign type and Lumi will guide you through the rest.</p>
         </div>
 
         {/* Offer Selection */}
@@ -250,10 +250,10 @@ export default function Planning() {
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0">💡</div>
                 <div className="space-y-2">
-                  <p className="font-semibold">Quick Start</p>
+                <p className="font-semibold">💡 Lumi recommends</p>
                   <p className="text-sm text-muted-foreground">
-                    We've already recommended campaigns for your offers in the Brand Dashboard. 
-                    You can create campaigns instantly from there with all details pre-filled!
+                    You've already got campaign recommendations for your offers in your Brand Dashboard. 
+                    Start there for the fastest setup!
                   </p>
                   <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
                     View My Offers
@@ -314,8 +314,8 @@ export default function Planning() {
                   </div>
                   <div className="pt-2 border-t">
                     <p className="text-xs text-muted-foreground mb-3"><strong>Use this for:</strong> {template.use_case}</p>
-                    <Button className="w-full" onClick={() => handleTemplateClick(template)} disabled={loading}>
-                      {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading...</> : "Choose This"}
+                    <Button className="w-full" variant="lumi" onClick={() => handleTemplateClick(template)} disabled={loading}>
+                      {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Setting up...</> : "Let's Go"}
                     </Button>
                   </div>
                 </CardContent>

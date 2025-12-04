@@ -180,27 +180,27 @@ export default function DashboardLayout({
   const tabItems = [{
     path: "/planning",
     icon: Lightbulb,
-    label: "PLANNER",
+    label: "STRATEGY",
     lightColor: "tab-orange-light",
     darkColor: "tab-orange-dark"
   }, {
     path: "/creative",
     icon: Palette,
     label: "CREATIVE",
-    lightColor: "tab-pink-light",
-    darkColor: "tab-pink-dark"
+    lightColor: "tab-yellow-light",
+    darkColor: "tab-yellow-dark"
   }, {
     path: "/production",
     icon: Clipboard,
     label: "PRODUCTION",
-    lightColor: "tab-purple-light",
-    darkColor: "tab-purple-dark"
+    lightColor: "tab-cream-light",
+    darkColor: "tab-cream-dark"
   }, {
     path: "/data",
     icon: BarChart3,
-    label: "PERFORMANCE",
-    lightColor: "tab-cream-light",
-    darkColor: "tab-cream-dark"
+    label: "INSIGHTS",
+    lightColor: "tab-orange-light",
+    darkColor: "tab-orange-dark"
   }];
 
   if (!user) return null;
@@ -209,8 +209,8 @@ export default function DashboardLayout({
   const lumiNavTrigger = (
     <button className="flex items-center gap-2 text-sm font-medium transition-colors group mb-2 hover:opacity-80">
       <LumiCharacter size="xs" state="idle" glow className="group-hover:animate-none" />
-      <span className="bg-gradient-to-r from-amber-600 to-amber-500 bg-clip-text text-transparent font-semibold">
-        Talk to Lumi
+      <span className="bg-gradient-to-r from-primary to-lumi-orange-3 bg-clip-text text-transparent font-semibold">
+        Ask Lumi
       </span>
     </button>
   );
@@ -225,7 +225,7 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center space-x-3">
-              <Button onClick={() => navigate("/campaigns")} className="bg-tab-pink-dark hover:bg-tab-pink-dark/90 text-white font-semibold border border-tab-black">
+              <Button onClick={() => navigate("/campaigns")} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold lumi-button-glow">
                 <FolderKanban className="mr-2 h-4 w-4" />
                 My Campaigns
               </Button>
