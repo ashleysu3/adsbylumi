@@ -95,7 +95,7 @@ ${kbContext}
 - Description: Max 30 characters
 
 === CTA HIERARCHY ===
-LEARN_MORE is best for TOFU (default), SIGN_UP for MOFU, SHOP_NOW for BOFU
+LEARN_MORE is best for Grow stage (default), SIGN_UP for Nurture, SHOP_NOW for Convert
 
 Your job: Generate 3-5 distinct copy variations, each using a DIFFERENT framework from the Knowledge Base.
 

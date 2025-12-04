@@ -154,9 +154,9 @@ const Sales = () => {
     footer: "Lumi loads the exact structure Meta prefers in 2025. No thinking required."
   }, {
     emoji: "🎨",
-    title: "STEP 2 — Get Your Full-Funnel Creative Plan",
+    title: "STEP 2 — Get Your Customer Journey Creative Plan",
     description: "Once you enter your offer details… Your Creative Department generates hooks, scripts, b-roll shot lists, pattern interrupts, and curiosity angles.",
-    items: ["TOFU ads (Hooks, Scripts, B-roll)", "MOFU ads (Story scripts, Carousels)", "BOFU ads (Offer breakdowns, CTAs)", "Text overlays & variations", "Production checklists", "Psychology-aligned hooks"],
+    items: ["Grow ads (Hooks, Scripts, B-roll)", "Nurture ads (Story scripts, Carousels)", "Convert ads (Offer breakdowns, CTAs)", "Text overlays & variations", "Production checklists", "Psychology-aligned hooks"],
     footer: "Everything you need to record or design the right creative."
   }, {
     emoji: "🗂",
@@ -174,7 +174,7 @@ const Sales = () => {
     emoji: "📊",
     title: "STEP 5 — Get Weekly Guidance",
     description: "Each week, Lumi sends you:",
-    items: ["Clean performance reports", "CTR, CPC, CPL, CPP, ROAS", "Creative fatigue alerts", "Full-funnel diagnostics", "\"What's working + why\"", "New creative ideas"],
+    items: ["Clean performance reports", "CTR, CPC, CPL, CPP, ROAS", "Creative fatigue alerts", "Customer Journey diagnostics", "\"What's working + why\"", "New creative ideas"],
     footer: "This isn't a dashboard. It's a partner."
   }];
   return <div className="min-h-screen bg-background overflow-x-hidden">
@@ -466,7 +466,7 @@ const Sales = () => {
             </p>
           </ScrollReveal>
           <StaggerChildren staggerDelay={0.05} className="grid md:grid-cols-3 gap-4 text-center">
-            {["Meta ad strategy", "Creative psychology", "Performance troubleshooting", "Offer mapping", "Funnel breakdown analysis", "Script writing", "Copy frameworks", "Meta best practices", "Seasonality predictions", "Hook libraries", "Niche messaging", "Audience builder logic", "B-roll direction", "High-performing creative systems", "API-backed campaign builds"].map(item => <StaggerItem key={item}>
+            {["Meta ad strategy", "Creative psychology", "Performance troubleshooting", "Offer mapping", "Customer Journey analysis", "Script writing", "Copy frameworks", "Meta best practices", "Seasonality predictions", "Hook libraries", "Niche messaging", "Audience builder logic", "B-roll direction", "High-performing creative systems", "API-backed campaign builds"].map(item => <StaggerItem key={item}>
                 <motion.div className="p-4 bg-muted/30 rounded-lg border border-border" whileHover={{
               scale: 1.05,
               y: -5
