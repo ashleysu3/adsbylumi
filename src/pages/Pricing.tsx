@@ -203,13 +203,13 @@ export default function Pricing() {
                 </CardContent>
               </Card>
 
-              {/* Your Ad Assistant Card */}
+              {/* Lumi Card */}
               <Card className="border-primary bg-primary/5 shadow-md">
                 <CardHeader className="text-center pb-2">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                     <Zap className="w-6 h-6 text-primary" />
                   </div>
-                  <CardTitle className="text-xl">Your Ad Assistant</CardTitle>
+                  <CardTitle className="text-xl">Lumi</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="text-center mb-4">
@@ -334,7 +334,7 @@ export default function Pricing() {
               className="mt-2"
               onClick={() => navigate("/")}
             >
-              Learn more about Your Ad Assistant
+              Learn more about Lumi
             </Button>
           </div>
         </div>
@@ -343,7 +343,7 @@ export default function Pricing() {
       {/* Footer */}
       <footer className="py-8 px-4 border-t border-border">
         <div className="container mx-auto max-w-6xl text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Your Ad Assistant. All rights reserved.
+          © {new Date().getFullYear()} Lumi. All rights reserved.
         </div>
       </footer>
     </div>

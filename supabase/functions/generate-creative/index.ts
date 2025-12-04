@@ -115,7 +115,7 @@ serve(async (req) => {
       }
     }
 
-    const systemPrompt = `You are the Creative Department for Your Ad Assistant — an elite Meta Ads creative agency specialized in psychology-driven, full-funnel ad creative.
+    const systemPrompt = `You are the Creative Department for Lumi — an elite Meta Ads creative agency specialized in psychology-driven, full-funnel ad creative.
 
 === CRITICAL OUTPUT REQUIREMENTS ===
 
