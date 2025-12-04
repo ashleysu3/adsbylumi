@@ -1,12 +1,10 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Target, Palette, Rocket, BarChart3, Brain, MessageCircle, CheckCircle, X, Check, Sparkles, ArrowRight, Loader2, Building2, GraduationCap, Zap } from "lucide-react";
+import { CheckCircle, X, Check, Sparkles, ArrowRight, Lightbulb, Heart, Zap, Eye, BarChart3, Calendar, Users, FileText, Upload, Settings, Send } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { ParallaxSection } from "@/components/animations/ParallaxSection";
 import { StaggerChildren, StaggerItem } from "@/components/animations/StaggerChildren";
@@ -14,367 +12,321 @@ import { ScaleOnScroll } from "@/components/animations/ScaleOnScroll";
 import { FloatingElement } from "@/components/animations/FloatingElement";
 import { MagneticButton, GradientText } from "@/components/animations/SmoothScroll";
 import { CursorGlow } from "@/components/animations/CursorTrail";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import lumiLogo from "@/assets/lumi-logo.png";
+
 interface StepData {
-  emoji: string;
+  number: string;
   title: string;
   description: string;
-  items: string[];
-  footer: string;
+  details: string[];
+  icon: React.ReactNode;
 }
-const VerticalStepCard = ({
-  step,
-  index
-}: {
-  step: StepData;
-  index: number;
-}) => {
-  return <ScrollReveal delay={index * 0.1}>
-      <motion.div className="relative" whileHover={{
-      scale: 1.01
-    }} transition={{
-      type: "spring",
-      stiffness: 300
-    }}>
-        <div className="flex flex-col md:flex-row gap-6 items-start">
-          <motion.div className="flex-shrink-0" whileHover={{
-          scale: 1.1,
-          rotate: 5
-        }} transition={{
-          type: "spring",
-          stiffness: 300
-        }}>
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl md:text-4xl">
-              {step.emoji}
-            </div>
-          </motion.div>
-          <div className="flex-1">
-            <h3 className="font-display text-xl md:text-2xl mb-3">{step.title}</h3>
-            <p className="text-base md:text-lg text-muted-foreground mb-4">{step.description}</p>
-            <div className="bg-background/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-border">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                {step.items.map((item, i) => <div key={i} className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span className="text-sm md:text-base text-foreground/80">{item}</span>
-                  </div>)}
+
+const StepCard = ({ step, index }: { step: StepData; index: number }) => {
+  return (
+    <ScrollReveal delay={index * 0.1}>
+      <motion.div
+        className="relative"
+        whileHover={{ scale: 1.01 }}
+        transition={{ type: "spring", stiffness: 300 }}
+      >
+        <div className="bg-card rounded-3xl p-8 md:p-10 border border-border shadow-card hover:shadow-lumi transition-shadow duration-300">
+          <div className="flex items-start gap-6">
+            <div className="flex-shrink-0">
+              <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                {step.icon}
               </div>
-              <p className="text-xs md:text-sm text-muted-foreground mt-4 pt-4 border-t border-border">
-                {step.footer}
-              </p>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-3">
+                <Badge variant="secondary" className="bg-primary/10 text-primary font-medium">
+                  {step.number}
+                </Badge>
+              </div>
+              <h3 className="font-display text-xl md:text-2xl mb-3 text-foreground">{step.title}</h3>
+              <p className="text-muted-foreground mb-6 leading-relaxed">{step.description}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {step.details.map((detail, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />
+                    <span className="text-sm text-foreground/80">{detail}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </motion.div>
-    </ScrollReveal>;
+    </ScrollReveal>
+  );
 };
+
 const Sales = () => {
   const navigate = useNavigate();
   const heroRef = useRef(null);
-  const [isAnnual, setIsAnnual] = useState(false);
-  const [loadingTier, setLoadingTier] = useState<string | null>(null);
-  const {
-    scrollYProgress: heroProgress
-  } = useScroll({
+  
+  const { scrollYProgress: heroProgress } = useScroll({
     target: heroRef,
-    offset: ["start start", "end start"]
+    offset: ["start start", "end start"],
   });
+  
   const heroOpacity = useTransform(heroProgress, [0, 0.5], [1, 0]);
   const heroScale = useTransform(heroProgress, [0, 0.5], [1, 0.95]);
   const heroY = useTransform(heroProgress, [0, 0.5], [0, 50]);
-  const handleSubscribe = async (tierKey: "solo" | "creator") => {
-    try {
-      setLoadingTier(tierKey);
-      const {
-        data: {
-          session
-        }
-      } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Please sign in to subscribe");
-        navigate("/auth");
-        return;
-      }
-      const tier = SUBSCRIPTION_TIERS[tierKey];
-      const priceId = isAnnual ? tier.annualPriceId : tier.monthlyPriceId;
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("create-checkout", {
-        body: {
-          priceId
-        }
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      }
-    } catch (error: any) {
-      console.error("Error creating checkout:", error);
-      toast.error("Failed to start checkout. Please try again.");
-    } finally {
-      setLoadingTier(null);
+
+  const steps: StepData[] = [
+    {
+      number: "STEP 1",
+      title: "Choose your campaign type",
+      description: "Skip the tech stress. Just tell Lumi what you want to run. Lumi already knows the correct objective, optimization, placements, and structure.",
+      details: [
+        "Lead magnet",
+        "Webinar",
+        "Low-ticket product",
+        "Discovery call",
+        "IG traffic",
+        "Video views (trust builder)"
+      ],
+      icon: <Lightbulb className="w-7 h-7" />
+    },
+    {
+      number: "STEP 2",
+      title: "Lumi creates your full Customer Journey creative",
+      description: "Lumi generates a complete Grow → Nurture → Convert creative system for you. Plus scripts, b-roll lists, overlays, copy variations, and psychology-backed messaging.",
+      details: [
+        "Grow — Hooks, intros, b-roll openings",
+        "Nurture — Stories, teaching carousels",
+        "Convert — Offer breakdowns, CTAs",
+        "Scripts & production checklists"
+      ],
+      icon: <Heart className="w-7 h-7" />
+    },
+    {
+      number: "STEP 3",
+      title: "Build your Lumi Workspace",
+      description: "Organized. Cozy. Clear. A space to save creative, track production, upload assets, and review your Grow/Nurture/Convert mix.",
+      details: [
+        "Save creative",
+        "Track your production",
+        "Upload assets",
+        "Review your Customer Journey mix",
+        "Save multiple versions",
+        "Expand or regenerate ideas"
+      ],
+      icon: <FileText className="w-7 h-7" />
+    },
+    {
+      number: "STEP 4",
+      title: "Upload your creative & let Lumi build the campaign",
+      description: "Lumi asks a few easy questions — budget, dates, naming, enhancements, retargeting. Then Lumi builds your full campaign inside Ads Manager — for you.",
+      details: [
+        "Campaign → ad set → ads → creative",
+        "Copy → CTA all configured",
+        "Correct best practices applied",
+        "You don't open Ads Manager"
+      ],
+      icon: <Upload className="w-7 h-7" />
+    },
+    {
+      number: "STEP 5",
+      title: "Weekly Insights",
+      description: "Lumi checks your ads weekly with KPI breakdowns, creative fatigue alerts, Customer Journey performance, and psychology insights. Written like Lumi is sitting next to you over coffee.",
+      details: [
+        "KPI breakdown",
+        "Creative fatigue alerts",
+        "Journey stage performance",
+        "New creative recommendations",
+        "Your next 3 steps",
+        "Psychology insights"
+      ],
+      icon: <BarChart3 className="w-7 h-7" />
     }
-  };
-  const tiers = [{
-    key: "solo" as const,
-    name: "Solo",
-    description: "Perfect for solo coaches and course creators",
-    monthlyPrice: 147,
-    annualPrice: 1470,
-    popular: false,
-    features: SUBSCRIPTION_TIERS.solo.features,
-    cta: "Get Started"
-  }, {
-    key: "creator" as const,
-    name: "Creator",
-    description: "For growing creators and service providers",
-    monthlyPrice: 299,
-    annualPrice: 2990,
-    popular: true,
-    features: SUBSCRIPTION_TIERS.creator.features,
-    cta: "Get Started"
-  }, {
-    key: "agency" as const,
-    name: "Agency",
-    description: "For agencies and white-label solutions",
-    monthlyPrice: null,
-    annualPrice: null,
-    popular: false,
-    features: SUBSCRIPTION_TIERS.agency.features,
-    cta: "Contact Sales"
-  }];
-  const steps = [{
-    emoji: "💡",
-    title: "STEP 1 — Choose What You Want to Run",
-    description: "Skip the guessing, skip the questions you don't understand, skip the \"what objective do I use??\" panic.",
-    items: ["Webinar Signups", "Lead Magnet Downloads", "Low-Ticket Product Sales", "Book a Discovery Call", "Traffic to Instagram/Facebook", "Video Views (Trust Builder)"],
-    footer: "Lumi loads the exact structure Meta prefers in 2025. No thinking required."
-  }, {
-    emoji: "🎨",
-    title: "STEP 2 — Get Your Customer Journey Creative Plan",
-    description: "Once you enter your offer details… Your Creative Department generates hooks, scripts, b-roll shot lists, pattern interrupts, and curiosity angles.",
-    items: ["Grow ads (Hooks, Scripts, B-roll)", "Nurture ads (Story scripts, Carousels)", "Convert ads (Offer breakdowns, CTAs)", "Text overlays & variations", "Production checklists", "Psychology-aligned hooks"],
-    footer: "Everything you need to record or design the right creative."
-  }, {
-    emoji: "🗂",
-    title: "STEP 3 — Save Your Campaign & Track Progress",
-    description: "Each campaign gets its own workspace, where you can:",
-    items: ["Save scripts", "Expand creative", "Regenerate what you don't love", "Store your brand voice", "Upload final videos + graphics", "Check off a production list"],
-    footer: "It's like having a creative studio, strategist, and production manager — all inside one tidy space."
-  }, {
-    emoji: "🚀",
-    title: "STEP 4 — Hit \"Create Campaign\"",
-    description: "Lumi actually builds the entire campaign in Ads Manager using the Meta API.",
-    items: ["Combines your creative with strategy", "Pulls all required fields", "Asks simple questions", "Recommends beginner-friendly settings", "Double-checks everything", "Pushes the campaign live"],
-    footer: "You never have to go into Ads Manager. No toggles, no hidden settings."
-  }, {
-    emoji: "📊",
-    title: "STEP 5 — Get Weekly Guidance",
-    description: "Each week, Lumi sends you:",
-    items: ["Clean performance reports", "CTR, CPC, CPL, CPP, ROAS", "Creative fatigue alerts", "Customer Journey diagnostics", "\"What's working + why\"", "New creative ideas"],
-    footer: "This isn't a dashboard. It's a partner."
-  }];
-  return <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Cursor Glow Effect */}
+  ];
+
+  const whyLumiWorks = [
+    "Lumi builds your ads for you.",
+    "Lumi understands buyer psychology.",
+    "Lumi uses Customer Journey creative.",
+    "Lumi leverages Meta's automated sequencing.",
+    "Lumi keeps things simple.",
+    "Lumi stays up-to-date.",
+    "Lumi is built for real humans."
+  ];
+
+  const whoItsFor = [
+    "Coaches",
+    "Course creators",
+    "Service providers",
+    "Digital product creators",
+    "Influencers running their own ads",
+    "Small business owners"
+  ];
+
+  const whoItsNotFor = [
+    "People looking for hacks",
+    "People who won't record anything",
+    "People who want to micromanage settings"
+  ];
+
+  return (
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <CursorGlow />
       
-      {/* Header with Login */}
-      <motion.header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border" initial={{
-      y: -100
-    }} animate={{
-      y: 0
-    }} transition={{
-      duration: 0.6,
-      ease: "easeOut"
-    }}>
+      {/* Header */}
+      <motion.header
+        className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border"
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <motion.img alt="Lumi" className="h-12" src={lumiLogo} whileHover={{
-          scale: 1.05
-        }} transition={{
-          type: "spring",
-          stiffness: 400
-        }} />
+          <motion.img
+            alt="Lumi"
+            className="h-10 md:h-12"
+            src={lumiLogo}
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 400 }}
+          />
           <MagneticButton>
-            <Button onClick={() => navigate("/auth")} variant="outline">
+            <Button onClick={() => navigate("/auth")} variant="outline" className="rounded-full">
               Log In / Sign Up
             </Button>
           </MagneticButton>
         </div>
       </motion.header>
 
-      {/* Hero Section with Animated Gradient Background */}
-      <section ref={heroRef} className="relative min-h-screen flex items-center overflow-hidden">
-        {/* Animated Gradient Mesh Background */}
+      {/* Hero Section */}
+      <section ref={heroRef} className="relative min-h-screen flex items-center overflow-hidden pt-20">
+        {/* Animated Background */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-secondary/20" />
+          <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/30" />
           
-          <motion.div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/20 blur-[120px]" animate={{
-          x: [0, 100, 50, 0],
-          y: [0, 50, 100, 0],
-          scale: [1, 1.2, 0.9, 1]
-        }} transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }} />
-          <motion.div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-secondary/30 blur-[100px]" animate={{
-          x: [0, -80, -40, 0],
-          y: [0, -60, -120, 0],
-          scale: [1, 0.9, 1.1, 1]
-        }} transition={{
-          duration: 25,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }} />
-          <motion.div className="absolute top-[40%] right-[20%] w-[40%] h-[40%] rounded-full bg-accent/20 blur-[80px]" animate={{
-          x: [0, -60, 30, 0],
-          y: [0, 80, -40, 0],
-          scale: [1, 1.1, 0.95, 1]
-        }} transition={{
-          duration: 18,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }} />
-          <motion.div className="absolute bottom-[20%] left-[15%] w-[35%] h-[35%] rounded-full bg-coral/15 blur-[90px]" animate={{
-          x: [0, 70, -30, 0],
-          y: [0, -50, 60, 0],
-          scale: [1, 0.95, 1.15, 1]
-        }} transition={{
-          duration: 22,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }} />
-          
-          <div className="absolute inset-0 opacity-[0.015] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNhKSIvPjwvc3ZnPg==')]" />
+          <motion.div
+            className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/15 blur-[120px]"
+            animate={{
+              x: [0, 100, 50, 0],
+              y: [0, 50, 100, 0],
+              scale: [1, 1.2, 0.9, 1]
+            }}
+            transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-accent/20 blur-[100px]"
+            animate={{
+              x: [0, -80, -40, 0],
+              y: [0, -60, -120, 0],
+              scale: [1, 0.9, 1.1, 1]
+            }}
+            transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+          />
         </div>
         
         <div className="container mx-auto px-4 max-w-4xl relative z-10">
-          <motion.div className="text-center" style={{
-          opacity: heroOpacity,
-          scale: heroScale,
-          y: heroY
-        }}>
-            <motion.div className="inline-flex items-center gap-2 bg-background/80 backdrop-blur-sm border border-border/50 px-4 py-2 rounded-full mb-6" initial={{
-            opacity: 0,
-            y: 20
-          }} animate={{
-            opacity: 1,
-            y: 0
-          }} transition={{
-            duration: 0.6,
-            delay: 0.2
-          }}>
-              <motion.span className="w-2 h-2 rounded-full bg-primary" animate={{
-              scale: [1, 1.2, 1],
-              opacity: [1, 0.7, 1]
-            }} transition={{
-              duration: 2,
-              repeat: Infinity
-            }} />
-              <span className="text-sm font-medium text-primary">For Coaches, Course Creators + Service Providers</span>
+          <motion.div
+            className="text-center"
+            style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
+          >
+            {/* Logo/Brand Mark */}
+            <motion.div
+              className="inline-flex items-center justify-center mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Lightbulb className="w-8 h-8 text-primary" />
+              </div>
             </motion.div>
             
-            <motion.h1 className="font-display text-5xl md:text-6xl lg:text-7xl mb-6 leading-tight" initial={{
-            opacity: 0,
-            y: 30
-          }} animate={{
-            opacity: 1,
-            y: 0
-          }} transition={{
-            duration: 0.8,
-            delay: 0.3
-          }}>
-              Finally: Meta ads that feel{" "}
-              <GradientText>simple, strategic</GradientText>, and actually doable.
+            <motion.h1
+              className="font-display text-5xl md:text-6xl lg:text-7xl mb-6 leading-tight"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              Meta Ads, <GradientText>Simplified.</GradientText>
             </motion.h1>
             
-            <motion.p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed" initial={{
-            opacity: 0,
-            y: 20
-          }} animate={{
-            opacity: 1,
-            y: 0
-          }} transition={{
-            duration: 0.6,
-            delay: 0.5
-          }}>
-              You don't have to learn ads, to run ads.
+            <motion.p
+              className="text-xl md:text-2xl text-foreground/90 max-w-2xl mx-auto leading-relaxed mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              Lumi builds your Meta ads for you — the right way.
+            </motion.p>
+            
+            <motion.p
+              className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+            >
+              Strategy, creative, setup, psychology, and publishing…
+              <br />
+              All handled automatically using up-to-date Meta best practices.
+              <br />
+              <span className="font-medium text-foreground/80">No Ads Manager required.</span>
             </motion.p>
 
-            <motion.div initial={{
-            opacity: 0,
-            y: 20
-          }} animate={{
-            opacity: 1,
-            y: 0
-          }} transition={{
-            duration: 0.6,
-            delay: 0.7
-          }} className="mt-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
+              className="mt-10 flex flex-col sm:flex-row gap-4 justify-center"
+            >
               <MagneticButton>
-                <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8 shadow-lg">
-                  Try Lumi for Free
+                <Button
+                  size="lg"
+                  onClick={() => navigate("/auth")}
+                  className="text-lg px-8 py-6 rounded-full shadow-lumi lumi-button-glow"
+                >
+                  Join the Lumi Waitlist
+                  <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </MagneticButton>
             </motion.div>
           </motion.div>
         </div>
 
-        {/* Floating decorative elements */}
+        {/* Floating Elements */}
         <FloatingElement className="absolute top-1/4 left-[5%] hidden lg:block" delay={0} distance={15}>
-          <motion.div className="w-3 h-3 rounded-full bg-primary/60" animate={{
-          opacity: [0.4, 1, 0.4]
-        }} transition={{
-          duration: 3,
-          repeat: Infinity
-        }} />
+          <motion.div
+            className="w-3 h-3 rounded-full bg-primary/60"
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          />
         </FloatingElement>
         <FloatingElement className="absolute top-1/3 right-[10%] hidden lg:block" delay={0.5} distance={20}>
-          <motion.div className="w-2 h-2 rounded-full bg-secondary" animate={{
-          opacity: [0.5, 1, 0.5]
-        }} transition={{
-          duration: 4,
-          repeat: Infinity
-        }} />
-        </FloatingElement>
-        <FloatingElement className="absolute bottom-1/3 left-[15%] hidden lg:block" delay={1} distance={12}>
-          <motion.div className="w-4 h-4 rounded-full bg-accent/50" animate={{
-          opacity: [0.3, 0.8, 0.3]
-        }} transition={{
-          duration: 5,
-          repeat: Infinity
-        }} />
+          <motion.div
+            className="w-2 h-2 rounded-full bg-accent"
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 4, repeat: Infinity }}
+          />
         </FloatingElement>
         
-        {/* Scroll indicator */}
-        <motion.div className="absolute bottom-8 left-1/2 -translate-x-1/2" initial={{
-        opacity: 0
-      }} animate={{
-        opacity: 1
-      }} transition={{
-        delay: 1.5
-      }}>
-          <motion.div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2" animate={{
-          y: [0, 5, 0]
-        }} transition={{
-          duration: 2,
-          repeat: Infinity
-        }}>
-            <motion.div className="w-1 h-2 rounded-full bg-muted-foreground/50" animate={{
-            y: [0, 8, 0],
-            opacity: [1, 0, 1]
-          }} transition={{
-            duration: 2,
-            repeat: Infinity
-          }} />
+        {/* Scroll Indicator */}
+        <motion.div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5 }}
+        >
+          <motion.div
+            className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2"
+            animate={{ y: [0, 5, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <motion.div
+              className="w-1 h-2 rounded-full bg-muted-foreground/50"
+              animate={{ y: [0, 8, 0], opacity: [1, 0, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
           </motion.div>
         </motion.div>
       </section>
 
-      {/* Problem Section */}
+      {/* Pain Relief Section */}
       <section className="py-24 px-4 bg-muted/30 relative">
         <ParallaxSection className="absolute inset-0 opacity-5" offset={30}>
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary rounded-full blur-3xl" />
@@ -382,481 +334,334 @@ const Sales = () => {
         
         <div className="container mx-auto max-w-3xl relative">
           <ScrollReveal>
-            <p className="text-lg leading-relaxed text-foreground/90 mb-4 text-center">
-              The buttons. The settings. The "random" performance swings. The 47 opinions on TikTok. The fear you'll
-              mess something up and waste money.
+            <p className="text-xl md:text-2xl leading-relaxed text-foreground/90 text-center font-medium">
+              If advertising has ever made you feel{" "}
+              <span className="text-primary">stressed</span>,{" "}
+              <span className="text-primary">confused</span>,{" "}
+              <span className="text-primary">intimidated</span>, or one wrong click away from chaos…
             </p>
           </ScrollReveal>
           
           <ScrollReveal delay={0.2}>
-            <p className="text-xl font-medium text-foreground mt-8 mb-4 text-center">
-              Lumi takes all that stress and says:{" "}
-              <span className="text-primary">"Let me take it from here."</span>
+            <p className="text-2xl md:text-3xl font-display text-center mt-8 mb-4">
+              Lumi is here to <GradientText>turn on the light.</GradientText>
+            </p>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* "Your offer goes in" Section */}
+      <section className="py-24 px-4">
+        <div className="container mx-auto max-w-4xl">
+          <ScrollReveal>
+            <h2 className="font-display text-3xl md:text-4xl text-center mb-8">
+              Your offer goes in. Lumi builds everything else.
+            </h2>
+          </ScrollReveal>
+          
+          <ScrollReveal delay={0.1}>
+            <div className="bg-card rounded-3xl p-8 md:p-12 border border-border shadow-card">
+              <p className="text-lg text-center mb-8 text-muted-foreground">
+                You choose your offer. Lumi:
+              </p>
+              <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                {[
+                  "picks the right campaign type",
+                  "builds the strategy",
+                  "gives you all your creative",
+                  "helps you produce it",
+                  "walks you through uploading it",
+                  "configures all the settings",
+                  "builds the entire campaign inside Ads Manager"
+                ].map((item, i) => (
+                  <motion.div
+                    key={i}
+                    className="flex items-center gap-3"
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    viewport={{ once: true }}
+                  >
+                    <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+                    <span className="text-foreground">{item}</span>
+                  </motion.div>
+                ))}
+              </div>
+              <p className="text-center mt-8 text-lg font-medium text-foreground">
+                You don't need to know ads.{" "}
+                <span className="text-primary">Lumi takes over</span> — clearly, calmly, and correctly.
+              </p>
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* "Built for people" Section */}
+      <section className="py-24 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-3xl text-center">
+          <ScrollReveal>
+            <h2 className="font-display text-3xl md:text-4xl mb-8">
+              Built for people who do not want Ads Manager in their life.
+            </h2>
+          </ScrollReveal>
+          
+          <ScrollReveal delay={0.1}>
+            <p className="text-lg text-muted-foreground leading-relaxed mb-6">
+              Ads Manager changes weekly. Buttons move. Settings rename themselves. 
+              Placements shift. Optimizations come and go.
+            </p>
+          </ScrollReveal>
+          
+          <ScrollReveal delay={0.2}>
+            <p className="text-xl font-medium text-primary">
+              Lumi fixes that.
             </p>
           </ScrollReveal>
           
           <ScrollReveal delay={0.3}>
-            <p className="text-lg leading-relaxed text-foreground/90 text-center">
-              This isn't another marketing course or a complicated dashboard. It's a smart, friendly, hands-on tool that
-              walks you through planning, creating, launching, and improving Meta ads — step by step.
+            <p className="text-lg text-foreground/90 mt-6">
+              Lumi doesn't just give advice — <strong>Lumi does the building.</strong>
             </p>
-          </ScrollReveal>
-          
-          <ScrollReveal delay={0.4}>
-            <p className="text-lg font-medium text-foreground mt-6 text-center">
-              No overwhelm. No guesswork. No Ads Manager spirals.
+            <p className="text-muted-foreground mt-2">
+              Everything is set up correctly, based on today's best practices, buyer psychology, and Meta's automated sequencing.
             </p>
           </ScrollReveal>
         </div>
       </section>
 
-      {/* Key Promise */}
+      {/* How Lumi Works - 5 Steps */}
       <section className="py-24 px-4">
-        <div className="container mx-auto max-w-4xl text-center">
-          <ScaleOnScroll scaleRange={[0.9, 1]}>
-            <div className="bg-gradient-to-br from-primary/20 to-secondary/20 p-12 rounded-3xl border border-border relative overflow-hidden">
-              <ParallaxSection className="absolute inset-0 opacity-30" offset={20}>
-                <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
-              </ParallaxSection>
-              <p className="text-2xl md:text-3xl font-display leading-relaxed relative z-10">
-                If you can paste your url and upload your creative…
-                <br />
-                <motion.span className="text-primary text-4xl md:text-5xl inline-block mt-4" initial={{
-                opacity: 0,
-                scale: 0.9
-              }} whileInView={{
-                opacity: 1,
-                scale: 1
-              }} transition={{
-                duration: 0.5,
-                delay: 0.3
-              }} viewport={{
-                once: true
-              }}>
-                  Lumi does the rest.
-                </motion.span>
-              </p>
-            </div>
-          </ScaleOnScroll>
-        </div>
-      </section>
-
-      {/* Vertical Steps Section */}
-      <section className="py-16 md:py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-4xl">
           <ScrollReveal>
-            <h2 className="font-display text-3xl md:text-4xl text-center mb-12">Here's how:</h2>
+            <div className="text-center mb-16">
+              <Badge variant="secondary" className="bg-primary/10 text-primary mb-4">
+                <Sparkles className="w-3 h-3 mr-1" />
+                How Lumi Works
+              </Badge>
+              <h2 className="font-display text-4xl md:text-5xl">
+                Five simple steps to ads that work.
+              </h2>
+            </div>
           </ScrollReveal>
           
-          <div className="space-y-8 md:space-y-12">
-            {steps.map((step, index) => <VerticalStepCard key={index} step={step} index={index} />)}
+          <div className="space-y-6">
+            {steps.map((step, index) => (
+              <StepCard key={index} step={step} index={index} />
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Why It Works */}
-      <section className="py-24 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <ScrollReveal>
-            <h2 className="font-display text-4xl text-center mb-12">🌟 Why It Works So Well</h2>
-          </ScrollReveal>
-          <ScrollReveal delay={0.1}>
-            <p className="text-xl text-center text-muted-foreground mb-12">
-              Lumi is powered by thousands of hours of:
-            </p>
-          </ScrollReveal>
-          <StaggerChildren staggerDelay={0.05} className="grid md:grid-cols-3 gap-4 text-center">
-            {["Meta ad strategy", "Creative psychology", "Performance troubleshooting", "Offer mapping", "Customer Journey analysis", "Script writing", "Copy frameworks", "Meta best practices", "Seasonality predictions", "Hook libraries", "Niche messaging", "Audience builder logic", "B-roll direction", "High-performing creative systems", "API-backed campaign builds"].map(item => <StaggerItem key={item}>
-                <motion.div className="p-4 bg-muted/30 rounded-lg border border-border" whileHover={{
-              scale: 1.05,
-              y: -5
-            }} transition={{
-              type: "spring",
-              stiffness: 300
-            }}>
-                  <p className="text-sm">{item}</p>
-                </motion.div>
-              </StaggerItem>)}
-          </StaggerChildren>
-          <ScrollReveal delay={0.3}>
-            <p className="text-xl text-center mt-12 font-medium">
-              …and all of that lives inside an app that feels simple, warm, and helpful.
-            </p>
-          </ScrollReveal>
-        </div>
-      </section>
-
-      {/* Think of it like this */}
+      {/* Customer Journey Explanation */}
       <section className="py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-4xl">
           <ScrollReveal>
-            <h2 className="font-display text-4xl text-center mb-12">🧠 Think of it like this…</h2>
+            <h2 className="font-display text-3xl md:text-4xl text-center mb-12">
+              The Customer Journey: <GradientText>Grow → Nurture → Convert</GradientText>
+            </h2>
           </ScrollReveal>
-          <ScrollReveal delay={0.1}>
-            <p className="text-xl text-center mb-12">Lumi is:</p>
-          </ScrollReveal>
-
-          <StaggerChildren staggerDelay={0.1} className="grid md:grid-cols-2 gap-6">
-            {[{
-            icon: MessageCircle,
-            emoji: "💬",
-            title: "Your strategist",
-            desc: "Telling you exactly which campaign to run."
-          }, {
-            icon: Palette,
-            emoji: "🎨",
-            title: "Your creative director",
-            desc: "Giving you hooks, scripts, b-roll, and graphics."
-          }, {
-            icon: Target,
-            emoji: "🎥",
-            title: "Your producer",
-            desc: "Showing you how to film and what to record."
-          }, {
-            icon: Rocket,
-            emoji: "🛠",
-            title: "Your campaign builder",
-            desc: "Creating everything directly in Ads Manager."
-          }, {
-            icon: BarChart3,
-            emoji: "📊",
-            title: "Your analyst",
-            desc: "Reviewing your data and telling you what to fix."
-          }, {
-            icon: Brain,
-            emoji: "✨",
-            title: "Your supportive business bestie",
-            desc: "Encouraging you and keeping things simple."
-          }].map(item => <StaggerItem key={item.title}>
-                <motion.div className="p-6 bg-background rounded-xl border border-border" whileHover={{
-              scale: 1.02,
-              y: -5
-            }} transition={{
-              type: "spring",
-              stiffness: 300
-            }}>
-                  <div className="flex items-start gap-4">
-                    <item.icon className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-                    <div>
-                      <p className="font-medium text-lg mb-2">{item.emoji} {item.title}</p>
-                      <p className="text-muted-foreground">{item.desc}</p>
-                    </div>
+          
+          <div className="grid md:grid-cols-3 gap-6">
+            <ScrollReveal delay={0.1}>
+              <Card className="bg-card border-border h-full">
+                <CardHeader className="text-center pb-2">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
+                    <Eye className="w-7 h-7 text-emerald-600" />
                   </div>
-                </motion.div>
-              </StaggerItem>)}
-          </StaggerChildren>
+                  <CardTitle className="text-xl text-emerald-600">Grow</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-sm text-muted-foreground mb-3">Reach new people</p>
+                  <p className="text-sm">
+                    Hooks, intros, b-roll openings, early curiosity content to attract new eyes.
+                  </p>
+                </CardContent>
+              </Card>
+            </ScrollReveal>
+            
+            <ScrollReveal delay={0.2}>
+              <Card className="bg-card border-border h-full">
+                <CardHeader className="text-center pb-2">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-3">
+                    <Heart className="w-7 h-7 text-amber-600" />
+                  </div>
+                  <CardTitle className="text-xl text-amber-600">Nurture</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-sm text-muted-foreground mb-3">Build trust</p>
+                  <p className="text-sm">
+                    Stories, teaching carousels, frameworks, value-forward videos to deepen understanding.
+                  </p>
+                </CardContent>
+              </Card>
+            </ScrollReveal>
+            
+            <ScrollReveal delay={0.3}>
+              <Card className="bg-card border-border h-full">
+                <CardHeader className="text-center pb-2">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <Zap className="w-7 h-7 text-primary" />
+                  </div>
+                  <CardTitle className="text-xl text-primary">Convert</CardTitle>
+                </CardHeader>
+                <CardContent className="text-center">
+                  <p className="text-sm text-muted-foreground mb-3">Inspire action</p>
+                  <p className="text-sm">
+                    Offer breakdowns, benefits carousels, CTA-focused ads to guide ready buyers.
+                  </p>
+                </CardContent>
+              </Card>
+            </ScrollReveal>
+          </div>
+        </div>
+      </section>
 
-          <ScrollReveal delay={0.4}>
-            <p className="text-xl text-center mt-12 font-medium">All in one clean, friendly tool.</p>
+      {/* Why Lumi Works */}
+      <section className="py-24 px-4">
+        <div className="container mx-auto max-w-3xl">
+          <ScrollReveal>
+            <h2 className="font-display text-3xl md:text-4xl text-center mb-12">
+              Why Lumi Works
+            </h2>
           </ScrollReveal>
+          
+          <StaggerChildren staggerDelay={0.08} className="space-y-4">
+            {whyLumiWorks.map((item, i) => (
+              <StaggerItem key={i}>
+                <motion.div
+                  className="flex items-center gap-4 p-4 bg-card rounded-2xl border border-border"
+                  whileHover={{ x: 5, backgroundColor: "hsl(var(--primary) / 0.05)" }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <CheckCircle className="w-5 h-5 text-primary flex-shrink-0" />
+                  <span className="text-lg">{item}</span>
+                </motion.div>
+              </StaggerItem>
+            ))}
+          </StaggerChildren>
         </div>
       </section>
 
       {/* Who It's For */}
-      <section className="py-24 px-4">
+      <section className="py-24 px-4 bg-muted/30">
         <div className="container mx-auto max-w-4xl">
           <div className="grid md:grid-cols-2 gap-12">
             <ScrollReveal direction="left">
               <div>
-                <h2 className="font-display text-3xl mb-6">🎯 Who It's For</h2>
-                <p className="text-lg mb-6">
-                  Coaches, course creators, service providers, creators, and small business owners who:
-                </p>
+                <h2 className="font-display text-3xl mb-6 flex items-center gap-3">
+                  <Check className="w-8 h-8 text-primary" />
+                  Who Lumi Is For
+                </h2>
                 <StaggerChildren staggerDelay={0.08} className="space-y-3">
-                  {["Want better ads", "Are tired of guessing", "Want to save time", "Want someone (or something) to tell them what to do", "Want clarity, not chaos", "Want ads that feel doable, not overwhelming", "Want a tool that meets them where they are"].map(item => <StaggerItem key={item}>
+                  {whoItsFor.map((item, i) => (
+                    <StaggerItem key={i}>
                       <div className="flex items-start gap-3">
-                        <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
-                        <span>{item}</span>
+                        <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                        <span className="text-lg">{item}</span>
                       </div>
-                    </StaggerItem>)}
+                    </StaggerItem>
+                  ))}
                 </StaggerChildren>
-                <p className="text-lg mt-6 font-medium">
-                  If you're ready to run ads with confidence — without becoming a media buyer — this is for you.
-                </p>
               </div>
             </ScrollReveal>
 
             <ScrollReveal direction="right">
               <div>
-                <h2 className="font-display text-3xl mb-6">❌ Who It's Not For</h2>
+                <h2 className="font-display text-3xl mb-6 flex items-center gap-3">
+                  <X className="w-8 h-8 text-destructive" />
+                  Who Lumi Is NOT For
+                </h2>
                 <StaggerChildren staggerDelay={0.08} className="space-y-3">
-                  {["People looking for hacks", "People who won't record any creative at all", "People who want to manually tweak every toggle", "People who expect results without testing", "Agencies who only run 30-adset Frankenstein structures"].map(item => <StaggerItem key={item}>
+                  {whoItsNotFor.map((item, i) => (
+                    <StaggerItem key={i}>
                       <div className="flex items-start gap-3">
-                        <X className="w-5 h-5 text-destructive flex-shrink-0 mt-1" />
-                        <span>{item}</span>
+                        <X className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                        <span className="text-lg">{item}</span>
                       </div>
-                    </StaggerItem>)}
+                    </StaggerItem>
+                  ))}
                 </StaggerChildren>
-                <p className="text-lg mt-6 font-medium">
-                  This is for people who want smart, simple, strategic ads — done the right way.
-                </p>
               </div>
             </ScrollReveal>
           </div>
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-24 px-4 bg-muted/30">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-12">
-            <ScrollReveal>
-              <h2 className="font-display text-4xl md:text-5xl mb-4">
-                Simple, transparent pricing
-              </h2>
-            </ScrollReveal>
-            <ScrollReveal delay={0.1}>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Choose the plan that fits your business. Upgrade or downgrade anytime.
-              </p>
-            </ScrollReveal>
-
-            {/* Billing Toggle */}
-            <ScrollReveal delay={0.2}>
-              <div className="flex items-center justify-center gap-4 mt-8">
-                <Label htmlFor="billing-toggle-sales" className={!isAnnual ? "font-medium" : "text-muted-foreground"}>
-                  Monthly
-                </Label>
-                <Switch id="billing-toggle-sales" checked={isAnnual} onCheckedChange={setIsAnnual} />
-                <Label htmlFor="billing-toggle-sales" className={isAnnual ? "font-medium" : "text-muted-foreground"}>
-                  Annual
-                </Label>
-                {isAnnual && <Badge variant="secondary" className="bg-primary/10 text-primary">
-                    Save 2 months
-                  </Badge>}
-              </div>
-            </ScrollReveal>
-          </div>
-
-          {/* Cost Comparison Section */}
-          <ScrollReveal delay={0.15}>
-            <div className="mb-16">
-              <h3 className="font-display text-2xl md:text-3xl text-center mb-8">
-                The smart alternative to expensive agencies & time-consuming courses
-              </h3>
-              <div className="grid md:grid-cols-3 gap-6">
-                {/* Agency Card */}
-                <Card className="border-border bg-muted/30 opacity-80">
-                  <CardHeader className="text-center pb-2">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-                      <Building2 className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                    <CardTitle className="text-xl text-muted-foreground">Hire an Agency</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-center mb-4">
-                      <span className="text-2xl font-bold text-muted-foreground line-through">$2,000 - $5,000+</span>
-                      <span className="text-muted-foreground">/mo</span>
-                    </div>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li className="flex items-start gap-2">
-                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                        <span>+ 10-20% of ad spend fees</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                        <span>6-month contracts typical</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                        <span>You're one of many clients</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                        <span>No control over your strategy</span>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Course Card */}
-                <Card className="border-border bg-muted/30 opacity-80">
-                  <CardHeader className="text-center pb-2">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-                      <GraduationCap className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                    <CardTitle className="text-xl text-muted-foreground">Learn It Yourself</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-center mb-4">
-                      <span className="text-2xl font-bold text-muted-foreground line-through">$500 - $3,000</span>
-                      <span className="text-muted-foreground"> course</span>
-                    </div>
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li className="flex items-start gap-2">
-                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                        <span>40+ hours just to learn basics</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                        <span>10-20 hrs/week to implement</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                        <span>Costly trial & error mistakes</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                        <span>Information often outdated</span>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Lumi Card */}
-                <Card className="border-primary bg-primary/5 shadow-md">
-                  <CardHeader className="text-center pb-2">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                      <Zap className="w-6 h-6 text-primary" />
-                    </div>
-                    <CardTitle className="text-xl">Lumi</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-center mb-4">
-                      <span className="text-2xl font-bold text-primary">Starting at $147</span>
-                      <span className="text-muted-foreground">/mo</span>
-                    </div>
-                    <ul className="space-y-2 text-sm">
-                      <li className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span>Launch campaigns in minutes</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span>AI-powered strategy & creative</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span>Psychology-driven approach</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span className="font-medium">14-day free trial included</span>
-                      </li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </ScrollReveal>
-
-          {/* Pricing Cards */}
-          <div className="grid md:grid-cols-3 gap-8">
-            {tiers.map((tier, index) => <ScrollReveal key={tier.key} delay={0.1 * index}>
-                <Card className={`relative flex flex-col h-full ${tier.popular ? "border-primary shadow-lg scale-105" : "border-border"}`}>
-                  {tier.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                      <Badge className="bg-primary text-primary-foreground px-4 py-1">
-                        <Sparkles className="w-3 h-3 mr-1" />
-                        Most Popular
-                      </Badge>
-                    </div>}
-                  <CardHeader className="text-center pb-4">
-                    <CardTitle className="text-2xl font-display">{tier.name}</CardTitle>
-                    <CardDescription>{tier.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col">
-                    <div className="text-center mb-6">
-                      {tier.monthlyPrice ? <>
-                          <div className="flex items-baseline justify-center gap-1">
-                            <span className="text-4xl font-bold">
-                              ${isAnnual ? Math.round(tier.annualPrice! / 12) : tier.monthlyPrice}
-                            </span>
-                            <span className="text-muted-foreground">/mo</span>
-                          </div>
-                          {isAnnual && <p className="text-sm text-muted-foreground mt-1">
-                              ${tier.annualPrice}/year billed annually
-                            </p>}
-                        </> : <div className="text-2xl font-bold text-muted-foreground">
-                          Custom Pricing
-                        </div>}
-                    </div>
-
-                    <ul className="space-y-3 mb-8 flex-1">
-                      {tier.features.map((feature, i) => <li key={i} className="flex items-start gap-2">
-                          <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                          <span className="text-sm">{feature}</span>
-                        </li>)}
-                    </ul>
-
-                    <Button className="w-full gap-2" variant={tier.popular ? "default" : "outline"} size="lg" disabled={loadingTier === tier.key} onClick={() => {
-                  if (tier.key === "agency") {
-                    window.location.href = "mailto:hello@afterorganic.com?subject=Agency Plan Inquiry";
-                  } else {
-                    handleSubscribe(tier.key);
-                  }
-                }}>
-                      {loadingTier === tier.key ? <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Loading...
-                        </> : <>
-                          {tier.cta}
-                          <ArrowRight className="w-4 h-4" />
-                        </>}
-                    </Button>
-                  </CardContent>
-                </Card>
-              </ScrollReveal>)}
-          </div>
-
-          {/* FAQ or Additional Info */}
-          <ScrollReveal delay={0.3}>
-            <div className="mt-16 text-center">
-              <p className="text-muted-foreground">
-                All plans include a 14-day free trial. Credit card required, but you won't be charged until your trial ends.
-              </p>
-            </div>
-          </ScrollReveal>
-        </div>
-      </section>
-
-      {/* Final CTA */}
+      {/* Beta Announcement */}
       <section className="py-32 px-4 relative overflow-hidden">
         <ParallaxSection className="absolute inset-0" offset={40}>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl" />
         </ParallaxSection>
         
-        <div className="container mx-auto max-w-4xl text-center relative z-10">
+        <div className="container mx-auto max-w-3xl text-center relative z-10">
           <ScaleOnScroll scaleRange={[0.9, 1]}>
-            <motion.h2 className="font-display text-5xl mb-8 md:text-6xl" whileInView={{
-            opacity: [0, 1],
-            y: [30, 0]
-          }} transition={{
-            duration: 0.8
-          }} viewport={{
-            once: true
-          }}>
-              🚀 Ready to run ads with clarity?
-            </motion.h2>
+            <motion.div
+              className="bg-card rounded-3xl p-10 md:p-16 border border-border shadow-elevated"
+              whileInView={{ opacity: [0, 1], y: [30, 0] }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+            >
+              <Badge variant="secondary" className="bg-primary/10 text-primary mb-6">
+                <Sparkles className="w-3 h-3 mr-1" />
+                Limited Beta
+              </Badge>
+              
+              <h2 className="font-display text-4xl md:text-5xl mb-6">
+                Lumi Beta Opening Soon
+              </h2>
+              
+              <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
+                <strong className="text-foreground">10 spots only.</strong>
+                <br />
+                Special pricing. Priority support. Influence over Lumi's roadmap.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <MagneticButton>
+                  <Button
+                    size="lg"
+                    onClick={() => navigate("/auth")}
+                    className="text-lg px-8 py-6 rounded-full shadow-lumi lumi-button-glow"
+                  >
+                    Join the Lumi Waitlist
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </MagneticButton>
+              </div>
+            </motion.div>
           </ScaleOnScroll>
-          <ScrollReveal delay={0.2}>
-            <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-              Lumi is here. And it's about to make your business feel lighter, simpler, and more strategic.
+        </div>
+      </section>
+
+      {/* Final Light Message */}
+      <section className="py-16 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-2xl text-center">
+          <ScrollReveal>
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Lightbulb className="w-6 h-6 text-primary" />
+              <span className="text-lg font-medium text-primary">Ready to light things up?</span>
+            </div>
+            <p className="text-muted-foreground">
+              Grow → Nurture → Convert: Lumi has everything covered.
             </p>
-          </ScrollReveal>
-          <ScrollReveal delay={0.4}>
-            <MagneticButton className="inline-block">
-              <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8 py-6">
-                Join the Waitlist
-              </Button>
-            </MagneticButton>
           </ScrollReveal>
         </div>
       </section>
 
       {/* Footer */}
-      <motion.footer className="py-12 px-4 border-t border-border" initial={{
-      opacity: 0
-    }} whileInView={{
-      opacity: 1
-    }} transition={{
-      duration: 0.5
-    }} viewport={{
-      once: true
-    }}>
+      <motion.footer
+        className="py-12 px-4 border-t border-border"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        viewport={{ once: true }}
+      >
         <div className="container mx-auto text-center text-sm text-muted-foreground">
           <p>© 2025 Lumi. All rights reserved.</p>
         </div>
       </motion.footer>
-    </div>;
+    </div>
+  );
 };
+
 export default Sales;
