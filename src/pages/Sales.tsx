@@ -13,6 +13,7 @@ import { FloatingElement } from "@/components/animations/FloatingElement";
 import { MagneticButton, GradientText } from "@/components/animations/SmoothScroll";
 import { CursorGlow } from "@/components/animations/CursorTrail";
 import lumiLogo from "@/assets/lumi-logo.png";
+import lumiBulb from "@/assets/lumi-bulb.png";
 
 interface StepData {
   number: string;
@@ -232,9 +233,7 @@ const Sales = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Lightbulb className="w-8 h-8 text-primary" />
-              </div>
+              <img src={lumiBulb} alt="Lumi" className="w-16 h-16 object-contain" />
             </motion.div>
             
             <motion.h1
