@@ -545,6 +545,7 @@ export default function Data() {
         currentStep="data" 
         campaignId={selectedWorkspaceId}
         progressStatus={selectedWorkspace?.progress_status}
+        offerName={selectedWorkspace?.offer_name || selectedWorkspace?.name}
       />
       <div className="space-y-6 pb-12">
         {/* Header */}
