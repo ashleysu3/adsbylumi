@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { TypingHeadline } from "@/components/TypingHeadline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -236,14 +237,14 @@ const Sales = () => {
               <img src={lumiBulb} alt="Lumi" className="w-16 h-16 object-contain" />
             </motion.div>
             
-            <motion.h1
-              className="font-display text-5xl md:text-6xl lg:text-7xl mb-6 leading-tight"
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
+              className="mb-6"
             >
-              Meta Ads, <GradientText>Simplified.</GradientText>
-            </motion.h1>
+              <TypingHeadline />
+            </motion.div>
             
             <motion.p
               className="text-xl md:text-2xl text-foreground/90 max-w-2xl mx-auto leading-relaxed mb-4"
