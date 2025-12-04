@@ -470,11 +470,37 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     const isLoved = lovedConcepts.has(conceptId);
     const FormatIcon = formatIcons[concept.format as keyof typeof formatIcons] || FileText;
     
+    // Helper to safely parse script content (handles stringified JSON)
+    const parseScriptContent = (content: any): any => {
+      if (!content) return null;
+      if (Array.isArray(content)) return content;
+      if (typeof content === 'string') {
+        // Check if it's a stringified JSON array
+        const trimmed = content.trim();
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          try {
+            return JSON.parse(trimmed);
+          } catch {
+            return content; // Return as string if parse fails
+          }
+        }
+        return content;
+      }
+      return content;
+    };
+
+    // Get the script content (handles both 'script' and 'content' fields)
+    const getScriptContent = () => {
+      const raw = concept.script || concept.content;
+      return parseScriptContent(raw);
+    };
+
     // Helper to format script for copying
     const formatScriptForCopy = (script: any): string => {
-      if (typeof script === 'string') return script;
-      if (Array.isArray(script)) {
-        return script.map((segment: any) => {
+      const parsed = parseScriptContent(script);
+      if (typeof parsed === 'string') return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.map((segment: any) => {
           const speaker = segment.speaker ? `[${segment.speaker}]` : '';
           const timing = segment.timing ? ` (${segment.timing})` : '';
           const text = segment.dialogue || segment.text || '';
@@ -486,13 +512,14 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
 
     // Helper to render script with proper formatting
     const renderScript = (script: any) => {
-      if (typeof script === 'string') {
-        return <span>{script}</span>;
+      const parsed = parseScriptContent(script);
+      if (typeof parsed === 'string') {
+        return <span>{parsed}</span>;
       }
-      if (Array.isArray(script)) {
+      if (Array.isArray(parsed)) {
         return (
           <div className="space-y-3">
-            {script.map((segment: any, i: number) => (
+            {parsed.map((segment: any, i: number) => (
               <div key={i} className="border-l-2 border-primary/30 pl-3">
                 <div className="flex items-center gap-2 mb-1">
                   {segment.speaker && (
@@ -513,18 +540,19 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
 
     // Get main content preview
     const getContentPreview = () => {
-      if (concept.script) {
+      const scriptContent = getScriptContent();
+      if (scriptContent) {
         // Handle array format (speaker/dialogue/timing objects)
-        if (Array.isArray(concept.script)) {
-          return concept.script
+        if (Array.isArray(scriptContent)) {
+          return scriptContent
             .slice(0, 2)
             .map((segment: any) => segment.dialogue || segment.text || '')
             .filter(Boolean)
             .join(' ');
         }
         // Handle string format
-        if (typeof concept.script === 'string') {
-          const lines = concept.script.split('\n').filter((l: string) => l.trim());
+        if (typeof scriptContent === 'string') {
+          const lines = scriptContent.split('\n').filter((l: string) => l.trim());
           return lines.slice(0, 3).join('\n');
         }
       }
@@ -628,8 +656,8 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
                   size="sm"
                   variant="ghost"
                   onClick={() => {
-                    const contentToCopy = concept.script 
-                      ? formatScriptForCopy(concept.script)
+                    const contentToCopy = (concept.script || concept.content)
+                      ? formatScriptForCopy(concept.script || concept.content)
                       : concept.carousel_structure
                         ? JSON.stringify(concept.carousel_structure, null, 2)
                         : concept.static_layout || concept.title;
@@ -651,21 +679,21 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
           
           <CollapsibleContent>
             <CardContent className="space-y-6 pt-6 border-t border-border/50">
-              {concept.script && (
+              {(concept.script || concept.content) && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">Full Script</p>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => copyToClipboard(formatScriptForCopy(concept.script), "Script")}
+                      onClick={() => copyToClipboard(formatScriptForCopy(concept.script || concept.content), "Script")}
                     >
                       <Copy className="h-3 w-3 mr-1" />
                       Copy
                     </Button>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-3 text-sm whitespace-pre-wrap font-mono">
-                    {renderScript(concept.script)}
+                    {renderScript(concept.script || concept.content)}
                   </div>
                 </div>
               )}
