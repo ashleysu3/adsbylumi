@@ -64,7 +64,7 @@ serve(async (req) => {
       subscription_data: {
         trial_period_days: 14,
       },
-      success_url: `${origin}/dashboard?checkout=success`,
+      success_url: `${origin}/onboarding`,
       cancel_url: `${origin}/pricing?checkout=canceled`,
       metadata: {
         user_id: user.id,

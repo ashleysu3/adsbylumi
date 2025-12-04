@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import confetti from "canvas-confetti";
@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [progressPopoverOpen, setProgressPopoverOpen] = useState(false);
   const hasShownConfetti = useRef(false);
   const hasHandledCheckout = useRef(false);
+  const hasCheckedBrand = useRef(false);
 
   // Handle checkout success
   useEffect(() => {
@@ -192,7 +194,14 @@ export default function Dashboard() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
+
+      // If no brand exists and we haven't redirected yet, send to onboarding
+      if (!brandData && !hasCheckedBrand.current) {
+        hasCheckedBrand.current = true;
+        navigate("/onboarding");
+        return;
+      }
 
       if (brandError) throw brandError;
       setBrand(brandData);
@@ -207,14 +216,16 @@ export default function Dashboard() {
       setSubscription(subData);
 
       // Fetch offers (exclude archived)
-      const { data: offersData } = await supabase
-        .from("offers")
-        .select("*")
-        .eq("brand_id", brandData.id)
-        .eq("archived", false)
-        .order("created_at", { ascending: false });
+      if (brandData) {
+        const { data: offersData } = await supabase
+          .from("offers")
+          .select("*")
+          .eq("brand_id", brandData.id)
+          .eq("archived", false)
+          .order("created_at", { ascending: false });
 
-      setOffers(offersData || []);
+        setOffers(offersData || []);
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to load brand data");
     } finally {
