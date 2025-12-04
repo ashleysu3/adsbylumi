@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, LayoutTemplate } from "lucide-react";
+import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, LayoutTemplate, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
@@ -261,6 +261,10 @@ export default function DashboardLayout({
                       <DropdownMenuItem onClick={() => navigate("/admin/templates")}>
                         <LayoutTemplate className="mr-2 h-4 w-4" />
                         Campaign Templates
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/admin/invite-codes")}>
+                        <Ticket className="mr-2 h-4 w-4" />
+                        Invite Codes
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/admin/analytics")}>
                         <BarChart3 className="mr-2 h-4 w-4" />
