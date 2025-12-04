@@ -109,6 +109,11 @@ export function CampaignStatusCard({
       }
     } catch (error: any) {
       console.error('Error fetching status:', error);
+      // Check if this might be a Meta token error (edge function returned non-2xx)
+      const errorMsg = error?.message || '';
+      if (errorMsg.includes('non-2xx status code') || errorMsg.includes('Edge Function')) {
+        setTokenExpired(true);
+      }
     } finally {
       setLoading(false);
     }
