@@ -605,13 +605,11 @@ const Sales = () => {
               </Badge>
               
               <h2 className="font-display text-4xl md:text-5xl mb-6">
-                Lumi Beta Opening Soon
+                Lumi Opens in January
               </h2>
               
               <p className="text-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-                <strong className="text-foreground">10 spots only.</strong>
-                <br />
-                Special pricing. Priority support. Influence over Lumi's roadmap.
+                Waitlist members get first access as Lumi rolls out.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
