@@ -115,7 +115,7 @@ serve(async (req) => {
       }
     }
 
-    const systemPrompt = `You are the Creative Department for Lumi — an elite Meta Ads creative agency specialized in psychology-driven, full-funnel ad creative.
+    const systemPrompt = `You are the Creative Department for Lumi — an elite Meta Ads creative agency specialized in psychology-driven creative that guides customers through their journey.
 
 === CRITICAL OUTPUT REQUIREMENTS ===
 
@@ -123,11 +123,11 @@ You MUST return a valid JSON object with this EXACT structure:
 
 {
   "creative_mix": {
-    "tofu": [
+    "grow": [
       {
-        "id": "tofu_1",
+        "id": "grow_1",
         "title": "Creative concept title",
-        "stage": "tofu",
+        "stage": "grow",
         "format": "talking_head" | "b_roll" | "carousel" | "static" | "script" | "overlay",
         "angle": "curiosity" | "pain" | "proof" | "authority" | "clarity" | "desire" | "identity" | "urgency",
         "psychology_trigger": "specific trigger used",
@@ -144,13 +144,13 @@ You MUST return a valid JSON object with this EXACT structure:
         "production_notes": "Filming/production guidance"
       }
     ],
-    "mofu": [ /* same structure */ ],
-    "bofu": [ /* same structure */ ]
+    "nurture": [ /* same structure */ ],
+    "convert": [ /* same structure */ ]
   },
   "scripts": [
     {
       "id": "script_1",
-      "stage": "tofu" | "mofu" | "bofu",
+      "stage": "grow" | "nurture" | "convert",
       "title": "Script title",
       "content": "Full script content",
       "cta": "Call to action",
@@ -161,7 +161,7 @@ You MUST return a valid JSON object with this EXACT structure:
   "broll_lists": [
     {
       "id": "broll_1",
-      "stage": "tofu" | "mofu" | "bofu",
+      "stage": "grow" | "nurture" | "convert",
       "related_script_id": "script_1",
       "shots": [
         {
@@ -176,7 +176,7 @@ You MUST return a valid JSON object with this EXACT structure:
   "carousels": [
     {
       "id": "carousel_1",
-      "stage": "tofu" | "mofu" | "bofu",
+      "stage": "grow" | "nurture" | "convert",
       "title": "Carousel title",
       "type": "educational" | "myth-busting" | "teaching" | "case-study" | "benefits" | "transformation",
       "angle": "curiosity" etc,
@@ -193,7 +193,7 @@ You MUST return a valid JSON object with this EXACT structure:
   "static_graphics": [
     {
       "id": "static_1",
-      "stage": "tofu" | "mofu" | "bofu",
+      "stage": "grow" | "nurture" | "convert",
       "title": "Graphic title",
       "type": "headline" | "offer-breakdown" | "case-study" | "stat-graphic",
       "elements": ["Element 1", "Element 2"],
@@ -204,7 +204,7 @@ You MUST return a valid JSON object with this EXACT structure:
   "headlines": [
     {
       "id": "headline_1",
-      "stage": "tofu" | "mofu" | "bofu",
+      "stage": "grow" | "nurture" | "convert",
       "text": "Headline text (<40 chars)",
       "angle": "curiosity" etc,
       "use_case": "When to use this"
@@ -213,7 +213,7 @@ You MUST return a valid JSON object with this EXACT structure:
   "primary_copy": {
     "short": [
       {
-        "stage": "tofu" | "mofu" | "bofu",
+        "stage": "grow" | "nurture" | "convert",
         "text": "Short copy (125 chars)",
         "angle": "curiosity" etc
       }
@@ -223,38 +223,38 @@ You MUST return a valid JSON object with this EXACT structure:
   },
   "descriptions": [
     {
-      "stage": "tofu" | "mofu" | "bofu",
+      "stage": "grow" | "nurture" | "convert",
       "text": "Description text (<30 chars)",
       "angle": "curiosity" etc
     }
   ],
   "ad_copy_library": {
     "headlines": [
-      { "id": "h1", "text": "Headline 1 (<40 chars)", "angle": "curiosity", "stage": "tofu" },
-      { "id": "h2", "text": "Headline 2", "angle": "pain", "stage": "tofu" },
-      { "id": "h3", "text": "Headline 3", "angle": "proof", "stage": "mofu" },
-      { "id": "h4", "text": "Headline 4", "angle": "desire", "stage": "bofu" },
-      { "id": "h5", "text": "Headline 5", "angle": "urgency", "stage": "bofu" }
+      { "id": "h1", "text": "Headline 1 (<40 chars)", "angle": "curiosity", "stage": "grow" },
+      { "id": "h2", "text": "Headline 2", "angle": "pain", "stage": "grow" },
+      { "id": "h3", "text": "Headline 3", "angle": "proof", "stage": "nurture" },
+      { "id": "h4", "text": "Headline 4", "angle": "desire", "stage": "convert" },
+      { "id": "h5", "text": "Headline 5", "angle": "urgency", "stage": "convert" }
     ],
     "primary_copy": {
       "short": [
-        { "id": "pc_s1", "stage": "tofu", "text": "Short copy variation 1 (~125 chars)", "angle": "curiosity", "length": "short" },
-        { "id": "pc_s2", "stage": "mofu", "text": "Short copy variation 2", "angle": "proof", "length": "short" }
+        { "id": "pc_s1", "stage": "grow", "text": "Short copy variation 1 (~125 chars)", "angle": "curiosity", "length": "short" },
+        { "id": "pc_s2", "stage": "nurture", "text": "Short copy variation 2", "angle": "proof", "length": "short" }
       ],
       "medium": [
-        { "id": "pc_m1", "stage": "tofu", "text": "Medium copy variation 1 (~300 chars)", "angle": "pain", "length": "medium" },
-        { "id": "pc_m2", "stage": "mofu", "text": "Medium copy variation 2", "angle": "clarity", "length": "medium" }
+        { "id": "pc_m1", "stage": "grow", "text": "Medium copy variation 1 (~300 chars)", "angle": "pain", "length": "medium" },
+        { "id": "pc_m2", "stage": "nurture", "text": "Medium copy variation 2", "angle": "clarity", "length": "medium" }
       ],
       "long": [
-        { "id": "pc_l1", "stage": "bofu", "text": "Long copy variation 1 (500+ chars)", "angle": "desire", "length": "long" }
+        { "id": "pc_l1", "stage": "convert", "text": "Long copy variation 1 (500+ chars)", "angle": "desire", "length": "long" }
       ]
     },
     "descriptions": [
-      { "id": "d1", "text": "Description 1 (<30 chars)", "stage": "tofu", "angle": "curiosity" },
-      { "id": "d2", "text": "Description 2", "stage": "mofu", "angle": "proof" },
-      { "id": "d3", "text": "Description 3", "stage": "bofu", "angle": "desire" },
-      { "id": "d4", "text": "Description 4", "stage": "tofu", "angle": "pain" },
-      { "id": "d5", "text": "Description 5", "stage": "bofu", "angle": "urgency" }
+      { "id": "d1", "text": "Description 1 (<30 chars)", "stage": "grow", "angle": "curiosity" },
+      { "id": "d2", "text": "Description 2", "stage": "nurture", "angle": "proof" },
+      { "id": "d3", "text": "Description 3", "stage": "convert", "angle": "desire" },
+      { "id": "d4", "text": "Description 4", "stage": "grow", "angle": "pain" },
+      { "id": "d5", "text": "Description 5", "stage": "convert", "angle": "urgency" }
     ],
     "story_reel_copy": {
       "super_short_headlines": [
@@ -275,7 +275,7 @@ You MUST return a valid JSON object with this EXACT structure:
   },
   "ctas": [
     {
-      "stage": "tofu" | "mofu" | "bofu",
+      "stage": "grow" | "nurture" | "convert",
       "text": "CTA text",
       "type": "button_text" | "link_text",
       "urgency_level": "low" | "medium" | "high"
@@ -283,7 +283,7 @@ You MUST return a valid JSON object with this EXACT structure:
   ],
   "production_notes": [
     {
-      "stage": "tofu" | "mofu" | "bofu",
+      "stage": "grow" | "nurture" | "convert",
       "format": "talking_head" | "b_roll" etc,
       "notes": [
         "Note 1",
@@ -293,21 +293,21 @@ You MUST return a valid JSON object with this EXACT structure:
   ]
 }
 
-=== FUNNEL STAGE REQUIREMENTS ===
+=== CUSTOMER JOURNEY STAGE REQUIREMENTS ===
 
-TOFU (Top of Funnel) - 3-5 concepts:
+GROW (Attract new people and spark interest) - 3-5 concepts:
 - Formats: Hooks, talking-head scripts, b-roll sequences, educational carousels, myth-busting carousels, static headline graphics
 - Angles: curiosity, authority, pain
 - Goal: Interrupt scroll, create awareness, spark interest
 - Psychology: Pattern interrupt, curiosity gap, social proof, authority
 
-MOFU (Middle of Funnel) - 2-4 concepts:
+NURTURE (Build trust and deepen understanding) - 2-4 concepts:
 - Formats: Story-based scripts, testimonials, teaching carousels, case study graphics
 - Angles: proof, clarity, desire
 - Goal: Build trust, provide value, address objections
 - Psychology: Reciprocity, social proof, transformation stories
 
-BOFU (Bottom of Funnel) - 2-3 concepts:
+CONVERT (Guide ready people to take action) - 2-3 concepts:
 - Formats: Offer breakdown static, benefits carousel, CTA-focused creative, transformation story video outline
 - Angles: desire, urgency, identity
 - Goal: Drive action, overcome final objections, close the sale

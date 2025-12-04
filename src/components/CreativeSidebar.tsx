@@ -9,9 +9,9 @@ import {
   FileText,
   Upload,
   CheckSquare,
-  Target,
-  Zap,
-  TrendingUp,
+  Sprout,
+  HeartHandshake,
+  Rocket,
   Heart,
   Clipboard,
   Type,
@@ -28,31 +28,32 @@ interface CreativeSidebarProps {
 
 export function CreativeSidebar({ workspace, activeSection, onSectionChange, onNavigateToProduction }: CreativeSidebarProps) {
   const creative = workspace.creative_json || {};
-  const creativeMix = creative.creative_mix || {};
+  const creativeMix = creative.creative_mix || creative.customer_journey || {};
   const lovedConcepts = workspace.loved_concepts || [];
   
-  const tofuCount = creativeMix.tofu?.length || 0;
-  const mofuCount = creativeMix.mofu?.length || 0;
-  const bofuCount = creativeMix.bofu?.length || 0;
+  // Support both old (tofu/mofu/bofu) and new (grow/nurture/convert) structure
+  const growCount = creativeMix.grow?.length || creativeMix.tofu?.length || 0;
+  const nurtureCount = creativeMix.nurture?.length || creativeMix.mofu?.length || 0;
+  const convertCount = creativeMix.convert?.length || creativeMix.bofu?.length || 0;
 
-  // Count loved by stage
+  // Count loved by stage - support both structures
   const lovedByStage = {
-    tofu: lovedConcepts.filter((id: string) => 
-      creativeMix.tofu?.some((c: any) => c.id === id)
+    grow: lovedConcepts.filter((id: string) => 
+      (creativeMix.grow || creativeMix.tofu)?.some((c: any) => c.id === id)
     ).length,
-    mofu: lovedConcepts.filter((id: string) => 
-      creativeMix.mofu?.some((c: any) => c.id === id)
+    nurture: lovedConcepts.filter((id: string) => 
+      (creativeMix.nurture || creativeMix.mofu)?.some((c: any) => c.id === id)
     ).length,
-    bofu: lovedConcepts.filter((id: string) => 
-      creativeMix.bofu?.some((c: any) => c.id === id)
+    convert: lovedConcepts.filter((id: string) => 
+      (creativeMix.convert || creativeMix.bofu)?.some((c: any) => c.id === id)
     ).length,
   };
   
-  // Count by format type
+  // Count by format type - support both structures
   const allConcepts = [
-    ...(creativeMix.tofu || []),
-    ...(creativeMix.mofu || []),
-    ...(creativeMix.bofu || [])
+    ...(creativeMix.grow || creativeMix.tofu || []),
+    ...(creativeMix.nurture || creativeMix.mofu || []),
+    ...(creativeMix.convert || creativeMix.bofu || [])
   ];
   
   const scriptsCount = allConcepts.filter(c => c.format === 'talking_head' || c.script).length;
@@ -91,12 +92,12 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
       ]
     },
     { 
-      id: "funnel", 
-      label: "Funnel Stages", 
+      id: "journey", 
+      label: "Customer Journey", 
       items: [
-        { id: "tofu", label: "TOFU", icon: Target, count: tofuCount, color: "text-blue-600 dark:text-blue-400" },
-        { id: "mofu", label: "MOFU", icon: Zap, count: mofuCount, color: "text-purple-600 dark:text-purple-400" },
-        { id: "bofu", label: "BOFU", icon: TrendingUp, count: bofuCount, color: "text-green-600 dark:text-green-400" },
+        { id: "grow", label: "Grow", icon: Sprout, count: growCount, color: "text-blue-600 dark:text-blue-400" },
+        { id: "nurture", label: "Nurture", icon: HeartHandshake, count: nurtureCount, color: "text-purple-600 dark:text-purple-400" },
+        { id: "convert", label: "Convert", icon: Rocket, count: convertCount, color: "text-green-600 dark:text-green-400" },
       ]
     },
     {
@@ -129,7 +130,7 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
   return (
     <div className="w-72 shrink-0 border-r border-border bg-background/50 backdrop-blur-sm">
       <div className="p-4 border-b border-border">
-        <h3 className="font-semibold text-sm text-muted-foreground">Creative Dashboard</h3>
+        <h3 className="font-semibold text-sm text-muted-foreground">Lumi Creative</h3>
       </div>
       
       <ScrollArea className="h-[calc(100vh-12rem)]">
@@ -146,19 +147,19 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
                   {lovedConcepts.length}
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {lovedByStage.tofu > 0 && (
+                  {lovedByStage.grow > 0 && (
                     <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                      TOFU {lovedByStage.tofu}
+                      Grow {lovedByStage.grow}
                     </Badge>
                   )}
-                  {lovedByStage.mofu > 0 && (
+                  {lovedByStage.nurture > 0 && (
                     <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                      MOFU {lovedByStage.mofu}
+                      Nurture {lovedByStage.nurture}
                     </Badge>
                   )}
-                  {lovedByStage.bofu > 0 && (
+                  {lovedByStage.convert > 0 && (
                     <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                      BOFU {lovedByStage.bofu}
+                      Convert {lovedByStage.convert}
                     </Badge>
                   )}
                 </div>

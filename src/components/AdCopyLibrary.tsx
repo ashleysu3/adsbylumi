@@ -15,16 +15,35 @@ interface AdCopyLibraryProps {
   onUpdate: (updates: any) => void;
 }
 
+import { Sprout, HeartHandshake, Rocket } from "lucide-react";
+
 const stageBadgeColors: Record<string, string> = {
+  grow: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+  nurture: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+  convert: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+  // Legacy support
   tofu: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
   mofu: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
   bofu: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
 };
 
 const stageIcons: Record<string, React.ElementType> = {
-  tofu: Target,
-  mofu: Zap,
-  bofu: TrendingUp,
+  grow: Sprout,
+  nurture: HeartHandshake,
+  convert: Rocket,
+  // Legacy support
+  tofu: Sprout,
+  mofu: HeartHandshake,
+  bofu: Rocket,
+};
+
+const stageDisplayNames: Record<string, string> = {
+  grow: "Grow",
+  nurture: "Nurture",
+  convert: "Convert",
+  tofu: "Grow",
+  mofu: "Nurture",
+  bofu: "Convert",
 };
 
 // Max selections per category for Meta Ads Manager
@@ -102,14 +121,16 @@ export function AdCopyLibrary({ workspace, brand, onUpdate }: AdCopyLibraryProps
     if (!items.length) return [];
     
     const recommended: string[] = [];
-    const stages = ['tofu', 'mofu', 'bofu'];
+    const stages = ['grow', 'nurture', 'convert', 'tofu', 'mofu', 'bofu'];
     
     // Try to get one from each stage first for variety
     for (const stage of stages) {
       const stageItems = items.filter(item => item.stage === stage);
       if (stageItems.length > 0 && recommended.length < maxRecommend) {
         const idx = items.findIndex(i => i === stageItems[0]);
-        recommended.push(`${prefix}_${idx}`);
+        if (!recommended.includes(`${prefix}_${idx}`)) {
+          recommended.push(`${prefix}_${idx}`);
+        }
       }
     }
     
