@@ -494,9 +494,9 @@ export default function Data() {
   if (workspaces.length === 0) {
     return (
       <DashboardLayout>
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle>No Published Campaigns</CardTitle>
+            <CardTitle className="font-display">Lumi Insights</CardTitle>
             <CardDescription>
               Build and publish a campaign to Meta to view performance data here.
             </CardDescription>

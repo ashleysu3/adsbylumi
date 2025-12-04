@@ -174,19 +174,19 @@ const Index = () => {
   const features = [
     {
       icon: Target,
-      title: "Ad Planner",
+      title: "Lumi Strategy",
       description:
-        "Answer a few questions and get a clear, step-by-step strategy for your goal — no guesswork.",
+        "Answer a few questions and Lumi will build you a clear, step-by-step plan — no guesswork needed.",
     },
     {
       icon: Palette,
-      title: "Creative Department",
+      title: "Lumi Creative",
       description:
         "Get talking-head scripts, b-roll direction, text overlays, and ad copy ideas based on what's working now.",
     },
     {
       icon: BarChart3,
-      title: "Performance Fixer",
+      title: "Lumi Insights",
       description:
         "Understand your KPIs in plain language and get simple next steps to improve results.",
     },
@@ -290,14 +290,12 @@ const Index = () => {
             </motion.div>
 
             <motion.h1 
-              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
+              className="text-4xl md:text-6xl lg:text-7xl font-display mb-6 leading-tight"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              Tell us what you want to run.
-              <br />
-              <span className="text-muted-foreground">We'll tell you <GradientText>exactly how</GradientText>.</span>
+              Meta Ads, <GradientText>Simplified</GradientText>.
             </motion.h1>
 
             <motion.p 
@@ -306,8 +304,8 @@ const Index = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              Your step-by-step guide to setting up, monitoring, and improving Meta ads — 
-              with clear KPIs and creative ideas that work.
+              Tell Lumi what you want to run. Get a clear strategy, creative ideas, 
+              and performance insights — all in plain language.
             </motion.p>
 
             <motion.div 
@@ -318,9 +316,9 @@ const Index = () => {
             >
               <MagneticButton>
                 <Button
-                  variant="playful"
+                  variant="lumi"
                   size="lg"
-                  className="text-base shadow-lg"
+                  className="text-base"
                   onClick={() => navigate("/auth")}
                 >
                   Get Started Free
@@ -361,7 +359,7 @@ const Index = () => {
         </FloatingElement>
         <FloatingElement className="absolute bottom-1/4 right-[8%] hidden lg:block" delay={1.5} distance={18}>
           <motion.div 
-            className="w-2.5 h-2.5 rounded-full bg-coral/60"
+            className="w-2.5 h-2.5 rounded-full bg-lumi-orange-2/60"
             animate={{ opacity: [0.6, 1, 0.6] }}
             transition={{ duration: 3.5, repeat: Infinity }}
           />

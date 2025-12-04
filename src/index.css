@@ -2,139 +2,146 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Lumi Brand Design System
+   All colors MUST be HSL.
+   Brand: Warm, clever, clear, encouraging, strategic, friendly
 */
+
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    /* Final Color Scheme - Orange, Pink, Cream, Black */
-    --background: 30 40% 97%;
-    --foreground: 0 0% 10%;
+    /* Lumi Brand Colors */
+    /* Primary Lumi Oranges */
+    --lumi-orange-1: 24 80% 55%;        /* #E8772F */
+    --lumi-orange-2: 28 82% 58%;        /* #EB8A3A */
+    --lumi-orange-3: 33 82% 61%;        /* #EEA047 */
+    --lumi-yellow: 42 88% 67%;          /* #F4C960 - Glow color */
+    
+    /* Supporting Neutrals */
+    --warm-black: 0 0% 7%;              /* #111111 */
+    --soft-charcoal: 0 0% 16%;          /* #2A2A2A */
+    --warm-white: 36 43% 98%;           /* #FDFBF8 */
+    --fog-grey: 30 14% 95%;             /* #F3F1EE */
+    
+    /* Semantic Colors */
+    --background: 36 43% 98%;           /* Warm White */
+    --foreground: 0 0% 7%;              /* Warm Black */
     
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 0 0% 7%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 0 0% 7%;
     
-    /* Hot pink/magenta primary */
-    --primary: 330 75% 65%;
+    /* Primary = Lumi Orange 1 */
+    --primary: 24 80% 55%;
     --primary-foreground: 0 0% 100%;
     
-    /* Light pink/lavender secondary */
-    --secondary: 300 45% 80%;
-    --secondary-foreground: 0 0% 10%;
+    /* Secondary = Lumi Orange 3 */
+    --secondary: 33 82% 61%;
+    --secondary-foreground: 0 0% 7%;
     
-    /* Cream muted */
-    --muted: 30 35% 92%;
-    --muted-foreground: 0 0% 30%;
+    /* Muted = Fog Grey */
+    --muted: 30 14% 95%;
+    --muted-foreground: 0 0% 40%;
     
-    /* Peach accent */
-    --accent: 28 85% 68%;
-    --accent-foreground: 0 0% 10%;
+    /* Accent = Lumi Yellow */
+    --accent: 42 88% 67%;
+    --accent-foreground: 0 0% 7%;
     
-    /* Light orange coral */
-    --coral: 28 85% 68%;
-    --coral-foreground: 0 0% 10%;
-    
-    /* Dark orange terracotta */
-    --terracotta: 15 75% 58%;
-    --terracotta-foreground: 0 0% 100%;
+    /* Glow color for highlights */
+    --glow: 42 88% 67%;
     
     --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 30 25% 88%;
-    --input: 30 30% 94%;
-    --ring: 330 75% 65%;
+    --border: 30 14% 90%;
+    --input: 30 14% 95%;
+    --ring: 24 80% 55%;
     
     --radius: 1rem;
     
-    /* Gradients */
-    --gradient-playful: linear-gradient(135deg, hsl(330 75% 65%), hsl(300 45% 80%));
-    --gradient-warm: linear-gradient(135deg, hsl(28 85% 68%), hsl(15 75% 58%));
-    --gradient-cool: linear-gradient(135deg, hsl(300 45% 80%), hsl(330 75% 65%));
+    /* Lumi Gradients */
+    --gradient-lumi: linear-gradient(135deg, hsl(24 80% 55%), hsl(33 82% 61%));
+    --gradient-warm: linear-gradient(135deg, hsl(24 80% 55%), hsl(42 88% 67%));
+    --gradient-glow: linear-gradient(135deg, hsl(42 88% 67%), hsl(33 82% 61%));
     
-    /* Shadows */
-    --shadow-playful: 0 8px 32px -8px hsl(330 75% 65% / 0.3);
-    --shadow-elevated: 0 12px 40px -12px hsl(0 0% 10% / 0.15);
+    /* Lumi Shadows */
+    --shadow-lumi: 0 8px 32px -8px hsl(24 80% 55% / 0.35);
+    --shadow-glow: 0 0 24px 4px hsl(42 88% 67% / 0.4);
+    --shadow-elevated: 0 12px 40px -12px hsl(0 0% 7% / 0.12);
+    --shadow-card: 0 4px 24px -4px hsl(0 0% 7% / 0.08);
     
     /* Folder Tab Brand Colors */
-    --tab-orange-light: 31 98% 50%;
-    --tab-orange-dark: 20 100% 50%;
-    --tab-pink-light: 319 72% 83%;
-    --tab-pink-dark: 7 81% 52%;
-    --tab-purple-light: 270 60% 85%;
-    --tab-purple-dark: 270 65% 55%;
-    --tab-cream-light: 30 82% 96%;
-    --tab-cream-dark: 29 88% 90%;
-    --tab-black: 216 8% 12%;
+    --tab-orange-light: 24 80% 55%;
+    --tab-orange-dark: 24 85% 45%;
+    --tab-yellow-light: 42 88% 67%;
+    --tab-yellow-dark: 42 80% 55%;
+    --tab-cream-light: 36 43% 98%;
+    --tab-cream-dark: 30 14% 95%;
+    --tab-black: 0 0% 7%;
     
-    --sidebar-background: 40 10% 98%;
-    --sidebar-foreground: 220 15% 15%;
-    --sidebar-primary: 220 15% 15%;
-    --sidebar-primary-foreground: 40 10% 98%;
-    --sidebar-accent: 40 20% 95%;
-    --sidebar-accent-foreground: 220 15% 15%;
-    --sidebar-border: 40 12% 88%;
-    --sidebar-ring: 220 15% 15%;
+    --sidebar-background: 36 43% 98%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 24 80% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 14% 95%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 30 14% 90%;
+    --sidebar-ring: 24 80% 55%;
   }
 
   .dark {
-    --background: 0 0% 10%;
-    --foreground: 30 35% 92%;
+    --background: 0 0% 7%;              /* Warm Black */
+    --foreground: 36 43% 98%;           /* Warm White */
     
-    --card: 0 0% 14%;
-    --card-foreground: 30 35% 92%;
+    --card: 0 0% 12%;
+    --card-foreground: 36 43% 98%;
     
-    --popover: 0 0% 14%;
-    --popover-foreground: 30 35% 92%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 36 43% 98%;
     
-    --primary: 330 75% 65%;
+    --primary: 24 80% 55%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 300 35% 45%;
+    --secondary: 33 70% 50%;
     --secondary-foreground: 0 0% 100%;
     
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 70%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 65%;
     
-    --accent: 28 75% 60%;
-    --accent-foreground: 0 0% 10%;
+    --accent: 42 88% 67%;
+    --accent-foreground: 0 0% 7%;
     
-    --coral: 28 75% 60%;
-    --coral-foreground: 0 0% 10%;
-    
-    --terracotta: 15 70% 55%;
-    --terracotta-foreground: 0 0% 100%;
+    --glow: 42 88% 67%;
     
     --destructive: 0 80% 65%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 0 0% 25%;
-    --input: 0 0% 20%;
-    --ring: 330 75% 65%;
+    --border: 0 0% 20%;
+    --input: 0 0% 16%;
+    --ring: 24 80% 55%;
     
-    /* Folder Tab Brand Colors - Dark Mode */
-    --tab-orange-light: 31 98% 50%;
-    --tab-orange-dark: 20 100% 50%;
-    --tab-pink-light: 319 72% 83%;
-    --tab-pink-dark: 7 81% 52%;
-    --tab-purple-light: 270 60% 85%;
-    --tab-purple-dark: 270 65% 55%;
-    --tab-cream-light: 30 82% 96%;
-    --tab-cream-dark: 29 88% 90%;
-    --tab-black: 216 8% 12%;
+    /* Dark mode tabs */
+    --tab-orange-light: 24 80% 55%;
+    --tab-orange-dark: 24 85% 45%;
+    --tab-yellow-light: 42 88% 67%;
+    --tab-yellow-dark: 42 80% 55%;
+    --tab-cream-light: 0 0% 16%;
+    --tab-cream-dark: 0 0% 12%;
+    --tab-black: 0 0% 7%;
     
-    --sidebar-background: 220 15% 15%;
-    --sidebar-foreground: 40 10% 95%;
-    --sidebar-primary: 355 45% 45%;
-    --sidebar-primary-foreground: 40 10% 98%;
-    --sidebar-accent: 220 12% 20%;
-    --sidebar-accent-foreground: 40 10% 95%;
-    --sidebar-border: 220 12% 25%;
-    --sidebar-ring: 355 45% 45%;
+    --sidebar-background: 0 0% 10%;
+    --sidebar-foreground: 36 43% 98%;
+    --sidebar-primary: 24 80% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 16%;
+    --sidebar-accent-foreground: 36 43% 98%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 24 80% 55%;
   }
 }
 
@@ -148,10 +155,10 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground font-body antialiased;
   }
   
-  /* Bold playful typography */
+  /* Lumi Typography */
   .font-display {
     font-family: 'Red Hat Display', system-ui, sans-serif;
     font-weight: 700;
@@ -159,7 +166,12 @@ All colors MUST be HSL.
   }
   
   .font-body {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  .font-heading {
     font-family: 'Red Hat Display', system-ui, sans-serif;
+    font-weight: 600;
   }
 
   /* Reduced motion support */
@@ -175,8 +187,46 @@ All colors MUST be HSL.
   }
 }
 
-/* Import Red Hat Display font */
-@import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800;900&display=swap');
+@layer components {
+  /* Lumi Glow Effect */
+  .lumi-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  .lumi-glow-hover:hover {
+    box-shadow: var(--shadow-glow);
+  }
+  
+  /* Lumi Card Style */
+  .lumi-card {
+    @apply rounded-2xl bg-card border border-border;
+    box-shadow: var(--shadow-card);
+  }
+  
+  /* Lumi Button Glow */
+  .lumi-button-glow {
+    transition: all 0.3s ease;
+  }
+  
+  .lumi-button-glow:hover {
+    box-shadow: 0 0 20px 4px hsl(var(--lumi-yellow) / 0.5);
+    transform: translateY(-2px);
+  }
+  
+  /* Success state glow animation */
+  @keyframes success-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px 4px hsl(var(--lumi-yellow) / 0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px 8px hsl(var(--lumi-yellow) / 0.5);
+    }
+  }
+  
+  .lumi-success-glow {
+    animation: success-glow 2s ease-in-out infinite;
+  }
+}
 
 /* Lumi Character Animations */
 @keyframes bounce-gentle {
@@ -197,10 +247,25 @@ All colors MUST be HSL.
   }
 }
 
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
 .animate-bounce-gentle {
   animation: bounce-gentle 2s ease-in-out infinite;
 }
 
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }
