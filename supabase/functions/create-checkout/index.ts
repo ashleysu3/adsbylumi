@@ -69,15 +69,8 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
       },
+      allow_promotion_codes: true, // Let Stripe handle promo codes on checkout page
     };
-
-    // Add promo code if provided
-    if (promoCode) {
-      sessionOptions.discounts = [{ coupon: promoCode }];
-      // Remove trial when using a promo code (especially for free access)
-      delete sessionOptions.subscription_data.trial_period_days;
-      logStep("Promo code applied", { promoCode });
-    }
 
     const session = await stripe.checkout.sessions.create(sessionOptions);
 
