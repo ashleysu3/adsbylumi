@@ -529,11 +529,23 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
   // Apply trend filter
   if (filterTrend) {
     const trendFilter = (c: any) => {
-      if (!c.is_trend && !c.trend_source) return false;
-      if (filterTrend === 'trend_hooks') return c.type === 'hook';
-      if (filterTrend === 'trend_visuals') return c.trend_type === 'visual';
-      if (filterTrend === 'trend_formats') return c.trend_type === 'format';
-      return c.is_trend || c.trend_source;
+      // Check for explicitly marked trend content first
+      const isTrendContent = c.is_trend || c.trend_source || c.trend_type;
+      
+      if (filterTrend === 'trend_hooks') {
+        // Show trend hooks OR any hook-style content
+        return isTrendContent && (c.type === 'hook' || c.trend_type === 'hook') ||
+               (c.hook && c.is_trend);
+      }
+      if (filterTrend === 'trend_visuals') {
+        // Show visual trend content
+        return isTrendContent && c.trend_type === 'visual';
+      }
+      if (filterTrend === 'trend_prompts') {
+        // Show trend prompts/formats
+        return isTrendContent && (c.trend_type === 'prompt' || c.trend_type === 'format');
+      }
+      return isTrendContent;
     };
     filteredGrow = filteredGrow.filter(trendFilter);
     filteredNurture = filteredNurture.filter(trendFilter);
@@ -974,7 +986,17 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
         {allStages.every(stage => stage.items.length === 0) && (
           <div className="text-center py-12">
             <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-2">No creative concepts match your filters</p>
+            {filterTrend ? (
+              <>
+                <p className="text-muted-foreground mb-2">No trend-tagged concepts found</p>
+                <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+                  Trend concepts require specific trend hooks, visual styles, or formats to be generated. 
+                  Try viewing the Customer Journey sections to see all your concepts.
+                </p>
+              </>
+            ) : (
+              <p className="text-muted-foreground mb-2">No creative concepts match your filters</p>
+            )}
             {hasMultiFilters && onClearFilters && (
               <Button 
                 onClick={onClearFilters}

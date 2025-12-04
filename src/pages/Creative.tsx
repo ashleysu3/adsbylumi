@@ -504,7 +504,7 @@ export default function Creative() {
                     filterStage={activeRecommendations.length === 0 && ['grow', 'nurture', 'convert', 'tofu', 'mofu', 'bofu'].includes(activeSection) ? activeSection : undefined}
                     filterFormat={activeRecommendations.length === 0 && ['talking_head', 'b_roll', 'pov_reel', 'testimonial', 'before_after', 'carousel', 'static', 'lofi', 'screen_recording', 'scripts', 'broll', 'carousels'].includes(activeSection) ? activeSection : undefined}
                     filterContentType={activeRecommendations.length === 0 && ['story', 'transformation', 'identity', 'emotional', 'authority', 'educational', 'objection'].includes(activeSection) ? activeSection : undefined}
-                    filterTrend={activeRecommendations.length === 0 && ['trend_hooks', 'trend_visuals', 'trend_formats'].includes(activeSection) ? activeSection : undefined}
+                    filterTrend={activeRecommendations.length === 0 && ['trend_hooks', 'trend_visuals', 'trend_prompts'].includes(activeSection) ? activeSection : undefined}
                     filterFormats={activeRecommendations.filter(r => ['talking_head', 'carousel', 'testimonial', 'before_after', 'pov_reel', 'static', 'lofi', 'b_roll', 'screen_recording'].includes(r))}
                     filterContentTypes={activeRecommendations.filter(r => ['educational', 'emotional', 'authority', 'identity', 'transformation', 'objection'].includes(r))}
                     onGenerateCreative={generateCreative}
