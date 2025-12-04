@@ -291,26 +291,24 @@ export default function Data() {
         }
       );
 
-      if (metricsError) {
-        const errorMsg = metricsError.message || '';
-        const errorBody = typeof metricsData === 'object' ? JSON.stringify(metricsData) : '';
-        const fullError = `${errorMsg} ${errorBody}`;
-        
-        // Check if Meta access token has expired or been invalidated
-        if (fullError.includes('Error validating access token') || 
-            fullError.includes('session has been invalidated') ||
-            fullError.includes('OAuthException') ||
-            fullError.includes('code: 190')) {
-          setMetaTokenExpired(true);
-          toast.error('Meta connection expired', {
-            description: 'Your Meta access token has expired. Please reconnect your account.',
-            action: {
-              label: 'Reconnect',
-              onClick: () => navigate('/dashboard'),
-            },
-          });
-          return;
-        }
+      // Check for errors in response body first (edge function returns error in data.error)
+      const responseError = metricsData?.error || '';
+      const invokeError = metricsError?.message || '';
+      const fullError = `${responseError} ${invokeError}`;
+      
+      // Check if Meta access token has expired or been invalidated
+      if (fullError.includes('Error validating access token') || 
+          fullError.includes('session has been invalidated') ||
+          fullError.includes('OAuthException') ||
+          fullError.includes('code: 190')) {
+        setMetaTokenExpired(true);
+        setSyncing(false);
+        setAnalyzing(false);
+        return;
+      }
+
+      if (metricsError || metricsData?.error) {
+        const errorMsg = fullError;
         
         // Check if it's a Meta connection issue
         if (errorMsg.includes('Meta account not connected')) {
@@ -344,7 +342,7 @@ export default function Data() {
           return;
         }
         
-        throw metricsError;
+        throw new Error(fullError || 'Failed to fetch performance data');
       }
       
       // Clear expired token state on successful fetch
