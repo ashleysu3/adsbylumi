@@ -287,22 +287,8 @@ const Sales = () => {
           </motion.div>
         </div>
 
-        {/* Floating Elements */}
-        <FloatingElement className="absolute top-1/4 left-[5%] hidden lg:block" delay={0} distance={15}>
-          <motion.div
-            className="w-3 h-3 rounded-full bg-primary/60"
-            animate={{ opacity: [0.4, 1, 0.4] }}
-            transition={{ duration: 3, repeat: Infinity }}
-          />
-        </FloatingElement>
-        <FloatingElement className="absolute top-1/3 right-[10%] hidden lg:block" delay={0.5} distance={20}>
-          <motion.div
-            className="w-2 h-2 rounded-full bg-accent"
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 4, repeat: Infinity }}
-          />
-        </FloatingElement>
-        
+
+
         {/* Scroll Indicator */}
         <motion.div
           className="absolute bottom-8 left-1/2 -translate-x-1/2"
