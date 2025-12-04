@@ -31,7 +31,8 @@ import {
   ArrowRight,
   Info,
   Settings2,
-  Goal
+  Goal,
+  Link2Off
 } from 'lucide-react';
 import { CampaignStatusCard } from '@/components/CampaignStatusCard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -140,6 +141,7 @@ export default function Data() {
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [metaConnected, setMetaConnected] = useState<boolean>(false);
   const [metaAccountId, setMetaAccountId] = useState<string>('');
+  const [metaTokenExpired, setMetaTokenExpired] = useState<boolean>(false);
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     to: new Date(),
@@ -291,6 +293,24 @@ export default function Data() {
 
       if (metricsError) {
         const errorMsg = metricsError.message || '';
+        const errorBody = typeof metricsData === 'object' ? JSON.stringify(metricsData) : '';
+        const fullError = `${errorMsg} ${errorBody}`;
+        
+        // Check if Meta access token has expired or been invalidated
+        if (fullError.includes('Error validating access token') || 
+            fullError.includes('session has been invalidated') ||
+            fullError.includes('OAuthException') ||
+            fullError.includes('code: 190')) {
+          setMetaTokenExpired(true);
+          toast.error('Meta connection expired', {
+            description: 'Your Meta access token has expired. Please reconnect your account.',
+            action: {
+              label: 'Reconnect',
+              onClick: () => navigate('/dashboard'),
+            },
+          });
+          return;
+        }
         
         // Check if it's a Meta connection issue
         if (errorMsg.includes('Meta account not connected')) {
@@ -326,6 +346,9 @@ export default function Data() {
         
         throw metricsError;
       }
+      
+      // Clear expired token state on successful fetch
+      setMetaTokenExpired(false);
 
       if (metricsData?.metrics) {
         setMetrics(metricsData.metrics);
@@ -546,6 +569,27 @@ export default function Data() {
         campaignId={selectedWorkspaceId}
         progressStatus={selectedWorkspace?.progress_status}
       />
+      
+      {/* Meta Token Expired Alert */}
+      {metaTokenExpired && (
+        <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+          <Link2Off className="h-4 w-4" />
+          <AlertTitle>Meta Connection Expired</AlertTitle>
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <span>Your Meta access token has expired or been invalidated. Please reconnect your account to continue viewing performance data.</span>
+            <Button 
+              size="sm" 
+              variant="outline"
+              className="w-fit border-destructive/50 hover:bg-destructive/20"
+              onClick={() => navigate('/dashboard')}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reconnect Meta
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="space-y-6 pb-12">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
