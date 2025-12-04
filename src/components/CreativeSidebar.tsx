@@ -7,8 +7,6 @@ import {
   Image as ImageIcon, 
   Layers, 
   FileText,
-  Upload,
-  CheckSquare,
   Sprout,
   HeartHandshake,
   Rocket,
@@ -60,10 +58,6 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
   const brollCount = allConcepts.filter(c => c.format === 'b_roll' || c.broll_instructions).length;
   const carouselsCount = allConcepts.filter(c => c.format === 'carousel').length;
   const staticsCount = allConcepts.filter(c => c.format === 'static').length;
-  
-  const uploadCount = workspace.user_uploaded_assets?.length || 0;
-  const checklistCount = workspace.production_checklist?.length || 0;
-  const checklistCompleted = workspace.production_checklist?.filter((i: any) => i.completed).length || 0;
 
   // Count copy items
   const adCopyLibrary = creative.ad_copy_library || {};
@@ -115,14 +109,6 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
       label: "Ad Copy",
       items: [
         { id: "copy", label: "Copy Library", icon: Type, count: totalCopyCount, color: "text-amber-600 dark:text-amber-400" },
-      ]
-    },
-    {
-      id: "production",
-      label: "Production",
-      items: [
-        { id: "uploads", label: "Uploads", icon: Upload, count: uploadCount },
-        { id: "checklist", label: "Checklist", icon: CheckSquare, count: `${checklistCompleted}/${checklistCount}` },
       ]
     }
   ];
