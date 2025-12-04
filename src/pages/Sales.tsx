@@ -25,21 +25,28 @@ interface StepData {
   items: string[];
   footer: string;
 }
-
-const VerticalStepCard = ({ step, index }: { step: StepData; index: number }) => {
-  return (
-    <ScrollReveal delay={index * 0.1}>
-      <motion.div
-        className="relative"
-        whileHover={{ scale: 1.01 }}
-        transition={{ type: "spring", stiffness: 300 }}
-      >
+const VerticalStepCard = ({
+  step,
+  index
+}: {
+  step: StepData;
+  index: number;
+}) => {
+  return <ScrollReveal delay={index * 0.1}>
+      <motion.div className="relative" whileHover={{
+      scale: 1.01
+    }} transition={{
+      type: "spring",
+      stiffness: 300
+    }}>
         <div className="flex flex-col md:flex-row gap-6 items-start">
-          <motion.div 
-            className="flex-shrink-0"
-            whileHover={{ scale: 1.1, rotate: 5 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
+          <motion.div className="flex-shrink-0" whileHover={{
+          scale: 1.1,
+          rotate: 5
+        }} transition={{
+          type: "spring",
+          stiffness: 300
+        }}>
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl md:text-4xl">
               {step.emoji}
             </div>
@@ -49,15 +56,10 @@ const VerticalStepCard = ({ step, index }: { step: StepData; index: number }) =>
             <p className="text-base md:text-lg text-muted-foreground mb-4">{step.description}</p>
             <div className="bg-background/80 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-border">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
-                {step.items.map((item, i) => (
-                  <div 
-                    key={i}
-                    className="flex items-center gap-2"
-                  >
+                {step.items.map((item, i) => <div key={i} className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />
                     <span className="text-sm md:text-base text-foreground/80">{item}</span>
-                  </div>
-                ))}
+                  </div>)}
               </div>
               <p className="text-xs md:text-sm text-muted-foreground mt-4 pt-4 border-t border-border">
                 {step.footer}
@@ -66,45 +68,46 @@ const VerticalStepCard = ({ step, index }: { step: StepData; index: number }) =>
           </div>
         </div>
       </motion.div>
-    </ScrollReveal>
-  );
+    </ScrollReveal>;
 };
-
 const Sales = () => {
   const navigate = useNavigate();
   const heroRef = useRef(null);
   const [isAnnual, setIsAnnual] = useState(false);
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
-  
-  const { scrollYProgress: heroProgress } = useScroll({
+  const {
+    scrollYProgress: heroProgress
+  } = useScroll({
     target: heroRef,
-    offset: ["start start", "end start"],
+    offset: ["start start", "end start"]
   });
-  
   const heroOpacity = useTransform(heroProgress, [0, 0.5], [1, 0]);
   const heroScale = useTransform(heroProgress, [0, 0.5], [1, 0.95]);
   const heroY = useTransform(heroProgress, [0, 0.5], [0, 50]);
-
   const handleSubscribe = async (tierKey: "solo" | "creator") => {
     try {
       setLoadingTier(tierKey);
-      
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: {
+          session
+        }
+      } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Please sign in to subscribe");
         navigate("/auth");
         return;
       }
-
       const tier = SUBSCRIPTION_TIERS[tierKey];
       const priceId = isAnnual ? tier.annualPriceId : tier.monthlyPriceId;
-
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId },
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke("create-checkout", {
+        body: {
+          priceId
+        }
       });
-
       if (error) throw error;
-
       if (data?.url) {
         window.open(data.url, "_blank");
       }
@@ -115,98 +118,85 @@ const Sales = () => {
       setLoadingTier(null);
     }
   };
-
-  const tiers = [
-    {
-      key: "solo" as const,
-      name: "Solo",
-      description: "Perfect for solo coaches and course creators",
-      monthlyPrice: 147,
-      annualPrice: 1470,
-      popular: false,
-      features: SUBSCRIPTION_TIERS.solo.features,
-      cta: "Get Started",
-    },
-    {
-      key: "creator" as const,
-      name: "Creator",
-      description: "For growing creators and service providers",
-      monthlyPrice: 299,
-      annualPrice: 2990,
-      popular: true,
-      features: SUBSCRIPTION_TIERS.creator.features,
-      cta: "Get Started",
-    },
-    {
-      key: "agency" as const,
-      name: "Agency",
-      description: "For agencies and white-label solutions",
-      monthlyPrice: null,
-      annualPrice: null,
-      popular: false,
-      features: SUBSCRIPTION_TIERS.agency.features,
-      cta: "Contact Sales",
-    },
-  ];
-
-  const steps = [
-    {
-      emoji: "💡",
-      title: "STEP 1 — Choose What You Want to Run",
-      description: "Skip the guessing, skip the questions you don't understand, skip the \"what objective do I use??\" panic.",
-      items: ["Webinar Signups", "Lead Magnet Downloads", "Low-Ticket Product Sales", "Book a Discovery Call", "Traffic to Instagram/Facebook", "Video Views (Trust Builder)"],
-      footer: "Lumi loads the exact structure Meta prefers in 2025. No thinking required."
-    },
-    {
-      emoji: "🎨",
-      title: "STEP 2 — Get Your Full-Funnel Creative Plan",
-      description: "Once you enter your offer details… Your Creative Department generates hooks, scripts, b-roll shot lists, pattern interrupts, and curiosity angles.",
-      items: ["TOFU ads (Hooks, Scripts, B-roll)", "MOFU ads (Story scripts, Carousels)", "BOFU ads (Offer breakdowns, CTAs)", "Text overlays & variations", "Production checklists", "Psychology-aligned hooks"],
-      footer: "Everything you need to record or design the right creative."
-    },
-    {
-      emoji: "🗂",
-      title: "STEP 3 — Save Your Campaign & Track Progress",
-      description: "Each campaign gets its own workspace, where you can:",
-      items: ["Save scripts", "Expand creative", "Regenerate what you don't love", "Store your brand voice", "Upload final videos + graphics", "Check off a production list"],
-      footer: "It's like having a creative studio, strategist, and production manager — all inside one tidy space."
-    },
-    {
-      emoji: "🚀",
-      title: "STEP 4 — Hit \"Create Campaign\"",
-      description: "Lumi actually builds the entire campaign in Ads Manager using the Meta API.",
-      items: ["Combines your creative with strategy", "Pulls all required fields", "Asks simple questions", "Recommends beginner-friendly settings", "Double-checks everything", "Pushes the campaign live"],
-      footer: "You never have to go into Ads Manager. No toggles, no hidden settings."
-    },
-    {
-      emoji: "📊",
-      title: "STEP 5 — Get Weekly Guidance",
-      description: "Each week, Lumi sends you:",
-      items: ["Clean performance reports", "CTR, CPC, CPL, CPP, ROAS", "Creative fatigue alerts", "Full-funnel diagnostics", "\"What's working + why\"", "New creative ideas"],
-      footer: "This isn't a dashboard. It's a partner."
-    },
-  ];
-
-  return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+  const tiers = [{
+    key: "solo" as const,
+    name: "Solo",
+    description: "Perfect for solo coaches and course creators",
+    monthlyPrice: 147,
+    annualPrice: 1470,
+    popular: false,
+    features: SUBSCRIPTION_TIERS.solo.features,
+    cta: "Get Started"
+  }, {
+    key: "creator" as const,
+    name: "Creator",
+    description: "For growing creators and service providers",
+    monthlyPrice: 299,
+    annualPrice: 2990,
+    popular: true,
+    features: SUBSCRIPTION_TIERS.creator.features,
+    cta: "Get Started"
+  }, {
+    key: "agency" as const,
+    name: "Agency",
+    description: "For agencies and white-label solutions",
+    monthlyPrice: null,
+    annualPrice: null,
+    popular: false,
+    features: SUBSCRIPTION_TIERS.agency.features,
+    cta: "Contact Sales"
+  }];
+  const steps = [{
+    emoji: "💡",
+    title: "STEP 1 — Choose What You Want to Run",
+    description: "Skip the guessing, skip the questions you don't understand, skip the \"what objective do I use??\" panic.",
+    items: ["Webinar Signups", "Lead Magnet Downloads", "Low-Ticket Product Sales", "Book a Discovery Call", "Traffic to Instagram/Facebook", "Video Views (Trust Builder)"],
+    footer: "Lumi loads the exact structure Meta prefers in 2025. No thinking required."
+  }, {
+    emoji: "🎨",
+    title: "STEP 2 — Get Your Full-Funnel Creative Plan",
+    description: "Once you enter your offer details… Your Creative Department generates hooks, scripts, b-roll shot lists, pattern interrupts, and curiosity angles.",
+    items: ["TOFU ads (Hooks, Scripts, B-roll)", "MOFU ads (Story scripts, Carousels)", "BOFU ads (Offer breakdowns, CTAs)", "Text overlays & variations", "Production checklists", "Psychology-aligned hooks"],
+    footer: "Everything you need to record or design the right creative."
+  }, {
+    emoji: "🗂",
+    title: "STEP 3 — Save Your Campaign & Track Progress",
+    description: "Each campaign gets its own workspace, where you can:",
+    items: ["Save scripts", "Expand creative", "Regenerate what you don't love", "Store your brand voice", "Upload final videos + graphics", "Check off a production list"],
+    footer: "It's like having a creative studio, strategist, and production manager — all inside one tidy space."
+  }, {
+    emoji: "🚀",
+    title: "STEP 4 — Hit \"Create Campaign\"",
+    description: "Lumi actually builds the entire campaign in Ads Manager using the Meta API.",
+    items: ["Combines your creative with strategy", "Pulls all required fields", "Asks simple questions", "Recommends beginner-friendly settings", "Double-checks everything", "Pushes the campaign live"],
+    footer: "You never have to go into Ads Manager. No toggles, no hidden settings."
+  }, {
+    emoji: "📊",
+    title: "STEP 5 — Get Weekly Guidance",
+    description: "Each week, Lumi sends you:",
+    items: ["Clean performance reports", "CTR, CPC, CPL, CPP, ROAS", "Creative fatigue alerts", "Full-funnel diagnostics", "\"What's working + why\"", "New creative ideas"],
+    footer: "This isn't a dashboard. It's a partner."
+  }];
+  return <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Cursor Glow Effect */}
       <CursorGlow />
       
       {/* Header with Login */}
-      <motion.header 
-        className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
+      <motion.header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border" initial={{
+      y: -100
+    }} animate={{
+      y: 0
+    }} transition={{
+      duration: 0.6,
+      ease: "easeOut"
+    }}>
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <motion.img 
-            alt="Lumi" 
-            className="h-12" 
-            src={lumiLogo}
-            whileHover={{ scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 400 }}
-          />
+          <motion.img alt="Lumi" className="h-12" src={lumiLogo} whileHover={{
+          scale: 1.05
+        }} transition={{
+          type: "spring",
+          stiffness: 400
+        }} />
           <MagneticButton>
             <Button onClick={() => navigate("/auth")} variant="outline">
               Log In / Sign Up
@@ -221,93 +211,112 @@ const Sales = () => {
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-secondary/20" />
           
-          <motion.div
-            className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/20 blur-[120px]"
-            animate={{
-              x: [0, 100, 50, 0],
-              y: [0, 50, 100, 0],
-              scale: [1, 1.2, 0.9, 1],
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.div
-            className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-secondary/30 blur-[100px]"
-            animate={{
-              x: [0, -80, -40, 0],
-              y: [0, -60, -120, 0],
-              scale: [1, 0.9, 1.1, 1],
-            }}
-            transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.div
-            className="absolute top-[40%] right-[20%] w-[40%] h-[40%] rounded-full bg-accent/20 blur-[80px]"
-            animate={{
-              x: [0, -60, 30, 0],
-              y: [0, 80, -40, 0],
-              scale: [1, 1.1, 0.95, 1],
-            }}
-            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.div
-            className="absolute bottom-[20%] left-[15%] w-[35%] h-[35%] rounded-full bg-coral/15 blur-[90px]"
-            animate={{
-              x: [0, 70, -30, 0],
-              y: [0, -50, 60, 0],
-              scale: [1, 0.95, 1.15, 1],
-            }}
-            transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-          />
+          <motion.div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-primary/20 blur-[120px]" animate={{
+          x: [0, 100, 50, 0],
+          y: [0, 50, 100, 0],
+          scale: [1, 1.2, 0.9, 1]
+        }} transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }} />
+          <motion.div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-secondary/30 blur-[100px]" animate={{
+          x: [0, -80, -40, 0],
+          y: [0, -60, -120, 0],
+          scale: [1, 0.9, 1.1, 1]
+        }} transition={{
+          duration: 25,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }} />
+          <motion.div className="absolute top-[40%] right-[20%] w-[40%] h-[40%] rounded-full bg-accent/20 blur-[80px]" animate={{
+          x: [0, -60, 30, 0],
+          y: [0, 80, -40, 0],
+          scale: [1, 1.1, 0.95, 1]
+        }} transition={{
+          duration: 18,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }} />
+          <motion.div className="absolute bottom-[20%] left-[15%] w-[35%] h-[35%] rounded-full bg-coral/15 blur-[90px]" animate={{
+          x: [0, 70, -30, 0],
+          y: [0, -50, 60, 0],
+          scale: [1, 0.95, 1.15, 1]
+        }} transition={{
+          duration: 22,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }} />
           
           <div className="absolute inset-0 opacity-[0.015] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNhKSIvPjwvc3ZnPg==')]" />
         </div>
         
         <div className="container mx-auto px-4 max-w-4xl relative z-10">
-          <motion.div 
-            className="text-center"
-            style={{ opacity: heroOpacity, scale: heroScale, y: heroY }}
-          >
-            <motion.div 
-              className="inline-flex items-center gap-2 bg-background/80 backdrop-blur-sm border border-border/50 px-4 py-2 rounded-full mb-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <motion.span 
-                className="w-2 h-2 rounded-full bg-primary"
-                animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
+          <motion.div className="text-center" style={{
+          opacity: heroOpacity,
+          scale: heroScale,
+          y: heroY
+        }}>
+            <motion.div className="inline-flex items-center gap-2 bg-background/80 backdrop-blur-sm border border-border/50 px-4 py-2 rounded-full mb-6" initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            duration: 0.6,
+            delay: 0.2
+          }}>
+              <motion.span className="w-2 h-2 rounded-full bg-primary" animate={{
+              scale: [1, 1.2, 1],
+              opacity: [1, 0.7, 1]
+            }} transition={{
+              duration: 2,
+              repeat: Infinity
+            }} />
               <span className="text-sm font-medium text-primary">For Coaches, Course Creators + Service Providers</span>
             </motion.div>
             
-            <motion.h1 
-              className="font-display text-5xl md:text-6xl lg:text-7xl mb-6 leading-tight"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-            >
+            <motion.h1 className="font-display text-5xl md:text-6xl lg:text-7xl mb-6 leading-tight" initial={{
+            opacity: 0,
+            y: 30
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            duration: 0.8,
+            delay: 0.3
+          }}>
               Finally: Meta ads that feel{" "}
               <GradientText>simple, strategic</GradientText>, and actually doable.
             </motion.h1>
             
-            <motion.p 
-              className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-            >
+            <motion.p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed" initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            duration: 0.6,
+            delay: 0.5
+          }}>
               You don't have to learn ads, to run ads.
             </motion.p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.7 }}
-              className="mt-8"
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 20
+          }} animate={{
+            opacity: 1,
+            y: 0
+          }} transition={{
+            duration: 0.6,
+            delay: 0.7
+          }} className="mt-8">
               <MagneticButton>
                 <Button size="lg" onClick={() => navigate("/auth")} className="text-lg px-8 shadow-lg">
-                  Get Started Free
+                  Try Lumi for Free
                 </Button>
               </MagneticButton>
             </motion.div>
@@ -316,44 +325,51 @@ const Sales = () => {
 
         {/* Floating decorative elements */}
         <FloatingElement className="absolute top-1/4 left-[5%] hidden lg:block" delay={0} distance={15}>
-          <motion.div 
-            className="w-3 h-3 rounded-full bg-primary/60"
-            animate={{ opacity: [0.4, 1, 0.4] }}
-            transition={{ duration: 3, repeat: Infinity }}
-          />
+          <motion.div className="w-3 h-3 rounded-full bg-primary/60" animate={{
+          opacity: [0.4, 1, 0.4]
+        }} transition={{
+          duration: 3,
+          repeat: Infinity
+        }} />
         </FloatingElement>
         <FloatingElement className="absolute top-1/3 right-[10%] hidden lg:block" delay={0.5} distance={20}>
-          <motion.div 
-            className="w-2 h-2 rounded-full bg-secondary"
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 4, repeat: Infinity }}
-          />
+          <motion.div className="w-2 h-2 rounded-full bg-secondary" animate={{
+          opacity: [0.5, 1, 0.5]
+        }} transition={{
+          duration: 4,
+          repeat: Infinity
+        }} />
         </FloatingElement>
         <FloatingElement className="absolute bottom-1/3 left-[15%] hidden lg:block" delay={1} distance={12}>
-          <motion.div 
-            className="w-4 h-4 rounded-full bg-accent/50"
-            animate={{ opacity: [0.3, 0.8, 0.3] }}
-            transition={{ duration: 5, repeat: Infinity }}
-          />
+          <motion.div className="w-4 h-4 rounded-full bg-accent/50" animate={{
+          opacity: [0.3, 0.8, 0.3]
+        }} transition={{
+          duration: 5,
+          repeat: Infinity
+        }} />
         </FloatingElement>
         
         {/* Scroll indicator */}
-        <motion.div 
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-        >
-          <motion.div
-            className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2"
-            animate={{ y: [0, 5, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <motion.div 
-              className="w-1 h-2 rounded-full bg-muted-foreground/50"
-              animate={{ y: [0, 8, 0], opacity: [1, 0, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
+        <motion.div className="absolute bottom-8 left-1/2 -translate-x-1/2" initial={{
+        opacity: 0
+      }} animate={{
+        opacity: 1
+      }} transition={{
+        delay: 1.5
+      }}>
+          <motion.div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2" animate={{
+          y: [0, 5, 0]
+        }} transition={{
+          duration: 2,
+          repeat: Infinity
+        }}>
+            <motion.div className="w-1 h-2 rounded-full bg-muted-foreground/50" animate={{
+            y: [0, 8, 0],
+            opacity: [1, 0, 1]
+          }} transition={{
+            duration: 2,
+            repeat: Infinity
+          }} />
           </motion.div>
         </motion.div>
       </section>
@@ -405,13 +421,18 @@ const Sales = () => {
               <p className="text-2xl md:text-3xl font-display leading-relaxed relative z-10">
                 If you can paste your url and upload your creative…
                 <br />
-                <motion.span 
-                  className="text-primary text-4xl md:text-5xl inline-block mt-4"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  viewport={{ once: true }}
-                >
+                <motion.span className="text-primary text-4xl md:text-5xl inline-block mt-4" initial={{
+                opacity: 0,
+                scale: 0.9
+              }} whileInView={{
+                opacity: 1,
+                scale: 1
+              }} transition={{
+                duration: 0.5,
+                delay: 0.3
+              }} viewport={{
+                once: true
+              }}>
                   Lumi does the rest.
                 </motion.span>
               </p>
@@ -428,9 +449,7 @@ const Sales = () => {
           </ScrollReveal>
           
           <div className="space-y-8 md:space-y-12">
-            {steps.map((step, index) => (
-              <VerticalStepCard key={index} step={step} index={index} />
-            ))}
+            {steps.map((step, index) => <VerticalStepCard key={index} step={step} index={index} />)}
           </div>
         </div>
       </section>
@@ -447,17 +466,17 @@ const Sales = () => {
             </p>
           </ScrollReveal>
           <StaggerChildren staggerDelay={0.05} className="grid md:grid-cols-3 gap-4 text-center">
-            {["Meta ad strategy", "Creative psychology", "Performance troubleshooting", "Offer mapping", "Funnel breakdown analysis", "Script writing", "Copy frameworks", "Meta best practices", "Seasonality predictions", "Hook libraries", "Niche messaging", "Audience builder logic", "B-roll direction", "High-performing creative systems", "API-backed campaign builds"].map(item => (
-              <StaggerItem key={item}>
-                <motion.div 
-                  className="p-4 bg-muted/30 rounded-lg border border-border"
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                >
+            {["Meta ad strategy", "Creative psychology", "Performance troubleshooting", "Offer mapping", "Funnel breakdown analysis", "Script writing", "Copy frameworks", "Meta best practices", "Seasonality predictions", "Hook libraries", "Niche messaging", "Audience builder logic", "B-roll direction", "High-performing creative systems", "API-backed campaign builds"].map(item => <StaggerItem key={item}>
+                <motion.div className="p-4 bg-muted/30 rounded-lg border border-border" whileHover={{
+              scale: 1.05,
+              y: -5
+            }} transition={{
+              type: "spring",
+              stiffness: 300
+            }}>
                   <p className="text-sm">{item}</p>
                 </motion.div>
-              </StaggerItem>
-            ))}
+              </StaggerItem>)}
           </StaggerChildren>
           <ScrollReveal delay={0.3}>
             <p className="text-xl text-center mt-12 font-medium">
@@ -478,20 +497,44 @@ const Sales = () => {
           </ScrollReveal>
 
           <StaggerChildren staggerDelay={0.1} className="grid md:grid-cols-2 gap-6">
-            {[
-              { icon: MessageCircle, emoji: "💬", title: "Your strategist", desc: "Telling you exactly which campaign to run." },
-              { icon: Palette, emoji: "🎨", title: "Your creative director", desc: "Giving you hooks, scripts, b-roll, and graphics." },
-              { icon: Target, emoji: "🎥", title: "Your producer", desc: "Showing you how to film and what to record." },
-              { icon: Rocket, emoji: "🛠", title: "Your campaign builder", desc: "Creating everything directly in Ads Manager." },
-              { icon: BarChart3, emoji: "📊", title: "Your analyst", desc: "Reviewing your data and telling you what to fix." },
-              { icon: Brain, emoji: "✨", title: "Your supportive business bestie", desc: "Encouraging you and keeping things simple." },
-            ].map((item) => (
-              <StaggerItem key={item.title}>
-                <motion.div 
-                  className="p-6 bg-background rounded-xl border border-border"
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                >
+            {[{
+            icon: MessageCircle,
+            emoji: "💬",
+            title: "Your strategist",
+            desc: "Telling you exactly which campaign to run."
+          }, {
+            icon: Palette,
+            emoji: "🎨",
+            title: "Your creative director",
+            desc: "Giving you hooks, scripts, b-roll, and graphics."
+          }, {
+            icon: Target,
+            emoji: "🎥",
+            title: "Your producer",
+            desc: "Showing you how to film and what to record."
+          }, {
+            icon: Rocket,
+            emoji: "🛠",
+            title: "Your campaign builder",
+            desc: "Creating everything directly in Ads Manager."
+          }, {
+            icon: BarChart3,
+            emoji: "📊",
+            title: "Your analyst",
+            desc: "Reviewing your data and telling you what to fix."
+          }, {
+            icon: Brain,
+            emoji: "✨",
+            title: "Your supportive business bestie",
+            desc: "Encouraging you and keeping things simple."
+          }].map(item => <StaggerItem key={item.title}>
+                <motion.div className="p-6 bg-background rounded-xl border border-border" whileHover={{
+              scale: 1.02,
+              y: -5
+            }} transition={{
+              type: "spring",
+              stiffness: 300
+            }}>
                   <div className="flex items-start gap-4">
                     <item.icon className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
                     <div>
@@ -500,8 +543,7 @@ const Sales = () => {
                     </div>
                   </div>
                 </motion.div>
-              </StaggerItem>
-            ))}
+              </StaggerItem>)}
           </StaggerChildren>
 
           <ScrollReveal delay={0.4}>
@@ -521,14 +563,12 @@ const Sales = () => {
                   Coaches, course creators, service providers, creators, and small business owners who:
                 </p>
                 <StaggerChildren staggerDelay={0.08} className="space-y-3">
-                  {["Want better ads", "Are tired of guessing", "Want to save time", "Want someone (or something) to tell them what to do", "Want clarity, not chaos", "Want ads that feel doable, not overwhelming", "Want a tool that meets them where they are"].map((item) => (
-                    <StaggerItem key={item}>
+                  {["Want better ads", "Are tired of guessing", "Want to save time", "Want someone (or something) to tell them what to do", "Want clarity, not chaos", "Want ads that feel doable, not overwhelming", "Want a tool that meets them where they are"].map(item => <StaggerItem key={item}>
                       <div className="flex items-start gap-3">
                         <CheckCircle className="w-5 h-5 text-primary flex-shrink-0 mt-1" />
                         <span>{item}</span>
                       </div>
-                    </StaggerItem>
-                  ))}
+                    </StaggerItem>)}
                 </StaggerChildren>
                 <p className="text-lg mt-6 font-medium">
                   If you're ready to run ads with confidence — without becoming a media buyer — this is for you.
@@ -540,14 +580,12 @@ const Sales = () => {
               <div>
                 <h2 className="font-display text-3xl mb-6">❌ Who It's Not For</h2>
                 <StaggerChildren staggerDelay={0.08} className="space-y-3">
-                  {["People looking for hacks", "People who won't record any creative at all", "People who want to manually tweak every toggle", "People who expect results without testing", "Agencies who only run 30-adset Frankenstein structures"].map((item) => (
-                    <StaggerItem key={item}>
+                  {["People looking for hacks", "People who won't record any creative at all", "People who want to manually tweak every toggle", "People who expect results without testing", "Agencies who only run 30-adset Frankenstein structures"].map(item => <StaggerItem key={item}>
                       <div className="flex items-start gap-3">
                         <X className="w-5 h-5 text-destructive flex-shrink-0 mt-1" />
                         <span>{item}</span>
                       </div>
-                    </StaggerItem>
-                  ))}
+                    </StaggerItem>)}
                 </StaggerChildren>
                 <p className="text-lg mt-6 font-medium">
                   This is for people who want smart, simple, strategic ads — done the right way.
@@ -579,19 +617,13 @@ const Sales = () => {
                 <Label htmlFor="billing-toggle-sales" className={!isAnnual ? "font-medium" : "text-muted-foreground"}>
                   Monthly
                 </Label>
-                <Switch
-                  id="billing-toggle-sales"
-                  checked={isAnnual}
-                  onCheckedChange={setIsAnnual}
-                />
+                <Switch id="billing-toggle-sales" checked={isAnnual} onCheckedChange={setIsAnnual} />
                 <Label htmlFor="billing-toggle-sales" className={isAnnual ? "font-medium" : "text-muted-foreground"}>
                   Annual
                 </Label>
-                {isAnnual && (
-                  <Badge variant="secondary" className="bg-primary/10 text-primary">
+                {isAnnual && <Badge variant="secondary" className="bg-primary/10 text-primary">
                     Save 2 months
-                  </Badge>
-                )}
+                  </Badge>}
               </div>
             </ScrollReveal>
           </div>
@@ -710,88 +742,60 @@ const Sales = () => {
 
           {/* Pricing Cards */}
           <div className="grid md:grid-cols-3 gap-8">
-            {tiers.map((tier, index) => (
-              <ScrollReveal key={tier.key} delay={0.1 * index}>
-                <Card
-                  className={`relative flex flex-col h-full ${
-                    tier.popular
-                      ? "border-primary shadow-lg scale-105"
-                      : "border-border"
-                  }`}
-                >
-                  {tier.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+            {tiers.map((tier, index) => <ScrollReveal key={tier.key} delay={0.1 * index}>
+                <Card className={`relative flex flex-col h-full ${tier.popular ? "border-primary shadow-lg scale-105" : "border-border"}`}>
+                  {tier.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                       <Badge className="bg-primary text-primary-foreground px-4 py-1">
                         <Sparkles className="w-3 h-3 mr-1" />
                         Most Popular
                       </Badge>
-                    </div>
-                  )}
+                    </div>}
                   <CardHeader className="text-center pb-4">
                     <CardTitle className="text-2xl font-display">{tier.name}</CardTitle>
                     <CardDescription>{tier.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col">
                     <div className="text-center mb-6">
-                      {tier.monthlyPrice ? (
-                        <>
+                      {tier.monthlyPrice ? <>
                           <div className="flex items-baseline justify-center gap-1">
                             <span className="text-4xl font-bold">
                               ${isAnnual ? Math.round(tier.annualPrice! / 12) : tier.monthlyPrice}
                             </span>
                             <span className="text-muted-foreground">/mo</span>
                           </div>
-                          {isAnnual && (
-                            <p className="text-sm text-muted-foreground mt-1">
+                          {isAnnual && <p className="text-sm text-muted-foreground mt-1">
                               ${tier.annualPrice}/year billed annually
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-2xl font-bold text-muted-foreground">
+                            </p>}
+                        </> : <div className="text-2xl font-bold text-muted-foreground">
                           Custom Pricing
-                        </div>
-                      )}
+                        </div>}
                     </div>
 
                     <ul className="space-y-3 mb-8 flex-1">
-                      {tier.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-2">
+                      {tier.features.map((feature, i) => <li key={i} className="flex items-start gap-2">
                           <Check className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                           <span className="text-sm">{feature}</span>
-                        </li>
-                      ))}
+                        </li>)}
                     </ul>
 
-                    <Button
-                      className="w-full gap-2"
-                      variant={tier.popular ? "default" : "outline"}
-                      size="lg"
-                      disabled={loadingTier === tier.key}
-                      onClick={() => {
-                        if (tier.key === "agency") {
-                          window.location.href = "mailto:hello@afterorganic.com?subject=Agency Plan Inquiry";
-                        } else {
-                          handleSubscribe(tier.key);
-                        }
-                      }}
-                    >
-                      {loadingTier === tier.key ? (
-                        <>
+                    <Button className="w-full gap-2" variant={tier.popular ? "default" : "outline"} size="lg" disabled={loadingTier === tier.key} onClick={() => {
+                  if (tier.key === "agency") {
+                    window.location.href = "mailto:hello@afterorganic.com?subject=Agency Plan Inquiry";
+                  } else {
+                    handleSubscribe(tier.key);
+                  }
+                }}>
+                      {loadingTier === tier.key ? <>
                           <Loader2 className="w-4 h-4 animate-spin" />
                           Loading...
-                        </>
-                      ) : (
-                        <>
+                        </> : <>
                           {tier.cta}
                           <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
+                        </>}
                     </Button>
                   </CardContent>
                 </Card>
-              </ScrollReveal>
-            ))}
+              </ScrollReveal>)}
           </div>
 
           {/* FAQ or Additional Info */}
@@ -813,12 +817,14 @@ const Sales = () => {
         
         <div className="container mx-auto max-w-4xl text-center relative z-10">
           <ScaleOnScroll scaleRange={[0.9, 1]}>
-            <motion.h2 
-              className="font-display text-5xl mb-8 md:text-6xl"
-              whileInView={{ opacity: [0, 1], y: [30, 0] }}
-              transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
-            >
+            <motion.h2 className="font-display text-5xl mb-8 md:text-6xl" whileInView={{
+            opacity: [0, 1],
+            y: [30, 0]
+          }} transition={{
+            duration: 0.8
+          }} viewport={{
+            once: true
+          }}>
               🚀 Ready to run ads with clarity?
             </motion.h2>
           </ScaleOnScroll>
@@ -838,19 +844,19 @@ const Sales = () => {
       </section>
 
       {/* Footer */}
-      <motion.footer 
-        className="py-12 px-4 border-t border-border"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        viewport={{ once: true }}
-      >
+      <motion.footer className="py-12 px-4 border-t border-border" initial={{
+      opacity: 0
+    }} whileInView={{
+      opacity: 1
+    }} transition={{
+      duration: 0.5
+    }} viewport={{
+      once: true
+    }}>
         <div className="container mx-auto text-center text-sm text-muted-foreground">
           <p>© 2025 Lumi. All rights reserved.</p>
         </div>
       </motion.footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Sales;
