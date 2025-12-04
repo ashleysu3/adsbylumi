@@ -29,9 +29,7 @@ import {
   Shield,
   GraduationCap,
   AlertCircle,
-  TrendingUp,
   Eye,
-  Palette,
   Film,
   Copy,
   Scissors,
@@ -148,14 +146,6 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
     emotional: allConcepts.filter(c => c.content_type === 'emotional' || c.psychology_trigger?.includes('emotion')).length,
     authority: allConcepts.filter(c => c.content_type === 'authority' || c.psychology_trigger?.includes('authority')).length,
     objection: allConcepts.filter(c => c.content_type === 'objection' || c.psychology_trigger?.includes('objection')).length,
-  };
-
-  // Count trends
-  const trendConcepts = allConcepts.filter(c => c.is_trend || c.trend_source);
-  const trendCounts = {
-    trend_hooks: trendConcepts.filter(c => c.type === 'hook' || c.trend_type === 'hook').length,
-    trend_visuals: trendConcepts.filter(c => c.trend_type === 'visual').length,
-    trend_prompts: trendConcepts.filter(c => c.trend_type === 'prompt' || c.trend_type === 'format').length,
   };
 
   // Count copy items
@@ -449,63 +439,6 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
                   );
                 })}
               </div>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <Separator className="my-2 bg-border/30" />
-
-          {/* C. Trends - Collapsed by default */}
-          <Collapsible 
-            open={expandedSections.includes("trends")}
-            onOpenChange={() => toggleSection("trends")}
-          >
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="w-full justify-between px-3 py-2 h-auto hover:bg-muted/50"
-              >
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">Trends</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {(trendCounts.trend_hooks + trendCounts.trend_visuals + trendCounts.trend_prompts) > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      {trendCounts.trend_hooks + trendCounts.trend_visuals + trendCounts.trend_prompts}
-                    </Badge>
-                  )}
-                  {expandedSections.includes("trends") ? (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-              </Button>
-            </CollapsibleTrigger>
-            
-            <CollapsibleContent className="space-y-0.5 pl-2 mt-1">
-              {[
-                { id: "trend_hooks", label: "Trend Hooks", icon: Sparkles, count: trendCounts.trend_hooks },
-                { id: "trend_visuals", label: "Trend Visual Styles", icon: Palette, count: trendCounts.trend_visuals },
-                { id: "trend_prompts", label: "Trend Prompts", icon: FileText, count: trendCounts.trend_prompts },
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Button
-                    key={item.id}
-                    variant={activeSection === item.id ? "secondary" : "ghost"}
-                    size="sm"
-                    className="w-full justify-start gap-2 h-7"
-                    onClick={() => onSectionChange(item.id)}
-                  >
-                    <Icon className="h-3 w-3" />
-                    <span className="flex-1 text-left text-[11px]">{item.label}</span>
-                    {item.count > 0 && (
-                      <Badge variant="secondary" className="text-[10px] px-1 py-0">{item.count}</Badge>
-                    )}
-                  </Button>
-                );
-              })}
             </CollapsibleContent>
           </Collapsible>
 
