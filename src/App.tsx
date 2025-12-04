@@ -7,6 +7,7 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { LumiProvider } from "@/contexts/LumiContext";
 import Index from "./pages/Index";
 import Sales from "./pages/Sales";
+import Waitlist from "./pages/Waitlist";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
@@ -36,7 +37,8 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-            <Route path="/" element={<Sales />} />
+            <Route path="/" element={<Waitlist />} />
+            <Route path="/sales" element={<Sales />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/onboarding" element={<Onboarding />} />
