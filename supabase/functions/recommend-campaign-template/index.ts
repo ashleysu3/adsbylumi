@@ -7,13 +7,37 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUUID(id: string): boolean {
+  return typeof id === 'string' && UUID_REGEX.test(id);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { offerId } = await req.json();
+    const body = await req.json();
+    const { offerId } = body;
+
+    // Input validation
+    if (!offerId) {
+      return new Response(
+        JSON.stringify({ error: 'offerId is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!isValidUUID(offerId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid offerId format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('Recommending campaign template for offer:', offerId);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -26,14 +50,19 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Fetch offer data
+    // Fetch offer data and verify it exists
     const { data: offer, error: offerError } = await supabase
       .from('offers')
       .select('*')
       .eq('id', offerId)
       .single();
 
-    if (offerError) throw offerError;
+    if (offerError || !offer) {
+      return new Response(
+        JSON.stringify({ error: 'Offer not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Fetch all active campaign templates
     const { data: templates, error: templatesError } = await supabase

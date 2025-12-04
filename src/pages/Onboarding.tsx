@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Sparkles } from "lucide-react";
 
@@ -23,7 +22,6 @@ export default function Onboarding() {
   const [industry, setIndustry] = useState("");
   const [valueProposition, setValueProposition] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
-  const [tier, setTier] = useState<"starter" | "growth" | "agency_pro">("starter");
 
   useEffect(() => {
     checkAuth();
@@ -111,6 +109,13 @@ export default function Onboarding() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Check if user already has a subscription (created via Stripe checkout)
+      const { data: existingSub } = await supabase
+        .from("subscriptions")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
       const { data: brandData, error: brandError } = await supabase
         .from("brands")
         .insert({
@@ -127,15 +132,19 @@ export default function Onboarding() {
 
       if (brandError) throw brandError;
 
-      const { error: subError } = await supabase
-        .from("subscriptions")
-        .insert({
-          user_id: user.id,
-          tier,
-          status: "active"
-        });
+      // Only create a starter subscription if none exists from Stripe
+      // The actual tier is determined by Stripe webhook based on payment
+      if (!existingSub) {
+        const { error: subError } = await supabase
+          .from("subscriptions")
+          .insert({
+            user_id: user.id,
+            tier: "starter", // Default free tier - upgrades happen via Stripe
+            status: "active"
+          });
 
-      if (subError) throw subError;
+        if (subError) throw subError;
+      }
 
       toast.info("Building your audience profile...");
       supabase.functions.invoke('generate-audience-psychology', {
@@ -266,20 +275,6 @@ export default function Onboarding() {
                   rows={3}
                   placeholder="Tell Lumi about your ideal customer..."
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="tier">Subscription Plan</Label>
-                <Select value={tier} onValueChange={(value: any) => setTier(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="starter">Starter - $147/mo</SelectItem>
-                    <SelectItem value="growth">Growth - $247/mo</SelectItem>
-                    <SelectItem value="agency_pro">Agency Pro - $497/mo</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="flex gap-2">
