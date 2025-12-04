@@ -46,8 +46,8 @@ export default function Auth() {
         
         // Check if user is immediately confirmed (auto-confirm is enabled)
         if (data.user && data.session) {
-          toast.success("Account created! Setting up your brand...");
-          navigate("/onboarding");
+          toast.success("Account created! Let's choose your plan.");
+          navigate("/pricing");
         } else if (data.user && !data.session) {
           toast.success("Account created! Please check your email to confirm.");
         }

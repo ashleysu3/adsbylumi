@@ -16,6 +16,7 @@ export default function Onboarding() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [extracting, setExtracting] = useState(false);
   const [step, setStep] = useState(1);
+  const [hasExtracted, setHasExtracted] = useState(false);
 
   const [brandName, setBrandName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -55,6 +56,7 @@ export default function Onboarding() {
       setValueProposition(data.value_proposition);
       setTargetAudience(data.target_audience);
       setIndustry(data.industry);
+      setHasExtracted(true);
 
       toast.success("Brand info extracted from website");
     } catch (error: any) {
@@ -71,8 +73,8 @@ export default function Onboarding() {
       return;
     }
 
-    // If we don't have extracted info yet, extract it before proceeding
-    if (!valueProposition || !targetAudience || !industry) {
+    // Only auto-extract if we haven't extracted before AND fields are empty
+    if (!hasExtracted && !valueProposition && !targetAudience && !industry) {
       setExtracting(true);
       toast.info("Analyzing your website before continuing...");
       
@@ -86,11 +88,13 @@ export default function Onboarding() {
         setValueProposition(data.value_proposition);
         setTargetAudience(data.target_audience);
         setIndustry(data.industry);
+        setHasExtracted(true);
 
         toast.success("Brand info extracted successfully");
       } catch (error: any) {
         console.error('Error extracting brand info:', error);
         toast.error("Could not auto-extract info. Please fill in manually on the next step.");
+        setHasExtracted(true); // Mark as attempted to prevent repeated tries
       } finally {
         setExtracting(false);
       }
