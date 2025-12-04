@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
+import AdminTabs from "@/components/AdminTabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -115,6 +116,7 @@ export default function Analytics() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <AdminTabs />
         <div>
           <h1 className="text-3xl font-display font-bold">Analytics Dashboard</h1>
           <p className="text-muted-foreground mt-2">
