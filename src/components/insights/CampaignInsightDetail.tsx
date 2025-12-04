@@ -170,9 +170,15 @@ export function CampaignInsightDetail({
     : [];
 
   // Extract negative signals (what needs attention)
+  // Filter out tracking_only and not_applicable statuses - those aren't relevant to this campaign type
   const needsAttention = analysis?.kpi_evaluation
     ? Object.entries(analysis.kpi_evaluation)
-        .filter(([_, kpi]) => kpi.status === 'needs attention' || kpi.status === 'critical')
+        .filter(([key, kpi]) => {
+          // Exclude statuses that indicate the metric isn't relevant
+          if (kpi.status === 'tracking_only' || kpi.status === 'not_applicable') return false;
+          // Only include actual attention-needing statuses
+          return kpi.status === 'needs attention' || kpi.status === 'critical' || kpi.status === 'needs_attention';
+        })
         .map(([key, kpi]) => kpi.reason)
         .slice(0, 3)
     : [];
