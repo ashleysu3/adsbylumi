@@ -44,6 +44,7 @@ interface CampaignData {
   templateName: string | null;
   objective: string | null;
   metrics: Record<string, number> | null;
+  previousMetrics?: Record<string, number> | null;
   userGoal?: number | null;
 }
 
@@ -198,17 +199,29 @@ export default function Data() {
     }
   };
 
+  // Get previous period date range for trend comparison
+  const getPreviousPeriodRange = (rangeValue: string): { from: Date; to: Date } => {
+    const current = getDateRange(rangeValue);
+    const daysDiff = Math.ceil((current.to.getTime() - current.from.getTime()) / (1000 * 60 * 60 * 24));
+    return {
+      from: subDays(current.from, daysDiff),
+      to: subDays(current.to, daysDiff),
+    };
+  };
+
   const fetchAllMetrics = async (campaignList?: CampaignData[]) => {
     const list = campaignList || campaigns;
     if (list.length === 0) return;
 
     setSyncing(true);
     const dateRange = getDateRange(globalDateRange);
+    const prevDateRange = getPreviousPeriodRange(globalDateRange);
 
     try {
       const updatedCampaigns = await Promise.all(
         list.map(async (campaign) => {
           try {
+            // Fetch current period metrics
             const { data, error } = await supabase.functions.invoke('fetch-meta-performance', {
               body: {
                 workspaceId: campaign.id,
@@ -230,9 +243,26 @@ export default function Data() {
               return campaign;
             }
 
+            // Fetch previous period metrics for trend comparison
+            let previousMetrics = null;
+            try {
+              const { data: prevData } = await supabase.functions.invoke('fetch-meta-performance', {
+                body: {
+                  workspaceId: campaign.id,
+                  dateRangeStart: format(prevDateRange.from, 'yyyy-MM-dd'),
+                  dateRangeEnd: format(prevDateRange.to, 'yyyy-MM-dd'),
+                },
+              });
+              previousMetrics = prevData?.metrics || null;
+            } catch (prevErr) {
+              // Silently fail for previous period - not critical
+              console.log('Could not fetch previous period metrics');
+            }
+
             return {
               ...campaign,
               metrics: data?.metrics || null,
+              previousMetrics,
               userGoal: userGoals[campaign.id] || null,
             };
           } catch (err) {

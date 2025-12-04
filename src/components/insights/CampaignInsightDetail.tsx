@@ -30,6 +30,8 @@ import {
   getLumiStatusLabel,
   formatBenchmarkRange
 } from '@/lib/lumi-kpi-config';
+import { KPIProgressBar } from './KPIProgressBar';
+import { KPITrendIndicator } from './KPITrendIndicator';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -102,6 +104,7 @@ interface CampaignInsightDetailProps {
     templateName: string | null;
     objective: string | null;
     metrics: CampaignMetrics | null;
+    previousMetrics?: CampaignMetrics | null;
     userGoal?: number | null;
   };
   analysis: PerformanceAnalysis | null;
@@ -252,13 +255,27 @@ export function CampaignInsightDetail({
                     {status === 'attention' && <AlertTriangle className="h-8 w-8 text-amber-600" />}
                     {status === 'critical' && <AlertTriangle className="h-8 w-8 text-red-600" />}
                     {status === 'no-data' && <Info className="h-8 w-8 text-gray-400" />}
-                    <div>
+                    <div className="space-y-2">
                       <p className="text-sm uppercase tracking-wider text-muted-foreground font-medium">
                         Primary KPI: {kpiConfig.primaryLabel}
                       </p>
                       <p className="text-5xl font-bold mt-1">
                         {formatLumiKPIValue(primaryValue, kpiConfig.primary)}
                       </p>
+                      {/* Trend Indicator */}
+                      <KPITrendIndicator
+                        currentValue={primaryValue}
+                        previousValue={getPrimaryKPIValue(campaign.previousMetrics || null, kpiConfig.primary)}
+                        kpiKey={kpiConfig.primary}
+                      />
+                      {/* Progress Bar */}
+                      <KPIProgressBar
+                        value={primaryValue}
+                        benchmark={kpiConfig.benchmark}
+                        userGoal={campaign.userGoal}
+                        kpiKey={kpiConfig.primary}
+                        className="w-48 mt-2"
+                      />
                     </div>
                   </div>
                   
