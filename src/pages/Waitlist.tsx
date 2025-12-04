@@ -19,11 +19,24 @@ const Waitlist = () => {
 
     setIsSubmitting(true);
     try {
-      // For now, we'll just show success - in production, this would save to a waitlist table
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setIsSubmitted(true);
-      toast.success("You're on the list! Lumi will keep you posted. ✨");
+      const { error } = await supabase
+        .from('waitlist')
+        .insert({ email: email.toLowerCase().trim() });
+
+      if (error) {
+        if (error.code === '23505') {
+          // Unique constraint violation - email already exists
+          toast.success("You're already on the list! Lumi will keep you posted. ✨");
+          setIsSubmitted(true);
+        } else {
+          throw error;
+        }
+      } else {
+        setIsSubmitted(true);
+        toast.success("You're on the list! Lumi will keep you posted. ✨");
+      }
     } catch (error) {
+      console.error('Waitlist signup error:', error);
       toast.error("Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
