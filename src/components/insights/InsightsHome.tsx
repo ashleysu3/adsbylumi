@@ -20,6 +20,8 @@ import {
   getLumiStatusLabel,
   formatBenchmarkRange
 } from '@/lib/lumi-kpi-config';
+import { KPIProgressBar } from './KPIProgressBar';
+import { KPITrendIndicator } from './KPITrendIndicator';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -46,6 +48,7 @@ interface Campaign {
   templateName: string | null;
   objective: string | null;
   metrics: CampaignMetrics | null;
+  previousMetrics?: CampaignMetrics | null;
   userGoal?: number | null;
 }
 
@@ -204,17 +207,31 @@ export function InsightsHome({
 
                     {/* Primary KPI Display */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 lg:gap-10">
-                      {/* KPI Value */}
-                      <div className="space-y-1">
+                    {/* KPI Value with Progress */}
+                      <div className="space-y-2 min-w-[140px]">
                         <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                           {kpiConfig.primaryLabel}
                         </p>
                         <p className="text-3xl font-bold text-foreground">
                           {formatLumiKPIValue(primaryValue, kpiConfig.primary)}
                         </p>
+                        {/* Trend Indicator */}
+                        <KPITrendIndicator
+                          currentValue={primaryValue}
+                          previousValue={getPrimaryKPIValue(campaign.previousMetrics || null, kpiConfig.primary)}
+                          kpiKey={kpiConfig.primary}
+                        />
+                        {/* Progress Bar */}
+                        <KPIProgressBar
+                          value={primaryValue}
+                          benchmark={kpiConfig.benchmark}
+                          userGoal={campaign.userGoal}
+                          kpiKey={kpiConfig.primary}
+                          className="w-32"
+                        />
                       </div>
 
-                      {/* Benchmark - FIX: use formatBenchmarkRange */}
+                      {/* Benchmark */}
                       <div className="space-y-1">
                         <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                           Benchmark
