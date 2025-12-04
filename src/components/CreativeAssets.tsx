@@ -578,7 +578,7 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
         <Collapsible open={isExpanded} onOpenChange={() => toggleConcept(conceptId)}>
           <CardHeader className="pb-4">
             <div className="space-y-4">
-              {/* Top row: Icon, Title, Format */}
+              {/* Top row: Icon, Title, Format + Sentiment buttons */}
               <div className="flex items-start gap-3">
                 <div className={`p-2 rounded-lg ${stageColors[stage as keyof typeof stageColors]}`}>
                   <FormatIcon className="h-5 w-5" />
@@ -600,61 +600,40 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
                     )}
                   </div>
                 </div>
+                {/* Sentiment buttons - top right */}
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    size="icon"
+                    variant={isLoved ? "default" : "ghost"}
+                    onClick={() => handleLoveIt(conceptId, concept, stage)}
+                    className={`h-8 w-8 ${isLoved ? 'bg-pink-500 hover:bg-pink-600' : 'hover:bg-pink-50 dark:hover:bg-pink-950 hover:text-pink-600'}`}
+                    disabled={isGenerating}
+                    title={isLoved ? 'Loved' : 'Love It'}
+                  >
+                    <Heart className={`h-4 w-4 ${isLoved ? 'fill-current' : ''}`} />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setFeedbackDialog({ open: true, conceptId, concept, stage })}
+                    className="h-8 w-8 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600"
+                    disabled={isGenerating}
+                    title="Hate It"
+                  >
+                    <ThumbsDown className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
-              {/* Content Preview */}
-              <div className="bg-muted/30 rounded-lg p-4 border border-border/50">
-                <p className="text-sm whitespace-pre-wrap line-clamp-3">
+              {/* Content Preview with inline copy button */}
+              <div className="bg-muted/30 rounded-lg p-4 border border-border/50 relative">
+                <p className="text-sm whitespace-pre-wrap line-clamp-3 pr-8">
                   {getContentPreview()}
                 </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {/* Send to Production - Primary action */}
                 <Button
-                  size="sm"
-                  variant={isInProduction(conceptId) ? "secondary" : "default"}
-                  onClick={() => handleSendToProduction(conceptId, concept, stage)}
-                  className="gap-2"
-                  disabled={isGenerating || isInProduction(conceptId)}
-                >
-                  <Send className="h-4 w-4" />
-                  {isInProduction(conceptId) ? 'In Production' : 'Send to Production'}
-                </Button>
-                <Button
-                  size="sm"
-                  variant={isLoved ? "default" : "outline"}
-                  onClick={() => handleLoveIt(conceptId, concept, stage)}
-                  className="gap-2"
-                  disabled={isGenerating}
-                >
-                  <Heart className={`h-4 w-4 ${isLoved ? 'fill-current' : ''}`} />
-                  {isLoved ? 'Loved' : 'Love It'}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setFeedbackDialog({ open: true, conceptId, concept, stage })}
-                  className="gap-2 border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950"
-                  disabled={isGenerating}
-                >
-                  <ThumbsDown className="h-4 w-4" />
-                  Hate It
-                </Button>
-                <Button
-                  size="sm"
+                  size="icon"
                   variant="ghost"
-                  onClick={() => handleMoreLikeThis(conceptId, concept, stage)}
-                  className="gap-2"
-                  disabled={isGenerating}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  More Like This
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
+                  className="absolute right-2 top-2 h-7 w-7 opacity-60 hover:opacity-100"
                   onClick={() => {
                     const contentToCopy = (concept.script || concept.content)
                       ? formatScriptForCopy(concept.script || concept.content)
@@ -663,16 +642,45 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
                         : concept.static_layout || concept.title;
                     copyToClipboard(contentToCopy, "Creative content");
                   }}
+                  title="Copy content"
                 >
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-3.5 w-3.5" />
                 </Button>
-                <CollapsibleTrigger asChild>
-                  <Button size="sm" variant="ghost" className="gap-2">
-                    <Eye className="h-4 w-4" />
-                    {isExpanded ? 'Hide' : 'See'} Details
-                    <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+              </div>
+
+              {/* Action Buttons - Clean bottom row */}
+              <div className="flex items-center justify-between">
+                {/* Left: Primary actions */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant={isInProduction(conceptId) ? "secondary" : "default"}
+                    onClick={() => handleSendToProduction(conceptId, concept, stage)}
+                    className="gap-2"
+                    disabled={isGenerating || isInProduction(conceptId)}
+                  >
+                    <Send className="h-4 w-4" />
+                    {isInProduction(conceptId) ? 'In Production' : 'Send to Production'}
                   </Button>
-                </CollapsibleTrigger>
+                  <CollapsibleTrigger asChild>
+                    <Button size="sm" variant="ghost" className="gap-2">
+                      <Eye className="h-4 w-4" />
+                      {isExpanded ? 'Hide' : 'See'} Details
+                      <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+                {/* Right: Secondary action */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleMoreLikeThis(conceptId, concept, stage)}
+                  className="gap-2"
+                  disabled={isGenerating}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  More Like This
+                </Button>
               </div>
             </div>
           </CardHeader>
