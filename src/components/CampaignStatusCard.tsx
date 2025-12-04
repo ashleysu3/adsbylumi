@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { 
@@ -15,7 +17,8 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Link2Off
 } from "lucide-react";
 
 interface CampaignStatusCardProps {
@@ -55,9 +58,11 @@ export function CampaignStatusCard({
   initialStatus,
   onStatusChange
 }: CampaignStatusCardProps) {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<CampaignStatus | null>(null);
-  const [loading, setLoading] = useState(true); // Start loading by default
+  const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
+  const [tokenExpired, setTokenExpired] = useState(false);
 
   const campaignId = metaCampaignIds?.campaignId || metaCampaignIds?.campaign_id;
 
@@ -79,14 +84,31 @@ export function CampaignStatusCard({
         body: { workspaceId }
       });
 
+      // Check for token expiration in error or response
+      const errorMsg = error?.message || '';
+      const dataError = data?.error || '';
+      const fullError = `${errorMsg} ${dataError}`;
+      
+      if (fullError.includes('Error validating access token') || 
+          fullError.includes('session has been invalidated') ||
+          fullError.includes('OAuthException')) {
+        setTokenExpired(true);
+        setLoading(false);
+        return;
+      }
+
       if (error) throw error;
       
+      setTokenExpired(false);
       if (data?.status) {
         setStatus(data.status);
       }
     } catch (error: any) {
       console.error('Error fetching status:', error);
-      toast.error('Failed to fetch campaign status');
+      // Don't show toast for token errors - we show the UI instead
+      if (!tokenExpired) {
+        toast.error('Failed to fetch campaign status');
+      }
     } finally {
       setLoading(false);
     }
@@ -176,7 +198,22 @@ export function CampaignStatusCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {loading && !status ? (
+        {tokenExpired ? (
+          <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+            <Link2Off className="h-4 w-4" />
+            <AlertDescription className="flex flex-col gap-2">
+              <span className="text-sm">Meta connection expired. Please reconnect.</span>
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="w-fit text-xs"
+                onClick={() => navigate('/dashboard')}
+              >
+                Reconnect Meta
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : loading && !status ? (
           <div className="space-y-2">
             <Skeleton className="h-6 w-24" />
             <Skeleton className="h-4 w-full" />
