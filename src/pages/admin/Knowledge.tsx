@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
+import AdminTabs from "@/components/AdminTabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -264,6 +265,7 @@ export default function Knowledge() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <AdminTabs />
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold">Knowledge Base</h1>

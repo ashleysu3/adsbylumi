@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import DashboardLayout from "@/components/DashboardLayout";
+import AdminTabs from "@/components/AdminTabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -353,6 +354,7 @@ export default function AdminTemplates() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <AdminTabs />
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold">Campaign Templates</h1>

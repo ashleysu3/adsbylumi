@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Plus, Copy, Trash2, Ticket, RefreshCw } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import AdminTabs from "@/components/AdminTabs";
 import { format } from "date-fns";
 
 interface InviteCode {
@@ -179,6 +180,7 @@ export default function AdminInviteCodes() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <AdminTabs />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-display text-foreground">Invite Codes</h1>
