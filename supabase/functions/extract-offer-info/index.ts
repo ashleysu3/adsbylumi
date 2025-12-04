@@ -30,26 +30,54 @@ serve(async (req) => {
       const offerResponse = await fetch(offerUrl);
       const html = await offerResponse.text();
       // Extract text content
-      offerContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 5000);
+      offerContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 12000);
     } catch (error) {
       console.error('Error fetching offer page:', error);
       offerContent = 'Unable to fetch offer page content';
     }
 
-    const systemPrompt = `You are a product analyst extracting key information from sales pages and offer pages.
-Your task is to analyze the offer page content and extract:
-1. Description - A clear description of what the product/offer includes (2-3 sentences)
-2. Price Point - The price in text format (e.g., "$47", "$997", "Free", "Varies")
-3. Target Outcome - The main transformation or result the customer gets
+    const systemPrompt = `You are a product analyst extracting comprehensive information from sales pages and offer pages for ad creative generation.
+
+Your task is to analyze the offer page content and extract ALL of the following:
+
+1. **description** - A detailed description of what the product/offer includes (3-5 sentences). Include what's included, how it's delivered, and any bonuses.
+
+2. **price_point** - The price in text format (e.g., "$47", "$997", "Free", "$297/month", "Varies"). Include any payment plans if mentioned.
+
+3. **target_outcome** - The main transformation or result the customer gets. Be specific about the before/after state.
+
+4. **key_benefits** - Array of 3-5 specific benefits or features mentioned on the page. Use the exact language when possible.
+
+5. **pain_points_addressed** - Array of 2-4 pain points or problems the offer solves. What struggles does the target audience face?
+
+6. **unique_selling_points** - Array of 2-3 things that make this offer different or special (guarantees, bonuses, methodology, credentials).
+
+7. **social_proof** - Any testimonials, results, or credibility markers mentioned (e.g., "helped 500+ students", "as seen in Forbes", specific client results).
+
+8. **emotional_hooks** - Array of 2-3 emotional triggers or desires the page appeals to (e.g., "freedom", "confidence", "financial security", "time with family").
+
+9. **target_audience_indicators** - Who is this offer for? Any specific demographics, job titles, or situations mentioned.
+
+10. **tone_and_voice** - Describe the overall tone of the sales page (e.g., "professional and authoritative", "friendly and conversational", "urgent and direct").
+
+11. **cta_language** - The main call-to-action text used on the page (e.g., "Enroll Now", "Get Instant Access", "Book Your Call").
 
 Return ONLY a valid JSON object with these exact fields:
 {
   "description": "string",
-  "price_point": "string",
-  "target_outcome": "string"
+  "price_point": "string", 
+  "target_outcome": "string",
+  "key_benefits": ["string"],
+  "pain_points_addressed": ["string"],
+  "unique_selling_points": ["string"],
+  "social_proof": "string or null if none found",
+  "emotional_hooks": ["string"],
+  "target_audience_indicators": "string",
+  "tone_and_voice": "string",
+  "cta_language": "string"
 }
 
-Be specific and use the actual language from the sales page when possible.`;
+Be specific and use the actual language from the sales page when possible. If you can't find information for a field, use reasonable inferences based on the content.`;
 
     const userPrompt = `Analyze this offer page and extract the product information:
 
