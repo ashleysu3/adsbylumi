@@ -86,12 +86,18 @@ ${template.kpi_priorities.map((kpi: string, idx: number) => `  ${idx + 1}. ${kpi
 
 CRITICAL EVALUATION RULES:
 - Your analysis MUST be aligned with this campaign's purpose
-- Do NOT mark KPIs as "critical" or "needs attention" if they are NOT in the priority list above
-- KPIs not in the priority list should be labeled as "tracking only" - do not flag them as problems
-- For example, if this is a Traffic campaign with CPC/CTR/CPM as priorities:
-  - ROAS of 0 is EXPECTED and should NOT be flagged as a problem
-  - CPL/CPP not relevant - mark as "N/A for this campaign type"
-- Focus your analysis and recommendations on the priority KPIs only
+- Do NOT mark KPIs as "critical" or "needs_attention" if they are NOT in the priority list above
+- KPIs not in the priority list MUST use status "tracking_only" or "not_applicable"
+- For Traffic/Awareness campaigns (objective: OUTCOME_TRAFFIC):
+  - Leads = 0 is EXPECTED and NORMAL - do NOT mention this as a problem
+  - Purchases = 0 is EXPECTED and NORMAL - do NOT mention this as a problem
+  - ROAS of 0/null is EXPECTED - mark as "not_applicable"
+  - CPL/CPP not relevant - mark as "not_applicable"
+  - DO NOT say "no leads or purchases" as a problem for these campaigns
+- For Lead Gen campaigns:
+  - Purchases = 0 is often expected - focus on leads instead
+- NEVER mention missing leads/purchases as "critical" for non-conversion campaigns
+- Focus your analysis and recommendations ONLY on the priority KPIs
 ` : ''}` : '';
 
     // Build comprehensive system prompt
@@ -151,6 +157,7 @@ TONE & STYLE:
 - Celebrate wins, gently guide improvements
 - Keep it actionable and specific
 - DO NOT alarm the user about metrics that are not relevant to their campaign goal
+- For awareness/traffic campaigns, NEVER mention lack of leads or purchases as a problem - these campaigns are designed to build awareness, not generate conversions
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON object with this exact structure:
