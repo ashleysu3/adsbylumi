@@ -28,7 +28,8 @@ const PricingCards = ({ navigate }: { navigate: (path: string) => void }) => {
       description: "Perfect for solo coaches and course creators",
       monthlyPrice: 147,
       annualPrice: 1470,
-      popular: false,
+      popular: true,
+      comingSoon: false,
       features: SUBSCRIPTION_TIERS.solo.features,
       cta: "Get Started",
     },
@@ -38,9 +39,10 @@ const PricingCards = ({ navigate }: { navigate: (path: string) => void }) => {
       description: "For growing creators and service providers",
       monthlyPrice: 299,
       annualPrice: 2990,
-      popular: true,
+      popular: false,
+      comingSoon: true,
       features: SUBSCRIPTION_TIERS.creator.features,
-      cta: "Get Started",
+      cta: "Coming Soon",
     },
     {
       key: "agency" as const,
@@ -49,8 +51,9 @@ const PricingCards = ({ navigate }: { navigate: (path: string) => void }) => {
       monthlyPrice: null,
       annualPrice: null,
       popular: false,
+      comingSoon: true,
       features: SUBSCRIPTION_TIERS.agency.features,
-      cta: "Contact Sales",
+      cta: "Coming Soon",
     },
   ];
 
@@ -91,7 +94,14 @@ const PricingCards = ({ navigate }: { navigate: (path: string) => void }) => {
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
                 <Badge className="bg-primary text-primary-foreground px-4 py-1">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Most Popular
+                  Available Now
+                </Badge>
+              </div>
+            )}
+            {tier.comingSoon && (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <Badge variant="secondary" className="px-4 py-1">
+                  Coming Soon
                 </Badge>
               </div>
             )}
@@ -135,7 +145,9 @@ const PricingCards = ({ navigate }: { navigate: (path: string) => void }) => {
                 className="w-full gap-2"
                 variant={tier.popular ? "default" : "outline"}
                 size="lg"
+                disabled={tier.comingSoon}
                 onClick={() => {
+                  if (tier.comingSoon) return;
                   if (tier.key === "agency") {
                     window.location.href = "mailto:hello@afterorganic.com?subject=Agency Plan Inquiry";
                   } else {
@@ -144,7 +156,7 @@ const PricingCards = ({ navigate }: { navigate: (path: string) => void }) => {
                 }}
               >
                 {tier.cta}
-                <ArrowRight className="w-4 h-4" />
+                {!tier.comingSoon && <ArrowRight className="w-4 h-4" />}
               </Button>
             </CardContent>
           </Card>
