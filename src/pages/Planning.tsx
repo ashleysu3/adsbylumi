@@ -197,10 +197,7 @@ export default function Planning() {
 
   return (
     <DashboardLayout>
-      <CampaignFlowBreadcrumb 
-        currentStep="planning" 
-        offerName={selectedOfferId ? offers.find(o => o.id === selectedOfferId)?.name : undefined}
-      />
+      <CampaignFlowBreadcrumb currentStep="planning" />
       <div className="space-y-8">
         <div className="space-y-2">
           <h2 className="text-3xl font-display tracking-tight">Lumi Strategy</h2>

@@ -7,7 +7,6 @@ interface CampaignFlowBreadcrumbProps {
   currentStep: "planning" | "creative" | "production" | "data";
   campaignId?: string;
   progressStatus?: string;
-  offerName?: string;
   className?: string;
 }
 
@@ -22,7 +21,6 @@ export function CampaignFlowBreadcrumb({
   currentStep,
   campaignId,
   progressStatus = "draft",
-  offerName,
   className
 }: CampaignFlowBreadcrumbProps) {
   const navigate = useNavigate();
@@ -89,76 +87,55 @@ export function CampaignFlowBreadcrumb({
     navigate(step.route);
   };
 
-  // Calculate height for spacer
-  const barHeight = offerName ? 'h-[72px]' : 'h-[44px]';
-
   return (
-    <>
-      {/* Fixed announcement bar at very top */}
-      <div className={cn("fixed top-0 left-0 right-0 z-[60]", className)}>
-        {/* Offer name bar */}
-        {offerName && (
-          <div className="bg-muted/80 backdrop-blur-sm border-b border-border/50 py-1.5 px-4">
-            <p className="text-xs text-muted-foreground text-center truncate">
-              <span className="font-medium text-foreground/80">{offerName}</span>
-            </p>
-          </div>
-        )}
-        
-        {/* Progress announcement bar */}
-        <nav
-          aria-label="Campaign progress"
-          className="bg-background/95 backdrop-blur-sm border-b border-border shadow-sm"
-        >
-          <div className="container mx-auto px-4 py-2">
-            <ol className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
-              {steps.map((step, index) => {
-                const isCompleted = step.status === "completed";
-                const isCurrent = step.status === "current";
-                const isDisabled = step.status === "disabled";
-                const isLast = index === steps.length - 1;
+    <nav
+      aria-label="Campaign progress"
+      className={cn("border-b border-border bg-background/95 backdrop-blur-sm", className)}
+    >
+      <div className="container mx-auto px-4 py-3">
+        <ol className="flex items-center justify-center gap-2 flex-wrap">
+          {steps.map((step, index) => {
+            const isCompleted = step.status === "completed";
+            const isCurrent = step.status === "current";
+            const isDisabled = step.status === "disabled";
+            const isLast = index === steps.length - 1;
 
-                return (
-                  <li key={step.id} className="flex items-center gap-1 sm:gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleStepClick(step)}
-                      disabled={isDisabled}
+            return (
+              <li key={step.id} className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleStepClick(step)}
+                  disabled={isDisabled}
+                  className={cn(
+                    "flex items-center gap-2 h-auto py-2 px-3 transition-colors",
+                    isCurrent && "bg-primary/10 text-primary font-semibold",
+                    isCompleted && "text-muted-foreground hover:text-foreground",
+                    isDisabled && "opacity-40 cursor-not-allowed"
+                  )}
+                >
+                  {isCompleted ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <Circle
                       className={cn(
-                        "flex items-center gap-1.5 h-auto py-1.5 px-2 sm:px-3 transition-all rounded-full",
-                        isCurrent && "bg-primary/15 text-primary font-semibold shadow-sm",
-                        isCompleted && "text-muted-foreground hover:text-foreground",
-                        isDisabled && "opacity-40 cursor-not-allowed"
+                        "h-4 w-4",
+                        isCurrent && "fill-primary text-primary",
+                        !isCurrent && !isCompleted && "text-muted-foreground"
                       )}
-                    >
-                      {isCompleted ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <Circle
-                          className={cn(
-                            "h-3.5 w-3.5",
-                            isCurrent && "fill-primary text-primary",
-                            !isCurrent && !isCompleted && "text-muted-foreground"
-                          )}
-                        />
-                      )}
-                      <span className="text-xs sm:text-sm">{step.label}</span>
-                    </Button>
+                    />
+                  )}
+                  <span className="text-sm">{step.label}</span>
+                </Button>
 
-                    {!isLast && (
-                      <ArrowRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        </nav>
+                {!isLast && (
+                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                )}
+              </li>
+            );
+          })}
+        </ol>
       </div>
-      
-      {/* Spacer to push content below fixed bar */}
-      <div className={barHeight} />
-    </>
+    </nav>
   );
 }
