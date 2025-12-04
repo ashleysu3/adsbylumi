@@ -503,9 +503,9 @@ export default function InsightsDetail() {
                     className={`${styles.bg} ${styles.text} ${styles.border} rounded-xl px-4 py-1`}
                     variant="outline"
                   >
-                    {status === 'healthy' && '✓ Looking great!'}
-                    {status === 'attention' && '⚠ Needs a little love'}
-                    {status === 'critical' && '✗ Time to improve this'}
+                    {status === 'healthy' && "✓ Looking great!"}
+                    {status === 'attention' && "⚠ Needs a little love"}
+                    {status === 'critical' && "✗ Time to improve this"}
                   </Badge>
                 </>
               )}
