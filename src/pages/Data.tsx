@@ -376,6 +376,16 @@ export default function Data() {
       }
     } catch (error: any) {
       console.error('Error fetching performance:', error);
+      
+      // Check if this might be a Meta token error (edge function returned non-2xx)
+      const errorMsg = error?.message || '';
+      if (errorMsg.includes('non-2xx status code') || errorMsg.includes('Edge Function')) {
+        // When edge function fails with non-2xx, it's likely a Meta API error
+        // Show the token expired UI as this is the most common cause
+        setMetaTokenExpired(true);
+        return;
+      }
+      
       toast.error(error.message || 'Failed to fetch performance data');
     } finally {
       setSyncing(false);
