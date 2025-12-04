@@ -426,16 +426,34 @@ userPrompt += `\n\n=== YOUR TASK ===
 
 Generate a COMPLETE full-funnel creative system for this campaign that SELLS THE OFFER.
 
+=== CRITICAL: SCROLL-STOPPING HOOKS (FIRST 3 SECONDS) ===
+The first 3 seconds determine if someone watches. Use these PROVEN patterns from the hooks library:
+
+GROW HOOKS (must stop the scroll with pattern interrupt):
+- "The Controversial Statement": Make a bold claim that challenges beliefs → "Nobody talks about this but..."
+- "The Before/After Tease": Show transformation quickly → "I went from [pain] to [desire] in X weeks"
+- "The Curiosity Gap": Create an incomplete loop → "There's one thing keeping you from [desire]..."
+- "The Direct Call-Out": Name the audience directly → "If you're a [specific person] struggling with [pain]..."
+- "The Contrarian Hook": Go against common advice → "Stop doing [common thing] if you want [result]"
+
+MATCH HOOKS TO PSYCHOLOGY:
+${Array.isArray(offerPsychology.pain_points) && offerPsychology.pain_points.length ? `
+- Use these EXACT pain points in hooks: ${offerPsychology.pain_points.slice(0, 3).join(', ')}
+- Example: "If ${offerPsychology.pain_points[0]?.toLowerCase()}, this is for you..."` : ''}
+${Array.isArray(offerPsychology.desires) && offerPsychology.desires.length ? `
+- Tap into these desires in the hook reveal: ${offerPsychology.desires.slice(0, 3).join(', ')}` : ''}
+
 CRITICAL REQUIREMENTS:
 1. Every concept MUST directly connect to the offer's value proposition
 2. Every script/copy MUST address the target outcome the customer wants
 3. Use the product psychology triggers to craft compelling angles
 4. STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")
 5. Reference the hooks KB and copy_formulas KB for proven frameworks
+6. GROW concepts need the STRONGEST hooks - they're for cold audiences
 
 ⚠️ AD COPY LIBRARY REQUIREMENT:
 Generate EXACTLY 5 variations for each copy type in the ad_copy_library:
-- 5 headlines (mix of TOFU, MOFU, BOFU stages, max 40 chars each)
+- 5 headlines (mix of grow, nurture, convert stages, max 40 chars each)
 - 5 short primary copy (~125 chars each)
 - 5 medium primary copy (~300 chars each)  
 - 5 long primary copy (500+ chars each)
@@ -452,11 +470,12 @@ This is a "${templateData?.name || strategyData.campaign_type}" campaign.
 - The "cta" field in scripts must contain the actual verbal CTA phrase the person will say
 
 CREATE:
-1. 3-5 TOFU concepts (awareness/interest) - focus on pain points and curiosity
-2. 2-4 MOFU concepts (consideration/trust) - focus on proof and transformation
-3. 2-3 BOFU concepts (conversion/action) - focus on the offer and urgency
+1. 3-5 GROW concepts (awareness/interest) - STRONGEST hooks using pain points + curiosity gaps
+2. 2-4 NURTURE concepts (consideration/trust) - proof, transformation stories, value-first
+3. 2-3 CONVERT concepts (conversion/action) - offer breakdown, urgency, identity shift
 
 Each creative concept must:
+- Have a POWERFUL opening hook that stops the scroll in the first 3 seconds
 - Directly relate to selling the specific offer
 - Reference specific psychology triggers from the offer's product_psychology
 - Include complete production instructions
@@ -464,7 +483,7 @@ Each creative concept must:
 - Explain why it works for this audience and offer
 - Be ready to film/produce immediately
 
-Return ONLY the JSON object with the complete creative system.`;
+Return ONLY the JSON object with the complete creative system. Use "grow", "nurture", "convert" as stage names.`;
 
     console.log('Generating creative with offer data:', offer.name || strategyData.offer_name);
 
@@ -509,9 +528,9 @@ Return ONLY the JSON object with the complete creative system.`;
     const creativeData = JSON.parse(content);
 
     console.log('Full-funnel creative generated successfully');
-    console.log('TOFU concepts:', creativeData.creative_mix?.tofu?.length || 0);
-    console.log('MOFU concepts:', creativeData.creative_mix?.mofu?.length || 0);
-    console.log('BOFU concepts:', creativeData.creative_mix?.bofu?.length || 0);
+    console.log('Grow concepts:', creativeData.creative_mix?.grow?.length || 0);
+    console.log('Nurture concepts:', creativeData.creative_mix?.nurture?.length || 0);
+    console.log('Convert concepts:', creativeData.creative_mix?.convert?.length || 0);
 
     return new Response(JSON.stringify(creativeData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
