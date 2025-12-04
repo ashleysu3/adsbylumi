@@ -10,8 +10,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { CreativeAssets } from "@/components/CreativeAssets";
-import { ProductionChecklist } from "@/components/ProductionChecklist";
-import { CreativeUploader } from "@/components/CreativeUploader";
 import { CreativeSidebar } from "@/components/CreativeSidebar";
 import { LumiLoader } from "@/components/LumiLoader";
 import { GeneratingModal } from "@/components/GeneratingModal";
@@ -237,18 +235,6 @@ export default function CampaignWorkspace() {
                     </Button>
                   </CardContent>
                 </Card>
-              </div>
-            ) : activeSection === 'uploads' ? (
-              <div className="h-full overflow-auto">
-                <div className="p-6">
-                  <CreativeUploader workspace={workspace} onUpdate={handleWorkspaceUpdate} />
-                </div>
-              </div>
-            ) : activeSection === 'checklist' ? (
-              <div className="h-full overflow-auto">
-                <div className="p-6">
-                  <ProductionChecklist workspace={workspace} onUpdate={handleWorkspaceUpdate} />
-                </div>
               </div>
             ) : (
               <CreativeAssets 
