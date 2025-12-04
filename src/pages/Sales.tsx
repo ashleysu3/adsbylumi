@@ -158,7 +158,6 @@ const Sales = () => {
     "Course creators",
     "Service providers",
     "Digital product creators",
-    "Influencers running their own ads",
     "Small business owners"
   ];
 
