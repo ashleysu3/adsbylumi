@@ -17,7 +17,7 @@ import { CursorGlow } from "@/components/animations/CursorTrail";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
-
+import lumiLogo from "@/assets/lumi-logo.png";
 interface StepData {
   emoji: string;
   title: string;
@@ -201,9 +201,9 @@ const Sales = () => {
       >
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <motion.img 
-            alt="Your Ad Assistant" 
+            alt="Lumi" 
             className="h-12" 
-            src="/lovable-uploads/your-ad-assistant-logo.png"
+            src={lumiLogo}
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400 }}
           />

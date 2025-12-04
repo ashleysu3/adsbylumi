@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
+import lumiLogo from "@/assets/lumi-logo.png";
 
 export default function Pricing() {
   const navigate = useNavigate();
@@ -85,8 +86,8 @@ export default function Pricing() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <img
-            src="/lovable-uploads/your-ad-assistant-logo.png"
-            alt="Your Ad Assistant"
+            src={lumiLogo}
+            alt="Lumi"
             className="h-12 cursor-pointer"
             onClick={() => navigate("/")}
           />
