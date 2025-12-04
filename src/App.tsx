@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { LumiProvider } from "@/contexts/LumiContext";
 import Index from "./pages/Index";
 import Sales from "./pages/Sales";
 import Auth from "./pages/Auth";
@@ -30,10 +31,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <SubscriptionProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
+        <LumiProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
             <Route path="/" element={<Sales />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/pricing" element={<Pricing />} />
@@ -51,10 +53,11 @@ const App = () => (
             <Route path="/admin/knowledge" element={<AdminKnowledge />} />
             <Route path="/admin/analytics" element={<AdminAnalytics />} />
             <Route path="/admin/templates" element={<AdminTemplates />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </LumiProvider>
       </SubscriptionProvider>
     </TooltipProvider>
   </QueryClientProvider>
