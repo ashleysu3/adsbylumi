@@ -153,7 +153,7 @@ export default function Planning() {
   }
   return <DashboardLayout>
       <CampaignFlowBreadcrumb currentStep="planning" />
-      <div className="space-y-8">
+      <div className="space-y-8 py-[2px]">
         <div className="space-y-2">
           <h2 className="text-3xl font-display tracking-tight">Lumi Strategy</h2>
           <p className="text-muted-foreground">Let's keep this simple: pick a campaign type and Lumi will guide you through the rest.</p>
