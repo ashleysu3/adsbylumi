@@ -95,6 +95,8 @@ interface PerformanceAnalysis {
     recommendation: string;
   };
   next_steps?: string[];
+  journey_stages?: string[];
+  kpi_benchmarks?: Record<string, { min: number; max: number; unit: string }>;
 }
 
 interface CampaignInsightDetailProps {
@@ -394,55 +396,79 @@ export function CampaignInsightDetail({
           </Card>
 
           {/* SECTION 4: Customer Journey Performance */}
-          <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Heart className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
-                Customer Journey Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {analysis?.journey_diagnosis ? (
-                <>
-                  <div className="p-4 rounded-xl bg-[hsl(var(--warm-white))] border border-[hsl(var(--fog-grey))]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="rounded-full bg-green-50 text-green-700 border-green-200">
-                        Grow
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">Attract new people and spark interest</span>
-                    </div>
-                    <p className="text-sm">{analysis.journey_diagnosis.grow || 'No data yet'}</p>
-                  </div>
+          {(() => {
+            // Determine which journey stages to show
+            const journeyStages = analysis?.journey_stages || ['grow', 'nurture', 'convert'];
+            const showGrow = journeyStages.includes('grow');
+            const showNurture = journeyStages.includes('nurture');
+            const showConvert = journeyStages.includes('convert');
+            
+            // Don't show section if no stages are relevant
+            if (!showGrow && !showNurture && !showConvert) return null;
+            
+            return (
+              <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Heart className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
+                    Customer Journey Performance
+                  </CardTitle>
+                  {journeyStages.length < 3 && (
+                    <CardDescription className="text-xs">
+                      Showing stages relevant to this campaign type
+                    </CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {analysis?.journey_diagnosis ? (
+                    <>
+                      {showGrow && (
+                        <div className="p-4 rounded-xl bg-[hsl(var(--warm-white))] border border-[hsl(var(--fog-grey))]">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="rounded-full bg-green-50 text-green-700 border-green-200">
+                              🌱 Grow
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">Attract new people and spark interest</span>
+                          </div>
+                          <p className="text-sm">{analysis.journey_diagnosis.grow || 'No data yet'}</p>
+                        </div>
+                      )}
 
-                  <div className="p-4 rounded-xl bg-[hsl(var(--warm-white))] border border-[hsl(var(--fog-grey))]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="rounded-full bg-amber-50 text-amber-700 border-amber-200">
-                        Nurture
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">Build trust and deepen understanding</span>
-                    </div>
-                    <p className="text-sm">{analysis.journey_diagnosis.nurture || 'No data yet'}</p>
-                  </div>
+                      {showNurture && (
+                        <div className="p-4 rounded-xl bg-[hsl(var(--warm-white))] border border-[hsl(var(--fog-grey))]">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="rounded-full bg-amber-50 text-amber-700 border-amber-200">
+                              💜 Nurture
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">Build trust and deepen understanding</span>
+                          </div>
+                          <p className="text-sm">{analysis.journey_diagnosis.nurture || 'No data yet'}</p>
+                        </div>
+                      )}
 
-                  <div className="p-4 rounded-xl bg-[hsl(var(--warm-white))] border border-[hsl(var(--fog-grey))]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="rounded-full bg-blue-50 text-blue-700 border-blue-200">
-                        Convert
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">Guide ready people to take action</span>
+                      {showConvert && (
+                        <div className="p-4 rounded-xl bg-[hsl(var(--warm-white))] border border-[hsl(var(--fog-grey))]">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="rounded-full bg-blue-50 text-blue-700 border-blue-200">
+                              💰 Convert
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">Guide ready people to take action</span>
+                          </div>
+                          <p className="text-sm">{analysis.journey_diagnosis.convert || 'No data yet'}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-muted/30 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Lumi's analyzing your customer journey — check back soon!
+                      </p>
                     </div>
-                    <p className="text-sm">{analysis.journey_diagnosis.convert || 'No data yet'}</p>
-                  </div>
-                </>
-              ) : (
-                <div className="p-4 rounded-xl bg-muted/30 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Lumi's analyzing your customer journey — check back soon!
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* SECTION 5: Creative Warmth & Fatigue */}
           <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">

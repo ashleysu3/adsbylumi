@@ -19,6 +19,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { LayoutTemplate, Plus, Edit, Trash2, Save, X, Zap, Target, DollarSign, Calendar, Link2, Layout, Users } from "lucide-react";
 import { toast } from "sonner";
 
+interface KPIBenchmark {
+  min: number;
+  max: number;
+  unit: string;
+}
+
 interface CampaignTemplate {
   id: string;
   name: string;
@@ -38,6 +44,8 @@ interface CampaignTemplate {
   created_at: string;
   purpose?: string;
   kpi_priorities?: string[];
+  journey_stages?: string[];
+  kpi_benchmarks?: Record<string, KPIBenchmark>;
 }
 
 const KPI_OPTIONS = [
@@ -129,6 +137,8 @@ export default function AdminTemplates() {
   const [formPrepopulated, setFormPrepopulated] = useState<PrepopulatedFields>({});
   const [formPurpose, setFormPurpose] = useState("");
   const [formKpiPriorities, setFormKpiPriorities] = useState<string[]>([]);
+  const [formJourneyStages, setFormJourneyStages] = useState<string[]>(["grow", "nurture", "convert"]);
+  const [formKpiBenchmarks, setFormKpiBenchmarks] = useState<Record<string, KPIBenchmark>>({});
 
   useEffect(() => {
     fetchTemplates();
@@ -145,7 +155,9 @@ export default function AdminTemplates() {
       // Cast data to our interface since prepopulated_fields is typed as Json in Supabase
       setTemplates((data || []).map(t => ({
         ...t,
-        prepopulated_fields: (t.prepopulated_fields || {}) as PrepopulatedFields
+        prepopulated_fields: (t.prepopulated_fields || {}) as PrepopulatedFields,
+        journey_stages: (t.journey_stages || ["grow", "nurture", "convert"]) as unknown as string[],
+        kpi_benchmarks: (t.kpi_benchmarks || {}) as unknown as Record<string, KPIBenchmark>,
       })) as CampaignTemplate[]);
     } catch (error: any) {
       toast.error("Failed to load templates");
@@ -200,6 +212,8 @@ export default function AdminTemplates() {
         prepopulated_fields: formPrepopulated as Json,
         purpose: formPurpose || null,
         kpi_priorities: formKpiPriorities as Json,
+        journey_stages: formJourneyStages as unknown as Json,
+        kpi_benchmarks: formKpiBenchmarks as unknown as Json,
       };
 
       if (editingTemplate) {
@@ -245,6 +259,8 @@ export default function AdminTemplates() {
     setFormPrepopulated(template.prepopulated_fields || {});
     setFormPurpose(template.purpose || "");
     setFormKpiPriorities(template.kpi_priorities || []);
+    setFormJourneyStages(template.journey_stages || ["grow", "nurture", "convert"]);
+    setFormKpiBenchmarks(template.kpi_benchmarks || {});
     setDialogOpen(true);
   };
 
@@ -299,6 +315,43 @@ export default function AdminTemplates() {
     setFormPrepopulated({});
     setFormPurpose("");
     setFormKpiPriorities([]);
+    setFormJourneyStages(["grow", "nurture", "convert"]);
+    setFormKpiBenchmarks({});
+  };
+
+  const toggleJourneyStage = (stage: string) => {
+    setFormJourneyStages(prev => {
+      if (prev.includes(stage)) {
+        return prev.filter(s => s !== stage);
+      }
+      return [...prev, stage];
+    });
+  };
+
+  const updateKpiBenchmark = (kpi: string, field: keyof KPIBenchmark, value: number | string) => {
+    setFormKpiBenchmarks(prev => ({
+      ...prev,
+      [kpi]: {
+        ...prev[kpi],
+        [field]: field === 'unit' ? value : Number(value),
+      }
+    }));
+  };
+
+  const getDefaultBenchmark = (kpi: string): KPIBenchmark => {
+    const defaults: Record<string, KPIBenchmark> = {
+      cpc: { min: 0.15, max: 0.50, unit: '$' },
+      ctr: { min: 1.5, max: 4.0, unit: '%' },
+      cpm: { min: 5, max: 15, unit: '$' },
+      cpl: { min: 5, max: 35, unit: '$' },
+      cpp: { min: 10, max: 50, unit: '$' },
+      roas: { min: 2.0, max: 5.0, unit: 'x' },
+      frequency: { min: 1, max: 3, unit: '' },
+      link_clicks: { min: 100, max: 1000, unit: '' },
+      video_views: { min: 1000, max: 10000, unit: '' },
+      thruplay: { min: 0.02, max: 0.08, unit: '$' },
+    };
+    return defaults[kpi] || { min: 0, max: 100, unit: '' };
   };
 
   const toggleKpiPriority = (kpi: string) => {
@@ -517,6 +570,65 @@ EVALUATION PRIORITY:
                       </p>
                     </div>
 
+                    {/* Journey Stages Selection */}
+                    <div className="space-y-3">
+                      <Label>Customer Journey Stages to Evaluate</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Select which stages of the customer journey are relevant for this campaign type.
+                        Only selected stages will be shown in performance analysis.
+                      </p>
+                      <div className="flex flex-wrap gap-3">
+                        <div 
+                          onClick={() => toggleJourneyStage('grow')}
+                          className={`cursor-pointer p-3 rounded-lg border-2 transition-all ${
+                            formJourneyStages.includes('grow') 
+                              ? 'border-green-500 bg-green-50' 
+                              : 'border-muted hover:border-green-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">🌱</span>
+                            <div>
+                              <p className="font-medium text-sm">Grow</p>
+                              <p className="text-xs text-muted-foreground">Awareness & reach</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div 
+                          onClick={() => toggleJourneyStage('nurture')}
+                          className={`cursor-pointer p-3 rounded-lg border-2 transition-all ${
+                            formJourneyStages.includes('nurture') 
+                              ? 'border-amber-500 bg-amber-50' 
+                              : 'border-muted hover:border-amber-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">💜</span>
+                            <div>
+                              <p className="font-medium text-sm">Nurture</p>
+                              <p className="text-xs text-muted-foreground">Engagement & trust</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div 
+                          onClick={() => toggleJourneyStage('convert')}
+                          className={`cursor-pointer p-3 rounded-lg border-2 transition-all ${
+                            formJourneyStages.includes('convert') 
+                              ? 'border-blue-500 bg-blue-50' 
+                              : 'border-muted hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">💰</span>
+                            <div>
+                              <p className="font-medium text-sm">Convert</p>
+                              <p className="text-xs text-muted-foreground">Sales & leads</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <Label>Priority KPIs (select up to 3, in order of importance)</Label>
                       <div className="mt-2 space-y-2">
@@ -584,6 +696,66 @@ EVALUATION PRIORITY:
                         </p>
                       </div>
                     </div>
+
+                    {/* KPI Benchmarks Configuration */}
+                    {formKpiPriorities.length > 0 && (
+                      <div className="space-y-3">
+                        <Label>KPI Benchmarks (optional)</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Set custom benchmark ranges for each priority KPI. Leave empty to use defaults.
+                        </p>
+                        <div className="space-y-3">
+                          {formKpiPriorities.map((kpi) => {
+                            const kpiOption = KPI_OPTIONS.find(k => k.value === kpi);
+                            const benchmark = formKpiBenchmarks[kpi] || getDefaultBenchmark(kpi);
+                            return (
+                              <div key={kpi} className="p-3 rounded-lg border bg-muted/30">
+                                <p className="text-sm font-medium mb-2">{kpiOption?.label || kpi}</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <Label className="text-xs">Min (healthy)</Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={benchmark.min}
+                                      onChange={(e) => updateKpiBenchmark(kpi, 'min', e.target.value)}
+                                      className="h-8"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">Max (attention)</Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={benchmark.max}
+                                      onChange={(e) => updateKpiBenchmark(kpi, 'max', e.target.value)}
+                                      className="h-8"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs">Unit</Label>
+                                    <Select 
+                                      value={benchmark.unit} 
+                                      onValueChange={(v) => updateKpiBenchmark(kpi, 'unit', v)}
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="$">$ (currency)</SelectItem>
+                                        <SelectItem value="%">% (percent)</SelectItem>
+                                        <SelectItem value="x">x (multiplier)</SelectItem>
+                                        <SelectItem value="">(none)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <Separator />

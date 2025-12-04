@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     if (workspace.template_id) {
       const { data: templateData, error: templateError } = await supabase
         .from('campaign_templates')
-        .select('name, objective, purpose, kpi_priorities')
+        .select('name, objective, purpose, kpi_priorities, journey_stages, kpi_benchmarks')
         .eq('id', workspace.template_id)
         .single();
       
@@ -71,6 +71,29 @@ Deno.serve(async (req) => {
       return acc;
     }, {});
 
+    // Build journey stages context
+    const journeyStages = template?.journey_stages || ['grow', 'nurture', 'convert'];
+    const journeyStagesContext = `
+RELEVANT CUSTOMER JOURNEY STAGES FOR THIS CAMPAIGN:
+${journeyStages.includes('grow') ? '- GROW (Awareness): Evaluate reach, impressions, CTR, CPC' : '- GROW: Not relevant for this campaign - skip evaluation'}
+${journeyStages.includes('nurture') ? '- NURTURE (Engagement): Evaluate video views, engagement, warm audience building' : '- NURTURE: Not relevant for this campaign - skip evaluation'}
+${journeyStages.includes('convert') ? '- CONVERT (Sales/Leads): Evaluate CPL, CPP, ROAS, conversions' : '- CONVERT: Not relevant for this campaign - skip evaluation'}
+
+IMPORTANT: Only include journey stages marked as relevant in your journey_diagnosis output.
+For stages not relevant, set the value to "Not applicable for this campaign type."
+`;
+
+    // Build KPI benchmarks context
+    const kpiBenchmarks = template?.kpi_benchmarks || {};
+    const benchmarksContext = Object.keys(kpiBenchmarks).length > 0 ? `
+CUSTOM BENCHMARKS FOR THIS CAMPAIGN TYPE:
+${Object.entries(kpiBenchmarks).map(([kpi, bench]: [string, any]) => 
+  `- ${kpi.toUpperCase()}: ${bench.unit}${bench.min} - ${bench.unit}${bench.max} (healthy range)`
+).join('\n')}
+
+Use these custom benchmarks instead of default values when evaluating the KPIs above.
+` : '';
+
     // Build campaign context section with template purpose
     const campaignTypeContext = template ? `
 CAMPAIGN TYPE & PURPOSE:
@@ -80,6 +103,8 @@ ${template.purpose ? `
 CAMPAIGN PURPOSE (USE THIS TO GUIDE YOUR ANALYSIS):
 ${template.purpose}
 ` : ''}
+${journeyStagesContext}
+${benchmarksContext}
 ${template.kpi_priorities && template.kpi_priorities.length > 0 ? `
 PRIORITY KPIs (evaluate these FIRST and weight most heavily):
 ${template.kpi_priorities.map((kpi: string, idx: number) => `  ${idx + 1}. ${kpi.toUpperCase()}`).join('\n')}
@@ -291,6 +316,8 @@ Provide a comprehensive analysis following the JSON structure specified.`;
     analysis.campaign_type = template?.name || null;
     analysis.campaign_objective = template?.objective || null;
     analysis.priority_kpis = template?.kpi_priorities || [];
+    analysis.journey_stages = template?.journey_stages || ['grow', 'nurture', 'convert'];
+    analysis.kpi_benchmarks = template?.kpi_benchmarks || {};
 
     // Save to database
     const currentReports = workspace.performance_reports || [];
