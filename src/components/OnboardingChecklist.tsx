@@ -44,9 +44,9 @@ export function OnboardingChecklist({ brand, offers, onEditBrand, onDismiss }: O
     },
     {
       id: "audience-psychology",
-      title: "Generate Audience Psychology",
-      description: "AI-powered insights about your ideal customers",
-      completed: brand?.psychology_status === "complete",
+      title: "Approve Audience Psychology",
+      description: "Review and approve AI-generated insights about your ideal customers",
+      completed: brand?.psychology_status === "approved",
       action: () => {
         const section = document.querySelector('[data-section="audience-psychology"]');
         section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
