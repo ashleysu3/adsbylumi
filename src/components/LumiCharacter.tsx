@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 
 interface LumiCharacterProps {
-  size?: "xs" | "sm" | "md" | "lg";
-  state?: "idle" | "talking" | "thinking";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  state?: "idle" | "talking" | "thinking" | "loading";
   glow?: boolean;
   className?: string;
 }
@@ -13,19 +13,21 @@ export function LumiCharacter({ size = "md", state = "idle", glow = false, class
     sm: "w-8 h-8",
     md: "w-12 h-12",
     lg: "w-16 h-16",
+    xl: "w-24 h-24",
   };
 
   const animationClass = {
     idle: "animate-bounce-gentle",
     talking: "animate-pulse",
     thinking: "animate-spin-slow",
+    loading: "animate-pulse-glow",
   };
 
   return (
     <div className={cn("relative", sizeClasses[size], animationClass[state], className)}>
       {/* Glow effect behind the bulb */}
       {glow && (
-        <div className="absolute inset-0 rounded-full bg-amber-400/40 blur-md animate-pulse" />
+        <div className="absolute inset-0 rounded-full bg-lumi-yellow/40 blur-md animate-pulse" />
       )}
       <svg
         viewBox="0 0 64 64"
@@ -36,13 +38,13 @@ export function LumiCharacter({ size = "md", state = "idle", glow = false, class
         {/* Glow effect */}
         <defs>
           <radialGradient id="bulbGlow" cx="50%" cy="30%" r="60%" fx="50%" fy="30%">
-            <stop offset="0%" stopColor="#FEF3C7" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
+            <stop offset="0%" stopColor="#F4C960" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#E8772F" stopOpacity="0" />
           </radialGradient>
           <linearGradient id="bulbGradient" x1="50%" y1="0%" x2="50%" y2="100%">
-            <stop offset="0%" stopColor="#FCD34D" />
-            <stop offset="50%" stopColor="#FBBF24" />
-            <stop offset="100%" stopColor="#F59E0B" />
+            <stop offset="0%" stopColor="#F4C960" />
+            <stop offset="50%" stopColor="#EEA047" />
+            <stop offset="100%" stopColor="#E8772F" />
           </linearGradient>
           <linearGradient id="baseGradient" x1="50%" y1="0%" x2="50%" y2="100%">
             <stop offset="0%" stopColor="#9CA3AF" />
@@ -64,7 +66,7 @@ export function LumiCharacter({ size = "md", state = "idle", glow = false, class
         <path
           d="M32 6C21.5 6 13 14.5 13 25C13 32 17 38 23 42V46C23 47.5 24.5 49 26 49H38C39.5 49 41 47.5 41 46V42C47 38 51 32 51 25C51 14.5 42.5 6 32 6Z"
           fill="url(#bulbGradient)"
-          stroke="#D97706"
+          stroke="#EB8A3A"
           strokeWidth="1.5"
           filter={glow ? "url(#glowFilter)" : undefined}
         />
@@ -90,9 +92,9 @@ export function LumiCharacter({ size = "md", state = "idle", glow = false, class
           fill="none"
         />
 
-        {/* Rosy cheeks */}
-        <circle cx="21" cy="32" r="3" fill="#FDA4AF" fillOpacity="0.5" />
-        <circle cx="43" cy="32" r="3" fill="#FDA4AF" fillOpacity="0.5" />
+        {/* Rosy cheeks - using Lumi orange tones */}
+        <circle cx="21" cy="32" r="3" fill="#EEA047" fillOpacity="0.5" />
+        <circle cx="43" cy="32" r="3" fill="#EEA047" fillOpacity="0.5" />
 
         {/* Screw base */}
         <rect x="24" y="49" width="16" height="3" fill="url(#baseGradient)" rx="1" />
@@ -108,8 +110,8 @@ export function LumiCharacter({ size = "md", state = "idle", glow = false, class
       {/* Sparkle effects when talking */}
       {state === "talking" && (
         <>
-          <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-300 rounded-full animate-ping" />
-          <div className="absolute -top-2 left-0 w-1.5 h-1.5 bg-yellow-200 rounded-full animate-ping delay-100" />
+          <div className="absolute -top-1 -right-1 w-2 h-2 bg-lumi-yellow rounded-full animate-ping" />
+          <div className="absolute -top-2 left-0 w-1.5 h-1.5 bg-lumi-orange-3 rounded-full animate-ping delay-100" />
         </>
       )}
     </div>
