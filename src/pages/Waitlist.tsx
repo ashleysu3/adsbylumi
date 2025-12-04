@@ -43,39 +43,6 @@ const Waitlist = () => {
     }
   };
 
-  const WaitlistForm = ({ className = "" }: { className?: string }) => (
-    <form onSubmit={handleSubmit} className={`flex flex-col sm:flex-row gap-3 w-full max-w-md ${className}`}>
-      <Input
-        type="email"
-        placeholder="your@email.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="flex-1 h-12 rounded-2xl border-border bg-card px-4 text-base"
-        disabled={isSubmitted}
-      />
-      <Button 
-        type="submit" 
-        size="lg" 
-        className="h-12 px-6 rounded-2xl whitespace-nowrap"
-        disabled={isSubmitting || isSubmitted}
-      >
-        {isSubmitting ? (
-          "Saving your spot..."
-        ) : isSubmitted ? (
-          <>
-            <CheckCircle className="w-4 h-4 mr-2" />
-            You're in!
-          </>
-        ) : (
-          <>
-            Join the Waitlist
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </>
-        )}
-      </Button>
-    </form>
-  );
-
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -128,7 +95,36 @@ const Waitlist = () => {
             </p>
 
             <div className="flex flex-col items-center gap-4">
-              <WaitlistForm />
+              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1 h-12 rounded-2xl border-border bg-card px-4 text-base"
+                  disabled={isSubmitted}
+                />
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  className="h-12 px-6 rounded-2xl whitespace-nowrap"
+                  disabled={isSubmitting || isSubmitted}
+                >
+                  {isSubmitting ? (
+                    "Saving your spot..."
+                  ) : isSubmitted ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      You're in!
+                    </>
+                  ) : (
+                    <>
+                      Join the Waitlist
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </form>
               <p className="text-sm text-muted-foreground">
                 Early access begins <span className="font-semibold text-primary">January 8th</span>. Only the waitlist gets invites.
               </p>
@@ -226,7 +222,36 @@ const Waitlist = () => {
               <br />
               <span className="text-primary">you need to be on the waitlist.</span>
             </p>
-            <WaitlistForm className="mx-auto" />
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 w-full max-w-md mx-auto">
+              <Input
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-1 h-12 rounded-2xl border-border bg-card px-4 text-base"
+                disabled={isSubmitted}
+              />
+              <Button 
+                type="submit" 
+                size="lg" 
+                className="h-12 px-6 rounded-2xl whitespace-nowrap"
+                disabled={isSubmitting || isSubmitted}
+              >
+                {isSubmitting ? (
+                  "Saving your spot..."
+                ) : isSubmitted ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    You're in!
+                  </>
+                ) : (
+                  <>
+                    Join the Waitlist
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </form>
           </ScrollReveal>
         </div>
       </section>
@@ -429,7 +454,36 @@ const Waitlist = () => {
             </p>
 
             <div className="flex flex-col items-center gap-4">
-              <WaitlistForm />
+              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1 h-12 rounded-2xl border-border bg-card px-4 text-base"
+                  disabled={isSubmitted}
+                />
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  className="h-12 px-6 rounded-2xl whitespace-nowrap"
+                  disabled={isSubmitting || isSubmitted}
+                >
+                  {isSubmitting ? (
+                    "Saving your spot..."
+                  ) : isSubmitted ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      You're in!
+                    </>
+                  ) : (
+                    <>
+                      Join the Waitlist
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </form>
               <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
                 See How Lumi Works
                 <ArrowRight className="w-4 h-4 ml-2" />
