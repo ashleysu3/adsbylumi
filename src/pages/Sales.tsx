@@ -601,7 +601,7 @@ const Sales = () => {
             >
               <Badge variant="secondary" className="bg-primary/10 text-primary mb-6">
                 <Sparkles className="w-3 h-3 mr-1" />
-                Limited Beta
+                Coming January 2026
               </Badge>
               
               <h2 className="font-display text-4xl md:text-5xl mb-6">
