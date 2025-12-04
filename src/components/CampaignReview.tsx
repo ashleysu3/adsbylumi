@@ -287,7 +287,10 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                         </div>
                       </div>
                       <Badge variant="secondary" className="text-xs">
-                        {item.concept?.stage || 'TOFU'}
+                        {item.concept?.stage === 'tofu' ? 'Grow' : 
+                         item.concept?.stage === 'mofu' ? 'Nurture' : 
+                         item.concept?.stage === 'bofu' ? 'Convert' : 
+                         item.concept?.stage || 'Grow'}
                       </Badge>
                     </div>
                   );

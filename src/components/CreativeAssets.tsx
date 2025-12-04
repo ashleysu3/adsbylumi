@@ -43,15 +43,33 @@ const formatIcons = {
 };
 
 const stageColors = {
+  grow: "bg-blue-500/10 border-blue-500/30",
+  nurture: "bg-purple-500/10 border-purple-500/30",
+  convert: "bg-green-500/10 border-green-500/30",
+  // Legacy support
   tofu: "bg-blue-500/10 border-blue-500/30",
   mofu: "bg-purple-500/10 border-purple-500/30",
   bofu: "bg-green-500/10 border-green-500/30",
 };
 
 const stageBadgeColors = {
+  grow: "bg-blue-500/20 text-blue-700 border-blue-500/30 dark:text-blue-400",
+  nurture: "bg-purple-500/20 text-purple-700 border-purple-500/30 dark:text-purple-400",
+  convert: "bg-green-500/20 text-green-700 border-green-500/30 dark:text-green-400",
+  // Legacy support
   tofu: "bg-blue-500/20 text-blue-700 border-blue-500/30 dark:text-blue-400",
   mofu: "bg-purple-500/20 text-purple-700 border-purple-500/30 dark:text-purple-400",
   bofu: "bg-green-500/20 text-green-700 border-green-500/30 dark:text-green-400",
+};
+
+// Map legacy stage names to new names for display
+const stageDisplayNames: Record<string, string> = {
+  grow: "Grow",
+  nurture: "Nurture", 
+  convert: "Convert",
+  tofu: "Grow",
+  mofu: "Nurture",
+  bofu: "Convert",
 };
 
 export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat, onGenerateCreative, isGeneratingParent }: CreativeAssetsProps) {
@@ -116,12 +134,16 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
   };
 
   const getMetaBestPracticeReminder = (stage: string) => {
-    const reminders = {
+    const reminders: Record<string, string> = {
+      grow: "authentic, conversational hooks with pattern interrupts and curiosity gaps",
+      nurture: "trust-building through social proof, testimonials, and educational value",
+      convert: "clear CTAs with urgency and specific outcomes, addressing final objections",
+      // Legacy support
       tofu: "authentic, conversational hooks with pattern interrupts and curiosity gaps",
       mofu: "trust-building through social proof, testimonials, and educational value",
       bofu: "clear CTAs with urgency and specific outcomes, addressing final objections"
     };
-    return reminders[stage as keyof typeof reminders] || "authentic, engaging content";
+    return reminders[stage] || "authentic, engaging content";
   };
 
   const handleHateIt = async (
@@ -405,15 +427,16 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     );
   }
 
-  const creativeMix = creative.creative_mix || {};
-  const tofuCreative = creativeMix.tofu || [];
-  const mofuCreative = creativeMix.mofu || [];
-  const bofuCreative = creativeMix.bofu || [];
+  const creativeMix = creative.creative_mix || creative.customer_journey || {};
+  // Support both old (tofu/mofu/bofu) and new (grow/nurture/convert) structures
+  const growCreative = creativeMix.grow || creativeMix.tofu || [];
+  const nurtureCreative = creativeMix.nurture || creativeMix.mofu || [];
+  const convertCreative = creativeMix.convert || creativeMix.bofu || [];
 
   // Apply filters
-  let filteredTofu = tofuCreative;
-  let filteredMofu = mofuCreative;
-  let filteredBofu = bofuCreative;
+  let filteredGrow = growCreative;
+  let filteredNurture = nurtureCreative;
+  let filteredConvert = convertCreative;
   
   if (filterFormat) {
     const formatFilter = (c: any) => {
@@ -423,16 +446,23 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
       if (filterFormat === 'static') return c.format === 'static';
       return true;
     };
-    filteredTofu = filteredTofu.filter(formatFilter);
-    filteredMofu = filteredMofu.filter(formatFilter);
-    filteredBofu = filteredBofu.filter(formatFilter);
+    filteredGrow = filteredGrow.filter(formatFilter);
+    filteredNurture = filteredNurture.filter(formatFilter);
+    filteredConvert = filteredConvert.filter(formatFilter);
   }
   
   const allStages = [
-    { id: "tofu", label: "TOFU Creative", subtitle: "Awareness & Interest", items: filteredTofu },
-    { id: "mofu", label: "MOFU Creative", subtitle: "Consideration & Trust", items: filteredMofu },
-    { id: "bofu", label: "BOFU Creative", subtitle: "Decision & Action", items: filteredBofu },
-  ].filter(stage => !filterStage || stage.id === filterStage);
+    { id: "grow", label: "Grow Creative", subtitle: "Reach New People", items: filteredGrow },
+    { id: "nurture", label: "Nurture Creative", subtitle: "Build Trust", items: filteredNurture },
+    { id: "convert", label: "Convert Creative", subtitle: "Inspire Action", items: filteredConvert },
+  ].filter(stage => {
+    if (!filterStage) return true;
+    // Support both old and new filter values
+    if (filterStage === 'tofu') return stage.id === 'grow';
+    if (filterStage === 'mofu') return stage.id === 'nurture';
+    if (filterStage === 'bofu') return stage.id === 'convert';
+    return stage.id === filterStage;
+  });
 
   const renderConcept = (concept: any, index: number, stage: string) => {
     const conceptId = `${stage}-${index}`;
@@ -477,7 +507,7 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
                   <h4 className="font-semibold text-base leading-tight mb-2">{concept.title}</h4>
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline" className={stageBadgeColors[stage as keyof typeof stageBadgeColors]}>
-                      {stage.toUpperCase()}
+                      {stageDisplayNames[stage] || stage}
                     </Badge>
                     <Badge variant="secondary" className="capitalize">
                       <FormatIcon className="h-3 w-3 mr-1" />

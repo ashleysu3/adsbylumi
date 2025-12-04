@@ -79,7 +79,13 @@ interface PerformanceAnalysis {
     cpl_cpp: KPIStatus;
     roas: KPIStatus;
   };
-  funnel_diagnosis: {
+  journey_diagnosis: {
+    grow: string;
+    nurture: string;
+    convert: string;
+  };
+  // Legacy support
+  funnel_diagnosis?: {
     tofu: string;
     mofu: string;
     bofu: string;
@@ -864,43 +870,43 @@ export default function Data() {
               </CardContent>
             </Card>
 
-            {/* Funnel Diagnosis */}
+            {/* Customer Journey Diagnosis */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Target className="h-5 w-5" />
-                  Funnel Health Diagnosis
+                  Customer Journey Diagnosis
                 </CardTitle>
-                <CardDescription>Performance analysis by funnel stage</CardDescription>
+                <CardDescription>Performance analysis by journey stage</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline">TOFU - Top of Funnel</Badge>
-                      <span className="text-xs text-muted-foreground">Awareness Stage</span>
+                      <Badge variant="outline">Grow</Badge>
+                      <span className="text-xs text-muted-foreground">Attract new people and spark interest</span>
                     </div>
-                    <p className="text-sm pl-4 border-l-2 border-primary/30">{analysis.funnel_diagnosis.tofu}</p>
+                    <p className="text-sm pl-4 border-l-2 border-primary/30">{analysis.journey_diagnosis?.grow || analysis.funnel_diagnosis?.tofu}</p>
                   </div>
 
                   <Separator />
 
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline">MOFU - Middle of Funnel</Badge>
-                      <span className="text-xs text-muted-foreground">Consideration Stage</span>
+                      <Badge variant="outline">Nurture</Badge>
+                      <span className="text-xs text-muted-foreground">Build trust and deepen understanding</span>
                     </div>
-                    <p className="text-sm pl-4 border-l-2 border-primary/30">{analysis.funnel_diagnosis.mofu}</p>
+                    <p className="text-sm pl-4 border-l-2 border-primary/30">{analysis.journey_diagnosis?.nurture || analysis.funnel_diagnosis?.mofu}</p>
                   </div>
 
                   <Separator />
 
                   <div>
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline">BOFU - Bottom of Funnel</Badge>
-                      <span className="text-xs text-muted-foreground">Conversion Stage</span>
+                      <Badge variant="outline">Convert</Badge>
+                      <span className="text-xs text-muted-foreground">Guide ready people to take action</span>
                     </div>
-                    <p className="text-sm pl-4 border-l-2 border-primary/30">{analysis.funnel_diagnosis.bofu}</p>
+                    <p className="text-sm pl-4 border-l-2 border-primary/30">{analysis.journey_diagnosis?.convert || analysis.funnel_diagnosis?.bofu}</p>
                   </div>
                 </div>
               </CardContent>

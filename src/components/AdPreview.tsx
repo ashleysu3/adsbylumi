@@ -55,7 +55,10 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdP
             {concept.title || 'Ad Preview'}
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
-            {concept.stage || 'TOFU'}
+            {concept.stage === 'tofu' ? 'Grow' : 
+             concept.stage === 'mofu' ? 'Nurture' : 
+             concept.stage === 'bofu' ? 'Convert' : 
+             concept.stage || 'Grow'}
           </Badge>
         </div>
       </CardHeader>

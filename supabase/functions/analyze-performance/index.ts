@@ -125,11 +125,11 @@ Analyze the performance data and deliver a comprehensive, beginner-friendly repo
    - For KPIs NOT in the priority list, use status "tracking_only" or "not_applicable"
    - Explain WHY the metric matters (or doesn't matter) for THIS specific campaign type
 
-2. **Funnel Diagnosis**: Identify issues at each stage:
-   - TOFU (Top of Funnel): CTR, reach, creative variety
-   - MOFU (Middle): Click-to-conversion, landing page performance
-   - BOFU (Bottom): Warm audience conversion, offer clarity
-   - Focus on the funnel stages that are RELEVANT to this campaign type
+2. **Customer Journey Diagnosis**: Identify issues at each stage:
+   - GROW (Attract new people): CTR, reach, creative variety
+   - NURTURE (Build trust): Click-to-conversion, landing page performance
+   - CONVERT (Guide to action): Warm audience conversion, offer clarity
+   - Focus on the journey stages that are RELEVANT to this campaign type
 
 3. **Creative Troubleshooting**: Diagnose creative issues based on the data. Link low CTR to hook problems, high CPC to clarity issues, high frequency to fatigue, etc. Provide specific creative recommendations.
 
@@ -163,10 +163,10 @@ Return ONLY a valid JSON object with this exact structure:
     "cpl_cpp": { "value": number, "status": string, "benchmark": string, "reason": string },
     "roas": { "value": number|null, "status": string, "benchmark": string, "reason": string }
   },
-  "funnel_diagnosis": {
-    "tofu": string,
-    "mofu": string,
-    "bofu": string
+  "journey_diagnosis": {
+    "grow": string,
+    "nurture": string,
+    "convert": string
   },
   "creative_diagnosis": {
     "problem": string,

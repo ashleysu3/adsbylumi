@@ -30,23 +30,23 @@ export function ProductionPanel({ workspace, onFinalize, onUpdate }: ProductionP
   const lovedConcepts = workspace.loved_concepts || [];
   const uploads = workspace.user_uploaded_assets || [];
 
-  // Aggregate all concepts
+  // Aggregate all concepts - support both old and new structure
   const allConcepts = [
-    ...(creativeMix.tofu || []),
-    ...(creativeMix.mofu || []),
-    ...(creativeMix.bofu || [])
+    ...(creativeMix.grow || creativeMix.tofu || []),
+    ...(creativeMix.nurture || creativeMix.mofu || []),
+    ...(creativeMix.convert || creativeMix.bofu || [])
   ];
 
-  // Count loved by stage
+  // Count loved by stage - support both structures
   const lovedByStage = {
-    tofu: lovedConcepts.filter((id: string) => 
-      creativeMix.tofu?.some((c: any) => c.id === id)
+    grow: lovedConcepts.filter((id: string) => 
+      (creativeMix.grow || creativeMix.tofu)?.some((c: any) => c.id === id)
     ).length,
-    mofu: lovedConcepts.filter((id: string) => 
-      creativeMix.mofu?.some((c: any) => c.id === id)
+    nurture: lovedConcepts.filter((id: string) => 
+      (creativeMix.nurture || creativeMix.mofu)?.some((c: any) => c.id === id)
     ).length,
-    bofu: lovedConcepts.filter((id: string) => 
-      creativeMix.bofu?.some((c: any) => c.id === id)
+    convert: lovedConcepts.filter((id: string) => 
+      (creativeMix.convert || creativeMix.bofu)?.some((c: any) => c.id === id)
     ).length,
   };
 
@@ -106,24 +106,24 @@ export function ProductionPanel({ workspace, onFinalize, onUpdate }: ProductionP
           
           {lovedConcepts.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">By Funnel Stage:</p>
+              <p className="text-sm font-medium text-muted-foreground">By Journey Stage:</p>
               <div className="flex flex-wrap gap-2">
-                {lovedByStage.tofu > 0 && (
+                {lovedByStage.grow > 0 && (
                   <Badge variant="secondary" className="gap-1">
                     <Target className="h-3 w-3" />
-                    TOFU: {lovedByStage.tofu}
+                    Grow: {lovedByStage.grow}
                   </Badge>
                 )}
-                {lovedByStage.mofu > 0 && (
+                {lovedByStage.nurture > 0 && (
                   <Badge variant="secondary" className="gap-1">
                     <Zap className="h-3 w-3" />
-                    MOFU: {lovedByStage.mofu}
+                    Nurture: {lovedByStage.nurture}
                   </Badge>
                 )}
-                {lovedByStage.bofu > 0 && (
+                {lovedByStage.convert > 0 && (
                   <Badge variant="secondary" className="gap-1">
                     <TrendingUp className="h-3 w-3" />
-                    BOFU: {lovedByStage.bofu}
+                    Convert: {lovedByStage.convert}
                   </Badge>
                 )}
               </div>
