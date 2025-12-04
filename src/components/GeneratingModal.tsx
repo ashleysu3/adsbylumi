@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Lightbulb, Wand2, Brain, PenTool, Target } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { LumiCharacter } from "./LumiCharacter";
 
 interface GeneratingModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ const icons = [Brain, Lightbulb, PenTool, Wand2, Target, Sparkles];
 
 export function GeneratingModal({ 
   isOpen, 
-  title = "Generating Creative Assets",
+  title = "Lumi is thinking...",
   steps = defaultSteps 
 }: GeneratingModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -66,51 +67,40 @@ export function GeneratingModal({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <div className="flex flex-col items-center py-8 px-4">
-          {/* Animated Icon Container */}
+          {/* Lumi Character with glow animation */}
           <div className="relative mb-8">
-            {/* Outer rotating ring */}
+            {/* Outer glow ring */}
             <motion.div
-              className="absolute inset-0 rounded-full border-2 border-primary/20"
+              className="absolute inset-0 rounded-full bg-glow/30 blur-xl"
+              style={{ width: 140, height: 140, margin: -20 }}
+              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+            
+            {/* Rotating ring */}
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-primary/30"
               style={{ width: 120, height: 120, margin: -10 }}
               animate={{ rotate: 360 }}
               transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
             />
             
-            {/* Inner pulsing ring */}
+            {/* Lumi character */}
             <motion.div
-              className="absolute inset-0 rounded-full bg-primary/10"
-              style={{ width: 100, height: 100 }}
-              animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.8, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            />
-            
-            {/* Icon container */}
-            <motion.div
-              className="relative flex items-center justify-center w-[100px] h-[100px] rounded-full bg-gradient-to-br from-primary/20 to-primary/5"
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentStep}
-                  initial={{ scale: 0, rotate: -180, opacity: 0 }}
-                  animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                  exit={{ scale: 0, rotate: 180, opacity: 0 }}
-                  transition={{ duration: 0.5, ease: "backOut" }}
-                >
-                  <CurrentIcon className="h-10 w-10 text-primary" />
-                </motion.div>
-              </AnimatePresence>
+              <LumiCharacter size="xl" state="loading" glow />
             </motion.div>
 
-            {/* Floating particles */}
+            {/* Floating particles with Lumi colors */}
             {[...Array(6)].map((_, i) => (
               <motion.div
                 key={i}
-                className="absolute w-2 h-2 rounded-full bg-primary/40"
+                className="absolute w-2 h-2 rounded-full bg-glow"
                 style={{
-                  left: 50 + Math.cos((i * Math.PI * 2) / 6) * 55,
-                  top: 50 + Math.sin((i * Math.PI * 2) / 6) * 55,
+                  left: 50 + Math.cos((i * Math.PI * 2) / 6) * 60,
+                  top: 50 + Math.sin((i * Math.PI * 2) / 6) * 60,
                 }}
                 animate={{
                   scale: [0.5, 1, 0.5],

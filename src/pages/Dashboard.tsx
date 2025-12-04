@@ -5,13 +5,13 @@ import DashboardLayout from "@/components/DashboardLayout";
 import confetti from "canvas-confetti";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { BrandEditDialog } from "@/components/BrandEditDialog";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { LumiLoader } from "@/components/LumiLoader";
 import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -225,12 +225,8 @@ export default function Dashboard() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="space-y-6">
-          <Skeleton className="h-32 w-full" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Skeleton className="h-64" />
-            <Skeleton className="h-64" />
-          </div>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <LumiLoader size="lg" message="Loading your Lumi Home..." />
         </div>
       </DashboardLayout>
     );
