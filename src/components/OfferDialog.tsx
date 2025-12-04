@@ -4,9 +4,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+interface ExtractedData {
+  description?: string;
+  price_point?: string;
+  target_outcome?: string;
+  key_benefits?: string[];
+  pain_points_addressed?: string[];
+  unique_selling_points?: string[];
+  social_proof?: string;
+  emotional_hooks?: string[];
+  target_audience_indicators?: string;
+  tone_and_voice?: string;
+  cta_language?: string[];
+  objections_addressed?: string[];
+  raw_copy_highlights?: string[];
+  content_summary?: string;
+  missing_info?: string[];
+  needs_clarification?: boolean;
+  clarification_questions?: string[];
+  extraction_success?: boolean;
+}
 
 interface OfferDialogProps {
   open: boolean;
@@ -18,6 +41,8 @@ interface OfferDialogProps {
 export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDialogProps) {
   const [loading, setLoading] = useState(false);
   const [extracting, setExtracting] = useState(false);
+  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
+  const [showExtractedDetails, setShowExtractedDetails] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     url: "",
@@ -33,6 +58,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     }
 
     setExtracting(true);
+    setExtractedData(null);
     try {
       const { data, error } = await supabase.functions.invoke('extract-offer-info', {
         body: { 
@@ -43,14 +69,22 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
 
       if (error) throw error;
 
+      // Store full extracted data
+      setExtractedData(data);
+
+      // Update form with core fields
       setFormData(prev => ({
         ...prev,
-        description: data.description,
-        price_point: data.price_point,
-        target_outcome: data.target_outcome,
+        description: data.description || prev.description,
+        price_point: data.price_point || prev.price_point,
+        target_outcome: data.target_outcome || prev.target_outcome,
       }));
 
-      toast.success("Offer info extracted from page");
+      if (data.needs_clarification) {
+        toast.info("Some info couldn't be found - please review and fill in the gaps");
+      } else {
+        toast.success("Offer info extracted from page");
+      }
     } catch (error: any) {
       console.error('Error extracting offer info:', error);
       toast.error("Failed to extract offer info");
@@ -64,7 +98,21 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     setLoading(true);
 
     try {
-      // Insert offer
+      // Build messaging guidelines from extracted data
+      const messagingGuidelines = extractedData ? {
+        key_benefits: extractedData.key_benefits || [],
+        pain_points: extractedData.pain_points_addressed || [],
+        unique_selling_points: extractedData.unique_selling_points || [],
+        social_proof: extractedData.social_proof || null,
+        emotional_hooks: extractedData.emotional_hooks || [],
+        target_audience: extractedData.target_audience_indicators || null,
+        tone_and_voice: extractedData.tone_and_voice || null,
+        cta_language: extractedData.cta_language || [],
+        objections_addressed: extractedData.objections_addressed || [],
+        raw_copy_highlights: extractedData.raw_copy_highlights || [],
+      } : null;
+
+      // Insert offer with enriched data
       const { data: offer, error: offerError } = await supabase
         .from('offers')
         .insert({
@@ -74,8 +122,9 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
           description: formData.description,
           price_point: formData.price_point,
           target_outcome: formData.target_outcome,
-          ai_generated_description: true,
-          ai_generated_price: true,
+          ai_generated_description: !!extractedData,
+          ai_generated_price: !!extractedData?.price_point,
+          messaging_guidelines: messagingGuidelines,
         })
         .select()
         .single();
@@ -101,6 +150,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
       onSuccess();
       onOpenChange(false);
       setFormData({ name: "", url: "", description: "", price_point: "", target_outcome: "" });
+      setExtractedData(null);
     } catch (error: any) {
       console.error('Error creating offer:', error);
       toast.error("Failed to create offer");
@@ -109,8 +159,16 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     }
   };
 
+  const handleClose = (open: boolean) => {
+    if (!open) {
+      setExtractedData(null);
+      setShowExtractedDetails(false);
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Offer</DialogTitle>
@@ -151,7 +209,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                 {extracting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Extracting...
+                    Analyzing...
                   </>
                 ) : (
                   <>
@@ -162,6 +220,131 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
               </Button>
             </div>
           </div>
+
+          {/* Extraction Status & Summary */}
+          {extractedData && (
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  {extractedData.extraction_success ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                  )}
+                  <span className="font-medium text-sm">
+                    {extractedData.extraction_success ? "Page analyzed successfully" : "Limited extraction"}
+                  </span>
+                </div>
+                {extractedData.key_benefits?.length || extractedData.pain_points_addressed?.length ? (
+                  <Badge variant="secondary" className="text-xs">
+                    {(extractedData.key_benefits?.length || 0) + (extractedData.pain_points_addressed?.length || 0)} insights found
+                  </Badge>
+                ) : null}
+              </div>
+
+              {extractedData.content_summary && (
+                <p className="text-sm text-muted-foreground">{extractedData.content_summary}</p>
+              )}
+
+              {/* Clarification Questions */}
+              {extractedData.needs_clarification && extractedData.clarification_questions?.length ? (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-2">
+                    Please help fill in these gaps:
+                  </p>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    {extractedData.clarification_questions.map((q, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-amber-500">•</span>
+                        {q}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {/* Expandable Details */}
+              <Collapsible open={showExtractedDetails} onOpenChange={setShowExtractedDetails}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="w-full justify-between">
+                    <span className="text-xs">View extracted details</span>
+                    {showExtractedDetails ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 pt-3">
+                  {extractedData.raw_copy_highlights?.length ? (
+                    <div>
+                      <p className="text-xs font-medium mb-1">Copy Highlights</p>
+                      <div className="flex flex-wrap gap-1">
+                        {extractedData.raw_copy_highlights.slice(0, 5).map((highlight, i) => (
+                          <Badge key={i} variant="outline" className="text-xs font-normal">
+                            "{highlight.substring(0, 50)}{highlight.length > 50 ? '...' : ''}"
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {extractedData.key_benefits?.length ? (
+                    <div>
+                      <p className="text-xs font-medium mb-1">Key Benefits Found</p>
+                      <ul className="text-xs text-muted-foreground space-y-0.5">
+                        {extractedData.key_benefits.slice(0, 4).map((b, i) => (
+                          <li key={i}>• {b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {extractedData.pain_points_addressed?.length ? (
+                    <div>
+                      <p className="text-xs font-medium mb-1">Pain Points Addressed</p>
+                      <ul className="text-xs text-muted-foreground space-y-0.5">
+                        {extractedData.pain_points_addressed.slice(0, 4).map((p, i) => (
+                          <li key={i}>• {p}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+
+                  {extractedData.emotional_hooks?.length ? (
+                    <div>
+                      <p className="text-xs font-medium mb-1">Emotional Hooks</p>
+                      <div className="flex flex-wrap gap-1">
+                        {extractedData.emotional_hooks.map((hook, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {hook}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {extractedData.social_proof && (
+                    <div>
+                      <p className="text-xs font-medium mb-1">Social Proof</p>
+                      <p className="text-xs text-muted-foreground">{extractedData.social_proof}</p>
+                    </div>
+                  )}
+
+                  {extractedData.missing_info?.length ? (
+                    <div>
+                      <p className="text-xs font-medium mb-1 text-amber-600">Missing Info</p>
+                      <ul className="text-xs text-muted-foreground space-y-0.5">
+                        {extractedData.missing_info.map((m, i) => (
+                          <li key={i}>• {m}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
@@ -195,7 +378,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => handleClose(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
