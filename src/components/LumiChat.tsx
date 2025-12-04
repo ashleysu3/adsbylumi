@@ -7,6 +7,7 @@ import { Send, Loader2, X, Lightbulb } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LumiCharacter } from "./LumiCharacter";
+import { useLumi } from "@/contexts/LumiContext";
 
 interface LumiChatProps {
   context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production';
@@ -73,11 +74,18 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
 
 export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { messages, addMessage, setBrandId } = useLumi();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const starters = contextStarters[context] || contextStarters.dashboard;
+
+  // Set brand ID when brand changes
+  useEffect(() => {
+    if (brand?.id) {
+      setBrandId(brand.id);
+    }
+  }, [brand?.id, setBrandId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -89,7 +97,7 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
     if (!text.trim() || isLoading) return;
 
     const userMessage: Message = { role: 'user', content: text };
-    setMessages(prev => [...prev, userMessage]);
+    addMessage(userMessage);
     setInput("");
     setIsLoading(true);
 
@@ -125,7 +133,7 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
         role: 'assistant',
         content: data.response || "I'm sorry, I couldn't process that. Please try again."
       };
-      setMessages(prev => [...prev, assistantMessage]);
+      addMessage(assistantMessage);
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error("Failed to get response. Please try again.");
