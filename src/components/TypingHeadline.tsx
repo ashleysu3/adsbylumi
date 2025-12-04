@@ -57,10 +57,10 @@ export const TypingHeadline = ({
 
   return (
     <h1 className="typing-headline">
-      <span className="static-text">{staticText}</span>{" "}
+      <span className="static-text">Meta Ads,</span>
       <span className="rotating-text">
         {displayedText}
-        <span className="cursor" />
+        <span className="cursor" aria-hidden="true" />
       </span>
     </h1>
   );
