@@ -24,69 +24,94 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Fetch offer page content
+    // Fetch offer page content - get as much as possible
     let offerContent = '';
+    let fetchSuccess = false;
     try {
-      const offerResponse = await fetch(offerUrl);
+      const offerResponse = await fetch(offerUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
       const html = await offerResponse.text();
-      // Extract text content
-      offerContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 12000);
+      
+      // Extract text content more thoroughly - remove scripts, styles, but keep structure hints
+      offerContent = html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, ' ')
+        .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, ' ')
+        .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, ' ')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 25000); // Increased to 25k chars for more content
+      
+      fetchSuccess = offerContent.length > 200;
+      console.log(`Extracted ${offerContent.length} characters from page`);
     } catch (error) {
       console.error('Error fetching offer page:', error);
-      offerContent = 'Unable to fetch offer page content';
+      offerContent = '';
     }
 
     const systemPrompt = `You are a product analyst extracting comprehensive information from sales pages and offer pages for ad creative generation.
 
-Your task is to analyze the offer page content and extract ALL of the following:
+Your task is to analyze ALL the copy on the page and extract EVERYTHING that could be useful for creating compelling ads.
 
-1. **description** - A detailed description of what the product/offer includes (3-5 sentences). Include what's included, how it's delivered, and any bonuses.
+EXTRACT THE FOLLOWING (be thorough - pull actual quotes and language from the page):
 
-2. **price_point** - The price in text format (e.g., "$47", "$997", "Free", "$297/month", "Varies"). Include any payment plans if mentioned.
+1. **raw_copy_highlights** - Array of 5-10 of the most compelling phrases, headlines, or copy snippets directly from the page. These are exact quotes or near-quotes that capture the offer's voice.
 
-3. **target_outcome** - The main transformation or result the customer gets. Be specific about the before/after state.
+2. **description** - A comprehensive description of what the product/offer includes (4-6 sentences). Include what's included, how it's delivered, format, duration, and any bonuses.
 
-4. **key_benefits** - Array of 3-5 specific benefits or features mentioned on the page. Use the exact language when possible.
+3. **price_point** - The price in text format (e.g., "$47", "$997", "Free", "$297/month"). Include any payment plans, crossed-out prices, or "value" comparisons if mentioned.
 
-5. **pain_points_addressed** - Array of 2-4 pain points or problems the offer solves. What struggles does the target audience face?
+4. **target_outcome** - The main transformation or result. Be SPECIFIC about the before/after state. What will change in their life/business?
 
-6. **unique_selling_points** - Array of 2-3 things that make this offer different or special (guarantees, bonuses, methodology, credentials).
+5. **key_benefits** - Array of 5-7 specific benefits or features mentioned. Use the exact language from the page when possible.
 
-7. **social_proof** - Any testimonials, results, or credibility markers mentioned (e.g., "helped 500+ students", "as seen in Forbes", specific client results).
+6. **pain_points_addressed** - Array of 3-5 pain points or problems the offer solves. What struggles does the target audience currently face?
 
-8. **emotional_hooks** - Array of 2-3 emotional triggers or desires the page appeals to (e.g., "freedom", "confidence", "financial security", "time with family").
+7. **unique_selling_points** - Array of 2-4 differentiators (guarantees, bonuses, methodology, credentials, speed of results, unique approach).
 
-9. **target_audience_indicators** - Who is this offer for? Any specific demographics, job titles, or situations mentioned.
+8. **social_proof** - Specific testimonials, results, numbers, or credibility markers. Include exact quotes if available, specific numbers ("helped 500+ students"), media mentions, etc.
 
-10. **tone_and_voice** - Describe the overall tone of the sales page (e.g., "professional and authoritative", "friendly and conversational", "urgent and direct").
+9. **emotional_hooks** - Array of 3-4 emotional triggers the page appeals to (freedom, confidence, security, status, belonging, achievement, etc.)
 
-11. **cta_language** - The main call-to-action text used on the page (e.g., "Enroll Now", "Get Instant Access", "Book Your Call").
+10. **target_audience_indicators** - Who is this explicitly for? Job titles, situations, demographics, or "this is for you if..." statements.
 
-Return ONLY a valid JSON object with these exact fields:
-{
-  "description": "string",
-  "price_point": "string", 
-  "target_outcome": "string",
-  "key_benefits": ["string"],
-  "pain_points_addressed": ["string"],
-  "unique_selling_points": ["string"],
-  "social_proof": "string or null if none found",
-  "emotional_hooks": ["string"],
-  "target_audience_indicators": "string",
-  "tone_and_voice": "string",
-  "cta_language": "string"
-}
+11. **tone_and_voice** - Describe the overall tone (professional, conversational, urgent, luxurious, friendly, authoritative, etc.)
 
-Be specific and use the actual language from the sales page when possible. If you can't find information for a field, use reasonable inferences based on the content.`;
+12. **cta_language** - All call-to-action text used (buttons, links). Array of strings.
 
-    const userPrompt = `Analyze this offer page and extract the product information:
+13. **objections_addressed** - Any FAQ items, "but what if..." responses, or objection handling found on the page.
+
+14. **content_summary** - A 2-3 sentence summary of what information was successfully extracted from the page.
+
+15. **missing_info** - Array of specific pieces of information that seem important but couldn't be found on the page. Be specific about what's missing.
+
+16. **needs_clarification** - Boolean. True if critical information (price, what's included, or target outcome) is unclear or missing.
+
+17. **clarification_questions** - If needs_clarification is true, provide 1-3 specific questions to ask the user.
+
+Return ONLY valid JSON with these exact fields. If you can't find information for a field, use reasonable inferences OR leave as empty array/null and add to missing_info.`;
+
+    const userPrompt = `Analyze this offer page and extract ALL available copy and information for ad creative generation.
 
 Offer Name: ${offerName || 'Not specified'}
-Page Content: ${offerContent}
+URL: ${offerUrl}
 
-Extract the description, price, and target outcome.`;
+Page Content:
+${fetchSuccess ? offerContent : 'Unable to fetch page content - the page may be behind a login, have bot protection, or the URL may be incorrect.'}
 
-    console.log('Calling Lovable AI for offer extraction...');
+${!fetchSuccess ? 'Since the page content could not be fetched, set needs_clarification to true and ask for the key details manually.' : 'Extract everything you can find. Pull exact quotes and language. Be thorough.'}`;
+
+    console.log('Calling Lovable AI for comprehensive offer extraction...');
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -115,7 +140,16 @@ Extract the description, price, and target outcome.`;
     const content = aiData.choices[0].message.content;
     const offerInfo = JSON.parse(content);
 
-    console.log('Offer info extracted successfully');
+    // Add metadata about extraction
+    offerInfo.extraction_success = fetchSuccess;
+    offerInfo.extracted_length = offerContent.length;
+
+    console.log('Offer info extracted successfully:', {
+      hasDescription: !!offerInfo.description,
+      hasPrice: !!offerInfo.price_point,
+      benefitsCount: offerInfo.key_benefits?.length || 0,
+      needsClarification: offerInfo.needs_clarification
+    });
 
     return new Response(JSON.stringify(offerInfo), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
