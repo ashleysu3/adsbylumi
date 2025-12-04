@@ -10,6 +10,7 @@ import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
 import { LumiChat } from "@/components/LumiChat";
 import { LumiCharacter } from "@/components/LumiCharacter";
+import lumiLogo from "@/assets/lumi-logo.png";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -220,7 +221,7 @@ export default function DashboardLayout({
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <img alt="Your Ad Assistant" className="h-10 md:h-16 object-contain my-2 mx-4" src="/lovable-uploads/your-ad-assistant-logo.png" />
+              <img alt="Lumi" className="h-10 md:h-16 object-contain my-2 mx-4" src={lumiLogo} />
             </div>
 
             <div className="flex items-center space-x-3">

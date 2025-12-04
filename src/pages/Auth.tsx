@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import lumiLogo from "@/assets/lumi-logo.png";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -83,8 +84,8 @@ export default function Auth() {
       <Card className="w-full max-w-md shadow-elevated">
         <CardHeader className="space-y-1 text-center">
           <img 
-            src="/lovable-uploads/your-ad-assistant-logo.png" 
-            alt="Your Ad Assistant" 
+            src={lumiLogo}
+            alt="Lumi" 
             className="h-12 mx-auto mb-2"
           />
           <CardDescription className="text-base">
