@@ -23,11 +23,23 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
     benchmark: { min: 5, max: 35, unit: '$' },
     friendlyName: 'Lead Generation',
   },
+  'LEAD_GENERATION': {
+    primary: 'cpl',
+    primaryLabel: 'Cost Per Lead',
+    benchmark: { min: 5, max: 35, unit: '$' },
+    friendlyName: 'Lead Generation',
+  },
   'Discovery Call / Application': {
     primary: 'cpl',
     primaryLabel: 'Cost Per Lead',
     benchmark: { min: 20, max: 100, unit: '$' },
     friendlyName: 'Discovery Call',
+  },
+  'Lead Magnet Downloads': {
+    primary: 'cpl',
+    primaryLabel: 'Cost Per Lead',
+    benchmark: { min: 3, max: 20, unit: '$' },
+    friendlyName: 'Lead Magnet',
   },
   
   // Webinar campaigns → CPL
@@ -38,6 +50,12 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
     friendlyName: 'Webinar Registration',
   },
   'Webinar Registration': {
+    primary: 'cpl',
+    primaryLabel: 'Cost Per Lead',
+    benchmark: { min: 8, max: 40, unit: '$' },
+    friendlyName: 'Webinar Registration',
+  },
+  'Webinar Sign Ups': {
     primary: 'cpl',
     primaryLabel: 'Cost Per Lead',
     benchmark: { min: 8, max: 40, unit: '$' },
@@ -63,6 +81,12 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
     benchmark: { min: 2.0, max: 5.0, unit: 'x' },
     friendlyName: 'Sales',
   },
+  'CONVERSIONS': {
+    primary: 'roas',
+    primaryLabel: 'Return on Ad Spend',
+    benchmark: { min: 2.0, max: 5.0, unit: 'x' },
+    friendlyName: 'Conversions',
+  },
   
   // Discovery Call → CPL
   'discovery-call': {
@@ -72,7 +96,7 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
     friendlyName: 'Discovery Call',
   },
   
-  // IG Traffic → Cost per Click
+  // Traffic campaigns → CPC
   'ig-traffic': {
     primary: 'cpc',
     primaryLabel: 'Cost Per Click',
@@ -85,6 +109,30 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
     benchmark: { min: 0.15, max: 0.50, unit: '$' },
     friendlyName: 'Traffic',
   },
+  'LINK_CLICKS': {
+    primary: 'cpc',
+    primaryLabel: 'Cost Per Click',
+    benchmark: { min: 0.15, max: 0.50, unit: '$' },
+    friendlyName: 'Traffic',
+  },
+  'Traffic to Instagram/Facebook': {
+    primary: 'cpc',
+    primaryLabel: 'Cost Per Click',
+    benchmark: { min: 0.15, max: 0.50, unit: '$' },
+    friendlyName: 'Social Traffic',
+  },
+  'Traffic to Instagram': {
+    primary: 'cpc',
+    primaryLabel: 'Cost Per Click',
+    benchmark: { min: 0.15, max: 0.50, unit: '$' },
+    friendlyName: 'Instagram Traffic',
+  },
+  'Traffic to Facebook': {
+    primary: 'cpc',
+    primaryLabel: 'Cost Per Click',
+    benchmark: { min: 0.15, max: 0.50, unit: '$' },
+    friendlyName: 'Facebook Traffic',
+  },
   
   // Video Views → Cost per ThruPlay
   'video-views': {
@@ -93,11 +141,45 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
     benchmark: { min: 0.02, max: 0.08, unit: '$' },
     friendlyName: 'Video Views',
   },
+  'VIDEO_VIEWS': {
+    primary: 'costPerThruPlay',
+    primaryLabel: 'Cost Per ThruPlay',
+    benchmark: { min: 0.02, max: 0.08, unit: '$' },
+    friendlyName: 'Video Views',
+  },
+  'ThruPlay Video Views': {
+    primary: 'costPerThruPlay',
+    primaryLabel: 'Cost Per ThruPlay',
+    benchmark: { min: 0.02, max: 0.08, unit: '$' },
+    friendlyName: 'Video Views',
+  },
+  
+  // Engagement → CPM
   'Engagement': {
     primary: 'cpm',
     primaryLabel: 'Cost Per 1000 Views',
     benchmark: { min: 3, max: 10, unit: '$' },
     friendlyName: 'Engagement',
+  },
+  'ENGAGEMENT': {
+    primary: 'cpm',
+    primaryLabel: 'Cost Per 1000 Views',
+    benchmark: { min: 3, max: 10, unit: '$' },
+    friendlyName: 'Engagement',
+  },
+  
+  // Awareness → CPM
+  'REACH': {
+    primary: 'cpm',
+    primaryLabel: 'Cost Per 1000 Impressions',
+    benchmark: { min: 2, max: 8, unit: '$' },
+    friendlyName: 'Reach',
+  },
+  'BRAND_AWARENESS': {
+    primary: 'cpm',
+    primaryLabel: 'Cost Per 1000 Impressions',
+    benchmark: { min: 3, max: 12, unit: '$' },
+    friendlyName: 'Brand Awareness',
   },
 };
 
@@ -113,13 +195,17 @@ export const defaultLumiKPIConfig: LumiKPIConfig = {
 function detectCampaignTypeFromName(name: string): string | null {
   const nameLower = name.toLowerCase();
   
+  // Check for specific campaign types
+  if (nameLower.includes('ig traffic') || nameLower.includes('instagram traffic')) return 'ig-traffic';
   if (nameLower.includes('traffic')) return 'Traffic';
+  if (nameLower.includes('lead magnet')) return 'Lead Magnet Downloads';
   if (nameLower.includes('lead') || nameLower.includes('leads')) return 'Leads';
   if (nameLower.includes('discovery') || nameLower.includes('application') || nameLower.includes('call')) return 'Leads';
   if (nameLower.includes('webinar')) return 'webinar';
   if (nameLower.includes('sales') || nameLower.includes('purchase') || nameLower.includes('product')) return 'Sales';
-  if (nameLower.includes('video') || nameLower.includes('views')) return 'video-views';
+  if (nameLower.includes('video') || nameLower.includes('views') || nameLower.includes('thruplay')) return 'video-views';
   if (nameLower.includes('engagement')) return 'Engagement';
+  if (nameLower.includes('awareness') || nameLower.includes('reach')) return 'REACH';
   
   return null;
 }
@@ -168,6 +254,16 @@ export function formatLumiKPIValue(value: number | null | undefined, kpiKey: str
     return `${value.toFixed(2)}x`;
   }
   return value.toFixed(2);
+}
+
+// FIX: Format benchmark range with correct unit placement
+export function formatBenchmarkRange(benchmark: { min: number; max: number; unit: string }): string {
+  if (benchmark.unit === 'x') {
+    // For multiplier units (ROAS), put unit after the number
+    return `${benchmark.min.toFixed(2)}x – ${benchmark.max.toFixed(2)}x`;
+  }
+  // For currency, put unit before
+  return `${benchmark.unit}${benchmark.min.toFixed(2)} – ${benchmark.unit}${benchmark.max.toFixed(2)}`;
 }
 
 export function getLumiKPIStatus(
