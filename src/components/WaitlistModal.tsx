@@ -95,7 +95,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                 <DialogTitle className="font-display text-2xl sm:text-3xl text-foreground">
                   Ready to Light Things Up?
                 </DialogTitle>
-                <DialogDescription className="text-muted-foreground text-base">
+                <DialogDescription className="text-muted-foreground text-sm whitespace-nowrap">
                   Join the waitlist and be the first to know when Lumi launches.
                 </DialogDescription>
               </DialogHeader>
