@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Video, 
   Image as ImageIcon, 
@@ -14,8 +15,29 @@ import {
   Clipboard,
   Type,
   Bookmark,
-  Star
+  Star,
+  ChevronDown,
+  ChevronRight,
+  User,
+  Camera,
+  Smartphone,
+  MessageSquare,
+  ArrowLeftRight,
+  LayoutGrid,
+  Wand2,
+  Monitor,
+  Sparkles,
+  Lightbulb,
+  Shield,
+  GraduationCap,
+  AlertCircle,
+  TrendingUp,
+  Eye,
+  Palette,
+  Film,
+  Copy
 } from "lucide-react";
+import { useState } from "react";
 
 interface CreativeSidebarProps {
   workspace: any;
@@ -25,39 +47,62 @@ interface CreativeSidebarProps {
 }
 
 export function CreativeSidebar({ workspace, activeSection, onSectionChange, onNavigateToProduction }: CreativeSidebarProps) {
+  const [expandedSections, setExpandedSections] = useState<string[]>(["journey", "format"]);
+  
   const creative = workspace.creative_json || {};
   const creativeMix = creative.creative_mix || creative.customer_journey || {};
   const lovedConcepts = workspace.loved_concepts || [];
   
   // Support both old (tofu/mofu/bofu) and new (grow/nurture/convert) structure
-  const growCount = creativeMix.grow?.length || creativeMix.tofu?.length || 0;
-  const nurtureCount = creativeMix.nurture?.length || creativeMix.mofu?.length || 0;
-  const convertCount = creativeMix.convert?.length || creativeMix.bofu?.length || 0;
+  const growConcepts = creativeMix.grow || creativeMix.tofu || [];
+  const nurtureConcepts = creativeMix.nurture || creativeMix.mofu || [];
+  const convertConcepts = creativeMix.convert || creativeMix.bofu || [];
+  
+  const growCount = growConcepts.length;
+  const nurtureCount = nurtureConcepts.length;
+  const convertCount = convertConcepts.length;
 
-  // Count loved by stage - support both structures
+  // All concepts for counting
+  const allConcepts = [...growConcepts, ...nurtureConcepts, ...convertConcepts];
+
+  // Count loved by stage
   const lovedByStage = {
-    grow: lovedConcepts.filter((id: string) => 
-      (creativeMix.grow || creativeMix.tofu)?.some((c: any) => c.id === id)
-    ).length,
-    nurture: lovedConcepts.filter((id: string) => 
-      (creativeMix.nurture || creativeMix.mofu)?.some((c: any) => c.id === id)
-    ).length,
-    convert: lovedConcepts.filter((id: string) => 
-      (creativeMix.convert || creativeMix.bofu)?.some((c: any) => c.id === id)
-    ).length,
+    grow: lovedConcepts.filter((id: string) => growConcepts.some((c: any) => c.id === id)).length,
+    nurture: lovedConcepts.filter((id: string) => nurtureConcepts.some((c: any) => c.id === id)).length,
+    convert: lovedConcepts.filter((id: string) => convertConcepts.some((c: any) => c.id === id)).length,
   };
   
-  // Count by format type - support both structures
-  const allConcepts = [
-    ...(creativeMix.grow || creativeMix.tofu || []),
-    ...(creativeMix.nurture || creativeMix.mofu || []),
-    ...(creativeMix.convert || creativeMix.bofu || [])
-  ];
-  
-  const scriptsCount = allConcepts.filter(c => c.format === 'talking_head' || c.script).length;
-  const brollCount = allConcepts.filter(c => c.format === 'b_roll' || c.broll_instructions).length;
-  const carouselsCount = allConcepts.filter(c => c.format === 'carousel').length;
-  const staticsCount = allConcepts.filter(c => c.format === 'static').length;
+  // Count by format type
+  const formatCounts = {
+    talking_head: allConcepts.filter(c => c.format === 'talking_head' || (c.script && !c.format)).length,
+    b_roll: allConcepts.filter(c => c.format === 'b_roll' || c.broll_instructions).length,
+    pov_reel: allConcepts.filter(c => c.format === 'pov_reel').length,
+    testimonial: allConcepts.filter(c => c.format === 'testimonial').length,
+    before_after: allConcepts.filter(c => c.format === 'before_after').length,
+    carousel: allConcepts.filter(c => c.format === 'carousel').length,
+    static: allConcepts.filter(c => c.format === 'static' || c.format === 'static_graphic').length,
+    lofi: allConcepts.filter(c => c.format === 'lofi' || c.format === 'scrappy').length,
+    screen_recording: allConcepts.filter(c => c.format === 'screen_recording').length,
+  };
+
+  // Count by content type
+  const contentTypeCounts = {
+    story: allConcepts.filter(c => c.content_type === 'story' || c.psychology_trigger?.includes('story')).length,
+    transformation: allConcepts.filter(c => c.content_type === 'transformation' || c.psychology_trigger?.includes('transform')).length,
+    identity: allConcepts.filter(c => c.content_type === 'identity' || c.psychology_trigger?.includes('identity')).length,
+    emotional: allConcepts.filter(c => c.content_type === 'emotional' || c.psychology_trigger?.includes('emotion')).length,
+    authority: allConcepts.filter(c => c.content_type === 'authority' || c.psychology_trigger?.includes('authority')).length,
+    educational: allConcepts.filter(c => c.content_type === 'educational' || c.psychology_trigger?.includes('educate')).length,
+    objection: allConcepts.filter(c => c.content_type === 'objection' || c.psychology_trigger?.includes('objection')).length,
+  };
+
+  // Count trends
+  const trendConcepts = allConcepts.filter(c => c.is_trend || c.trend_source);
+  const trendCounts = {
+    trend_hooks: trendConcepts.filter(c => c.type === 'hook').length,
+    trend_visuals: trendConcepts.filter(c => c.trend_type === 'visual').length,
+    trend_formats: trendConcepts.filter(c => c.trend_type === 'format').length,
+  };
 
   // Count copy items
   const adCopyLibrary = creative.ad_copy_library || {};
@@ -76,39 +121,80 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
   const savedDescriptions = selectedCopy.descriptions?.length || 0;
   const totalSavedCopy = savedHeadlines + savedPrimary + savedDescriptions;
 
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => 
+      prev.includes(sectionId) 
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId]
+    );
+  };
+
   const sections = [
-    {
-      id: "saved",
-      label: "Saved",
-      items: [
-        { id: "saved-concepts", label: "Saved Concepts", icon: Bookmark, count: lovedConcepts.length, color: "text-pink-600 dark:text-pink-400" },
-        { id: "saved-copy", label: "Saved Copy", icon: Star, count: totalSavedCopy, color: "text-amber-600 dark:text-amber-400" },
-      ]
-    },
     { 
       id: "journey", 
       label: "Customer Journey", 
+      icon: Sparkles,
       items: [
-        { id: "grow", label: "Grow", icon: Sprout, count: growCount, color: "text-blue-600 dark:text-blue-400" },
+        { id: "grow", label: "Grow", icon: Sprout, count: growCount, color: "text-emerald-600 dark:text-emerald-400" },
         { id: "nurture", label: "Nurture", icon: HeartHandshake, count: nurtureCount, color: "text-purple-600 dark:text-purple-400" },
-        { id: "convert", label: "Convert", icon: Rocket, count: convertCount, color: "text-green-600 dark:text-green-400" },
+        { id: "convert", label: "Convert", icon: Rocket, count: convertCount, color: "text-amber-600 dark:text-amber-400" },
       ]
     },
     {
       id: "format",
-      label: "By Format",
+      label: "Format",
+      icon: Film,
       items: [
-        { id: "scripts", label: "Scripts", icon: FileText, count: scriptsCount },
-        { id: "broll", label: "B-Roll", icon: Video, count: brollCount },
-        { id: "carousels", label: "Carousels", icon: Layers, count: carouselsCount },
-        { id: "static", label: "Static Graphics", icon: ImageIcon, count: staticsCount },
+        { id: "talking_head", label: "Talking Head", icon: User, count: formatCounts.talking_head },
+        { id: "b_roll", label: "B-Roll", icon: Video, count: formatCounts.b_roll },
+        { id: "pov_reel", label: "POV Reel", icon: Eye, count: formatCounts.pov_reel },
+        { id: "testimonial", label: "Testimonial", icon: MessageSquare, count: formatCounts.testimonial },
+        { id: "before_after", label: "Before/After", icon: ArrowLeftRight, count: formatCounts.before_after },
+        { id: "carousel", label: "Carousel", icon: Layers, count: formatCounts.carousel },
+        { id: "static", label: "Static Graphic", icon: ImageIcon, count: formatCounts.static },
+        { id: "lofi", label: "Lo-Fi / Scrappy", icon: Smartphone, count: formatCounts.lofi },
+        { id: "screen_recording", label: "Screen Recording", icon: Monitor, count: formatCounts.screen_recording },
       ]
     },
     {
-      id: "copy",
-      label: "Ad Copy",
+      id: "content_type",
+      label: "Content Type",
+      icon: Lightbulb,
       items: [
-        { id: "copy", label: "Copy Library", icon: Type, count: totalCopyCount, color: "text-amber-600 dark:text-amber-400" },
+        { id: "story", label: "Story", icon: FileText, count: contentTypeCounts.story },
+        { id: "transformation", label: "Transformation", icon: Wand2, count: contentTypeCounts.transformation },
+        { id: "identity", label: "Identity", icon: User, count: contentTypeCounts.identity },
+        { id: "emotional", label: "Emotional", icon: Heart, count: contentTypeCounts.emotional },
+        { id: "authority", label: "Authority", icon: Shield, count: contentTypeCounts.authority },
+        { id: "educational", label: "Educational", icon: GraduationCap, count: contentTypeCounts.educational },
+        { id: "objection", label: "Objection", icon: AlertCircle, count: contentTypeCounts.objection },
+      ]
+    },
+    {
+      id: "trends",
+      label: "Trends",
+      icon: TrendingUp,
+      items: [
+        { id: "trend_hooks", label: "Trend Hooks", icon: Sparkles, count: trendCounts.trend_hooks },
+        { id: "trend_visuals", label: "Trend Visual Styles", icon: Palette, count: trendCounts.trend_visuals },
+        { id: "trend_formats", label: "Trend Formats", icon: LayoutGrid, count: trendCounts.trend_formats },
+      ]
+    },
+    {
+      id: "saved",
+      label: "Loved",
+      icon: Heart,
+      items: [
+        { id: "loved-concepts", label: "Loved Concepts", icon: Heart, count: lovedConcepts.length, color: "text-pink-600 dark:text-pink-400" },
+      ]
+    },
+    {
+      id: "copy_section",
+      label: "Copy Library",
+      icon: Copy,
+      items: [
+        { id: "copy", label: "All Copy", icon: Type, count: totalCopyCount },
+        { id: "saved-copy", label: "Saved Copy", icon: Star, count: totalSavedCopy, color: "text-amber-600 dark:text-amber-400" },
       ]
     }
   ];
@@ -120,8 +206,8 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
       </div>
       
       <ScrollArea className="h-[calc(100vh-12rem)]">
-        <div className="p-2 space-y-6">
-          {/* Loved Creative Ideas */}
+        <div className="p-2 space-y-2">
+          {/* Loved Creative Summary Card */}
           {lovedConcepts.length > 0 && (
             <>
               <Card className="mx-2 mt-2 p-3 bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/20 dark:to-pink-900/20 border-pink-200 dark:border-pink-800">
@@ -153,7 +239,7 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
               
               <Button
                 variant="default"
-                className="mx-2 w-[calc(100%-1rem)] bg-pink-600 hover:bg-pink-700 dark:bg-pink-700 dark:hover:bg-pink-600 gap-2 mb-8"
+                className="mx-2 w-[calc(100%-1rem)] bg-pink-600 hover:bg-pink-700 dark:bg-pink-700 dark:hover:bg-pink-600 gap-2 mb-4"
                 onClick={onNavigateToProduction}
               >
                 <Clipboard className="h-4 w-4" />
@@ -162,39 +248,69 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
             </>
           )}
           
-          {sections.map((section) => (
-            <div key={section.id} className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground px-3 py-2">
-                {section.label}
-              </p>
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeSection === item.id;
-                
-                return (
-                  <Button
-                    key={item.id}
-                    variant={isActive ? "secondary" : "ghost"}
-                    className={`w-full justify-start gap-3 ${item.color || ''}`}
-                    onClick={() => onSectionChange(item.id)}
+          {/* Collapsible Sections */}
+          {sections.map((section) => {
+            const SectionIcon = section.icon;
+            const isExpanded = expandedSections.includes(section.id);
+            const totalCount = section.items.reduce((sum, item) => sum + (item.count || 0), 0);
+            
+            return (
+              <Collapsible 
+                key={section.id} 
+                open={isExpanded}
+                onOpenChange={() => toggleSection(section.id)}
+              >
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full justify-between px-3 py-2 h-auto hover:bg-muted/50"
                   >
-                    <Icon className="h-4 w-4" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    {typeof item.count === 'number' && item.count > 0 && (
-                      <Badge variant={isActive ? "default" : "secondary"} className="ml-auto">
-                        {item.count}
-                      </Badge>
-                    )}
-                    {typeof item.count === 'string' && (
-                      <Badge variant={isActive ? "default" : "secondary"} className="ml-auto text-xs">
-                        {item.count}
-                      </Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <SectionIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground">{section.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {totalCount > 0 && (
+                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                          {totalCount}
+                        </Badge>
+                      )}
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
                   </Button>
-                );
-              })}
-            </div>
-          ))}
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent className="space-y-0.5 pl-2">
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeSection === item.id;
+                    
+                    return (
+                      <Button
+                        key={item.id}
+                        variant={isActive ? "secondary" : "ghost"}
+                        size="sm"
+                        className={`w-full justify-start gap-2 h-8 ${item.color || ''}`}
+                        onClick={() => onSectionChange(item.id)}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span className="flex-1 text-left text-xs">{item.label}</span>
+                        {typeof item.count === 'number' && item.count > 0 && (
+                          <Badge variant={isActive ? "default" : "secondary"} className="ml-auto text-xs px-1.5 py-0">
+                            {item.count}
+                          </Badge>
+                        )}
+                      </Button>
+                    );
+                  })}
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
         </div>
       </ScrollArea>
     </div>

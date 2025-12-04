@@ -29,6 +29,8 @@ interface CreativeAssetsProps {
   onUpdate: (updates: any) => Promise<void>;
   filterStage?: string;
   filterFormat?: string;
+  filterContentType?: string;
+  filterTrend?: string;
   onGenerateCreative?: () => void;
   isGeneratingParent?: boolean;
 }
@@ -72,7 +74,7 @@ const stageDisplayNames: Record<string, string> = {
   bofu: "Convert",
 };
 
-export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat, onGenerateCreative, isGeneratingParent }: CreativeAssetsProps) {
+export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat, filterContentType, filterTrend, onGenerateCreative, isGeneratingParent }: CreativeAssetsProps) {
   const creative = workspace.creative_json || {};
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
   const [lovedConcepts, setLovedConcepts] = useState<Set<string>>(
@@ -440,15 +442,56 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
   
   if (filterFormat) {
     const formatFilter = (c: any) => {
+      // Legacy format names
       if (filterFormat === 'scripts') return c.format === 'talking_head' || c.script;
       if (filterFormat === 'broll') return c.format === 'b_roll' || c.broll_instructions;
       if (filterFormat === 'carousels') return c.format === 'carousel';
-      if (filterFormat === 'static') return c.format === 'static';
+      // New format filters
+      if (filterFormat === 'talking_head') return c.format === 'talking_head' || (c.script && !c.format);
+      if (filterFormat === 'b_roll') return c.format === 'b_roll' || c.broll_instructions;
+      if (filterFormat === 'pov_reel') return c.format === 'pov_reel';
+      if (filterFormat === 'testimonial') return c.format === 'testimonial';
+      if (filterFormat === 'before_after') return c.format === 'before_after';
+      if (filterFormat === 'carousel') return c.format === 'carousel';
+      if (filterFormat === 'static') return c.format === 'static' || c.format === 'static_graphic';
+      if (filterFormat === 'lofi') return c.format === 'lofi' || c.format === 'scrappy';
+      if (filterFormat === 'screen_recording') return c.format === 'screen_recording';
       return true;
     };
     filteredGrow = filteredGrow.filter(formatFilter);
     filteredNurture = filteredNurture.filter(formatFilter);
     filteredConvert = filteredConvert.filter(formatFilter);
+  }
+
+  // Apply content type filter
+  if (filterContentType) {
+    const contentTypeFilter = (c: any) => {
+      if (filterContentType === 'story') return c.content_type === 'story' || c.psychology_trigger?.toLowerCase().includes('story');
+      if (filterContentType === 'transformation') return c.content_type === 'transformation' || c.psychology_trigger?.toLowerCase().includes('transform');
+      if (filterContentType === 'identity') return c.content_type === 'identity' || c.psychology_trigger?.toLowerCase().includes('identity');
+      if (filterContentType === 'emotional') return c.content_type === 'emotional' || c.psychology_trigger?.toLowerCase().includes('emotion');
+      if (filterContentType === 'authority') return c.content_type === 'authority' || c.psychology_trigger?.toLowerCase().includes('authority');
+      if (filterContentType === 'educational') return c.content_type === 'educational' || c.psychology_trigger?.toLowerCase().includes('educate');
+      if (filterContentType === 'objection') return c.content_type === 'objection' || c.psychology_trigger?.toLowerCase().includes('objection');
+      return true;
+    };
+    filteredGrow = filteredGrow.filter(contentTypeFilter);
+    filteredNurture = filteredNurture.filter(contentTypeFilter);
+    filteredConvert = filteredConvert.filter(contentTypeFilter);
+  }
+
+  // Apply trend filter
+  if (filterTrend) {
+    const trendFilter = (c: any) => {
+      if (!c.is_trend && !c.trend_source) return false;
+      if (filterTrend === 'trend_hooks') return c.type === 'hook';
+      if (filterTrend === 'trend_visuals') return c.trend_type === 'visual';
+      if (filterTrend === 'trend_formats') return c.trend_type === 'format';
+      return c.is_trend || c.trend_source;
+    };
+    filteredGrow = filteredGrow.filter(trendFilter);
+    filteredNurture = filteredNurture.filter(trendFilter);
+    filteredConvert = filteredConvert.filter(trendFilter);
   }
   
   const allStages = [

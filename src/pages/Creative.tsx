@@ -30,7 +30,7 @@ export default function Creative() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [workspace, setWorkspace] = useState<any>(null);
-  const [activeSection, setActiveSection] = useState("tofu");
+  const [activeSection, setActiveSection] = useState("grow");
 
   useEffect(() => {
     fetchInitialData();
@@ -485,12 +485,20 @@ export default function Creative() {
                       <SavedConcepts workspace={workspace} type="copy" />
                     </div>
                   </div>
+                ) : activeSection === 'loved-concepts' ? (
+                  <div className="h-full overflow-auto">
+                    <div className="p-6">
+                      <SavedConcepts workspace={workspace} type="loved" onUpdate={handleWorkspaceUpdate} />
+                    </div>
+                  </div>
                 ) : (
                   <CreativeAssets
                     workspace={workspace}
                     onUpdate={handleWorkspaceUpdate}
-                    filterStage={['tofu', 'mofu', 'bofu'].includes(activeSection) ? activeSection : undefined}
-                    filterFormat={['scripts', 'broll', 'carousels', 'static'].includes(activeSection) ? activeSection : undefined}
+                    filterStage={['grow', 'nurture', 'convert', 'tofu', 'mofu', 'bofu'].includes(activeSection) ? activeSection : undefined}
+                    filterFormat={['talking_head', 'b_roll', 'pov_reel', 'testimonial', 'before_after', 'carousel', 'static', 'lofi', 'screen_recording', 'scripts', 'broll', 'carousels'].includes(activeSection) ? activeSection : undefined}
+                    filterContentType={['story', 'transformation', 'identity', 'emotional', 'authority', 'educational', 'objection'].includes(activeSection) ? activeSection : undefined}
+                    filterTrend={['trend_hooks', 'trend_visuals', 'trend_formats'].includes(activeSection) ? activeSection : undefined}
                     onGenerateCreative={generateCreative}
                     isGeneratingParent={generating}
                   />

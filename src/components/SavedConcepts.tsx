@@ -9,7 +9,8 @@ import { toast } from "sonner";
 
 interface SavedConceptsProps {
   workspace: any;
-  type: 'concepts' | 'copy';
+  type: 'concepts' | 'copy' | 'loved';
+  onUpdate?: (updates: any) => Promise<void>;
 }
 
 const stageBadgeColors: Record<string, string> = {
@@ -31,7 +32,7 @@ const formatIcons: Record<string, React.ElementType> = {
   static: ImageIcon,
 };
 
-export function SavedConcepts({ workspace, type }: SavedConceptsProps) {
+export function SavedConcepts({ workspace, type, onUpdate }: SavedConceptsProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const creative = workspace.creative_json || {};
   const creativeMix = creative.creative_mix || {};
@@ -75,7 +76,7 @@ export function SavedConcepts({ workspace, type }: SavedConceptsProps) {
     selectedCopy.descriptions?.includes(`desc_${idx}`)
   );
 
-  if (type === 'concepts') {
+  if (type === 'concepts' || type === 'loved') {
     if (savedConceptsList.length === 0) {
       return (
         <div className="flex items-center justify-center h-full p-8">
