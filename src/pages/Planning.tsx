@@ -6,44 +6,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { 
-  Video, 
-  FileText, 
-  ShoppingCart, 
-  PhoneCall, 
-  TrendingUp, 
-  Play,
-  Info
-} from "lucide-react";
+import { Video, FileText, ShoppingCart, PhoneCall, TrendingUp, Play, Info } from "lucide-react";
 import { toast } from "sonner";
 import { LumiLoader } from "@/components/LumiLoader";
 import { LumiCharacter } from "@/components/LumiCharacter";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { GeneratingModal } from "@/components/GeneratingModal";
-
 const iconMap: Record<string, any> = {
   Video,
   FileText,
   ShoppingCart,
   PhoneCall,
   TrendingUp,
-  Play,
+  Play
 };
-
 export default function Planning() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -54,49 +32,41 @@ export default function Planning() {
   const [offersWithRecommendations, setOffersWithRecommendations] = useState<any[]>([]);
   const [offers, setOffers] = useState<any[]>([]);
   const [selectedOfferId, setSelectedOfferId] = useState<string>("");
-
   useEffect(() => {
     fetchData();
   }, []);
-
   const fetchData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: {
+          user
+        }
+      } = await supabase.auth.getUser();
       if (!user) return;
-
-      const { data: brandData } = await supabase
-        .from("brands")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
+      const {
+        data: brandData
+      } = await supabase.from("brands").select("*").eq("user_id", user.id).single();
       setBrand(brandData);
-
-      const { data: templatesData } = await supabase
-        .from("campaign_templates")
-        .select("*")
-        .eq("active", true)
-        .order("created_at");
-
+      const {
+        data: templatesData
+      } = await supabase.from("campaign_templates").select("*").eq("active", true).order("created_at");
       setTemplates(templatesData || []);
 
       // Fetch all offers (not archived)
       if (brandData) {
-        const { data: offersData } = await supabase
-          .from("offers")
-          .select(`
+        const {
+          data: offersData
+        } = await supabase.from("offers").select(`
             *,
             campaign_templates:recommended_template_id (
               name,
               slug
             )
-          `)
-          .eq("brand_id", brandData.id)
-          .or("archived.is.null,archived.eq.false")
-          .order("created_at", { ascending: false });
-
+          `).eq("brand_id", brandData.id).or("archived.is.null,archived.eq.false").order("created_at", {
+          ascending: false
+        });
         setOffers(offersData || []);
-        
+
         // Filter offers with recommendations
         const recommended = (offersData || []).filter(o => o.recommended_template_id);
         setOffersWithRecommendations(recommended);
@@ -105,13 +75,11 @@ export default function Planning() {
       console.error("Error fetching data:", error);
     }
   };
-
   const handleTemplateClick = async (template: any) => {
     if (!brand) {
       toast.error("Please complete brand setup first");
       return;
     }
-
     setLoading(true);
     try {
       // Get selected offer data if one is selected
@@ -133,15 +101,12 @@ export default function Planning() {
         offer_name: selectedOffer?.name || null,
         offer_url: selectedOffer?.url || null,
         offer_price: selectedOffer?.price_point || null,
-        offer_description: selectedOffer?.description || null,
+        offer_description: selectedOffer?.description || null
       };
-
-      const { data: newStrategy, error: strategyError } = await supabase
-        .from("strategies")
-        .insert(strategyData)
-        .select()
-        .single();
-
+      const {
+        data: newStrategy,
+        error: strategyError
+      } = await supabase.from("strategies").insert(strategyData).select().single();
       if (strategyError) throw strategyError;
 
       // Create campaign workspace with offer data pre-filled
@@ -156,17 +121,13 @@ export default function Planning() {
         offer_name: selectedOffer?.name || null,
         offer_url: selectedOffer?.url || null,
         offer_price: selectedOffer?.price_point || null,
-        offer_description: selectedOffer?.description || null,
+        offer_description: selectedOffer?.description || null
       };
-
-      const { data: newWorkspace, error: workspaceError } = await supabase
-        .from("campaign_workspaces")
-        .insert(workspaceData)
-        .select()
-        .single();
-
+      const {
+        data: newWorkspace,
+        error: workspaceError
+      } = await supabase.from("campaign_workspaces").insert(workspaceData).select().single();
       if (workspaceError) throw workspaceError;
-
       toast.success(`${template.name} workspace created!`);
       navigate(`/workspace/${newWorkspace.id}`);
     } catch (error: any) {
@@ -176,27 +137,21 @@ export default function Planning() {
       setLoading(false);
     }
   };
-
   const openDetails = (template: any) => {
     setSelectedTemplate(template);
     setShowDetails(true);
   };
-
   if (!brand) {
-    return (
-      <DashboardLayout>
+    return <DashboardLayout>
         <Card>
           <CardHeader>
             <CardTitle>Setup Required</CardTitle>
             <CardDescription>Please complete your brand setup first.</CardDescription>
           </CardHeader>
         </Card>
-      </DashboardLayout>
-    );
+      </DashboardLayout>;
   }
-
-  return (
-    <DashboardLayout>
+  return <DashboardLayout>
       <CampaignFlowBreadcrumb currentStep="planning" />
       <div className="space-y-8">
         <div className="space-y-2">
@@ -205,8 +160,7 @@ export default function Planning() {
         </div>
 
         {/* Offer Selection */}
-        {offers.length > 0 && (
-          <Card className="border-primary/20">
+        {offers.length > 0 && <Card className="border-primary/20">
             <CardContent className="pt-6">
               <div className="space-y-3">
                 <Label htmlFor="offer-select" className="text-base font-semibold">
@@ -221,37 +175,29 @@ export default function Planning() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No specific offer</SelectItem>
-                    {offers.map((offer) => (
-                      <SelectItem key={offer.id} value={offer.id}>
+                    {offers.map(offer => <SelectItem key={offer.id} value={offer.id}>
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium">{offer.name}</span>
-                          {offer.price_point && (
-                            <span className="text-xs text-muted-foreground">{offer.price_point}</span>
-                          )}
+                          {offer.price_point && <span className="text-xs text-muted-foreground">{offer.price_point}</span>}
                         </div>
-                      </SelectItem>
-                    ))}
+                      </SelectItem>)}
                   </SelectContent>
                 </Select>
-                {selectedOfferId && selectedOfferId !== "none" && (
-                  <div className="flex items-center gap-2 text-sm text-primary">
+                {selectedOfferId && selectedOfferId !== "none" && <div className="flex items-center gap-2 text-sm text-primary">
                     <Badge variant="secondary">
                       ✓ Campaign will use: {offers.find(o => o.id === selectedOfferId)?.url || "No URL set"}
                     </Badge>
-                  </div>
-                )}
+                  </div>}
               </div>
             </CardContent>
-          </Card>
-        )}
+          </Card>}
 
-        {offersWithRecommendations.length > 0 && (
-          <Card className="border-primary/20 bg-primary/5">
+        {offersWithRecommendations.length > 0 && <Card className="border-primary/20 bg-primary/5">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0">💡</div>
                 <div className="space-y-2">
-                <p className="font-semibold">💡 Lumi recommends</p>
+                <p className="font-semibold">Lumi recommends</p>
                   <p className="text-sm text-muted-foreground">
                     You've already got campaign recommendations for your offers in your Brand Dashboard. 
                     Start there for the fastest setup!
@@ -262,44 +208,32 @@ export default function Planning() {
                 </div>
               </div>
             </CardContent>
-          </Card>
-        )}
+          </Card>}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map((template) => {
-            const Icon = iconMap[template.icon] || Video;
-            const isRecommendedForSelectedOffer = selectedOfferId && 
-              offers.find(o => o.id === selectedOfferId)?.recommended_template_id === template.id;
-            
-            return (
-              <Card 
-                key={template.id} 
-                className={`cursor-pointer hover:shadow-lg transition-all relative ${
-                  isRecommendedForSelectedOffer 
-                    ? "border-primary ring-2 ring-primary/20" 
-                    : "hover:border-primary/50"
-                }`}
-              >
-                {isRecommendedForSelectedOffer && (
-                  <Badge className="absolute -top-2 -right-2 bg-primary">
+          {templates.map(template => {
+          const Icon = iconMap[template.icon] || Video;
+          const isRecommendedForSelectedOffer = selectedOfferId && offers.find(o => o.id === selectedOfferId)?.recommended_template_id === template.id;
+          return <Card key={template.id} className={`cursor-pointer hover:shadow-lg transition-all relative ${isRecommendedForSelectedOffer ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"}`}>
+                {isRecommendedForSelectedOffer && <Badge className="absolute -top-2 -right-2 bg-primary">
                     Recommended
-                  </Badge>
-                )}
+                  </Badge>}
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
                     <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                       <Icon className="h-6 w-6 text-primary" />
                     </div>
-                    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openDetails(template); }}>
+                    <Button variant="ghost" size="sm" onClick={e => {
+                  e.stopPropagation();
+                  openDetails(template);
+                }}>
                       <Info className="h-4 w-4" />
                     </Button>
                   </div>
                   <CardTitle className="text-xl">{template.name}</CardTitle>
-                  {offersWithRecommendations.some(o => o.recommended_template_id === template.id) && !isRecommendedForSelectedOffer && (
-                    <Badge variant="secondary" className="text-xs mt-1">
+                  {offersWithRecommendations.some(o => o.recommended_template_id === template.id) && !isRecommendedForSelectedOffer && <Badge variant="secondary" className="text-xs mt-1">
                       Recommended for: {offersWithRecommendations.find(o => o.recommended_template_id === template.id)?.name}
-                    </Badge>
-                  )}
+                    </Badge>}
                   <CardDescription className="min-h-[48px]">{template.description}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -320,9 +254,8 @@ export default function Planning() {
                     </Button>
                   </div>
                 </CardContent>
-              </Card>
-            );
-          })}
+              </Card>;
+        })}
         </div>
 
         <Dialog open={showDetails} onOpenChange={setShowDetails}>
@@ -330,15 +263,14 @@ export default function Planning() {
             <DialogHeader>
               <DialogTitle className="flex items-center space-x-3">
                 {selectedTemplate && (() => {
-                  const Icon = iconMap[selectedTemplate.icon] || Video;
-                  return <Icon className="h-6 w-6 text-primary" />;
-                })()}
+                const Icon = iconMap[selectedTemplate.icon] || Video;
+                return <Icon className="h-6 w-6 text-primary" />;
+              })()}
                 <span>{selectedTemplate?.name}</span>
               </DialogTitle>
               <DialogDescription>{selectedTemplate?.long_description}</DialogDescription>
             </DialogHeader>
-            {selectedTemplate && (
-              <div className="space-y-4 pt-4">
+            {selectedTemplate && <div className="space-y-4 pt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Campaign Structure</p>
@@ -360,29 +292,20 @@ export default function Planning() {
                   </ul>
                 </div>
                 <div className="flex space-x-3 pt-4">
-                  <Button className="flex-1" variant="lumi" onClick={() => { setShowDetails(false); handleTemplateClick(selectedTemplate); }} disabled={loading}>
+                  <Button className="flex-1" variant="lumi" onClick={() => {
+                setShowDetails(false);
+                handleTemplateClick(selectedTemplate);
+              }} disabled={loading}>
                     {loading ? <><LumiCharacter size="xs" state="loading" className="mr-2" />Loading...</> : "Choose This Template"}
                   </Button>
                   <Button variant="outline" onClick={() => setShowDetails(false)}>Cancel</Button>
                 </div>
-              </div>
-            )}
+              </div>}
           </DialogContent>
         </Dialog>
 
         {/* Generating Modal for strategy creation */}
-        <GeneratingModal 
-          isOpen={loading} 
-          title="Creating Campaign Strategy"
-          steps={[
-            "Setting up campaign workspace...",
-            "Loading template configuration...",
-            "Applying messaging framework...",
-            "Configuring KPI benchmarks...",
-            "Preparing creative workspace..."
-          ]}
-        />
+        <GeneratingModal isOpen={loading} title="Creating Campaign Strategy" steps={["Setting up campaign workspace...", "Loading template configuration...", "Applying messaging framework...", "Configuring KPI benchmarks...", "Preparing creative workspace..."]} />
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>;
 }
