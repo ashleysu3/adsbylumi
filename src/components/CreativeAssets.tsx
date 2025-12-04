@@ -31,8 +31,11 @@ interface CreativeAssetsProps {
   filterFormat?: string;
   filterContentType?: string;
   filterTrend?: string;
+  filterFormats?: string[];
+  filterContentTypes?: string[];
   onGenerateCreative?: () => void;
   isGeneratingParent?: boolean;
+  onClearFilters?: () => void;
 }
 
 const formatIcons = {
@@ -74,7 +77,7 @@ const stageDisplayNames: Record<string, string> = {
   bofu: "Convert",
 };
 
-export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat, filterContentType, filterTrend, onGenerateCreative, isGeneratingParent }: CreativeAssetsProps) {
+export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat, filterContentType, filterTrend, filterFormats, filterContentTypes, onGenerateCreative, isGeneratingParent, onClearFilters }: CreativeAssetsProps) {
   const creative = workspace.creative_json || {};
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
   const [lovedConcepts, setLovedConcepts] = useState<Set<string>>(
@@ -440,7 +443,50 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
   let filteredNurture = nurtureCreative;
   let filteredConvert = convertCreative;
   
-  if (filterFormat) {
+  // Check if we have multi-select filters (from Lumi Recommends)
+  const hasMultiFilters = (filterFormats && filterFormats.length > 0) || (filterContentTypes && filterContentTypes.length > 0);
+  
+  if (hasMultiFilters) {
+    // Apply OR filtering: show concepts matching ANY of the selected formats OR content types
+    const multiFilter = (c: any) => {
+      // Check format match
+      if (filterFormats && filterFormats.length > 0) {
+        const formatMatches = filterFormats.some(f => {
+          if (f === 'talking_head') return c.format === 'talking_head' || (c.script && !c.format);
+          if (f === 'carousel') return c.format === 'carousel';
+          if (f === 'testimonial') return c.format === 'testimonial';
+          if (f === 'before_after') return c.format === 'before_after';
+          if (f === 'pov_reel') return c.format === 'pov_reel';
+          if (f === 'static') return c.format === 'static' || c.format === 'static_graphic';
+          if (f === 'lofi') return c.format === 'lofi' || c.format === 'scrappy';
+          if (f === 'b_roll') return c.format === 'b_roll' || c.broll_instructions;
+          if (f === 'screen_recording') return c.format === 'screen_recording';
+          return c.format === f;
+        });
+        if (formatMatches) return true;
+      }
+      
+      // Check content type match
+      if (filterContentTypes && filterContentTypes.length > 0) {
+        const contentMatches = filterContentTypes.some(ct => {
+          if (ct === 'educational') return c.content_type === 'educational' || c.psychology_trigger?.toLowerCase().includes('educate');
+          if (ct === 'emotional') return c.content_type === 'emotional' || c.psychology_trigger?.toLowerCase().includes('emotion');
+          if (ct === 'authority') return c.content_type === 'authority' || c.psychology_trigger?.toLowerCase().includes('authority');
+          if (ct === 'identity') return c.content_type === 'identity' || c.psychology_trigger?.toLowerCase().includes('identity');
+          if (ct === 'transformation') return c.content_type === 'transformation' || c.psychology_trigger?.toLowerCase().includes('transform');
+          if (ct === 'objection') return c.content_type === 'objection' || c.psychology_trigger?.toLowerCase().includes('objection');
+          return c.content_type === ct;
+        });
+        if (contentMatches) return true;
+      }
+      
+      return false;
+    };
+    
+    filteredGrow = filteredGrow.filter(multiFilter);
+    filteredNurture = filteredNurture.filter(multiFilter);
+    filteredConvert = filteredConvert.filter(multiFilter);
+  } else if (filterFormat) {
     const formatFilter = (c: any) => {
       // Legacy format names
       if (filterFormat === 'scripts') return c.format === 'talking_head' || c.script;
@@ -463,8 +509,8 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     filteredConvert = filteredConvert.filter(formatFilter);
   }
 
-  // Apply content type filter
-  if (filterContentType) {
+  // Apply content type filter (single, only if not using multi-filter)
+  if (!hasMultiFilters && filterContentType) {
     const contentTypeFilter = (c: any) => {
       if (filterContentType === 'story') return c.content_type === 'story' || c.psychology_trigger?.toLowerCase().includes('story');
       if (filterContentType === 'transformation') return c.content_type === 'transformation' || c.psychology_trigger?.toLowerCase().includes('transform');
@@ -880,6 +926,23 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
     <>
       <ScrollArea className="h-[calc(100vh-12rem)]">
       <div className="space-y-8 p-6 pb-12">
+        {/* Filter indicator when Lumi Recommends filters are active */}
+        {hasMultiFilters && (
+          <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm">
+                Showing: {[...(filterFormats || []), ...(filterContentTypes || [])].join(', ')}
+              </span>
+            </div>
+            {onClearFilters && (
+              <Button variant="ghost" size="sm" onClick={onClearFilters} className="text-xs h-7">
+                Clear filters
+              </Button>
+            )}
+          </div>
+        )}
+        
         {allStages.map(stage => (
           stage.items.length > 0 && (
             <div key={stage.id} className="space-y-6">
@@ -911,7 +974,17 @@ export function CreativeAssets({ workspace, onUpdate, filterStage, filterFormat,
         {allStages.every(stage => stage.items.length === 0) && (
           <div className="text-center py-12">
             <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-6">No creative concepts match your filters</p>
+            <p className="text-muted-foreground mb-2">No creative concepts match your filters</p>
+            {hasMultiFilters && onClearFilters && (
+              <Button 
+                onClick={onClearFilters}
+                variant="outline"
+                size="sm"
+                className="gap-2 mb-4"
+              >
+                Clear filters to see all concepts
+              </Button>
+            )}
             {onGenerateCreative && (
               <Button 
                 onClick={onGenerateCreative}

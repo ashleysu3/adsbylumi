@@ -31,6 +31,7 @@ export default function Creative() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [workspace, setWorkspace] = useState<any>(null);
   const [activeSection, setActiveSection] = useState("grow");
+  const [activeRecommendations, setActiveRecommendations] = useState<string[]>([]);
 
   useEffect(() => {
     fetchInitialData();
@@ -378,8 +379,13 @@ export default function Creative() {
               <CreativeSidebar
                 workspace={workspace}
                 activeSection={activeSection}
-                onSectionChange={setActiveSection}
+                onSectionChange={(section) => {
+                  setActiveSection(section);
+                  // Clear recommendations when clicking sidebar sections
+                  setActiveRecommendations([]);
+                }}
                 onNavigateToProduction={() => navigate(`/production?workspace=${workspace.id}`)}
+                onRecommendationsChange={setActiveRecommendations}
               />
             </div>
 
@@ -495,12 +501,15 @@ export default function Creative() {
                   <CreativeAssets
                     workspace={workspace}
                     onUpdate={handleWorkspaceUpdate}
-                    filterStage={['grow', 'nurture', 'convert', 'tofu', 'mofu', 'bofu'].includes(activeSection) ? activeSection : undefined}
-                    filterFormat={['talking_head', 'b_roll', 'pov_reel', 'testimonial', 'before_after', 'carousel', 'static', 'lofi', 'screen_recording', 'scripts', 'broll', 'carousels'].includes(activeSection) ? activeSection : undefined}
-                    filterContentType={['story', 'transformation', 'identity', 'emotional', 'authority', 'educational', 'objection'].includes(activeSection) ? activeSection : undefined}
-                    filterTrend={['trend_hooks', 'trend_visuals', 'trend_formats'].includes(activeSection) ? activeSection : undefined}
+                    filterStage={activeRecommendations.length === 0 && ['grow', 'nurture', 'convert', 'tofu', 'mofu', 'bofu'].includes(activeSection) ? activeSection : undefined}
+                    filterFormat={activeRecommendations.length === 0 && ['talking_head', 'b_roll', 'pov_reel', 'testimonial', 'before_after', 'carousel', 'static', 'lofi', 'screen_recording', 'scripts', 'broll', 'carousels'].includes(activeSection) ? activeSection : undefined}
+                    filterContentType={activeRecommendations.length === 0 && ['story', 'transformation', 'identity', 'emotional', 'authority', 'educational', 'objection'].includes(activeSection) ? activeSection : undefined}
+                    filterTrend={activeRecommendations.length === 0 && ['trend_hooks', 'trend_visuals', 'trend_formats'].includes(activeSection) ? activeSection : undefined}
+                    filterFormats={activeRecommendations.filter(r => ['talking_head', 'carousel', 'testimonial', 'before_after', 'pov_reel', 'static', 'lofi', 'b_roll', 'screen_recording'].includes(r))}
+                    filterContentTypes={activeRecommendations.filter(r => ['educational', 'emotional', 'authority', 'identity', 'transformation', 'objection'].includes(r))}
                     onGenerateCreative={generateCreative}
                     isGeneratingParent={generating}
+                    onClearFilters={() => setActiveRecommendations([])}
                   />
                 )}
               </div>

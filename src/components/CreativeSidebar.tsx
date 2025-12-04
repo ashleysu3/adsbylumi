@@ -45,6 +45,7 @@ interface CreativeSidebarProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
   onNavigateToProduction: () => void;
+  onRecommendationsChange?: (recommendations: string[]) => void;
 }
 
 // Lumi recommendation types based on offer/campaign/niche
@@ -61,7 +62,7 @@ const RECOMMENDATION_TYPES = [
   { id: "authority", label: "Authority", icon: Shield, tags: ["expert", "high-ticket", "trust"] },
 ];
 
-export function CreativeSidebar({ workspace, activeSection, onSectionChange, onNavigateToProduction }: CreativeSidebarProps) {
+export function CreativeSidebar({ workspace, activeSection, onSectionChange, onNavigateToProduction, onRecommendationsChange }: CreativeSidebarProps) {
   const [expandedSections, setExpandedSections] = useState<string[]>(["journey"]);
   const [activeRecommendations, setActiveRecommendations] = useState<string[]>([]);
   
@@ -183,13 +184,19 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
   };
 
   const toggleRecommendation = (recId: string) => {
-    setActiveRecommendations(prev => 
-      prev.includes(recId) 
-        ? prev.filter(id => id !== recId)
-        : [...prev, recId]
-    );
-    // Also trigger section change to filter
-    onSectionChange(recId);
+    const newRecs = activeRecommendations.includes(recId) 
+      ? activeRecommendations.filter(id => id !== recId)
+      : [...activeRecommendations, recId];
+    
+    setActiveRecommendations(newRecs);
+    
+    // Notify parent with the full array of active recommendations
+    onRecommendationsChange?.(newRecs);
+  };
+
+  const clearAllRecommendations = () => {
+    setActiveRecommendations([]);
+    onRecommendationsChange?.([]);
   };
 
   return (
@@ -205,17 +212,29 @@ export function CreativeSidebar({ workspace, activeSection, onSectionChange, onN
           
           {/* ✨ Lumi Recommends Section */}
           <Card className="p-3 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 mb-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-xs font-semibold text-foreground">Lumi Recommends</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Lumi Recommends</span>
+              </div>
+              {activeRecommendations.length > 0 && (
+                <button
+                  onClick={clearAllRecommendations}
+                  className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                >
+                  Clear all
+                </button>
+              )}
             </div>
             <p className="text-[10px] text-muted-foreground mb-2">
-              Based on your offer, niche & psychology
+              {activeRecommendations.length > 0 
+                ? `Filtering by ${activeRecommendations.length} type${activeRecommendations.length > 1 ? 's' : ''}`
+                : 'Based on your offer, niche & psychology'}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {lumiRecommendations.map((rec) => {
                 const Icon = rec.icon;
-                const isActive = activeRecommendations.includes(rec.id) || activeSection === rec.id;
+                const isActive = activeRecommendations.includes(rec.id);
                 return (
                   <button
                     key={rec.id}
