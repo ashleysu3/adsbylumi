@@ -337,8 +337,8 @@ export default function Pricing() {
               type="text"
               placeholder="Enter promo code"
               value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-              className="text-center uppercase tracking-wider"
+              onChange={(e) => setPromoCode(e.target.value)}
+              className="text-center tracking-wider"
               maxLength={20}
             />
             {promoCode && (
