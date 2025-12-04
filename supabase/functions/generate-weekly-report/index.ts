@@ -108,7 +108,7 @@ ${report.creative_diagnosis?.recommended_creatives_to_add
 === YOUR TOP 3 NEXT STEPS ===
 ${report.next_steps?.map((step: string, i: number) => `${i + 1}️⃣ ${step}`).join('\n') || '1️⃣ Keep monitoring your performance\n2️⃣ Test new creative variations\n3️⃣ Optimize your top performers'}
 
-=== A NOTE FROM YOUR AD ASSISTANT ===
+=== A NOTE FROM LUMI ===
 ${report.seasonality_context?.notes 
   ? `${report.seasonality_context.notes} ${report.seasonality_context.recommendation}`
   : `You're making great progress! Remember, consistency is key in Meta Ads. Keep testing, keep learning, and keep improving.`}
@@ -122,10 +122,10 @@ ${report.kpi_evaluation?.ctr?.status === 'excellent' || report.kpi_evaluation?.r
 [View Full Dashboard] → ${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app/data
 
 Keep going - you're doing great! 🎉
-- Your Ad Assistant
+- Lumi
 
 ---
-This is an automated weekly report from Your Ad Assistant.
+This is an automated weekly report from Lumi.
 `;
 
     // Save to database

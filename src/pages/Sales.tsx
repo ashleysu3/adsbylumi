@@ -155,7 +155,7 @@ const Sales = () => {
       title: "STEP 1 — Choose What You Want to Run",
       description: "Skip the guessing, skip the questions you don't understand, skip the \"what objective do I use??\" panic.",
       items: ["Webinar Signups", "Lead Magnet Downloads", "Low-Ticket Product Sales", "Book a Discovery Call", "Traffic to Instagram/Facebook", "Video Views (Trust Builder)"],
-      footer: "Your Ad Assistant loads the exact structure Meta prefers in 2025. No thinking required."
+      footer: "Lumi loads the exact structure Meta prefers in 2025. No thinking required."
     },
     {
       emoji: "🎨",
@@ -174,14 +174,14 @@ const Sales = () => {
     {
       emoji: "🚀",
       title: "STEP 4 — Hit \"Create Campaign\"",
-      description: "Your Ad Assistant actually builds the entire campaign in Ads Manager using the Meta API.",
+      description: "Lumi actually builds the entire campaign in Ads Manager using the Meta API.",
       items: ["Combines your creative with strategy", "Pulls all required fields", "Asks simple questions", "Recommends beginner-friendly settings", "Double-checks everything", "Pushes the campaign live"],
       footer: "You never have to go into Ads Manager. No toggles, no hidden settings."
     },
     {
       emoji: "📊",
       title: "STEP 5 — Get Weekly Guidance",
-      description: "Each week, Your Ad Assistant sends you:",
+      description: "Each week, Lumi sends you:",
       items: ["Clean performance reports", "CTR, CPC, CPL, CPP, ROAS", "Creative fatigue alerts", "Full-funnel diagnostics", "\"What's working + why\"", "New creative ideas"],
       footer: "This isn't a dashboard. It's a partner."
     },
@@ -374,7 +374,7 @@ const Sales = () => {
           
           <ScrollReveal delay={0.2}>
             <p className="text-xl font-medium text-foreground mt-8 mb-4 text-center">
-              Your Ad Assistant takes all that stress and says:{" "}
+              Lumi takes all that stress and says:{" "}
               <span className="text-primary">"Let me take it from here."</span>
             </p>
           </ScrollReveal>
@@ -412,7 +412,7 @@ const Sales = () => {
                   transition={{ duration: 0.5, delay: 0.3 }}
                   viewport={{ once: true }}
                 >
-                  Your Ad Assistant does the rest.
+                  Lumi does the rest.
                 </motion.span>
               </p>
             </div>
@@ -443,7 +443,7 @@ const Sales = () => {
           </ScrollReveal>
           <ScrollReveal delay={0.1}>
             <p className="text-xl text-center text-muted-foreground mb-12">
-              Your Ad Assistant is powered by thousands of hours of:
+              Lumi is powered by thousands of hours of:
             </p>
           </ScrollReveal>
           <StaggerChildren staggerDelay={0.05} className="grid md:grid-cols-3 gap-4 text-center">
@@ -474,7 +474,7 @@ const Sales = () => {
             <h2 className="font-display text-4xl text-center mb-12">🧠 Think of it like this…</h2>
           </ScrollReveal>
           <ScrollReveal delay={0.1}>
-            <p className="text-xl text-center mb-12">Your Ad Assistant is:</p>
+            <p className="text-xl text-center mb-12">Lumi is:</p>
           </ScrollReveal>
 
           <StaggerChildren staggerDelay={0.1} className="grid md:grid-cols-2 gap-6">
@@ -671,13 +671,13 @@ const Sales = () => {
                   </CardContent>
                 </Card>
 
-                {/* Your Ad Assistant Card */}
+                {/* Lumi Card */}
                 <Card className="border-primary bg-primary/5 shadow-md">
                   <CardHeader className="text-center pb-2">
                     <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                       <Zap className="w-6 h-6 text-primary" />
                     </div>
-                    <CardTitle className="text-xl">Your Ad Assistant</CardTitle>
+                    <CardTitle className="text-xl">Lumi</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="text-center mb-4">
@@ -824,7 +824,7 @@ const Sales = () => {
           </ScaleOnScroll>
           <ScrollReveal delay={0.2}>
             <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-              Your Ad Assistant is coming. And it's about to make your business feel lighter, simpler, and more strategic.
+              Lumi is here. And it's about to make your business feel lighter, simpler, and more strategic.
             </p>
           </ScrollReveal>
           <ScrollReveal delay={0.4}>
@@ -846,7 +846,7 @@ const Sales = () => {
         viewport={{ once: true }}
       >
         <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <p>© 2025 Your Ad Assistant. All rights reserved.</p>
+          <p>© 2025 Lumi. All rights reserved.</p>
         </div>
       </motion.footer>
     </div>

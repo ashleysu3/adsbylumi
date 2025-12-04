@@ -169,7 +169,7 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
               <LumiCharacter size="md" state={isLoading ? "thinking" : "idle"} glow />
               <div>
                 <DrawerTitle className="text-lg">Lumi</DrawerTitle>
-                <p className="text-xs text-muted-foreground">Your Ad Assistant</p>
+                <p className="text-xs text-muted-foreground">Your AI Ad Assistant</p>
               </div>
             </div>
             <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>

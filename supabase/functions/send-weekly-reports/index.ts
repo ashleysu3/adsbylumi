@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
         // Send email via Resend
         const { error: emailError } = await resend.emails.send({
-          from: 'Your Ad Assistant <reports@youradassistant.com>',
+          from: 'Lumi <reports@youradassistant.com>',
           to: [profile.email],
           subject: `📊 Weekly Ad Report: ${campaignName}`,
           html: emailHtml,
@@ -333,7 +333,7 @@ function buildEmailHtml(params: {
           <tr>
             <td style="background: #f7fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
               <p style="margin: 0; color: #a0aec0; font-size: 12px;">
-                This is an automated weekly report from Your Ad Assistant.<br>
+                This is an automated weekly report from Lumi.<br>
                 Keep going - you're doing great! 🎉
               </p>
             </td>

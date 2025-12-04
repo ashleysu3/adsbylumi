@@ -160,7 +160,7 @@ export default function Onboarding() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle>Welcome to Your Ad Assistant</CardTitle>
+          <CardTitle>Welcome to Lumi</CardTitle>
           <CardDescription>
             {step === 1 ? "Let's start with the basics" : "Review your brand details"}
           </CardDescription>

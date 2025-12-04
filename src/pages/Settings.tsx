@@ -339,7 +339,7 @@ export default function Settings() {
                 <CardHeader>
                   <CardTitle>No Active Subscription</CardTitle>
                   <CardDescription>
-                    Subscribe to unlock all features of Your Ad Assistant
+                    Subscribe to unlock all features of Lumi
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

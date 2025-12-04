@@ -286,7 +286,7 @@ const Index = () => {
                 animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
-              <span className="text-sm font-medium">Your Ad Assistant</span>
+              <span className="text-sm font-medium">Lumi</span>
             </motion.div>
 
             <motion.h1 
@@ -452,7 +452,7 @@ const Index = () => {
               </h2>
 
               <p className="text-lg text-muted-foreground mb-8">
-                Your Ad Assistant turns confusing Meta ads tasks into simple steps — from setup to creative to weekly performance.
+                Lumi turns confusing Meta ads tasks into simple steps — from setup to creative to weekly performance.
               </p>
 
               <StaggerChildren staggerDelay={0.1} className="space-y-4">
@@ -605,13 +605,13 @@ const Index = () => {
                   </CardContent>
                 </Card>
 
-                {/* Your Ad Assistant Card */}
+                {/* Lumi Card */}
                 <Card className="border-primary bg-primary/5 shadow-md">
                   <CardHeader className="text-center pb-2">
                     <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                       <Zap className="w-6 h-6 text-primary" />
                     </div>
-                    <CardTitle className="text-xl">Your Ad Assistant</CardTitle>
+                    <CardTitle className="text-xl">Lumi</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="text-center mb-4">
