@@ -4,17 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
   Sparkles, 
-  ArrowLeft, 
-  Loader2
+  ArrowLeft
 } from "lucide-react";
 import { toast } from "sonner";
 import { CreativeAssets } from "@/components/CreativeAssets";
 import { ProductionChecklist } from "@/components/ProductionChecklist";
 import { CreativeUploader } from "@/components/CreativeUploader";
 import { CreativeSidebar } from "@/components/CreativeSidebar";
+import { LumiLoader } from "@/components/LumiLoader";
+import { GeneratingModal } from "@/components/GeneratingModal";
 
 export default function CampaignWorkspace() {
   const { workspaceId } = useParams();
@@ -22,7 +22,7 @@ export default function CampaignWorkspace() {
   const [workspace, setWorkspace] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [activeSection, setActiveSection] = useState("tofu");
+  const [activeSection, setActiveSection] = useState("grow");
 
   useEffect(() => {
     if (workspaceId) {
@@ -86,16 +86,17 @@ export default function CampaignWorkspace() {
   const generateProductionChecklist = (creative: any) => {
     const items: any[] = [];
     if (creative.creative_mix) {
-      const { tofu = [], mofu = [], bofu = [] } = creative.creative_mix;
-      const allConcepts = [...tofu, ...mofu, ...bofu];
+      const { grow = [], nurture = [], convert = [] } = creative.creative_mix;
+      const allConcepts = [...grow, ...nurture, ...convert];
       
       allConcepts.forEach((concept: any, idx: number) => {
-        const stage = concept.stage || 'tofu';
+        const stage = concept.stage || 'grow';
+        const stageLabel = stage.charAt(0).toUpperCase() + stage.slice(1);
         if (concept.format === 'talking_head' || concept.script) {
           items.push({
             id: `record_${stage}_${idx}`,
             category: "📹 To Record",
-            title: `${stage.toUpperCase()}: ${concept.title}`,
+            title: `${stageLabel}: ${concept.title}`,
             details: concept.script,
             completed: false,
             stage
@@ -121,11 +122,20 @@ export default function CampaignWorkspace() {
     completed: "Completed"
   };
 
+  const generatingSteps = [
+    "Analyzing your brand psychology...",
+    "Crafting your Grow creative...",
+    "Building your Nurture content...",
+    "Designing your Convert assets...",
+    "Writing compelling copy variations...",
+    "Finalizing your creative mix..."
+  ];
+
   if (loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <LumiLoader size="lg" message="Loading your workspace..." />
         </div>
       </DashboardLayout>
     );
@@ -149,6 +159,12 @@ export default function CampaignWorkspace() {
 
   return (
     <DashboardLayout>
+      <GeneratingModal 
+        isOpen={generating} 
+        title="Creating Your Creative Mix"
+        steps={generatingSteps}
+      />
+      
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Sidebar */}
         <CreativeSidebar 
@@ -196,7 +212,6 @@ export default function CampaignWorkspace() {
                   </CardHeader>
                   <CardContent>
                     <Button onClick={generateCreative} disabled={generating}>
-                      {generating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       <Sparkles className="mr-2 h-4 w-4" />
                       Generate Creative Mix
                     </Button>
@@ -219,7 +234,7 @@ export default function CampaignWorkspace() {
               <CreativeAssets 
                 workspace={workspace} 
                 onUpdate={handleWorkspaceUpdate}
-                filterStage={['tofu', 'mofu', 'bofu'].includes(activeSection) ? activeSection : undefined}
+                filterStage={['grow', 'nurture', 'convert'].includes(activeSection) ? activeSection : undefined}
                 filterFormat={['scripts', 'broll', 'carousels', 'static'].includes(activeSection) ? activeSection : undefined}
               />
             )}
