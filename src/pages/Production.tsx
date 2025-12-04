@@ -161,6 +161,7 @@ export default function Production() {
         currentStep="production" 
         campaignId={workspace?.id}
         progressStatus={workspace?.progress_status}
+        offerName={workspace?.offer_name || workspace?.name}
       />
       <div className="space-y-6">
         {/* Header */}

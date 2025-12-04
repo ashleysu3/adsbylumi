@@ -293,6 +293,7 @@ export default function Creative() {
         currentStep="creative" 
         campaignId={selectedCampaignId}
         progressStatus={workspace?.progress_status}
+        offerName={workspace?.offer_name || workspace?.name}
       />
       <div className="flex h-[calc(100vh-4rem-53px)] w-full overflow-hidden">
         {/* Main Dashboard Area */}
