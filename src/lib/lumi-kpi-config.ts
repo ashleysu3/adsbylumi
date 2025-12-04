@@ -286,9 +286,11 @@ export function getLumiKPIStatus(
     return 'critical';
   }
   
-  // For costs, lower is better
-  if (value <= benchmark.min) return 'healthy';
-  if (value <= benchmark.max) return 'attention';
+  // For cost-based KPIs (CPC, CPL, CPP, etc.), lower is better
+  // Being within or below the benchmark range is healthy
+  if (value <= benchmark.max) return 'healthy';
+  // Slightly above max but within 30% is attention
+  if (value <= benchmark.max * 1.3) return 'attention';
   return 'critical';
 }
 
