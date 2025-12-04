@@ -321,6 +321,42 @@ export type Database = {
           },
         ]
       }
+      invite_codes: {
+        Row: {
+          active: boolean | null
+          code: string
+          created_at: string | null
+          created_by: string | null
+          current_uses: number | null
+          description: string | null
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+        }
+        Insert: {
+          active?: boolean | null
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+        }
+        Update: {
+          active?: boolean | null
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+        }
+        Relationships: []
+      }
       knowledge_documents: {
         Row: {
           active: boolean | null
@@ -597,6 +633,7 @@ export type Database = {
           email: string
           id: string
           invited_at: string | null
+          name: string | null
           status: string
         }
         Insert: {
@@ -604,6 +641,7 @@ export type Database = {
           email: string
           id?: string
           invited_at?: string | null
+          name?: string | null
           status?: string
         }
         Update: {
@@ -611,6 +649,7 @@ export type Database = {
           email?: string
           id?: string
           invited_at?: string | null
+          name?: string | null
           status?: string
         }
         Relationships: []

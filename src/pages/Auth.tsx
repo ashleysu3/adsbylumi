@@ -14,9 +14,53 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const navigate = useNavigate();
+
+  const validateInviteCode = async (code: string): Promise<boolean> => {
+    const { data, error } = await supabase
+      .from("invite_codes")
+      .select("*")
+      .eq("code", code.trim().toUpperCase())
+      .eq("active", true)
+      .maybeSingle();
+
+    if (error || !data) {
+      toast.error("Invalid invite code");
+      return false;
+    }
+
+    // Check if code is expired
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      toast.error("This invite code has expired");
+      return false;
+    }
+
+    // Check if code has reached max uses
+    if (data.current_uses >= data.max_uses) {
+      toast.error("This invite code has reached its maximum uses");
+      return false;
+    }
+
+    return true;
+  };
+
+  const incrementInviteCodeUsage = async (code: string) => {
+    const { data } = await supabase
+      .from("invite_codes")
+      .select("id, current_uses")
+      .eq("code", code.trim().toUpperCase())
+      .single();
+
+    if (data) {
+      await supabase
+        .from("invite_codes")
+        .update({ current_uses: data.current_uses + 1 })
+        .eq("id", data.id);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +76,19 @@ export default function Auth() {
         toast.success("Welcome back!");
         navigate("/dashboard");
       } else {
+        // Validate invite code first for signup
+        if (!inviteCode.trim()) {
+          toast.error("Please enter an invite code");
+          setLoading(false);
+          return;
+        }
+
+        const isValidCode = await validateInviteCode(inviteCode);
+        if (!isValidCode) {
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -43,6 +100,9 @@ export default function Auth() {
           },
         });
         if (error) throw error;
+        
+        // Increment invite code usage on successful signup
+        await incrementInviteCodeUsage(inviteCode);
         
         // Check if user is immediately confirmed (auto-confirm is enabled)
         if (data.user && data.session) {
@@ -97,18 +157,35 @@ export default function Auth() {
         <CardContent>
           <form onSubmit={handleAuth} className="space-y-4">
             {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Jane Smith"
-                  required={!isLogin}
-                  className="h-11"
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Jane Smith"
+                    required={!isLogin}
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inviteCode">Invite Code</Label>
+                  <Input
+                    id="inviteCode"
+                    type="text"
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                    placeholder="LUMI-XXXXXX"
+                    required={!isLogin}
+                    className="h-11 font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Need a code? <a href="/" className="text-primary hover:underline">Join the waitlist</a>
+                  </p>
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>

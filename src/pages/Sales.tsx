@@ -13,6 +13,7 @@ import { ScaleOnScroll } from "@/components/animations/ScaleOnScroll";
 import { FloatingElement } from "@/components/animations/FloatingElement";
 import { MagneticButton, GradientText } from "@/components/animations/SmoothScroll";
 import { CursorGlow } from "@/components/animations/CursorTrail";
+import { WaitlistModal } from "@/components/WaitlistModal";
 import lumiLogo from "@/assets/lumi-logo.png";
 import lumiBulb from "@/assets/lumi-bulb.png";
 
@@ -66,6 +67,7 @@ const StepCard = ({ step, index }: { step: StepData; index: number }) => {
 const Sales = () => {
   const navigate = useNavigate();
   const heroRef = useRef(null);
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
   
   const { scrollYProgress: heroProgress } = useScroll({
     target: heroRef,
@@ -277,7 +279,7 @@ const Sales = () => {
               <MagneticButton>
                 <Button
                   size="lg"
-                  onClick={() => navigate("/auth")}
+                  onClick={() => setWaitlistOpen(true)}
                   className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 rounded-full shadow-lumi lumi-button-glow min-h-[52px] w-full sm:w-auto whitespace-nowrap"
                 >
                   Join the Lumi Waitlist
@@ -606,7 +608,7 @@ const Sales = () => {
                 <MagneticButton>
                   <Button
                     size="lg"
-                    onClick={() => navigate("/auth")}
+                    onClick={() => setWaitlistOpen(true)}
                     className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 rounded-full shadow-lumi lumi-button-glow min-h-[52px] w-full sm:w-auto whitespace-nowrap"
                   >
                     Join the Lumi Waitlist
@@ -646,6 +648,9 @@ const Sales = () => {
           <p>© 2025 Lumi. All rights reserved.</p>
         </div>
       </motion.footer>
+
+      {/* Waitlist Modal */}
+      <WaitlistModal open={waitlistOpen} onOpenChange={setWaitlistOpen} />
     </div>
   );
 };
