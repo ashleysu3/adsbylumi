@@ -34,7 +34,7 @@ export default function CampaignWorkspace() {
     try {
       const { data, error } = await supabase
         .from("campaign_workspaces")
-        .select("*, brands(*)")
+        .select("*, brands(*), offers(*), campaign_templates:template_id(*)")
         .eq("id", workspaceId)
         .single();
 
@@ -55,12 +55,32 @@ export default function CampaignWorkspace() {
   const generateCreative = async () => {
     setGenerating(true);
     try {
+      // Build rich offer data from linked offer or workspace fields
+      const linkedOffer = workspace.offers;
+      const offerData = linkedOffer ? {
+        name: linkedOffer.name,
+        url: linkedOffer.url,
+        price_point: linkedOffer.price_point,
+        description: linkedOffer.description,
+        target_outcome: linkedOffer.target_outcome,
+        product_psychology: linkedOffer.product_psychology,
+        messaging_guidelines: linkedOffer.messaging_guidelines
+      } : {
+        name: workspace.offer_name,
+        url: workspace.offer_url,
+        price_point: workspace.offer_price,
+        description: workspace.offer_description
+      };
+
       const { data, error } = await supabase.functions.invoke('generate-creative', {
         body: {
           brandName: workspace.brands?.name || workspace.name,
           strategyData: workspace.strategy_json,
           creativeType: 'complete',
-          audiencePsychology: workspace.brands?.audience_psychology
+          audiencePsychology: workspace.brands?.audience_psychology,
+          offerData,
+          productPsychology: linkedOffer?.product_psychology,
+          templateData: workspace.campaign_templates
         }
       });
 

@@ -197,6 +197,7 @@ export type Database = {
           meta_insights_last_sync: string | null
           name: string
           offer_description: string | null
+          offer_id: string | null
           offer_name: string | null
           offer_price: string | null
           offer_url: string | null
@@ -233,6 +234,7 @@ export type Database = {
           meta_insights_last_sync?: string | null
           name: string
           offer_description?: string | null
+          offer_id?: string | null
           offer_name?: string | null
           offer_price?: string | null
           offer_url?: string | null
@@ -269,6 +271,7 @@ export type Database = {
           meta_insights_last_sync?: string | null
           name?: string
           offer_description?: string | null
+          offer_id?: string | null
           offer_name?: string | null
           offer_price?: string | null
           offer_url?: string | null
@@ -293,6 +296,13 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_workspaces_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
             referencedColumns: ["id"]
           },
           {
