@@ -143,7 +143,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                   ) : (
                     <>
                       <Sparkles className="w-5 h-5 mr-2" />
-                      Light Me Up ✨
+                      Put me on the List!
                     </>
                   )}
                 </Button>
