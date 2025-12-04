@@ -11,11 +11,9 @@ import { GuidedTour } from "@/components/GuidedTour";
 import { LumiChat } from "@/components/LumiChat";
 import { LumiCharacter } from "@/components/LumiCharacter";
 import lumiLogo from "@/assets/lumi-logo.png";
-
 interface DashboardLayoutProps {
   children: ReactNode;
 }
-
 export default function DashboardLayout({
   children
 }: DashboardLayoutProps) {
@@ -45,7 +43,6 @@ export default function DashboardLayout({
     if (location.pathname.includes('/workspace')) return 'campaign';
     return 'dashboard';
   };
-
   useEffect(() => {
     supabase.auth.getUser().then(({
       data: {
@@ -59,46 +56,47 @@ export default function DashboardLayout({
         supabase.from("profiles").select("*").eq("id", user.id).single().then(({
           data
         }) => setProfile(data));
-
-        supabase.from("brands").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).single().then(({
+        supabase.from("brands").select("*").eq("user_id", user.id).order("created_at", {
+          ascending: false
+        }).limit(1).single().then(({
           data
         }) => setBrand(data));
-
         supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single().then(({
           data
         }) => setIsAdmin(!!data));
       }
     });
   }, [navigate]);
-
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     toast.success("Signed out successfully");
     navigate("/auth");
   };
-
   const handleShowWalkthrough = async () => {
     localStorage.removeItem('has-seen-walkthrough');
-    
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: {
+          session
+        }
+      } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Please log in to continue");
         navigate("/auth");
         return;
       }
-      
-      const { data, error } = await supabase.functions.invoke('suggest-next-action', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('suggest-next-action', {
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
       });
-      
       if (error || data.error) {
         console.error('Error getting walkthrough:', error || data.error);
         return;
       }
-      
       if (data.context) {
         const steps = [{
           id: 'profile',
@@ -156,14 +154,12 @@ export default function DashboardLayout({
       console.error('Error showing walkthrough:', error);
     }
   };
-
   const handleWalkthroughAction = (route?: string, targetSelector?: string, tourTitle?: string, tourDescription?: string) => {
     setWalkthroughOpen(false);
     if (route) {
       if (route !== location.pathname) {
         navigate(route);
       }
-
       if (targetSelector && tourTitle && tourDescription) {
         setTimeout(() => {
           setTourConfig({
@@ -176,7 +172,6 @@ export default function DashboardLayout({
       }
     }
   };
-
   const tabItems = [{
     path: "/planning",
     icon: Lightbulb,
@@ -202,21 +197,16 @@ export default function DashboardLayout({
     lightColor: "tab-orange-light",
     darkColor: "tab-orange-dark"
   }];
-
   if (!user) return null;
 
   // Custom trigger for Lumi in nav bar
-  const lumiNavTrigger = (
-    <button className="flex items-center gap-3 text-base font-medium transition-colors group mb-2 hover:opacity-80">
+  const lumiNavTrigger = <button className="flex items-center gap-3 text-base font-medium transition-colors group mb-2 hover:opacity-80">
       <LumiCharacter size="sm" state="idle" glow className="group-hover:animate-none" />
       <span className="bg-gradient-to-r from-primary to-lumi-orange-3 bg-clip-text text-transparent font-bold text-lg">
         Ask Lumi
       </span>
-    </button>
-  );
-
-  return (
-    <div className="min-h-screen bg-background">
+    </button>;
+  return <div className="min-h-screen bg-background">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -314,16 +304,12 @@ export default function DashboardLayout({
             })}
             </div>
             
-            <LumiChat 
-              context={getContextFromRoute()} 
-              brand={brand}
-              trigger={lumiNavTrigger}
-            />
+            <LumiChat context={getContextFromRoute()} brand={brand} trigger={lumiNavTrigger} />
           </nav>
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8">{children}</main>
+      <main className="container mx-auto px-6 py-0">{children}</main>
 
       {walkthroughOpen && <OnboardingWalkthrough steps={walkthroughSteps} onClose={() => setWalkthroughOpen(false)} onActionClick={handleWalkthroughAction} />}
 
@@ -331,6 +317,5 @@ export default function DashboardLayout({
       setTourActive(false);
       setTourConfig(null);
     }} />}
-    </div>
-  );
+    </div>;
 }
