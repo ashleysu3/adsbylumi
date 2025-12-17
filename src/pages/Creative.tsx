@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Rocket, Clipboard, Upload } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Sparkles, Rocket, Clipboard, Upload, Grid3X3, ArrowLeft, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { LumiLoader } from "@/components/LumiLoader";
@@ -17,6 +19,7 @@ import { CreativeGrid } from "@/components/creative/CreativeGrid";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { BulkUploader, UploadedAsset } from "@/components/creative/BulkUploader";
 import { ProductionChecklistPanel, ProductionItem } from "@/components/creative/ProductionChecklistPanel";
+import { cn } from "@/lib/utils";
 
 type DashboardStep = "select_angles" | "creative_grid";
 type GeneratingPhase = "angles" | "grid" | null;
@@ -507,14 +510,63 @@ export default function Creative() {
                     </Select>
                   </div>
                   {dashboardStep === "creative_grid" ? (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setActiveTab(activeTab === "upload" ? "grid" : "upload")}
-                      className="shrink-0 gap-2"
-                    >
-                      <Upload className="h-4 w-4" />
-                      {activeTab === "upload" ? "Back to Grid" : "Upload Assets"}
-                    </Button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Change Angles Button */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="gap-2">
+                            <ArrowLeft className="h-4 w-4" />
+                            <span className="hidden sm:inline">Change Angles</span>
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Change creative angles?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Going back will let you select different angles. Your current creative grid will be regenerated with the new selection.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => setDashboardStep("select_angles")}>
+                              Change Angles
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      {/* View Toggle with active indicator */}
+                      <div className="flex items-center rounded-lg border bg-muted/50 p-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setActiveTab("grid")}
+                          className={cn(
+                            "gap-2 h-8 px-3 rounded-md transition-all",
+                            activeTab === "grid" 
+                              ? "bg-background shadow-sm text-foreground" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <Grid3X3 className="h-4 w-4" />
+                          <span className="hidden sm:inline">Grid</span>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setActiveTab("upload")}
+                          className={cn(
+                            "gap-2 h-8 px-3 rounded-md transition-all",
+                            activeTab === "upload" 
+                              ? "bg-background shadow-sm text-foreground" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <Upload className="h-4 w-4" />
+                          <span className="hidden sm:inline">Upload</span>
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
                     <Badge variant="secondary" className="shrink-0">
                       {progressLabels[workspace.progress_status] || workspace.progress_status}
@@ -593,7 +645,7 @@ export default function Creative() {
               </div>
             </div>
 
-            {/* Right Sidebar - Production Checklist */}
+            {/* Right Sidebar - Production Checklist (Desktop) */}
             {(dashboardStep === "creative_grid" || productionItems.length > 0) && (
               <div className="hidden lg:block w-[350px] border-l border-border bg-muted/30">
                 <ProductionChecklistPanel
@@ -601,6 +653,42 @@ export default function Creative() {
                   onToggleComplete={handleToggleComplete}
                   onRemove={handleRemoveFromChecklist}
                 />
+              </div>
+            )}
+
+            {/* Mobile Checklist FAB + Sheet */}
+            {(dashboardStep === "creative_grid" || productionItems.length > 0) && (
+              <div className="lg:hidden fixed bottom-6 right-6 z-50">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button 
+                      size="lg" 
+                      className="h-14 w-14 rounded-full shadow-lg relative"
+                    >
+                      <ClipboardList className="h-6 w-6" />
+                      {productionItems.length > 0 && (
+                        <Badge 
+                          variant="secondary" 
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs font-bold"
+                        >
+                          {productionItems.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="h-[80vh] rounded-t-2xl">
+                    <SheetHeader className="pb-4">
+                      <SheetTitle>Production Checklist</SheetTitle>
+                    </SheetHeader>
+                    <div className="overflow-auto h-[calc(80vh-80px)]">
+                      <ProductionChecklistPanel
+                        items={productionItems}
+                        onToggleComplete={handleToggleComplete}
+                        onRemove={handleRemoveFromChecklist}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
               </div>
             )}
           </div>
