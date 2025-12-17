@@ -148,11 +148,28 @@ export default function Creative() {
       // Load existing creative data if available
       const creativeData = data.creative_json as Record<string, any> | null;
       if (creativeData?.angles) {
-        setAvailableAngles(creativeData.angles);
+        const angles = creativeData.angles as CreativeAngle[];
+        setAvailableAngles(angles);
         setSelectedAngleIds(creativeData.selectedAngleIds || []);
-        setGridData(creativeData.gridData || []);
+        
+        // Normalize gridData angleIds (fix for old data where angleId was set to name instead of id)
+        let gridDataNormalized = creativeData.gridData || [];
+        if (gridDataNormalized.length > 0) {
+          const angleIdMap = new Map<string, string>();
+          angles.forEach(a => {
+            angleIdMap.set(a.name.toLowerCase(), a.id);
+            angleIdMap.set(a.id.toLowerCase(), a.id);
+          });
+          gridDataNormalized = gridDataNormalized.map((cell: any) => {
+            const lookupKey = (cell.angleId || "").toLowerCase();
+            const correctedId = angleIdMap.get(lookupKey);
+            return correctedId ? { ...cell, angleId: correctedId } : cell;
+          });
+        }
+        
+        setGridData(gridDataNormalized);
         setProductionItems(creativeData.productionItems || []);
-        setDashboardStep(creativeData.gridData?.length > 0 ? "creative_grid" : "select_angles");
+        setDashboardStep(gridDataNormalized.length > 0 ? "creative_grid" : "select_angles");
         if (creativeData.selectedAngleIds?.length > 0) {
           setActiveAngleId(creativeData.selectedAngleIds[0]);
         }
