@@ -6,9 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Rocket, Clipboard, Grid3X3, Upload, ListChecks } from "lucide-react";
+import { Sparkles, Rocket, Clipboard, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { LumiLoader } from "@/components/LumiLoader";
@@ -507,9 +506,20 @@ export default function Creative() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Badge variant="secondary" className="shrink-0">
-                    {progressLabels[workspace.progress_status] || workspace.progress_status}
-                  </Badge>
+                  {dashboardStep === "creative_grid" ? (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActiveTab(activeTab === "upload" ? "grid" : "upload")}
+                      className="shrink-0 gap-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {activeTab === "upload" ? "Back to Grid" : "Upload Assets"}
+                    </Button>
+                  ) : (
+                    <Badge variant="secondary" className="shrink-0">
+                      {progressLabels[workspace.progress_status] || workspace.progress_status}
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -561,39 +571,24 @@ export default function Creative() {
                   />
                 ) : (
                   /* Step 2+: Creative Grid & Upload */
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                    <TabsList className="mb-4 w-fit">
-                      <TabsTrigger value="grid" className="gap-2">
-                        <Grid3X3 className="h-4 w-4" />
-                        Creative Grid
-                      </TabsTrigger>
-                      <TabsTrigger value="upload" className="gap-2">
-                        <Upload className="h-4 w-4" />
-                        Upload Assets
-                      </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="grid" className="flex-1 mt-0">
-                      <CreativeGrid
-                        angles={selectedAngles}
-                        activeAngleId={activeAngleId}
-                        onAngleChange={setActiveAngleId}
-                        gridData={gridData}
-                        selectedCells={selectedCells}
-                        onCellToggle={handleCellToggle}
-                        onAddToChecklist={handleAddToChecklist}
-                      />
-                    </TabsContent>
-
-                    <TabsContent value="upload" className="flex-1 mt-0">
-                      <BulkUploader
-                        angles={selectedAngles}
-                        uploadedAssets={uploadedAssets}
-                        onAssetsChange={setUploadedAssets}
-                        onAddToChecklist={handleBulkUploadAdd}
-                      />
-                    </TabsContent>
-                  </Tabs>
+                  activeTab === "grid" ? (
+                    <CreativeGrid
+                      angles={selectedAngles}
+                      activeAngleId={activeAngleId}
+                      onAngleChange={setActiveAngleId}
+                      gridData={gridData}
+                      selectedCells={selectedCells}
+                      onCellToggle={handleCellToggle}
+                      onAddToChecklist={handleAddToChecklist}
+                    />
+                  ) : (
+                    <BulkUploader
+                      angles={selectedAngles}
+                      uploadedAssets={uploadedAssets}
+                      onAssetsChange={setUploadedAssets}
+                      onAddToChecklist={handleBulkUploadAdd}
+                    />
+                  )
                 )}
               </div>
             </div>
