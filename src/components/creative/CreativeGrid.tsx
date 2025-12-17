@@ -12,6 +12,8 @@ interface CreativeGridProps {
   selectedCells: string[];
   onCellToggle: (cellId: string) => void;
   onAddToChecklist: () => void;
+  onAddSingleToChecklist?: (cellId: string) => void;
+  checklistIds?: string[];
 }
 
 const rowLabels = {
@@ -30,6 +32,8 @@ export function CreativeGrid({
   selectedCells,
   onCellToggle,
   onAddToChecklist,
+  onAddSingleToChecklist,
+  checklistIds = [],
 }: CreativeGridProps) {
   const activeAngle = angles.find(a => a.id === activeAngleId);
   const selectedCount = selectedCells.filter(id => 
@@ -92,6 +96,8 @@ export function CreativeGrid({
                     cell={cell}
                     isSelected={selectedCells.includes(cell.id)}
                     onToggle={onCellToggle}
+                    onAddToChecklist={onAddSingleToChecklist}
+                    isInChecklist={checklistIds.includes(cell.id)}
                   />
                 ))}
               </div>
