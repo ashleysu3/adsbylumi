@@ -68,11 +68,13 @@ Return a JSON object with a "grid" array. Each cell object must have:
 - hook: one compelling sentence (the opening idea)
 - guidance: one sentence of execution direction`;
 
-    const anglesDescription = angles.map((a: any) => `- ${a.name}: ${a.description}`).join("\n");
+    const anglesDescription = angles.map((a: any) => `- ID: "${a.id}" | Name: ${a.name}: ${a.description}`).join("\n");
 
     const userPrompt = `Generate a 3×3 creative grid for each of these angles:
 
 ${anglesDescription}
+
+IMPORTANT: Use the exact angle ID (not the name) for the angleId field. For example, if the angle ID is "quick_win_ads", set angleId to "quick_win_ads".
 
 BRAND: ${brandName}
 
@@ -123,6 +125,25 @@ Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length}
     }
 
     const parsed = JSON.parse(content);
+
+    // Post-process to ensure angleId matches actual angle IDs
+    // The AI sometimes uses angle names instead of IDs
+    const angleIdMap = new Map<string, string>();
+    for (const angle of angles) {
+      angleIdMap.set(angle.name.toLowerCase(), angle.id);
+      angleIdMap.set(angle.id.toLowerCase(), angle.id);
+    }
+
+    if (parsed.grid && Array.isArray(parsed.grid)) {
+      parsed.grid = parsed.grid.map((cell: any) => {
+        const lookupKey = (cell.angleId || "").toLowerCase();
+        const correctedId = angleIdMap.get(lookupKey);
+        if (correctedId) {
+          cell.angleId = correctedId;
+        }
+        return cell;
+      });
+    }
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
