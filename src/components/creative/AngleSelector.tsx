@@ -38,14 +38,39 @@ export function AngleSelector({
 
   return (
     <div className="space-y-6">
-      <div className="text-center space-y-2">
+      <div className="text-center space-y-4">
         <h2 className="text-2xl font-display font-bold">Choose Your Creative Angles</h2>
         <p className="text-muted-foreground max-w-xl mx-auto">
           Select 3–5 angles that feel right for this campaign. Each angle will become a set of creative ideas you can choose from.
         </p>
-        <p className="text-sm text-muted-foreground">
-          {selectedAngles.length} of 3–5 selected
-        </p>
+        {/* Visual progress indicator */}
+        <div className="flex items-center justify-center gap-2">
+          {[1, 2, 3, 4, 5].map((slot) => {
+            const isFilled = slot <= selectedAngles.length;
+            const isRequired = slot <= 3;
+            return (
+              <div
+                key={slot}
+                className={cn(
+                  "w-3 h-3 rounded-full transition-all duration-200",
+                  isFilled
+                    ? "bg-primary scale-110"
+                    : isRequired
+                    ? "bg-muted-foreground/30 ring-1 ring-muted-foreground/50"
+                    : "bg-muted"
+                )}
+                title={isRequired ? `Required slot ${slot}` : `Optional slot ${slot}`}
+              />
+            );
+          })}
+          <span className="ml-2 text-sm text-muted-foreground">
+            {selectedAngles.length < 3 
+              ? `${3 - selectedAngles.length} more needed`
+              : selectedAngles.length === 5 
+              ? "Max selected" 
+              : `${selectedAngles.length} selected`}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

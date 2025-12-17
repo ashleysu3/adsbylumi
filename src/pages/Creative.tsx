@@ -344,6 +344,36 @@ export default function Creative() {
     toast.success(`Added ${uniqueNewItems.length} items to checklist`);
   };
 
+  const handleAddSingleToChecklist = (cellId: string) => {
+    const cell = gridData.find(c => c.id === cellId);
+    if (!cell) return;
+    
+    // Check if already in checklist
+    if (productionItems.some(item => item.id === cellId)) {
+      toast.info("Already in checklist");
+      return;
+    }
+    
+    const angle = availableAngles.find(a => a.id === cell.angleId);
+    
+    const newItem: ProductionItem = {
+      id: cell.id,
+      format: cell.format,
+      hook: cell.hook,
+      guidance: cell.guidance,
+      angleName: angle?.name || "",
+      completed: false,
+      assetNote: cell.format === "talking_head" ? "Record video" : 
+                 cell.format === "broll" ? "Upload b-roll" : "Design graphic"
+    };
+    
+    const updatedItems = [...productionItems, newItem];
+    setProductionItems(updatedItems);
+    saveCreativeState({ productionItems: updatedItems });
+    
+    toast.success("Added to checklist");
+  };
+
   const handleToggleComplete = (id: string) => {
     const updatedItems = productionItems.map(item =>
       item.id === id ? { ...item, completed: !item.completed } : item
@@ -632,6 +662,8 @@ export default function Creative() {
                       selectedCells={selectedCells}
                       onCellToggle={handleCellToggle}
                       onAddToChecklist={handleAddToChecklist}
+                      onAddSingleToChecklist={handleAddSingleToChecklist}
+                      checklistIds={productionItems.map(item => item.id)}
                     />
                   ) : (
                     <BulkUploader

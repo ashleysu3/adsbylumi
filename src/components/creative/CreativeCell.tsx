@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Video, Film, Image } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Video, Film, Image, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface CreativeCellData {
@@ -17,6 +18,8 @@ interface CreativeCellProps {
   cell: CreativeCellData;
   isSelected: boolean;
   onToggle: (cellId: string) => void;
+  onAddToChecklist?: (cellId: string) => void;
+  isInChecklist?: boolean;
 }
 
 const formatIcons = {
@@ -31,13 +34,13 @@ const formatLabels = {
   graphic: "Graphic / Static",
 };
 
-export function CreativeCell({ cell, isSelected, onToggle }: CreativeCellProps) {
+export function CreativeCell({ cell, isSelected, onToggle, onAddToChecklist, isInChecklist }: CreativeCellProps) {
   const Icon = formatIcons[cell.format];
 
   return (
     <Card
       className={cn(
-        "cursor-pointer transition-all duration-200 hover:shadow-md h-full",
+        "cursor-pointer transition-all duration-200 hover:shadow-md h-full group",
         isSelected && "ring-2 ring-primary bg-primary/5"
       )}
       onClick={() => onToggle(cell.id)}
@@ -55,9 +58,30 @@ export function CreativeCell({ cell, isSelected, onToggle }: CreativeCellProps) 
           />
         </div>
       </CardHeader>
-      <CardContent className="px-4 pb-4 space-y-2">
+      <CardContent className="px-4 pb-4 space-y-3">
         <p className="font-medium text-sm leading-snug">{cell.hook}</p>
         <p className="text-xs text-muted-foreground leading-relaxed">{cell.guidance}</p>
+        {onAddToChecklist && (
+          <Button
+            variant={isInChecklist ? "secondary" : "outline"}
+            size="sm"
+            className="w-full h-8 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToChecklist(cell.id);
+            }}
+            disabled={isInChecklist}
+          >
+            {isInChecklist ? (
+              "Added to Checklist"
+            ) : (
+              <>
+                <Plus className="h-3 w-3 mr-1" />
+                Add to Checklist
+              </>
+            )}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
