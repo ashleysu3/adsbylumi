@@ -12,6 +12,7 @@ import { Sparkles, Rocket, Clipboard, Grid3X3, Upload, ListChecks } from "lucide
 import { toast } from "sonner";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { LumiLoader } from "@/components/LumiLoader";
+import { GeneratingModal } from "@/components/GeneratingModal";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
 import { CreativeGrid } from "@/components/creative/CreativeGrid";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
@@ -19,11 +20,29 @@ import { BulkUploader, UploadedAsset } from "@/components/creative/BulkUploader"
 import { ProductionChecklistPanel, ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 
 type DashboardStep = "select_angles" | "creative_grid";
+type GeneratingPhase = "angles" | "grid" | null;
+
+const angleGenerationSteps = [
+  "Analyzing your brand strategy...",
+  "Identifying creative opportunities...",
+  "Exploring psychological triggers...",
+  "Crafting unique angles...",
+  "Building your options..."
+];
+
+const gridGenerationSteps = [
+  "Preparing your selected angles...",
+  "Creating attention-grabbing hooks...",
+  "Designing trust-building ideas...",
+  "Developing action-driving concepts...",
+  "Organizing your creative grid..."
+];
 
 export default function Creative() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [generatingPhase, setGeneratingPhase] = useState<GeneratingPhase>(null);
   const [brand, setBrand] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
@@ -163,6 +182,7 @@ export default function Creative() {
     }
 
     setGenerating(true);
+    setGeneratingPhase("angles");
     try {
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
         body: {
@@ -192,6 +212,7 @@ export default function Creative() {
       else toast.error(error.message || "Failed to generate angles");
     } finally {
       setGenerating(false);
+      setGeneratingPhase(null);
     }
   };
 
@@ -202,6 +223,7 @@ export default function Creative() {
     }
 
     setGenerating(true);
+    setGeneratingPhase("grid");
     try {
       const selectedAngles = availableAngles.filter(a => selectedAngleIds.includes(a.id));
       
@@ -240,6 +262,7 @@ export default function Creative() {
       else toast.error(error.message || "Failed to generate creative ideas");
     } finally {
       setGenerating(false);
+      setGeneratingPhase(null);
     }
   };
 
@@ -361,6 +384,12 @@ export default function Creative() {
 
   return (
     <DashboardLayout>
+      <GeneratingModal 
+        isOpen={generating}
+        title={generatingPhase === "angles" ? "Discovering creative angles..." : "Building your creative ideas..."}
+        steps={generatingPhase === "angles" ? angleGenerationSteps : gridGenerationSteps}
+      />
+      
       <CampaignFlowBreadcrumb 
         currentStep="creative" 
         campaignId={selectedCampaignId}
