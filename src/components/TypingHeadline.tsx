@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-
 interface TypingHeadlineProps {
   staticText?: string;
   rotatingWords?: string[];
@@ -7,24 +6,20 @@ interface TypingHeadlineProps {
   deletingSpeed?: number;
   pauseTime?: number;
 }
-
 export const TypingHeadline = ({
   staticText = "Meta Ads,",
   rotatingWords = ["Simplified.", "Reimagined.", "Lumi-Fied.", "Powered by Psychology."],
   typingSpeed = 120,
   deletingSpeed = 70,
-  pauseTime = 1800,
+  pauseTime = 1800
 }: TypingHeadlineProps) => {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-
   const currentWord = rotatingWords[currentWordIndex];
-
   const tick = useCallback(() => {
     if (isPaused) return;
-
     if (!isDeleting) {
       // Typing
       if (displayedText.length < currentWord.length) {
@@ -44,26 +39,21 @@ export const TypingHeadline = ({
       } else {
         // Finished deleting, move to next word
         setIsDeleting(false);
-        setCurrentWordIndex((prev) => (prev + 1) % rotatingWords.length);
+        setCurrentWordIndex(prev => (prev + 1) % rotatingWords.length);
       }
     }
   }, [currentWord, displayedText, isDeleting, isPaused, pauseTime, rotatingWords.length]);
-
   useEffect(() => {
     const speed = isDeleting ? deletingSpeed : typingSpeed;
     const timer = setTimeout(tick, speed);
     return () => clearTimeout(timer);
   }, [tick, isDeleting, typingSpeed, deletingSpeed]);
-
-  return (
-    <h1 className="typing-headline">
-      <span className="static-text">Meta Ads,</span>
+  return <h1 className="typing-headline">
+      <span className="static-text">Meta Ads, </span>
       <span className="rotating-text">
         {displayedText}
         <span className="cursor" aria-hidden="true" />
       </span>
-    </h1>
-  );
+    </h1>;
 };
-
 export default TypingHeadline;
