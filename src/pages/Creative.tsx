@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Sparkles, Rocket, Clipboard, Upload, Grid3X3, ArrowLeft, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { LumiLoader } from "@/components/LumiLoader";
 import { GeneratingModal } from "@/components/GeneratingModal";
@@ -293,15 +294,36 @@ export default function Creative() {
       ...updates,
     };
 
+    // Transform productionItems to production_items format for Production page
+    const productionItemsForDb = updates.productionItems?.map((item: ProductionItem) => ({
+      id: item.id,
+      hook: item.hook,
+      format: item.format,
+      guidance: item.guidance,
+      angleName: item.angleName,
+      status: item.completed ? "approved" : "ready",
+      notes: item.assetNote || "",
+    })) || (workspace.production_items as any[]) || [];
+
     await supabase
       .from("campaign_workspaces")
       .update({ 
         creative_json,
+        production_items: productionItemsForDb,
         progress_status: updates.gridData?.length > 0 ? "creative_in_progress" : workspace.progress_status 
       })
       .eq("id", workspace.id);
 
-    setWorkspace((prev: any) => ({ ...prev, creative_json }));
+    setWorkspace((prev: any) => ({ ...prev, creative_json, production_items: productionItemsForDb }));
+  };
+
+  const triggerMilestoneConfetti = () => {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#8b5cf6', '#ec4899', '#f59e0b'],
+    });
   };
 
   const handleCellToggle = (cellId: string) => {
@@ -341,7 +363,16 @@ export default function Creative() {
     // Save to workspace
     saveCreativeState({ productionItems: updatedItems });
     
-    toast.success(`Added ${uniqueNewItems.length} items to checklist`);
+    // Milestone celebration when reaching 3 items
+    if (productionItems.length < 3 && updatedItems.length >= 3) {
+      triggerMilestoneConfetti();
+      toast.success("🎉 Nice! You have enough concepts to start production", {
+        description: "You can now go to Production to record and upload assets.",
+        duration: 5000,
+      });
+    } else {
+      toast.success(`Added ${uniqueNewItems.length} items to checklist`);
+    }
   };
 
   const handleAddSingleToChecklist = (cellId: string) => {
@@ -371,7 +402,16 @@ export default function Creative() {
     setProductionItems(updatedItems);
     saveCreativeState({ productionItems: updatedItems });
     
-    toast.success("Added to checklist");
+    // Milestone celebration when reaching 3 items
+    if (productionItems.length < 3 && updatedItems.length >= 3) {
+      triggerMilestoneConfetti();
+      toast.success("🎉 Nice! You have enough concepts to start production", {
+        description: "You can now go to Production to record and upload assets.",
+        duration: 5000,
+      });
+    } else {
+      toast.success("Added to checklist");
+    }
   };
 
   const handleToggleComplete = (id: string) => {
@@ -406,7 +446,16 @@ export default function Creative() {
     setProductionItems(updatedItems);
     saveCreativeState({ productionItems: updatedItems });
     
-    toast.success(`Added ${assets.length} uploaded assets to checklist`);
+    // Milestone celebration when reaching 3 items
+    if (productionItems.length < 3 && updatedItems.length >= 3) {
+      triggerMilestoneConfetti();
+      toast.success("🎉 Nice! You have enough concepts to start production", {
+        description: "You can now go to Production to record and upload assets.",
+        duration: 5000,
+      });
+    } else {
+      toast.success(`Added ${assets.length} uploaded assets to checklist`);
+    }
   };
 
   const progressLabels: Record<string, string> = {
@@ -684,6 +733,7 @@ export default function Creative() {
                   items={productionItems}
                   onToggleComplete={handleToggleComplete}
                   onRemove={handleRemoveFromChecklist}
+                  workspaceId={workspace?.id}
                 />
               </div>
             )}
@@ -717,6 +767,7 @@ export default function Creative() {
                         items={productionItems}
                         onToggleComplete={handleToggleComplete}
                         onRemove={handleRemoveFromChecklist}
+                        workspaceId={workspace?.id}
                       />
                     </div>
                   </SheetContent>
