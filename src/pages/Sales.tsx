@@ -444,8 +444,8 @@ const Sales = () => {
         <div className="container mx-auto max-w-4xl">
           <ScrollReveal>
             <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-center mb-8 sm:mb-12 px-2">
-              The Customer Journey:{" "}
-              <span className="block sm:inline mt-1 sm:mt-0">
+              <span className="block mb-2">The Customer Journey:</span>
+              <span className="block">
                 <GradientText>Grow → Nurture → Convert</GradientText>
               </span>
             </h2>
