@@ -71,3 +71,9 @@ verify_jwt = true
 
 [functions.lumi-chat]
 verify_jwt = true
+
+[functions.generate-creative-angles]
+verify_jwt = true
+
+[functions.generate-creative-grid]
+verify_jwt = true
