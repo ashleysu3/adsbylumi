@@ -6,32 +6,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, ArrowLeft, Rocket, Clipboard } from "lucide-react";
+import { Sparkles, Rocket, Clipboard, Grid3X3, Upload, ListChecks } from "lucide-react";
 import { toast } from "sonner";
-import { CreativeAssets } from "@/components/CreativeAssets";
-import { ProductionChecklist } from "@/components/ProductionChecklist";
-import { CreativeUploader } from "@/components/CreativeUploader";
-import { CreativeSidebar } from "@/components/CreativeSidebar";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
-import { GeneratingModal } from "@/components/GeneratingModal";
-import { AdCopyLibrary } from "@/components/AdCopyLibrary";
-import { SavedConcepts } from "@/components/SavedConcepts";
-import { LumiSuccess } from "@/components/LumiSuccess";
 import { LumiLoader } from "@/components/LumiLoader";
-import { LumiCharacter } from "@/components/LumiCharacter";
+import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
+import { CreativeGrid } from "@/components/creative/CreativeGrid";
+import { CreativeCellData } from "@/components/creative/CreativeCell";
+import { BulkUploader, UploadedAsset } from "@/components/creative/BulkUploader";
+import { ProductionChecklistPanel, ProductionItem } from "@/components/creative/ProductionChecklistPanel";
+
+type DashboardStep = "select_angles" | "creative_grid";
 
 export default function Creative() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [brand, setBrand] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [workspace, setWorkspace] = useState<any>(null);
-  const [activeSection, setActiveSection] = useState("grow");
-  const [activeRecommendations, setActiveRecommendations] = useState<string[]>([]);
+  
+  // Creative state
+  const [dashboardStep, setDashboardStep] = useState<DashboardStep>("select_angles");
+  const [availableAngles, setAvailableAngles] = useState<CreativeAngle[]>([]);
+  const [selectedAngleIds, setSelectedAngleIds] = useState<string[]>([]);
+  const [activeAngleId, setActiveAngleId] = useState<string>("");
+  const [gridData, setGridData] = useState<CreativeCellData[]>([]);
+  const [selectedCells, setSelectedCells] = useState<string[]>([]);
+  const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
+  const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
+  const [activeTab, setActiveTab] = useState<string>("grid");
 
   useEffect(() => {
     fetchInitialData();
@@ -45,7 +52,6 @@ export default function Creative() {
         return;
       }
 
-      // Fetch brand
       const { data: brandData } = await supabase
         .from("brands")
         .select("*")
@@ -60,20 +66,17 @@ export default function Creative() {
 
       setBrand(brandData);
 
-      // Fetch all campaigns for this brand
       const { data: campaignsData } = await supabase
         .from("campaign_workspaces")
         .select("id, name, progress_status, offer_name, updated_at, creative_json")
         .eq("brand_id", brandData.id)
         .order("updated_at", { ascending: false });
 
-      // Filter campaigns based on offer archive status
       if (campaignsData && campaignsData.length > 0) {
         const filteredCampaigns = await Promise.all(
           campaignsData.map(async (campaign) => {
             if (!campaign.offer_name) return campaign;
             
-            // Check if offer is archived
             const { data: offer } = await supabase
               .from('offers')
               .select('archived')
@@ -81,28 +84,20 @@ export default function Creative() {
               .eq('name', campaign.offer_name)
               .maybeSingle();
             
-            // Show campaign if:
-            // 1. Offer doesn't exist in offers table (legacy)
-            // 2. Offer is not archived
-            // 3. Campaign is live/completed (performance tracking)
-            if (!offer || 
-                !offer.archived || 
-                ['live', 'completed'].includes(campaign.progress_status)) {
+            if (!offer || !offer.archived || ['live', 'completed'].includes(campaign.progress_status)) {
               return campaign;
             }
-            
             return null;
           })
         );
 
         setCampaigns(filteredCampaigns.filter(Boolean) as any[]);
+        
+        if (filteredCampaigns[0]) {
+          await handleCampaignSelect(filteredCampaigns[0].id);
+        }
       } else {
         setCampaigns([]);
-      }
-
-      // Auto-select most recent campaign if available
-      if (campaignsData && campaignsData.length > 0) {
-        await handleCampaignSelect(campaignsData[0].id);
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -122,7 +117,6 @@ export default function Creative() {
     setLoading(true);
 
     try {
-      // Fetch full campaign data
       const { data, error } = await supabase
         .from("campaign_workspaces")
         .select("*, brands(*)")
@@ -131,6 +125,27 @@ export default function Creative() {
 
       if (error) throw error;
       setWorkspace(data);
+      
+      // Load existing creative data if available
+      const creativeData = data.creative_json as Record<string, any> | null;
+      if (creativeData?.angles) {
+        setAvailableAngles(creativeData.angles);
+        setSelectedAngleIds(creativeData.selectedAngleIds || []);
+        setGridData(creativeData.gridData || []);
+        setProductionItems(creativeData.productionItems || []);
+        setDashboardStep(creativeData.gridData?.length > 0 ? "creative_grid" : "select_angles");
+        if (creativeData.selectedAngleIds?.length > 0) {
+          setActiveAngleId(creativeData.selectedAngleIds[0]);
+        }
+      } else {
+        // Reset state for new campaign
+        setAvailableAngles([]);
+        setSelectedAngleIds([]);
+        setGridData([]);
+        setProductionItems([]);
+        setDashboardStep("select_angles");
+        setActiveAngleId("");
+      }
     } catch (error: any) {
       console.error("Error loading campaign:", error);
       toast.error("Failed to load campaign");
@@ -139,14 +154,9 @@ export default function Creative() {
     }
   };
 
-  const handleWorkspaceUpdate = async (updates: any) => {
-    setWorkspace((prev: any) => ({ ...prev, ...updates }));
-  };
-
-  const generateCreative = async () => {
+  const generateAngles = async () => {
     if (!workspace) return;
 
-    // Check if strategy data exists
     if (!workspace.strategy_json) {
       toast.error("Please complete your campaign strategy in the Planner first.");
       return;
@@ -154,110 +164,177 @@ export default function Creative() {
 
     setGenerating(true);
     try {
-      // Fetch full offer data from offers table
-      let offerData = null;
-      if (workspace.offer_name && brand?.id) {
-        const { data: offer } = await supabase
-          .from('offers')
-          .select('*')
-          .eq('brand_id', brand.id)
-          .eq('name', workspace.offer_name)
-          .maybeSingle();
-        
-        if (offer) {
-          offerData = {
-            name: offer.name,
-            description: offer.description,
-            price_point: offer.price_point,
-            url: offer.url,
-            target_outcome: offer.target_outcome,
-            product_psychology: offer.product_psychology,
-            messaging_guidelines: offer.messaging_guidelines
-          };
-        }
-      }
-
-      // Fetch campaign template to get the template slug for CTA context
-      let templateData = null;
-      if (workspace.template_id) {
-        const { data: template } = await supabase
-          .from('campaign_templates')
-          .select('name, slug')
-          .eq('id', workspace.template_id)
-          .maybeSingle();
-        
-        if (template) {
-          templateData = {
-            name: template.name,
-            slug: template.slug
-          };
-        }
-      }
-
-      const { data, error } = await supabase.functions.invoke('generate-creative', {
+      const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
         body: {
           brandName: workspace.brands?.name || workspace.name,
           strategyData: workspace.strategy_json,
-          creativeType: 'complete',
           audiencePsychology: workspace.brands?.audience_psychology,
-          offerData: offerData,
-          templateData: templateData
+          offerData: {
+            name: workspace.offer_name,
+            description: workspace.offer_description,
+            price: workspace.offer_price,
+          }
         }
       });
 
       if (error) throw error;
 
-      const updatedData = {
-        creative_json: data,
-        progress_status: "waiting_for_assets",
-        production_checklist: generateProductionChecklist(data),
-      };
-
-      await supabase
-        .from("campaign_workspaces")
-        .update(updatedData)
-        .eq("id", workspace.id);
-
-      await handleWorkspaceUpdate(updatedData);
-      setShowSuccess(true);
-      toast.success("Creative assets generated!");
+      setAvailableAngles(data.angles);
+      
+      // Save angles to workspace
+      await saveCreativeState({ angles: data.angles });
+      
+      toast.success("Creative angles ready!");
     } catch (error: any) {
-      console.error("Error generating creative:", error);
+      console.error("Error generating angles:", error);
       if (error.message?.includes("429")) toast.error("Rate limit exceeded. Please wait a moment.");
       else if (error.message?.includes("402")) toast.error("AI credits depleted. Please add credits in Settings.");
-      else toast.error(error.message || "Failed to generate creative");
+      else toast.error(error.message || "Failed to generate angles");
     } finally {
       setGenerating(false);
     }
   };
 
-  const generateProductionChecklist = (creative: any) => {
-    const items: any[] = [];
-    if (creative.creative_mix) {
-      const { tofu = [], mofu = [], bofu = [] } = creative.creative_mix;
-      const allConcepts = [...tofu, ...mofu, ...bofu];
+  const generateCreativeGrid = async () => {
+    if (selectedAngleIds.length < 3) {
+      toast.error("Please select at least 3 angles");
+      return;
+    }
 
-      allConcepts.forEach((concept: any, idx: number) => {
-        const stage = concept.stage || 'tofu';
-        if (concept.format === 'talking_head' || concept.script) {
-          items.push({
-            id: `record_${stage}_${idx}`,
-            category: "📹 To Record",
-            title: `${stage.toUpperCase()}: ${concept.title}`,
-            details: concept.script,
-            completed: false,
-            stage
-          });
+    setGenerating(true);
+    try {
+      const selectedAngles = availableAngles.filter(a => selectedAngleIds.includes(a.id));
+      
+      const { data, error } = await supabase.functions.invoke('generate-creative-grid', {
+        body: {
+          angles: selectedAngles,
+          brandName: workspace.brands?.name || workspace.name,
+          strategyData: workspace.strategy_json,
+          audiencePsychology: workspace.brands?.audience_psychology,
+          offerData: {
+            name: workspace.offer_name,
+            description: workspace.offer_description,
+            price: workspace.offer_price,
+          }
         }
       });
+
+      if (error) throw error;
+
+      setGridData(data.grid);
+      setActiveAngleId(selectedAngleIds[0]);
+      setDashboardStep("creative_grid");
+      
+      // Save to workspace
+      await saveCreativeState({
+        angles: availableAngles,
+        selectedAngleIds,
+        gridData: data.grid,
+      });
+      
+      toast.success("Creative ideas generated!");
+    } catch (error: any) {
+      console.error("Error generating grid:", error);
+      if (error.message?.includes("429")) toast.error("Rate limit exceeded. Please wait a moment.");
+      else if (error.message?.includes("402")) toast.error("AI credits depleted. Please add credits in Settings.");
+      else toast.error(error.message || "Failed to generate creative ideas");
+    } finally {
+      setGenerating(false);
     }
-    return items;
   };
 
-  const handleFinalize = () => {
+  const saveCreativeState = async (updates: any) => {
     if (!workspace) return;
-    toast.success("Ready to build campaign!");
-    navigate(`/campaigns/build?workspace=${workspace.id}`);
+    
+    const creative_json = {
+      ...workspace.creative_json,
+      ...updates,
+    };
+
+    await supabase
+      .from("campaign_workspaces")
+      .update({ 
+        creative_json,
+        progress_status: updates.gridData?.length > 0 ? "creative_in_progress" : workspace.progress_status 
+      })
+      .eq("id", workspace.id);
+
+    setWorkspace((prev: any) => ({ ...prev, creative_json }));
+  };
+
+  const handleCellToggle = (cellId: string) => {
+    setSelectedCells(prev => 
+      prev.includes(cellId) 
+        ? prev.filter(id => id !== cellId)
+        : [...prev, cellId]
+    );
+  };
+
+  const handleAddToChecklist = () => {
+    const cellsToAdd = gridData.filter(cell => 
+      selectedCells.includes(cell.id) && cell.angleId === activeAngleId
+    );
+    
+    const angle = availableAngles.find(a => a.id === activeAngleId);
+    
+    const newItems: ProductionItem[] = cellsToAdd.map(cell => ({
+      id: cell.id,
+      format: cell.format,
+      hook: cell.hook,
+      guidance: cell.guidance,
+      angleName: angle?.name || "",
+      completed: false,
+      assetNote: cell.format === "talking_head" ? "Record video" : 
+                 cell.format === "broll" ? "Upload b-roll" : "Design graphic"
+    }));
+
+    // Avoid duplicates
+    const existingIds = productionItems.map(item => item.id);
+    const uniqueNewItems = newItems.filter(item => !existingIds.includes(item.id));
+    
+    const updatedItems = [...productionItems, ...uniqueNewItems];
+    setProductionItems(updatedItems);
+    setSelectedCells(prev => prev.filter(id => !cellsToAdd.find(c => c.id === id)));
+    
+    // Save to workspace
+    saveCreativeState({ productionItems: updatedItems });
+    
+    toast.success(`Added ${uniqueNewItems.length} items to checklist`);
+  };
+
+  const handleToggleComplete = (id: string) => {
+    const updatedItems = productionItems.map(item =>
+      item.id === id ? { ...item, completed: !item.completed } : item
+    );
+    setProductionItems(updatedItems);
+    saveCreativeState({ productionItems: updatedItems });
+  };
+
+  const handleRemoveFromChecklist = (id: string) => {
+    const updatedItems = productionItems.filter(item => item.id !== id);
+    setProductionItems(updatedItems);
+    saveCreativeState({ productionItems: updatedItems });
+  };
+
+  const handleBulkUploadAdd = (assets: UploadedAsset[]) => {
+    const newItems: ProductionItem[] = assets.map(asset => {
+      const angle = availableAngles.find(a => a.id === asset.angleId);
+      return {
+        id: asset.id,
+        format: asset.format,
+        hook: asset.file.name,
+        guidance: "Uploaded asset - ready to use",
+        angleName: angle?.name || "Unassigned",
+        completed: true,
+        assetNote: "Asset uploaded"
+      };
+    });
+    
+    const updatedItems = [...productionItems, ...newItems];
+    setProductionItems(updatedItems);
+    saveCreativeState({ productionItems: updatedItems });
+    
+    toast.success(`Added ${assets.length} uploaded assets to checklist`);
   };
 
   const progressLabels: Record<string, string> = {
@@ -270,11 +347,13 @@ export default function Creative() {
     completed: "Completed"
   };
 
+  const selectedAngles = availableAngles.filter(a => selectedAngleIds.includes(a.id));
+
   if (loading && campaigns.length === 0) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <LumiLoader size="lg" message="Loading Lumi Creative..." />
+          <LumiLoader size="lg" message="Loading Creative Studio..." />
         </div>
       </DashboardLayout>
     );
@@ -282,21 +361,13 @@ export default function Creative() {
 
   return (
     <DashboardLayout>
-      {/* Success celebration */}
-      <LumiSuccess 
-        show={showSuccess}
-        title="Creative generated! ✨"
-        message="Lumi created scripts, hooks, and copy tailored to your strategy."
-        onComplete={() => setShowSuccess(false)}
-      />
-      
       <CampaignFlowBreadcrumb 
         currentStep="creative" 
         campaignId={selectedCampaignId}
         progressStatus={workspace?.progress_status}
       />
+      
       <div className="flex h-[calc(100vh-4rem-53px)] w-full overflow-hidden">
-        {/* Main Dashboard Area */}
         {!workspace ? (
           <div className="flex-1 flex flex-col">
             {/* Campaign Selector for empty state */}
@@ -304,18 +375,9 @@ export default function Creative() {
               <Label htmlFor="campaign-select-empty" className="text-sm font-medium mb-2 block">
                 Select Campaign
               </Label>
-              <Select
-                value={selectedCampaignId}
-                onValueChange={handleCampaignSelect}
-              >
+              <Select value={selectedCampaignId} onValueChange={handleCampaignSelect}>
                 <SelectTrigger id="campaign-select-empty" className="w-full text-left">
-                  <SelectValue
-                    placeholder={
-                      campaigns.length === 0
-                        ? "Start with the ad planner"
-                        : "Choose a campaign..."
-                    }
-                  />
+                  <SelectValue placeholder={campaigns.length === 0 ? "Start with the ad planner" : "Choose a campaign..."} />
                 </SelectTrigger>
                 <SelectContent>
                   {campaigns.length === 0 ? (
@@ -329,13 +391,9 @@ export default function Creative() {
                     campaigns.map((campaign) => (
                       <SelectItem key={campaign.id} value={campaign.id}>
                         <div className="flex flex-col gap-0.5 py-0.5">
-                          <span className="font-medium text-sm truncate">
-                            {campaign.name}
-                          </span>
+                          <span className="font-medium text-sm truncate">{campaign.name}</span>
                           {campaign.offer_name && (
-                            <span className="text-xs text-muted-foreground truncate">
-                              {campaign.offer_name}
-                            </span>
+                            <span className="text-xs text-muted-foreground truncate">{campaign.offer_name}</span>
                           )}
                         </div>
                       </SelectItem>
@@ -353,19 +411,19 @@ export default function Creative() {
                     <Clipboard className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <CardTitle>
-                    {campaigns.length === 0 ? "Ready to shine? ✨" : "Select a Campaign"}
+                    {campaigns.length === 0 ? "Ready to create?" : "Select a Campaign"}
                   </CardTitle>
                   <CardDescription>
                     {campaigns.length === 0
-                      ? "Start by creating your first campaign in Lumi Strategy. Once you've got a plan, Lumi will generate creative ideas here."
-                      : "Choose a campaign from the dropdown above. If it doesn't have creative yet, Lumi can generate it for you."}
+                      ? "Start by creating your first campaign in the Planner. Once you've got a strategy, you'll generate creative ideas here."
+                      : "Choose a campaign from the dropdown above to start creating."}
                   </CardDescription>
                 </CardHeader>
                 {campaigns.length === 0 && (
                   <CardContent className="flex justify-center pb-6">
                     <Button onClick={() => navigate("/planning")} size="lg" variant="lumi">
                       <Rocket className="mr-2 h-4 w-4" />
-                      Start in Lumi Strategy
+                      Go to Planner
                     </Button>
                   </CardContent>
                 )}
@@ -373,33 +431,14 @@ export default function Creative() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-            {/* Sidebar - Hidden on mobile */}
-            <div className="hidden md:block">
-              <CreativeSidebar
-                workspace={workspace}
-                activeSection={activeSection}
-                onSectionChange={(section) => {
-                  setActiveSection(section);
-                  // Clear recommendations when clicking sidebar sections
-                  setActiveRecommendations([]);
-                }}
-                onNavigateToProduction={() => navigate(`/production?workspace=${workspace.id}`)}
-                onRecommendationsChange={setActiveRecommendations}
-              />
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-              {/* Header with Campaign Dropdown */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Header */}
               <div className="border-b border-border bg-background/95 backdrop-blur-sm p-6">
                 <div className="flex items-center justify-between gap-4">
-                  {/* Campaign Dropdown */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <Select
-                      value={selectedCampaignId}
-                      onValueChange={handleCampaignSelect}
-                    >
+                    <Select value={selectedCampaignId} onValueChange={handleCampaignSelect}>
                       <SelectTrigger className="w-auto border-0 p-0 h-auto hover:bg-transparent focus:ring-0 shadow-none gap-2">
                         <div className="flex flex-col items-start gap-1">
                           <h1 className="text-2xl font-bold truncate">{workspace.name}</h1>
@@ -414,9 +453,7 @@ export default function Creative() {
                             <div className="flex flex-col gap-0.5 py-0.5">
                               <span className="font-medium text-sm">{campaign.name}</span>
                               {campaign.offer_name && (
-                                <span className="text-xs text-muted-foreground">
-                                  {campaign.offer_name}
-                                </span>
+                                <span className="text-xs text-muted-foreground">{campaign.offer_name}</span>
                               )}
                             </div>
                           </SelectItem>
@@ -424,113 +461,110 @@ export default function Creative() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
-                  {/* Status Badge */}
                   <Badge variant="secondary" className="shrink-0">
                     {progressLabels[workspace.progress_status] || workspace.progress_status}
                   </Badge>
                 </div>
               </div>
 
-              {/* Main Panel */}
-              <div className="flex-1 overflow-hidden">
-                {!workspace.creative_json ? (
-                  <div className="h-full flex items-center justify-center p-6">
+              {/* Content Area */}
+              <div className="flex-1 overflow-auto p-6">
+                {availableAngles.length === 0 ? (
+                  /* Initial state - generate angles */
+                  <div className="h-full flex items-center justify-center">
                     <Card className="max-w-xl border-2 shadow-lg rounded-2xl">
                       <CardHeader className="text-center space-y-3">
-                        <div className="mx-auto w-16 h-16 rounded-full bg-gradient-lumi flex items-center justify-center shadow-glow">
-                          <Sparkles className="h-8 w-8 text-white" />
+                        <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
+                          <Sparkles className="h-8 w-8 text-primary-foreground" />
                         </div>
-                        <CardTitle className="text-2xl font-display">Lumi Creative</CardTitle>
+                        <CardTitle className="text-2xl font-display">Creative Studio</CardTitle>
                         <CardDescription className="text-base">
-                          Ready when you are! Lumi will generate scripts, copy, and creative direction tailored to your strategy.
+                          Ready to create! Lumi will generate creative angles based on your strategy, then you'll choose which ones to develop.
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="flex justify-center pb-8">
                         <Button 
-                          onClick={generateCreative} 
+                          onClick={generateAngles} 
                           disabled={generating}
                           size="lg"
-                          variant="lumi"
-                          className="w-full max-w-xs gap-2"
+                          variant="default"
                         >
-                          {generating && <LumiCharacter size="xs" state="loading" className="mr-1" />}
-                          {!generating && <Sparkles className="h-5 w-5" />}
-                          {generating ? "Lumi is thinking..." : "Generate Creative ✨"}
+                          {generating ? (
+                            <>
+                              <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
+                              Generating angles...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              Generate Creative Angles
+                            </>
+                          )}
                         </Button>
                       </CardContent>
                     </Card>
                   </div>
-                ) : activeSection === 'uploads' ? (
-                  <div className="h-full overflow-auto">
-                    <div className="p-6">
-                      <CreativeUploader workspace={workspace} onUpdate={handleWorkspaceUpdate} />
-                    </div>
-                  </div>
-                ) : activeSection === 'checklist' ? (
-                  <div className="h-full overflow-auto">
-                    <div className="p-6">
-                      <ProductionChecklist workspace={workspace} onUpdate={handleWorkspaceUpdate} />
-                    </div>
-                  </div>
-                ) : activeSection === 'copy' ? (
-                  <div className="h-full overflow-auto">
-                    <div className="p-6">
-                      <AdCopyLibrary workspace={workspace} brand={brand} onUpdate={handleWorkspaceUpdate} />
-                    </div>
-                  </div>
-                ) : activeSection === 'saved-concepts' ? (
-                  <div className="h-full overflow-auto">
-                    <div className="p-6">
-                      <SavedConcepts workspace={workspace} type="concepts" />
-                    </div>
-                  </div>
-                ) : activeSection === 'saved-copy' ? (
-                  <div className="h-full overflow-auto">
-                    <div className="p-6">
-                      <SavedConcepts workspace={workspace} type="copy" />
-                    </div>
-                  </div>
-                ) : activeSection === 'loved-concepts' ? (
-                  <div className="h-full overflow-auto">
-                    <div className="p-6">
-                      <SavedConcepts workspace={workspace} type="loved" onUpdate={handleWorkspaceUpdate} />
-                    </div>
-                  </div>
-                ) : (
-                  <CreativeAssets
-                    workspace={workspace}
-                    onUpdate={handleWorkspaceUpdate}
-                    filterStage={activeRecommendations.length === 0 && ['grow', 'nurture', 'convert', 'tofu', 'mofu', 'bofu'].includes(activeSection) ? activeSection : undefined}
-                    filterFormat={activeRecommendations.length === 0 && ['talking_head', 'b_roll', 'pov_reel', 'testimonial', 'before_after', 'carousel', 'static', 'lofi', 'screen_recording', 'scripts', 'broll', 'carousels'].includes(activeSection) ? activeSection : undefined}
-                    filterContentType={activeRecommendations.length === 0 && ['story', 'transformation', 'identity', 'emotional', 'authority', 'educational', 'objection'].includes(activeSection) ? activeSection : undefined}
-                    filterTrend={activeRecommendations.length === 0 && ['trend_hooks', 'trend_visuals', 'trend_prompts'].includes(activeSection) ? activeSection : undefined}
-                    filterFormats={activeRecommendations.filter(r => ['talking_head', 'carousel', 'testimonial', 'before_after', 'pov_reel', 'static', 'lofi', 'b_roll', 'screen_recording'].includes(r))}
-                    filterContentTypes={activeRecommendations.filter(r => ['educational', 'emotional', 'authority', 'identity', 'transformation', 'objection'].includes(r))}
-                    onGenerateCreative={generateCreative}
-                    isGeneratingParent={generating}
-                    onClearFilters={() => setActiveRecommendations([])}
+                ) : dashboardStep === "select_angles" ? (
+                  /* Step 1: Angle Selection */
+                  <AngleSelector
+                    angles={availableAngles}
+                    selectedAngles={selectedAngleIds}
+                    onSelectionChange={setSelectedAngleIds}
+                    onContinue={generateCreativeGrid}
+                    isGenerating={generating}
                   />
+                ) : (
+                  /* Step 2+: Creative Grid & Upload */
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+                    <TabsList className="mb-4 w-fit">
+                      <TabsTrigger value="grid" className="gap-2">
+                        <Grid3X3 className="h-4 w-4" />
+                        Creative Grid
+                      </TabsTrigger>
+                      <TabsTrigger value="upload" className="gap-2">
+                        <Upload className="h-4 w-4" />
+                        Upload Assets
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="grid" className="flex-1 mt-0">
+                      <CreativeGrid
+                        angles={selectedAngles}
+                        activeAngleId={activeAngleId}
+                        onAngleChange={setActiveAngleId}
+                        gridData={gridData}
+                        selectedCells={selectedCells}
+                        onCellToggle={handleCellToggle}
+                        onAddToChecklist={handleAddToChecklist}
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="upload" className="flex-1 mt-0">
+                      <BulkUploader
+                        angles={selectedAngles}
+                        uploadedAssets={uploadedAssets}
+                        onAssetsChange={setUploadedAssets}
+                        onAddToChecklist={handleBulkUploadAdd}
+                      />
+                    </TabsContent>
+                  </Tabs>
                 )}
               </div>
             </div>
+
+            {/* Right Sidebar - Production Checklist */}
+            {(dashboardStep === "creative_grid" || productionItems.length > 0) && (
+              <div className="hidden lg:block w-[350px] border-l border-border bg-muted/30">
+                <ProductionChecklistPanel
+                  items={productionItems}
+                  onToggleComplete={handleToggleComplete}
+                  onRemove={handleRemoveFromChecklist}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* Generating Modal */}
-      <GeneratingModal 
-        isOpen={generating} 
-        title="Generating Creative Assets"
-        steps={[
-          "Analyzing your brand psychology...",
-          "Crafting hook variations...",
-          "Writing compelling scripts...",
-          "Generating ad copy...",
-          "Building your creative mix...",
-          "Finalizing production notes..."
-        ]}
-      />
     </DashboardLayout>
   );
 }
