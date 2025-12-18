@@ -206,11 +206,16 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
           {currentStep === "review" && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-bold mb-2">{item.concept?.title || "Untitled Concept"}</h2>
+                <h2 className="text-2xl font-bold mb-2">{item.concept?.title || (item as any).hook || "Untitled Concept"}</h2>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{stageLabels[item.stage.toLowerCase()] || item.stage}</Badge>
+                  {item.stage && (
+                    <Badge variant="outline">{stageLabels[item.stage.toLowerCase()] || item.stage}</Badge>
+                  )}
+                  {(item as any).angleName && (
+                    <Badge variant="outline">{(item as any).angleName}</Badge>
+                  )}
                   <Badge variant="secondary" className="capitalize">
-                    {item.format.replace(/_/g, " ")}
+                    {(item.format || "").replace(/_/g, " ") || "Unknown format"}
                   </Badge>
                 </div>
               </div>
