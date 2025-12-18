@@ -25,6 +25,8 @@ import AdminAnalytics from "./pages/admin/Analytics";
 import AdminTemplates from "./pages/admin/Templates";
 import AdminInviteCodes from "./pages/admin/InviteCodes";
 import Settings from "./pages/Settings";
+import MetaSettings from "./pages/MetaSettings";
+import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
 import Pricing from "./pages/Pricing";
 import NotFound from "./pages/NotFound";
 
@@ -55,6 +57,8 @@ const App = () => (
                 <Route path="/campaigns/build" element={<CampaignBuilder />} />
                 <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/settings/meta" element={<MetaSettings />} />
+                <Route path="/settings/digest-preview" element={<WeeklyDigestPreview />} />
                 <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
                 <Route path="/admin/templates" element={<AdminTemplates />} />

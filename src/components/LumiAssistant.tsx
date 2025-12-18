@@ -311,7 +311,7 @@ function LumiAssistantUI({
             </motion.div>
           ) : null}
 
-          {/* Chat Popup - Compact chat widget */}
+          {/* Chat Popup - Branded chat widget */}
           {chatOpen ? (
             <motion.div
               key="chat-popup"
@@ -320,32 +320,91 @@ function LumiAssistantUI({
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
               className={cn(
-                "flex flex-col bg-card border border-border rounded-xl shadow-xl overflow-hidden",
-                isMaximized ? "w-96 h-[500px]" : "w-80 h-[400px]"
+                "flex flex-col rounded-2xl shadow-2xl overflow-hidden",
+                "bg-gradient-to-b from-card to-card/95 backdrop-blur-xl",
+                "border border-lumi-orange-1/10",
+                isMaximized ? "w-96 h-[520px]" : "w-80 h-[420px]"
               )}
+              style={{
+                boxShadow: '0 25px 50px -12px rgba(249, 115, 22, 0.15), 0 0 40px -10px rgba(236, 72, 153, 0.1)'
+              }}
             >
-              {/* Chat Header */}
-              <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/30">
-                <div className="flex items-center gap-2">
-                  <LumiCharacter size="xs" state={isLoading ? "thinking" : "idle"} glow />
-                  <div>
-                    <span className="text-sm font-semibold">Lumi</span>
-                    <span className="text-[10px] text-muted-foreground ml-1">• Online</span>
+              {/* Branded Chat Header with Gradient */}
+              <div className="relative overflow-hidden">
+                {/* Animated gradient background */}
+                <div className="absolute inset-0 bg-gradient-lumi opacity-95" />
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-lumi-orange-1/20 via-transparent to-lumi-purple-1/20"
+                  animate={{
+                    x: ['-100%', '100%'],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                />
+                
+                {/* Sparkle decorations */}
+                <motion.div
+                  className="absolute top-2 right-8 w-1.5 h-1.5 bg-white rounded-full"
+                  animate={{
+                    opacity: [0.3, 1, 0.3],
+                    scale: [0.8, 1.2, 0.8],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                <motion.div
+                  className="absolute top-4 right-16 w-1 h-1 bg-white/80 rounded-full"
+                  animate={{
+                    opacity: [0.5, 1, 0.5],
+                    scale: [1, 1.3, 1],
+                  }}
+                  transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
+                />
+                <motion.div
+                  className="absolute bottom-3 right-24 w-1 h-1 bg-white/60 rounded-full"
+                  animate={{
+                    opacity: [0.4, 0.9, 0.4],
+                    scale: [0.9, 1.1, 0.9],
+                  }}
+                  transition={{ duration: 1.8, repeat: Infinity, delay: 1 }}
+                />
+                
+                {/* Header content */}
+                <div className="relative flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <LumiCharacter size="sm" state={isLoading ? "thinking" : "idle"} />
+                      {/* Online indicator */}
+                      <motion.div
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white"
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-white drop-shadow-sm">Lumi</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-white/80">Your Ad Assistant</span>
+                        <Sparkle className="h-2.5 w-2.5 text-white/60 animate-sparkle-pulse" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setIsMaximized(!isMaximized)}
-                    className="p-1.5 hover:bg-muted rounded transition-colors"
-                  >
-                    {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                  </button>
-                  <button
-                    onClick={() => setChatOpen(false)}
-                    className="p-1.5 hover:bg-muted rounded transition-colors"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setIsMaximized(!isMaximized)}
+                      className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                    >
+                      {isMaximized ? <Minimize2 className="h-4 w-4 text-white" /> : <Maximize2 className="h-4 w-4 text-white" />}
+                    </button>
+                    <button
+                      onClick={() => setChatOpen(false)}
+                      className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                    >
+                      <X className="h-4 w-4 text-white" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
