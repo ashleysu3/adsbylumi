@@ -72,6 +72,23 @@ serve(async (req) => {
     const messagingGuidelines = offer?.messaging_guidelines || {};
     const productPsychology = offer?.product_psychology || {};
 
+    // Helper function to safely handle array-like fields (could be string, array, or undefined)
+    const toArray = (val: any): string[] => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') return [val];
+      return [];
+    };
+
+    const painPoints = toArray(productPsychology.pain_points);
+    const desires = toArray(productPsychology.desires);
+    const objections = toArray(productPsychology.objections);
+    const buyingTriggers = toArray(productPsychology.buying_triggers);
+    const keyBenefits = toArray(messagingGuidelines.key_benefits);
+    const dontSay = toArray(messagingGuidelines.dont_say);
+    const alwaysInclude = toArray(messagingGuidelines.always_include);
+    const approvedExamples = toArray(messagingGuidelines.approved_examples);
+
     const systemPrompt = `You are a Meta Ads copywriter specializing in creating multiple high-converting variations for ${brandInfo?.name || 'this brand'}.
 
 ## LUMI'S COPY PHILOSOPHY
@@ -92,18 +109,18 @@ Every variation MUST demonstrate application of:
 
 ## OFFER-SPECIFIC MESSAGING GUIDELINES
 ${messagingGuidelines.core_message ? `Core Message: ${messagingGuidelines.core_message}` : ''}
-${messagingGuidelines.key_benefits?.length ? `Key Benefits:\n${messagingGuidelines.key_benefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
+${keyBenefits.length ? `Key Benefits:\n${keyBenefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
 ${messagingGuidelines.tone_notes ? `Tone Notes: ${messagingGuidelines.tone_notes}` : ''}
-${messagingGuidelines.dont_say?.length ? `\n⚠️ NEVER USE:\n${messagingGuidelines.dont_say.map((d: string) => `- "${d}"`).join('\n')}` : ''}
-${messagingGuidelines.always_include?.length ? `\n✅ ALWAYS INCLUDE:\n${messagingGuidelines.always_include.map((a: string) => `- ${a}`).join('\n')}` : ''}
-${messagingGuidelines.approved_examples?.length ? `\n📝 Approved Examples:\n${messagingGuidelines.approved_examples.map((ex: any) => `- [${ex.type}] "${ex.text}"`).join('\n')}` : ''}
+${dontSay.length ? `\n⚠️ NEVER USE:\n${dontSay.map((d: string) => `- "${d}"`).join('\n')}` : ''}
+${alwaysInclude.length ? `\n✅ ALWAYS INCLUDE:\n${alwaysInclude.map((a: string) => `- ${a}`).join('\n')}` : ''}
+${approvedExamples.length ? `\n📝 Approved Examples:\n${approvedExamples.map((ex: any) => typeof ex === 'object' ? `- [${ex.type}] "${ex.text}"` : `- ${ex}`).join('\n')}` : ''}
 
 ## PRODUCT PSYCHOLOGY
 ${productPsychology.positioning ? `Positioning: ${productPsychology.positioning}` : ''}
-${productPsychology.pain_points?.length ? `Pain Points:\n${productPsychology.pain_points.map((p: string) => `- ${p}`).join('\n')}` : ''}
-${productPsychology.desires?.length ? `Desires:\n${productPsychology.desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
-${productPsychology.objections?.length ? `Objections:\n${productPsychology.objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
-${productPsychology.buying_triggers?.length ? `Triggers:\n${productPsychology.buying_triggers.map((t: string) => `- ${t}`).join('\n')}` : ''}
+${painPoints.length ? `Pain Points:\n${painPoints.map((p: string) => `- ${p}`).join('\n')}` : ''}
+${desires.length ? `Desires:\n${desires.map((d: string) => `- ${d}`).join('\n')}` : ''}
+${objections.length ? `Objections:\n${objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
+${buyingTriggers.length ? `Triggers:\n${buyingTriggers.map((t: string) => `- ${t}`).join('\n')}` : ''}
 
 ${kbContext}
 
@@ -183,9 +200,9 @@ Offer Details:
 - Target Outcome: ${offer.target_outcome || 'Not specified'}
 
 Audience Psychology:
-- Pain Points: ${productPsychology.pain_points?.join(', ') || 'Not specified'}
-- Desires: ${productPsychology.desires?.join(', ') || 'Not specified'}
-- Objections: ${productPsychology.objections?.join(', ') || 'Not specified'}
+- Pain Points: ${painPoints.join(', ') || 'Not specified'}
+- Desires: ${desires.join(', ') || 'Not specified'}
+- Objections: ${objections.join(', ') || 'Not specified'}
 
 Create variations using DIFFERENT frameworks from the Copy Formulas KB. Each must:
 - Use a unique copy formula (no repeating frameworks)
