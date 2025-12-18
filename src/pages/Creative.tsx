@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Sparkles, Rocket, Clipboard, Grid3X3, ArrowLeft, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
-import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
+import { useLumiAssistant } from "@/components/LumiAssistant";
 import { LumiLoader } from "@/components/LumiLoader";
 import { GeneratingModal } from "@/components/GeneratingModal";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
@@ -60,9 +60,45 @@ export default function Creative() {
   const [selectedCells, setSelectedCells] = useState<string[]>([]);
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
 
+  // Lumi contextual recommendations
+  const { setRecommendation } = useLumiAssistant();
+
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  // Contextual recommendations based on workflow state
+  useEffect(() => {
+    if (loading) return;
+    
+    if (productionItems.length >= 3) {
+      setRecommendation({
+        id: "creative-production-ready",
+        title: "Ready for Production!",
+        message: `You've got ${productionItems.length} concepts queued up. Time to record and bring them to life!`,
+        actionLabel: "Go to Production",
+        onAction: () => navigate("/production"),
+      });
+    } else if (gridData.length > 0 && productionItems.length === 0) {
+      setRecommendation({
+        id: "creative-add-to-checklist",
+        title: "Love What You See?",
+        message: "Click the ✓ on any concept to add it to your production checklist. Aim for at least 3!",
+      });
+    } else if (availableAngles.length > 0 && selectedAngleIds.length < 3) {
+      setRecommendation({
+        id: "creative-select-angles",
+        title: "Pick Your Angles",
+        message: "Select at least 3 creative angles to generate your unique ad concepts.",
+      });
+    } else if (workspace && !availableAngles.length) {
+      setRecommendation({
+        id: "creative-generate-angles",
+        title: "Let's Get Creative!",
+        message: "Click 'Generate Creative Angles' to discover unique ways to position your offer.",
+      });
+    }
+  }, [loading, productionItems.length, gridData.length, availableAngles.length, selectedAngleIds.length, workspace, setRecommendation, navigate]);
 
   const fetchInitialData = async () => {
     try {
@@ -509,11 +545,6 @@ export default function Creative() {
         steps={generatingPhase === "angles" ? angleGenerationSteps : gridGenerationSteps}
       />
       
-      <CampaignFlowBreadcrumb 
-        currentStep="creative" 
-        campaignId={selectedCampaignId}
-        progressStatus={workspace?.progress_status}
-      />
       
       <div className="flex h-[calc(100vh-4rem-53px)] w-full overflow-hidden">
         {!workspace ? (

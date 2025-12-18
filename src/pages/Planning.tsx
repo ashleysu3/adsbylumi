@@ -11,10 +11,9 @@ import { toast } from "sonner";
 import { LumiLoader } from "@/components/LumiLoader";
 import { LumiCharacter } from "@/components/LumiCharacter";
 import { LumiRecommendedBadge } from "@/components/LumiRecommendedBadge";
-import { useLumiRecommend } from "@/components/LumiAssistant";
+import { useLumiAssistant } from "@/components/LumiAssistant";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { GeneratingModal } from "@/components/GeneratingModal";
 import { GridShimmer } from "@/components/GradientShimmer";
 
@@ -29,7 +28,7 @@ const iconMap: Record<string, any> = {
 
 export default function Planning() {
   const navigate = useNavigate();
-  const { setRecommendation } = useLumiRecommend();
+  const { setRecommendation } = useLumiAssistant();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
@@ -166,7 +165,6 @@ export default function Planning() {
   if (initialLoading) {
     return (
       <DashboardLayout>
-        <CampaignFlowBreadcrumb currentStep="planning" />
         <div className="space-y-8 py-[2px]">
           <div className="space-y-2">
             <h2 className="text-3xl font-display tracking-tight">
@@ -191,7 +189,6 @@ export default function Planning() {
       </DashboardLayout>;
   }
   return <DashboardLayout>
-      <CampaignFlowBreadcrumb currentStep="planning" />
       <div className="space-y-8 py-[2px]">
         <div className="space-y-2">
           <h2 className="text-3xl font-display tracking-tight">
