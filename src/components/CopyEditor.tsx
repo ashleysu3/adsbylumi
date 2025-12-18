@@ -235,6 +235,10 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
   const handleGenerateWithAI = async () => {
     setIsGenerating(true);
     try {
+      // Extract strategy psychology and offer data
+      const strategyJson = workspace?.strategy_json || {};
+      const offerData = workspace?.offerData || {};
+      
       const { data, error } = await supabase.functions.invoke('finalize-ad-copy', {
         body: {
           concept,
@@ -242,8 +246,18 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
           uploadedAssetUrl: uploadedAsset?.file_url,
           brandInfo: {
             name: workspace?.name || 'Your Brand',
-            voice: workspace?.brand_voice,
-            audience: workspace?.target_audience
+            voice: workspace?.brand_voice || strategyJson?.brand_voice,
+            audience: workspace?.target_audience || strategyJson?.audience,
+            value_proposition: strategyJson?.value_proposition,
+            offer: {
+              name: workspace?.offer_name,
+              description: workspace?.offer_description,
+              price_point: workspace?.offer_price,
+              url: workspace?.offer_url,
+              target_outcome: offerData?.target_outcome,
+              product_psychology: offerData?.product_psychology || {},
+              messaging_guidelines: offerData?.messaging_guidelines || {}
+            }
           }
         }
       });
@@ -286,6 +300,10 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
   const handleGenerateVariations = async () => {
     setIsGeneratingVariations(true);
     try {
+      // Extract strategy psychology and offer data
+      const strategyJson = workspace?.strategy_json || {};
+      const offerData = workspace?.offerData || {};
+      
       const { data, error } = await supabase.functions.invoke('generate-copy-variations', {
         body: {
           concept,
@@ -293,8 +311,18 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
           uploadedAssetUrl: uploadedAsset?.file_url,
           brandInfo: {
             name: workspace?.name || 'Your Brand',
-            voice: workspace?.brand_voice,
-            audience: workspace?.target_audience
+            voice: workspace?.brand_voice || strategyJson?.brand_voice,
+            audience: workspace?.target_audience || strategyJson?.audience,
+            value_proposition: strategyJson?.value_proposition,
+            offer: {
+              name: workspace?.offer_name,
+              description: workspace?.offer_description,
+              price_point: workspace?.offer_price,
+              url: workspace?.offer_url,
+              target_outcome: offerData?.target_outcome,
+              product_psychology: offerData?.product_psychology || {},
+              messaging_guidelines: offerData?.messaging_guidelines || {}
+            }
           }
         }
       });

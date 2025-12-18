@@ -43,6 +43,7 @@ function getStepForStatus(status: string): Step {
 export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }: ProductionWorkflowProps) {
   const [currentStep, setCurrentStep] = useState<Step>(() => getStepForStatus(item?.status));
   const [updatedItem, setUpdatedItem] = useState(item);
+  const [offerData, setOfferData] = useState<any>(null);
 
   // When switching between cards, reset local state to the selected item
   useEffect(() => {
@@ -60,6 +61,32 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
       return { ...prev, ...item };
     });
   }, [item]);
+
+  // Fetch offer data when workspace has an offer_id
+  useEffect(() => {
+    const fetchOfferData = async () => {
+      if (!workspace?.offer_id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('offers')
+          .select('name, description, price_point, url, target_outcome, product_psychology, messaging_guidelines')
+          .eq('id', workspace.offer_id)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching offer data:', error);
+          return;
+        }
+        
+        setOfferData(data);
+      } catch (err) {
+        console.error('Failed to fetch offer:', err);
+      }
+    };
+
+    fetchOfferData();
+  }, [workspace?.offer_id]);
 
   // Update step when item status changes (e.g., after marking as recorded)
   useEffect(() => {
@@ -86,6 +113,12 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
     (workspace.user_uploaded_assets || []).slice().reverse().find((a: any) => a.linked_concept_id === conceptLinkId);
 
   const canContinueToCopy = !!linkedUpload;
+  
+  // Create enriched workspace with offer data for CopyEditor
+  const enrichedWorkspace = {
+    ...workspace,
+    offerData
+  };
 
   const handleNext = async (step: Step) => {
     // Immediately move the UI forward for a smoother feel
@@ -522,7 +555,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
             <CopyEditor
               concept={updatedItem.concept || {}}
               uploadedAsset={linkedUpload}
-              workspace={workspace}
+              workspace={enrichedWorkspace}
               initialCopy={updatedItem.final_copy}
               onApprove={handleCopyApprove}
               onBack={() => handleNext("upload")}
