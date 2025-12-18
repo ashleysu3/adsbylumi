@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, createContext, useContext, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, ArrowRight, MessageCircle, Send, Loader2, Sparkle } from "lucide-react";
+import { X, Sparkles, ArrowRight, MessageCircle, Send, Loader2, Sparkle, History, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { LumiCharacter } from "./LumiCharacter";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,14 @@ export interface LumiRecommendation {
   message: string;
   actionLabel?: string;
   onAction?: () => void;
+}
+
+export interface LumiHistoryItem {
+  id: string;
+  recommendation: LumiRecommendation;
+  timestamp: Date;
+  actionTaken: boolean;
+  dismissed: boolean;
 }
 
 interface Message {
@@ -77,13 +86,47 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
   ],
 };
 
-function LumiAssistantUI({ recommendation, onDismissForSession, className }: { recommendation: LumiRecommendation | null; onDismissForSession?: () => void; className?: string }) {
+// Helper to format time ago
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
+interface LumiAssistantUIProps {
+  recommendation: LumiRecommendation | null;
+  onDismissForSession?: () => void;
+  className?: string;
+  history?: LumiHistoryItem[];
+  unreadCount?: number;
+  onMarkHistoryRead?: () => void;
+  onMarkActionTaken?: (recId: string) => void;
+}
+
+function LumiAssistantUI({ 
+  recommendation, 
+  onDismissForSession, 
+  className,
+  history = [],
+  unreadCount = 0,
+  onMarkHistoryRead,
+  onMarkActionTaken,
+}: LumiAssistantUIProps) {
   const location = useLocation();
   const { messages, addMessage, setBrandId } = useLumi();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [currentRecommendationId, setCurrentRecommendationId] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"chat" | "history">("chat");
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -297,9 +340,13 @@ function LumiAssistantUI({ recommendation, onDismissForSession, className }: { r
               
               <Sparkles className="h-6 w-6 text-white animate-sparkle" />
               
-              {/* Notification dot when collapsed with recommendation */}
-              {recommendation && isDismissed && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-lumi-orange-1 rounded-full border-2 border-background animate-pulse" />
+              {/* Notification badge with count */}
+              {(unreadCount > 0 || (recommendation && isDismissed)) && (
+                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-lumi-orange-1 rounded-full border-2 border-background flex items-center justify-center">
+                  <span className="text-[10px] font-bold text-white">
+                    {unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : "!"}
+                  </span>
+                </span>
               )}
             </motion.button>
           )}
@@ -324,91 +371,185 @@ function LumiAssistantUI({ recommendation, onDismissForSession, className }: { r
             </div>
           </DrawerHeader>
 
-          <div className="flex flex-col h-[calc(85vh-120px)]">
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-              {messages.length === 0 ? (
-                <div className="space-y-6">
-                  <div className="text-center py-8">
-                    <LumiCharacter size="lg" state="idle" glow className="mx-auto mb-4" />
-                    <h3 className="font-display font-semibold mb-2">Hey there! 👋</h3>
-                    <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                      I'm Lumi — here to make Meta Ads simple. Ask me anything about strategy, creative, or performance.
+          <Tabs value={activeTab} onValueChange={(v) => {
+            setActiveTab(v as "chat" | "history");
+            if (v === "history" && onMarkHistoryRead) {
+              onMarkHistoryRead();
+            }
+          }} className="flex flex-col h-[calc(85vh-120px)]">
+            <TabsList className="mx-4 mt-2 grid w-auto grid-cols-2">
+              <TabsTrigger value="chat" className="gap-2">
+                <MessageCircle className="h-4 w-4" />
+                Chat
+              </TabsTrigger>
+              <TabsTrigger value="history" className="gap-2 relative">
+                <History className="h-4 w-4" />
+                Insights
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-lumi-orange-1 rounded-full flex items-center justify-center">
+                    <span className="text-[9px] font-bold text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="chat" className="flex-1 flex flex-col mt-0 data-[state=inactive]:hidden">
+              <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                {messages.length === 0 ? (
+                  <div className="space-y-6">
+                    <div className="text-center py-8">
+                      <LumiCharacter size="lg" state="idle" glow className="mx-auto mb-4" />
+                      <h3 className="font-display font-semibold mb-2">Hey there! 👋</h3>
+                      <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                        I'm Lumi — here to make Meta Ads simple. Ask me anything about strategy, creative, or performance.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
+                        <Sparkle className="h-4 w-4 animate-sparkle-pulse" />
+                        <span>Suggested questions</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {starters.map((starter, idx) => (
+                          <Button
+                            key={idx}
+                            variant="outline"
+                            className="h-auto py-3 px-4 text-left justify-start whitespace-normal"
+                            onClick={() => handleStarterClick(starter.message)}
+                          >
+                            <span className="text-sm">{starter.label}</span>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {messages.map((message, idx) => (
+                      <div
+                        key={idx}
+                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        {message.role === 'assistant' && (
+                          <LumiCharacter size="sm" state="idle" className="mr-2 flex-shrink-0 mt-1" />
+                        )}
+                        <div
+                          className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                            message.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
+                          }`}
+                        >
+                          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {isLoading && (
+                      <div className="flex justify-start">
+                        <LumiCharacter size="sm" state="thinking" className="mr-2" />
+                        <div className="bg-muted rounded-2xl px-4 py-3">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </ScrollArea>
+
+              <div className="border-t p-4">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    sendMessage(input);
+                  }}
+                  className="flex gap-2"
+                >
+                  <Input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Ask Lumi anything..."
+                    className="flex-1"
+                    disabled={isLoading}
+                  />
+                  <Button type="submit" disabled={isLoading || !input.trim()}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </form>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="history" className="flex-1 mt-0 data-[state=inactive]:hidden">
+              <ScrollArea className="h-full p-4">
+                {history.length === 0 ? (
+                  <div className="text-center py-12">
+                    <History className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+                    <h3 className="font-semibold text-muted-foreground mb-2">No insights yet</h3>
+                    <p className="text-sm text-muted-foreground/70">
+                      Lumi's smart recommendations will appear here as you use the app.
                     </p>
                   </div>
-
+                ) : (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
-                      <Sparkle className="h-4 w-4 animate-sparkle-pulse" />
-                      <span>Suggested questions</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {starters.map((starter, idx) => (
-                        <Button
-                          key={idx}
-                          variant="outline"
-                          className="h-auto py-3 px-4 text-left justify-start whitespace-normal"
-                          onClick={() => handleStarterClick(starter.message)}
-                        >
-                          <span className="text-sm">{starter.label}</span>
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {messages.map((message, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      {message.role === 'assistant' && (
-                        <LumiCharacter size="sm" state="idle" className="mr-2 flex-shrink-0 mt-1" />
-                      )}
-                      <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
+                    {history.map((item) => (
+                      <Card 
+                        key={item.id} 
+                        className={cn(
+                          "p-4 transition-all",
+                          item.actionTaken && "border-green-500/30 bg-green-500/5",
+                          item.dismissed && !item.actionTaken && "opacity-60"
+                        )}
                       >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                      </div>
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <LumiCharacter size="sm" state="thinking" className="mr-2" />
-                      <div className="bg-muted rounded-2xl px-4 py-3">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </ScrollArea>
-
-            <div className="border-t p-4">
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  sendMessage(input);
-                }}
-                className="flex gap-2"
-              >
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask Lumi anything..."
-                  className="flex-1"
-                  disabled={isLoading}
-                />
-                <Button type="submit" disabled={isLoading || !input.trim()}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
-            </div>
-          </div>
+                        <div className="flex items-start gap-3">
+                          <div className={cn(
+                            "p-2 rounded-full shrink-0",
+                            item.actionTaken ? "bg-green-500/10" : item.dismissed ? "bg-muted" : "bg-gradient-lumi/10"
+                          )}>
+                            {item.actionTaken ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : item.dismissed ? (
+                              <XCircle className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Sparkles className="h-4 w-4 text-lumi-orange-1" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <h4 className="font-medium text-sm truncate">{item.recommendation.title}</h4>
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                {formatTimeAgo(item.timestamp)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {item.recommendation.message}
+                            </p>
+                            {item.recommendation.actionLabel && item.recommendation.onAction && !item.actionTaken && !item.dismissed && (
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="mt-2 h-7 text-xs"
+                                onClick={() => {
+                                  item.recommendation.onAction?.();
+                                  onMarkActionTaken?.(item.recommendation.id);
+                                }}
+                              >
+                                {item.recommendation.actionLabel}
+                              </Button>
+                            )}
+                            {item.actionTaken && (
+                              <span className="inline-flex items-center gap-1 mt-2 text-xs text-green-600">
+                                <CheckCircle className="h-3 w-3" /> Action taken
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </DrawerContent>
       </Drawer>
     </>
@@ -422,6 +563,9 @@ interface LumiAssistantContextType {
   clearRecommendation: () => void;
   dismissForSession: () => void;
   isPausedForSession: boolean;
+  history: LumiHistoryItem[];
+  unreadCount: number;
+  markHistoryRead: () => void;
 }
 
 const LumiAssistantContext = createContext<LumiAssistantContextType | undefined>(undefined);
@@ -430,17 +574,42 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
   const [recommendation, setRecommendationState] = useState<LumiRecommendation | null>(null);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [isPausedForSession, setIsPausedForSession] = useState(false);
+  const [history, setHistory] = useState<LumiHistoryItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const setRecommendation = (rec: LumiRecommendation | null) => {
     // Don't show if paused or already dismissed this session
     if (isPausedForSession) return;
     if (rec && dismissedIds.has(rec.id)) return;
+    
+    // Add to history if new recommendation
+    if (rec && (!recommendation || recommendation.id !== rec.id)) {
+      setHistory(prev => {
+        // Avoid duplicates
+        if (prev.some(h => h.recommendation.id === rec.id)) return prev;
+        return [{
+          id: `${rec.id}-${Date.now()}`,
+          recommendation: rec,
+          timestamp: new Date(),
+          actionTaken: false,
+          dismissed: false,
+        }, ...prev].slice(0, 50); // Keep last 50
+      });
+      setUnreadCount(prev => prev + 1);
+    }
+    
     setRecommendationState(rec);
   };
 
   const clearRecommendation = () => {
     if (recommendation) {
       setDismissedIds(prev => new Set(prev).add(recommendation.id));
+      // Mark as dismissed in history
+      setHistory(prev => prev.map(h => 
+        h.recommendation.id === recommendation.id 
+          ? { ...h, dismissed: true } 
+          : h
+      ));
     }
     setRecommendationState(null);
   };
@@ -450,16 +619,39 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
     setRecommendationState(null);
   };
 
+  const markHistoryRead = () => {
+    setUnreadCount(0);
+  };
+
+  // Function to mark action taken
+  const markActionTaken = (recId: string) => {
+    setHistory(prev => prev.map(h => 
+      h.recommendation.id === recId 
+        ? { ...h, actionTaken: true } 
+        : h
+    ));
+  };
+
   return (
     <LumiAssistantContext.Provider value={{ 
       recommendation, 
       setRecommendation, 
       clearRecommendation, 
       dismissForSession,
-      isPausedForSession 
+      isPausedForSession,
+      history,
+      unreadCount,
+      markHistoryRead,
     }}>
       {children}
-      <LumiAssistantUI recommendation={recommendation} onDismissForSession={dismissForSession} />
+      <LumiAssistantUI 
+        recommendation={recommendation} 
+        onDismissForSession={dismissForSession}
+        history={history}
+        unreadCount={unreadCount}
+        onMarkHistoryRead={markHistoryRead}
+        onMarkActionTaken={markActionTaken}
+      />
     </LumiAssistantContext.Provider>
   );
 }
