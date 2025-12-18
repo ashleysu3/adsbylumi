@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelecto
 import { CreativeGrid } from "@/components/creative/CreativeGrid";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionChecklistPanel, ProductionItem } from "@/components/creative/ProductionChecklistPanel";
+import { LumiChat } from "@/components/LumiChat";
 import { cn } from "@/lib/utils";
 
 type DashboardStep = "select_angles" | "creative_grid";
@@ -42,6 +43,7 @@ const gridGenerationSteps = [
 
 export default function Creative() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generatingPhase, setGeneratingPhase] = useState<GeneratingPhase>(null);
@@ -50,6 +52,11 @@ export default function Creative() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [workspace, setWorkspace] = useState<any>(null);
+  
+  // URL parameters for add-creative mode
+  const urlWorkspaceId = searchParams.get("workspace");
+  const isAddCreativeMode = searchParams.get("addCreative") === "true";
+  const [showLumiChat, setShowLumiChat] = useState(false);
   
   // Creative state
   const [dashboardStep, setDashboardStep] = useState<DashboardStep>("select_angles");
@@ -66,6 +73,13 @@ export default function Creative() {
   useEffect(() => {
     fetchInitialData();
   }, []);
+  
+  // Show Lumi chat when in add-creative mode
+  useEffect(() => {
+    if (isAddCreativeMode && !loading && workspace) {
+      setShowLumiChat(true);
+    }
+  }, [isAddCreativeMode, loading, workspace]);
 
   // Contextual recommendations based on workflow state
   useEffect(() => {
@@ -149,8 +163,10 @@ export default function Creative() {
 
         setCampaigns(filteredCampaigns.filter(Boolean) as any[]);
         
-        if (filteredCampaigns[0]) {
-          await handleCampaignSelect(filteredCampaigns[0].id);
+        // If workspace ID is in URL, select that campaign; otherwise select first
+        const targetCampaignId = urlWorkspaceId || filteredCampaigns[0]?.id;
+        if (targetCampaignId) {
+          await handleCampaignSelect(targetCampaignId);
         }
       } else {
         setCampaigns([]);
@@ -790,6 +806,41 @@ export default function Creative() {
           </div>
         )}
       </div>
+      
+      {/* Lumi Chat for add-creative mode */}
+      {showLumiChat && brand && workspace && (
+        <LumiChat 
+          context="add-creative" 
+          brand={brand}
+          workspace={workspace}
+          trigger={null}
+          autoOpen={true}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowLumiChat(false);
+              // Clear URL params when closing
+              if (isAddCreativeMode) {
+                searchParams.delete("addCreative");
+                setSearchParams(searchParams);
+              }
+            }
+          }}
+          customStarters={
+            workspace.strategy_json
+              ? [
+                  { label: "Upload my creative", message: `I have new creative ready for "${workspace.name}". Walk me through the upload process.` },
+                  { label: "Brainstorm new angles", message: `Help me come up with fresh creative angles for "${workspace.offer_name || workspace.name}".` },
+                  { label: "What's working?", message: "Based on my campaign, what types of creative tend to perform best?" },
+                  { label: "Generate more ideas", message: "Generate additional creative concepts I can add to this campaign." },
+                ]
+              : [
+                  { label: "Complete strategy first", message: `I want to add creative but "${workspace.name}" doesn't have a complete strategy yet. What should I do?` },
+                  { label: "Go to Planning", message: "Take me to the Planning page to complete my campaign strategy." },
+                  { label: "Pick different campaign", message: "Help me choose a different campaign that's ready for new creative." },
+                ]
+          }
+        />
+      )}
     </DashboardLayout>
   );
 }
