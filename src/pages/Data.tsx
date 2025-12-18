@@ -367,17 +367,29 @@ export default function Data() {
               previousMetrics,
               userGoal: userGoals[campaign.id] || null,
             };
-          } catch (err) {
+          } catch (err: any) {
             console.error(`Error fetching metrics for ${campaign.name}:`, err);
+            // Check for token expiration in thrown errors
+            const errorMsg = err?.message || err?.toString() || '';
+            if (errorMsg.includes('validating access token') || 
+                errorMsg.includes('session has been invalidated') ||
+                errorMsg.includes('OAuthException')) {
+              setMetaTokenExpired(true);
+            }
             return campaign;
           }
         })
       );
 
       setCampaigns(updatedCampaigns);
-      setMetaTokenExpired(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching metrics:', error);
+      const errorMsg = error?.message || error?.toString() || '';
+      if (errorMsg.includes('validating access token') || 
+          errorMsg.includes('session has been invalidated') ||
+          errorMsg.includes('OAuthException')) {
+        setMetaTokenExpired(true);
+      }
     } finally {
       setSyncing(false);
     }
@@ -437,8 +449,12 @@ export default function Data() {
       setMetaTokenExpired(false);
     } catch (error: any) {
       console.error('Error fetching campaign detail:', error);
-      const errorMsg = error?.message || '';
-      if (errorMsg.includes('non-2xx status code') || errorMsg.includes('Edge Function')) {
+      const errorMsg = error?.message || error?.toString() || '';
+      if (errorMsg.includes('validating access token') || 
+          errorMsg.includes('session has been invalidated') ||
+          errorMsg.includes('OAuthException') ||
+          errorMsg.includes('non-2xx status code') || 
+          errorMsg.includes('Edge Function')) {
         setMetaTokenExpired(true);
       } else {
         toast.error('Failed to load campaign insights');
