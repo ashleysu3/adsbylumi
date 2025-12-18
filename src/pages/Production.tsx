@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Filter } from "lucide-react";
+import { ArrowLeft, Filter, Upload, Video, Image, X } from "lucide-react";
 import { ProductionCard } from "@/components/ProductionCard";
 import { ProductionWorkflow } from "@/components/ProductionWorkflow";
 import { toast } from "sonner";
@@ -18,6 +18,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
+import { cn } from "@/lib/utils";
+
+interface UploadedAsset {
+  id: string;
+  file: File;
+  format: "talking_head" | "broll" | "graphic";
+  preview?: string;
+}
 
 export default function Production() {
   const navigate = useNavigate();
@@ -30,6 +38,9 @@ export default function Production() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchWorkspace();
@@ -109,6 +120,77 @@ export default function Production() {
     navigate(`/campaigns/build?workspace=${workspace.id}`);
   };
 
+  // Bulk upload handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    processFiles(files);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    processFiles(files);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const processFiles = (files: File[]) => {
+    const newAssets: UploadedAsset[] = files.map((file) => {
+      const isVideo = file.type.startsWith("video/");
+      return {
+        id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        file,
+        format: isVideo ? "broll" : "graphic",
+        preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
+      };
+    });
+    setUploadedAssets(prev => [...prev, ...newAssets]);
+  };
+
+  const updateAssetFormat = (id: string, format: "talking_head" | "broll" | "graphic") => {
+    setUploadedAssets(prev => prev.map(a => a.id === id ? { ...a, format } : a));
+  };
+
+  const removeAsset = (id: string) => {
+    const asset = uploadedAssets.find(a => a.id === id);
+    if (asset?.preview) URL.revokeObjectURL(asset.preview);
+    setUploadedAssets(prev => prev.filter(a => a.id !== id));
+  };
+
+  const handleAddUploadsToProduction = async () => {
+    const newItems = uploadedAssets.map(asset => ({
+      id: asset.id,
+      hook: asset.file.name,
+      format: asset.format,
+      guidance: "Uploaded asset",
+      angleName: "Direct Upload",
+      status: "uploaded",
+      notes: "",
+    }));
+
+    const updatedItems = [...productionItems, ...newItems];
+    
+    await supabase
+      .from("campaign_workspaces")
+      .update({ production_items: updatedItems })
+      .eq("id", workspace.id);
+
+    setProductionItems(updatedItems);
+    setUploadedAssets([]);
+    toast.success(`Added ${newItems.length} assets to production`);
+  };
   const statusCounts = {
     total: productionItems.length,
     pending: productionItems.filter((i) => i.status === "pending" || i.status === "ready").length,
@@ -225,6 +307,85 @@ export default function Production() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Bulk Upload Section */}
+        <Card
+          className={cn(
+            "border-2 border-dashed transition-colors cursor-pointer",
+            isDragging && "border-primary bg-primary/5"
+          )}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <Upload className="h-8 w-8 text-muted-foreground mb-3" />
+            <p className="font-medium">Drop files here or click to upload</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Upload videos and images directly to production
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="video/*,image/*"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Uploaded assets pending */}
+        {uploadedAssets.length > 0 && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">{uploadedAssets.length} files ready to add</h3>
+                <Button onClick={handleAddUploadsToProduction} size="sm">
+                  Add All to Production
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {uploadedAssets.map((asset) => (
+                  <div key={asset.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+                    <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                      {asset.preview ? (
+                        <img src={asset.preview} alt="" className="w-full h-full object-cover" />
+                      ) : asset.file.type.startsWith("video/") ? (
+                        <Video className="h-5 w-5 text-muted-foreground" />
+                      ) : (
+                        <Image className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{asset.file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(asset.file.size / 1024 / 1024).toFixed(1)} MB
+                      </p>
+                    </div>
+                    <Select
+                      value={asset.format}
+                      onValueChange={(v) => updateAssetFormat(asset.id, v as any)}
+                    >
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="talking_head">Talking Head</SelectItem>
+                        <SelectItem value="broll">B-Roll</SelectItem>
+                        <SelectItem value="graphic">Graphic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); removeAsset(asset.id); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Empty State for no production items */}
         {productionItems.length === 0 ? (
