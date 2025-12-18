@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,8 @@ import {
 import { KPIProgressBar } from './KPIProgressBar';
 import { KPITrendIndicator } from './KPITrendIndicator';
 import { DateRangePicker } from './DateRangePicker';
+import { StatusFilter } from './StatusFilter';
+import { AccountOverview } from './AccountOverview';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -50,6 +52,19 @@ interface Campaign {
   metrics: CampaignMetrics | null;
   previousMetrics?: CampaignMetrics | null;
   userGoal?: number | null;
+  status?: string;
+}
+
+interface AccountMetrics {
+  spend: number;
+  impressions: number;
+  reach: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  leads: number;
+  purchases: number;
+  roas: number | null;
 }
 
 interface InsightsHomeProps {
@@ -61,6 +76,8 @@ interface InsightsHomeProps {
   onViewInsights: (campaignId: string) => void;
   onUpdateGoal: (campaignId: string, goal: number) => void;
   isLoading: boolean;
+  accountMetrics?: AccountMetrics | null;
+  accountMetricsLoading?: boolean;
 }
 
 // Helper to extract the primary KPI value from metrics
@@ -88,11 +105,32 @@ export function InsightsHome({
   onCustomDateRangeChange,
   onViewInsights,
   onUpdateGoal,
-  isLoading 
+  isLoading,
+  accountMetrics,
+  accountMetricsLoading,
 }: InsightsHomeProps) {
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
   const [goalValue, setGoalValue] = useState<string>('');
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live', 'paused', 'imported']);
 
+  // Calculate status counts
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    campaigns.forEach((c) => {
+      const status = c.status || 'live';
+      counts[status] = (counts[status] || 0) + 1;
+    });
+    return counts;
+  }, [campaigns]);
+
+  // Filter campaigns by selected statuses
+  const filteredCampaigns = useMemo(() => {
+    if (selectedStatuses.length === 0) return campaigns;
+    return campaigns.filter((c) => {
+      const status = c.status || 'live';
+      return selectedStatuses.includes(status);
+    });
+  }, [campaigns, selectedStatuses]);
   const handleStartEditGoal = (campaignId: string, currentGoal: number | null | undefined) => {
     setEditingGoal(campaignId);
     setGoalValue(currentGoal?.toString() || '');
@@ -128,10 +166,15 @@ export function InsightsHome({
         </p>
       </div>
 
+      {/* Account Overview */}
+      {(accountMetrics || accountMetricsLoading) && (
+        <AccountOverview metrics={accountMetrics || null} isLoading={accountMetricsLoading || false} />
+      )}
+
       {/* Global Date Selector */}
       <Card variant="glow" className="rounded-2xl">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
               <span>Viewing data for:</span>
@@ -146,6 +189,15 @@ export function InsightsHome({
         </CardContent>
       </Card>
 
+      {/* Status Filter */}
+      {campaigns.length > 0 && (
+        <StatusFilter
+          selectedStatuses={selectedStatuses}
+          onStatusChange={setSelectedStatuses}
+          statusCounts={statusCounts}
+        />
+      )}
+
       {/* Campaign Cards */}
       {isLoading ? (
         <div className="space-y-4">
@@ -157,19 +209,24 @@ export function InsightsHome({
             </Card>
           ))}
         </div>
-      ) : campaigns.length === 0 ? (
+      ) : filteredCampaigns.length === 0 ? (
         <Card variant="gradient" className="rounded-2xl border-dashed border-2">
           <CardContent className="p-12 text-center">
             <Sparkles className="h-12 w-12 mx-auto mb-4 text-primary/30 animate-sparkle-pulse" />
-            <h3 className="text-lg font-medium mb-2 text-gradient-lumi">No campaigns yet</h3>
+            <h3 className="text-lg font-medium mb-2 text-gradient-lumi">
+              {campaigns.length === 0 ? 'No campaigns yet' : 'No campaigns match filter'}
+            </h3>
             <p className="text-muted-foreground">
-              Build and publish a campaign to see your insights here.
+              {campaigns.length === 0 
+                ? 'Build and publish a campaign to see your insights here.'
+                : 'Try adjusting the status filter to see more campaigns.'
+              }
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
-          {campaigns.map(campaign => {
+          {filteredCampaigns.map(campaign => {
             // Get KPI config using objective, template name, and campaign name
             const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
             const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);

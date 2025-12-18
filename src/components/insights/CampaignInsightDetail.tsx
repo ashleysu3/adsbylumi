@@ -32,6 +32,7 @@ import {
 } from '@/lib/lumi-kpi-config';
 import { KPIProgressBar } from './KPIProgressBar';
 import { KPITrendIndicator } from './KPITrendIndicator';
+import { AdBreakdown } from './AdBreakdown';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -115,6 +116,8 @@ interface CampaignInsightDetailProps {
   onUpdateGoal: (goal: number) => void;
   onDateRangeChange?: (range: string) => void;
   isLoading: boolean;
+  dateRangeStart?: string;
+  dateRangeEnd?: string;
 }
 
 const dateRangeOptions = [
@@ -133,7 +136,9 @@ export function CampaignInsightDetail({
   onBack,
   onUpdateGoal,
   onDateRangeChange,
-  isLoading 
+  isLoading,
+  dateRangeStart,
+  dateRangeEnd,
 }: CampaignInsightDetailProps) {
   const [localDateRange, setLocalDateRange] = useState<string>('global');
   const [editingGoal, setEditingGoal] = useState(false);
@@ -515,6 +520,13 @@ export function CampaignInsightDetail({
               )}
             </CardContent>
           </Card>
+
+          {/* SECTION 5.5: Ad-Level Breakdown */}
+          <AdBreakdown 
+            workspaceId={campaign.id} 
+            dateRangeStart={dateRangeStart}
+            dateRangeEnd={dateRangeEnd}
+          />
 
           {/* SECTION 6: Lumi Recommends (2-3 steps only) */}
           <Card className="rounded-2xl border-2 border-[hsl(var(--lumi-orange-1)/0.3)] bg-gradient-to-br from-[hsl(var(--lumi-orange-1)/0.05)] to-transparent shadow-[var(--shadow-card)]">

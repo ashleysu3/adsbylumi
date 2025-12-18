@@ -50,6 +50,19 @@ interface CampaignData {
   metrics: Record<string, number> | null;
   previousMetrics?: Record<string, number> | null;
   userGoal?: number | null;
+  status?: string;
+}
+
+interface AccountMetrics {
+  spend: number;
+  impressions: number;
+  reach: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  leads: number;
+  purchases: number;
+  roas: number | null;
 }
 
 export default function Data() {
@@ -77,6 +90,10 @@ export default function Data() {
 
   // Import modal state
   const [importModalOpen, setImportModalOpen] = useState(false);
+
+  // Account metrics state
+  const [accountMetrics, setAccountMetrics] = useState<AccountMetrics | null>(null);
+  const [accountMetricsLoading, setAccountMetricsLoading] = useState(false);
 
   // Date range state
   const [globalDateRange, setGlobalDateRange] = useState<string>('7');
@@ -213,6 +230,9 @@ export default function Data() {
     if (view === 'home' && campaigns.length > 0) {
       fetchAllMetrics();
     }
+    if (view === 'home' && metaConnected && brandId) {
+      fetchAccountOverview();
+    }
   }, [globalDateRange, customDateRange]);
 
   // Fetch campaign for detail view
@@ -316,13 +336,19 @@ export default function Data() {
         objective: (w.campaign_templates as any)?.objective || null,
         metrics: null,
         userGoal: loadedGoals[w.id] || null,
+        status: w.meta_campaign_status || 'live',
       }));
 
       setCampaigns(campaignData);
 
-      // Fetch metrics for all campaigns
+      // Fetch metrics for all campaigns and account overview
       if (isMetaConnected && campaignData.length > 0) {
-        await fetchAllMetrics(campaignData);
+        await Promise.all([
+          fetchAllMetrics(campaignData),
+          fetchAccountOverview(brand.id),
+        ]);
+      } else if (isMetaConnected) {
+        await fetchAccountOverview(brand.id);
       }
     } catch (error: any) {
       console.error('Error fetching campaigns:', error);
@@ -332,7 +358,42 @@ export default function Data() {
     }
   };
 
-  // Get previous period date range for trend comparison
+  const fetchAccountOverview = async (currentBrandId?: string) => {
+    const id = currentBrandId || brandId;
+    if (!id) return;
+
+    setAccountMetricsLoading(true);
+    const dateRange = getDateRange(globalDateRange, customDateRange);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-account-overview', {
+        body: {
+          brandId: id,
+          dateRangeStart: format(dateRange.from, 'yyyy-MM-dd'),
+          dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd'),
+        },
+      });
+
+      // Check for token errors
+      const responseError = data?.error || '';
+      if (responseError.includes('Meta access token not found') || 
+          responseError.includes('Please reconnect')) {
+        setMetaTokenExpired(true);
+        return;
+      }
+
+      if (error || !data?.success) {
+        console.error('Error fetching account overview:', data?.error || error);
+        return;
+      }
+
+      setAccountMetrics(data.metrics);
+    } catch (err: any) {
+      console.error('Error fetching account overview:', err);
+    } finally {
+      setAccountMetricsLoading(false);
+    }
+  };
   const getPreviousPeriodRange = (rangeValue: string, custom?: { from: Date; to: Date } | null): { from: Date; to: Date } => {
     const current = getDateRange(rangeValue, custom);
     const daysDiff = Math.ceil((current.to.getTime() - current.from.getTime()) / (1000 * 60 * 60 * 24));
@@ -650,6 +711,8 @@ export default function Data() {
             onViewInsights={handleViewInsights}
             onUpdateGoal={handleUpdateGoal}
             isLoading={loading || syncing}
+            accountMetrics={accountMetrics}
+            accountMetricsLoading={accountMetricsLoading}
           />
         ) : selectedCampaign ? (
           <CampaignInsightDetail
@@ -660,6 +723,8 @@ export default function Data() {
             onUpdateGoal={(goal) => handleUpdateGoal(selectedCampaign.id, goal)}
             onDateRangeChange={handleDetailDateRangeChange}
             isLoading={syncing}
+            dateRangeStart={format(getDateRange(detailDateRange, customDateRange).from, 'yyyy-MM-dd')}
+            dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
           />
         ) : (
           <div className="text-center py-12">
