@@ -84,7 +84,7 @@ export const MagneticButton = ({
   );
 };
 
-// Gradient text animation
+// Gradient text animation - uses Lumi brand gradient
 export const GradientText = ({
   children,
   className = "",
@@ -94,7 +94,7 @@ export const GradientText = ({
 }) => {
   return (
     <motion.span
-      className={`bg-gradient-to-r from-primary via-primary/80 to-primary bg-clip-text text-transparent bg-[length:200%_auto] ${className}`}
+      className={`bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 bg-clip-text text-transparent bg-[length:200%_auto] ${className}`}
       animate={{
         backgroundPosition: ["0% center", "200% center"],
       }}

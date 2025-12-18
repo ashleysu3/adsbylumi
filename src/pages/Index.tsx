@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Target, BarChart3, Palette, CheckCircle2, Check, X, Building2, GraduationCap, Zap, Sparkles } from "lucide-react";
+import { ArrowRight, Target, BarChart3, Palette, CheckCircle2, Check, X, Building2, GraduationCap, Zap, Sparkle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
@@ -92,8 +92,8 @@ const PricingCards = ({ navigate }: { navigate: (path: string) => void }) => {
           >
             {tier.popular && (
               <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <Badge className="bg-primary text-primary-foreground px-4 py-1">
-                  <Sparkles className="w-3 h-3 mr-1" />
+                <Badge className="bg-gradient-warm text-primary-foreground px-4 py-1">
+                  <Sparkle className="w-3 h-3 mr-1 animate-sparkle" />
                   Available Now
                 </Badge>
               </div>
@@ -408,7 +408,7 @@ const Index = () => {
           <ScrollReveal>
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Everything you need to run Meta ads confidently.
+                Everything you need to run Meta ads <span className="text-gradient-lumi">confidently</span>.
               </h2>
               <p className="text-lg text-muted-foreground">
                 No marketing degree required. Just clear guidance, smart suggestions, and simple tools.
@@ -458,7 +458,7 @@ const Index = () => {
           <ScrollReveal direction="left">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                Stop wasting time figuring out what to do next
+                Stop wasting time figuring out <span className="text-gradient-lumi">what to do next</span>
               </h2>
 
               <p className="text-lg text-muted-foreground mb-8">
@@ -532,7 +532,7 @@ const Index = () => {
           <ScrollReveal>
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Simple, transparent pricing
+                Simple, <span className="text-gradient-lumi">transparent</span> pricing
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Choose the plan that fits your business. Upgrade or downgrade anytime.
@@ -544,7 +544,7 @@ const Index = () => {
           <ScrollReveal delay={0.1}>
             <div className="mb-16">
               <h3 className="text-2xl md:text-3xl font-bold text-center mb-8">
-                The smart alternative to expensive agencies & time-consuming courses
+                The <span className="text-gradient-lumi">smart alternative</span> to expensive agencies & time-consuming courses
               </h3>
               <div className="grid md:grid-cols-3 gap-6">
                 {/* Agency Card */}
@@ -675,7 +675,7 @@ const Index = () => {
         <div className="container mx-auto px-4 max-w-4xl text-center relative z-10">
           <ScrollReveal>
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
-              Ready to run ads with confidence?
+              Ready to run ads with <span className="bg-gradient-to-r from-primary-foreground to-primary-foreground/80 bg-clip-text text-transparent">confidence</span>?
             </h2>
           </ScrollReveal>
 
