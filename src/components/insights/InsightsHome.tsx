@@ -277,6 +277,18 @@ export function InsightsHome({
                       <div className="flex items-center gap-3">
                         <span className={`w-3 h-3 rounded-full ${statusDot}`} />
                         <h3 className="font-display font-semibold text-lg">{campaign.name}</h3>
+                        {/* Offer Link Status Indicator */}
+                        {campaign.offerId ? (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                            <Package className="h-3 w-3 mr-1" />
+                            {campaign.offerName || 'Offer Linked'}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                            <Package className="h-3 w-3 mr-1" />
+                            Needs Offer
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground pl-6">
                         {kpiConfig.friendlyName} Campaign

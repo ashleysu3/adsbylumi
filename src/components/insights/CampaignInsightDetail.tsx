@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,10 @@ import {
   Check,
   X,
   Info,
-  Loader2
+  Loader2,
+  Package,
+  PlusCircle,
+  ArrowRight
 } from 'lucide-react';
 import { 
   getLumiKPIConfig, 
@@ -33,6 +37,7 @@ import {
 import { KPIProgressBar } from './KPIProgressBar';
 import { KPITrendIndicator } from './KPITrendIndicator';
 import { AdBreakdown } from './AdBreakdown';
+import { LinkOfferModal } from './LinkOfferModal';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -109,12 +114,16 @@ interface CampaignInsightDetailProps {
     metrics: CampaignMetrics | null;
     previousMetrics?: CampaignMetrics | null;
     userGoal?: number | null;
+    offerId?: string | null;
+    offerName?: string | null;
+    brandId?: string;
   };
   analysis: PerformanceAnalysis | null;
   globalDateRange: string;
   onBack: () => void;
   onUpdateGoal: (goal: number) => void;
   onDateRangeChange?: (range: string) => void;
+  onOfferLinked?: () => void;
   isLoading: boolean;
   dateRangeStart?: string;
   dateRangeEnd?: string;
@@ -136,13 +145,16 @@ export function CampaignInsightDetail({
   onBack,
   onUpdateGoal,
   onDateRangeChange,
+  onOfferLinked,
   isLoading,
   dateRangeStart,
   dateRangeEnd,
 }: CampaignInsightDetailProps) {
+  const navigate = useNavigate();
   const [localDateRange, setLocalDateRange] = useState<string>('global');
   const [editingGoal, setEditingGoal] = useState(false);
   const [goalValue, setGoalValue] = useState<string>(campaign.userGoal?.toString() || '');
+  const [showLinkOfferModal, setShowLinkOfferModal] = useState(false);
 
   const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
   const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
@@ -166,6 +178,15 @@ export function CampaignInsightDetail({
       onUpdateGoal(numValue);
     }
     setEditingGoal(false);
+  };
+  
+  const handleOfferLinked = () => {
+    setShowLinkOfferModal(false);
+    onOfferLinked?.();
+  };
+  
+  const handleAddCreative = () => {
+    navigate(`/creative?workspace=${campaign.id}&addCreative=true`);
   };
 
   // Extract positive signals (what's working)
@@ -218,6 +239,73 @@ export function CampaignInsightDetail({
         <h1 className="text-2xl font-display font-bold">{campaign.name}</h1>
       </div>
 
+      {/* Link Offer Section - shown for imported campaigns */}
+      <Card className={`rounded-2xl shadow-[var(--shadow-card)] ${
+        campaign.offerId 
+          ? 'border-green-200 bg-green-50/30' 
+          : 'border-amber-200 bg-amber-50/30'
+      }`}>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                campaign.offerId ? 'bg-green-100' : 'bg-amber-100'
+              }`}>
+                <Package className={`h-5 w-5 ${
+                  campaign.offerId ? 'text-green-600' : 'text-amber-600'
+                }`} />
+              </div>
+              <div>
+                <p className="font-medium text-sm">
+                  {campaign.offerId ? 'Linked Offer' : 'No Offer Linked'}
+                </p>
+                {campaign.offerId ? (
+                  <p className="text-sm text-muted-foreground">
+                    {campaign.offerName || 'Offer connected'}
+                  </p>
+                ) : (
+                  <p className="text-sm text-amber-700">
+                    Link an offer to enable creative generation
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {campaign.offerId ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowLinkOfferModal(true)}
+                    className="rounded-xl"
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Change
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleAddCreative}
+                    className="rounded-xl"
+                  >
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add Creative
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => setShowLinkOfferModal(true)}
+                  className="rounded-xl"
+                >
+                  <Package className="h-4 w-4 mr-2" />
+                  Link Offer
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Campaign-Level Date Override */}
       <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
         <CardContent className="p-4">
@@ -247,6 +335,18 @@ export function CampaignInsightDetail({
           )}
         </CardContent>
       </Card>
+      
+      {/* Link Offer Modal */}
+      {campaign.brandId && (
+        <LinkOfferModal
+          open={showLinkOfferModal}
+          onOpenChange={setShowLinkOfferModal}
+          workspaceId={campaign.id}
+          workspaceName={campaign.name}
+          brandId={campaign.brandId}
+          onSuccess={handleOfferLinked}
+        />
+      )}
 
       {isLoading ? (
         <Card className="rounded-2xl">
