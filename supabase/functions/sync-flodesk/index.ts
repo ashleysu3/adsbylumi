@@ -110,19 +110,23 @@ serve(async (req) => {
     const segmentId = await getSegmentId(authHeader, segmentName);
     if (!segmentId) {
       console.error(`[FLODESK] Could not find segment ID for "${segmentName}". Please create this segment in Flodesk.`);
-      // Still create the subscriber even if segment not found
-      console.log('[FLODESK] Proceeding to create subscriber without segment assignment...');
     }
 
-    // Step 2: Create or update the subscriber
-    const subscriberPayload: Record<string, string> = {
+    // Step 2: Create or update the subscriber WITH segment_ids in the same request
+    // According to Flodesk API docs, segment_ids can be included in the subscriber creation
+    const subscriberPayload: Record<string, any> = {
       email: email.toLowerCase().trim(),
     };
 
     if (firstName) subscriberPayload.first_name = firstName;
     if (lastName) subscriberPayload.last_name = lastName;
+    
+    // Add segment_ids to the subscriber creation payload if we have a segment ID
+    if (segmentId) {
+      subscriberPayload.segment_ids = [segmentId];
+    }
 
-    console.log(`[FLODESK] Creating/updating subscriber:`, subscriberPayload);
+    console.log(`[FLODESK] Creating/updating subscriber with payload:`, JSON.stringify(subscriberPayload));
 
     const subscriberResponse = await fetch('https://api.flodesk.com/v1/subscribers', {
       method: 'POST',
@@ -136,55 +140,27 @@ serve(async (req) => {
     const subscriberResponseText = await subscriberResponse.text();
     console.log(`[FLODESK] Subscriber response: ${subscriberResponse.status} - ${subscriberResponseText}`);
 
-    if (!subscriberResponse.ok && subscriberResponse.status !== 409) {
-      // 409 = subscriber already exists, which is fine
+    if (!subscriberResponse.ok) {
       console.error('[FLODESK] Subscriber creation failed:', subscriberResponse.status, subscriberResponseText);
       throw new Error(`Flodesk subscriber error: ${subscriberResponse.status} - ${subscriberResponseText}`);
     }
 
-    console.log('[FLODESK] Subscriber created/updated successfully');
-
-    // Step 3: Add subscriber to segment (if we have a segment ID)
-    if (segmentId) {
-      console.log(`[FLODESK] Adding subscriber to segment ID: ${segmentId}`);
-      
-      const segmentResponse = await fetch(
-        `https://api.flodesk.com/v1/subscribers/${encodeURIComponent(email.toLowerCase().trim())}/segments`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${authHeader}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            segment_ids: [segmentId],  // Use segment_ids, not segment_names
-          }),
-        }
-      );
-
-      const segmentResponseText = await segmentResponse.text();
-      console.log(`[FLODESK] Segment assignment response: ${segmentResponse.status} - ${segmentResponseText}`);
-
-      if (!segmentResponse.ok) {
-        console.error('[FLODESK] Segment assignment failed:', segmentResponse.status, segmentResponseText);
-        // Don't throw - subscriber was created, just segment assignment failed
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            warning: `Subscriber created but segment assignment failed: ${segmentResponse.status}`,
-            message: `Subscriber ${email} created but could not be added to segment: ${segmentName}` 
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log(`[FLODESK] Successfully added ${email} to segment: ${segmentName}`);
+    // Parse response to verify segment was added
+    let subscriberData;
+    try {
+      subscriberData = JSON.parse(subscriberResponseText);
+      console.log(`[FLODESK] Subscriber segments after creation:`, subscriberData.segments);
+    } catch (e) {
+      console.log(`[FLODESK] Could not parse response as JSON`);
     }
+
+    console.log(`[FLODESK] Successfully created/updated subscriber ${email}${segmentId ? ` with segment: ${segmentName}` : ''}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Subscriber ${email} synced to Flodesk${segmentId ? ` and added to segment: ${segmentName}` : ' (no segment assigned)'}` 
+        message: `Subscriber ${email} synced to Flodesk${segmentId ? ` and added to segment: ${segmentName}` : ' (no segment assigned)'}`,
+        subscriber: subscriberData
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
