@@ -86,8 +86,8 @@ export default function Pricing() {
                   agency-level results
                 </span>
                 <span className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-primary via-pink-500 to-primary bg-[length:200%_auto] animate-[gradient-shift_3s_ease-in-out_infinite] rounded-full" />
-                <span className="absolute -top-1 -right-2 text-primary animate-pulse">✦</span>
-                <span className="absolute -bottom-2 -left-1 text-pink-500 animate-pulse delay-150">✦</span>
+                <span className="absolute -top-4 -right-6 text-primary animate-pulse text-lg">✦</span>
+                <span className="absolute -bottom-4 -left-5 text-pink-500 animate-pulse text-sm" style={{ animationDelay: '150ms' }}>✦</span>
               </span>
               <br className="hidden md:block" />
               <span className="text-2xl md:text-4xl text-muted-foreground font-normal">without the agency price tag</span>
