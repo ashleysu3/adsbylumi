@@ -66,6 +66,7 @@ export type Database = {
           created_at: string | null
           id: string
           industry: string | null
+          meta_access_token: string | null
           meta_account_id: string | null
           meta_token_expires_at: string | null
           name: string
@@ -86,6 +87,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           industry?: string | null
+          meta_access_token?: string | null
           meta_account_id?: string | null
           meta_token_expires_at?: string | null
           name: string
@@ -106,6 +108,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           industry?: string | null
+          meta_access_token?: string | null
           meta_account_id?: string | null
           meta_token_expires_at?: string | null
           name?: string
