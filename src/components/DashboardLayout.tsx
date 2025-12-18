@@ -200,26 +200,27 @@ export default function DashboardLayout({
   if (!user) return null;
   return <div className="min-h-screen bg-background">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
+        <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <img alt="Lumi" className="h-10 md:h-16 object-contain my-2 mx-4" src={lumiLogo} />
+              <img alt="Lumi" className="h-8 md:h-16 object-contain my-1 md:my-2 mx-2 md:mx-4" src={lumiLogo} />
             </div>
 
-            <div className="flex items-center space-x-3">
-              <button onClick={() => setCreateAdModalOpen(true)} className="relative group p-[3px] rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:shadow-lg hover:shadow-lumi-pink-1/30 transition-all overflow-hidden">
+            <div className="flex items-center space-x-2 md:space-x-3">
+              <button onClick={() => setCreateAdModalOpen(true)} className="relative group p-[2px] md:p-[3px] rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:shadow-lg hover:shadow-lumi-pink-1/30 transition-all overflow-hidden">
                 {/* Shimmer overlay on hover */}
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
-                <span className="relative flex items-center py-2 rounded-md bg-white group-hover:bg-white/95 transition-colors font-medium px-[12px] text-lumi-charcoal">
-                  <Sparkles className="mr-2 h-4 w-4 text-lumi-pink-1 group-hover:rotate-12 transition-transform duration-300" />
-                  ​New Ad Creation                    
+                <span className="relative flex items-center py-1.5 md:py-2 rounded-md bg-white group-hover:bg-white/95 transition-colors font-medium px-2 md:px-3 text-lumi-charcoal text-xs md:text-sm">
+                  <Sparkles className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4 text-lumi-pink-1 group-hover:rotate-12 transition-transform duration-300" />
+                  <span className="hidden sm:inline">​New Ad</span>
+                  <span className="sm:hidden">​New</span>
                 </span>
               </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/10 text-primary">
+                  <Button variant="ghost" className="relative h-8 w-8 md:h-10 md:w-10 rounded-full p-0">
+                    <Avatar className="h-8 w-8 md:h-10 md:w-10">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs md:text-sm">
                         {profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
@@ -229,7 +230,7 @@ export default function DashboardLayout({
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium">{profile?.full_name || "User"}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -276,20 +277,22 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          <nav className="flex items-end justify-between mt-6 -mb-4 overflow-x-auto">
-            <div className="flex space-x-1">
+          {/* Mobile-optimized navigation tabs */}
+          <nav className="flex items-end justify-start mt-4 md:mt-6 -mb-3 md:-mb-4 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex space-x-1 pb-px">
               {tabItems.map(item => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               return <Link key={item.path} to={item.path}>
                     <div className={`
-                        h-12 px-6 rounded-t-xl rounded-b-none relative
+                        h-10 md:h-12 px-3 md:px-6 rounded-t-xl rounded-b-none relative
                         flex items-center justify-center
-                        transition-all duration-300 font-semibold
+                        transition-all duration-300 font-semibold text-xs md:text-sm whitespace-nowrap
                         ${isActive ? 'bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-lg shadow-lumi-pink-1/30' : 'bg-card/80 text-muted-foreground hover:text-foreground hover:bg-card border border-border/50'}
                       `}>
-                      <Icon className={`mr-2 h-4 w-4 ${isActive ? 'animate-sparkle-pulse' : ''}`} />
-                      {item.label}
+                      <Icon className={`mr-1 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4 ${isActive ? 'animate-sparkle-pulse' : ''}`} />
+                      <span className="hidden sm:inline">{item.label}</span>
+                      <span className="sm:hidden">{item.label.split(' ')[0]}</span>
                     </div>
                   </Link>;
             })}
@@ -298,7 +301,7 @@ export default function DashboardLayout({
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-[24px]">{children}</main>
+      <main className="container mx-auto px-4 md:px-6 py-4 md:py-6">{children}</main>
 
       {walkthroughOpen && <OnboardingWalkthrough steps={walkthroughSteps} onClose={() => setWalkthroughOpen(false)} onActionClick={handleWalkthroughAction} />}
 

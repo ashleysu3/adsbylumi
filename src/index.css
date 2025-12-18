@@ -455,3 +455,34 @@
     padding: 1.75rem;
   }
 }
+
+/* Hide scrollbar for mobile nav */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile touch targets - minimum 44px */
+@media (max-width: 640px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Mobile-optimized animations - reduce motion */
+@media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
+  .animate-mobile-fast {
+    animation-duration: 0.2s;
+  }
+}
+
+/* Mobile text sizes for readability */
+@media (max-width: 640px) {
+  .mobile-text-balance {
+    text-wrap: balance;
+  }
+}

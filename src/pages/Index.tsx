@@ -288,7 +288,7 @@ const Index = () => {
             style={{ opacity: heroOpacity, scale: heroScale }}
           >
             <motion.div 
-              className="inline-flex items-center gap-2 bg-background/80 backdrop-blur-sm border border-border/50 px-4 py-2 rounded-full mb-6"
+              className="inline-flex items-center gap-2 bg-background/80 backdrop-blur-sm border border-border/50 px-3 md:px-4 py-1.5 md:py-2 rounded-full mb-4 md:mb-6"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
@@ -298,11 +298,11 @@ const Index = () => {
                 animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
               />
-              <span className="text-sm font-medium">Lumi</span>
+              <span className="text-xs md:text-sm font-medium">Lumi</span>
             </motion.div>
 
             <motion.h1 
-              className="text-4xl md:text-6xl lg:text-7xl font-display mb-6 leading-tight"
+              className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-display mb-4 md:mb-6 leading-tight px-2"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -311,7 +311,7 @@ const Index = () => {
             </motion.h1>
 
             <motion.p 
-              className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
+              className="text-base md:text-xl text-muted-foreground mb-6 md:mb-8 max-w-2xl mx-auto px-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
@@ -321,7 +321,7 @@ const Index = () => {
             </motion.p>
 
             <motion.div 
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center px-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.6 }}
@@ -330,16 +330,16 @@ const Index = () => {
                 <Button
                   variant="lumi"
                   size="lg"
-                  className="text-base"
+                  className="text-sm md:text-base w-full sm:w-auto"
                   onClick={() => navigate("/auth")}
                 >
                   Get Started Free
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5" />
                 </Button>
               </MagneticButton>
 
               <MagneticButton>
-                <Button variant="outline" size="lg" className="text-base bg-background/50 backdrop-blur-sm">
+                <Button variant="outline" size="lg" className="text-sm md:text-base bg-background/50 backdrop-blur-sm w-full sm:w-auto">
                   Watch Demo
                 </Button>
               </MagneticButton>
@@ -399,24 +399,24 @@ const Index = () => {
       </section>
 
       {/* Features Section */}
-      <section className="bg-secondary py-16 md:py-24 relative">
+      <section className="bg-secondary py-12 md:py-24 relative">
         <ParallaxSection className="absolute inset-0 opacity-10" offset={20}>
           <div className="absolute top-0 right-1/4 w-64 h-64 bg-primary rounded-full blur-3xl" />
         </ParallaxSection>
         
         <div className="container mx-auto px-4 max-w-6xl relative z-10">
           <ScrollReveal>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <div className="text-center mb-8 md:mb-12 px-2">
+              <h2 className="text-2xl md:text-4xl font-bold mb-3 md:mb-4">
                 Everything you need to run Meta ads <span className="text-gradient-lumi">confidently</span>.
               </h2>
-              <p className="text-lg text-muted-foreground">
+              <p className="text-base md:text-lg text-muted-foreground">
                 No marketing degree required. Just clear guidance, smart suggestions, and simple tools.
               </p>
             </div>
           </ScrollReveal>
 
-          <StaggerChildren staggerDelay={0.15} className="grid md:grid-cols-3 gap-8">
+          <StaggerChildren staggerDelay={0.15} className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
             {features.map((feature) => {
               const Icon = feature.icon;
               return (
@@ -426,20 +426,20 @@ const Index = () => {
                     transition={{ type: "spring", stiffness: 300 }}
                   >
                     <Card className="border-none shadow-sm h-full">
-                      <CardContent className="pt-6">
-                        <div className="mb-4 flex justify-center">
+                      <CardContent className="pt-5 md:pt-6 pb-5 md:pb-6">
+                        <div className="mb-3 md:mb-4 flex justify-center">
                           <motion.div 
-                            className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center"
+                            className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-primary/10 flex items-center justify-center"
                             whileHover={{ rotate: 5, scale: 1.1 }}
                             transition={{ type: "spring", stiffness: 300 }}
                           >
-                            <Icon className="h-6 w-6 text-primary" />
+                            <Icon className="h-5 w-5 md:h-6 md:w-6 text-primary" />
                           </motion.div>
                         </div>
-                        <h3 className="text-xl font-semibold mb-2 text-center">
+                        <h3 className="text-lg md:text-xl font-semibold mb-2 text-center">
                           {feature.title}
                         </h3>
-                        <p className="text-muted-foreground text-center">
+                        <p className="text-sm md:text-base text-muted-foreground text-center">
                           {feature.description}
                         </p>
                       </CardContent>
