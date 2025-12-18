@@ -10,13 +10,15 @@ import { LumiCharacter } from "./LumiCharacter";
 import { useLumi, Message } from "@/contexts/LumiContext";
 
 interface LumiChatProps {
-  context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production' | 'add-creative';
+  context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production' | 'add-creative' | 'angle-feedback';
   workspace?: any;
   brand?: any;
   trigger?: ReactNode;
   autoOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   customStarters?: { label: string; message: string }[];
+  initialMessage?: string;
+  generatedAngles?: any[];
 }
 
 
@@ -75,14 +77,21 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
     { label: "Creative best practices", message: "What makes a high-performing ad creative?" },
     { label: "Refresh existing", message: "How do I know when my creative needs refreshing?" },
   ],
+  'angle-feedback': [
+    { label: "I love these!", message: "These angles are great! Let's build on them and create the hooks and concepts." },
+    { label: "Let's refine them", message: "I'd like to chat about my offer and audience to make these angles even more powerful." },
+    { label: "Different direction", message: "I want to explore a different creative direction. Let me tell you more about what I'm looking for." },
+    { label: "Tell me more", message: "Can you explain why you chose these specific angles for my offer?" },
+  ],
 };
 
-export function LumiChat({ context, workspace, brand, trigger, autoOpen = false, onOpenChange, customStarters }: LumiChatProps) {
+export function LumiChat({ context, workspace, brand, trigger, autoOpen = false, onOpenChange, customStarters, initialMessage, generatedAngles }: LumiChatProps) {
   const [internalOpen, setInternalOpen] = useState(autoOpen);
-  const { messages, addMessage, setBrandId } = useLumi();
+  const { messages, addMessage, setBrandId, clearMessages } = useLumi();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const [hasShownInitialMessage, setHasShownInitialMessage] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const starters = customStarters || contextStarters[context] || contextStarters.dashboard;
 
@@ -98,6 +107,24 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
       setInternalOpen(true);
     }
   }, [autoOpen]);
+  
+  // Show initial message from Lumi when chat opens (proactive conversation)
+  useEffect(() => {
+    if (open && initialMessage && !hasShownInitialMessage && messages.length === 0) {
+      // Clear any previous messages and show Lumi's proactive message
+      clearMessages();
+      const lumiMessage: Message = {
+        role: 'assistant',
+        content: initialMessage,
+        followups: [
+          { label: "Yes, let's chat!", message: "I'd love to discuss my offer and audience to get better angles." },
+          { label: "These look good", message: "I'm happy with these angles. Let's move forward to creating hooks and concepts." },
+        ]
+      };
+      addMessage(lumiMessage);
+      setHasShownInitialMessage(true);
+    }
+  }, [open, initialMessage, hasShownInitialMessage, messages.length, addMessage, clearMessages]);
 
   const copyToClipboard = async (text: string, idx: number) => {
     await navigator.clipboard.writeText(text);
@@ -141,6 +168,7 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
           industry: brand.industry,
           target_audience: brand.target_audience,
         } : null,
+        generatedAngles: generatedAngles || null,
       };
 
       const { data, error } = await supabase.functions.invoke('lumi-chat', {

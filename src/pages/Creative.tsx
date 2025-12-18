@@ -58,6 +58,9 @@ export default function Creative() {
   const isAddCreativeMode = searchParams.get("addCreative") === "true";
   const [showLumiChat, setShowLumiChat] = useState(false);
   
+  // Proactive Lumi chat after first angle generation
+  const [showAngleFeedbackChat, setShowAngleFeedbackChat] = useState(false);
+  
   // Creative state
   const [dashboardStep, setDashboardStep] = useState<DashboardStep>("select_angles");
   const [availableAngles, setAvailableAngles] = useState<CreativeAngle[]>([]);
@@ -275,6 +278,9 @@ export default function Creative() {
       await saveCreativeState({ angles: data.angles });
       
       toast.success("Creative angles ready!");
+      
+      // Trigger proactive Lumi chat for angle feedback
+      setShowAngleFeedbackChat(true);
     } catch (error: any) {
       console.error("Error generating angles:", error);
       if (error.message?.includes("429")) toast.error("Rate limit exceeded. Please wait a moment.");
@@ -839,6 +845,30 @@ export default function Creative() {
                   { label: "Pick different campaign", message: "Help me choose a different campaign that's ready for new creative." },
                 ]
           }
+        />
+      )}
+      
+      {/* Proactive Lumi Chat after angle generation */}
+      {showAngleFeedbackChat && brand && workspace && availableAngles.length > 0 && (
+        <LumiChat 
+          context="angle-feedback" 
+          brand={brand}
+          workspace={workspace}
+          trigger={null}
+          autoOpen={true}
+          initialMessage="What do you think about these angles? Would you like to chat about your offer and audience so I can create even better angles, hooks and creative concepts?"
+          generatedAngles={availableAngles}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowAngleFeedbackChat(false);
+            }
+          }}
+          customStarters={[
+            { label: "I love these!", message: "These angles are great! Let's build on them and create the hooks and concepts." },
+            { label: "Let's refine them", message: "I'd like to chat about my offer and audience to make these angles even more powerful." },
+            { label: "Different direction", message: "I want to explore a different creative direction. Let me tell you more about what I'm looking for." },
+            { label: "Tell me more", message: "Can you explain why you chose these specific angles for my offer?" },
+          ]}
         />
       )}
     </DashboardLayout>
