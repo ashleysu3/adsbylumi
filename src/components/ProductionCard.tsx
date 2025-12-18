@@ -95,9 +95,16 @@ export function ProductionCard({ item, onClick }: ProductionCardProps) {
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <FormatIcon className="h-5 w-5 text-muted-foreground" />
-            <Badge variant="outline" className="text-xs">
-              {stageLabels[item.stage.toLowerCase()] || item.stage}
-            </Badge>
+            {item.stage && (
+              <Badge variant="outline" className="text-xs">
+                {stageLabels[item.stage.toLowerCase()] || item.stage}
+              </Badge>
+            )}
+            {(item as any).angleName && (
+              <Badge variant="outline" className="text-xs">
+                {(item as any).angleName}
+              </Badge>
+            )}
           </div>
           <StatusIcon className="h-5 w-5 text-muted-foreground" />
         </div>
@@ -105,10 +112,10 @@ export function ProductionCard({ item, onClick }: ProductionCardProps) {
         {/* Title */}
         <div>
           <h3 className="font-semibold text-lg line-clamp-2">
-            {item.concept?.title || "Untitled Concept"}
+            {item.concept?.title || (item as any).hook || "Untitled Concept"}
           </h3>
           <p className="text-sm text-muted-foreground capitalize mt-1">
-            {item.format.replace(/_/g, " ")}
+            {(item.format || "").replace(/_/g, " ") || "Unknown format"}
           </p>
         </div>
 
