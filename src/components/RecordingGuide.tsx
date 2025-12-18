@@ -2,12 +2,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Video, Sparkle } from "lucide-react";
+import { Video, Sparkle, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 interface RecordingGuideProps {
   concept: any;
-  onComplete: () => void;
+  onComplete: () => void | Promise<void>;
   onBack: () => void;
 }
 
@@ -18,8 +18,19 @@ export function RecordingGuide({ concept = {}, onComplete, onBack }: RecordingGu
     audio: false,
     background: false,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const allChecked = Object.values(checklist).every((v) => v);
+
+  const handleComplete = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await Promise.resolve(onComplete());
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -124,11 +135,18 @@ export function RecordingGuide({ concept = {}, onComplete, onBack }: RecordingGu
 
       {/* Actions */}
       <div className="flex gap-3 justify-between pt-4">
-        <Button variant="outline" onClick={onBack}>
+        <Button variant="outline" onClick={onBack} disabled={submitting}>
           ← Back
         </Button>
-        <Button onClick={onComplete}>
-          Mark as Recorded →
+        <Button onClick={handleComplete} disabled={submitting}>
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>Mark as Recorded →</>
+          )}
         </Button>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect } from "react";
@@ -76,6 +76,17 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
 
   const isVideoFormat = ["talking_head", "broll"].includes(item.format);
 
+  // Some legacy items may not have concept_id; fall back to item.id so uploads can still link reliably
+  const conceptLinkId =
+    updatedItem?.concept_id || (updatedItem as any)?.conceptId || updatedItem?.id ||
+    item?.concept_id || (item as any)?.conceptId || item?.id;
+
+  const linkedUpload =
+    updatedItem?.linkedAsset ||
+    (workspace.user_uploaded_assets || []).slice().reverse().find((a: any) => a.linked_concept_id === conceptLinkId);
+
+  const canContinueToCopy = !!linkedUpload;
+
   const handleNext = async (step: Step) => {
     // Immediately move the UI forward for a smoother feel
     setCurrentStep(step);
@@ -122,6 +133,11 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
 
   const handleUploadComplete = async () => {
     try {
+      if (!conceptLinkId) {
+        toast.error("This concept is missing an ID. Please close and reopen the card.");
+        return;
+      }
+
       // Re-fetch to make sure we include the very latest upload (users often click through fast)
       const { data: fresh, error: fetchError } = await supabase
         .from("campaign_workspaces")
@@ -132,7 +148,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
       if (fetchError) throw fetchError;
 
       const assets = (fresh?.user_uploaded_assets || workspace.user_uploaded_assets || []) as any[];
-      const latestAsset = [...assets].reverse().find((asset: any) => asset.linked_concept_id === item.concept_id);
+      const latestAsset = [...assets].reverse().find((asset: any) => asset.linked_concept_id === conceptLinkId);
 
       if (!latestAsset) {
         toast.error("Upload a file for this concept before continuing.");
@@ -239,10 +255,11 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          {/* Progress Bar */}
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Production workflow</DialogTitle>
+            {/* Progress Bar */}
           <div className="space-y-2 mb-4">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium">Production Progress</span>
@@ -479,13 +496,24 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                 </p>
               </div>
 
-              <DragDropUploader workspace={workspace} onUpdate={onUpdate} productionItem={item} />
+              <DragDropUploader
+                workspace={workspace}
+                onUpdate={onUpdate}
+                productionItem={{ ...item, concept_id: conceptLinkId }}
+              />
 
               <div className="flex gap-3 justify-between pt-4">
                 <Button variant="outline" onClick={() => handleNext("create")}>
                   ← Back
                 </Button>
-                <Button onClick={handleUploadComplete}>Continue to Copy Review →</Button>
+                <div className="flex flex-col items-end gap-2">
+                  <Button onClick={handleUploadComplete} disabled={!canContinueToCopy}>
+                    Continue to Copy Review →
+                  </Button>
+                  {!canContinueToCopy && (
+                    <p className="text-xs text-muted-foreground">Upload at least 1 file above to continue.</p>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -493,13 +521,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
           {currentStep === "copy" && (
             <CopyEditor
               concept={updatedItem.concept || {}}
-              uploadedAsset={
-                updatedItem.linkedAsset ||
-                workspace.user_uploaded_assets?.find(
-                  (asset: any) => asset.linked_concept_id === item.concept_id || 
-                                  asset.id === updatedItem.uploaded_asset_id
-                )
-              }
+              uploadedAsset={linkedUpload}
               workspace={workspace}
               initialCopy={updatedItem.final_copy}
               onApprove={handleCopyApprove}
