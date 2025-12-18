@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Video, FileText, ShoppingCart, PhoneCall, TrendingUp, Play, Info } from "lucide-react";
+import { Video, FileText, ShoppingCart, PhoneCall, TrendingUp, Play, Info, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { LumiLoader } from "@/components/LumiLoader";
 import { LumiCharacter } from "@/components/LumiCharacter";
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GeneratingModal } from "@/components/GeneratingModal";
 import { GridShimmer } from "@/components/GradientShimmer";
+import { OfferDialog } from "@/components/OfferDialog";
 
 const iconMap: Record<string, any> = {
   Video,
@@ -38,6 +39,7 @@ export default function Planning() {
   const [offersWithRecommendations, setOffersWithRecommendations] = useState<any[]>([]);
   const [offers, setOffers] = useState<any[]>([]);
   const [selectedOfferId, setSelectedOfferId] = useState<string>("");
+  const [showOfferDialog, setShowOfferDialog] = useState(false);
   
   useEffect(() => {
     fetchData();
@@ -190,11 +192,17 @@ export default function Planning() {
   }
   return <DashboardLayout>
       <div className="space-y-8 py-[2px]">
-        <div className="space-y-2">
-          <h2 className="text-3xl font-display tracking-tight">
-            Lumi <span className="text-gradient-lumi">Strategy</span>
-          </h2>
-          <p className="text-muted-foreground">Let's keep this simple: pick a campaign type and Lumi will guide you through the rest.</p>
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-display tracking-tight">
+              Lumi <span className="text-gradient-lumi">Strategy</span>
+            </h2>
+            <p className="text-muted-foreground">Let's keep this simple: pick a campaign type and Lumi will guide you through the rest.</p>
+          </div>
+          <Button variant="lumi" onClick={() => setShowOfferDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Offer
+          </Button>
         </div>
 
         {/* Offer Selection */}
@@ -332,6 +340,16 @@ export default function Planning() {
 
         {/* Generating Modal for strategy creation */}
         <GeneratingModal isOpen={loading} title="Creating Campaign Strategy" steps={["Setting up campaign workspace...", "Loading template configuration...", "Applying messaging framework...", "Configuring KPI benchmarks...", "Preparing creative workspace..."]} />
+        
+        {/* Offer Dialog */}
+        {brand && (
+          <OfferDialog 
+            open={showOfferDialog} 
+            onOpenChange={setShowOfferDialog} 
+            brandId={brand.id}
+            onSuccess={fetchData}
+          />
+        )}
       </div>
     </DashboardLayout>;
 }
