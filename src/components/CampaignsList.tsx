@@ -147,10 +147,10 @@ export function CampaignsList({ brandId }: CampaignsListProps) {
     switch (campaign.progress_status) {
       case 'draft':
       case 'creative_in_progress':
-        return '/creative';
+        return `/creative?workspace=${campaign.id}`;
       
       case 'waiting_for_assets':
-        return '/production';
+        return `/production?workspace=${campaign.id}`;
       
       case 'ready_to_publish':
       case 'publishing_to_meta':
