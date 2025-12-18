@@ -426,6 +426,7 @@ export type Database = {
           id: string
           messaging_guidelines: Json | null
           name: string
+          page_goal: string | null
           price_point: string | null
           product_psychology: Json | null
           recommendation_confidence: string | null
@@ -445,6 +446,7 @@ export type Database = {
           id?: string
           messaging_guidelines?: Json | null
           name: string
+          page_goal?: string | null
           price_point?: string | null
           product_psychology?: Json | null
           recommendation_confidence?: string | null
@@ -464,6 +466,7 @@ export type Database = {
           id?: string
           messaging_guidelines?: Json | null
           name?: string
+          page_goal?: string | null
           price_point?: string | null
           product_psychology?: Json | null
           recommendation_confidence?: string | null

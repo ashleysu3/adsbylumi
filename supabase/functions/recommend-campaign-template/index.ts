@@ -123,6 +123,57 @@ serve(async (req) => {
 
     if (templatesError) throw templatesError;
 
+    // PAGE GOAL MAPPING - These take priority over AI recommendations
+    const pageGoalToTemplate: Record<string, string> = {
+      'purchase': 'low-ticket-product-sales', // Direct purchase → Sales campaign
+      'discovery_call': 'discovery-call-application', // Book a call → Discovery call campaign  
+      'free_resource': 'lead-magnet-downloads', // Free download → Lead magnet campaign
+    };
+
+    // If page_goal is set and maps to a known template, use it directly
+    if (offer.page_goal && pageGoalToTemplate[offer.page_goal]) {
+      const targetSlug = pageGoalToTemplate[offer.page_goal];
+      const matchedTemplate = templates.find(t => t.slug === targetSlug);
+      
+      if (matchedTemplate) {
+        console.log(`Using page_goal "${offer.page_goal}" to select template: ${targetSlug}`);
+        
+        const reasonMap: Record<string, string> = {
+          'purchase': 'This offer directs visitors to make a purchase, so a sales-focused campaign will drive conversions most effectively.',
+          'discovery_call': 'This offer is designed to book discovery or sales calls, making a call-focused campaign the ideal choice for qualified lead generation.',
+          'free_resource': 'This offer provides a free resource to capture leads, so a lead magnet campaign will maximize opt-ins and build your list.',
+        };
+        
+        // Update offer with recommendation
+        const { error: updateError } = await supabase
+          .from('offers')
+          .update({
+            recommended_template_id: matchedTemplate.id,
+            recommendation_reason: reasonMap[offer.page_goal] || 'Based on your page goal selection.',
+            recommendation_confidence: 'high'
+          })
+          .eq('id', offerId);
+
+        if (updateError) throw updateError;
+
+        console.log('Campaign template recommendation saved (from page_goal)');
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          recommendation: {
+            template_id: matchedTemplate.id,
+            template_name: matchedTemplate.name,
+            template_slug: matchedTemplate.slug,
+            confidence: 'high',
+            reason: reasonMap[offer.page_goal]
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // Fall back to AI recommendation for 'other' or when no page_goal is set
     const systemPrompt = `You are a Meta Ads strategist expert. Analyze an offer and recommend the BEST campaign template.
 
 MATCHING RULES:
@@ -158,6 +209,7 @@ OFFER DETAILS:
 - Description: ${offer.description || 'Not specified'}
 - Price: ${offer.price_point || 'Not specified'}
 - Target Outcome: ${offer.target_outcome || 'Not specified'}
+- Page Goal: ${offer.page_goal || 'Not specified'}
 
 PRODUCT PSYCHOLOGY:
 - Positioning: ${productPsych.positioning || 'Not specified'}

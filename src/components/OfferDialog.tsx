@@ -9,6 +9,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Sparkles, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+type PageGoal = 'purchase' | 'discovery_call' | 'free_resource' | 'other';
+
+const PAGE_GOAL_OPTIONS: { value: PageGoal; label: string; description: string }[] = [
+  { value: 'purchase', label: 'Purchase', description: 'Buy a product or service directly' },
+  { value: 'discovery_call', label: 'Book a Call', description: 'Schedule a discovery or sales call' },
+  { value: 'free_resource', label: 'Free Resource', description: 'Download a lead magnet or freebie' },
+  { value: 'other', label: 'Other', description: 'Something else (webinar, waitlist, etc.)' },
+];
 
 interface ExtractedData {
   description?: string;
@@ -49,6 +59,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     description: "",
     price_point: "",
     target_outcome: "",
+    page_goal: "" as PageGoal | "",
   });
 
   const handleExtractInfo = async () => {
@@ -122,6 +133,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
           description: formData.description,
           price_point: formData.price_point,
           target_outcome: formData.target_outcome,
+          page_goal: formData.page_goal || null,
           ai_generated_description: !!extractedData,
           ai_generated_price: !!extractedData?.price_point,
           messaging_guidelines: messagingGuidelines,
@@ -149,7 +161,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
 
       onSuccess();
       onOpenChange(false);
-      setFormData({ name: "", url: "", description: "", price_point: "", target_outcome: "" });
+      setFormData({ name: "", url: "", description: "", price_point: "", target_outcome: "", page_goal: "" });
       setExtractedData(null);
     } catch (error: any) {
       console.error('Error creating offer:', error);
@@ -346,6 +358,36 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
             </div>
           )}
 
+          {/* Page Goal - Required for strategy recommendation */}
+          <div className="space-y-3">
+            <Label className="text-base font-medium">
+              What is this page directing people to do? <span className="text-destructive">*</span>
+            </Label>
+            <RadioGroup
+              value={formData.page_goal}
+              onValueChange={(value: PageGoal) => setFormData(prev => ({ ...prev, page_goal: value }))}
+              className="grid grid-cols-2 gap-3"
+            >
+              {PAGE_GOAL_OPTIONS.map((option) => (
+                <Label
+                  key={option.value}
+                  htmlFor={`goal-${option.value}`}
+                  className={`flex flex-col gap-1 rounded-lg border p-3 cursor-pointer transition-all hover:border-primary/50 ${
+                    formData.page_goal === option.value 
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary' 
+                      : 'border-border'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value={option.value} id={`goal-${option.value}`} />
+                    <span className="font-medium text-sm">{option.label}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground pl-6">{option.description}</span>
+                </Label>
+              ))}
+            </RadioGroup>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
@@ -381,7 +423,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
             <Button type="button" variant="outline" onClick={() => handleClose(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !formData.page_goal}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
