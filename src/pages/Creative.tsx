@@ -46,6 +46,7 @@ export default function Creative() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generatingPhase, setGeneratingPhase] = useState<GeneratingPhase>(null);
+  const [regeneratingCellId, setRegeneratingCellId] = useState<string | null>(null);
   const [brand, setBrand] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
@@ -458,6 +459,60 @@ export default function Creative() {
     }
   };
 
+  const handleRegenerateCell = async (cellId: string) => {
+    const cell = gridData.find(c => c.id === cellId);
+    if (!cell) return;
+    
+    const angle = availableAngles.find(a => a.id === cell.angleId);
+    if (!angle) {
+      toast.error("Angle not found for this cell");
+      return;
+    }
+
+    setRegeneratingCellId(cellId);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('regenerate-creative-cell', {
+        body: {
+          cell,
+          angle,
+          brandName: workspace.brands?.name || workspace.name,
+          strategyData: workspace.strategy_json,
+          audiencePsychology: workspace.brands?.audience_psychology,
+          offerData: {
+            name: workspace.offer_name,
+            description: workspace.offer_description,
+            price: workspace.offer_price,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      // Update the cell in gridData
+      const updatedGridData = gridData.map(c => 
+        c.id === cellId ? data.cell : c
+      );
+      setGridData(updatedGridData);
+      
+      // Save to workspace
+      await saveCreativeState({ gridData: updatedGridData });
+      
+      toast.success("Fresh idea generated!");
+    } catch (error: any) {
+      console.error("Error regenerating cell:", error);
+      if (error.message?.includes("429")) {
+        toast.error("Rate limit exceeded. Please wait a moment.");
+      } else if (error.message?.includes("402")) {
+        toast.error("AI credits depleted. Please add credits in Settings.");
+      } else {
+        toast.error(error.message || "Failed to regenerate idea");
+      }
+    } finally {
+      setRegeneratingCellId(null);
+    }
+  };
+
   const progressLabels: Record<string, string> = {
     draft: "Draft",
     creative_in_progress: "Creative in Progress",
@@ -712,7 +767,9 @@ export default function Creative() {
                       onCellToggle={handleCellToggle}
                       onAddToChecklist={handleAddToChecklist}
                       onAddSingleToChecklist={handleAddSingleToChecklist}
+                      onRegenerateCell={handleRegenerateCell}
                       checklistIds={productionItems.map(item => item.id)}
+                      regeneratingCellId={regeneratingCellId}
                     />
                   ) : (
                     <BulkUploader
