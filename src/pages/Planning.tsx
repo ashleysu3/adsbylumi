@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Video, FileText, ShoppingCart, PhoneCall, TrendingUp, Play, Info, Plus } from "lucide-react";
+import { Video, FileText, ShoppingCart, PhoneCall, TrendingUp, Play, Info, Plus, Target, Users } from "lucide-react";
 import { toast } from "sonner";
 import { LumiLoader } from "@/components/LumiLoader";
 import { LumiCharacter } from "@/components/LumiCharacter";
@@ -40,6 +40,8 @@ export default function Planning() {
   const [offers, setOffers] = useState<any[]>([]);
   const [selectedOfferId, setSelectedOfferId] = useState<string>("");
   const [showOfferDialog, setShowOfferDialog] = useState(false);
+  const [campaignGoal, setCampaignGoal] = useState<"offer" | "business_problem" | null>(null);
+  const [businessProblem, setBusinessProblem] = useState<"video_trust" | "social_growth" | null>(null);
   
   useEffect(() => {
     fetchData();
@@ -205,8 +207,64 @@ export default function Planning() {
           </Button>
         </div>
 
-        {/* Offer Selection */}
-        {offers.length > 0 && <Card variant="glow" className="border-primary/20">
+        {/* Campaign Goal Selection */}
+        <Card variant="glow" className="border-primary/20">
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">
+                Do you want an ad that goes to an offer or solving a business problem?
+              </Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={() => {
+                    setCampaignGoal("offer");
+                    setBusinessProblem(null);
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    campaignGoal === "offer" 
+                      ? "border-primary bg-primary/5" 
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Target className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Going to an offer</p>
+                      <p className="text-sm text-muted-foreground">Drive traffic to a specific product or service</p>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setCampaignGoal("business_problem");
+                    setSelectedOfferId("");
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    campaignGoal === "business_problem" 
+                      ? "border-primary bg-primary/5" 
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Solving a business problem</p>
+                      <p className="text-sm text-muted-foreground">Build awareness, trust, or grow your audience</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Offer Selection - shows when "Going to an offer" is selected */}
+        {campaignGoal === "offer" && offers.length > 0 && (
+          <Card variant="glow" className="border-primary/20">
             <CardContent className="pt-6">
               <div className="space-y-3">
                 <Label htmlFor="offer-select" className="text-base font-semibold">
@@ -236,61 +294,133 @@ export default function Planning() {
                   </div>}
               </div>
             </CardContent>
-          </Card>}
+          </Card>
+        )}
+
+        {/* Business Problem Options - shows when "Solving a business problem" is selected */}
+        {campaignGoal === "business_problem" && (
+          <Card variant="glow" className="border-primary/20">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">
+                  What business problem are you solving?
+                </Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setBusinessProblem("video_trust")}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      businessProblem === "video_trust" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Video className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Build trust with your ideal audience via video</p>
+                        <p className="text-sm text-muted-foreground mt-1">Perfect for future retargeting or if you will be launching in the future</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setBusinessProblem("social_growth")}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      businessProblem === "social_growth" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Users className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Grow your social media presence</p>
+                        <p className="text-sm text-muted-foreground mt-1">Increase followers and engagement on your profiles</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Lumi recommendations now shown via popup */}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map(template => {
-          const Icon = iconMap[template.icon] || Video;
-          const isRecommendedForSelectedOffer = selectedOfferId && offers.find(o => o.id === selectedOfferId)?.recommended_template_id === template.id;
-          return <Card
-                key={template.id} 
-                variant={isRecommendedForSelectedOffer ? "gradient" : "glow"}
-                className={`cursor-pointer transition-all duration-300 relative hover:scale-[1.02] ${isRecommendedForSelectedOffer ? "shadow-glow" : ""}`}
-              >
-                {isRecommendedForSelectedOffer && (
-                    <LumiRecommendedBadge className="absolute -top-2 -right-2" />
-                  )}
-                <CardHeader>
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-                      <Icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={e => {
-                  e.stopPropagation();
-                  openDetails(template);
-                }}>
-                      <Info className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <CardTitle className="text-xl">{template.name}</CardTitle>
-                  {offersWithRecommendations.some(o => o.recommended_template_id === template.id) && !isRecommendedForSelectedOffer && <Badge variant="secondary" className="text-xs mt-1">
-                      Recommended for: {offersWithRecommendations.find(o => o.recommended_template_id === template.id)?.name}
-                    </Badge>}
-                  <CardDescription className="min-h-[48px]">{template.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Objective:</span>
-                      <Badge variant="secondary">{template.objective}</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Traffic:</span>
-                      <Badge variant="outline">{template.audience_type}</Badge>
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground mb-3"><strong>Use this for:</strong> {template.use_case}</p>
-                    <Button className="w-full" variant="lumi" onClick={() => handleTemplateClick(template)} disabled={loading}>
-                      {loading ? <><LumiCharacter size="xs" state="loading" className="mr-2" />Setting up...</> : "Let's Go"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>;
-        })}
-        </div>
+        {/* Template Grid - only show when a path is selected */}
+        {(campaignGoal === "offer" || (campaignGoal === "business_problem" && businessProblem)) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {templates
+              .filter(template => {
+                // Filter templates based on business problem selection
+                if (campaignGoal === "business_problem") {
+                  if (businessProblem === "video_trust") {
+                    return template.slug === "video-views";
+                  }
+                  if (businessProblem === "social_growth") {
+                    return template.slug === "traffic-instagram-facebook";
+                  }
+                }
+                return true; // Show all templates for offer path
+              })
+              .map(template => {
+                const Icon = iconMap[template.icon] || Video;
+                const isRecommendedForSelectedOffer = selectedOfferId && offers.find(o => o.id === selectedOfferId)?.recommended_template_id === template.id;
+                const isRecommendedForBusinessProblem = campaignGoal === "business_problem" && businessProblem;
+                return <Card
+                      key={template.id} 
+                      variant={isRecommendedForSelectedOffer || isRecommendedForBusinessProblem ? "gradient" : "glow"}
+                      className={`cursor-pointer transition-all duration-300 relative hover:scale-[1.02] ${isRecommendedForSelectedOffer || isRecommendedForBusinessProblem ? "shadow-glow" : ""}`}
+                    >
+                      {isRecommendedForSelectedOffer && (
+                          <LumiRecommendedBadge className="absolute -top-2 -right-2" />
+                        )}
+                      {isRecommendedForBusinessProblem && (
+                          <LumiRecommendedBadge className="absolute -top-2 -right-2" />
+                        )}
+                      <CardHeader>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                            <Icon className="h-6 w-6 text-primary" />
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={e => {
+                        e.stopPropagation();
+                        openDetails(template);
+                      }}>
+                            <Info className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <CardTitle className="text-xl">{template.name}</CardTitle>
+                        {offersWithRecommendations.some(o => o.recommended_template_id === template.id) && !isRecommendedForSelectedOffer && campaignGoal === "offer" && <Badge variant="secondary" className="text-xs mt-1">
+                            Recommended for: {offersWithRecommendations.find(o => o.recommended_template_id === template.id)?.name}
+                          </Badge>}
+                        <CardDescription className="min-h-[48px]">{template.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Objective:</span>
+                            <Badge variant="secondary">{template.objective}</Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Traffic:</span>
+                            <Badge variant="outline">{template.audience_type}</Badge>
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t">
+                          <p className="text-xs text-muted-foreground mb-3"><strong>Use this for:</strong> {template.use_case}</p>
+                          <Button className="w-full" variant="lumi" onClick={() => handleTemplateClick(template)} disabled={loading}>
+                            {loading ? <><LumiCharacter size="xs" state="loading" className="mr-2" />Setting up...</> : "Let's Go"}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>;
+              })}
+          </div>
+        )}
 
         <Dialog open={showDetails} onOpenChange={setShowDetails}>
           <DialogContent className="max-w-2xl">
