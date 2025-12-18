@@ -520,7 +520,7 @@ export function CampaignInsightDetail({
           <Card className="rounded-2xl border-2 border-[hsl(var(--lumi-orange-1)/0.3)] bg-gradient-to-br from-[hsl(var(--lumi-orange-1)/0.05)] to-transparent shadow-[var(--shadow-card)]">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Sparkle className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
+                <Sparkle className="h-5 w-5 text-[hsl(var(--lumi-orange-1))] animate-sparkle-pulse" />
                 Lumi's got you — here's what to do next
               </CardTitle>
             </CardHeader>

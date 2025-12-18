@@ -40,14 +40,24 @@ export default {
           foreground: "hsl(var(--accent-foreground))",
         },
         glow: "hsl(var(--glow))",
-        // Lumi brand colors
+        // Lumi brand colors - Logo gradient
         lumi: {
           orange: {
             1: "hsl(var(--lumi-orange-1))",
             2: "hsl(var(--lumi-orange-2))",
-            3: "hsl(var(--lumi-orange-3))",
           },
-          yellow: "hsl(var(--lumi-yellow))",
+          pink: {
+            1: "hsl(var(--lumi-pink-1))",
+            2: "hsl(var(--lumi-pink-2))",
+          },
+          purple: {
+            1: "hsl(var(--lumi-purple-1))",
+            2: "hsl(var(--lumi-purple-2))",
+          },
+          blue: {
+            1: "hsl(var(--lumi-blue-1))",
+            2: "hsl(var(--lumi-blue-2))",
+          },
           black: "hsl(var(--warm-black))",
           charcoal: "hsl(var(--soft-charcoal))",
           white: "hsl(var(--warm-white))",
@@ -74,8 +84,12 @@ export default {
         tab: {
           "orange-light": "hsl(var(--tab-orange-light))",
           "orange-dark": "hsl(var(--tab-orange-dark))",
-          "yellow-light": "hsl(var(--tab-yellow-light))",
-          "yellow-dark": "hsl(var(--tab-yellow-dark))",
+          "pink-light": "hsl(var(--tab-pink-light))",
+          "pink-dark": "hsl(var(--tab-pink-dark))",
+          "purple-light": "hsl(var(--tab-purple-light))",
+          "purple-dark": "hsl(var(--tab-purple-dark))",
+          "blue-light": "hsl(var(--tab-blue-light))",
+          "blue-dark": "hsl(var(--tab-blue-dark))",
           "cream-light": "hsl(var(--tab-cream-light))",
           "cream-dark": "hsl(var(--tab-cream-dark))",
           black: "hsl(var(--tab-black))",
@@ -90,6 +104,7 @@ export default {
       backgroundImage: {
         'gradient-lumi': 'var(--gradient-lumi)',
         'gradient-warm': 'var(--gradient-warm)',
+        'gradient-cool': 'var(--gradient-cool)',
         'gradient-glow': 'var(--gradient-glow)',
       },
       boxShadow: {
@@ -124,15 +139,43 @@ export default {
         },
         "glow-pulse": {
           "0%, 100%": {
-            boxShadow: "0 0 20px 4px hsl(var(--lumi-yellow) / 0.3)",
+            boxShadow: "0 0 20px 4px hsl(var(--lumi-purple-1) / 0.3)",
           },
           "50%": {
-            boxShadow: "0 0 30px 8px hsl(var(--lumi-yellow) / 0.5)",
+            boxShadow: "0 0 30px 8px hsl(var(--lumi-purple-1) / 0.5)",
           },
         },
         "fade-in": {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "sparkle": {
+          "0%, 100%": { 
+            opacity: "1", 
+            transform: "scale(1) rotate(0deg)" 
+          },
+          "25%": { 
+            opacity: "0.8", 
+            transform: "scale(1.1) rotate(5deg)" 
+          },
+          "50%": { 
+            opacity: "1", 
+            transform: "scale(1.2) rotate(0deg)" 
+          },
+          "75%": { 
+            opacity: "0.8", 
+            transform: "scale(1.1) rotate(-5deg)" 
+          },
+        },
+        "sparkle-pulse": {
+          "0%, 100%": { 
+            opacity: "0.7",
+            filter: "drop-shadow(0 0 2px hsl(var(--lumi-purple-1) / 0.5))"
+          },
+          "50%": { 
+            opacity: "1",
+            filter: "drop-shadow(0 0 6px hsl(var(--lumi-purple-1) / 0.8))"
+          },
         },
       },
       animation: {
@@ -140,6 +183,8 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "glow-pulse": "glow-pulse 2s ease-in-out infinite",
         "fade-in": "fade-in 0.3s ease-out",
+        "sparkle": "sparkle 2s ease-in-out infinite",
+        "sparkle-pulse": "sparkle-pulse 1.5s ease-in-out infinite",
       },
     },
   },
