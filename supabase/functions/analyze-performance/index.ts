@@ -17,6 +17,32 @@ Deno.serve(async (req) => {
       throw new Error('Workspace ID and metrics data are required');
     }
 
+    // Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
+    console.log('User authenticated:', user.id);
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
@@ -27,16 +53,27 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Fetch workspace with all context
+    // Fetch workspace with brand to verify ownership
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*, template_id')
+      .select('*, template_id, brands!inner(id, user_id)')
       .eq('id', workspaceId)
       .single();
 
     if (workspaceError || !workspace) {
       throw new Error('Workspace not found');
     }
+
+    // Verify user owns this workspace via the brand
+    const brand = workspace.brands as any;
+    if (brand.user_id !== user.id) {
+      return new Response(
+        JSON.stringify({ error: 'Access denied: You do not own this workspace' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+      );
+    }
+
+    console.log('Ownership verified for workspace:', workspaceId);
 
     // Fetch the campaign template if available
     let template = null;
