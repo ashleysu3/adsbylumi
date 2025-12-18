@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight } from "lucide-react";
+import { LumiCharacter } from "@/components/LumiCharacter";
+import { motion } from "framer-motion";
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -151,14 +153,19 @@ export default function Onboarding() {
         body: { brandId: brandData.id }
       });
 
-      toast.success("Brand created successfully");
-      navigate("/dashboard");
+      // Move to Meet Lumi step instead of navigating away
+      setStep(3);
     } catch (error: any) {
       console.error('Error during onboarding:', error);
       toast.error(error.message || "Failed to complete onboarding");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFinishOnboarding = () => {
+    toast.success("Welcome to Lumi! ✨");
+    navigate("/dashboard");
   };
 
   if (checkingAuth) {
@@ -173,9 +180,15 @@ export default function Onboarding() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background via-background to-lumi-purple-1/10">
       <Card variant="gradient" className="w-full max-w-2xl rounded-2xl shadow-elevated">
         <CardHeader>
-          <CardTitle className="font-display text-2xl">Welcome to Lumi! ✨</CardTitle>
+          <CardTitle className="font-display text-2xl">
+            {step === 3 ? "Meet Lumi ✨" : "Welcome to Lumi! ✨"}
+          </CardTitle>
           <CardDescription>
-            {step === 1 ? "Let's get to know your brand" : "Here's what Lumi found — feel free to tweak anything"}
+            {step === 1 
+              ? "Let's get to know your brand" 
+              : step === 2 
+                ? "Here's what Lumi found — feel free to tweak anything"
+                : "Your AI-powered Meta Ads assistant"}
           </CardDescription>
         </CardHeader>
 
@@ -257,7 +270,7 @@ export default function Onboarding() {
                 )}
               </Button>
             </div>
-          ) : (
+          ) : step === 2 ? (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="valueProposition">What do you offer?</Label>
@@ -299,6 +312,95 @@ export default function Onboarding() {
                 </Button>
               </div>
             </form>
+          ) : (
+            // Step 3: Meet Lumi
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-8 py-4"
+            >
+              {/* Lumi Character */}
+              <div className="flex justify-center">
+                <motion.div
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                >
+                  <LumiCharacter size="xl" state="idle" glow className="animate-float" />
+                </motion.div>
+              </div>
+
+              {/* Feature highlights */}
+              <div className="space-y-4">
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
+                >
+                  <div className="p-2 rounded-lg bg-gradient-lumi">
+                    <Lightbulb className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Smart Recommendations</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Lumi will pop up with personalized tips and next steps as you work — look for the sparkle button in the bottom right.
+                    </p>
+                  </div>
+                </motion.div>
+
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
+                >
+                  <div className="p-2 rounded-lg bg-gradient-lumi">
+                    <MessageCircle className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Ask Anything</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Click the sparkle button anytime to ask questions, get help with strategy, or learn what to do next.
+                    </p>
+                  </div>
+                </motion.div>
+
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
+                >
+                  <div className="p-2 rounded-lg bg-gradient-lumi">
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Always Here to Help</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Whether you're new to ads or a pro, Lumi adapts to guide you through creating campaigns that convert.
+                    </p>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* CTA */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+              >
+                <Button 
+                  onClick={handleFinishOnboarding} 
+                  variant="lumi" 
+                  className="w-full group"
+                  size="lg"
+                >
+                  Let's Get Started
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </motion.div>
+            </motion.div>
           )}
         </CardContent>
       </Card>

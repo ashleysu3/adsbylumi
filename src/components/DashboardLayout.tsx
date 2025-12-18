@@ -8,8 +8,6 @@ import { Home, Sparkle, Palette, BarChart3, FolderKanban, Shield, LogOut, Settin
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
-import { LumiChat } from "@/components/LumiChat";
-import { LumiCharacter } from "@/components/LumiCharacter";
 import lumiLogo from "@/assets/lumi-logo.png";
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -198,14 +196,6 @@ export default function DashboardLayout({
     darkColor: "tab-blue-dark"
   }];
   if (!user) return null;
-
-  // Custom trigger for Lumi in nav bar
-  const lumiNavTrigger = <button className="flex items-center gap-3 text-base font-medium transition-colors group mb-2 hover:opacity-80">
-      <LumiCharacter size="sm" state="idle" glow className="group-hover:animate-none" />
-      <span className="bg-gradient-warm bg-clip-text text-transparent font-bold text-lg">
-        Ask Lumi
-      </span>
-    </button>;
   return <div className="min-h-screen bg-background">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
@@ -301,8 +291,6 @@ export default function DashboardLayout({
                   </Link>;
             })}
             </div>
-            
-            <LumiChat context={getContextFromRoute()} brand={brand} trigger={lumiNavTrigger} />
           </nav>
         </div>
       </header>

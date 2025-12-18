@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { LumiLoader } from "@/components/LumiLoader";
 import { LumiCharacter } from "@/components/LumiCharacter";
 import { LumiRecommendedBadge } from "@/components/LumiRecommendedBadge";
-import { useLumiRecommend } from "@/components/LumiRecommendPopup";
+import { useLumiRecommend } from "@/components/LumiAssistant";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
