@@ -11,16 +11,16 @@ export const SUBSCRIPTION_TIERS = {
     limits: {
       brands: 1,
       adAccounts: 1,
-      campaigns: 5,
+      adSpendCap: 3000, // $3,000/month in managed ad spend
     },
     features: [
-      "1 Brand",
-      "1 Ad Account",
-      "Up to 5 campaigns",
-      "AI-powered ad creation",
-      "Psychology-driven copy",
-      "Performance tracking",
-      "Weekly reports",
+      "Up to $3,000/mo in managed ad spend",
+      "AI-powered campaign strategy",
+      "Psychology-driven ad copy",
+      "Smart audience targeting",
+      "Performance tracking & insights",
+      "Weekly optimization reports",
+      "14-day free trial included",
     ],
   },
   creator: {
@@ -34,16 +34,15 @@ export const SUBSCRIPTION_TIERS = {
     limits: {
       brands: 3,
       adAccounts: 3,
-      campaigns: 15,
+      adSpendCap: 10000, // $10,000/month
     },
     features: [
+      "Up to $10,000/mo in managed ad spend",
       "Up to 3 Brands",
       "Up to 3 Ad Accounts",
-      "Up to 15 campaigns",
       "Everything in Solo",
       "Priority support",
       "Advanced analytics",
-      "Custom audiences",
     ],
   },
   agency: {
@@ -57,16 +56,15 @@ export const SUBSCRIPTION_TIERS = {
     limits: {
       brands: -1, // unlimited
       adAccounts: -1,
-      campaigns: -1,
+      adSpendCap: -1, // unlimited
     },
     features: [
+      "Unlimited ad spend management",
       "Unlimited Brands",
       "Unlimited Ad Accounts",
-      "Unlimited campaigns",
       "Everything in Creator",
       "White-label options",
       "Dedicated account manager",
-      "Custom integrations",
     ],
   },
 } as const;
