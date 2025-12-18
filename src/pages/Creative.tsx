@@ -257,6 +257,9 @@ export default function Creative() {
     setGenerating(true);
     setGeneratingPhase("angles");
     try {
+      // Get existing conversation insights if any
+      const existingInsights = workspace.creative_json?.conversationInsights || [];
+      
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
         body: {
           brandName: workspace.brands?.name || workspace.name,
@@ -266,7 +269,8 @@ export default function Creative() {
             name: workspace.offer_name,
             description: workspace.offer_description,
             price: workspace.offer_price,
-          }
+          },
+          conversationInsights: existingInsights,
         }
       });
 
@@ -862,6 +866,16 @@ export default function Creative() {
             if (!open) {
               setShowAngleFeedbackChat(false);
             }
+          }}
+          onSaveInsights={(insights) => {
+            // Save conversation insights to workspace for future creative generations
+            saveCreativeState({ 
+              conversationInsights: [
+                ...(workspace.creative_json?.conversationInsights || []),
+                insights
+              ]
+            });
+            toast.success("Conversation insights saved for future creative");
           }}
           customStarters={[
             { label: "I love these!", message: "These angles are great! Let's build on them and create the hooks and concepts." },

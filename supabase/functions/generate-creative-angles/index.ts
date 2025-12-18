@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, audiencePsychology, offerData } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -32,10 +32,32 @@ serve(async (req) => {
 
     const kbContext = kbDocs?.map(doc => `## ${doc.title}\n${doc.content}`).join("\n\n") || "";
 
+    // Build conversation insights context if available
+    let insightsContext = "";
+    if (conversationInsights && conversationInsights.length > 0) {
+      insightsContext = "\n\nPREVIOUS CONVERSATION INSIGHTS FROM USER:\n";
+      insightsContext += "The user has shared the following information about their offer and audience in previous conversations. Use these insights to create more targeted and powerful angles:\n\n";
+      
+      conversationInsights.forEach((insight: any, idx: number) => {
+        insightsContext += `--- Conversation ${idx + 1} ---\n`;
+        insight.messages.forEach((msg: any) => {
+          if (msg.role === 'user') {
+            insightsContext += `User said: ${msg.content}\n`;
+          } else if (msg.role === 'assistant') {
+            insightsContext += `Lumi noted: ${msg.content}\n`;
+          }
+        });
+        insightsContext += "\n";
+      });
+      
+      insightsContext += "\nIMPORTANT: Incorporate these user insights to create angles that directly address their specific pain points, desires, objections, and unique value propositions mentioned in the conversations above.\n";
+    }
+
     const systemPrompt = `You are Lumi's Creative Engine. Your job is to generate creative angle recommendations for Meta ads campaigns.
 
 KNOWLEDGE BASE:
 ${kbContext}
+${insightsContext}
 
 RULES:
 - Generate exactly 10-12 creative angles
@@ -44,6 +66,7 @@ RULES:
 - Do NOT use marketing jargon, funnel language, or technical terms
 - Write as if explaining to a friend who has never run ads
 - Focus on what resonates emotionally, not why it works strategically
+${conversationInsights?.length > 0 ? "- PRIORITIZE angles that address the specific insights shared by the user in previous conversations" : ""}
 
 ANGLE TYPES TO CONSIDER (but don't expose these labels):
 - Relatable Struggle (showing the problem they face)
@@ -61,7 +84,8 @@ OUTPUT FORMAT:
 Return a JSON object with an "angles" array. Each angle object must have:
 - id: unique string (lowercase, underscore-separated)
 - name: short display name (2-4 words)
-- description: one sentence for non-marketers`;
+- description: one sentence for non-marketers
+- psychologyTrigger: (optional) if based on user insights, briefly note what insight it addresses`;
 
     const userPrompt = `Generate creative angles for this campaign:
 
@@ -76,7 +100,7 @@ ${JSON.stringify(strategyData, null, 2)}
 
 ${audiencePsychology ? `AUDIENCE INSIGHTS:\n${JSON.stringify(audiencePsychology, null, 2)}` : ""}
 
-Generate 10-12 creative angles that would resonate with this audience and offer.`;
+Generate 10-12 creative angles that would resonate with this audience and offer.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

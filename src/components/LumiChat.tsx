@@ -9,6 +9,12 @@ import { toast } from "sonner";
 import { LumiCharacter } from "./LumiCharacter";
 import { useLumi, Message } from "@/contexts/LumiContext";
 
+interface ConversationInsight {
+  timestamp: string;
+  messages: { role: string; content: string }[];
+  summary?: string;
+}
+
 interface LumiChatProps {
   context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production' | 'add-creative' | 'angle-feedback';
   workspace?: any;
@@ -19,6 +25,7 @@ interface LumiChatProps {
   customStarters?: { label: string; message: string }[];
   initialMessage?: string;
   generatedAngles?: any[];
+  onSaveInsights?: (insights: ConversationInsight) => void;
 }
 
 
@@ -85,7 +92,7 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
   ],
 };
 
-export function LumiChat({ context, workspace, brand, trigger, autoOpen = false, onOpenChange, customStarters, initialMessage, generatedAngles }: LumiChatProps) {
+export function LumiChat({ context, workspace, brand, trigger, autoOpen = false, onOpenChange, customStarters, initialMessage, generatedAngles, onSaveInsights }: LumiChatProps) {
   const [internalOpen, setInternalOpen] = useState(autoOpen);
   const { messages, addMessage, setBrandId, clearMessages } = useLumi();
   const [input, setInput] = useState("");
@@ -97,6 +104,15 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
 
   const open = internalOpen;
   const setOpen = (value: boolean) => {
+    // Save insights when closing the chat (only for angle-feedback context with meaningful conversation)
+    if (!value && open && context === 'angle-feedback' && messages.length > 1 && onSaveInsights) {
+      const insights: ConversationInsight = {
+        timestamp: new Date().toISOString(),
+        messages: messages.map(m => ({ role: m.role, content: m.content })),
+      };
+      onSaveInsights(insights);
+    }
+    
     setInternalOpen(value);
     onOpenChange?.(value);
   };
