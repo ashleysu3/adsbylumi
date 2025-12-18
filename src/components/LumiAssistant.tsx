@@ -597,7 +597,7 @@ function LumiAssistantUI({
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              whileHover={{ scale: 1.1 }}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleButtonClick}
               className={cn(
@@ -605,24 +605,9 @@ function LumiAssistantUI({
                 "bg-gradient-lumi shadow-lg",
                 "flex items-center justify-center",
                 "transition-shadow duration-300",
-                "hover:shadow-[0_0_20px_rgba(234,88,12,0.3)]",
-                recommendation && !isDismissed && "animate-pulse"
+                "hover:shadow-[0_0_20px_rgba(234,88,12,0.3)]"
               )}
             >
-              {/* Subtle pulse ring */}
-              <motion.div
-                className="absolute inset-0 rounded-full bg-gradient-lumi"
-                animate={{
-                  scale: [1, 1.15, 1],
-                  opacity: [0.4, 0, 0.4],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-              
               <Sparkles className="h-5 w-5 text-white" />
               
               {/* Notification badge */}
