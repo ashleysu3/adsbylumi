@@ -183,7 +183,7 @@ export function CampaignsList({ brandId }: CampaignsListProps) {
   }
 
   return (
-    <Card>
+    <Card variant="glow">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -221,7 +221,8 @@ export function CampaignsList({ brandId }: CampaignsListProps) {
             {campaigns.map((campaign) => (
               <Card
                 key={campaign.id}
-                className={`hover:border-primary/50 transition-colors ${campaign.archived ? 'opacity-60' : ''}`}
+                variant="glow"
+                className={`transition-all duration-300 ${campaign.archived ? 'opacity-60' : ''}`}
               >
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between gap-4">

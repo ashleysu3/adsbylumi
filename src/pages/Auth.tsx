@@ -140,8 +140,8 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-primary/5 px-4">
-      <Card className="w-full max-w-md shadow-elevated rounded-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-lumi-purple-1/10 px-4">
+      <Card variant="gradient" className="w-full max-w-md shadow-elevated rounded-2xl">
         <CardHeader className="space-y-1 text-center">
           <img 
             src={lumiLogo}
@@ -163,6 +163,7 @@ export default function Auth() {
                   <Input
                     id="fullName"
                     type="text"
+                    variant="glow"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Jane Smith"
@@ -175,6 +176,7 @@ export default function Auth() {
                   <Input
                     id="inviteCode"
                     type="text"
+                    variant="glow"
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                     placeholder="LUMI-XXXXXX"
@@ -192,6 +194,7 @@ export default function Auth() {
               <Input
                 id="email"
                 type="email"
+                variant="glow"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
@@ -216,6 +219,7 @@ export default function Auth() {
               <Input
                 id="password"
                 type="password"
+                variant="glow"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

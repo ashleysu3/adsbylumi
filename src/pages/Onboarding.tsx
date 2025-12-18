@@ -170,8 +170,8 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background to-muted">
-      <Card className="w-full max-w-2xl rounded-2xl shadow-card">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background via-background to-lumi-purple-1/10">
+      <Card variant="gradient" className="w-full max-w-2xl rounded-2xl shadow-elevated">
         <CardHeader>
           <CardTitle className="font-display text-2xl">Welcome to Lumi! ✨</CardTitle>
           <CardDescription>
@@ -186,6 +186,7 @@ export default function Onboarding() {
                 <Label htmlFor="brandName">Brand Name</Label>
                 <Input
                   id="brandName"
+                  variant="glow"
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
                   placeholder="My Amazing Brand"
@@ -199,6 +200,7 @@ export default function Onboarding() {
                   <Input
                     id="websiteUrl"
                     type="url"
+                    variant="glow"
                     value={websiteUrl}
                     onChange={(e) => setWebsiteUrl(e.target.value)}
                     placeholder="https://example.com"
@@ -232,6 +234,7 @@ export default function Onboarding() {
                 <Label htmlFor="industry">Industry</Label>
                 <Input
                   id="industry"
+                  variant="glow"
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
                   placeholder="e.g., Coaching, E-commerce, SaaS"
@@ -242,6 +245,7 @@ export default function Onboarding() {
                 onClick={handleStep1Next} 
                 disabled={extracting}
                 className="w-full"
+                variant="lumi"
               >
                 {extracting ? (
                   <>
@@ -259,6 +263,7 @@ export default function Onboarding() {
                 <Label htmlFor="valueProposition">What do you offer?</Label>
                 <Textarea
                   id="valueProposition"
+                  variant="glow"
                   value={valueProposition}
                   onChange={(e) => setValueProposition(e.target.value)}
                   rows={3}
@@ -270,6 +275,7 @@ export default function Onboarding() {
                 <Label htmlFor="targetAudience">Who do you serve?</Label>
                 <Textarea
                   id="targetAudience"
+                  variant="glow"
                   value={targetAudience}
                   onChange={(e) => setTargetAudience(e.target.value)}
                   rows={3}
