@@ -221,13 +221,14 @@ export default function Data() {
 
       const { data: brand } = await supabase
         .from('brands')
-        .select('id, meta_access_token, meta_account_id')
+        .select('id, meta_account_id')
         .eq('user_id', user.id)
         .single();
 
       if (!brand) return;
 
-      const isMetaConnected = !!(brand.meta_access_token && brand.meta_account_id);
+      // Meta is connected if we have an account ID (token is now stored in Vault server-side)
+      const isMetaConnected = !!brand.meta_account_id;
       setMetaConnected(isMetaConnected);
 
       const { data, error } = await supabase
