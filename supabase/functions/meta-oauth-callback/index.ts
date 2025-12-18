@@ -77,33 +77,39 @@ Deno.serve(async (req) => {
       console.error('Failed to fetch pages:', pagesData);
     }
 
-    // Store the access token in the brand record
+    // Store the access token securely in Supabase Vault
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { error: updateError } = await supabase
-      .from('brands')
-      .update({ 
-        meta_access_token: tokenData.access_token,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', brandId);
+    // Use the secure vault function to store the token
+    const { data: vaultResult, error: vaultError } = await supabase
+      .rpc('store_meta_token', {
+        p_brand_id: brandId,
+        p_token: tokenData.access_token
+      });
 
-    if (updateError) {
-      console.error('Error storing access token:', updateError);
+    if (vaultError) {
+      console.error('Error storing access token in vault:', vaultError);
+      // Don't throw - we still want to return success for the OAuth flow
+      // The token can be re-obtained if needed
     } else {
-      console.log('Access token stored successfully for brand:', brandId);
+      console.log('Access token stored securely in vault for brand:', brandId);
+    }
       
-      // Check if user has already selected an account (on re-connection)
-      const { data: brand } = await supabase
-        .from('brands')
-        .select('meta_account_id')
-        .eq('id', brandId)
-        .single();
-        
-      if (brand?.meta_account_id) {
-        console.log('Meta account already selected, triggering auto-sync...');
+    // Check if user has already selected an account (on re-connection)
+    const { data: brand } = await supabase
+      .from('brands')
+      .select('meta_account_id')
+      .eq('id', brandId)
+      .single();
+      
+    if (brand?.meta_account_id) {
+      console.log('Meta account already selected, triggering auto-sync...');
+      // Get the token from vault for the sync call
+      const { data: storedToken } = await supabase.rpc('get_meta_token', { p_brand_id: brandId });
+      
+      if (storedToken) {
         fetch(`${supabaseUrl}/functions/v1/sync-meta-campaigns`, {
           method: 'POST',
           headers: {
@@ -113,7 +119,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             brandId,
             metaAccountId: brand.meta_account_id,
-            metaAccessToken: tokenData.access_token
+            metaAccessToken: storedToken
           })
         }).catch(err => {
           console.error('Background sync failed:', err);

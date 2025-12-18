@@ -34,21 +34,28 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch brand with Meta credentials
+    // Fetch brand with Meta credentials (without token - get from vault)
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('id, name, meta_account_id, meta_access_token')
+      .select('id, name, meta_account_id')
       .eq('id', brandId)
       .single();
 
     if (brandError) throw brandError;
 
-    if (!brand.meta_account_id || !brand.meta_access_token) {
+    if (!brand.meta_account_id) {
       throw new Error('Meta account not connected');
     }
 
+    // Get token securely from vault
+    const { data: accessToken, error: tokenError } = await supabase
+      .rpc('get_meta_token', { p_brand_id: brandId });
+
+    if (tokenError || !accessToken) {
+      throw new Error('Meta access token not found. Please reconnect your Meta account.');
+    }
+
     const accountId = brand.meta_account_id.replace('act_', '');
-    const accessToken = brand.meta_access_token;
 
     console.log(`Fetching custom audiences for account: ${accountId}`);
 

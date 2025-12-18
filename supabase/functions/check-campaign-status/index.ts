@@ -49,7 +49,7 @@ serve(async (req) => {
     // Fetch workspace and brand data
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*, brand:brands(*)')
+      .select('*, brand:brands(id, meta_account_id)')
       .eq('id', workspaceId)
       .single();
 
@@ -58,11 +58,18 @@ serve(async (req) => {
     }
 
     const brand = workspace.brand;
-    if (!brand?.meta_access_token || !brand?.meta_account_id) {
+    if (!brand?.meta_account_id) {
       throw new Error('Meta account not connected');
     }
 
-    const metaAccessToken = brand.meta_access_token;
+    // Get token securely from vault
+    const { data: metaAccessToken, error: tokenError } = await supabase
+      .rpc('get_meta_token', { p_brand_id: brand.id });
+
+    if (tokenError || !metaAccessToken) {
+      throw new Error('Meta access token not found. Please reconnect your Meta account.');
+    }
+
     const metaCampaignIds = workspace.meta_campaign_ids;
 
     if (!metaCampaignIds?.campaignId && !metaCampaignIds?.campaign_id) {

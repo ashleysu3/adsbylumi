@@ -86,12 +86,12 @@ Deno.serve(async (req) => {
 
     console.log('Building Meta campaign for workspace:', workspaceId);
 
-    // Fetch workspace with brand data including page_id
+    // Fetch workspace with brand data including page_id (without token - get from vault)
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
       .select(`
         *,
-        brands!inner(id, name, meta_account_id, meta_access_token, page_id, page_name)
+        brands!inner(id, name, meta_account_id, page_id, page_name)
       `)
       .eq('id', workspaceId)
       .single();
@@ -100,14 +100,17 @@ Deno.serve(async (req) => {
 
     const brand = workspace.brands;
     const metaAccountId = brand.meta_account_id;
-    const metaAccessToken = brand.meta_access_token;
     const pageId = brand.page_id;
     
     if (!metaAccountId) {
       throw new Error('Meta account not connected. Please connect your Meta ad account first.');
     }
 
-    if (!metaAccessToken) {
+    // Get token securely from vault
+    const { data: metaAccessToken, error: tokenError } = await supabase
+      .rpc('get_meta_token', { p_brand_id: brand.id });
+
+    if (tokenError || !metaAccessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 

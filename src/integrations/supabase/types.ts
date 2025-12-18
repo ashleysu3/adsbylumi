@@ -674,12 +674,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_meta_token: { Args: { p_brand_id: string }; Returns: boolean }
+      get_meta_token: { Args: { p_brand_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      store_meta_token: {
+        Args: { p_brand_id: string; p_token: string }
+        Returns: string
       }
     }
     Enums: {
