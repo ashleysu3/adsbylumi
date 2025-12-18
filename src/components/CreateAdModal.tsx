@@ -6,10 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Video, FileText, ShoppingCart, TrendingUp, Plus, Target, Users, Layers, PlusCircle, X } from "lucide-react";
+import { Video, FileText, ShoppingCart, TrendingUp, Plus, Target, Users, Layers, PlusCircle, Sparkles, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { LumiCharacter } from "@/components/LumiCharacter";
-import { LumiRecommendedBadge } from "@/components/LumiRecommendedBadge";
 import { GeneratingModal } from "@/components/GeneratingModal";
 import { OfferDialog } from "@/components/OfferDialog";
 
@@ -18,6 +17,26 @@ const iconMap: Record<string, any> = {
   FileText,
   ShoppingCart,
   TrendingUp,
+};
+
+// Single recommendation mapping - returns ONE template slug per path
+const recommendationMapping: Record<string, string> = {
+  // Offer action paths
+  purchase: "sell-offer",
+  free_resource: "lead-magnet", 
+  visit_page: "social-traffic",
+  // Business problem paths
+  video_trust: "video-views",
+  social_growth: "social-traffic"
+};
+
+// Contextual recommendation messages
+const recommendationMessages: Record<string, string> = {
+  purchase: "This template is optimized for direct sales, guiding viewers straight to checkout with proven conversion strategies.",
+  free_resource: "Perfect for growing your email list with a valuable lead magnet that attracts your ideal audience.",
+  visit_page: "Drives quality traffic to your page and builds your retargeting audience for future campaigns.",
+  video_trust: "Build trust with your ideal audience through engaging video content—perfect for future retargeting or launching.",
+  social_growth: "Grow your social presence and build engaged audiences for future campaigns and offers."
 };
 
 interface CreateAdModalProps {
@@ -41,13 +60,6 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
   const [offerAction, setOfferAction] = useState<"purchase" | "free_resource" | "visit_page" | null>(null);
   const [selectedOfferId, setSelectedOfferId] = useState<string>("");
   const [showAllTemplates, setShowAllTemplates] = useState(false);
-
-  // Mapping from offer action to template slugs
-  const offerActionToTemplates: Record<string, string[]> = {
-    purchase: ["low-ticket-product-sales", "high-ticket-sales"],
-    free_resource: ["free-resource-leads"],
-    visit_page: ["traffic-page-visit", "traffic-instagram-facebook"]
-  };
 
   useEffect(() => {
     if (open) {
@@ -524,11 +536,10 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
                   </Card>
                 )}
 
-                {/* See All Templates Button */}
-                {!showAllTemplates && (
+                {/* See All Templates Link - only show when in guided flow, not yet at recommendation */}
+                {!showAllTemplates && !((campaignGoal === "offer" && offerAction) || (campaignGoal === "business_problem" && businessProblem)) && (
                   <div className="flex justify-center">
-                    <Button 
-                      variant="outline" 
+                    <button 
                       onClick={() => {
                         setShowAllTemplates(true);
                         setCampaignGoal(null);
@@ -537,97 +548,175 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
                         setOfferAction(null);
                         setSelectedOfferId("");
                       }}
-                      className="text-muted-foreground"
+                      className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
                     >
-                      See all campaign templates
-                    </Button>
+                      See all campaign templates (Advanced)
+                    </button>
                   </div>
                 )}
 
-                {/* Template Grid */}
-                {(showAllTemplates || (campaignGoal === "offer" && offerAction) || (campaignGoal === "business_problem" && businessProblem)) && (
-                  <div className="space-y-4">
-                    {/* Back button */}
-                    {showAllTemplates && (
+                {/* Single Recommendation Card */}
+                {!showAllTemplates && ((campaignGoal === "offer" && offerAction) || (campaignGoal === "business_problem" && businessProblem)) && (() => {
+                  // Determine the recommendation key
+                  const recommendationKey = offerAction || businessProblem;
+                  if (!recommendationKey) return null;
+                  
+                  const recommendedSlug = recommendationMapping[recommendationKey];
+                  const recommendedTemplate = templates.find(t => t.slug === recommendedSlug);
+                  const contextMessage = recommendationMessages[recommendationKey];
+                  
+                  if (!recommendedTemplate) return null;
+                  
+                  const Icon = iconMap[recommendedTemplate.icon] || Video;
+                  const selectedOffer = offers.find(o => o.id === selectedOfferId);
+                  
+                  return (
+                    <div className="space-y-4">
+                      {/* Context badges */}
                       <div className="flex items-center justify-between">
-                        <p className="text-muted-foreground">All available campaign templates</p>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setShowAllTemplates(false)}
-                          className="text-muted-foreground"
-                        >
-                          ← Back to guided flow
-                        </Button>
-                      </div>
-                    )}
-                    {campaignGoal === "offer" && offerAction && (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {offers.find(o => o.id === selectedOfferId)?.name}
-                          </Badge>
-                          <span className="text-muted-foreground">→</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {selectedOffer && (
+                            <>
+                              <Badge variant="secondary" className="text-xs">
+                                {selectedOffer.name}
+                              </Badge>
+                              <span className="text-muted-foreground">→</span>
+                            </>
+                          )}
                           <Badge variant="outline" className="text-xs">
-                            {offerAction === "purchase" ? "Purchase" : offerAction === "free_resource" ? "Sign up (free)" : "Visit page"}
+                            {offerAction === "purchase" ? "Purchase" : 
+                             offerAction === "free_resource" ? "Sign up (free)" : 
+                             offerAction === "visit_page" ? "Visit page" :
+                             businessProblem === "video_trust" ? "Build trust via video" :
+                             "Grow social presence"}
                           </Badge>
                         </div>
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => setOfferAction(null)}
+                          onClick={() => {
+                            if (offerAction) setOfferAction(null);
+                            if (businessProblem) setBusinessProblem(null);
+                          }}
                           className="text-muted-foreground"
                         >
                           ← Change goal
                         </Button>
                       </div>
-                    )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {templates
-                        .filter(template => {
-                          if (showAllTemplates) return true;
-                          if (campaignGoal === "business_problem") {
-                            if (businessProblem === "video_trust") return template.slug === "video-views";
-                            if (businessProblem === "social_growth") return template.slug === "traffic-instagram-facebook";
-                          }
-                          if (campaignGoal === "offer" && offerAction) {
-                            const allowedSlugs = offerActionToTemplates[offerAction] || [];
-                            return allowedSlugs.includes(template.slug);
-                          }
-                          return true;
-                        })
-                        .map(template => {
-                          const Icon = iconMap[template.icon] || Video;
-                          const isRecommended = selectedOfferId && offers.find(o => o.id === selectedOfferId)?.recommended_template_id === template.id;
-                          
-                          return (
-                            <Card
-                              key={template.id}
-                              variant={isRecommended ? "gradient" : "glow"}
-                              className={`cursor-pointer transition-all duration-300 relative hover:scale-[1.02] ${isRecommended ? "shadow-glow" : ""}`}
-                              onClick={() => handleTemplateClick(template)}
-                            >
-                              {isRecommended && (
-                                <LumiRecommendedBadge className="absolute -top-2 -right-2" />
-                              )}
-                              <CardHeader className="pb-2">
-                                <div className="flex items-start justify-between">
-                                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+
+                      {/* Lumi Recommendation Card */}
+                      <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/10 shadow-lg shadow-primary/10 relative overflow-hidden">
+                        {/* Decorative gradient */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl" />
+                        
+                        <CardContent className="pt-6 relative">
+                          <div className="flex gap-4">
+                            {/* Lumi Character */}
+                            <div className="flex-shrink-0">
+                              <LumiCharacter size="lg" glow />
+                            </div>
+                            
+                            {/* Recommendation Content */}
+                            <div className="flex-1 space-y-4">
+                              <div className="flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-primary" />
+                                <span className="text-sm font-medium text-primary">Lumi's Recommendation</span>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                <div className="flex items-start gap-3">
+                                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0">
                                     <Icon className="h-5 w-5 text-primary" />
                                   </div>
+                                  <div>
+                                    <h3 className="text-lg font-semibold">{recommendedTemplate.name}</h3>
+                                    <p className="text-sm text-muted-foreground">{recommendedTemplate.description}</p>
+                                  </div>
                                 </div>
-                                <CardTitle className="text-lg">{template.name}</CardTitle>
-                                <CardDescription className="text-sm">{template.description}</CardDescription>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Badge variant="secondary">{template.objective}</Badge>
-                                  <Badge variant="outline">{template.audience_type}</Badge>
+                                
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary">{recommendedTemplate.objective}</Badge>
+                                  <Badge variant="outline">{recommendedTemplate.audience_type}</Badge>
                                 </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        })}
+                                
+                                {/* Contextual message */}
+                                <p className="text-sm text-muted-foreground italic border-l-2 border-primary/30 pl-3">
+                                  "{contextMessage}"
+                                </p>
+                              </div>
+                              
+                              {/* Get Started Button */}
+                              <Button 
+                                variant="lumi" 
+                                size="lg" 
+                                className="w-full group"
+                                onClick={() => handleTemplateClick(recommendedTemplate)}
+                              >
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Get Started with This Campaign
+                                <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      {/* Advanced option */}
+                      <div className="flex justify-center pt-2">
+                        <button 
+                          onClick={() => setShowAllTemplates(true)}
+                          className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline transition-colors"
+                        >
+                          Want to see all campaign templates? (Advanced)
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* All Templates Grid (Advanced View) */}
+                {showAllTemplates && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-muted-foreground">All available campaign templates</p>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setShowAllTemplates(false)}
+                        className="text-muted-foreground"
+                      >
+                        ← Back to guided flow
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {templates.map(template => {
+                        const Icon = iconMap[template.icon] || Video;
+                        
+                        return (
+                          <Card
+                            key={template.id}
+                            variant="glow"
+                            className="cursor-pointer transition-all duration-300 hover:scale-[1.02]"
+                            onClick={() => handleTemplateClick(template)}
+                          >
+                            <CardHeader className="pb-2">
+                              <div className="flex items-start justify-between">
+                                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                                  <Icon className="h-5 w-5 text-primary" />
+                                </div>
+                              </div>
+                              <CardTitle className="text-lg">{template.name}</CardTitle>
+                              <CardDescription className="text-sm">{template.description}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="flex items-center gap-2 text-sm">
+                                <Badge variant="secondary">{template.objective}</Badge>
+                                <Badge variant="outline">{template.audience_type}</Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
