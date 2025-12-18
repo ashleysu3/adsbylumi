@@ -593,10 +593,17 @@ function LumiAssistantUI({
           ) : (
             /* Floating Button */
             <motion.button
-              key="collapsed"
+              key={`collapsed-${recommendation?.id || 'none'}`}
               initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
+              animate={{ 
+                opacity: 1, 
+                scale: [0.8, 1.15, 0.95, 1.05, 1],
+              }}
               exit={{ opacity: 0, scale: 0.8 }}
+              transition={{
+                opacity: { duration: 0.2 },
+                scale: { duration: 0.5, ease: "easeOut" }
+              }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleButtonClick}
