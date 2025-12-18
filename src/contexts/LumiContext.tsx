@@ -1,8 +1,14 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
-interface Message {
+export interface FollowUp {
+  label: string;
+  message: string;
+}
+
+export interface Message {
   role: 'user' | 'assistant';
   content: string;
+  followups?: FollowUp[];
 }
 
 interface LumiContextType {
