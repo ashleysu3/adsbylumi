@@ -11,7 +11,7 @@ interface RecordingGuideProps {
   onBack: () => void;
 }
 
-export function RecordingGuide({ concept, onComplete, onBack }: RecordingGuideProps) {
+export function RecordingGuide({ concept = {}, onComplete, onBack }: RecordingGuideProps) {
   const [checklist, setChecklist] = useState({
     lighting: false,
     camera: false,

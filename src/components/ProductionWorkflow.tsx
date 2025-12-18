@@ -346,13 +346,13 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
             <>
               {isVideoFormat ? (
                 <RecordingGuide
-                  concept={item.concept}
+                  concept={{ ...(item.concept || {}), format: item.format }}
                   onComplete={handleCreateComplete}
                   onBack={() => handleNext("review")}
                 />
               ) : (
                 <DesignGuide
-                  concept={item.concept}
+                  concept={{ ...(item.concept || {}), format: item.format }}
                   onComplete={handleCreateComplete}
                   onBack={() => handleNext("review")}
                 />

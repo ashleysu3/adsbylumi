@@ -11,7 +11,7 @@ interface DesignGuideProps {
   onBack: () => void;
 }
 
-export function DesignGuide({ concept, onComplete, onBack }: DesignGuideProps) {
+export function DesignGuide({ concept = {}, onComplete, onBack }: DesignGuideProps) {
   const [checklist, setChecklist] = useState({
     dimensions: false,
     fonts: false,
