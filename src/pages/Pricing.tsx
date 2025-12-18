@@ -81,7 +81,14 @@ export default function Pricing() {
             </Badge>
             <h1 className="font-display text-4xl md:text-6xl mb-4 leading-tight">
               Your ads deserve{" "}
-              <span className="text-primary bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">agency-level results</span>
+              <span className="relative inline-block">
+                <span className="text-5xl md:text-7xl bg-gradient-to-r from-primary via-pink-500 to-primary bg-[length:200%_auto] animate-[gradient-shift_3s_ease-in-out_infinite] bg-clip-text text-transparent font-bold">
+                  agency-level results
+                </span>
+                <span className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-primary via-pink-500 to-primary bg-[length:200%_auto] animate-[gradient-shift_3s_ease-in-out_infinite] rounded-full" />
+                <span className="absolute -top-1 -right-2 text-primary animate-pulse">✦</span>
+                <span className="absolute -bottom-2 -left-1 text-pink-500 animate-pulse delay-150">✦</span>
+              </span>
               <br className="hidden md:block" />
               <span className="text-2xl md:text-4xl text-muted-foreground font-normal">without the agency price tag</span>
             </h1>
