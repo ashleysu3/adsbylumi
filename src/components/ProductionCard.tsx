@@ -119,6 +119,16 @@ export function ProductionCard({ item, onClick }: ProductionCardProps) {
           </p>
         </div>
 
+        {/* Creative Guidance Preview (from creative dashboard) */}
+        {((item as any).guidance || (item as any).notes || item.concept?.guidance || item.concept?.notes) && (
+          <div className="text-xs text-muted-foreground bg-primary/5 rounded p-2 border border-primary/10">
+            <span className="font-medium text-primary/70 block mb-1">Creative Direction:</span>
+            <p className="line-clamp-2">
+              {(item as any).guidance || (item as any).notes || item.concept?.guidance || item.concept?.notes}
+            </p>
+          </div>
+        )}
+
         {/* Production Notes Preview */}
         {item.production_notes && (
           <p className="text-xs text-muted-foreground line-clamp-2 bg-muted/30 rounded p-2">
