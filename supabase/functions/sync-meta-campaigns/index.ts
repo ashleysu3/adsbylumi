@@ -22,18 +22,73 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandId, metaAccountId, metaAccessToken, campaignIds } = await req.json();
-    
-    if (!brandId || !metaAccountId || !metaAccessToken) {
-      throw new Error('brandId, metaAccountId, and metaAccessToken are required');
+    const body = await req.json().catch(() => ({}));
+    const {
+      brandId,
+      metaAccountId: metaAccountIdFromBody,
+      metaAccessToken: metaAccessTokenFromBody,
+      campaignIds,
+    } = (body || {}) as {
+      brandId?: string;
+      metaAccountId?: string;
+      metaAccessToken?: string;
+      campaignIds?: string[];
+    };
+
+    if (!brandId) {
+      throw new Error('brandId is required');
+    }
+
+    // Initialize Supabase client (service role)
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Resolve Meta account ID (can be provided, or pulled from the brand)
+    let metaAccountId = metaAccountIdFromBody;
+    if (!metaAccountId) {
+      const { data: brand, error: brandError } = await supabase
+        .from('brands')
+        .select('meta_account_id')
+        .eq('id', brandId)
+        .maybeSingle();
+
+      if (brandError) {
+        console.error('Error fetching brand meta_account_id:', brandError);
+      }
+
+      metaAccountId = brand?.meta_account_id ?? undefined;
+    }
+
+    if (!metaAccountId) {
+      throw new Error('Meta account not connected. Please select an ad account.');
+    }
+
+    // Resolve Meta access token (can be provided, or pulled server-side)
+    let metaAccessToken = metaAccessTokenFromBody;
+    if (!metaAccessToken) {
+      const { data: tokenData, error: tokenError } = await supabase.rpc('get_meta_token', {
+        p_brand_id: brandId,
+      });
+
+      if (tokenError) {
+        console.error('Error retrieving Meta token via get_meta_token:', tokenError);
+      }
+
+      metaAccessToken = (tokenData as string | null) ?? undefined;
+    }
+
+    if (!metaAccessToken) {
+      throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 
     console.log('Starting campaign sync for brand:', brandId);
+    console.log('Meta account:', metaAccountId);
     console.log('Specific campaign IDs to sync:', campaignIds || 'all active');
 
     // Fetch campaigns from Meta API
     const campaignsUrl = `https://graph.facebook.com/v18.0/${metaAccountId}/campaigns?fields=id,name,status,objective,created_time,daily_budget,lifetime_budget&limit=500&access_token=${metaAccessToken}`;
-    
+
     const campaignsResponse = await fetch(campaignsUrl);
     const campaignsData = await campaignsResponse.json();
 
@@ -47,7 +102,7 @@ Deno.serve(async (req) => {
 
     // Filter campaigns based on whether specific IDs were provided
     let campaignsToSync: MetaCampaign[];
-    
+
     if (campaignIds && Array.isArray(campaignIds) && campaignIds.length > 0) {
       // Sync only the specified campaigns (any status)
       const campaignIdSet = new Set(campaignIds);
@@ -61,23 +116,18 @@ Deno.serve(async (req) => {
 
     if (campaignsToSync.length === 0) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: true,
           synced: 0,
           skipped: 0,
-          message: campaignIds ? 'No matching campaigns found' : 'No active campaigns found to sync'
+          message: campaignIds ? 'No matching campaigns found' : 'No active campaigns found to sync',
         }),
-        { 
+        {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200,
         }
       );
     }
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Fetch existing workspaces for this brand to check for duplicates
     const { data: existingWorkspaces, error: fetchError } = await supabase
