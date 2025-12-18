@@ -192,7 +192,7 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
-                    <Sparkle className="h-4 w-4" />
+                    <Sparkle className="h-4 w-4 animate-sparkle-pulse" />
                     <span>Suggested questions</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">

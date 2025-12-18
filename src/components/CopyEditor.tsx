@@ -654,7 +654,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
       {/* AI Insights */}
       <Card className="p-4 bg-primary/5 border-primary/20">
         <div className="flex items-start gap-2">
-          <Sparkle className="h-5 w-5 text-primary mt-0.5" />
+          <Sparkle className="h-5 w-5 text-primary mt-0.5 animate-sparkle-pulse" />
           <div className="space-y-3">
             <h4 className="font-semibold text-sm">
               {aiResponse ? "Why This Copy Works" : "Copy Best Practices"}

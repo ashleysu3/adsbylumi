@@ -182,27 +182,27 @@ export default function DashboardLayout({
     path: "/creative",
     icon: Palette,
     label: "CREATIVE",
-    lightColor: "tab-yellow-light",
-    darkColor: "tab-yellow-dark"
+    lightColor: "tab-pink-light",
+    darkColor: "tab-pink-dark"
   }, {
     path: "/production",
     icon: Clipboard,
     label: "PRODUCTION",
-    lightColor: "tab-cream-light",
-    darkColor: "tab-cream-dark"
+    lightColor: "tab-purple-light",
+    darkColor: "tab-purple-dark"
   }, {
     path: "/data",
     icon: BarChart3,
     label: "INSIGHTS",
-    lightColor: "tab-orange-light",
-    darkColor: "tab-orange-dark"
+    lightColor: "tab-blue-light",
+    darkColor: "tab-blue-dark"
   }];
   if (!user) return null;
 
   // Custom trigger for Lumi in nav bar
   const lumiNavTrigger = <button className="flex items-center gap-3 text-base font-medium transition-colors group mb-2 hover:opacity-80">
       <LumiCharacter size="sm" state="idle" glow className="group-hover:animate-none" />
-      <span className="bg-gradient-to-r from-primary to-lumi-orange-3 bg-clip-text text-transparent font-bold text-lg">
+      <span className="bg-gradient-warm bg-clip-text text-transparent font-bold text-lg">
         Ask Lumi
       </span>
     </button>;

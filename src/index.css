@@ -4,7 +4,8 @@
 
 /* Lumi Brand Design System
    All colors MUST be HSL.
-   Brand: Warm, clever, clear, encouraging, strategic, friendly
+   Brand: Warm, playful, confident, strategic, friendly
+   Logo Gradient: Orange → Pink → Purple → Blue + Sparkle
 */
 
 /* Import fonts */
@@ -13,22 +14,25 @@
 
 @layer base {
   :root {
-    /* Lumi Brand Colors */
-    /* Primary Lumi Oranges */
-    --lumi-orange-1: 24 80% 55%;        /* #E8772F */
-    --lumi-orange-2: 28 82% 58%;        /* #EB8A3A */
-    --lumi-orange-3: 33 82% 61%;        /* #EEA047 */
-    --lumi-yellow: 42 88% 67%;          /* #F4C960 - Glow color */
+    /* Lumi Brand Colors - Logo Gradient */
+    --lumi-orange-1: 24 95% 53%;         /* Vibrant Orange #F97316 */
+    --lumi-orange-2: 17 88% 55%;         /* Warm Orange #F0642D */
+    --lumi-pink-1: 330 81% 60%;          /* Hot Pink #EC4899 */
+    --lumi-pink-2: 340 75% 65%;          /* Soft Pink #F472B6 */
+    --lumi-purple-1: 270 60% 70%;        /* Lavender #A78BFA */
+    --lumi-purple-2: 280 55% 65%;        /* Violet #B388EB */
+    --lumi-blue-1: 215 75% 70%;          /* Soft Blue #93C5FD */
+    --lumi-blue-2: 220 80% 75%;          /* Light Blue #A5B4FC */
     
     /* Supporting Neutrals */
-    --warm-black: 0 0% 7%;              /* #111111 */
-    --soft-charcoal: 0 0% 16%;          /* #2A2A2A */
-    --warm-white: 36 43% 98%;           /* #FDFBF8 */
-    --fog-grey: 30 14% 95%;             /* #F3F1EE */
+    --warm-black: 0 0% 7%;               /* #111111 */
+    --soft-charcoal: 0 0% 16%;           /* #2A2A2A */
+    --warm-white: 40 33% 97%;            /* Cream #FAF9F6 */
+    --fog-grey: 40 20% 94%;              /* #F5F3EE */
     
     /* Semantic Colors */
-    --background: 36 43% 98%;           /* Warm White */
-    --foreground: 0 0% 7%;              /* Warm Black */
+    --background: 40 33% 97%;            /* Cream */
+    --foreground: 0 0% 7%;               /* Warm Black */
     
     --card: 0 0% 100%;
     --card-foreground: 0 0% 7%;
@@ -36,112 +40,121 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 7%;
     
-    /* Primary = Lumi Orange 1 */
-    --primary: 24 80% 55%;
+    /* Primary = Lumi Orange */
+    --primary: 24 95% 53%;
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary = Lumi Orange 3 */
-    --secondary: 33 82% 61%;
-    --secondary-foreground: 0 0% 7%;
+    /* Secondary = Lumi Pink */
+    --secondary: 330 81% 60%;
+    --secondary-foreground: 0 0% 100%;
     
     /* Muted = Fog Grey */
-    --muted: 30 14% 95%;
+    --muted: 40 20% 94%;
     --muted-foreground: 0 0% 40%;
     
-    /* Accent = Lumi Yellow */
-    --accent: 42 88% 67%;
-    --accent-foreground: 0 0% 7%;
+    /* Accent = Lumi Purple */
+    --accent: 270 60% 70%;
+    --accent-foreground: 0 0% 100%;
     
     /* Glow color for highlights */
-    --glow: 42 88% 67%;
+    --glow: 215 75% 70%;
     
     --destructive: 0 85% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 30 14% 90%;
-    --input: 30 14% 95%;
-    --ring: 24 80% 55%;
+    --border: 40 20% 90%;
+    --input: 40 20% 94%;
+    --ring: 330 81% 60%;
     
     --radius: 1rem;
     
-    /* Lumi Gradients */
-    --gradient-lumi: linear-gradient(135deg, hsl(24 80% 55%), hsl(33 82% 61%));
-    --gradient-warm: linear-gradient(135deg, hsl(24 80% 55%), hsl(42 88% 67%));
-    --gradient-glow: linear-gradient(135deg, hsl(42 88% 67%), hsl(33 82% 61%));
+    /* Lumi Gradients - Logo Inspired */
+    --gradient-lumi: linear-gradient(135deg, hsl(24 95% 53%), hsl(330 81% 60%), hsl(270 60% 70%), hsl(215 75% 70%));
+    --gradient-warm: linear-gradient(135deg, hsl(24 95% 53%), hsl(330 81% 60%));
+    --gradient-cool: linear-gradient(135deg, hsl(270 60% 70%), hsl(215 75% 70%));
+    --gradient-glow: linear-gradient(135deg, hsl(330 81% 60%), hsl(270 60% 70%));
     
     /* Lumi Shadows */
-    --shadow-lumi: 0 8px 32px -8px hsl(24 80% 55% / 0.35);
-    --shadow-glow: 0 0 24px 4px hsl(42 88% 67% / 0.4);
+    --shadow-lumi: 0 8px 32px -8px hsl(330 81% 60% / 0.35);
+    --shadow-glow: 0 0 24px 4px hsl(270 60% 70% / 0.4);
     --shadow-elevated: 0 12px 40px -12px hsl(0 0% 7% / 0.12);
     --shadow-card: 0 4px 24px -4px hsl(0 0% 7% / 0.08);
     
     /* Folder Tab Brand Colors */
-    --tab-orange-light: 24 80% 55%;
-    --tab-orange-dark: 24 85% 45%;
-    --tab-yellow-light: 42 88% 67%;
-    --tab-yellow-dark: 42 80% 55%;
-    --tab-cream-light: 36 43% 98%;
-    --tab-cream-dark: 30 14% 95%;
+    --tab-orange-light: 24 95% 53%;
+    --tab-orange-dark: 24 90% 45%;
+    --tab-pink-light: 330 81% 60%;
+    --tab-pink-dark: 330 75% 50%;
+    --tab-purple-light: 270 60% 70%;
+    --tab-purple-dark: 270 55% 60%;
+    --tab-blue-light: 215 75% 70%;
+    --tab-blue-dark: 215 70% 60%;
+    --tab-cream-light: 40 33% 97%;
+    --tab-cream-dark: 40 20% 94%;
     --tab-black: 0 0% 7%;
     
-    --sidebar-background: 36 43% 98%;
+    --sidebar-background: 40 33% 97%;
     --sidebar-foreground: 0 0% 7%;
-    --sidebar-primary: 24 80% 55%;
+    --sidebar-primary: 24 95% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 14% 95%;
+    --sidebar-accent: 40 20% 94%;
     --sidebar-accent-foreground: 0 0% 7%;
-    --sidebar-border: 30 14% 90%;
-    --sidebar-ring: 24 80% 55%;
+    --sidebar-border: 40 20% 90%;
+    --sidebar-ring: 330 81% 60%;
   }
 
   .dark {
-    --background: 0 0% 7%;              /* Warm Black */
-    --foreground: 36 43% 98%;           /* Warm White */
+    --background: 0 0% 7%;               /* Warm Black */
+    --foreground: 40 33% 97%;            /* Cream */
     
     --card: 0 0% 12%;
-    --card-foreground: 36 43% 98%;
+    --card-foreground: 40 33% 97%;
     
     --popover: 0 0% 12%;
-    --popover-foreground: 36 43% 98%;
+    --popover-foreground: 40 33% 97%;
     
-    --primary: 24 80% 55%;
+    --primary: 24 95% 55%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 33 70% 50%;
+    --secondary: 330 75% 65%;
     --secondary-foreground: 0 0% 100%;
     
     --muted: 0 0% 16%;
     --muted-foreground: 0 0% 65%;
     
-    --accent: 42 88% 67%;
+    --accent: 270 55% 75%;
     --accent-foreground: 0 0% 7%;
     
-    --glow: 42 88% 67%;
+    --glow: 215 75% 70%;
     
     --destructive: 0 80% 65%;
     --destructive-foreground: 0 0% 100%;
     
     --border: 0 0% 20%;
     --input: 0 0% 16%;
-    --ring: 24 80% 55%;
+    --ring: 330 75% 60%;
     
     /* Dark mode tabs */
-    --tab-orange-light: 24 80% 55%;
-    --tab-orange-dark: 24 85% 45%;
-    --tab-yellow-light: 42 88% 67%;
-    --tab-yellow-dark: 42 80% 55%;
+    --tab-orange-light: 24 95% 55%;
+    --tab-orange-dark: 24 90% 45%;
+    --tab-pink-light: 330 75% 65%;
+    --tab-pink-dark: 330 70% 55%;
+    --tab-purple-light: 270 55% 75%;
+    --tab-purple-dark: 270 50% 65%;
+    --tab-blue-light: 215 75% 75%;
+    --tab-blue-dark: 215 70% 65%;
     --tab-cream-light: 0 0% 16%;
     --tab-cream-dark: 0 0% 12%;
     --tab-black: 0 0% 7%;
     
     --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 36 43% 98%;
-    --sidebar-primary: 24 80% 55%;
+    --sidebar-foreground: 40 33% 97%;
+    --sidebar-primary: 24 95% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 16%;
-    --sidebar-accent-foreground: 36 43% 98%;
+    --sidebar-accent-foreground: 40 33% 97%;
     --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 24 80% 55%;
+    --sidebar-ring: 330 75% 60%;
   }
 }
 
@@ -209,22 +222,69 @@
   }
   
   .lumi-button-glow:hover {
-    box-shadow: 0 0 20px 4px hsl(var(--lumi-yellow) / 0.5);
+    box-shadow: 0 0 20px 4px hsl(var(--lumi-pink-1) / 0.5);
     transform: translateY(-2px);
   }
   
   /* Success state glow animation */
   @keyframes success-glow {
     0%, 100% {
-      box-shadow: 0 0 20px 4px hsl(var(--lumi-yellow) / 0.3);
+      box-shadow: 0 0 20px 4px hsl(var(--lumi-purple-1) / 0.3);
     }
     50% {
-      box-shadow: 0 0 30px 8px hsl(var(--lumi-yellow) / 0.5);
+      box-shadow: 0 0 30px 8px hsl(var(--lumi-purple-1) / 0.5);
     }
   }
   
   .lumi-success-glow {
     animation: success-glow 2s ease-in-out infinite;
+  }
+  
+  /* Sparkle Animation */
+  @keyframes sparkle {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1) rotate(0deg);
+    }
+    25% {
+      opacity: 0.8;
+      transform: scale(1.1) rotate(5deg);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.2) rotate(0deg);
+    }
+    75% {
+      opacity: 0.8;
+      transform: scale(1.1) rotate(-5deg);
+    }
+  }
+  
+  @keyframes sparkle-pulse {
+    0%, 100% {
+      opacity: 0.7;
+      filter: drop-shadow(0 0 2px hsl(var(--lumi-purple-1) / 0.5));
+    }
+    50% {
+      opacity: 1;
+      filter: drop-shadow(0 0 6px hsl(var(--lumi-purple-1) / 0.8));
+    }
+  }
+  
+  .animate-sparkle {
+    animation: sparkle 2s ease-in-out infinite;
+  }
+  
+  .animate-sparkle-pulse {
+    animation: sparkle-pulse 1.5s ease-in-out infinite;
+  }
+  
+  /* Gradient text effect */
+  .text-gradient-lumi {
+    background: var(--gradient-lumi);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }
 
@@ -288,7 +348,10 @@
 
 .typing-headline .rotating-text {
   font-weight: 500;
-  color: hsl(var(--lumi-orange-1));
+  background: var(--gradient-warm);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   position: relative;
   display: inline;
 }
@@ -297,11 +360,11 @@
   display: inline-block;
   width: 3px;
   height: 0.85em;
-  background-color: hsl(var(--lumi-orange-1));
+  background: var(--gradient-warm);
   margin-left: 2px;
   vertical-align: baseline;
   border-radius: 2px;
-  box-shadow: 0 0 8px 2px hsl(var(--lumi-yellow) / 0.4);
+  box-shadow: 0 0 8px 2px hsl(var(--lumi-pink-1) / 0.4);
   animation: cursor-blink 1s ease-in-out infinite;
 }
 

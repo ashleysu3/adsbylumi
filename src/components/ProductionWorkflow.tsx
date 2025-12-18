@@ -224,7 +224,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
               {((item as any).guidance || (item as any).notes || item.concept?.guidance || item.concept?.notes) && (
                 <Card className="p-4 bg-primary/5 border-primary/20">
                   <h3 className="font-semibold text-primary mb-2 flex items-center gap-2">
-                    <Sparkle className="h-4 w-4" />
+                    <Sparkle className="h-4 w-4 animate-sparkle-pulse" />
                     Creative Direction
                   </h3>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
