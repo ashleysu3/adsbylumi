@@ -186,8 +186,9 @@ function buildEmailHtml(params: {
   metrics: any;
   report: any;
   brandName: string;
+  lumiInsights?: string[];
 }): string {
-  const { userName, campaignName, metrics, report, brandName } = params;
+  const { userName, campaignName, metrics, report, brandName, lumiInsights = [] } = params;
 
   // Determine overall status color
   const overallHealth = report.kpi_evaluation?.roas?.status === 'excellent' || 
@@ -220,6 +221,18 @@ function buildEmailHtml(params: {
   if (report.warm_audience_health?.stability === 'Low') {
     attentionItems.push('Warm audience needs growth');
   }
+
+  // Build Lumi insights section
+  const lumiInsightsHtml = lumiInsights.length > 0 ? `
+    <tr>
+      <td style="padding: 0 30px 20px 30px;">
+        <div style="background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); border-left: 4px solid #EA580C; border-radius: 0 8px 8px 0; padding: 15px;">
+          <p style="margin: 0; color: #9A3412; font-size: 14px; font-weight: 600;">✨ Lumi's Weekly Insights</p>
+          ${lumiInsights.map(insight => `<p style="margin: 8px 0 0 0; color: #C2410C; font-size: 13px;">• ${insight}</p>`).join('')}
+        </div>
+      </td>
+    </tr>
+  ` : '';
 
   return `
 <!DOCTYPE html>
@@ -285,6 +298,9 @@ function buildEmailHtml(params: {
               </table>
             </td>
           </tr>
+
+          <!-- Lumi Insights -->
+          ${lumiInsightsHtml}
 
           <!-- What's Working -->
           ${workingItems.length > 0 ? `

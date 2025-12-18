@@ -80,3 +80,6 @@ verify_jwt = true
 
 [functions.regenerate-creative-cell]
 verify_jwt = true
+
+[functions.send-critical-alerts]
+verify_jwt = false
