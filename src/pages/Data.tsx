@@ -9,6 +9,7 @@ import { format, subDays, startOfDay, endOfDay, startOfYesterday, endOfYesterday
 import { RefreshCw, Link2Off } from 'lucide-react';
 import { InsightsHome } from '@/components/insights/InsightsHome';
 import { CampaignInsightDetail } from '@/components/insights/CampaignInsightDetail';
+import { useLumiAssistant } from '@/components/LumiAssistant';
 
 interface PerformanceAnalysis {
   kpi_evaluation?: Record<string, {
@@ -52,6 +53,7 @@ export default function Data() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const workspaceIdFromUrl = searchParams.get('workspace');
+  const { setRecommendation } = useLumiAssistant();
 
   // View state: 'home' or 'detail'
   const [view, setView] = useState<'home' | 'detail'>(workspaceIdFromUrl ? 'detail' : 'home');
@@ -74,6 +76,101 @@ export default function Data() {
 
   // User goals stored locally and loaded from DB
   const [userGoals, setUserGoals] = useState<Record<string, number>>({});
+
+  // Contextual Lumi recommendations
+  useEffect(() => {
+    if (loading) return;
+
+    // Priority 1: Meta not connected
+    if (!metaConnected) {
+      setRecommendation({
+        id: "data-connect-meta",
+        title: "Connect Meta to See Insights",
+        message: "Link your Meta ad account to unlock real-time performance data and AI-powered optimization recommendations.",
+        actionLabel: "Go to Dashboard",
+        onAction: () => navigate("/dashboard"),
+      });
+      return;
+    }
+
+    // Priority 2: Token expired
+    if (metaTokenExpired) {
+      setRecommendation({
+        id: "data-reconnect-meta",
+        title: "Meta Connection Expired",
+        message: "Your access token has expired. Reconnect to continue tracking your campaign performance.",
+        actionLabel: "Reconnect",
+        onAction: () => navigate("/dashboard"),
+      });
+      return;
+    }
+
+    // Priority 3: No campaigns
+    if (campaigns.length === 0) {
+      setRecommendation({
+        id: "data-no-campaigns",
+        title: "No Live Campaigns Yet",
+        message: "Publish your first campaign to start tracking performance and get AI-powered insights.",
+        actionLabel: "Create Campaign",
+        onAction: () => navigate("/planning"),
+      });
+      return;
+    }
+
+    // Priority 4: Analyze campaign performance
+    const campaignsWithMetrics = campaigns.filter(c => c.metrics);
+    if (campaignsWithMetrics.length > 0) {
+      // Find campaigns with low CTR
+      const lowCtrCampaign = campaignsWithMetrics.find(c => {
+        const ctr = c.metrics?.ctr || 0;
+        return ctr < 1.0 && ctr > 0;
+      });
+
+      if (lowCtrCampaign) {
+        setRecommendation({
+          id: `data-low-ctr-${lowCtrCampaign.id}`,
+          title: "CTR Below Benchmark",
+          message: `"${lowCtrCampaign.name}" has a ${(lowCtrCampaign.metrics?.ctr || 0).toFixed(2)}% CTR. This is below the 1% benchmark — your creative might need a refresh.`,
+          actionLabel: "View Insights",
+          onAction: () => handleViewInsights(lowCtrCampaign.id),
+        });
+        return;
+      }
+
+      // Find campaigns with high frequency (creative fatigue)
+      const fatigueRisk = campaignsWithMetrics.find(c => {
+        const frequency = c.metrics?.frequency || 0;
+        return frequency >= 3;
+      });
+
+      if (fatigueRisk) {
+        setRecommendation({
+          id: `data-fatigue-${fatigueRisk.id}`,
+          title: "Creative Fatigue Alert",
+          message: `"${fatigueRisk.name}" has a frequency of ${(fatigueRisk.metrics?.frequency || 0).toFixed(1)}. Your audience is seeing ads too often — time to add fresh creative.`,
+          actionLabel: "View Insights",
+          onAction: () => handleViewInsights(fatigueRisk.id),
+        });
+        return;
+      }
+
+      // Good performance - celebrate
+      const topPerformer = campaignsWithMetrics.find(c => {
+        const roas = c.metrics?.roas || 0;
+        return roas >= 3;
+      });
+
+      if (topPerformer) {
+        setRecommendation({
+          id: `data-winning-${topPerformer.id}`,
+          title: "You Have a Winner! 🎉",
+          message: `"${topPerformer.name}" is crushing it with ${(topPerformer.metrics?.roas || 0).toFixed(1)}x ROAS! Consider scaling your budget to maximize returns.`,
+          actionLabel: "View Insights",
+          onAction: () => handleViewInsights(topPerformer.id),
+        });
+      }
+    }
+  }, [loading, metaConnected, metaTokenExpired, campaigns, setRecommendation, navigate]);
 
   // Convert date range string to actual dates
   const getDateRange = (rangeValue: string, custom?: { from: Date; to: Date } | null): { from: Date; to: Date } => {
