@@ -42,6 +42,15 @@ export default function Planning() {
   const [showOfferDialog, setShowOfferDialog] = useState(false);
   const [campaignGoal, setCampaignGoal] = useState<"offer" | "business_problem" | null>(null);
   const [businessProblem, setBusinessProblem] = useState<"video_trust" | "social_growth" | null>(null);
+  const [offerExists, setOfferExists] = useState<"yes" | "no" | null>(null);
+  const [offerAction, setOfferAction] = useState<"purchase" | "free_resource" | "visit_page" | null>(null);
+
+  // Mapping from offer action to template slugs
+  const offerActionToTemplates: Record<string, string[]> = {
+    purchase: ["low-ticket-product-sales", "high-ticket-sales"],
+    free_resource: ["free-resource-leads"],
+    visit_page: ["traffic-page-visit", "traffic-instagram-facebook"]
+  };
   
   useEffect(() => {
     fetchData();
@@ -219,6 +228,9 @@ export default function Planning() {
                   onClick={() => {
                     setCampaignGoal("offer");
                     setBusinessProblem(null);
+                    setOfferExists(null);
+                    setOfferAction(null);
+                    setSelectedOfferId("");
                   }}
                   className={`p-4 rounded-lg border-2 transition-all text-left ${
                     campaignGoal === "offer" 
@@ -240,6 +252,8 @@ export default function Planning() {
                   onClick={() => {
                     setCampaignGoal("business_problem");
                     setSelectedOfferId("");
+                    setOfferExists(null);
+                    setOfferAction(null);
                   }}
                   className={`p-4 rounded-lg border-2 transition-all text-left ${
                     campaignGoal === "business_problem" 
@@ -262,36 +276,174 @@ export default function Planning() {
           </CardContent>
         </Card>
 
-        {/* Offer Selection - shows when "Going to an offer" is selected */}
-        {campaignGoal === "offer" && offers.length > 0 && (
+        {/* Step 1 for Offer Path: Does this offer already exist? */}
+        {campaignGoal === "offer" && offerExists === null && (
           <Card variant="glow" className="border-primary/20">
             <CardContent className="pt-6">
-              <div className="space-y-3">
-                <Label htmlFor="offer-select" className="text-base font-semibold">
-                  Which offer is this campaign for?
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">
+                  Does this offer already exist in your brand?
                 </Label>
-                <p className="text-sm text-muted-foreground">
-                  Select an offer to pre-fill your campaign with landing page URL and pricing
-                </p>
-                <Select value={selectedOfferId} onValueChange={setSelectedOfferId}>
-                  <SelectTrigger id="offer-select" className="w-full max-w-md">
-                    <SelectValue placeholder="Select an offer (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No specific offer</SelectItem>
-                    {offers.map(offer => <SelectItem key={offer.id} value={offer.id}>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium">{offer.name}</span>
-                          {offer.price_point && <span className="text-xs text-muted-foreground">{offer.price_point}</span>}
-                        </div>
-                      </SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {selectedOfferId && selectedOfferId !== "none" && <div className="flex items-center gap-2 text-sm text-primary">
-                    <Badge variant="secondary">
-                      ✓ Campaign will use: {offers.find(o => o.id === selectedOfferId)?.url || "No URL set"}
-                    </Badge>
-                  </div>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setOfferExists("yes")}
+                    className="p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Yes, it exists</p>
+                        <p className="text-sm text-muted-foreground">Select from your existing offers</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setOfferExists("no");
+                      setShowOfferDialog(true);
+                    }}
+                    className="p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Plus className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">No, create new</p>
+                        <p className="text-sm text-muted-foreground">Add a new offer to your brand</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 2 for Offer Path: Select existing offer */}
+        {campaignGoal === "offer" && offerExists === "yes" && !selectedOfferId && (
+          <Card variant="glow" className="border-primary/20">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">
+                    Select your offer
+                  </Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setOfferExists(null)}
+                    className="text-muted-foreground"
+                  >
+                    ← Back
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {offers.map(offer => (
+                    <button
+                      key={offer.id}
+                      onClick={() => setSelectedOfferId(offer.id)}
+                      className="p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50"
+                    >
+                      <p className="font-medium">{offer.name}</p>
+                      {offer.price_point && (
+                        <p className="text-sm text-muted-foreground mt-1">{offer.price_point}</p>
+                      )}
+                      {offer.url && (
+                        <p className="text-xs text-muted-foreground mt-1 truncate">{offer.url}</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {offers.length === 0 && (
+                  <div className="text-center py-6">
+                    <p className="text-muted-foreground mb-4">No offers found. Create your first offer!</p>
+                    <Button 
+                      variant="lumi" 
+                      onClick={() => {
+                        setOfferExists("no");
+                        setShowOfferDialog(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New Offer
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 3 for Offer Path: What do you want people to do? */}
+        {campaignGoal === "offer" && selectedOfferId && !offerAction && (
+          <Card variant="glow" className="border-primary/20">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base font-semibold">
+                      What do you want people to do on this page?
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Selected: <span className="text-primary font-medium">{offers.find(o => o.id === selectedOfferId)?.name}</span>
+                    </p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setSelectedOfferId("")}
+                    className="text-muted-foreground"
+                  >
+                    ← Change offer
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <button
+                    onClick={() => setOfferAction("purchase")}
+                    className="p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <ShoppingCart className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Purchase</p>
+                        <p className="text-sm text-muted-foreground mt-1">Buy a product or service</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setOfferAction("free_resource")}
+                    className="p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Sign up for a free thing</p>
+                        <p className="text-sm text-muted-foreground mt-1">Lead magnet, webinar, etc.</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setOfferAction("visit_page")}
+                    className="p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Target className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Just go to the page</p>
+                        <p className="text-sm text-muted-foreground mt-1">Drive traffic to learn more</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -350,9 +502,32 @@ export default function Planning() {
 
         {/* Lumi recommendations now shown via popup */}
 
-        {/* Template Grid - only show when a path is selected */}
-        {(campaignGoal === "offer" || (campaignGoal === "business_problem" && businessProblem)) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Template Grid - only show when a path is fully selected */}
+        {((campaignGoal === "offer" && offerAction) || (campaignGoal === "business_problem" && businessProblem)) && (
+          <div className="space-y-4">
+            {/* Show back button and selection summary for offer path */}
+            {campaignGoal === "offer" && offerAction && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {offers.find(o => o.id === selectedOfferId)?.name}
+                  </Badge>
+                  <span className="text-muted-foreground">→</span>
+                  <Badge variant="outline" className="text-xs">
+                    {offerAction === "purchase" ? "Purchase" : offerAction === "free_resource" ? "Sign up (free)" : "Visit page"}
+                  </Badge>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setOfferAction(null)}
+                  className="text-muted-foreground"
+                >
+                  ← Change goal
+                </Button>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {templates
               .filter(template => {
                 // Filter templates based on business problem selection
@@ -364,7 +539,12 @@ export default function Planning() {
                     return template.slug === "traffic-instagram-facebook";
                   }
                 }
-                return true; // Show all templates for offer path
+                // Filter templates based on offer action selection
+                if (campaignGoal === "offer" && offerAction) {
+                  const allowedSlugs = offerActionToTemplates[offerAction] || [];
+                  return allowedSlugs.includes(template.slug);
+                }
+                return true;
               })
               .map(template => {
                 const Icon = iconMap[template.icon] || Video;
@@ -419,6 +599,7 @@ export default function Planning() {
                       </CardContent>
                     </Card>;
               })}
+            </div>
           </div>
         )}
 
@@ -475,9 +656,18 @@ export default function Planning() {
         {brand && (
           <OfferDialog 
             open={showOfferDialog} 
-            onOpenChange={setShowOfferDialog} 
+            onOpenChange={(open) => {
+              setShowOfferDialog(open);
+              // Reset to offer exists question when dialog closes
+              if (!open && offerExists === "no") {
+                setOfferExists(null);
+              }
+            }} 
             brandId={brand.id}
-            onSuccess={fetchData}
+            onSuccess={() => {
+              fetchData();
+              setOfferExists(null); // Reset to show offers list again
+            }}
           />
         )}
       </div>
