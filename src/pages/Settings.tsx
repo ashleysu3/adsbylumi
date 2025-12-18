@@ -111,7 +111,9 @@ export default function Settings() {
     <DashboardLayout>
       <div className="space-y-6 pb-12">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            <span className="text-gradient-lumi">Settings</span>
+          </h1>
           <p className="text-muted-foreground mt-2">
             Manage your account settings and preferences
           </p>
@@ -138,7 +140,7 @@ export default function Settings() {
           </TabsList>
 
           <TabsContent value="account" className="space-y-6">
-            <Card>
+            <Card variant="glow">
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
                 <CardDescription>
@@ -161,23 +163,24 @@ export default function Settings() {
                     </p>
                   </div>
 
-                  <div className="space-y-2">
+                   <div className="space-y-2">
                     <Label htmlFor="fullName">Full Name</Label>
                     <Input
                       id="fullName"
                       name="fullName"
                       type="text"
+                      variant="glow"
                       defaultValue={profile?.full_name || ''}
                       placeholder="Enter your full name"
                     />
                   </div>
 
-                  <Button type="submit">Save Changes</Button>
+                  <Button type="submit" variant="lumi">Save Changes</Button>
                 </form>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-destructive/30">
               <CardHeader>
                 <CardTitle>Danger Zone</CardTitle>
                 <CardDescription>
@@ -198,7 +201,7 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="notifications" className="space-y-6">
-            <Card>
+            <Card variant="glow">
               <CardHeader>
                 <CardTitle>Email Notifications</CardTitle>
                 <CardDescription>
@@ -214,7 +217,7 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="security" className="space-y-6">
-            <Card>
+            <Card variant="glow">
               <CardHeader>
                 <CardTitle>Password</CardTitle>
                 <CardDescription>
@@ -241,19 +244,19 @@ export default function Settings() {
               </Card>
             ) : isSubscribed && currentTier ? (
               <>
-                <Card>
+                <Card variant="gradient">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="flex items-center gap-2">
-                          <Crown className="h-5 w-5 text-primary" />
-                          {currentTier.name} Plan
+                          <Crown className="h-5 w-5 text-primary animate-sparkle-pulse" />
+                          <span className="text-gradient-lumi">{currentTier.name}</span> Plan
                         </CardTitle>
                         <CardDescription>
                           {isAnnual ? 'Annual' : 'Monthly'} billing
                         </CardDescription>
                       </div>
-                      <Badge variant="secondary" className="bg-primary/10 text-primary">
+                      <Badge className="bg-gradient-lumi text-white border-0">
                         Active
                       </Badge>
                     </div>
@@ -306,7 +309,7 @@ export default function Settings() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card variant="glow">
                   <CardHeader>
                     <CardTitle>Manage Subscription</CardTitle>
                     <CardDescription>
@@ -335,7 +338,7 @@ export default function Settings() {
                 </Card>
               </>
             ) : (
-              <Card>
+              <Card variant="glow">
                 <CardHeader>
                   <CardTitle>No Active Subscription</CardTitle>
                   <CardDescription>
@@ -347,7 +350,7 @@ export default function Settings() {
                     Choose a plan to get started with AI-powered ad creation, psychology-driven copy, 
                     and automated campaign management.
                   </p>
-                  <Button onClick={() => navigate('/pricing')} className="gap-2">
+                  <Button onClick={() => navigate('/pricing')} variant="lumi" className="gap-2">
                     <Crown className="h-4 w-4" />
                     View Plans
                   </Button>
