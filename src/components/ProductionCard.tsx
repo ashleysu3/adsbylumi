@@ -85,26 +85,29 @@ export function ProductionCard({ item, onClick }: ProductionCardProps) {
 
   return (
     <Card
-      className={`p-6 cursor-pointer transition-all hover:shadow-lg ${statusInfo.borderColor} border-2`}
+      variant="glow"
+      className={`p-6 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${item.status === "approved" ? "border-primary/50 shadow-glow" : ""}`}
       onClick={onClick}
     >
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
-            <FormatIcon className="h-5 w-5 text-muted-foreground" />
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+              <FormatIcon className="h-4 w-4 text-primary" />
+            </div>
             {item.stage && (
               <Badge variant="outline" className="text-xs">
                 {stageLabels[item.stage.toLowerCase()] || item.stage}
               </Badge>
             )}
             {(item as any).angleName && (
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="secondary" className="text-xs">
                 {(item as any).angleName}
               </Badge>
             )}
           </div>
-          <StatusIcon className="h-5 w-5 text-muted-foreground" />
+          <StatusIcon className={`h-5 w-5 ${item.status === "approved" ? "text-primary" : "text-muted-foreground"}`} />
         </div>
 
         {/* Title */}
@@ -119,7 +122,7 @@ export function ProductionCard({ item, onClick }: ProductionCardProps) {
 
         {/* Creative Guidance Preview (from creative dashboard) */}
         {((item as any).guidance || (item as any).notes || item.concept?.guidance || item.concept?.notes) && (
-          <div className="text-xs text-muted-foreground bg-primary/5 rounded p-2 border border-primary/10">
+          <div className="text-xs text-muted-foreground bg-gradient-to-br from-primary/5 to-transparent rounded-lg p-2 border border-primary/10">
             <span className="font-medium text-primary/70 block mb-1">Creative Direction:</span>
             <p className="line-clamp-2">
               {(item as any).guidance || (item as any).notes || item.concept?.guidance || item.concept?.notes}
@@ -129,7 +132,7 @@ export function ProductionCard({ item, onClick }: ProductionCardProps) {
 
         {/* Production Notes Preview */}
         {item.production_notes && (
-          <p className="text-xs text-muted-foreground line-clamp-2 bg-muted/30 rounded p-2">
+          <p className="text-xs text-muted-foreground line-clamp-2 bg-muted/30 rounded-lg p-2">
             {item.production_notes}
           </p>
         )}
@@ -138,7 +141,7 @@ export function ProductionCard({ item, onClick }: ProductionCardProps) {
         <div className="flex items-center justify-between pt-2 border-t">
           <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
           <Button
-            variant={item.status === "approved" ? "default" : "outline"}
+            variant={item.status === "approved" ? "lumi" : "outline"}
             size="sm"
             disabled={item.status === "approved"}
           >

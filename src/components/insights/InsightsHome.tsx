@@ -116,12 +116,12 @@ export function InsightsHome({
     <div className="space-y-8">
       {/* Lumi Welcome Header */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[hsl(var(--lumi-orange-1)/0.1)] border border-[hsl(var(--lumi-orange-1)/0.2)]">
-          <Sparkles className="h-4 w-4 text-[hsl(var(--lumi-orange-1))]" />
-          <span className="text-sm font-medium text-[hsl(var(--lumi-orange-1))]">Lumi Insights</span>
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-lumi-orange-1/10 via-lumi-pink-1/10 to-lumi-purple-1/10 border border-primary/20">
+          <Sparkles className="h-4 w-4 text-primary animate-sparkle-pulse" />
+          <span className="text-sm font-medium text-gradient-lumi">Lumi Insights</span>
         </div>
         <h1 className="text-3xl font-display font-bold text-foreground">
-          Let's keep this simple.
+          Let's keep this <span className="text-gradient-lumi">simple</span>.
         </h1>
         <p className="text-muted-foreground max-w-md mx-auto">
           Here's the clearest signal for each of your campaigns. Lumi monitors these automatically.
@@ -129,7 +129,7 @@ export function InsightsHome({
       </div>
 
       {/* Global Date Selector */}
-      <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
+      <Card variant="glow" className="rounded-2xl">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -158,10 +158,10 @@ export function InsightsHome({
           ))}
         </div>
       ) : campaigns.length === 0 ? (
-        <Card className="rounded-2xl border-dashed border-2 bg-[hsl(var(--warm-white))]">
+        <Card variant="gradient" className="rounded-2xl border-dashed border-2">
           <CardContent className="p-12 text-center">
-            <Sparkles className="h-12 w-12 mx-auto mb-4 text-[hsl(var(--lumi-orange-1)/0.3)]" />
-            <h3 className="text-lg font-medium mb-2">No campaigns yet</h3>
+            <Sparkles className="h-12 w-12 mx-auto mb-4 text-primary/30 animate-sparkle-pulse" />
+            <h3 className="text-lg font-medium mb-2 text-gradient-lumi">No campaigns yet</h3>
             <p className="text-muted-foreground">
               Build and publish a campaign to see your insights here.
             </p>
@@ -180,7 +180,8 @@ export function InsightsHome({
             return (
               <Card 
                 key={campaign.id} 
-                className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-elevated)] transition-shadow"
+                variant="glow"
+                className="rounded-2xl transition-all duration-300 hover:scale-[1.01]"
               >
                 <CardContent className="p-6">
                   <div className="flex flex-col lg:flex-row lg:items-center gap-6">
@@ -300,8 +301,8 @@ export function InsightsHome({
                       {/* View Button */}
                       <Button
                         onClick={() => onViewInsights(campaign.id)}
-                        variant="outline"
-                        className="rounded-xl border-[hsl(var(--lumi-orange-1))] text-[hsl(var(--lumi-orange-1))] hover:bg-[hsl(var(--lumi-orange-1)/0.05)]"
+                        variant="lumi"
+                        className="rounded-xl"
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Insights
@@ -318,7 +319,7 @@ export function InsightsHome({
       {/* Lumi Footer Message */}
       {campaigns.length > 0 && (
         <p className="text-center text-sm text-muted-foreground">
-          💡 Lumi's got you — focus on the green signals, and we'll alert you when something needs attention.
+          <span className="text-gradient-lumi font-medium">✨ Lumi's got you</span> — focus on the green signals, and we'll alert you when something needs attention.
         </p>
       )}
     </div>

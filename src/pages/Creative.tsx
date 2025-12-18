@@ -553,12 +553,12 @@ export default function Creative() {
 
             {/* Empty state */}
             <div className="flex-1 flex items-center justify-center p-6">
-              <Card className="max-w-md border-2">
+              <Card variant="gradient" className="max-w-md">
                 <CardHeader className="text-center space-y-3">
-                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                    <Clipboard className="h-6 w-6 text-muted-foreground" />
+                  <div className="mx-auto w-12 h-12 rounded-full bg-gradient-to-br from-lumi-purple-1/20 to-lumi-pink-1/20 flex items-center justify-center">
+                    <Clipboard className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle>
+                  <CardTitle className="text-gradient-lumi">
                     {campaigns.length === 0 ? "Ready to create?" : "Select a Campaign"}
                   </CardTitle>
                   <CardDescription>
