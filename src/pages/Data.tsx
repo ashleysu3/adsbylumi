@@ -10,6 +10,7 @@ import { RefreshCw, Link2Off } from 'lucide-react';
 import { InsightsHome } from '@/components/insights/InsightsHome';
 import { CampaignInsightDetail } from '@/components/insights/CampaignInsightDetail';
 import { useLumiAssistant } from '@/components/LumiAssistant';
+import { MetaConnectionAlert, MetaConnectionBanner } from '@/components/MetaConnectionAlert';
 
 interface PerformanceAnalysis {
   kpi_evaluation?: Record<string, {
@@ -512,42 +513,20 @@ export default function Data() {
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Meta Token Expired Alert */}
+        {/* Meta Token Expired - Modal popup */}
         {metaTokenExpired && (
-          <Alert variant="destructive" className="mb-6 rounded-2xl border-destructive/50 bg-destructive/10">
-            <Link2Off className="h-4 w-4" />
-            <AlertTitle>Meta Connection Expired</AlertTitle>
-            <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <span>Your Meta access token has expired. Please reconnect to continue viewing insights.</span>
-              <Button 
-                size="sm" 
-                variant="outline"
-                className="w-fit border-destructive/50 hover:bg-destructive/20 rounded-xl"
-                onClick={() => navigate('/dashboard')}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Reconnect Meta
-              </Button>
-            </AlertDescription>
-          </Alert>
+          <MetaConnectionAlert 
+            type="expired" 
+            onDismiss={() => setMetaTokenExpired(false)}
+          />
         )}
 
-        {/* Meta Not Connected Alert */}
+        {/* Meta Not Connected Banner */}
         {!metaConnected && !loading && (
-          <Alert className="mb-6 rounded-2xl border-amber-200 bg-amber-50">
-            <AlertTitle className="text-amber-800">Connect your Meta account</AlertTitle>
-            <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-3 text-amber-700">
-              <span>Connect your Meta ad account to see campaign insights here.</span>
-              <Button 
-                size="sm" 
-                variant="outline"
-                className="w-fit rounded-xl"
-                onClick={() => navigate('/dashboard')}
-              >
-                Go to Dashboard
-              </Button>
-            </AlertDescription>
-          </Alert>
+          <MetaConnectionBanner 
+            type="not_connected" 
+            className="mb-6"
+          />
         )}
 
         {/* Main Content */}
