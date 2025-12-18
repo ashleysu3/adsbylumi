@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Filter, Upload, Video, Image, X } from "lucide-react";
+import { ArrowLeft, Filter, Upload, Video, Image, X, ChevronDown } from "lucide-react";
 import { ProductionCard } from "@/components/ProductionCard";
 import { ProductionWorkflow } from "@/components/ProductionWorkflow";
 import { toast } from "sonner";
@@ -27,13 +27,23 @@ interface UploadedAsset {
   preview?: string;
 }
 
+interface WorkspaceOption {
+  id: string;
+  name: string;
+  itemCount: number;
+  updatedAt: string;
+}
+
+const LAST_WORKSPACE_KEY = "production_last_workspace_id";
+
 export default function Production() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const workspaceIdParam = searchParams.get("workspace");
   
   const [loading, setLoading] = useState(true);
   const [workspace, setWorkspace] = useState<any>(null);
+  const [workspaceOptions, setWorkspaceOptions] = useState<WorkspaceOption[]>([]);
   const [productionItems, setProductionItems] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [workflowOpen, setWorkflowOpen] = useState(false);
@@ -45,10 +55,19 @@ export default function Production() {
   const { setRecommendation } = useLumiAssistant();
 
   useEffect(() => {
-    fetchWorkspace();
-  }, [workspaceIdParam]);
+    fetchWorkspaces();
+  }, []);
 
-  const fetchWorkspace = async () => {
+  useEffect(() => {
+    if (workspaceIdParam && workspaceOptions.length > 0) {
+      const found = workspaceOptions.find(w => w.id === workspaceIdParam);
+      if (found) {
+        loadWorkspace(workspaceIdParam);
+      }
+    }
+  }, [workspaceIdParam, workspaceOptions]);
+
+  const fetchWorkspaces = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -56,56 +75,98 @@ export default function Production() {
         return;
       }
 
-      let workspaceData;
+      // Fetch all workspaces with production_items
+      const { data: workspaces, error } = await supabase
+        .from("campaign_workspaces")
+        .select("id, name, production_items, updated_at")
+        .not("production_items", "is", null)
+        .order("updated_at", { ascending: false });
 
-      // If workspace ID is provided in URL, fetch that specific workspace
-      if (workspaceIdParam) {
-        const { data, error } = await supabase
-          .from("campaign_workspaces")
-          .select("*")
-          .eq("id", workspaceIdParam)
-          .single();
+      if (error) throw error;
 
-        if (error) throw error;
-        workspaceData = data;
-      } else {
-        // Otherwise, get the most recent workspace with production_items
-        const { data: workspaces, error } = await supabase
-          .from("campaign_workspaces")
-          .select("*")
-          .not("production_items", "is", null)
-          .order("updated_at", { ascending: false })
-          .limit(1);
+      // Filter to only workspaces with actual items (not empty arrays)
+      const validWorkspaces = (workspaces || []).filter(w => {
+        const items = Array.isArray(w.production_items) ? w.production_items : [];
+        return items.length > 0;
+      });
 
-        if (error) throw error;
-        workspaceData = workspaces?.[0];
+      const options: WorkspaceOption[] = validWorkspaces.map(w => ({
+        id: w.id,
+        name: w.name,
+        itemCount: Array.isArray(w.production_items) ? w.production_items.length : 0,
+        updatedAt: w.updated_at,
+      }));
+
+      setWorkspaceOptions(options);
+
+      if (options.length === 0) {
+        toast.info("No production items found. Go to Creative dashboard and send concepts to production.");
+        setLoading(false);
+        return;
       }
 
-      if (workspaceData) {
-        setWorkspace(workspaceData);
-        const items = Array.isArray(workspaceData.production_items) 
-          ? workspaceData.production_items 
-          : [];
-        setProductionItems(items);
-        
-        // If no production items but workspace exists, show helpful message
-        if (items.length === 0) {
-          toast.info("No production items yet. Send concepts to production from the Creative dashboard.");
+      // Determine which workspace to load
+      let targetWorkspaceId: string | null = workspaceIdParam;
+
+      if (!targetWorkspaceId) {
+        // Check localStorage for last used workspace
+        const savedId = localStorage.getItem(LAST_WORKSPACE_KEY);
+        if (savedId && options.some(w => w.id === savedId)) {
+          targetWorkspaceId = savedId;
+        } else {
+          // Default to most recent
+          targetWorkspaceId = options[0].id;
         }
-      } else {
-        toast.info("No production items found. Go to Creative dashboard and send concepts to production.");
-        navigate("/creative");
+        // Update URL without adding to history
+        setSearchParams({ workspace: targetWorkspaceId }, { replace: true });
+      }
+
+      await loadWorkspace(targetWorkspaceId);
+    } catch (error: any) {
+      console.error("Error fetching workspaces:", error);
+      toast.error("Failed to load production workspaces");
+      setLoading(false);
+    }
+  };
+
+  const loadWorkspace = async (workspaceId: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("campaign_workspaces")
+        .select("*")
+        .eq("id", workspaceId)
+        .single();
+
+      if (error) throw error;
+
+      setWorkspace(data);
+      const items = Array.isArray(data.production_items) ? data.production_items : [];
+      setProductionItems(items);
+      
+      // Save to localStorage
+      localStorage.setItem(LAST_WORKSPACE_KEY, workspaceId);
+
+      if (items.length === 0) {
+        toast.info("No production items yet. Send concepts to production from the Creative dashboard.");
       }
     } catch (error: any) {
-      console.error("Error fetching workspace:", error);
-      toast.error("Failed to load production workspace");
+      console.error("Error loading workspace:", error);
+      toast.error("Failed to load workspace");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleWorkspaceChange = (workspaceId: string) => {
+    setSearchParams({ workspace: workspaceId }, { replace: true });
+    loadWorkspace(workspaceId);
+  };
+
   const handleWorkspaceUpdate = async () => {
-    await fetchWorkspace();
+    if (workspace?.id) {
+      await loadWorkspace(workspace.id);
+    }
   };
 
   const handleCardClick = (item: any) => {
@@ -281,7 +342,7 @@ export default function Production() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/creative")}>
               <ArrowLeft className="h-5 w-5" />
@@ -290,9 +351,31 @@ export default function Production() {
               <h1 className="text-3xl font-bold">
                 <span className="text-gradient-lumi">Production</span> Dashboard
               </h1>
-              <p className="text-muted-foreground mt-1">
-                {workspace.name} • {statusCounts.total} concepts
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                {workspaceOptions.length > 1 ? (
+                  <Select value={workspace?.id} onValueChange={handleWorkspaceChange}>
+                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-transparent focus:ring-0 text-muted-foreground text-sm font-normal gap-1">
+                      <SelectValue>{workspace.name}</SelectValue>
+                      <ChevronDown className="h-3 w-3 opacity-50" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {workspaceOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          <div className="flex items-center justify-between gap-4">
+                            <span>{option.name}</span>
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              {option.itemCount} items
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-muted-foreground text-sm">{workspace.name}</span>
+                )}
+                <span className="text-muted-foreground text-sm">• {statusCounts.total} concepts</span>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
