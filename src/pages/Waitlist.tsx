@@ -34,6 +34,11 @@ const Waitlist = () => {
       } else {
         setIsSubmitted(true);
         toast.success("You're on the list! Lumi will keep you posted. ✨");
+        
+        // Sync to Flodesk in background
+        supabase.functions.invoke('sync-flodesk', {
+          body: { email: email.toLowerCase().trim(), segment: 'waitlist' }
+        }).catch(err => console.error('Flodesk sync error:', err));
       }
     } catch (error) {
       console.error('Waitlist signup error:', error);
