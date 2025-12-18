@@ -85,9 +85,7 @@ export function ProductionCard({ item, onClick }: ProductionCardProps) {
 
   return (
     <Card
-      className={`p-6 cursor-pointer transition-all hover:shadow-lg ${statusInfo.borderColor} border-2 ${
-        item.status === "ready" ? "animate-pulse" : ""
-      }`}
+      className={`p-6 cursor-pointer transition-all hover:shadow-lg ${statusInfo.borderColor} border-2`}
       onClick={onClick}
     >
       <div className="space-y-4">
