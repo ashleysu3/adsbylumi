@@ -353,6 +353,11 @@ export default function Creative() {
       setActiveAngleId(selectedAngleIds[0]);
       setDashboardStep("creative_grid");
       
+      // Generate angle-level copy in background (don't block UI)
+      generateAngleCopy(selectedAngles).catch(err => {
+        console.error("Background copy generation failed:", err);
+      });
+      
       // Save to workspace
       await saveCreativeState({
         angles: availableAngles,
@@ -369,6 +374,49 @@ export default function Creative() {
     } finally {
       setGenerating(false);
       setGeneratingPhase(null);
+    }
+  };
+
+  // Generate copy variations for all selected angles (runs in background)
+  const generateAngleCopy = async (angles: CreativeAngle[]) => {
+    if (!workspace) return;
+    
+    try {
+      // Fetch offer data for copy generation
+      let offerData = null;
+      if (workspace.offer_id) {
+        const { data } = await supabase
+          .from('offers')
+          .select('name, description, price_point, target_outcome, product_psychology, messaging_guidelines')
+          .eq('id', workspace.offer_id)
+          .single();
+        offerData = data;
+      }
+
+      const { data, error } = await supabase.functions.invoke('generate-angle-copy', {
+        body: {
+          angles,
+          brandInfo: {
+            name: workspace.brands?.name,
+            brand_voice: workspace.brands?.brand_voice,
+          },
+          offerData: offerData || {
+            name: workspace.offer_name,
+            description: workspace.offer_description,
+            price_point: workspace.offer_price,
+          },
+          audiencePsychology: workspace.brands?.audience_psychology,
+        }
+      });
+
+      if (error) throw error;
+
+      // Save angle copy to workspace
+      await saveCreativeState({ angle_copy: data.angle_copy });
+      console.log("Angle copy generated successfully");
+    } catch (err: any) {
+      console.error("Failed to generate angle copy:", err);
+      // Don't show error toast - this is background work
     }
   };
 

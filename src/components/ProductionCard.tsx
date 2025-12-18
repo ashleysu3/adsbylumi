@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Video, Image, LayoutGrid, CheckCircle2, Clock, Upload, FileText, Trash2, MoreVertical } from "lucide-react";
+import { Video, Image, LayoutGrid, CheckCircle2, Clock, Upload, Trash2, MoreVertical } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +45,7 @@ const formatIcons: Record<string, any> = {
   carousel: LayoutGrid,
 };
 
+// Simplified status config - no copy step
 const statusConfig = {
   pending: {
     label: "Not Started",
@@ -75,11 +76,11 @@ const statusConfig = {
     icon: Upload,
   },
   uploaded: {
-    label: "Review Copy",
-    color: "bg-green-500/10 text-green-600",
-    borderColor: "border-green-500",
-    buttonText: "REVIEW",
-    icon: FileText,
+    label: "Ready for Campaign",
+    color: "bg-purple-500/10 text-purple-600",
+    borderColor: "border-purple-500",
+    buttonText: "READY",
+    icon: CheckCircle2,
   },
   approved: {
     label: "Ready for Campaign",
@@ -112,11 +113,13 @@ export function ProductionCard({ item, onClick, onRemove }: ProductionCardProps)
     setShowDeleteDialog(false);
   };
 
+  const isComplete = item.status === "uploaded" || item.status === "approved";
+
   return (
     <>
       <Card
         variant="glow"
-        className={`p-6 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${item.status === "approved" ? "border-primary/50 shadow-glow" : ""}`}
+        className={`p-6 cursor-pointer transition-all duration-300 hover:scale-[1.02] ${isComplete ? "border-primary/50 shadow-glow" : ""}`}
         onClick={onClick}
       >
         <div className="space-y-4">
@@ -138,7 +141,7 @@ export function ProductionCard({ item, onClick, onRemove }: ProductionCardProps)
               )}
             </div>
             <div className="flex items-center gap-1">
-              <StatusIcon className={`h-5 w-5 ${item.status === "approved" ? "text-primary" : "text-muted-foreground"}`} />
+              <StatusIcon className={`h-5 w-5 ${isComplete ? "text-primary" : "text-muted-foreground"}`} />
               {onRemove && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -178,9 +181,9 @@ export function ProductionCard({ item, onClick, onRemove }: ProductionCardProps)
           <div className="flex items-center justify-between pt-2 border-t">
             <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
             <Button
-              variant={item.status === "approved" ? "lumi" : "outline"}
+              variant={isComplete ? "lumi" : "outline"}
               size="sm"
-              disabled={item.status === "approved"}
+              disabled={isComplete}
             >
               {statusInfo.buttonText}
             </Button>

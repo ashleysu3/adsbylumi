@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RecordingGuide } from "./RecordingGuide";
 import { DesignGuide } from "./DesignGuide";
-import { CopyEditor } from "./CopyEditor";
 import { DragDropUploader } from "./DragDropUploader";
 import { CheckCircle2, ArrowRight, Sparkle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,9 +19,10 @@ interface ProductionWorkflowProps {
   onUpdate: () => void;
 }
 
-type Step = "review" | "create" | "upload" | "copy" | "done";
+// Simplified workflow: review -> create -> upload -> done (no copy step)
+type Step = "review" | "create" | "upload" | "done";
 
-const steps: Step[] = ["review", "create", "upload", "copy", "done"];
+const steps: Step[] = ["review", "create", "upload", "done"];
 
 // Helper to determine the correct step based on item status
 function getStepForStatus(status: string): Step {
@@ -32,7 +32,6 @@ function getStepForStatus(status: string): Step {
     case "recorded":
       return "upload";
     case "uploaded":
-      return "copy";
     case "approved":
       return "done";
     default:
@@ -43,7 +42,6 @@ function getStepForStatus(status: string): Step {
 export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }: ProductionWorkflowProps) {
   const [currentStep, setCurrentStep] = useState<Step>(() => getStepForStatus(item?.status));
   const [updatedItem, setUpdatedItem] = useState(item);
-  const [offerData, setOfferData] = useState<any>(null);
 
   // When switching between cards, reset local state to the selected item
   useEffect(() => {
@@ -61,32 +59,6 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
       return { ...prev, ...item };
     });
   }, [item]);
-
-  // Fetch offer data when workspace has an offer_id
-  useEffect(() => {
-    const fetchOfferData = async () => {
-      if (!workspace?.offer_id) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('offers')
-          .select('name, description, price_point, url, target_outcome, product_psychology, messaging_guidelines')
-          .eq('id', workspace.offer_id)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching offer data:', error);
-          return;
-        }
-        
-        setOfferData(data);
-      } catch (err) {
-        console.error('Failed to fetch offer:', err);
-      }
-    };
-
-    fetchOfferData();
-  }, [workspace?.offer_id]);
 
   // Update step when item status changes (e.g., after marking as recorded)
   useEffect(() => {
@@ -112,13 +84,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
     updatedItem?.linkedAsset ||
     (workspace.user_uploaded_assets || []).slice().reverse().find((a: any) => a.linked_concept_id === conceptLinkId);
 
-  const canContinueToCopy = !!linkedUpload;
-  
-  // Create enriched workspace with offer data for CopyEditor
-  const enrichedWorkspace = {
-    ...workspace,
-    offerData
-  };
+  const canContinueToApprove = !!linkedUpload;
 
   const handleNext = async (step: Step) => {
     // Immediately move the UI forward for a smoother feel
@@ -174,7 +140,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
       // Re-fetch to make sure we include the very latest upload (users often click through fast)
       const { data: fresh, error: fetchError } = await supabase
         .from("campaign_workspaces")
-        .select("production_items, user_uploaded_assets")
+        .select("production_items, user_uploaded_assets, creative_json")
         .eq("id", workspace.id)
         .single();
 
@@ -188,13 +154,27 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
         return;
       }
 
-      // Update production item with status "uploaded" and asset info
+      // Get the angle copy for this item (copy is now stored at angle level)
+      const creativeJson = fresh?.creative_json as any;
+      const angleCopy = creativeJson?.angle_copy || {};
+      const itemAngleId = (updatedItem as any)?.angleId || item?.angleId;
+      const thisAngleCopy = itemAngleId ? angleCopy[itemAngleId] : null;
+
+      // Auto-assign first copy variation from the angle
+      const finalCopy = thisAngleCopy ? {
+        headline: thisAngleCopy.headlines?.[0]?.text || '',
+        description: thisAngleCopy.descriptions?.[0]?.text || '',
+        primaryText: thisAngleCopy.primary_copy?.[0]?.text || '',
+        cta: 'LEARN_MORE'
+      } : null;
+
+      // Update production item with status "approved" and asset info
       const productionItems = (fresh?.production_items || workspace.production_items || []) as any[];
       const updatedItems = productionItems.map((pi: any) =>
         pi.id === item.id
           ? {
               ...pi,
-              status: "uploaded",
+              status: "approved",
               uploaded_asset_id: latestAsset.id,
               linkedAsset: {
                 id: latestAsset.id,
@@ -203,6 +183,8 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                 type: latestAsset.file_type,
                 fileName: latestAsset.file_name,
               },
+              copy_finalized: true,
+              finalCopy,
             }
           : pi
       );
@@ -216,7 +198,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
 
       setUpdatedItem((prev: any) => ({
         ...prev,
-        status: "uploaded",
+        status: "approved",
         uploaded_asset_id: latestAsset.id,
         linkedAsset: {
           id: latestAsset.id,
@@ -225,55 +207,28 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
           type: latestAsset.file_type,
           fileName: latestAsset.file_name,
         },
+        copy_finalized: true,
+        finalCopy,
       }));
 
-      handleNext("copy");
+      // Check if we now have 3+ approved concepts to auto-update status
+      const approvedCount = updatedItems.filter((i: any) => i.status === "approved").length;
+      if (approvedCount >= 3 && workspace.progress_status !== "ready_to_publish") {
+        await supabase
+          .from("campaign_workspaces")
+          .update({ progress_status: "ready_to_publish" })
+          .eq("id", workspace.id);
+        toast.success("🎉 You have 3+ approved concepts! Ready to build your campaign!");
+      } else {
+        toast.success("Concept approved and ready for campaign!");
+      }
+
+      handleNext("done");
       onUpdate();
     } catch (error) {
       console.error("Upload finalize error:", error);
       toast.error("Couldn't finalize the upload. Please try again.");
     }
-  };
-
-  const handleCopyApprove = async (copy: any) => {
-    // Update status to "approved" and save final copy with consistent field names
-    // Field names must match what build-meta-campaign expects: headline, primaryText, description, cta
-    const productionItems = workspace.production_items || [];
-    const updatedItems = productionItems.map((pi: any) =>
-      pi.id === item.id
-        ? { 
-            ...pi, 
-            status: "approved", 
-            copy_finalized: true, 
-            finalCopy: {
-              headline: copy.headline,
-              primaryText: copy.primary_text || copy.primaryText,
-              description: copy.description,
-              cta: copy.call_to_action || copy.cta
-            }
-          }
-        : pi
-    );
-
-    await supabase
-      .from("campaign_workspaces")
-      .update({ production_items: updatedItems })
-      .eq("id", workspace.id);
-
-    // Check if we now have 3+ approved concepts to auto-update status
-    const approvedCount = updatedItems.filter((i: any) => i.status === "approved").length;
-    if (approvedCount >= 3 && workspace.progress_status !== "ready_to_publish") {
-      await supabase
-        .from("campaign_workspaces")
-        .update({ progress_status: "ready_to_publish" })
-        .eq("id", workspace.id);
-      toast.success("🎉 You have 3+ approved concepts! Ready to build your campaign!");
-    } else {
-      toast.success("Concept approved and ready for campaign!");
-    }
-    
-    handleNext("done");
-    onUpdate();
   };
 
   const handleFinish = () => {
@@ -301,14 +256,13 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
             <Progress value={progress} className="h-2" />
           </div>
 
-          {/* Step Indicators */}
+          {/* Step Indicators - Simplified: 4 steps instead of 5 */}
           <div className="flex items-center justify-between mb-6">
             {[
               { key: "review", label: "Review" },
               { key: "create", label: "Create" },
               { key: "upload", label: "Upload" },
-              { key: "copy", label: "Review Copy" },
-              { key: "done", label: "Publish" },
+              { key: "done", label: "Done" },
             ].map((step, index) => (
               <div key={step.key} className="flex items-center">
                 <div
@@ -331,7 +285,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                 >
                   {step.label}
                 </span>
-                {index < 4 && <ArrowRight className="h-4 w-4 mx-2 text-muted-foreground" />}
+                {index < 3 && <ArrowRight className="h-4 w-4 mx-2 text-muted-foreground" />}
               </div>
             ))}
           </div>
@@ -471,6 +425,64 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                     </>
                   )}
 
+                  {/* Carousel Format */}
+                  {item.format === "carousel" && (
+                    <>
+                      {item.concept?.slides && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Carousel Slides</p>
+                          <div className="space-y-3 mt-2">
+                            {item.concept.slides.map((slide: any, i: number) => (
+                              <div key={i} className="p-3 bg-muted/50 rounded-md">
+                                <p className="text-xs font-medium text-primary mb-1">Slide {i + 1}</p>
+                                {slide.headline && <p className="text-sm font-medium">{slide.headline}</p>}
+                                {slide.body && <p className="text-sm text-muted-foreground">{slide.body}</p>}
+                                {slide.visual_direction && (
+                                  <p className="text-xs text-muted-foreground mt-1 italic">{slide.visual_direction}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {item.concept?.static_layout && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Layout Direction</p>
+                          <div className="space-y-2 mt-2">
+                            {item.concept.static_layout.headline && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">Headline</p>
+                                <p className="text-sm">{item.concept.static_layout.headline}</p>
+                              </div>
+                            )}
+                            {item.concept.static_layout.subheadline && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">Subheadline</p>
+                                <p className="text-sm">{item.concept.static_layout.subheadline}</p>
+                              </div>
+                            )}
+                            {item.concept.static_layout.background_visual && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">Visual Direction</p>
+                                <p className="text-sm">{item.concept.static_layout.background_visual}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {item.concept?.overlay_text && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Overlay Text</p>
+                          <div className="space-y-1 mt-1">
+                            {item.concept.overlay_text.map((text: string, i: number) => (
+                              <p key={i} className="text-sm text-muted-foreground">• {text}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   {/* Production Notes (all formats) */}
                   {item.concept?.production_notes && (
                     <div>
@@ -540,26 +552,15 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                   ← Back
                 </Button>
                 <div className="flex flex-col items-end gap-2">
-                  <Button onClick={handleUploadComplete} disabled={!canContinueToCopy}>
-                    Continue to Copy Review →
+                  <Button onClick={handleUploadComplete} disabled={!canContinueToApprove}>
+                    Approve & Finish →
                   </Button>
-                  {!canContinueToCopy && (
+                  {!canContinueToApprove && (
                     <p className="text-xs text-muted-foreground">Upload at least 1 file above to continue.</p>
                   )}
                 </div>
               </div>
             </div>
-          )}
-
-          {currentStep === "copy" && (
-            <CopyEditor
-              concept={updatedItem.concept || {}}
-              uploadedAsset={linkedUpload}
-              workspace={enrichedWorkspace}
-              initialCopy={updatedItem.final_copy}
-              onApprove={handleCopyApprove}
-              onBack={() => handleNext("upload")}
-            />
           )}
 
           {currentStep === "done" && (
