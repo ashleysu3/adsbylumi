@@ -161,7 +161,7 @@ export default function CampaignBuilder() {
     }
   };
 
-  const handlePublish = async () => {
+  const handlePublish = async (launchStatus: 'active' | 'paused' = 'paused') => {
     setStage('publishing');
     setPublishing(true);
 
@@ -169,28 +169,37 @@ export default function CampaignBuilder() {
       const { data, error } = await supabase.functions.invoke('build-meta-campaign', {
         body: { 
           workspaceId,
-          answers 
+          answers: {
+            ...answers,
+            launchStatus
+          }
         }
       });
 
       if (error) throw error;
 
       if (data.success) {
-        setCampaignIds(data.campaignIds);
+        const campaignData = {
+          ...data.campaignIds,
+          launchStatus
+        };
+        setCampaignIds(campaignData);
         
-        // Update workspace with campaign IDs
+        // Update workspace with campaign IDs and launch status
         await supabase
           .from('campaign_workspaces')
           .update({ 
-            meta_campaign_ids: data.campaignIds,
-            meta_campaign_status: 'published',
+            meta_campaign_ids: campaignData,
+            meta_campaign_status: launchStatus === 'active' ? 'live' : 'published',
             published_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', workspaceId);
 
         setStage('success');
-        toast.success("Campaign published successfully!");
+        toast.success(launchStatus === 'active' 
+          ? "Campaign is live! Ads will start after Meta approval." 
+          : "Campaign published in paused status!");
       } else {
         throw new Error(data.error || 'Failed to publish campaign');
       }

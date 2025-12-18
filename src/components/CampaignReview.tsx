@@ -12,22 +12,27 @@ import {
   Zap,
   AlertCircle,
   Eye,
-  AlertTriangle
+  AlertTriangle,
+  Play,
+  Pause
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AdPreview } from "./AdPreview";
 import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface CampaignReviewProps {
   workspace: any;
   answers: any;
   onBack: () => void;
-  onPublish: () => void;
+  onPublish: (launchStatus: 'active' | 'paused') => void;
 }
 
 export function CampaignReview({ workspace, answers, onBack, onPublish }: CampaignReviewProps) {
   const [showPreviews, setShowPreviews] = useState(true);
   const [confirmRepublish, setConfirmRepublish] = useState(false);
+  const [launchAsActive, setLaunchAsActive] = useState(false);
   
   // Check if campaign was already published
   const existingCampaignIds = workspace.meta_campaign_ids;
@@ -69,7 +74,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
       setConfirmRepublish(true);
       return;
     }
-    onPublish();
+    onPublish(launchAsActive ? 'active' : 'paused');
   };
 
   return (
@@ -243,6 +248,54 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                   {answers.warmRetargeting ? 'YES' : 'NO'}
                 </Badge>
               </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Launch Status:</span>
+                <Badge variant={launchAsActive ? "default" : "secondary"}>
+                  {launchAsActive ? 'Active (Live)' : 'Paused'}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Launch Status Toggle */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              {launchAsActive ? (
+                <Play className="h-4 w-4 text-green-500" />
+              ) : (
+                <Pause className="h-4 w-4 text-amber-500" />
+              )}
+              <h3 className="text-sm font-semibold">Launch Status</h3>
+            </div>
+            <div className="p-4 rounded-lg border bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="launch-status" className="font-medium">
+                    Launch campaign as Active (Live)
+                  </Label>
+                  <p className="text-xs text-muted-foreground max-w-md">
+                    {launchAsActive 
+                      ? "Your ads will start delivering immediately after Meta approves them (usually 15-30 minutes). You can pause anytime from here."
+                      : "Your campaign will be created in Paused status. You can activate it later from here or in Ads Manager."
+                    }
+                  </p>
+                </div>
+                <Switch
+                  id="launch-status"
+                  checked={launchAsActive}
+                  onCheckedChange={setLaunchAsActive}
+                />
+              </div>
+              {launchAsActive && (
+                <div className="mt-3 p-2 rounded bg-green-500/10 border border-green-500/20">
+                  <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <Play className="h-3 w-3" />
+                    Ads will go live after Meta's review (~15-30 min)
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

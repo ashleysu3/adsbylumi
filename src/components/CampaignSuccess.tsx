@@ -1,8 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, ExternalLink, Copy, ArrowRight } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { CheckCircle, ExternalLink, Copy, ArrowRight, Loader2, Play, Pause } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CampaignSuccessProps {
   workspace: any;
@@ -11,30 +14,111 @@ interface CampaignSuccessProps {
 }
 
 export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: CampaignSuccessProps) {
+  // Handle both naming conventions from build-meta-campaign
+  const campaignId = campaignIds?.campaignId || campaignIds?.campaign_id;
+  const adSetIds = campaignIds?.adSetIds || campaignIds?.ad_set_ids || [];
+  const adIds = campaignIds?.adIds || campaignIds?.ad_ids || [];
+  const initialLaunchStatus = campaignIds?.launchStatus || 'paused';
+
+  const [isActive, setIsActive] = useState(initialLaunchStatus === 'active');
+  const [toggling, setToggling] = useState(false);
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard`);
   };
 
-  // Handle both naming conventions from build-meta-campaign
-  const campaignId = campaignIds?.campaignId || campaignIds?.campaign_id;
-  const adSetIds = campaignIds?.adSetIds || campaignIds?.ad_set_ids || [];
-  const adIds = campaignIds?.adIds || campaignIds?.ad_ids || [];
-
   const metaAdsManagerUrl = `https://business.facebook.com/adsmanager`;
+
+  const handleToggleCampaign = async () => {
+    if (!campaignId) return;
+    
+    setToggling(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-campaign-status', {
+        body: {
+          workspaceId: workspace?.id,
+          action: isActive ? 'pause' : 'unpause',
+          entityId: campaignId,
+          entityType: 'campaign'
+        }
+      });
+
+      if (error) throw error;
+
+      setIsActive(!isActive);
+      toast.success(isActive ? "Campaign paused" : "Campaign activated! Ads will deliver after Meta approval.");
+    } catch (error: any) {
+      console.error('Error toggling campaign:', error);
+      toast.error(error.message || "Failed to update campaign status");
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const isLive = isActive;
 
   return (
     <div className="space-y-6">
       {/* Success Header */}
       <div className="text-center py-8">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-500/10 mb-4">
-          <CheckCircle className="h-10 w-10 text-green-500" />
+        <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
+          isLive ? 'bg-green-500/10' : 'bg-amber-500/10'
+        }`}>
+          {isLive ? (
+            <Play className="h-10 w-10 text-green-500" />
+          ) : (
+            <CheckCircle className="h-10 w-10 text-amber-500" />
+          )}
         </div>
-        <h1 className="text-3xl font-bold mb-2">🎉 Campaign Published!</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          {isLive ? '🚀 Campaign is Live!' : '🎉 Campaign Published!'}
+        </h1>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Your campaign is now live on Meta. It may take a few minutes to appear in Ads Manager.
+          {isLive 
+            ? "Your ads are now in Meta's review queue and will start delivering once approved (usually 15-30 minutes)."
+            : "Your campaign is paused and ready to activate. Turn it on when you're ready to start delivering ads."
+          }
         </p>
       </div>
+
+      {/* Campaign Status Control */}
+      <Card className={isLive ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}>
+        <CardContent className="py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {isLive ? (
+                <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <Play className="h-5 w-5 text-green-500" />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <Pause className="h-5 w-5 text-amber-500" />
+                </div>
+              )}
+              <div>
+                <p className="font-semibold">
+                  Campaign Status: {isLive ? 'Active' : 'Paused'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {isLive 
+                    ? 'Your ads are delivering or pending Meta approval'
+                    : 'Turn on to start delivering ads'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {toggling && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Switch
+                checked={isActive}
+                onCheckedChange={handleToggleCampaign}
+                disabled={toggling}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Campaign Details */}
       <Card>
@@ -82,7 +166,9 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
           )}
 
           <div className="flex items-center gap-2 pt-2">
-            <Badge variant="secondary">Status: Paused (Ready to Activate)</Badge>
+            <Badge variant={isLive ? "default" : "secondary"}>
+              Status: {isLive ? 'Active' : 'Paused'}
+            </Badge>
             <Badge variant="outline">
               {adIds.length} Ads Created
             </Badge>
@@ -97,21 +183,23 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-                1
+            {!isLive && (
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
+                  1
+                </div>
+                <div>
+                  <p className="font-medium text-sm">Activate Your Campaign</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use the toggle above to turn your campaign on when you're ready.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium text-sm">Review in Meta Ads Manager</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your campaign is in "Paused" status. Review the settings and activate when ready.
-                </p>
-              </div>
-            </div>
+            )}
 
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-                2
+                {isLive ? '1' : '2'}
               </div>
               <div>
                 <p className="font-medium text-sm">Wait for Meta's Approval</p>
@@ -123,7 +211,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
 
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-                3
+                {isLive ? '2' : '3'}
               </div>
               <div>
                 <p className="font-medium text-sm">Let It Learn (3-5 Days)</p>
@@ -135,7 +223,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
 
             <div className="flex gap-3">
               <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-                4
+                {isLive ? '3' : '4'}
               </div>
               <div>
                 <p className="font-medium text-sm">Monitor & Optimize</p>
@@ -180,7 +268,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
           }}
         >
           <ExternalLink className="h-4 w-4 mr-2" />
-          View Campaign in Ads Manager
+          View in Ads Manager
         </Button>
         <Button onClick={onBackToDashboard} size="lg">
           Back to Dashboard
