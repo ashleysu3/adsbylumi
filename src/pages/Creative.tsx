@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Sparkles, Rocket, Clipboard, Upload, Grid3X3, ArrowLeft, ClipboardList } from "lucide-react";
+import { Sparkles, Rocket, Clipboard, Grid3X3, ArrowLeft, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
@@ -18,7 +18,6 @@ import { GeneratingModal } from "@/components/GeneratingModal";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
 import { CreativeGrid } from "@/components/creative/CreativeGrid";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
-import { BulkUploader, UploadedAsset } from "@/components/creative/BulkUploader";
 import { ProductionChecklistPanel, ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { cn } from "@/lib/utils";
 
@@ -60,8 +59,6 @@ export default function Creative() {
   const [gridData, setGridData] = useState<CreativeCellData[]>([]);
   const [selectedCells, setSelectedCells] = useState<string[]>([]);
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
-  const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
-  const [activeTab, setActiveTab] = useState<string>("grid");
 
   useEffect(() => {
     fetchInitialData();
@@ -428,37 +425,6 @@ export default function Creative() {
     setProductionItems(updatedItems);
     saveCreativeState({ productionItems: updatedItems });
   };
-
-  const handleBulkUploadAdd = (assets: UploadedAsset[]) => {
-    const newItems: ProductionItem[] = assets.map(asset => {
-      const angle = availableAngles.find(a => a.id === asset.angleId);
-      return {
-        id: asset.id,
-        format: asset.format,
-        hook: asset.file.name,
-        guidance: "Uploaded asset - ready to use",
-        angleName: angle?.name || "Unassigned",
-        completed: true,
-        assetNote: "Asset uploaded"
-      };
-    });
-    
-    const updatedItems = [...productionItems, ...newItems];
-    setProductionItems(updatedItems);
-    saveCreativeState({ productionItems: updatedItems });
-    
-    // Milestone celebration when reaching 3 items
-    if (productionItems.length < 3 && updatedItems.length >= 3) {
-      triggerMilestoneConfetti();
-      toast.success("🎉 Nice! You have enough concepts to start production", {
-        description: "You can now go to Production to record and upload assets.",
-        duration: 5000,
-      });
-    } else {
-      toast.success(`Added ${assets.length} uploaded assets to checklist`);
-    }
-  };
-
   const handleRegenerateCell = async (cellId: string) => {
     const cell = gridData.find(c => c.id === cellId);
     if (!cell) return;
@@ -668,38 +634,6 @@ export default function Creative() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-
-                      {/* View Toggle with active indicator */}
-                      <div className="flex items-center rounded-lg border bg-muted/50 p-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setActiveTab("grid")}
-                          className={cn(
-                            "gap-2 h-8 px-3 rounded-md transition-all",
-                            activeTab === "grid" 
-                              ? "bg-background shadow-sm text-foreground" 
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          <Grid3X3 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Grid</span>
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => setActiveTab("upload")}
-                          className={cn(
-                            "gap-2 h-8 px-3 rounded-md transition-all",
-                            activeTab === "upload" 
-                              ? "bg-background shadow-sm text-foreground" 
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          <Upload className="h-4 w-4" />
-                          <span className="hidden sm:inline">Upload</span>
-                        </Button>
-                      </div>
                     </div>
                   ) : (
                     <Badge variant="secondary" className="shrink-0">
@@ -756,29 +690,20 @@ export default function Creative() {
                     isGenerating={generating}
                   />
                 ) : (
-                  /* Step 2+: Creative Grid & Upload */
-                  activeTab === "grid" ? (
-                    <CreativeGrid
-                      angles={selectedAngles}
-                      activeAngleId={activeAngleId}
-                      onAngleChange={setActiveAngleId}
-                      gridData={gridData}
-                      selectedCells={selectedCells}
-                      onCellToggle={handleCellToggle}
-                      onAddToChecklist={handleAddToChecklist}
-                      onAddSingleToChecklist={handleAddSingleToChecklist}
-                      onRegenerateCell={handleRegenerateCell}
-                      checklistIds={productionItems.map(item => item.id)}
-                      regeneratingCellId={regeneratingCellId}
-                    />
-                  ) : (
-                    <BulkUploader
-                      angles={selectedAngles}
-                      uploadedAssets={uploadedAssets}
-                      onAssetsChange={setUploadedAssets}
-                      onAddToChecklist={handleBulkUploadAdd}
-                    />
-                  )
+                  /* Step 2+: Creative Grid */
+                  <CreativeGrid
+                    angles={selectedAngles}
+                    activeAngleId={activeAngleId}
+                    onAngleChange={setActiveAngleId}
+                    gridData={gridData}
+                    selectedCells={selectedCells}
+                    onCellToggle={handleCellToggle}
+                    onAddToChecklist={handleAddToChecklist}
+                    onAddSingleToChecklist={handleAddSingleToChecklist}
+                    onRegenerateCell={handleRegenerateCell}
+                    checklistIds={productionItems.map(item => item.id)}
+                    regeneratingCellId={regeneratingCellId}
+                  />
                 )}
               </div>
             </div>
