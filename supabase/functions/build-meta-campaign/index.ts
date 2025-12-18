@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
     };
     const objectiveName = objectiveMap[answers?.optimizationEvent] || 'Traffic';
     
-    const campaignBaseName = `YAA // ${objectiveName} - ${productName} - ${startDate}`;
+    const campaignBaseName = `LUMI // ${objectiveName} - ${productName} - ${startDate}`;
 
     // Determine Meta API objective
     // Note: LEAD_GENERATION optimization_goal is for Facebook Instant Forms only.
