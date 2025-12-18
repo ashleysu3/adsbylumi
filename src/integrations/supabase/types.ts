@@ -144,6 +144,7 @@ export type Database = {
           prepopulated_fields: Json | null
           purpose: string | null
           slug: string
+          sort_order: number | null
           strategy_template: Json
           use_case: string
         }
@@ -166,6 +167,7 @@ export type Database = {
           prepopulated_fields?: Json | null
           purpose?: string | null
           slug: string
+          sort_order?: number | null
           strategy_template: Json
           use_case: string
         }
@@ -188,6 +190,7 @@ export type Database = {
           prepopulated_fields?: Json | null
           purpose?: string | null
           slug?: string
+          sort_order?: number | null
           strategy_template?: Json
           use_case?: string
         }
