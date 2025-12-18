@@ -252,7 +252,9 @@ export default function Production() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">Production Dashboard</h1>
+              <h1 className="text-3xl font-bold">
+                <span className="text-gradient-lumi">Production</span> Dashboard
+              </h1>
               <p className="text-muted-foreground mt-1">
                 {workspace.name} • {statusCounts.total} concepts
               </p>
@@ -276,7 +278,7 @@ export default function Production() {
         </div>
 
         {/* Progress Overview */}
-        <Card>
+        <Card variant="gradient">
           <CardContent className="pt-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -300,6 +302,7 @@ export default function Production() {
                   onClick={handleBuildCampaign}
                   disabled={statusCounts.approved < 3}
                   size="sm"
+                  variant="lumi"
                 >
                   Build Campaign ({statusCounts.approved}/3+)
                 </Button>
@@ -310,9 +313,10 @@ export default function Production() {
 
         {/* Bulk Upload Section */}
         <Card
+          variant="glow"
           className={cn(
-            "border-2 border-dashed transition-colors cursor-pointer",
-            isDragging && "border-primary bg-primary/5"
+            "border-2 border-dashed transition-all duration-300 cursor-pointer",
+            isDragging && "border-primary bg-gradient-to-br from-lumi-purple-1/5 to-lumi-pink-1/5 shadow-glow"
           )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -338,11 +342,11 @@ export default function Production() {
 
         {/* Uploaded assets pending */}
         {uploadedAssets.length > 0 && (
-          <Card>
+          <Card variant="glow">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold">{uploadedAssets.length} files ready to add</h3>
-                <Button onClick={handleAddUploadsToProduction} size="sm">
+                <Button onClick={handleAddUploadsToProduction} size="sm" variant="lumi">
                   Add All to Production
                 </Button>
               </div>
@@ -389,12 +393,12 @@ export default function Production() {
 
         {/* Empty State for no production items */}
         {productionItems.length === 0 ? (
-          <Card>
+          <Card variant="glow" className="border-dashed">
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground mb-4">
                 No concepts in production yet. Send concepts from the Creative dashboard to start producing.
               </p>
-              <Button onClick={() => navigate("/creative")}>
+              <Button onClick={() => navigate("/creative")} variant="lumi">
                 Go to Creative Dashboard
               </Button>
             </CardContent>
