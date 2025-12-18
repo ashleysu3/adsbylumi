@@ -639,51 +639,53 @@ export default function Data() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Page Header with Meta Status */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
-            <h1 className="text-2xl font-display tracking-tight">Campaign Insights</h1>
-            <p className="text-muted-foreground text-sm">Track performance and get AI-powered recommendations</p>
+            <h1 className="text-xl sm:text-2xl font-display tracking-tight">Campaign Insights</h1>
+            <p className="text-muted-foreground text-xs sm:text-sm">Track performance and get AI recommendations</p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {/* Import from Ads Manager Button */}
             {metaConnected && !metaTokenExpired && brandId && metaAccountId && (
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="gap-2"
+                className="gap-2 min-h-[44px] text-xs sm:text-sm"
                 onClick={() => setImportModalOpen(true)}
               >
                 <Download className="h-4 w-4" />
-                Import from Ads Manager
+                <span className="hidden sm:inline">Import from Ads Manager</span>
+                <span className="sm:hidden">Import</span>
               </Button>
             )}
 
             {/* Meta Connection Status Badge */}
             {metaConnected && !metaTokenExpired && (
-              <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Meta Connected
+              <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 gap-1 text-xs">
+                <CheckCircle2 className="h-3 w-3" />
+                <span className="hidden sm:inline">Meta Connected</span>
+                <span className="sm:hidden">Connected</span>
               </Badge>
             )}
             {metaConnected && metaTokenExpired && (
               <Button 
                 variant="destructive" 
                 size="sm" 
-                className="gap-2"
+                className="gap-2 min-h-[44px]"
                 onClick={() => navigate("/dashboard")}
               >
                 <AlertTriangle className="h-4 w-4" />
-                Reconnect Meta
+                Reconnect
               </Button>
             )}
             {!metaConnected && !loading && (
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="gap-2"
+                className="gap-2 min-h-[44px]"
                 onClick={() => navigate("/dashboard")}
               >
                 <Link2 className="h-4 w-4" />

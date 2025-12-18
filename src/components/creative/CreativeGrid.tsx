@@ -45,12 +45,12 @@ export function CreativeGrid({
   ).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header with angle selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex items-center gap-3">
           <Select value={activeAngleId} onValueChange={onAngleChange}>
-            <SelectTrigger className="w-[280px]">
+            <SelectTrigger className="w-full sm:w-[280px] min-h-[44px]">
               <SelectValue placeholder="Select angle" />
             </SelectTrigger>
             <SelectContent>
@@ -63,17 +63,18 @@ export function CreativeGrid({
           </Select>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {selectedCount > 0 && (
-            <Badge variant="secondary" className="gap-1.5">
+            <Badge variant="secondary" className="gap-1 text-xs sm:text-sm">
               <CheckCircle2 className="h-3 w-3" />
-              {selectedCount} selected
+              {selectedCount}
             </Badge>
           )}
           <Button
             onClick={onAddToChecklist}
             disabled={selectedCount === 0}
             size="sm"
+            className="min-h-[44px] flex-1 sm:flex-none"
           >
             <Plus className="mr-1.5 h-4 w-4" />
             Add to Checklist
@@ -82,18 +83,18 @@ export function CreativeGrid({
       </div>
 
       {/* Grid */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {rowOrder.map((row) => {
           const rowCells = gridData.filter(
             cell => cell.row === row && cell.angleId === activeAngleId
           );
 
           return (
-            <div key={row} className="space-y-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            <div key={row} className="space-y-2 sm:space-y-3">
+              <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 {rowLabels[row]}
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {rowCells.map((cell) => (
                   <CreativeCell
                     key={cell.id}

@@ -371,31 +371,31 @@ export default function Production() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/creative")}>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]" onClick={() => navigate("/creative")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold">
-                <span className="text-gradient-lumi">Production</span> Dashboard
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-3xl font-bold">
+                <span className="text-gradient-lumi">Production</span>
               </h1>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {workspaceOptions.length > 1 ? (
                   <Select value={workspace?.id} onValueChange={handleWorkspaceChange}>
-                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-transparent focus:ring-0 text-muted-foreground text-sm font-normal gap-1">
+                    <SelectTrigger className="w-auto h-auto p-0 border-0 bg-transparent hover:bg-transparent focus:ring-0 text-muted-foreground text-xs sm:text-sm font-normal gap-1 max-w-[150px] sm:max-w-none">
                       <SelectValue>{workspace.name}</SelectValue>
                       <ChevronDown className="h-3 w-3 opacity-50" />
                     </SelectTrigger>
                     <SelectContent>
                       {workspaceOptions.map((option) => (
                         <SelectItem key={option.id} value={option.id}>
-                          <div className="flex items-center justify-between gap-4">
-                            <span>{option.name}</span>
-                            <Badge variant="secondary" className="ml-2 text-xs">
-                              {option.itemCount} items
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate">{option.name}</span>
+                            <Badge variant="secondary" className="text-xs shrink-0">
+                              {option.itemCount}
                             </Badge>
                           </div>
                         </SelectItem>
@@ -403,17 +403,17 @@ export default function Production() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <span className="text-muted-foreground text-sm">{workspace.name}</span>
+                  <span className="text-muted-foreground text-xs sm:text-sm truncate">{workspace.name}</span>
                 )}
-                <span className="text-muted-foreground text-sm">• {statusCounts.total} concepts</span>
+                <span className="text-muted-foreground text-xs sm:text-sm shrink-0">• {statusCounts.total} concepts</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
             <Select value={filterFormat} onValueChange={setFilterFormat}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Creative type" />
+              <SelectTrigger className="w-[120px] sm:w-[160px] min-h-[44px] shrink-0">
+                <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
@@ -425,7 +425,7 @@ export default function Production() {
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[120px] sm:w-[160px] min-h-[44px] shrink-0">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -441,32 +441,33 @@ export default function Production() {
 
         {/* Progress Overview */}
         <Card variant="gradient">
-          <CardContent className="pt-6">
-            <div className="space-y-4">
+          <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+            <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Overall Progress</h3>
-                <span className="text-sm text-muted-foreground">{Math.round(progress)}% Complete</span>
+                <h3 className="font-semibold text-sm sm:text-base">Progress</h3>
+                <span className="text-xs sm:text-sm text-muted-foreground">{Math.round(progress)}%</span>
               </div>
-              <Progress value={progress} className="h-3" />
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-purple-500/10 text-purple-600">
-                    ✓ {statusCounts.approved} Ready
+              <Progress value={progress} className="h-2 sm:h-3" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className="bg-purple-500/10 text-purple-600 text-xs">
+                    ✓ {statusCounts.approved}
                   </Badge>
-                  <Badge className="bg-blue-500/10 text-blue-600">
-                    🎬 {statusCounts.in_progress} In Progress
+                  <Badge className="bg-blue-500/10 text-blue-600 text-xs">
+                    🎬 {statusCounts.in_progress}
                   </Badge>
-                  <Badge className="bg-muted text-muted-foreground">
-                    ⏳ {statusCounts.pending} Pending
+                  <Badge className="bg-muted text-muted-foreground text-xs">
+                    ⏳ {statusCounts.pending}
                   </Badge>
                 </div>
                 <Button
                   onClick={handleBuildCampaign}
-                  disabled={statusCounts.approved < 3}
                   size="sm"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  disabled={statusCounts.approved < 3}
                   variant="lumi"
                 >
-                  Build Campaign ({statusCounts.approved}/3+)
+                  Build ({statusCounts.approved}/3+)
                 </Button>
               </div>
             </div>
