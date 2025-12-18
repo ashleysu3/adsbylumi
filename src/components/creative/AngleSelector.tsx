@@ -43,27 +43,36 @@ export function AngleSelector({
         <p className="text-muted-foreground max-w-xl mx-auto">
           Select 3–5 angles that feel right for this campaign. Each angle will become a set of creative ideas you can choose from.
         </p>
-        {/* Visual progress indicator */}
+        {/* Visual progress indicator with animations */}
         <div className="flex items-center justify-center gap-2">
           {[1, 2, 3, 4, 5].map((slot) => {
             const isFilled = slot <= selectedAngles.length;
             const isRequired = slot <= 3;
+            const isJustFilled = slot === selectedAngles.length;
             return (
               <div
                 key={slot}
                 className={cn(
-                  "w-3 h-3 rounded-full transition-all duration-200",
+                  "w-3 h-3 rounded-full transition-all duration-300 ease-out",
                   isFilled
-                    ? "bg-primary scale-110"
+                    ? "bg-primary"
                     : isRequired
                     ? "bg-muted-foreground/30 ring-1 ring-muted-foreground/50"
-                    : "bg-muted"
+                    : "bg-muted",
+                  isJustFilled && "animate-[bounce_0.4s_ease-out]",
+                  isFilled && "scale-110"
                 )}
+                style={{
+                  transitionDelay: isFilled ? `${(slot - 1) * 50}ms` : '0ms'
+                }}
                 title={isRequired ? `Required slot ${slot}` : `Optional slot ${slot}`}
               />
             );
           })}
-          <span className="ml-2 text-sm text-muted-foreground">
+          <span className={cn(
+            "ml-2 text-sm transition-colors duration-200",
+            selectedAngles.length >= 3 ? "text-primary font-medium" : "text-muted-foreground"
+          )}>
             {selectedAngles.length < 3 
               ? `${3 - selectedAngles.length} more needed`
               : selectedAngles.length === 5 
