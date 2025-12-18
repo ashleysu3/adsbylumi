@@ -27,6 +27,8 @@ const steps: Step[] = ["review", "create", "upload", "copy", "done"];
 // Helper to determine the correct step based on item status
 function getStepForStatus(status: string): Step {
   switch (status) {
+    case "in_progress":
+      return "create";
     case "recorded":
       return "upload";
     case "uploaded":
@@ -42,23 +44,63 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
   const [currentStep, setCurrentStep] = useState<Step>(() => getStepForStatus(item?.status));
   const [updatedItem, setUpdatedItem] = useState(item);
 
+  // When switching between cards, reset local state to the selected item
+  useEffect(() => {
+    if (!item?.id) return;
+    setUpdatedItem(item);
+    setCurrentStep(getStepForStatus(item.status));
+  }, [item?.id]);
+
+  // When the parent refreshes the same item, merge new fields without blowing away local additions
+  useEffect(() => {
+    if (!item?.id) return;
+    setUpdatedItem((prev: any) => {
+      if (!prev) return item;
+      if (prev.id !== item.id) return prev;
+      return { ...prev, ...item };
+    });
+  }, [item]);
+
   // Update step when item status changes (e.g., after marking as recorded)
   useEffect(() => {
-    if (updatedItem?.status) {
-      const correctStep = getStepForStatus(updatedItem.status);
-      if (correctStep !== currentStep && steps.indexOf(correctStep) > steps.indexOf(currentStep)) {
-        setCurrentStep(correctStep);
-      }
+    if (!updatedItem?.status) return;
+
+    const correctStep = getStepForStatus(updatedItem.status);
+    if (correctStep !== currentStep && steps.indexOf(correctStep) > steps.indexOf(currentStep)) {
+      setCurrentStep(correctStep);
     }
-  }, [updatedItem?.status]);
+  }, [updatedItem?.status, currentStep]);
 
   const currentStepIndex = steps.indexOf(currentStep);
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
   const isVideoFormat = ["talking_head", "broll"].includes(item.format);
 
-  const handleNext = (step: Step) => {
+  const handleNext = async (step: Step) => {
+    // Immediately move the UI forward for a smoother feel
     setCurrentStep(step);
+
+    // If they start creating, mark the item as in progress so the card updates too
+    if (step === "create" && (updatedItem?.status === "pending" || updatedItem?.status === "ready")) {
+      try {
+        const productionItems = workspace.production_items || [];
+        const updatedItems = productionItems.map((pi: any) =>
+          pi.id === item.id ? { ...pi, status: "in_progress" } : pi
+        );
+
+        const { error } = await supabase
+          .from("campaign_workspaces")
+          .update({ production_items: updatedItems })
+          .eq("id", workspace.id);
+
+        if (error) throw error;
+
+        setUpdatedItem((prev: any) => ({ ...prev, status: "in_progress" }));
+        onUpdate();
+      } catch (e) {
+        console.error("Failed to mark in progress", e);
+      }
+    }
   };
 
   const handleCreateComplete = async () => {
@@ -79,52 +121,69 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
   };
 
   const handleUploadComplete = async () => {
-    // Find the most recently uploaded asset for this concept
-    const latestAsset = workspace.user_uploaded_assets?.find(
-      (asset: any) => asset.linked_concept_id === item.concept_id
-    );
-    
-    // Update production item with status "uploaded" and asset info
-    const productionItems = workspace.production_items || [];
-    const updatedItems = productionItems.map((pi: any) =>
-      pi.id === item.id ? { 
-        ...pi, 
+    try {
+      // Re-fetch to make sure we include the very latest upload (users often click through fast)
+      const { data: fresh, error: fetchError } = await supabase
+        .from("campaign_workspaces")
+        .select("production_items, user_uploaded_assets")
+        .eq("id", workspace.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const assets = (fresh?.user_uploaded_assets || workspace.user_uploaded_assets || []) as any[];
+      const latestAsset = [...assets].reverse().find((asset: any) => asset.linked_concept_id === item.concept_id);
+
+      if (!latestAsset) {
+        toast.error("Upload a file for this concept before continuing.");
+        return;
+      }
+
+      // Update production item with status "uploaded" and asset info
+      const productionItems = (fresh?.production_items || workspace.production_items || []) as any[];
+      const updatedItems = productionItems.map((pi: any) =>
+        pi.id === item.id
+          ? {
+              ...pi,
+              status: "uploaded",
+              uploaded_asset_id: latestAsset.id,
+              linkedAsset: {
+                id: latestAsset.id,
+                url: latestAsset.file_url,
+                storagePath: latestAsset.storage_path,
+                type: latestAsset.file_type,
+                fileName: latestAsset.file_name,
+              },
+            }
+          : pi
+      );
+
+      const { error: updateError } = await supabase
+        .from("campaign_workspaces")
+        .update({ production_items: updatedItems })
+        .eq("id", workspace.id);
+
+      if (updateError) throw updateError;
+
+      setUpdatedItem((prev: any) => ({
+        ...prev,
         status: "uploaded",
-        ...(latestAsset && {
-          uploaded_asset_id: latestAsset.id,
-          linkedAsset: {
-            id: latestAsset.id,
-            url: latestAsset.file_url,
-            storagePath: latestAsset.storage_path,
-            type: latestAsset.file_type,
-            fileName: latestAsset.file_name
-          }
-        })
-      } : pi
-    );
-    
-    await supabase
-      .from("campaign_workspaces")
-      .update({ production_items: updatedItems })
-      .eq("id", workspace.id);
-    
-    setUpdatedItem({ 
-      ...updatedItem, 
-      status: "uploaded",
-      ...(latestAsset && {
         uploaded_asset_id: latestAsset.id,
         linkedAsset: {
           id: latestAsset.id,
           url: latestAsset.file_url,
           storagePath: latestAsset.storage_path,
           type: latestAsset.file_type,
-          fileName: latestAsset.file_name
-        }
-      })
-    });
-    
-    handleNext("copy");
-    onUpdate();
+          fileName: latestAsset.file_name,
+        },
+      }));
+
+      handleNext("copy");
+      onUpdate();
+    } catch (error) {
+      console.error("Upload finalize error:", error);
+      toast.error("Couldn't finalize the upload. Please try again.");
+    }
   };
 
   const handleCopyApprove = async (copy: any) => {
@@ -198,8 +257,8 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
               { key: "review", label: "Review" },
               { key: "create", label: "Create" },
               { key: "upload", label: "Upload" },
-              { key: "copy", label: "Copy" },
-              { key: "done", label: "Done" },
+              { key: "copy", label: "Review Copy" },
+              { key: "done", label: "Publish" },
             ].map((step, index) => (
               <div key={step.key} className="flex items-center">
                 <div
