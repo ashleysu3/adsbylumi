@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Sparkles, Rocket, Clipboard, Grid3X3, ArrowLeft, ClipboardList } from "lucide-react";
+import { Sparkles, Rocket, Clipboard, Grid3X3, ArrowLeft, ClipboardList, FileText, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { useLumiAssistant } from "@/components/LumiAssistant";
@@ -19,10 +20,12 @@ import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelecto
 import { CreativeGrid } from "@/components/creative/CreativeGrid";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionChecklistPanel, ProductionItem } from "@/components/creative/ProductionChecklistPanel";
+import { CopyPreview } from "@/components/creative/CopyPreview";
 import { LumiChat } from "@/components/LumiChat";
 import { cn } from "@/lib/utils";
 
 type DashboardStep = "select_angles" | "creative_grid";
+type CreativeTab = "ideas" | "copy";
 type GeneratingPhase = "angles" | "grid" | null;
 
 const angleGenerationSteps = [
@@ -63,12 +66,15 @@ export default function Creative() {
   
   // Creative state
   const [dashboardStep, setDashboardStep] = useState<DashboardStep>("select_angles");
+  const [creativeTab, setCreativeTab] = useState<CreativeTab>("ideas");
   const [availableAngles, setAvailableAngles] = useState<CreativeAngle[]>([]);
   const [selectedAngleIds, setSelectedAngleIds] = useState<string[]>([]);
   const [activeAngleId, setActiveAngleId] = useState<string>("");
   const [gridData, setGridData] = useState<CreativeCellData[]>([]);
   const [selectedCells, setSelectedCells] = useState<string[]>([]);
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
+  const [angleCopy, setAngleCopy] = useState<Record<string, any>>({});
+  const [regeneratingCopy, setRegeneratingCopy] = useState(false);
 
   // Lumi contextual recommendations
   const { setRecommendation } = useLumiAssistant();
@@ -225,6 +231,7 @@ export default function Creative() {
         
         setGridData(gridDataNormalized);
         setProductionItems(creativeData.productionItems || []);
+        setAngleCopy(creativeData.angle_copy || {});
         setDashboardStep(gridDataNormalized.length > 0 ? "creative_grid" : "select_angles");
         if (creativeData.selectedAngleIds?.length > 0) {
           setActiveAngleId(creativeData.selectedAngleIds[0]);
@@ -235,6 +242,7 @@ export default function Creative() {
         setSelectedAngleIds([]);
         setGridData([]);
         setProductionItems([]);
+        setAngleCopy({});
         setDashboardStep("select_angles");
         setActiveAngleId("");
       }
@@ -411,12 +419,70 @@ export default function Creative() {
 
       if (error) throw error;
 
+      // Update local state
+      setAngleCopy(data.angle_copy);
+      
       // Save angle copy to workspace
       await saveCreativeState({ angle_copy: data.angle_copy });
       console.log("Angle copy generated successfully");
     } catch (err: any) {
       console.error("Failed to generate angle copy:", err);
       // Don't show error toast - this is background work
+    }
+  };
+
+  // Regenerate copy for a single angle (user-triggered)
+  const regenerateAngleCopy = async (angleId: string) => {
+    if (!workspace) return;
+    
+    setRegeneratingCopy(true);
+    try {
+      const angle = availableAngles.find(a => a.id === angleId);
+      if (!angle) throw new Error("Angle not found");
+
+      // Fetch offer data for copy generation
+      let offerData = null;
+      if (workspace.offer_id) {
+        const { data } = await supabase
+          .from('offers')
+          .select('name, description, price_point, target_outcome, product_psychology, messaging_guidelines')
+          .eq('id', workspace.offer_id)
+          .single();
+        offerData = data;
+      }
+
+      const { data, error } = await supabase.functions.invoke('generate-angle-copy', {
+        body: {
+          angles: [angle],
+          brandInfo: {
+            name: workspace.brands?.name,
+            brand_voice: workspace.brands?.brand_voice,
+          },
+          offerData: offerData || {
+            name: workspace.offer_name,
+            description: workspace.offer_description,
+            price_point: workspace.offer_price,
+          },
+          audiencePsychology: workspace.brands?.audience_psychology,
+        }
+      });
+
+      if (error) throw error;
+
+      // Merge new copy with existing
+      const newAngleCopy = { ...angleCopy, ...data.angle_copy };
+      setAngleCopy(newAngleCopy);
+      
+      // Save to workspace
+      await saveCreativeState({ angle_copy: newAngleCopy });
+      toast.success("Copy regenerated!");
+    } catch (err: any) {
+      console.error("Failed to regenerate angle copy:", err);
+      if (err.message?.includes("429")) toast.error("Rate limit exceeded. Please wait a moment.");
+      else if (err.message?.includes("402")) toast.error("AI credits depleted. Please add credits in Settings.");
+      else toast.error(err.message || "Failed to regenerate copy");
+    } finally {
+      setRegeneratingCopy(false);
     }
   };
 
@@ -822,20 +888,53 @@ export default function Creative() {
                     isGenerating={generating}
                   />
                 ) : (
-                  /* Step 2+: Creative Grid */
-                  <CreativeGrid
-                    angles={selectedAngles}
-                    activeAngleId={activeAngleId}
-                    onAngleChange={setActiveAngleId}
-                    gridData={gridData}
-                    selectedCells={selectedCells}
-                    onCellToggle={handleCellToggle}
-                    onAddToChecklist={handleAddToChecklist}
-                    onAddSingleToChecklist={handleAddSingleToChecklist}
-                    onRegenerateCell={handleRegenerateCell}
-                    checklistIds={productionItems.map(item => item.id)}
-                    regeneratingCellId={regeneratingCellId}
-                  />
+                  /* Step 2+: Creative Grid with Tabs */
+                  <div className="space-y-4">
+                    <Tabs value={creativeTab} onValueChange={(v) => setCreativeTab(v as CreativeTab)} className="w-full">
+                      <TabsList className="grid w-full max-w-md grid-cols-2">
+                        <TabsTrigger value="ideas" className="gap-2 min-h-[44px]">
+                          <Lightbulb className="h-4 w-4" />
+                          Ideas
+                        </TabsTrigger>
+                        <TabsTrigger value="copy" className="gap-2 min-h-[44px]">
+                          <FileText className="h-4 w-4" />
+                          Ad Copy
+                          {Object.keys(angleCopy).length > 0 && (
+                            <Badge variant="secondary" className="ml-1 text-xs">
+                              {Object.keys(angleCopy).length}
+                            </Badge>
+                          )}
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="ideas" className="mt-4">
+                        <CreativeGrid
+                          angles={selectedAngles}
+                          activeAngleId={activeAngleId}
+                          onAngleChange={setActiveAngleId}
+                          gridData={gridData}
+                          selectedCells={selectedCells}
+                          onCellToggle={handleCellToggle}
+                          onAddToChecklist={handleAddToChecklist}
+                          onAddSingleToChecklist={handleAddSingleToChecklist}
+                          onRegenerateCell={handleRegenerateCell}
+                          checklistIds={productionItems.map(item => item.id)}
+                          regeneratingCellId={regeneratingCellId}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="copy" className="mt-4">
+                        <CopyPreview
+                          angles={selectedAngles}
+                          activeAngleId={activeAngleId}
+                          onAngleChange={setActiveAngleId}
+                          angleCopy={angleCopy}
+                          onRegenerateAngleCopy={regenerateAngleCopy}
+                          isRegenerating={regeneratingCopy}
+                        />
+                      </TabsContent>
+                    </Tabs>
+                  </div>
                 )}
               </div>
             </div>
