@@ -217,7 +217,7 @@ export default function DashboardLayout({
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
                 <span className="relative flex items-center px-4 py-2 rounded-md bg-white text-foreground font-semibold group-hover:bg-white/95 transition-colors">
                   <Sparkles className="mr-2 h-4 w-4 text-lumi-pink-1 group-hover:rotate-12 transition-transform duration-300" />
-                  Create a new ad!
+                  CREATE
                 </span>
               </button>
               <DropdownMenu>
