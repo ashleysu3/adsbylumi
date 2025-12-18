@@ -35,7 +35,10 @@ serve(async (req) => {
       console.error('Error fetching knowledge:', kbError);
     }
 
+    console.log(`Fetched ${kbDocs?.length || 0} KB documents for copy generation`);
+
     // Organize KB by category with FULL content
+    // Actual categories: ad_planner, copy_formulas, creative_department, hooks, meta_best_practices, psychology, visual_guidelines
     const knowledgeByCategory: Record<string, any[]> = {};
     (kbDocs || []).forEach(doc => {
       if (!knowledgeByCategory[doc.category]) {
@@ -47,10 +50,13 @@ serve(async (req) => {
       });
     });
 
+    // Log which categories we have
+    console.log('KB categories found:', Object.keys(knowledgeByCategory));
+
     // Build comprehensive knowledge base context
     let kbContext = "=== YOUR KNOWLEDGE BASE ===\n\n";
     for (const [category, docs] of Object.entries(knowledgeByCategory)) {
-      kbContext += `[${category.toUpperCase().replace('_', ' ')}]\n`;
+      kbContext += `[${category.toUpperCase().replace(/_/g, ' ')}]\n`;
       docs.forEach(doc => {
         kbContext += `\n${doc.title}:\n${doc.content}\n`;
       });
@@ -138,9 +144,15 @@ Format: ${concept.format}
 Stage: ${stage.toUpperCase()}
 ${uploadedAssetUrl ? `Creative Type: ${uploadedAssetUrl.includes('video') ? 'Video' : 'Image'}` : ''}
 
+Offer Details:
+- Name: ${offer.name || 'Not specified'}
+- Description: ${offer.description || 'Not specified'}
+- Price: ${offer.price_point || 'Not specified'}
+- Target Outcome: ${offer.target_outcome || 'Not specified'}
+
 Generate headline, primary_text, description, and call_to_action that:
 1. Maintains continuity with the hook/script
-2. References relevant frameworks from the Knowledge Base
+2. References relevant frameworks from the Knowledge Base (copy_formulas, hooks, psychology, etc.)
 3. Defaults to LEARN_MORE for Grow stage unless there's strong reason otherwise
 4. Passes Meta compliance checks
 5. Applies proven copy formulas from the KB

@@ -7,24 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ALL Knowledge Base categories that must be fetched and applied
-const ALL_KB_CATEGORIES = [
-  'creative',
-  'copy',
-  'visual',
-  'meta_best_practices',
-  'ad_strategy',
-  'customer_journey',
-  'buyer_psychology',
-  'creative_troubleshooting',
-  'format_rules',
-  'offer_mapping',
-  'niche',
-  'trends',
-  'hook_library',
-  'compliance'
-];
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -53,25 +35,27 @@ serve(async (req) => {
       console.error('Error fetching knowledge:', kbError);
     }
 
+    console.log(`Fetched ${kbDocs?.length || 0} KB documents for copy variations`);
+
     // Organize KB content by category for structured access
+    // Actual categories: ad_planner, copy_formulas, creative_department, hooks, meta_best_practices, psychology, visual_guidelines
     const kbByCategory: Record<string, Array<{title: string, content: string}>> = {};
     (kbDocs || []).forEach((doc: any) => {
       if (!kbByCategory[doc.category]) kbByCategory[doc.category] = [];
       kbByCategory[doc.category].push({ title: doc.title, content: doc.content });
     });
 
-    // Build comprehensive KB sections
-    const customerJourneyKB = kbByCategory['customer_journey']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
-    const psychologyKB = kbByCategory['buyer_psychology']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
-    const creativeKB = kbByCategory['creative']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
-    const copyKB = kbByCategory['copy']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
-    const visualKB = kbByCategory['visual']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
-    const hookLibraryKB = kbByCategory['hook_library']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
-    const offerMappingKB = kbByCategory['offer_mapping']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
-    const nicheKB = kbByCategory['niche']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    // Log which categories we have
+    console.log('KB categories found:', Object.keys(kbByCategory));
+
+    // Build comprehensive KB sections using actual category names
+    const copyFormulasKB = kbByCategory['copy_formulas']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const psychologyKB = kbByCategory['psychology']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const hooksKB = kbByCategory['hooks']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const creativeDeptKB = kbByCategory['creative_department']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const visualKB = kbByCategory['visual_guidelines']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
+    const adPlannerKB = kbByCategory['ad_planner']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
     const metaBestPracticesKB = kbByCategory['meta_best_practices']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
-    const adStrategyKB = kbByCategory['ad_strategy']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
-    const complianceKB = kbByCategory['compliance']?.map(d => `${d.title}:\n${d.content}`).join('\n\n') || '';
 
     // Build full KB context
     let kbContext = "=== LUMI'S COMPLETE KNOWLEDGE BASE ===\n\n";
@@ -95,14 +79,12 @@ Every copy variation you generate MUST be informed by ALL of Lumi's Knowledge Ba
 
 ## MANDATORY KB INTEGRATION FOR COPY
 Every variation MUST demonstrate application of:
-1. Copy Formula KB - Use DIFFERENT frameworks (PAS, AIDA, Hook-Story-Offer, Fear-Agitation-Solution, etc.)
-2. Buyer Psychology KB - Specific psychological triggers appropriate for the stage
-3. Customer Journey KB - Stage-appropriate messaging (Grow/Nurture/Convert)
-4. Hook Library KB - Proven hook patterns for first lines
-5. Offer Mapping KB - Copy adjusted for offer type
-6. Niche KB - Industry-specific language patterns
-7. Meta Best Practices KB - Platform compliance and performance rules
-8. Compliance KB - Avoiding problematic claims
+1. Copy Formulas KB - Use DIFFERENT frameworks (PAS, AIDA, Hook-Story-Offer, Fear-Agitation-Solution, etc.)
+2. Psychology KB - Specific psychological triggers appropriate for the stage
+3. Hooks KB - Proven hook patterns for first lines
+4. Creative Department KB - Format-specific guidance
+5. Ad Planner KB - Strategy context
+6. Meta Best Practices KB - Platform compliance and performance rules
 
 ## BRAND CONTEXT
 - Brand Voice: ${brandInfo?.voice || 'Not specified'}
@@ -133,7 +115,6 @@ Before including ANY variation, validate it passes ALL checks:
 ✔ STAGE ALIGNMENT - Copy tone matches Grow/Nurture/Convert intent
 ✔ HOOK EFFECTIVENESS - Opening uses proven Hook Library patterns
 ✔ OFFER RELEVANCE - Copy properly represents this specific offer
-✔ NICHE LANGUAGE - Uses industry-appropriate terminology
 ✔ COMPLIANCE CHECK - No banned phrases or problematic claims
 ✔ CHARACTER LIMITS - Headlines <40, Descriptions <30
 
@@ -157,8 +138,8 @@ Your job: Generate 3-5 distinct copy variations, each using a DIFFERENT framewor
 Each variation must:
 1. Use a specific framework (PAS, AIDA, Hook-Story-Offer, Fear-Agitation-Solution, Before-After-Bridge, etc.)
 2. Have a unique angle while staying true to the concept
-3. Apply a DIFFERENT psychology trigger from Buyer Psychology KB
-4. Use hooks from Hook Library KB
+3. Apply a DIFFERENT psychology trigger from Psychology KB
+4. Use hooks from Hooks KB
 5. Maintain Meta compliance
 6. Be optimized for the stage (${stage.toUpperCase()})
 7. STRICTLY FOLLOW the messaging guidelines (especially "don't say" and "always include")
@@ -173,11 +154,11 @@ Return JSON array with this structure:
     "description": "...",
     "call_to_action": "LEARN_MORE",
     "framework_used": "Problem-Agitate-Solution",
-    "psychology_trigger": "Specific trigger from Buyer Psychology KB",
-    "hook_pattern": "Hook pattern used from Hook Library KB",
+    "psychology_trigger": "Specific trigger from Psychology KB",
+    "hook_pattern": "Hook pattern used from Hooks KB",
     "why_this_angle": "KB-informed explanation of why this works",
     "best_for": "Audiences who already know they have a problem",
-    "kb_references": ["copy", "buyer_psychology", "hook_library", "customer_journey"],
+    "kb_references": ["copy_formulas", "psychology", "hooks"],
     "validation_passed": true
   },
   // ... 2-4 more variations using DIFFERENT frameworks
@@ -206,10 +187,10 @@ Audience Psychology:
 - Desires: ${productPsychology.desires?.join(', ') || 'Not specified'}
 - Objections: ${productPsychology.objections?.join(', ') || 'Not specified'}
 
-Create variations using DIFFERENT frameworks from the Copy KB. Each must:
+Create variations using DIFFERENT frameworks from the Copy Formulas KB. Each must:
 - Use a unique copy formula (no repeating frameworks)
 - Apply different psychology triggers
-- Use different hook patterns from Hook Library KB
+- Use different hook patterns from Hooks KB
 - Be uniquely angled while on-brand
 
 Include kb_references array for each variation showing KB compliance.`;
