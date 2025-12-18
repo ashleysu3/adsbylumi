@@ -4,9 +4,10 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format, subDays, startOfDay, endOfDay, startOfYesterday, endOfYesterday } from 'date-fns';
-import { RefreshCw, Link2Off } from 'lucide-react';
+import { RefreshCw, Link2Off, CheckCircle2, AlertTriangle, Link2 } from 'lucide-react';
 import { InsightsHome } from '@/components/insights/InsightsHome';
 import { CampaignInsightDetail } from '@/components/insights/CampaignInsightDetail';
 import { useLumiAssistant } from '@/components/LumiAssistant';
@@ -69,6 +70,8 @@ export default function Data() {
   // Meta connection state
   const [metaConnected, setMetaConnected] = useState(false);
   const [metaTokenExpired, setMetaTokenExpired] = useState(false);
+  const [brandId, setBrandId] = useState<string | null>(null);
+  const [tokenExpirationChecked, setTokenExpirationChecked] = useState(false);
 
   // Date range state
   const [globalDateRange, setGlobalDateRange] = useState<string>('7');
@@ -221,15 +224,36 @@ export default function Data() {
 
       const { data: brand } = await supabase
         .from('brands')
-        .select('id, meta_account_id')
+        .select('id, meta_account_id, meta_token_expires_at')
         .eq('user_id', user.id)
         .single();
 
       if (!brand) return;
 
+      setBrandId(brand.id);
+
       // Meta is connected if we have an account ID (token is now stored in Vault server-side)
       const isMetaConnected = !!brand.meta_account_id;
       setMetaConnected(isMetaConnected);
+
+      // Check token expiration on page load
+      if (isMetaConnected && brand.meta_token_expires_at && !tokenExpirationChecked) {
+        const expiresAt = new Date(brand.meta_token_expires_at);
+        const now = new Date();
+        
+        if (expiresAt < now) {
+          setMetaTokenExpired(true);
+          toast.error("Meta connection expired", {
+            description: "Reconnect to continue syncing your campaigns.",
+            action: {
+              label: "Reconnect",
+              onClick: () => navigate("/dashboard"),
+            },
+            duration: 10000,
+          });
+        }
+        setTokenExpirationChecked(true);
+      }
 
       const { data, error } = await supabase
         .from('campaign_workspaces')
@@ -530,6 +554,44 @@ export default function Data() {
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Page Header with Meta Status */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-display tracking-tight">Campaign Insights</h1>
+            <p className="text-muted-foreground text-sm">Track performance and get AI-powered recommendations</p>
+          </div>
+          
+          {/* Meta Connection Status Badge */}
+          {metaConnected && !metaTokenExpired && (
+            <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 gap-1.5">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Meta Connected
+            </Badge>
+          )}
+          {metaConnected && metaTokenExpired && (
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => navigate("/dashboard")}
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Reconnect Meta
+            </Button>
+          )}
+          {!metaConnected && !loading && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => navigate("/dashboard")}
+            >
+              <Link2 className="h-4 w-4" />
+              Connect Meta
+            </Button>
+          )}
+        </div>
+
         {/* Meta Token Expired - Modal popup */}
         {metaTokenExpired && (
           <MetaConnectionAlert 
