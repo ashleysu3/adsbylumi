@@ -8,10 +8,13 @@ import { Home, Sparkle, Palette, BarChart3, FolderKanban, Shield, LogOut, Settin
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
+import { CreateAdModal } from "@/components/CreateAdModal";
 import lumiLogo from "@/assets/lumi-logo.png";
+
 interface DashboardLayoutProps {
   children: ReactNode;
 }
+
 export default function DashboardLayout({
   children
 }: DashboardLayoutProps) {
@@ -29,6 +32,7 @@ export default function DashboardLayout({
     title: string;
     description: string;
   } | null>(null);
+  const [createAdModalOpen, setCreateAdModalOpen] = useState(false);
 
   // Determine context based on current route
   const getContextFromRoute = (): 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production' => {
@@ -205,7 +209,7 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center space-x-3">
-              <Button onClick={() => navigate("/planning")} className="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:opacity-90 text-white font-semibold shadow-lg shadow-lumi-pink-1/30">
+              <Button onClick={() => setCreateAdModalOpen(true)} className="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:opacity-90 text-white font-semibold shadow-lg shadow-lumi-pink-1/30">
                 <Sparkles className="mr-2 h-4 w-4" />
                 Create a new ad!
               </Button>
@@ -303,5 +307,7 @@ export default function DashboardLayout({
       setTourActive(false);
       setTourConfig(null);
     }} />}
+
+      <CreateAdModal open={createAdModalOpen} onOpenChange={setCreateAdModalOpen} />
     </div>;
 }
