@@ -79,7 +79,7 @@ export default function Pricing() {
               <Sparkles className="w-3 h-3 mr-1" />
               14-Day Free Trial
             </Badge>
-            <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl mb-4 leading-tight whitespace-nowrap text-center">
+            <h1 className="font-display text-4xl md:text-6xl mb-4 leading-tight">
               Stop overpaying for{" "}
               <span className="text-primary">Meta ads help</span>
             </h1>
