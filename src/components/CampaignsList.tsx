@@ -25,9 +25,11 @@ interface Campaign {
 
 interface CampaignsListProps {
   brandId: string;
+  addCreativeMode?: boolean;
+  onCampaignSelectForCreative?: (campaignId: string) => void;
 }
 
-export function CampaignsList({ brandId }: CampaignsListProps) {
+export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSelectForCreative }: CampaignsListProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -228,10 +230,21 @@ export function CampaignsList({ brandId }: CampaignsListProps) {
                   <div className="flex items-center justify-between gap-4">
                     <div 
                       className="flex-1 cursor-pointer"
-                      onClick={() => navigate(getNavigationRoute(campaign))}
+                      onClick={() => {
+                        if (addCreativeMode && onCampaignSelectForCreative) {
+                          onCampaignSelectForCreative(campaign.id);
+                        } else {
+                          navigate(getNavigationRoute(campaign));
+                        }
+                      }}
                     >
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-semibold">{campaign.name}</h4>
+                        {addCreativeMode && (
+                          <Badge variant="outline" className="border-primary/50 text-primary">
+                            Click to add creative
+                          </Badge>
+                        )}
                         {campaign.archived && (
                           <Badge variant="outline">Archived</Badge>
                         )}
