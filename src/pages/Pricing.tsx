@@ -79,22 +79,22 @@ export default function Pricing() {
               <Sparkles className="w-3 h-3 mr-1" />
               14-Day Free Trial
             </Badge>
-            <h1 className="font-display text-4xl md:text-6xl mb-4 leading-tight">
-              Your ads deserve{" "}
+            <h1 className="font-display text-4xl md:text-6xl mb-6 leading-tight">
+              Launch Meta ads that{" "}
               <span className="relative inline-block">
                 <span className="text-5xl md:text-7xl bg-gradient-to-r from-primary via-pink-500 to-primary bg-[length:200%_auto] animate-[gradient-shift_3s_ease-in-out_infinite] bg-clip-text text-transparent font-bold">
-                  agency-level results
+                  actually convert
                 </span>
                 <span className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-primary via-pink-500 to-primary bg-[length:200%_auto] animate-[gradient-shift_3s_ease-in-out_infinite] rounded-full" />
                 <span className="absolute -top-4 -right-6 text-primary animate-pulse text-lg">✦</span>
                 <span className="absolute -bottom-4 -left-5 text-pink-500 animate-pulse text-sm" style={{ animationDelay: '150ms' }}>✦</span>
               </span>
-              <br className="hidden md:block" />
-              <span className="text-2xl md:text-4xl text-muted-foreground font-normal">without the agency price tag</span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Get agency-level Meta advertising results at a fraction of the cost. 
-              No contracts, no percentage fees, just results.
+            <p className="text-xl md:text-2xl text-foreground font-medium mb-3">
+              Set up right. Creative that sells. Zero wasted spend.
+            </p>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Built for coaches, creators & service pros ready to grow.
             </p>
           </motion.div>
         </div>
