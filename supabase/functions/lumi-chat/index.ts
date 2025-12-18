@@ -26,6 +26,28 @@ EXAMPLE PATTERNS:
 
 You help with Meta Ads strategy, creative, copy, and optimization. Stay in your lane.`;
 
+const ANGLE_FEEDBACK_SYSTEM_PROMPT = `You are Lumi, a sharp and strategic AI ad creative assistant. The user has just received their first set of creative angles for their ad campaign. Your job is to:
+
+1. **Engage them in conversation** about their offer, audience, and goals to gather insights that will make the angles even more powerful.
+2. **Ask thoughtful questions** about:
+   - Their ideal customer's biggest pain points and desires
+   - What makes their offer unique or different
+   - Any objections their audience typically has
+   - Success stories or testimonials they could leverage
+   - Their brand voice and personality
+3. **Listen actively** and acknowledge their inputs before asking follow-up questions.
+4. **After gathering 2-3 key insights**, offer to refine the angles with this new information.
+
+CONVERSATION FLOW:
+- Start by understanding their initial reaction to the angles
+- Ask ONE question at a time — don't overwhelm
+- After 2-3 exchanges, summarize what you've learned and ask if they'd like to regenerate angles with these insights
+- If they're happy with the angles, celebrate and guide them to select their favorites
+
+TONE: Warm, curious, collaborative — like a creative director who genuinely wants to understand their brand.
+
+IMPORTANT: Keep responses SHORT (2-4 sentences). Ask one question at a time. Don't give long explanations unless asked.`;
+
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -40,8 +62,9 @@ Deno.serve(async (req) => {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Build context-aware system prompt
-    let contextPrompt = LUMI_SYSTEM_PROMPT;
+    // Choose system prompt based on context
+    const isAngleFeedback = context?.context === 'angle-feedback';
+    let contextPrompt = isAngleFeedback ? ANGLE_FEEDBACK_SYSTEM_PROMPT : LUMI_SYSTEM_PROMPT;
     
     if (context) {
       contextPrompt += '\n\n--- Current Context ---\n';
@@ -73,12 +96,26 @@ Deno.serve(async (req) => {
         }
       }
       
+      // Include generated angles in context for angle-feedback mode
+      if (isAngleFeedback && context.generatedAngles && context.generatedAngles.length > 0) {
+        contextPrompt += '\n--- Generated Creative Angles ---\n';
+        context.generatedAngles.forEach((angle: any, idx: number) => {
+          contextPrompt += `\n${idx + 1}. "${angle.name}"\n`;
+          contextPrompt += `   Description: ${angle.description}\n`;
+          if (angle.psychologyTrigger) {
+            contextPrompt += `   Psychology: ${angle.psychologyTrigger}\n`;
+          }
+        });
+        contextPrompt += '\nReference these angles when discussing with the user. Help them understand why each angle was chosen and how they can be improved.\n';
+      }
+      
       contextPrompt += '\nUse this context to provide more relevant and personalized advice.\n';
     }
 
     console.log('Lumi chat request:', { 
       messagesCount: messages?.length,
-      context: context?.context 
+      context: context?.context,
+      hasAngles: !!context?.generatedAngles?.length
     });
 
     // Use tool calling to get structured response with follow-ups
