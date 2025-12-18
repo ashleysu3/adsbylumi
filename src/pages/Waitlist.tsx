@@ -19,9 +19,11 @@ const Waitlist = () => {
 
     setIsSubmitting(true);
     try {
+      const trimmedEmail = email.toLowerCase().trim();
+      
       const { error } = await supabase
         .from('waitlist')
-        .insert({ email: email.toLowerCase().trim() });
+        .insert({ email: trimmedEmail });
 
       if (error) {
         if (error.code === '23505') {
@@ -34,11 +36,18 @@ const Waitlist = () => {
       } else {
         setIsSubmitted(true);
         toast.success("You're on the list! Lumi will keep you posted. ✨");
-        
-        // Sync to Flodesk in background
-        supabase.functions.invoke('sync-flodesk', {
-          body: { email: email.toLowerCase().trim(), segment: 'waitlist' }
-        }).catch(err => console.error('Flodesk sync error:', err));
+      }
+      
+      // Always sync to Flodesk (whether new or existing user)
+      try {
+        const { error: flodeskError } = await supabase.functions.invoke('sync-flodesk', {
+          body: { email: trimmedEmail, segment: 'waitlist' }
+        });
+        if (flodeskError) {
+          console.error('Flodesk sync error:', flodeskError);
+        }
+      } catch (flodeskErr) {
+        console.error('Flodesk sync failed:', flodeskErr);
       }
     } catch (error) {
       console.error('Waitlist signup error:', error);

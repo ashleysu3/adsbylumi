@@ -28,12 +28,14 @@ export function WaitlistModal({
     }
     setLoading(true);
     try {
-      const {
-        error
-      } = await supabase.from("waitlist").insert({
-        name: name.trim(),
-        email: email.trim().toLowerCase()
+      const trimmedEmail = email.trim().toLowerCase();
+      const trimmedName = name.trim();
+      
+      const { error } = await supabase.from("waitlist").insert({
+        name: trimmedName,
+        email: trimmedEmail
       });
+      
       if (error) {
         if (error.code === "23505") {
           toast.error("You're already on the waitlist! We'll be in touch soon.");
@@ -43,6 +45,23 @@ export function WaitlistModal({
       } else {
         setSuccess(true);
         toast.success("You're on the list! ✨");
+      }
+      
+      // Always sync to Flodesk (whether new or existing user)
+      try {
+        const { error: flodeskError } = await supabase.functions.invoke('sync-flodesk', {
+          body: { 
+            email: trimmedEmail, 
+            firstName: trimmedName.split(' ')[0] || '',
+            lastName: trimmedName.split(' ').slice(1).join(' ') || '',
+            segment: 'waitlist' 
+          }
+        });
+        if (flodeskError) {
+          console.error('Flodesk sync error:', flodeskError);
+        }
+      } catch (flodeskErr) {
+        console.error('Flodesk sync failed:', flodeskErr);
       }
     } catch (error: any) {
       toast.error(error.message || "Something went wrong. Please try again.");
