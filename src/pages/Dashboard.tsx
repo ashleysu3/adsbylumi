@@ -12,7 +12,7 @@ import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { PageShimmer } from "@/components/GradientShimmer";
-import { useLumiRecommend } from "@/components/LumiRecommendPopup";
+import { useLumiRecommend } from "@/components/LumiAssistant";
 import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";

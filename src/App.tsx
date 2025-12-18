@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { LumiProvider } from "@/contexts/LumiContext";
-import { LumiRecommendProvider } from "@/components/LumiRecommendPopup";
+import { LumiAssistantProvider } from "@/components/LumiAssistant";
 import Index from "./pages/Index";
 import Sales from "./pages/Sales";
 import Waitlist from "./pages/Waitlist";
@@ -35,7 +35,7 @@ const App = () => (
     <TooltipProvider>
       <SubscriptionProvider>
         <LumiProvider>
-          <LumiRecommendProvider>
+          <LumiAssistantProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
@@ -63,7 +63,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
-          </LumiRecommendProvider>
+          </LumiAssistantProvider>
         </LumiProvider>
       </SubscriptionProvider>
     </TooltipProvider>
