@@ -38,6 +38,7 @@ export default function Production() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterFormat, setFilterFormat] = useState("all");
   const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,12 +204,22 @@ export default function Production() {
   const progress = statusCounts.total > 0 ? (statusCounts.completed / statusCounts.total) * 100 : 0;
 
   const filteredItems = productionItems.filter((item) => {
-    if (filterStatus === "all") return true;
-    if (filterStatus === "pending") return item.status === "pending" || item.status === "ready";
-    if (filterStatus === "in_progress") return item.status === "in_progress" || item.status === "recorded";
-    if (filterStatus === "completed") return item.status === "uploaded" || item.status === "approved";
-    return item.status === filterStatus;
+    // Status filter
+    let statusMatch = true;
+    if (filterStatus === "pending") statusMatch = item.status === "pending" || item.status === "ready";
+    else if (filterStatus === "in_progress") statusMatch = item.status === "in_progress" || item.status === "recorded";
+    else if (filterStatus === "completed") statusMatch = item.status === "uploaded" || item.status === "approved";
+    else if (filterStatus !== "all") statusMatch = item.status === filterStatus;
+    
+    // Format filter
+    let formatMatch = true;
+    if (filterFormat !== "all") formatMatch = item.format === filterFormat;
+    
+    return statusMatch && formatMatch;
   });
+
+  // Get unique formats for filter
+  const availableFormats = [...new Set(productionItems.map((item) => item.format).filter(Boolean))];
 
   // Contextual Lumi recommendations (must be before early returns)
   const approvedCount = statusCounts.approved;
@@ -286,12 +297,25 @@ export default function Production() {
           </div>
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
+            <Select value={filterFormat} onValueChange={setFilterFormat}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Creative type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Concepts</SelectItem>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="talking_head">Talking Head</SelectItem>
+                <SelectItem value="broll">B-Roll</SelectItem>
+                <SelectItem value="graphic">Graphic</SelectItem>
+                <SelectItem value="static">Static</SelectItem>
+                <SelectItem value="carousel">Carousel</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
