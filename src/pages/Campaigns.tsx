@@ -125,9 +125,19 @@ export default function Campaigns() {
         {/* Lumi Chat guidance for add creative mode */}
         {showLumiGuidance && brand && (
           <LumiChat 
-            context="campaigns" 
+            context="add-creative" 
             brand={brand}
             trigger={null}
+            autoOpen={true}
+            onOpenChange={(open) => {
+              if (!open) setShowLumiGuidance(false);
+            }}
+            customStarters={[
+              { label: "Help me choose", message: "Help me pick the best campaign to add new creative to based on performance." },
+              { label: "New creative idea", message: "I want to brainstorm a fresh creative angle before uploading." },
+              { label: "Go straight to upload", message: "I already have my creative ready. Walk me through the upload process." },
+              { label: "What performs best?", message: "What types of creative are performing best right now?" },
+            ]}
           />
         )}
       </div>

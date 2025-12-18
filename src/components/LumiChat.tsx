@@ -10,10 +10,13 @@ import { LumiCharacter } from "./LumiCharacter";
 import { useLumi, Message } from "@/contexts/LumiContext";
 
 interface LumiChatProps {
-  context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production';
+  context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production' | 'add-creative';
   workspace?: any;
   brand?: any;
   trigger?: ReactNode;
+  autoOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  customStarters?: { label: string; message: string }[];
 }
 
 
@@ -66,16 +69,35 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
     { label: "Editing help", message: "How should I edit my videos for maximum engagement?" },
     { label: "B-roll ideas", message: "What kind of b-roll footage should I capture?" },
   ],
+  'add-creative': [
+    { label: "New creative idea", message: "Help me brainstorm a new creative angle for my campaign." },
+    { label: "Upload guidance", message: "Walk me through uploading my new ad creative." },
+    { label: "Creative best practices", message: "What makes a high-performing ad creative?" },
+    { label: "Refresh existing", message: "How do I know when my creative needs refreshing?" },
+  ],
 };
 
-export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) {
-  const [open, setOpen] = useState(false);
+export function LumiChat({ context, workspace, brand, trigger, autoOpen = false, onOpenChange, customStarters }: LumiChatProps) {
+  const [internalOpen, setInternalOpen] = useState(autoOpen);
   const { messages, addMessage, setBrandId } = useLumi();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const starters = contextStarters[context] || contextStarters.dashboard;
+  const starters = customStarters || contextStarters[context] || contextStarters.dashboard;
+
+  const open = internalOpen;
+  const setOpen = (value: boolean) => {
+    setInternalOpen(value);
+    onOpenChange?.(value);
+  };
+
+  // Auto-open on mount if autoOpen is true
+  useEffect(() => {
+    if (autoOpen) {
+      setInternalOpen(true);
+    }
+  }, [autoOpen]);
 
   const copyToClipboard = async (text: string, idx: number) => {
     await navigator.clipboard.writeText(text);
