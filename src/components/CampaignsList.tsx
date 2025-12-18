@@ -163,7 +163,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
         return '/data';
       
       default:
-        return `/workspace/${campaign.id}`;
+        return `/creative?workspace=${campaign.id}`;
     }
   };
 
