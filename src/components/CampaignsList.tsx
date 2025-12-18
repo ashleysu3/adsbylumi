@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore } from "lucide-react";
+import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 
 interface Campaign {
@@ -224,16 +224,23 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
               <Card
                 key={campaign.id}
                 variant="glow"
-                className={`transition-all duration-300 ${campaign.archived ? 'opacity-60' : ''}`}
+                className={`transition-all duration-300 ${campaign.archived ? 'opacity-60' : ''} ${
+                  addCreativeMode 
+                    ? 'cursor-pointer border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10' 
+                    : ''
+                }`}
+                onClick={() => {
+                  if (addCreativeMode && onCampaignSelectForCreative) {
+                    onCampaignSelectForCreative(campaign.id);
+                  }
+                }}
               >
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between gap-4">
                     <div 
                       className="flex-1 cursor-pointer"
-                      onClick={() => {
-                        if (addCreativeMode && onCampaignSelectForCreative) {
-                          onCampaignSelectForCreative(campaign.id);
-                        } else {
+                      onClick={(e) => {
+                        if (!addCreativeMode) {
                           navigate(getNavigationRoute(campaign));
                         }
                       }}
@@ -241,14 +248,15 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
                         <h4 className="font-semibold">{campaign.name}</h4>
                         {addCreativeMode && (
-                          <Badge variant="outline" className="border-primary/50 text-primary">
-                            Click to add creative
+                          <Badge className="bg-primary/20 text-primary border border-primary/30 gap-1.5">
+                            <ImagePlus className="h-3 w-3" />
+                            Select to add creative
                           </Badge>
                         )}
                         {campaign.archived && (
                           <Badge variant="outline">Archived</Badge>
                         )}
-                        {!isPublished(campaign.progress_status) && (
+                        {!isPublished(campaign.progress_status) && !addCreativeMode && (
                           <Badge variant="outline" className="border-yellow-500/50 text-yellow-700 dark:text-yellow-400">
                             Draft
                           </Badge>
@@ -266,44 +274,51 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                         Updated {new Date(campaign.updated_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCampaignToArchive(campaign);
-                              setArchiveDialogOpen(true);
-                            }}
-                          >
-                            {campaign.archived ? (
-                              <>
-                                <ArchiveRestore className="mr-2 h-4 w-4" />
-                                Restore Campaign
-                              </>
-                            ) : (
-                              <>
-                                <Archive className="mr-2 h-4 w-4" />
-                                Archive Campaign
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => navigate(getNavigationRoute(campaign))}
-                      >
-                        <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                      </Button>
-                    </div>
+                    {!addCreativeMode && (
+                      <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCampaignToArchive(campaign);
+                                setArchiveDialogOpen(true);
+                              }}
+                            >
+                              {campaign.archived ? (
+                                <>
+                                  <ArchiveRestore className="mr-2 h-4 w-4" />
+                                  Restore Campaign
+                                </>
+                              ) : (
+                                <>
+                                  <Archive className="mr-2 h-4 w-4" />
+                                  Archive Campaign
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          onClick={() => navigate(getNavigationRoute(campaign))}
+                        >
+                          <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    )}
+                    {addCreativeMode && (
+                      <div className="flex items-center">
+                        <ArrowRight className="h-5 w-5 text-primary" />
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
