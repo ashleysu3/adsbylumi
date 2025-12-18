@@ -44,6 +44,7 @@ export default function Planning() {
   const [businessProblem, setBusinessProblem] = useState<"video_trust" | "social_growth" | null>(null);
   const [offerExists, setOfferExists] = useState<"yes" | "no" | null>(null);
   const [offerAction, setOfferAction] = useState<"purchase" | "free_resource" | "visit_page" | null>(null);
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
 
   // Mapping from offer action to template slugs
   const offerActionToTemplates: Record<string, string[]> = {
@@ -181,7 +182,7 @@ export default function Planning() {
         <div className="space-y-8 py-[2px]">
           <div className="space-y-2">
             <h2 className="text-3xl font-display tracking-tight">
-              Lumi <span className="text-gradient-lumi">Strategy</span>
+              Create a <span className="text-gradient-lumi">New Ad</span>
             </h2>
             <p className="text-muted-foreground">Loading your campaign templates...</p>
           </div>
@@ -206,7 +207,7 @@ export default function Planning() {
         <div className="flex items-start justify-between">
           <div className="space-y-2">
             <h2 className="text-3xl font-display tracking-tight">
-              Lumi <span className="text-gradient-lumi">Strategy</span>
+              Create a <span className="text-gradient-lumi">New Ad</span>
             </h2>
             <p className="text-muted-foreground">Let's keep this simple: pick a campaign type and Lumi will guide you through the rest.</p>
           </div>
@@ -502,8 +503,28 @@ export default function Planning() {
 
         {/* Lumi recommendations now shown via popup */}
 
-        {/* Template Grid - only show when a path is fully selected */}
-        {((campaignGoal === "offer" && offerAction) || (campaignGoal === "business_problem" && businessProblem)) && (
+        {/* See All Templates Button */}
+        {!showAllTemplates && (
+          <div className="flex justify-center">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowAllTemplates(true);
+                setCampaignGoal(null);
+                setBusinessProblem(null);
+                setOfferExists(null);
+                setOfferAction(null);
+                setSelectedOfferId("");
+              }}
+              className="text-muted-foreground"
+            >
+              See all campaign templates
+            </Button>
+          </div>
+        )}
+
+        {/* Template Grid - show when a path is fully selected OR when showAllTemplates is true */}
+        {(showAllTemplates || (campaignGoal === "offer" && offerAction) || (campaignGoal === "business_problem" && businessProblem)) && (
           <div className="space-y-4">
             {/* Show back button and selection summary for offer path */}
             {campaignGoal === "offer" && offerAction && (
@@ -527,9 +548,27 @@ export default function Planning() {
                 </Button>
               </div>
             )}
+            {/* Show back button for show all templates mode */}
+            {showAllTemplates && (
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground">All available campaign templates</p>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowAllTemplates(false)}
+                  className="text-muted-foreground"
+                >
+                  ← Back to guided flow
+                </Button>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {templates
               .filter(template => {
+                // Show all templates if showAllTemplates is true
+                if (showAllTemplates) {
+                  return true;
+                }
                 // Filter templates based on business problem selection
                 if (campaignGoal === "business_problem") {
                   if (businessProblem === "video_trust") {

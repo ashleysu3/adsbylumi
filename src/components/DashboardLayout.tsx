@@ -171,9 +171,9 @@ export default function DashboardLayout({
     }
   };
   const tabItems = [{
-    path: "/planning",
-    icon: Sparkle,
-    label: "STRATEGY",
+    path: "/campaigns",
+    icon: FolderKanban,
+    label: "MY CAMPAIGNS",
     lightColor: "tab-orange-light",
     darkColor: "tab-orange-dark"
   }, {
@@ -205,9 +205,9 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center space-x-3">
-              <Button onClick={() => navigate("/campaigns")} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold lumi-button-glow">
-                <FolderKanban className="mr-2 h-4 w-4" />
-                My Campaigns
+              <Button onClick={() => navigate("/planning")} className="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:opacity-90 text-white font-semibold shadow-lg shadow-lumi-pink-1/30">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Create a new ad!
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
