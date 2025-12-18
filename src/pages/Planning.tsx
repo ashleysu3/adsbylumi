@@ -163,7 +163,7 @@ export default function Planning() {
       } = await supabase.from("campaign_workspaces").insert(workspaceData).select().single();
       if (workspaceError) throw workspaceError;
       toast.success(`${template.name} workspace created!`);
-      navigate(`/workspace/${newWorkspace.id}`);
+      navigate(`/creative?workspace=${newWorkspace.id}`);
     } catch (error: any) {
       console.error("Error creating workspace:", error);
       toast.error(error.message || "Failed to create workspace");

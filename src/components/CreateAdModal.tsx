@@ -191,7 +191,7 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
       fireConfetti();
       toast.success(`${template.name} workspace created!`);
       handleClose();
-      navigate(`/workspace/${newWorkspace.id}`);
+      navigate(`/creative?workspace=${newWorkspace.id}`);
     } catch (error: any) {
       console.error("Error creating workspace:", error);
       toast.error(error.message || "Failed to create workspace");
