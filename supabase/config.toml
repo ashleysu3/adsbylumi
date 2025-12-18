@@ -83,3 +83,6 @@ verify_jwt = true
 
 [functions.send-critical-alerts]
 verify_jwt = false
+
+[functions.refresh-meta-token]
+verify_jwt = false

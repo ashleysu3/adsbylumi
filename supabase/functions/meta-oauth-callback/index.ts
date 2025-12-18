@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
     console.log('Processing OAuth callback for brand:', brandId);
 
-    // Exchange code for access token
+    // Exchange code for short-lived access token
     const tokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
     tokenUrl.searchParams.set('client_id', META_APP_ID);
     tokenUrl.searchParams.set('client_secret', META_APP_SECRET);
@@ -42,10 +42,35 @@ Deno.serve(async (req) => {
       throw new Error(tokenData.error?.message || 'Failed to obtain access token');
     }
 
-    console.log('Access token obtained successfully');
+    console.log('Short-lived access token obtained, exchanging for long-lived token...');
+
+    // Exchange short-lived token for long-lived token (~60 days)
+    const longLivedUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
+    longLivedUrl.searchParams.set('grant_type', 'fb_exchange_token');
+    longLivedUrl.searchParams.set('client_id', META_APP_ID);
+    longLivedUrl.searchParams.set('client_secret', META_APP_SECRET);
+    longLivedUrl.searchParams.set('fb_exchange_token', tokenData.access_token);
+
+    const longLivedResponse = await fetch(longLivedUrl.toString());
+    const longLivedData = await longLivedResponse.json();
+
+    let finalToken = tokenData.access_token;
+    let tokenExpiresIn = tokenData.expires_in || 3600; // Default 1 hour for short-lived
+
+    if (longLivedResponse.ok && longLivedData.access_token) {
+      finalToken = longLivedData.access_token;
+      tokenExpiresIn = longLivedData.expires_in || 5184000; // Default 60 days for long-lived
+      console.log('Long-lived token obtained, expires in:', tokenExpiresIn, 'seconds');
+    } else {
+      console.warn('Could not exchange for long-lived token, using short-lived:', longLivedData.error);
+    }
+
+    // Calculate token expiration date
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + tokenExpiresIn);
 
     // Get user's ad accounts
-    const adAccountsUrl = `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status,currency,business_name&access_token=${tokenData.access_token}`;
+    const adAccountsUrl = `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status,currency,business_name&access_token=${finalToken}`;
     
     console.log('Fetching ad accounts...');
     const adAccountsResponse = await fetch(adAccountsUrl);
@@ -63,7 +88,7 @@ Deno.serve(async (req) => {
     console.log('Active ad accounts found:', activeAccounts.length);
 
     // Get user's Facebook Pages (required for ad creative creation)
-    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,category&access_token=${tokenData.access_token}`;
+    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,category&access_token=${finalToken}`;
     
     console.log('Fetching Facebook Pages...');
     const pagesResponse = await fetch(pagesUrl);
@@ -86,7 +111,7 @@ Deno.serve(async (req) => {
     const { data: vaultResult, error: vaultError } = await supabase
       .rpc('store_meta_token', {
         p_brand_id: brandId,
-        p_token: tokenData.access_token
+        p_token: finalToken
       });
 
     if (vaultError) {
@@ -95,6 +120,21 @@ Deno.serve(async (req) => {
       // The token can be re-obtained if needed
     } else {
       console.log('Access token stored securely in vault for brand:', brandId);
+    }
+
+    // Update the token expiration date in the brands table
+    const { error: updateError } = await supabase
+      .from('brands')
+      .update({ 
+        meta_token_expires_at: tokenExpiresAt.toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', brandId);
+
+    if (updateError) {
+      console.error('Error updating token expiration:', updateError);
+    } else {
+      console.log('Token expiration updated:', tokenExpiresAt.toISOString());
     }
       
     // Check if user has already selected an account (on re-connection)
