@@ -177,6 +177,10 @@ export default {
             filter: "drop-shadow(0 0 6px hsl(var(--lumi-purple-1) / 0.8))"
           },
         },
+        "shimmer": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -185,6 +189,7 @@ export default {
         "fade-in": "fade-in 0.3s ease-out",
         "sparkle": "sparkle 2s ease-in-out infinite",
         "sparkle-pulse": "sparkle-pulse 1.5s ease-in-out infinite",
+        "shimmer": "shimmer 1.5s ease-in-out infinite",
       },
     },
   },

@@ -10,6 +10,7 @@ import { Video, FileText, ShoppingCart, PhoneCall, TrendingUp, Play, Info } from
 import { toast } from "sonner";
 import { LumiLoader } from "@/components/LumiLoader";
 import { LumiCharacter } from "@/components/LumiCharacter";
+import { LumiRecommendedBadge } from "@/components/LumiRecommendedBadge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
@@ -221,9 +222,9 @@ export default function Planning() {
                 variant={isRecommendedForSelectedOffer ? "gradient" : "glow"}
                 className={`cursor-pointer transition-all duration-300 relative hover:scale-[1.02] ${isRecommendedForSelectedOffer ? "shadow-glow" : ""}`}
               >
-                {isRecommendedForSelectedOffer && <Badge className="absolute -top-2 -right-2 bg-gradient-lumi animate-sparkle-pulse">
-                    ✨ Recommended
-                  </Badge>}
+                {isRecommendedForSelectedOffer && (
+                    <LumiRecommendedBadge className="absolute -top-2 -right-2" />
+                  )}
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
