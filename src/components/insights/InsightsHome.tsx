@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +10,9 @@ import {
   Calendar,
   Pencil,
   Check,
-  X
+  X,
+  PlusCircle,
+  Package
 } from 'lucide-react';
 import { 
   getLumiKPIConfig, 
@@ -24,6 +27,7 @@ import { KPITrendIndicator } from './KPITrendIndicator';
 import { DateRangePicker } from './DateRangePicker';
 import { StatusFilter } from './StatusFilter';
 import { AccountOverview } from './AccountOverview';
+import { LinkOfferModal } from './LinkOfferModal';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -53,6 +57,9 @@ interface Campaign {
   previousMetrics?: CampaignMetrics | null;
   userGoal?: number | null;
   status?: string;
+  offerId?: string | null;
+  offerName?: string | null;
+  brandId?: string;
 }
 
 interface AccountMetrics {
@@ -109,9 +116,16 @@ export function InsightsHome({
   accountMetrics,
   accountMetricsLoading,
 }: InsightsHomeProps) {
+  const navigate = useNavigate();
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
   const [goalValue, setGoalValue] = useState<string>('');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live', 'paused', 'imported']);
+  
+  // Link offer modal state
+  const [linkOfferModal, setLinkOfferModal] = useState<{
+    open: boolean;
+    campaign: Campaign | null;
+  }>({ open: false, campaign: null });
 
   // Calculate status counts
   const statusCounts = useMemo(() => {
@@ -131,6 +145,7 @@ export function InsightsHome({
       return selectedStatuses.includes(status);
     });
   }, [campaigns, selectedStatuses]);
+  
   const handleStartEditGoal = (campaignId: string, currentGoal: number | null | undefined) => {
     setEditingGoal(campaignId);
     setGoalValue(currentGoal?.toString() || '');
@@ -148,6 +163,21 @@ export function InsightsHome({
   const handleCancelEdit = () => {
     setEditingGoal(null);
     setGoalValue('');
+  };
+  
+  const handleAddCreative = (campaign: Campaign) => {
+    if (campaign.offerId) {
+      // Offer already linked, go straight to creative
+      navigate(`/creative?workspace=${campaign.id}&addCreative=true`);
+    } else {
+      // Need to link offer first
+      setLinkOfferModal({ open: true, campaign });
+    }
+  };
+  
+  const handleOfferLinked = (campaign: Campaign) => {
+    // After linking, navigate to creative dashboard
+    navigate(`/creative?workspace=${campaign.id}&addCreative=true`);
   };
 
   return (
@@ -355,6 +385,26 @@ export function InsightsHome({
                         {statusLabel}
                       </Badge>
 
+                      {/* Add Creative Button - for imported/live campaigns */}
+                      <Button
+                        onClick={() => handleAddCreative(campaign)}
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl"
+                      >
+                        {campaign.offerId ? (
+                          <>
+                            <PlusCircle className="h-4 w-4 mr-2" />
+                            Add Creative
+                          </>
+                        ) : (
+                          <>
+                            <Package className="h-4 w-4 mr-2" />
+                            Link Offer
+                          </>
+                        )}
+                      </Button>
+
                       {/* View Button */}
                       <Button
                         onClick={() => onViewInsights(campaign.id)}
@@ -378,6 +428,18 @@ export function InsightsHome({
         <p className="text-center text-sm text-muted-foreground">
           <span className="text-gradient-lumi font-medium">✨ Lumi's got you</span> — focus on the green signals, and we'll alert you when something needs attention.
         </p>
+      )}
+      
+      {/* Link Offer Modal */}
+      {linkOfferModal.campaign && (
+        <LinkOfferModal
+          open={linkOfferModal.open}
+          onOpenChange={(open) => setLinkOfferModal({ open, campaign: open ? linkOfferModal.campaign : null })}
+          workspaceId={linkOfferModal.campaign.id}
+          workspaceName={linkOfferModal.campaign.name}
+          brandId={linkOfferModal.campaign.brandId || ''}
+          onSuccess={() => handleOfferLinked(linkOfferModal.campaign!)}
+        />
       )}
     </div>
   );

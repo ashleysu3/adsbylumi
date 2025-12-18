@@ -237,6 +237,7 @@ Deno.serve(async (req) => {
       }] : [];
 
       // Create new workspace record with initial performance data
+      // Mark as 'imported' to indicate it needs an offer linked before creative generation
       const { data: newWorkspace, error: insertError } = await supabase
         .from('campaign_workspaces')
         .insert({
@@ -244,11 +245,12 @@ Deno.serve(async (req) => {
           name: campaign.name,
           meta_campaign_ids: { campaignId: campaign.id },
           meta_campaign_status: metaStatus,
-          progress_status: campaign.status === 'ACTIVE' ? 'live' : 'imported',
+          progress_status: 'imported', // Always 'imported' - needs offer link for creative
           published_at: new Date().toISOString(),
           performance_history: initialPerformanceHistory,
           meta_insights_last_sync: performanceMetrics ? new Date().toISOString() : null,
-          // Leave strategy_json and creative_json as null initially
+          // Leave strategy_json, creative_json, and offer fields null initially
+          // User will link an offer later to enable creative generation
         })
         .select()
         .single();
