@@ -364,21 +364,6 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Campaign Planning Card */}
-        <Card variant="gradient" className="rounded-2xl bg-gradient-to-br from-background to-lumi-purple-1/5">
-          <CardHeader>
-            <CardTitle className="font-display text-gradient-lumi">Ready to shine? ✨</CardTitle>
-            <CardDescription>
-              Lumi will guide you through creating a clear strategy for your next Meta campaign.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button size="lg" className="h-12 px-8" variant="lumi" onClick={() => window.location.href = "/planning"}>
-              Start with Lumi Strategy
-            </Button>
-          </CardContent>
-        </Card>
-
         {/* Main Content - Single Column */}
         <div className="space-y-6">
           {/* Brand Details Card */}
