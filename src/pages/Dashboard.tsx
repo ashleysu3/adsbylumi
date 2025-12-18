@@ -13,7 +13,7 @@ import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { PageShimmer } from "@/components/GradientShimmer";
 import { useLumiRecommend } from "@/components/LumiAssistant";
-import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link } from "lucide-react";
+import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -426,20 +426,35 @@ export default function Dashboard() {
                 <div className="pt-4 border-t" data-section="meta-account">
                   <p className="text-sm font-medium mb-2">Meta Ad Account</p>
                   {brand.meta_account_id ? (
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <code className="text-xs bg-muted px-2 py-1 rounded">{brand.meta_account_id}</code>
-                        {brand.page_name && (
-                          <p className="text-xs text-muted-foreground">Page: {brand.page_name}</p>
-                        )}
+                    <div className="space-y-3">
+                      {/* Check if token might be expired */}
+                      {brand.meta_token_expires_at && new Date(brand.meta_token_expires_at) < new Date() && (
+                        <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm">
+                          <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium text-destructive">Connection Expired</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Your Meta access has expired. Reconnect to continue syncing campaigns.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <code className="text-xs bg-muted px-2 py-1 rounded">{brand.meta_account_id}</code>
+                          {brand.page_name && (
+                            <p className="text-xs text-muted-foreground">Page: {brand.page_name}</p>
+                          )}
+                        </div>
+                        <MetaAccountConnect 
+                          brandId={brand.id} 
+                          currentAccountId={brand.meta_account_id}
+                          currentPageId={brand.page_id}
+                          currentPageName={brand.page_name}
+                          tokenExpired={brand.meta_token_expires_at ? new Date(brand.meta_token_expires_at) < new Date() : false}
+                          onUpdate={fetchBrandData}
+                        />
                       </div>
-                      <MetaAccountConnect 
-                        brandId={brand.id} 
-                        currentAccountId={brand.meta_account_id}
-                        currentPageId={brand.page_id}
-                        currentPageName={brand.page_name}
-                        onUpdate={fetchBrandData}
-                      />
                     </div>
                   ) : (
                     <div>
