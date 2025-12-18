@@ -35,35 +35,35 @@ const App = () => (
     <TooltipProvider>
       <SubscriptionProvider>
         <LumiProvider>
-          <LumiAssistantProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <Routes>
-              <Route path="/" element={<Sales />} />
-              <Route path="/waitlist" element={<Waitlist />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/planning" element={<Planning />} />
-              <Route path="/creative" element={<Creative />} />
-              <Route path="/data" element={<Data />} />
-              <Route path="/production" element={<Production />} />
-              <Route path="/campaigns" element={<Campaigns />} />
-              <Route path="/workspace/:workspaceId" element={<CampaignWorkspace />} />
-              <Route path="/campaigns/build" element={<CampaignBuilder />} />
-              <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/admin/knowledge" element={<AdminKnowledge />} />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
-              <Route path="/admin/templates" element={<AdminTemplates />} />
-              <Route path="/admin/invite-codes" element={<AdminInviteCodes />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <LumiAssistantProvider>
+                <Routes>
+                <Route path="/" element={<Sales />} />
+                <Route path="/waitlist" element={<Waitlist />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/planning" element={<Planning />} />
+                <Route path="/creative" element={<Creative />} />
+                <Route path="/data" element={<Data />} />
+                <Route path="/production" element={<Production />} />
+                <Route path="/campaigns" element={<Campaigns />} />
+                <Route path="/workspace/:workspaceId" element={<CampaignWorkspace />} />
+                <Route path="/campaigns/build" element={<CampaignBuilder />} />
+                <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/admin/knowledge" element={<AdminKnowledge />} />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/admin/templates" element={<AdminTemplates />} />
+                <Route path="/admin/invite-codes" element={<AdminInviteCodes />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </LumiAssistantProvider>
             </BrowserRouter>
-          </LumiAssistantProvider>
         </LumiProvider>
       </SubscriptionProvider>
     </TooltipProvider>
