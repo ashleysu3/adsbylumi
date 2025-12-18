@@ -266,7 +266,9 @@ function LumiAssistantUI({ recommendation, className }: { recommendation: LumiRe
                 "bg-gradient-lumi shadow-glow",
                 "flex items-center justify-center",
                 "transition-shadow duration-300",
-                "hover:shadow-[0_0_30px_rgba(234,88,12,0.4)]"
+                "hover:shadow-[0_0_30px_rgba(234,88,12,0.4)]",
+                // Pulse animation when there's a new recommendation
+                recommendation && !isDismissed && "animate-pulse"
               )}
             >
               {/* Subtle pulse animation ring */}

@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
+import { useLumiAssistant } from "@/components/LumiAssistant";
 import { cn } from "@/lib/utils";
 
 interface UploadedAsset {
@@ -237,13 +237,36 @@ export default function Production() {
     );
   }
 
+  // Contextual Lumi recommendations
+  const { setRecommendation } = useLumiAssistant();
+  const approvedCount = statusCounts.approved;
+  
+  useEffect(() => {
+    if (approvedCount >= 3) {
+      setRecommendation({
+        id: "production-ready-to-build",
+        title: "Ready to Launch!",
+        message: `You have ${approvedCount} approved concepts — that's enough to build your campaign! Let's get it live.`,
+        actionLabel: "Build Campaign",
+        onAction: handleBuildCampaign,
+      });
+    } else if (statusCounts.completed > 0 && statusCounts.pending > 0) {
+      setRecommendation({
+        id: "production-keep-going",
+        title: "Great Progress!",
+        message: `${statusCounts.completed} concepts done, ${statusCounts.pending} to go. Keep the momentum!`,
+      });
+    } else if (statusCounts.total > 0 && statusCounts.pending === statusCounts.total) {
+      setRecommendation({
+        id: "production-get-started",
+        title: "Time to Record!",
+        message: "Your creative concepts are ready. Click any card to start recording or uploading assets.",
+      });
+    }
+  }, [approvedCount, statusCounts.completed, statusCounts.pending, statusCounts.total, setRecommendation]);
+
   return (
     <DashboardLayout>
-      <CampaignFlowBreadcrumb 
-        currentStep="production" 
-        campaignId={workspace?.id}
-        progressStatus={workspace?.progress_status}
-      />
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
