@@ -250,9 +250,8 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             assetUrl: item.linkedAsset.url,
-            assetStoragePath: item.linkedAsset.storagePath,
-            metaAccountId: metaAccountId,
-            metaAccessToken: metaAccessToken,
+            assetStoragePath: item.linkedAsset.storagePath ? `${brand.id}/${item.linkedAsset.storagePath}` : undefined,
+            brandId: brand.id,
             fileName: item.linkedAsset.url?.split('/').pop(),
           }),
         });
