@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
 
     console.log(`Creating campaign with ${approvedConcepts.length} approved concepts`);
 
-    // Build campaign names using YAA format
+    // Build campaign names using LUMI format
     const productName = workspace.offer_name || 'Campaign';
     const startDate = answers?.startDate || new Date().toISOString().split('T')[0];
     
