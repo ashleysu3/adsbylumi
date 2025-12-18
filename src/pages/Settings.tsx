@@ -4,28 +4,65 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Bell, Shield, CreditCard, LogOut, Loader2, ExternalLink, Crown } from 'lucide-react';
+import { 
+  User, Bell, Shield, CreditCard, LogOut, Loader2, ExternalLink, Crown,
+  Link2, Eye, Sliders, Mail, AlertTriangle, TrendingDown
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 
+interface NotificationPrefs {
+  weekly_digest: boolean;
+  critical_alerts: boolean;
+  performance_drops: boolean;
+}
+
+interface AlertThresholds {
+  ctr_warning: number;
+  ctr_critical: number;
+  roas_warning: number;
+  roas_critical: number;
+  frequency_warning: number;
+  frequency_critical: number;
+}
+
 export default function Settings() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [brand, setBrand] = useState<any>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>({
+    weekly_digest: true,
+    critical_alerts: true,
+    performance_drops: true,
+  });
+  
+  const [alertThresholds, setAlertThresholds] = useState<AlertThresholds>({
+    ctr_warning: 0.8,
+    ctr_critical: 0.5,
+    roas_warning: 1.5,
+    roas_critical: 1.0,
+    frequency_warning: 4,
+    frequency_critical: 6,
+  });
   
   const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription } = useSubscription();
 
   useEffect(() => {
-    fetchProfile();
+    fetchData();
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -33,15 +70,24 @@ export default function Settings() {
         return;
       }
 
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      const [profileRes, brandRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('brands').select('*').eq('user_id', user.id).single(),
+      ]);
 
-      setProfile(profileData);
+      setProfile(profileRes.data);
+      
+      if (brandRes.data) {
+        setBrand(brandRes.data);
+        if (brandRes.data.notification_preferences) {
+          setNotificationPrefs(brandRes.data.notification_preferences as unknown as NotificationPrefs);
+        }
+        if (brandRes.data.alert_thresholds) {
+          setAlertThresholds(brandRes.data.alert_thresholds as unknown as AlertThresholds);
+        }
+      }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -69,10 +115,50 @@ export default function Settings() {
       if (error) throw error;
 
       toast.success('Profile updated successfully');
-      fetchProfile();
+      fetchData();
     } catch (error: any) {
       toast.error('Failed to update profile');
       console.error(error);
+    }
+  };
+
+  const handleSaveNotificationPrefs = async () => {
+    if (!brand) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('brands')
+        .update({ notification_preferences: notificationPrefs as any })
+        .eq('id', brand.id);
+
+      if (error) throw error;
+      toast.success('Notification preferences saved');
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      toast.error('Failed to save preferences');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAlertThresholds = async () => {
+    if (!brand) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('brands')
+        .update({ alert_thresholds: alertThresholds as any })
+        .eq('id', brand.id);
+
+      if (error) throw error;
+      toast.success('Alert thresholds saved');
+    } catch (error) {
+      console.error('Error saving thresholds:', error);
+      toast.error('Failed to save thresholds');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -95,6 +181,7 @@ export default function Settings() {
   };
 
   const currentTier = tier ? SUBSCRIPTION_TIERS[tier] : null;
+  const metaConnected = !!(brand?.meta_access_token && brand?.meta_account_id);
 
   if (loading) {
     return (
@@ -120,18 +207,22 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="account" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="account" className="gap-2">
               <User className="h-4 w-4" />
               Account
+            </TabsTrigger>
+            <TabsTrigger value="connections" className="gap-2">
+              <Link2 className="h-4 w-4" />
+              Connections
             </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" />
               Notifications
             </TabsTrigger>
-            <TabsTrigger value="security" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Security
+            <TabsTrigger value="alerts" className="gap-2">
+              <Sliders className="h-4 w-4" />
+              Alert Thresholds
             </TabsTrigger>
             <TabsTrigger value="billing" className="gap-2">
               <CreditCard className="h-4 w-4" />
@@ -139,42 +230,24 @@ export default function Settings() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Account Tab */}
           <TabsContent value="account" className="space-y-6">
             <Card variant="glow">
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
-                <CardDescription>
-                  Update your account profile information
-                </CardDescription>
+                <CardDescription>Update your account profile information</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleUpdateProfile} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={profile?.email || ''}
-                      disabled
-                      className="bg-muted"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      Email cannot be changed
-                    </p>
+                    <Input id="email" type="email" value={profile?.email || ''} disabled className="bg-muted" />
+                    <p className="text-sm text-muted-foreground">Email cannot be changed</p>
                   </div>
-
-                   <div className="space-y-2">
+                  <div className="space-y-2">
                     <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      type="text"
-                      variant="glow"
-                      defaultValue={profile?.full_name || ''}
-                      placeholder="Enter your full name"
-                    />
+                    <Input id="fullName" name="fullName" type="text" variant="glow" defaultValue={profile?.full_name || ''} placeholder="Enter your full name" />
                   </div>
-
                   <Button type="submit" variant="lumi">Save Changes</Button>
                 </form>
               </CardContent>
@@ -183,16 +256,10 @@ export default function Settings() {
             <Card className="border-destructive/30">
               <CardHeader>
                 <CardTitle>Danger Zone</CardTitle>
-                <CardDescription>
-                  Irreversible actions for your account
-                </CardDescription>
+                <CardDescription>Irreversible actions for your account</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button
-                  variant="destructive"
-                  onClick={handleSignOut}
-                  className="gap-2"
-                >
+                <Button variant="destructive" onClick={handleSignOut} className="gap-2">
                   <LogOut className="h-4 w-4" />
                   Sign Out
                 </Button>
@@ -200,38 +267,207 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
+          {/* Connections Tab */}
+          <TabsContent value="connections" className="space-y-6">
+            <Card variant="glow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="h-5 w-5" />
+                  Meta (Facebook/Instagram)
+                </CardTitle>
+                <CardDescription>Connect your Meta ad account to manage campaigns</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${metaConnected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
+                    <span className="text-sm">
+                      {metaConnected ? `Connected (${brand?.meta_account_id})` : 'Not connected'}
+                    </span>
+                  </div>
+                  <Button onClick={() => navigate('/settings/meta')} variant="outline" className="gap-2">
+                    {metaConnected ? 'Manage' : 'Connect'}
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Notifications Tab */}
           <TabsContent value="notifications" className="space-y-6">
             <Card variant="glow">
               <CardHeader>
-                <CardTitle>Email Notifications</CardTitle>
-                <CardDescription>
-                  Manage your email notification preferences
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Email Notifications
+                </CardTitle>
+                <CardDescription>Choose what emails you receive from Lumi</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Email notification settings coming soon
-                </p>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Weekly Performance Digest</Label>
+                    <p className="text-sm text-muted-foreground">Get a summary of your campaign performance every week</p>
+                  </div>
+                  <Switch
+                    checked={notificationPrefs.weekly_digest}
+                    onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, weekly_digest: checked }))}
+                  />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Critical Alerts</Label>
+                    <p className="text-sm text-muted-foreground">Urgent notifications for budget depletion, expired tokens, etc.</p>
+                  </div>
+                  <Switch
+                    checked={notificationPrefs.critical_alerts}
+                    onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, critical_alerts: checked }))}
+                  />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Performance Drop Alerts</Label>
+                    <p className="text-sm text-muted-foreground">Get notified when your CTR, ROAS, or other metrics decline significantly</p>
+                  </div>
+                  <Switch
+                    checked={notificationPrefs.performance_drops}
+                    onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, performance_drops: checked }))}
+                  />
+                </div>
+
+                <div className="pt-4 flex gap-3">
+                  <Button onClick={handleSaveNotificationPrefs} disabled={saving} variant="lumi">
+                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Save Preferences
+                  </Button>
+                  <Button onClick={() => navigate('/settings/digest-preview')} variant="outline" className="gap-2">
+                    <Eye className="h-4 w-4" />
+                    Preview Weekly Digest
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="security" className="space-y-6">
+          {/* Alert Thresholds Tab */}
+          <TabsContent value="alerts" className="space-y-6">
             <Card variant="glow">
               <CardHeader>
-                <CardTitle>Password</CardTitle>
-                <CardDescription>
-                  Change your password
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  CTR Thresholds
+                </CardTitle>
+                <CardDescription>Set your minimum acceptable click-through rate percentages</CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Password management coming soon
-                </p>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Warning Level (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="10"
+                      value={alertThresholds.ctr_warning}
+                      onChange={(e) => setAlertThresholds(prev => ({ ...prev, ctr_warning: parseFloat(e.target.value) || 0 }))}
+                    />
+                    <p className="text-xs text-muted-foreground">Alert when CTR falls below this</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Critical Level (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="10"
+                      value={alertThresholds.ctr_critical}
+                      onChange={(e) => setAlertThresholds(prev => ({ ...prev, ctr_critical: parseFloat(e.target.value) || 0 }))}
+                    />
+                    <p className="text-xs text-muted-foreground">Urgent alert when CTR falls below this</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card variant="glow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingDown className="h-5 w-5" />
+                  ROAS Thresholds
+                </CardTitle>
+                <CardDescription>Set your minimum acceptable return on ad spend</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Warning Level (x)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={alertThresholds.roas_warning}
+                      onChange={(e) => setAlertThresholds(prev => ({ ...prev, roas_warning: parseFloat(e.target.value) || 0 }))}
+                    />
+                    <p className="text-xs text-muted-foreground">Alert when ROAS falls below this</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Critical Level (x)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={alertThresholds.roas_critical}
+                      onChange={(e) => setAlertThresholds(prev => ({ ...prev, roas_critical: parseFloat(e.target.value) || 0 }))}
+                    />
+                    <p className="text-xs text-muted-foreground">Urgent alert when ROAS falls below this</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card variant="glow">
+              <CardHeader>
+                <CardTitle>Ad Frequency Thresholds</CardTitle>
+                <CardDescription>Set when to alert about creative fatigue</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Warning Level</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      min="1"
+                      value={alertThresholds.frequency_warning}
+                      onChange={(e) => setAlertThresholds(prev => ({ ...prev, frequency_warning: parseFloat(e.target.value) || 1 }))}
+                    />
+                    <p className="text-xs text-muted-foreground">Alert when frequency exceeds this</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Critical Level</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      min="1"
+                      value={alertThresholds.frequency_critical}
+                      onChange={(e) => setAlertThresholds(prev => ({ ...prev, frequency_critical: parseFloat(e.target.value) || 1 }))}
+                    />
+                    <p className="text-xs text-muted-foreground">Urgent alert when frequency exceeds this</p>
+                  </div>
+                </div>
+
+                <Button onClick={handleSaveAlertThresholds} disabled={saving} variant="lumi" className="mt-4">
+                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Save Thresholds
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* Billing Tab */}
           <TabsContent value="billing" className="space-y-6">
             {subLoading ? (
               <Card>
@@ -252,13 +488,9 @@ export default function Settings() {
                           <Crown className="h-5 w-5 text-primary animate-sparkle-pulse" />
                           <span className="text-gradient-lumi">{currentTier.name}</span> Plan
                         </CardTitle>
-                        <CardDescription>
-                          {isAnnual ? 'Annual' : 'Monthly'} billing
-                        </CardDescription>
+                        <CardDescription>{isAnnual ? 'Annual' : 'Monthly'} billing</CardDescription>
                       </div>
-                      <Badge className="bg-gradient-lumi text-white border-0">
-                        Active
-                      </Badge>
+                      <Badge className="bg-gradient-lumi text-white border-0">Active</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -267,28 +499,17 @@ export default function Settings() {
                         <p className="text-sm text-muted-foreground">Current Price</p>
                         <p className="text-2xl font-bold">
                           ${isAnnual ? currentTier.annualPrice : currentTier.monthlyPrice}
-                          <span className="text-sm font-normal text-muted-foreground">
-                            /{isAnnual ? 'year' : 'month'}
-                          </span>
+                          <span className="text-sm font-normal text-muted-foreground">/{isAnnual ? 'year' : 'month'}</span>
                         </p>
                       </div>
                       {subscriptionEnd && (
                         <div>
-                          <p className="text-sm text-muted-foreground">
-                            {cancelAtPeriodEnd ? 'Cancels on' : 'Next billing date'}
-                          </p>
-                          <p className="text-lg font-medium">
-                            {new Date(subscriptionEnd).toLocaleDateString()}
-                          </p>
-                          {cancelAtPeriodEnd && (
-                            <Badge variant="destructive" className="mt-1">
-                              Cancelling
-                            </Badge>
-                          )}
+                          <p className="text-sm text-muted-foreground">{cancelAtPeriodEnd ? 'Cancels on' : 'Next billing date'}</p>
+                          <p className="text-lg font-medium">{new Date(subscriptionEnd).toLocaleDateString()}</p>
+                          {cancelAtPeriodEnd && <Badge variant="destructive" className="mt-1">Cancelling</Badge>}
                         </div>
                       )}
                     </div>
-
                     <div className="pt-4 border-t">
                       <p className="text-sm font-medium mb-2">Plan Limits</p>
                       <div className="grid gap-2 text-sm">
@@ -312,27 +533,12 @@ export default function Settings() {
                 <Card variant="glow">
                   <CardHeader>
                     <CardTitle>Manage Subscription</CardTitle>
-                    <CardDescription>
-                      Update payment method, change plan, or cancel subscription
-                    </CardDescription>
+                    <CardDescription>Update payment method, change plan, or cancel subscription</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button
-                      onClick={handleManageSubscription}
-                      disabled={portalLoading}
-                      className="gap-2"
-                    >
-                      {portalLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Opening...
-                        </>
-                      ) : (
-                        <>
-                          <ExternalLink className="h-4 w-4" />
-                          Manage Billing
-                        </>
-                      )}
+                    <Button onClick={handleManageSubscription} disabled={portalLoading} className="gap-2">
+                      {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                      {portalLoading ? 'Opening...' : 'Manage Billing'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -341,14 +547,11 @@ export default function Settings() {
               <Card variant="glow">
                 <CardHeader>
                   <CardTitle>No Active Subscription</CardTitle>
-                  <CardDescription>
-                    Subscribe to unlock all features of Lumi
-                  </CardDescription>
+                  <CardDescription>Subscribe to unlock all features of Lumi</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Choose a plan to get started with AI-powered ad creation, psychology-driven copy, 
-                    and automated campaign management.
+                    Choose a plan to get started with AI-powered ad creation, psychology-driven copy, and automated campaign management.
                   </p>
                   <Button onClick={() => navigate('/pricing')} variant="lumi" className="gap-2">
                     <Crown className="h-4 w-4" />

@@ -60,6 +60,7 @@ export type Database = {
       }
       brands: {
         Row: {
+          alert_thresholds: Json | null
           audience_psychology: Json | null
           brand_voice: string | null
           created_at: string | null
@@ -67,7 +68,9 @@ export type Database = {
           industry: string | null
           meta_access_token: string | null
           meta_account_id: string | null
+          meta_token_expires_at: string | null
           name: string
+          notification_preferences: Json | null
           page_id: string | null
           page_name: string | null
           psychology_status: string | null
@@ -78,6 +81,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          alert_thresholds?: Json | null
           audience_psychology?: Json | null
           brand_voice?: string | null
           created_at?: string | null
@@ -85,7 +89,9 @@ export type Database = {
           industry?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
+          meta_token_expires_at?: string | null
           name: string
+          notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null
           psychology_status?: string | null
@@ -96,6 +102,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          alert_thresholds?: Json | null
           audience_psychology?: Json | null
           brand_voice?: string | null
           created_at?: string | null
@@ -103,7 +110,9 @@ export type Database = {
           industry?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
+          meta_token_expires_at?: string | null
           name?: string
+          notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null
           psychology_status?: string | null
