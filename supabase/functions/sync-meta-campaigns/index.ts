@@ -22,16 +22,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandId, metaAccountId, metaAccessToken } = await req.json();
+    const { brandId, metaAccountId, metaAccessToken, campaignIds } = await req.json();
     
     if (!brandId || !metaAccountId || !metaAccessToken) {
       throw new Error('brandId, metaAccountId, and metaAccessToken are required');
     }
 
     console.log('Starting campaign sync for brand:', brandId);
+    console.log('Specific campaign IDs to sync:', campaignIds || 'all active');
 
     // Fetch campaigns from Meta API
-    const campaignsUrl = `https://graph.facebook.com/v18.0/${metaAccountId}/campaigns?fields=id,name,status,objective,created_time,daily_budget,lifetime_budget&limit=100&access_token=${metaAccessToken}`;
+    const campaignsUrl = `https://graph.facebook.com/v18.0/${metaAccountId}/campaigns?fields=id,name,status,objective,created_time,daily_budget,lifetime_budget&limit=500&access_token=${metaAccessToken}`;
     
     const campaignsResponse = await fetch(campaignsUrl);
     const campaignsData = await campaignsResponse.json();
@@ -41,20 +42,30 @@ Deno.serve(async (req) => {
       throw new Error(campaignsData.error?.message || 'Failed to fetch campaigns from Meta');
     }
 
-    const campaigns: MetaCampaign[] = campaignsData.data || [];
-    console.log(`Fetched ${campaigns.length} total campaigns from Meta`);
+    const allCampaigns: MetaCampaign[] = campaignsData.data || [];
+    console.log(`Fetched ${allCampaigns.length} total campaigns from Meta`);
 
-    // Filter for active campaigns only
-    const activeCampaigns = campaigns.filter((campaign) => campaign.status === 'ACTIVE');
-    console.log(`Found ${activeCampaigns.length} active campaigns`);
+    // Filter campaigns based on whether specific IDs were provided
+    let campaignsToSync: MetaCampaign[];
+    
+    if (campaignIds && Array.isArray(campaignIds) && campaignIds.length > 0) {
+      // Sync only the specified campaigns (any status)
+      const campaignIdSet = new Set(campaignIds);
+      campaignsToSync = allCampaigns.filter((campaign) => campaignIdSet.has(campaign.id));
+      console.log(`Found ${campaignsToSync.length} campaigns matching specified IDs`);
+    } else {
+      // Default behavior: sync only active campaigns
+      campaignsToSync = allCampaigns.filter((campaign) => campaign.status === 'ACTIVE');
+      console.log(`Found ${campaignsToSync.length} active campaigns`);
+    }
 
-    if (activeCampaigns.length === 0) {
+    if (campaignsToSync.length === 0) {
       return new Response(
         JSON.stringify({ 
           success: true,
           synced: 0,
           skipped: 0,
-          message: 'No active campaigns found to sync'
+          message: campaignIds ? 'No matching campaigns found' : 'No active campaigns found to sync'
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -148,13 +159,18 @@ Deno.serve(async (req) => {
     let skipped = 0;
     const syncedCampaigns = [];
 
-    for (const campaign of activeCampaigns) {
+    for (const campaign of campaignsToSync) {
       // Check if campaign already exists
       if (existingCampaignIds.has(campaign.id)) {
         console.log(`Skipping duplicate campaign: ${campaign.name} (${campaign.id})`);
         skipped++;
         continue;
       }
+
+      // Determine campaign status based on Meta status
+      const metaStatus = campaign.status === 'ACTIVE' ? 'active' : 
+                         campaign.status === 'PAUSED' ? 'paused' : 
+                         campaign.status === 'ARCHIVED' ? 'archived' : 'unknown';
 
       // Fetch initial performance data
       console.log(`Fetching performance data for: ${campaign.name} (${campaign.id})`);
@@ -177,8 +193,8 @@ Deno.serve(async (req) => {
           brand_id: brandId,
           name: campaign.name,
           meta_campaign_ids: { campaignId: campaign.id },
-          meta_campaign_status: 'active',
-          progress_status: 'live',
+          meta_campaign_status: metaStatus,
+          progress_status: campaign.status === 'ACTIVE' ? 'live' : 'imported',
           published_at: new Date().toISOString(),
           performance_history: initialPerformanceHistory,
           meta_insights_last_sync: performanceMetrics ? new Date().toISOString() : null,

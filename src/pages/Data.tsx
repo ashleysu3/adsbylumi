@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { format, subDays, startOfDay, endOfDay, startOfYesterday, endOfYesterday } from 'date-fns';
-import { RefreshCw, Link2Off, CheckCircle2, AlertTriangle, Link2 } from 'lucide-react';
+import { RefreshCw, Link2Off, CheckCircle2, AlertTriangle, Link2, Download } from 'lucide-react';
 import { InsightsHome } from '@/components/insights/InsightsHome';
 import { CampaignInsightDetail } from '@/components/insights/CampaignInsightDetail';
 import { useLumiAssistant } from '@/components/LumiAssistant';
 import { MetaConnectionAlert, MetaConnectionBanner } from '@/components/MetaConnectionAlert';
+import { ImportCampaignsModal } from '@/components/insights/ImportCampaignsModal';
 
 interface PerformanceAnalysis {
   kpi_evaluation?: Record<string, {
@@ -71,7 +72,11 @@ export default function Data() {
   const [metaConnected, setMetaConnected] = useState(false);
   const [metaTokenExpired, setMetaTokenExpired] = useState(false);
   const [brandId, setBrandId] = useState<string | null>(null);
+  const [metaAccountId, setMetaAccountId] = useState<string | null>(null);
   const [tokenExpirationChecked, setTokenExpirationChecked] = useState(false);
+
+  // Import modal state
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Date range state
   const [globalDateRange, setGlobalDateRange] = useState<string>('7');
@@ -235,6 +240,7 @@ export default function Data() {
       // Meta is connected if we have an account ID (token is now stored in Vault server-side)
       const isMetaConnected = !!brand.meta_account_id;
       setMetaConnected(isMetaConnected);
+      setMetaAccountId(brand.meta_account_id);
 
       // Check token expiration on page load
       if (isMetaConnected && brand.meta_token_expires_at && !tokenExpirationChecked) {
@@ -561,35 +567,50 @@ export default function Data() {
             <p className="text-muted-foreground text-sm">Track performance and get AI-powered recommendations</p>
           </div>
           
-          {/* Meta Connection Status Badge */}
-          {metaConnected && !metaTokenExpired && (
-            <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 gap-1.5">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Meta Connected
-            </Badge>
-          )}
-          {metaConnected && metaTokenExpired && (
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => navigate("/dashboard")}
-            >
-              <AlertTriangle className="h-4 w-4" />
-              Reconnect Meta
-            </Button>
-          )}
-          {!metaConnected && !loading && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2"
-              onClick={() => navigate("/dashboard")}
-            >
-              <Link2 className="h-4 w-4" />
-              Connect Meta
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Import from Ads Manager Button */}
+            {metaConnected && !metaTokenExpired && brandId && metaAccountId && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                onClick={() => setImportModalOpen(true)}
+              >
+                <Download className="h-4 w-4" />
+                Import from Ads Manager
+              </Button>
+            )}
+
+            {/* Meta Connection Status Badge */}
+            {metaConnected && !metaTokenExpired && (
+              <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 gap-1.5">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Meta Connected
+              </Badge>
+            )}
+            {metaConnected && metaTokenExpired && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                className="gap-2"
+                onClick={() => navigate("/dashboard")}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Reconnect Meta
+              </Button>
+            )}
+            {!metaConnected && !loading && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-2"
+                onClick={() => navigate("/dashboard")}
+              >
+                <Link2 className="h-4 w-4" />
+                Connect Meta
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Meta Token Expired - Modal popup */}
@@ -637,6 +658,19 @@ export default function Data() {
               Back to Overview
             </Button>
           </div>
+        )}
+
+        {/* Import Campaigns Modal */}
+        {brandId && metaAccountId && (
+          <ImportCampaignsModal
+            open={importModalOpen}
+            onOpenChange={setImportModalOpen}
+            brandId={brandId}
+            metaAccountId={metaAccountId}
+            dateRangeStart={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).from, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.from, 'yyyy-MM-dd') : undefined}
+            dateRangeEnd={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).to, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.to, 'yyyy-MM-dd') : undefined}
+            onImportComplete={fetchCampaigns}
+          />
         )}
       </div>
     </DashboardLayout>
