@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { Send, Loader2, X, Sparkle } from "lucide-react";
+import { Send, Loader2, X, Sparkle, Copy, Check, Lightbulb, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LumiCharacter } from "./LumiCharacter";
@@ -73,8 +73,16 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
   const { messages, addMessage, setBrandId } = useLumi();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const starters = contextStarters[context] || contextStarters.dashboard;
+
+  const copyToClipboard = async (text: string, idx: number) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedIdx(idx);
+    toast.success("Copied to clipboard");
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
 
   // Set brand ID when brand changes
   useEffect(() => {
@@ -211,35 +219,78 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
                 {messages.map((message, idx) => (
                   <div key={idx} className="space-y-2">
                     <div
-                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} group`}
                     >
                       {message.role === 'assistant' && (
                         <LumiCharacter size="sm" state="idle" className="mr-2 flex-shrink-0 mt-1" />
                       )}
-                      <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <div className="relative max-w-[80%]">
+                        <div
+                          className={`rounded-2xl px-4 py-3 ${
+                            message.role === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
+                          }`}
+                        >
+                          <p className="text-sm whitespace-pre-wrap select-text">{message.content}</p>
+                        </div>
+                        {/* Copy button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute -right-8 top-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => copyToClipboard(message.content, idx)}
+                        >
+                          {copiedIdx === idx ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
                       </div>
                     </div>
-                    {/* Follow-up suggestions after the latest assistant message */}
-                    {message.role === 'assistant' && message.followups && message.followups.length > 0 && idx === messages.length - 1 && !isLoading && (
-                      <div className="flex flex-wrap gap-2 ml-10">
-                        {message.followups.map((followup, fIdx) => (
-                          <Button
-                            key={fIdx}
-                            variant="outline"
-                            size="sm"
-                            className="h-auto py-1.5 px-3 text-xs"
-                            onClick={() => sendMessage(followup.message)}
-                          >
-                            {followup.label}
-                          </Button>
-                        ))}
+                    {/* Follow-up suggestions and action buttons after the latest assistant message */}
+                    {message.role === 'assistant' && idx === messages.length - 1 && !isLoading && (
+                      <div className="space-y-2 ml-10">
+                        {/* Follow-up suggestions */}
+                        {message.followups && message.followups.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {message.followups.map((followup, fIdx) => (
+                              <Button
+                                key={fIdx}
+                                variant="outline"
+                                size="sm"
+                                className="h-auto py-1.5 px-3 text-xs"
+                                onClick={() => sendMessage(followup.message)}
+                              >
+                                {followup.label}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                        {/* Action buttons for creative/production/data contexts */}
+                        {(context === 'creative' || context === 'production' || context === 'data') && (
+                          <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50 mt-2">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="h-auto py-1.5 px-3 text-xs gap-1.5"
+                              onClick={() => sendMessage("Add these creative suggestions to my concepts. Generate new angles or hooks based on what we discussed.")}
+                            >
+                              <Lightbulb className="h-3 w-3" />
+                              Add to Concepts
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="h-auto py-1.5 px-3 text-xs gap-1.5"
+                              onClick={() => sendMessage("I'm ready to move forward. Help me prepare these concepts for publishing to Meta.")}
+                            >
+                              <Rocket className="h-3 w-3" />
+                              Ready to Publish
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
