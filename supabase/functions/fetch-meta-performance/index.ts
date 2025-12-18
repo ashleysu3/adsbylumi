@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     // Fetch brand separately
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('*')
+      .select('id, meta_account_id')
       .eq('id', workspace.brand_id)
       .single();
 
@@ -44,8 +44,16 @@ Deno.serve(async (req) => {
       throw new Error('Brand not found');
     }
 
-    if (!brand.meta_access_token || !brand.meta_account_id) {
+    if (!brand.meta_account_id) {
       throw new Error('Meta account not connected. Please connect your Meta ad account in the Dashboard first.');
+    }
+
+    // Get token securely from vault
+    const { data: metaAccessToken, error: tokenError } = await supabase
+      .rpc('get_meta_token', { p_brand_id: brand.id });
+
+    if (tokenError || !metaAccessToken) {
+      throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 
     // Check if campaign is actually published to Meta
@@ -93,7 +101,7 @@ Deno.serve(async (req) => {
       : `date_preset=last_7d`;
 
     // Fetch Campaign-level insights - including video_p100_watched_actions for thruplay data
-    const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions&${timeRange}&access_token=${brand.meta_access_token}`;
+    const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions&${timeRange}&access_token=${metaAccessToken}`;
     
     const campaignResponse = await fetch(campaignInsightsUrl);
     const campaignData = await campaignResponse.json();
@@ -108,7 +116,7 @@ Deno.serve(async (req) => {
     // Fetch Ad Set-level insights
     const adSetMetrics = [];
     for (const adSetId of adSetIds) {
-      const adSetUrl = `https://graph.facebook.com/v18.0/${adSetId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${brand.meta_access_token}`;
+      const adSetUrl = `https://graph.facebook.com/v18.0/${adSetId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
       const adSetResponse = await fetch(adSetUrl);
       const adSetData = await adSetResponse.json();
       
@@ -123,7 +131,7 @@ Deno.serve(async (req) => {
     // Fetch Ad-level insights
     const adMetrics = [];
     for (const adId of adIds) {
-      const adUrl = `https://graph.facebook.com/v18.0/${adId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${brand.meta_access_token}`;
+      const adUrl = `https://graph.facebook.com/v18.0/${adId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
       const adResponse = await fetch(adUrl);
       const adData = await adResponse.json();
       
