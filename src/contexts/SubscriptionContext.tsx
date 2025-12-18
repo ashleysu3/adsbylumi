@@ -5,7 +5,7 @@ import { getTierFromProductId, getTierFromPriceId, isAnnualPrice, TierKey, SUBSC
 interface TierLimits {
   brands: number;
   adAccounts: number;
-  campaigns: number;
+  adSpendCap: number;
 }
 
 interface SubscriptionState {
@@ -107,7 +107,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     return {
       brands: limits.brands,
       adAccounts: limits.adAccounts,
-      campaigns: limits.campaigns,
+      adSpendCap: limits.adSpendCap,
     };
   }, [state.tier]);
 

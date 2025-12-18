@@ -522,8 +522,8 @@ export default function Settings() {
                           <span>{currentTier.limits.adAccounts === -1 ? 'Unlimited' : currentTier.limits.adAccounts}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Campaigns</span>
-                          <span>{currentTier.limits.campaigns === -1 ? 'Unlimited' : currentTier.limits.campaigns}</span>
+                          <span className="text-muted-foreground">Ad Spend Cap</span>
+                          <span>{currentTier.limits.adSpendCap === -1 ? 'Unlimited' : `$${currentTier.limits.adSpendCap.toLocaleString()}/mo`}</span>
                         </div>
                       </div>
                     </div>
