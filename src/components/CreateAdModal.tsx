@@ -6,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Video, FileText, ShoppingCart, TrendingUp, Plus, Target, Users, Layers, PlusCircle, Sparkles, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { LumiCharacter } from "@/components/LumiCharacter";
 import { GeneratingModal } from "@/components/GeneratingModal";
 import { OfferDialog } from "@/components/OfferDialog";
+import confetti from "canvas-confetti";
 
 const iconMap: Record<string, any> = {
   Video,
@@ -47,6 +49,7 @@ interface CreateAdModalProps {
 export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState(false);
   const [brand, setBrand] = useState<any>(null);
   const [templates, setTemplates] = useState<any[]>([]);
   const [offers, setOffers] = useState<any[]>([]);
@@ -68,6 +71,7 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
   }, [open]);
 
   const fetchData = async () => {
+    setFetchingData(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -97,7 +101,18 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
+    } finally {
+      setFetchingData(false);
     }
+  };
+
+  const fireConfetti = () => {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ['#F4C960', '#EEA047', '#E8772F', '#9b87f5']
+    });
   };
 
   const resetFlow = () => {
@@ -173,6 +188,7 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
         .single();
       if (workspaceError) throw workspaceError;
       
+      fireConfetti();
       toast.success(`${template.name} workspace created!`);
       handleClose();
       navigate(`/workspace/${newWorkspace.id}`);
@@ -564,6 +580,43 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
                   const recommendedSlug = recommendationMapping[recommendationKey];
                   const recommendedTemplate = templates.find(t => t.slug === recommendedSlug);
                   const contextMessage = recommendationMessages[recommendationKey];
+                  
+                  // Show shimmer loading state while fetching templates
+                  if (fetchingData || templates.length === 0) {
+                    return (
+                      <div className="space-y-4 animate-fade-in">
+                        <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-primary/10 relative overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer -translate-x-full" />
+                          <CardContent className="pt-6 relative">
+                            <div className="flex gap-4">
+                              <Skeleton className="h-16 w-16 rounded-full flex-shrink-0" />
+                              <div className="flex-1 space-y-4">
+                                <div className="flex items-center gap-2">
+                                  <Skeleton className="h-4 w-4" />
+                                  <Skeleton className="h-4 w-32" />
+                                </div>
+                                <div className="space-y-3">
+                                  <div className="flex items-start gap-3">
+                                    <Skeleton className="h-10 w-10 rounded-lg flex-shrink-0" />
+                                    <div className="flex-1 space-y-2">
+                                      <Skeleton className="h-5 w-48" />
+                                      <Skeleton className="h-4 w-full" />
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Skeleton className="h-5 w-20 rounded-full" />
+                                    <Skeleton className="h-5 w-24 rounded-full" />
+                                  </div>
+                                  <Skeleton className="h-12 w-full rounded-lg" />
+                                </div>
+                                <Skeleton className="h-12 w-full rounded-lg" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    );
+                  }
                   
                   if (!recommendedTemplate) return null;
                   
