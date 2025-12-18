@@ -11,10 +11,13 @@ import { toast } from "sonner";
 import { LumiLoader } from "@/components/LumiLoader";
 import { LumiCharacter } from "@/components/LumiCharacter";
 import { LumiRecommendedBadge } from "@/components/LumiRecommendedBadge";
+import { useLumiRecommend } from "@/components/LumiRecommendPopup";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CampaignFlowBreadcrumb } from "@/components/CampaignFlowBreadcrumb";
 import { GeneratingModal } from "@/components/GeneratingModal";
+import { GridShimmer } from "@/components/GradientShimmer";
+
 const iconMap: Record<string, any> = {
   Video,
   FileText,
@@ -23,9 +26,12 @@ const iconMap: Record<string, any> = {
   TrendingUp,
   Play
 };
+
 export default function Planning() {
   const navigate = useNavigate();
+  const { setRecommendation } = useLumiRecommend();
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
@@ -33,6 +39,7 @@ export default function Planning() {
   const [offersWithRecommendations, setOffersWithRecommendations] = useState<any[]>([]);
   const [offers, setOffers] = useState<any[]>([]);
   const [selectedOfferId, setSelectedOfferId] = useState<string>("");
+  
   useEffect(() => {
     fetchData();
   }, []);
@@ -71,9 +78,22 @@ export default function Planning() {
         // Filter offers with recommendations
         const recommended = (offersData || []).filter(o => o.recommended_template_id);
         setOffersWithRecommendations(recommended);
+        
+        // Trigger Lumi recommendation popup if there are offers with recommendations
+        if (recommended.length > 0) {
+          setRecommendation({
+            id: `planning-offers-${brandData.id}`,
+            title: "Lumi recommends",
+            message: `You have ${recommended.length} offer${recommended.length > 1 ? 's' : ''} with campaign recommendations ready! Start from your Brand Dashboard for the fastest setup.`,
+            actionLabel: "View My Offers",
+            onAction: () => navigate('/dashboard'),
+          });
+        }
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
+    } finally {
+      setInitialLoading(false);
     }
   };
   const handleTemplateClick = async (template: any) => {
@@ -142,6 +162,24 @@ export default function Planning() {
     setSelectedTemplate(template);
     setShowDetails(true);
   };
+  // Show shimmer loading during initial load
+  if (initialLoading) {
+    return (
+      <DashboardLayout>
+        <CampaignFlowBreadcrumb currentStep="planning" />
+        <div className="space-y-8 py-[2px]">
+          <div className="space-y-2">
+            <h2 className="text-3xl font-display tracking-tight">
+              Lumi <span className="text-gradient-lumi">Strategy</span>
+            </h2>
+            <p className="text-muted-foreground">Loading your campaign templates...</p>
+          </div>
+          <GridShimmer count={6} />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (!brand) {
     return <DashboardLayout>
         <Card>
@@ -195,29 +233,13 @@ export default function Planning() {
             </CardContent>
           </Card>}
 
-        {offersWithRecommendations.length > 0 && <Card variant="gradient" className="bg-gradient-to-br from-lumi-purple-1/5 to-lumi-pink-1/5">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 text-2xl">✨</div>
-                <div className="space-y-2">
-                <p className="font-semibold text-gradient-lumi">Lumi recommends</p>
-                  <p className="text-sm text-muted-foreground">
-                    You've already got campaign recommendations for your offers in your Brand Dashboard. 
-                    Start there for the fastest setup!
-                  </p>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
-                    View My Offers
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>}
+        {/* Lumi recommendations now shown via popup */}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {templates.map(template => {
           const Icon = iconMap[template.icon] || Video;
           const isRecommendedForSelectedOffer = selectedOfferId && offers.find(o => o.id === selectedOfferId)?.recommended_template_id === template.id;
-          return <Card 
+          return <Card
                 key={template.id} 
                 variant={isRecommendedForSelectedOffer ? "gradient" : "glow"}
                 className={`cursor-pointer transition-all duration-300 relative hover:scale-[1.02] ${isRecommendedForSelectedOffer ? "shadow-glow" : ""}`}

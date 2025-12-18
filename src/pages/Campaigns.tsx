@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignsList } from "@/components/CampaignsList";
-import { LumiLoader } from "@/components/LumiLoader";
+import { GridShimmer } from "@/components/GradientShimmer";
 import { toast } from "sonner";
 
 export default function Campaigns() {
@@ -44,8 +44,16 @@ export default function Campaigns() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <LumiLoader size="lg" message="Loading your campaigns..." />
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-display font-bold tracking-tight">
+              My <span className="text-gradient-lumi">Campaigns</span>
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Loading your campaigns...
+            </p>
+          </div>
+          <GridShimmer count={4} className="grid-cols-1 md:grid-cols-2" />
         </div>
       </DashboardLayout>
     );
