@@ -164,7 +164,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
 
   return (
     <>
-      <Card data-section="offers">
+      <Card variant="glow" data-section="offers">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -215,7 +215,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
                   open={expandedOffers.has(offer.id)}
                   onOpenChange={() => toggleOffer(offer.id)}
                 >
-                  <Card className={`border-2 ${offer.archived ? 'opacity-60' : ''}`}>
+                  <Card variant={offer.recommended_template_id ? "gradient" : "glow"} className={`${offer.archived ? 'opacity-60' : ''}`}>
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <CollapsibleTrigger asChild>
@@ -333,10 +333,10 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
 
                         {offer.recommended_template_id && getRecommendedTemplate(offer.recommended_template_id) && (
                           <div className="pt-4 border-t">
-                            <p className="text-sm font-medium mb-2">Recommended Campaign</p>
-                            <div className="bg-muted/50 p-3 rounded-lg space-y-3">
+                            <p className="text-sm font-medium mb-2 text-gradient-lumi">✨ Recommended Campaign</p>
+                            <div className="bg-gradient-to-br from-lumi-purple-1/5 to-lumi-pink-1/5 p-3 rounded-lg space-y-3 border border-primary/20">
                               <div className="flex items-center gap-2">
-                                <Sparkles className="h-4 w-4 text-primary" />
+                                <Sparkles className="h-4 w-4 text-primary animate-sparkle-pulse" />
                                 <span className="font-semibold">{getRecommendedTemplate(offer.recommended_template_id)?.name}</span>
                               </div>
                               {offer.recommendation_reason && (
@@ -346,6 +346,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
                                 onClick={() => createCampaignForOffer(offer)} 
                                 disabled={creatingCampaign === offer.id}
                                 className="w-full"
+                                variant="lumi"
                               >
                                 {creatingCampaign === offer.id ? (
                                   <>

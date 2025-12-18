@@ -65,7 +65,9 @@ export default function Campaigns() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-display font-bold tracking-tight">My Campaigns</h1>
+          <h1 className="text-3xl font-display font-bold tracking-tight">
+            My <span className="text-gradient-lumi">Campaigns</span>
+          </h1>
           <p className="text-muted-foreground mt-2">
             Active and draft campaign workspaces
           </p>
