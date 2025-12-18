@@ -784,7 +784,7 @@ EVALUATION PRIORITY:
                       </div>
                       <div>
                         <Label>Optimization Event</Label>
-                        <Select value={formOptimizationEvent} onValueChange={setFormOptimizationEvent}>
+                        <Select value={formOptimizationEvent || undefined} onValueChange={setFormOptimizationEvent}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select event" />
                           </SelectTrigger>
