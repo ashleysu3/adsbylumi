@@ -233,114 +233,125 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                 </Card>
               )}
 
-              <Card className="p-6 space-y-4">
-                <h3 className="font-semibold text-lg">Concept Preview</h3>
-                
-                {/* Show Psychology Trigger (all formats) */}
-                {item.concept?.psychology_trigger && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Psychology Trigger</p>
-                    <p className="text-sm mt-1">{item.concept.psychology_trigger}</p>
-                  </div>
-                )}
+              {/* Only show Concept Preview if there's actual concept data */}
+              {item.concept && (
+                item.concept.psychology_trigger ||
+                item.concept.script ||
+                item.concept.overlay_text ||
+                item.concept.broll_instructions ||
+                item.concept.static_layout ||
+                item.concept.production_notes ||
+                item.concept.why_it_works
+              ) && (
+                <Card className="p-6 space-y-4">
+                  <h3 className="font-semibold text-lg">Concept Preview</h3>
+                  
+                  {/* Show Psychology Trigger (all formats) */}
+                  {item.concept?.psychology_trigger && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Psychology Trigger</p>
+                      <p className="text-sm mt-1">{item.concept.psychology_trigger}</p>
+                    </div>
+                  )}
 
-                {/* Talking Head Format */}
-                {item.format === "talking_head" && (
-                  <>
-                    {item.concept?.script && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Script</p>
-                        <p className="text-sm mt-1 whitespace-pre-wrap">{item.concept.script}</p>
-                      </div>
-                    )}
-                    {item.concept?.overlay_text && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Overlay Text</p>
-                        <div className="space-y-1 mt-1">
-                          {item.concept.overlay_text.map((text: string, i: number) => (
-                            <p key={i} className="text-sm text-muted-foreground">• {text}</p>
-                          ))}
+                  {/* Talking Head Format */}
+                  {item.format === "talking_head" && (
+                    <>
+                      {item.concept?.script && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Script</p>
+                          <p className="text-sm mt-1 whitespace-pre-wrap">{item.concept.script}</p>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* B Roll Format */}
-                {item.format === "broll" && (
-                  <>
-                    {item.concept?.broll_instructions && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">B-Roll Shot List</p>
-                        <div className="space-y-2 mt-2">
-                          {item.concept.broll_instructions.map((instruction: string, i: number) => (
-                            <div key={i} className="p-3 bg-muted/50 rounded-md">
-                              <p className="text-sm">{instruction}</p>
-                            </div>
-                          ))}
+                      )}
+                      {item.concept?.overlay_text && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Overlay Text</p>
+                          <div className="space-y-1 mt-1">
+                            {item.concept.overlay_text.map((text: string, i: number) => (
+                              <p key={i} className="text-sm text-muted-foreground">• {text}</p>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                      )}
+                    </>
+                  )}
 
-                {/* Static Format */}
-                {item.format === "static" && (
-                  <>
-                    {item.concept?.static_layout && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Static Layout</p>
-                        <div className="space-y-2 mt-2">
-                          {item.concept.static_layout.headline && (
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground">Headline</p>
-                              <p className="text-sm">{item.concept.static_layout.headline}</p>
-                            </div>
-                          )}
-                          {item.concept.static_layout.subheadline && (
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground">Subheadline</p>
-                              <p className="text-sm">{item.concept.static_layout.subheadline}</p>
-                            </div>
-                          )}
-                          {item.concept.static_layout.background_visual && (
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground">Visual Direction</p>
-                              <p className="text-sm">{item.concept.static_layout.background_visual}</p>
-                            </div>
-                          )}
+                  {/* B Roll Format */}
+                  {item.format === "broll" && (
+                    <>
+                      {item.concept?.broll_instructions && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">B-Roll Shot List</p>
+                          <div className="space-y-2 mt-2">
+                            {item.concept.broll_instructions.map((instruction: string, i: number) => (
+                              <div key={i} className="p-3 bg-muted/50 rounded-md">
+                                <p className="text-sm">{instruction}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {item.concept?.overlay_text && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Overlay Text</p>
-                        <div className="space-y-1 mt-1">
-                          {item.concept.overlay_text.map((text: string, i: number) => (
-                            <p key={i} className="text-sm text-muted-foreground">• {text}</p>
-                          ))}
+                      )}
+                    </>
+                  )}
+
+                  {/* Static/Graphic Format */}
+                  {(item.format === "static" || item.format === "graphic") && (
+                    <>
+                      {item.concept?.static_layout && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Static Layout</p>
+                          <div className="space-y-2 mt-2">
+                            {item.concept.static_layout.headline && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">Headline</p>
+                                <p className="text-sm">{item.concept.static_layout.headline}</p>
+                              </div>
+                            )}
+                            {item.concept.static_layout.subheadline && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">Subheadline</p>
+                                <p className="text-sm">{item.concept.static_layout.subheadline}</p>
+                              </div>
+                            )}
+                            {item.concept.static_layout.background_visual && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">Visual Direction</p>
+                                <p className="text-sm">{item.concept.static_layout.background_visual}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                      )}
+                      {item.concept?.overlay_text && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Overlay Text</p>
+                          <div className="space-y-1 mt-1">
+                            {item.concept.overlay_text.map((text: string, i: number) => (
+                              <p key={i} className="text-sm text-muted-foreground">• {text}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
 
-                {/* Production Notes (all formats) */}
-                {item.concept?.production_notes && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Production Notes</p>
-                    <p className="text-sm mt-1 whitespace-pre-wrap">{item.concept.production_notes}</p>
-                  </div>
-                )}
+                  {/* Production Notes (all formats) */}
+                  {item.concept?.production_notes && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Production Notes</p>
+                      <p className="text-sm mt-1 whitespace-pre-wrap">{item.concept.production_notes}</p>
+                    </div>
+                  )}
 
-                {/* Why It Works (all formats) */}
-                {item.concept?.why_it_works && (
-                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-                    <p className="text-sm font-medium text-primary mb-1">Why This Works</p>
-                    <p className="text-sm text-muted-foreground">{item.concept.why_it_works}</p>
-                  </div>
-                )}
-              </Card>
+                  {/* Why It Works (all formats) */}
+                  {item.concept?.why_it_works && (
+                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                      <p className="text-sm font-medium text-primary mb-1">Why This Works</p>
+                      <p className="text-sm text-muted-foreground">{item.concept.why_it_works}</p>
+                    </div>
+                  )}
+                </Card>
+              )}
 
               {item.production_notes && (
                 <Card className="p-6">
