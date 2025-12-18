@@ -666,14 +666,14 @@ export default function Creative() {
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Header */}
-              <div className="border-b border-border bg-background/95 backdrop-blur-sm p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="border-b border-border bg-background/95 backdrop-blur-sm p-3 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <Select value={selectedCampaignId} onValueChange={handleCampaignSelect}>
-                      <SelectTrigger className="w-auto border-0 p-0 h-auto hover:bg-transparent focus:ring-0 shadow-none gap-2">
-                        <div className="flex flex-col items-start gap-1">
-                          <h1 className="text-2xl font-bold truncate">{workspace.name}</h1>
-                          <p className="text-sm text-muted-foreground truncate">
+                      <SelectTrigger className="w-auto border-0 p-0 h-auto hover:bg-transparent focus:ring-0 shadow-none gap-2 max-w-[200px] sm:max-w-none">
+                        <div className="flex flex-col items-start gap-0.5 sm:gap-1 text-left">
+                          <h1 className="text-lg sm:text-2xl font-bold truncate">{workspace.name}</h1>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
                             {workspace.offer_name || "Campaign Workspace"}
                           </p>
                         </div>
@@ -697,21 +697,21 @@ export default function Creative() {
                       {/* Change Angles Button */}
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="gap-2">
+                          <Button variant="ghost" size="sm" className="gap-2 min-h-[44px]">
                             <ArrowLeft className="h-4 w-4" />
                             <span className="hidden sm:inline">Change Angles</span>
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent className="max-w-[95vw] sm:max-w-lg mx-4">
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Change creative angles?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Going back will let you select different angles. Your current creative grid will be regenerated with the new selection.
+                            <AlertDialogTitle className="text-lg">Change creative angles?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-sm">
+                              Going back will let you select different angles. Your current grid will be regenerated.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => setDashboardStep("select_angles")}>
+                          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                            <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
+                            <AlertDialogAction className="min-h-[44px]" onClick={() => setDashboardStep("select_angles")}>
                               Change Angles
                             </AlertDialogAction>
                           </AlertDialogFooter>
@@ -719,7 +719,7 @@ export default function Creative() {
                       </AlertDialog>
                     </div>
                   ) : (
-                    <Badge variant="secondary" className="shrink-0">
+                    <Badge variant="secondary" className="shrink-0 text-xs">
                       {progressLabels[workspace.progress_status] || workspace.progress_status}
                     </Badge>
                   )}
@@ -727,36 +727,37 @@ export default function Creative() {
               </div>
 
               {/* Content Area */}
-              <div className="flex-1 overflow-auto p-6">
+              <div className="flex-1 overflow-auto p-3 sm:p-6">
                 {availableAngles.length === 0 ? (
                   /* Initial state - generate angles */
                   <div className="h-full flex items-center justify-center">
-                    <Card className="max-w-xl border-2 shadow-lg rounded-2xl">
-                      <CardHeader className="text-center space-y-3">
-                        <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-                          <Sparkles className="h-8 w-8 text-primary-foreground" />
+                    <Card className="max-w-xl border-2 shadow-lg rounded-2xl mx-3">
+                      <CardHeader className="text-center space-y-2 sm:space-y-3 px-4 sm:px-6">
+                        <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
+                          <Sparkles className="h-6 w-6 sm:h-8 sm:w-8 text-primary-foreground" />
                         </div>
-                        <CardTitle className="text-2xl font-display">Creative Studio</CardTitle>
-                        <CardDescription className="text-base">
-                          Ready to create! Lumi will generate creative angles based on your strategy, then you'll choose which ones to develop.
+                        <CardTitle className="text-xl sm:text-2xl font-display">Creative Studio</CardTitle>
+                        <CardDescription className="text-sm sm:text-base">
+                          Lumi will generate creative angles based on your strategy.
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="flex justify-center pb-8">
+                      <CardContent className="flex justify-center pb-6 sm:pb-8 px-4 sm:px-6">
                         <Button 
                           onClick={generateAngles} 
                           disabled={generating}
                           size="lg"
                           variant="default"
+                          className="min-h-[44px] w-full sm:w-auto"
                         >
                           {generating ? (
                             <>
                               <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
-                              Generating angles...
+                              Generating...
                             </>
                           ) : (
                             <>
                               <Sparkles className="mr-2 h-4 w-4" />
-                              Generate Creative Angles
+                              Generate Angles
                             </>
                           )}
                         </Button>

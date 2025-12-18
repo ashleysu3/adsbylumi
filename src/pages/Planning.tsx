@@ -203,15 +203,15 @@ export default function Planning() {
       </DashboardLayout>;
   }
   return <DashboardLayout>
-      <div className="space-y-8 py-[2px]">
-        <div className="flex items-start justify-between">
-          <div className="space-y-2">
-            <h2 className="text-3xl font-display tracking-tight">
+      <div className="space-y-6 md:space-y-8 py-[2px]">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div className="space-y-1 sm:space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-display tracking-tight">
               Create a <span className="text-gradient-lumi">New Ad</span>
             </h2>
-            <p className="text-muted-foreground">Let's keep this simple: pick a campaign type and Lumi will guide you through the rest.</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Pick a campaign type and Lumi will guide you.</p>
           </div>
-          <Button variant="lumi" onClick={() => setShowOfferDialog(true)}>
+          <Button variant="lumi" size="sm" className="self-start min-h-[44px] px-4" onClick={() => setShowOfferDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Offer
           </Button>
@@ -219,12 +219,12 @@ export default function Planning() {
 
         {/* Campaign Goal Selection */}
         <Card variant="glow" className="border-primary/20">
-          <CardContent className="pt-6">
-            <div className="space-y-4">
-              <Label className="text-base font-semibold">
-                Do you want an ad that goes to an offer or solving a business problem?
+          <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+            <div className="space-y-3 sm:space-y-4">
+              <Label className="text-sm sm:text-base font-semibold leading-tight">
+                Ad going to an offer or solving a problem?
               </Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:gap-4">
                 <button
                   onClick={() => {
                     setCampaignGoal("offer");
@@ -233,19 +233,19 @@ export default function Planning() {
                     setOfferAction(null);
                     setSelectedOfferId("");
                   }}
-                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                  className={`p-3 sm:p-4 rounded-lg border-2 transition-all text-left min-h-[60px] active:scale-[0.98] ${
                     campaignGoal === "offer" 
                       ? "border-primary bg-primary/5" 
                       : "border-border hover:border-primary/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Target className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
-                      <p className="font-medium">Going to an offer</p>
-                      <p className="text-sm text-muted-foreground">Drive traffic to a specific product or service</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base">Going to an offer</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">Drive traffic to a product or service</p>
                     </div>
                   </div>
                 </button>
@@ -256,19 +256,19 @@ export default function Planning() {
                     setOfferExists(null);
                     setOfferAction(null);
                   }}
-                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                  className={`p-3 sm:p-4 rounded-lg border-2 transition-all text-left min-h-[60px] active:scale-[0.98] ${
                     campaignGoal === "business_problem" 
                       ? "border-primary bg-primary/5" 
                       : "border-border hover:border-primary/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <TrendingUp className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
-                      <p className="font-medium">Solving a business problem</p>
-                      <p className="text-sm text-muted-foreground">Build awareness, trust, or grow your audience</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm sm:text-base">Solving a business problem</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">Build awareness, trust, or grow audience</p>
                     </div>
                   </div>
                 </button>
@@ -280,23 +280,23 @@ export default function Planning() {
         {/* Step 1 for Offer Path: Does this offer already exist? */}
         {campaignGoal === "offer" && offerExists === null && (
           <Card variant="glow" className="border-primary/20">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <Label className="text-base font-semibold">
-                  Does this offer already exist in your brand?
+            <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+              <div className="space-y-3 sm:space-y-4">
+                <Label className="text-sm sm:text-base font-semibold">
+                  Does this offer already exist?
                 </Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   <button
                     onClick={() => setOfferExists("yes")}
-                    className="p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50"
+                    className="p-3 sm:p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50 min-h-[60px] active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <FileText className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
-                        <p className="font-medium">Yes, it exists</p>
-                        <p className="text-sm text-muted-foreground">Select from your existing offers</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm sm:text-base">Yes, it exists</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Select from existing offers</p>
                       </div>
                     </div>
                   </button>
@@ -305,15 +305,15 @@ export default function Planning() {
                       setOfferExists("no");
                       setShowOfferDialog(true);
                     }}
-                    className="p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50"
+                    className="p-3 sm:p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50 min-h-[60px] active:scale-[0.98]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <Plus className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
-                        <p className="font-medium">No, create new</p>
-                        <p className="text-sm text-muted-foreground">Add a new offer to your brand</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm sm:text-base">No, create new</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Add a new offer</p>
                       </div>
                     </div>
                   </button>
@@ -326,31 +326,31 @@ export default function Planning() {
         {/* Step 2 for Offer Path: Select existing offer */}
         {campaignGoal === "offer" && offerExists === "yes" && !selectedOfferId && (
           <Card variant="glow" className="border-primary/20">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
+            <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">
+                  <Label className="text-sm sm:text-base font-semibold">
                     Select your offer
                   </Label>
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={() => setOfferExists(null)}
-                    className="text-muted-foreground"
+                    className="text-muted-foreground min-h-[44px]"
                   >
                     ← Back
                   </Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {offers.map(offer => (
                     <button
                       key={offer.id}
                       onClick={() => setSelectedOfferId(offer.id)}
-                      className="p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50"
+                      className="p-3 sm:p-4 rounded-lg border-2 transition-all text-left border-border hover:border-primary/50 min-h-[60px] active:scale-[0.98]"
                     >
-                      <p className="font-medium">{offer.name}</p>
+                      <p className="font-medium text-sm sm:text-base">{offer.name}</p>
                       {offer.price_point && (
-                        <p className="text-sm text-muted-foreground mt-1">{offer.price_point}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1">{offer.price_point}</p>
                       )}
                       {offer.url && (
                         <p className="text-xs text-muted-foreground mt-1 truncate">{offer.url}</p>
@@ -360,16 +360,18 @@ export default function Planning() {
                 </div>
                 {offers.length === 0 && (
                   <div className="text-center py-6">
-                    <p className="text-muted-foreground mb-4">No offers found. Create your first offer!</p>
+                    <p className="text-sm text-muted-foreground mb-4">No offers found. Create your first!</p>
                     <Button 
                       variant="lumi" 
+                      size="sm"
+                      className="min-h-[44px]"
                       onClick={() => {
                         setOfferExists("no");
                         setShowOfferDialog(true);
                       }}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Create New Offer
+                      Create Offer
                     </Button>
                   </div>
                 )}
