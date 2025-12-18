@@ -104,6 +104,16 @@ export default function Auth() {
         // Increment invite code usage on successful signup
         await incrementInviteCodeUsage(inviteCode);
         
+        // Sync to Flodesk as active user in background
+        supabase.functions.invoke('sync-flodesk', {
+          body: { 
+            email: email.toLowerCase().trim(), 
+            firstName: fullName.split(' ')[0] || '',
+            lastName: fullName.split(' ').slice(1).join(' ') || '',
+            segment: 'active' 
+          }
+        }).catch(err => console.error('Flodesk sync error:', err));
+        
         // Check if user is immediately confirmed (auto-confirm is enabled)
         if (data.user && data.session) {
           toast.success("Account created! Let's choose your plan.");
