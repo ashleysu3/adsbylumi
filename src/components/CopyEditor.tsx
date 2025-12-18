@@ -37,11 +37,17 @@ interface CopyEditorProps {
 }
 
 export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onApprove, onBack }: CopyEditorProps) {
+  // Check if we have any copy content from any field name variation
+  const hasAnyCopy = !!(
+    initialCopy?.headline || initialCopy?.primary_text || 
+    concept?.headline || concept?.hook || concept?.primary_copy || concept?.primary_text
+  );
+
   const [copy, setCopy] = useState({
-    headline: initialCopy?.headline || concept.headline || "",
-    primary_text: initialCopy?.primary_text || concept.primary_copy || "",
-    description: initialCopy?.description || concept.description || "",
-    call_to_action: initialCopy?.call_to_action || "LEARN_MORE",
+    headline: initialCopy?.headline || concept?.headline || concept?.hook || "",
+    primary_text: initialCopy?.primary_text || concept?.primary_copy || concept?.primary_text || "",
+    description: initialCopy?.description || concept?.description || "",
+    call_to_action: initialCopy?.call_to_action || concept?.cta || "LEARN_MORE",
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiResponse, setAiResponse] = useState<any>(null);
@@ -268,10 +274,10 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
 
   const handleReset = () => {
     setCopy({
-      headline: concept.headline || "",
-      primary_text: concept.primary_copy || "",
-      description: concept.description || "",
-      call_to_action: "LEARN_MORE"
+      headline: concept?.headline || concept?.hook || "",
+      primary_text: concept?.primary_copy || concept?.primary_text || "",
+      description: concept?.description || "",
+      call_to_action: concept?.cta || "LEARN_MORE"
     });
     setAiResponse(null);
     setGenerationSource('manual');
@@ -352,9 +358,10 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
         <div className="flex gap-2">
           <Button 
             onClick={handleGenerateVariations}
-            disabled={isGeneratingVariations || !uploadedAsset}
+            disabled={isGeneratingVariations}
             size="lg"
             className="gap-2"
+            variant={!hasAnyCopy ? "default" : "outline"}
           >
             {isGeneratingVariations ? (
               <>
@@ -364,7 +371,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                Choose Copy Direction
+                {!hasAnyCopy ? "Generate Copy with AI" : "Choose Copy Direction"}
               </>
             )}
           </Button>
@@ -381,6 +388,16 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
           <Sparkles className="h-3 w-3" />
           AI Generated
         </Badge>
+      )}
+
+      {/* Empty Copy Prompt */}
+      {!hasAnyCopy && !showVariations && (
+        <Alert className="border-primary/20 bg-primary/5">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-sm">
+            <span className="font-medium">No copy found for this concept.</span> Click "Generate Copy with AI" above to create AI-powered copy tailored to your brand and audience.
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Show Variations UI */}
