@@ -287,17 +287,15 @@ export default function DashboardLayout({
               const isActive = location.pathname === item.path;
               return <Link key={item.path} to={item.path}>
                     <div className={`
-                        h-12 px-6 rounded-t-lg rounded-b-none relative
-                        border border-tab-black border-b-0
+                        h-12 px-6 rounded-t-xl rounded-b-none relative
                         flex items-center justify-center
-                        transition-all duration-200 font-bold
-                        ${isActive ? `bg-${item.darkColor} text-white` : `bg-${item.lightColor} text-tab-black hover:bg-${item.darkColor}/20`}
-                      `} style={{
-                  backgroundColor: isActive ? `hsl(var(--${item.darkColor}))` : `hsl(var(--${item.lightColor}))`,
-                  color: isActive ? 'white' : 'hsl(var(--tab-black))',
-                  fontWeight: isActive ? 'bold' : 'normal'
-                }}>
-                      <Icon className="mr-2 h-4 w-4" />
+                        transition-all duration-300 font-semibold
+                        ${isActive 
+                          ? 'bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-lg shadow-lumi-pink-1/30' 
+                          : 'bg-card/80 text-muted-foreground hover:text-foreground hover:bg-card border border-border/50'
+                        }
+                      `}>
+                      <Icon className={`mr-2 h-4 w-4 ${isActive ? 'animate-sparkle-pulse' : ''}`} />
                       {item.label}
                     </div>
                   </Link>;
