@@ -183,6 +183,25 @@ export default function Production() {
     navigate(`/campaigns/build?workspace=${workspace.id}`);
   };
 
+  const handleRemoveItem = async (itemId: string) => {
+    const updatedItems = productionItems.filter(item => item.id !== itemId);
+    
+    try {
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({ production_items: updatedItems })
+        .eq("id", workspace.id);
+
+      if (error) throw error;
+
+      setProductionItems(updatedItems);
+      toast.success("Concept removed from production");
+    } catch (error: any) {
+      console.error("Error removing item:", error);
+      toast.error("Failed to remove concept");
+    }
+  };
+
   // Bulk upload handlers
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -545,7 +564,12 @@ export default function Production() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredItems.map((item) => (
-              <ProductionCard key={item.id} item={item} onClick={() => handleCardClick(item)} />
+              <ProductionCard 
+                key={item.id} 
+                item={item} 
+                onClick={() => handleCardClick(item)} 
+                onRemove={handleRemoveItem}
+              />
             ))}
           </div>
         )}
