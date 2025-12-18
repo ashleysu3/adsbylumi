@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { Send, Loader2, X, Lightbulb } from "lucide-react";
+import { Send, Loader2, X, Sparkle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LumiCharacter } from "./LumiCharacter";
@@ -192,7 +192,7 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
-                    <Lightbulb className="h-4 w-4" />
+                    <Sparkle className="h-4 w-4" />
                     <span>Suggested questions</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
