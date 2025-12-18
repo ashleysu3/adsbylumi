@@ -363,10 +363,12 @@ export default function Data() {
               },
             });
 
-            // Check for token expiration
+            // Check for token expiration or missing token
             const responseError = data?.error || '';
             if (responseError.includes('Error validating access token') || 
-                responseError.includes('session has been invalidated')) {
+                responseError.includes('session has been invalidated') ||
+                responseError.includes('Meta access token not found') ||
+                responseError.includes('Please reconnect')) {
               setMetaTokenExpired(true);
               return campaign;
             }
@@ -400,11 +402,13 @@ export default function Data() {
             };
           } catch (err: any) {
             console.error(`Error fetching metrics for ${campaign.name}:`, err);
-            // Check for token expiration in thrown errors
+            // Check for token expiration or missing token in thrown errors
             const errorMsg = err?.message || err?.toString() || '';
             if (errorMsg.includes('validating access token') || 
                 errorMsg.includes('session has been invalidated') ||
-                errorMsg.includes('OAuthException')) {
+                errorMsg.includes('OAuthException') ||
+                errorMsg.includes('Meta access token not found') ||
+                errorMsg.includes('Please reconnect')) {
               setMetaTokenExpired(true);
             }
             return campaign;
@@ -418,7 +422,9 @@ export default function Data() {
       const errorMsg = error?.message || error?.toString() || '';
       if (errorMsg.includes('validating access token') || 
           errorMsg.includes('session has been invalidated') ||
-          errorMsg.includes('OAuthException')) {
+          errorMsg.includes('OAuthException') ||
+          errorMsg.includes('Meta access token not found') ||
+          errorMsg.includes('Please reconnect')) {
         setMetaTokenExpired(true);
       }
     } finally {
@@ -445,7 +451,9 @@ export default function Data() {
 
       const responseError = metricsData?.error || '';
       if (responseError.includes('Error validating access token') || 
-          responseError.includes('session has been invalidated')) {
+          responseError.includes('session has been invalidated') ||
+          responseError.includes('Meta access token not found') ||
+          responseError.includes('Please reconnect')) {
         setMetaTokenExpired(true);
         setSyncing(false);
         return;
@@ -485,7 +493,9 @@ export default function Data() {
           errorMsg.includes('session has been invalidated') ||
           errorMsg.includes('OAuthException') ||
           errorMsg.includes('non-2xx status code') || 
-          errorMsg.includes('Edge Function')) {
+          errorMsg.includes('Edge Function') ||
+          errorMsg.includes('Meta access token not found') ||
+          errorMsg.includes('Please reconnect')) {
         setMetaTokenExpired(true);
       } else {
         toast.error('Failed to load campaign insights');
