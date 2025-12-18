@@ -249,8 +249,17 @@ export default function Creative() {
   const generateAngles = async () => {
     if (!workspace) return;
 
+    // Check for strategy_json - either from planner or from linked offer (imported campaign)
     if (!workspace.strategy_json) {
-      toast.error("Please complete your campaign strategy in the Planner first.");
+      // Check if this is an imported campaign that needs an offer linked
+      const isImportedCampaign = workspace.progress_status === 'imported' || 
+        (workspace.meta_campaign_ids && !workspace.template_id);
+      
+      if (isImportedCampaign) {
+        toast.error("Please link an offer to this campaign first. Go to Data dashboard to link an offer.");
+      } else {
+        toast.error("Please complete your campaign strategy in the Planner first.");
+      }
       return;
     }
 
@@ -260,17 +269,34 @@ export default function Creative() {
       // Get existing conversation insights if any
       const existingInsights = workspace.creative_json?.conversationInsights || [];
       
-      const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
-        body: {
-          brandName: workspace.brands?.name || workspace.name,
-          strategyData: workspace.strategy_json,
-          audiencePsychology: workspace.brands?.audience_psychology,
-          offerData: {
+      // For imported campaigns, the strategy_json contains the offer data
+      const strategyData = workspace.strategy_json;
+      const isImportedCampaign = strategyData?.source === 'imported_campaign';
+      
+      // Use offer data from strategy_json for imported campaigns
+      const offerData = isImportedCampaign && strategyData?.offer 
+        ? {
+            name: strategyData.offer.name,
+            description: strategyData.offer.description,
+            price: strategyData.offer.price,
+            product_psychology: strategyData.offer.product_psychology,
+          }
+        : {
             name: workspace.offer_name,
             description: workspace.offer_description,
             price: workspace.offer_price,
-          },
+          };
+      
+      const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
+        body: {
+          brandName: workspace.brands?.name || workspace.name,
+          strategyData: strategyData,
+          audiencePsychology: isImportedCampaign 
+            ? strategyData?.audience_psychology 
+            : workspace.brands?.audience_psychology,
+          offerData,
           conversationInsights: existingInsights,
+          isImportedCampaign,
         }
       });
 

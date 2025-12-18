@@ -51,6 +51,9 @@ interface CampaignData {
   previousMetrics?: Record<string, number> | null;
   userGoal?: number | null;
   status?: string;
+  offerId?: string | null;
+  offerName?: string | null;
+  brandId?: string;
 }
 
 interface AccountMetrics {
@@ -290,6 +293,9 @@ export default function Data() {
           meta_campaign_status,
           template_id,
           final_answers,
+          offer_id,
+          offer_name,
+          brand_id,
           campaign_templates!campaign_workspaces_template_id_fkey (
             id,
             name,
@@ -337,6 +343,9 @@ export default function Data() {
         metrics: null,
         userGoal: loadedGoals[w.id] || null,
         status: w.meta_campaign_status || 'live',
+        offerId: w.offer_id || null,
+        offerName: w.offer_name || null,
+        brandId: w.brand_id,
       }));
 
       setCampaigns(campaignData);
