@@ -154,22 +154,15 @@ export function MetaAccountConnect({
 
       toast.success("Meta ad account and Page connected");
       
-      // Trigger campaign sync
+      // Trigger campaign sync - token is retrieved server-side from Vault
       const syncToastId = toast.loading("Syncing campaigns from Meta...");
-      
-      const { data: brand } = await supabase
-        .from('brands')
-        .select('meta_access_token')
-        .eq('id', brandId)
-        .single();
       
       const { data: syncResult, error: syncError } = await supabase.functions.invoke(
         'sync-meta-campaigns',
         {
           body: {
             brandId,
-            metaAccountId: selectedAccount,
-            metaAccessToken: brand?.meta_access_token
+            metaAccountId: selectedAccount
           }
         }
       );
