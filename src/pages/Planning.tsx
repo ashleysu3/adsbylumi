@@ -155,12 +155,14 @@ export default function Planning() {
       <CampaignFlowBreadcrumb currentStep="planning" />
       <div className="space-y-8 py-[2px]">
         <div className="space-y-2">
-          <h2 className="text-3xl font-display tracking-tight">Lumi Strategy</h2>
+          <h2 className="text-3xl font-display tracking-tight">
+            Lumi <span className="text-gradient-lumi">Strategy</span>
+          </h2>
           <p className="text-muted-foreground">Let's keep this simple: pick a campaign type and Lumi will guide you through the rest.</p>
         </div>
 
         {/* Offer Selection */}
-        {offers.length > 0 && <Card className="border-primary/20">
+        {offers.length > 0 && <Card variant="glow" className="border-primary/20">
             <CardContent className="pt-6">
               <div className="space-y-3">
                 <Label htmlFor="offer-select" className="text-base font-semibold">
@@ -192,12 +194,12 @@ export default function Planning() {
             </CardContent>
           </Card>}
 
-        {offersWithRecommendations.length > 0 && <Card className="border-primary/20 bg-primary/5">
+        {offersWithRecommendations.length > 0 && <Card variant="gradient" className="bg-gradient-to-br from-lumi-purple-1/5 to-lumi-pink-1/5">
             <CardContent className="pt-6">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0">💡</div>
+                <div className="flex-shrink-0 text-2xl">✨</div>
                 <div className="space-y-2">
-                <p className="font-semibold">Lumi recommends</p>
+                <p className="font-semibold text-gradient-lumi">Lumi recommends</p>
                   <p className="text-sm text-muted-foreground">
                     You've already got campaign recommendations for your offers in your Brand Dashboard. 
                     Start there for the fastest setup!
@@ -214,13 +216,17 @@ export default function Planning() {
           {templates.map(template => {
           const Icon = iconMap[template.icon] || Video;
           const isRecommendedForSelectedOffer = selectedOfferId && offers.find(o => o.id === selectedOfferId)?.recommended_template_id === template.id;
-          return <Card key={template.id} className={`cursor-pointer hover:shadow-lg transition-all relative ${isRecommendedForSelectedOffer ? "border-primary ring-2 ring-primary/20" : "hover:border-primary/50"}`}>
-                {isRecommendedForSelectedOffer && <Badge className="absolute -top-2 -right-2 bg-primary">
-                    Recommended
+          return <Card 
+                key={template.id} 
+                variant={isRecommendedForSelectedOffer ? "gradient" : "glow"}
+                className={`cursor-pointer transition-all duration-300 relative hover:scale-[1.02] ${isRecommendedForSelectedOffer ? "shadow-glow" : ""}`}
+              >
+                {isRecommendedForSelectedOffer && <Badge className="absolute -top-2 -right-2 bg-gradient-lumi animate-sparkle-pulse">
+                    ✨ Recommended
                   </Badge>}
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
-                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                       <Icon className="h-6 w-6 text-primary" />
                     </div>
                     <Button variant="ghost" size="sm" onClick={e => {
