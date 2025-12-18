@@ -2,12 +2,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Image, Sparkle, LayoutGrid } from "lucide-react";
+import { Image, Sparkle, LayoutGrid, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 interface DesignGuideProps {
   concept: any;
-  onComplete: () => void;
+  onComplete: () => void | Promise<void>;
   onBack: () => void;
 }
 
@@ -18,8 +18,19 @@ export function DesignGuide({ concept = {}, onComplete, onBack }: DesignGuidePro
     colors: false,
     elements: false,
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const allChecked = Object.values(checklist).every((v) => v);
+
+  const handleComplete = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await Promise.resolve(onComplete());
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const isCarousel = concept.format === "carousel";
   const Icon = isCarousel ? LayoutGrid : Image;
@@ -180,11 +191,18 @@ export function DesignGuide({ concept = {}, onComplete, onBack }: DesignGuidePro
 
       {/* Actions */}
       <div className="flex gap-3 justify-between pt-4">
-        <Button variant="outline" onClick={onBack}>
+        <Button variant="outline" onClick={onBack} disabled={submitting}>
           ← Back
         </Button>
-        <Button onClick={onComplete}>
-          Mark as Designed →
+        <Button onClick={handleComplete} disabled={submitting}>
+          {submitting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>Mark as Designed →</>
+          )}
         </Button>
       </div>
     </div>
