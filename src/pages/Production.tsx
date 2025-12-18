@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Filter, Upload, Video, Image, X } from "lucide-react";
 import { ProductionCard } from "@/components/ProductionCard";
-import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { ProductionWorkflow } from "@/components/ProductionWorkflow";
 import { toast } from "sonner";
 import {
@@ -281,28 +280,18 @@ export default function Production() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Workflow Header - Offer + Phase Navigation */}
-        <WorkflowHeader
-          offerName={workspace.offer_name}
-          offerDescription={workspace.offer_description}
-          workspaceId={workspace.id}
-          workspaceName={workspace.name}
-          hasStrategy={!!workspace.strategy_json}
-          hasCreative={!!workspace.creative_json?.gridData?.length}
-          hasProduction={productionItems.length > 0}
-          currentPhase="production"
-          className="rounded-lg border"
-        />
-        
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/creative")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <div>
               <h1 className="text-3xl font-bold">
                 <span className="text-gradient-lumi">Production</span> Dashboard
               </h1>
               <p className="text-muted-foreground mt-1">
-                {statusCounts.total} concepts
+                {workspace.name} • {statusCounts.total} concepts
               </p>
             </div>
           </div>

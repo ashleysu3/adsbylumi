@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,6 @@ import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelecto
 import { CreativeGrid } from "@/components/creative/CreativeGrid";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionChecklistPanel, ProductionItem } from "@/components/creative/ProductionChecklistPanel";
-import { WorkflowHeader } from "@/components/WorkflowHeader";
 import { cn } from "@/lib/utils";
 
 type DashboardStep = "select_angles" | "creative_grid";
@@ -43,8 +42,6 @@ const gridGenerationSteps = [
 
 export default function Creative() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const workspaceIdParam = searchParams.get("workspace");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generatingPhase, setGeneratingPhase] = useState<GeneratingPhase>(null);
@@ -68,7 +65,7 @@ export default function Creative() {
 
   useEffect(() => {
     fetchInitialData();
-  }, [workspaceIdParam]);
+  }, []);
 
   // Contextual recommendations based on workflow state
   useEffect(() => {
@@ -152,10 +149,7 @@ export default function Creative() {
 
         setCampaigns(filteredCampaigns.filter(Boolean) as any[]);
         
-        // If workspace ID is provided in URL, select that workspace
-        if (workspaceIdParam) {
-          await handleCampaignSelect(workspaceIdParam);
-        } else if (filteredCampaigns[0]) {
+        if (filteredCampaigns[0]) {
           await handleCampaignSelect(filteredCampaigns[0].id);
         }
       } else {
@@ -616,26 +610,13 @@ export default function Creative() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-1 flex-col overflow-hidden">
-            {/* Workflow Header - Offer + Phase Navigation */}
-            <WorkflowHeader
-              offerName={workspace.offer_name}
-              offerDescription={workspace.offer_description}
-              workspaceId={workspace.id}
-              workspaceName={workspace.name}
-              hasStrategy={!!workspace.strategy_json}
-              hasCreative={gridData.length > 0}
-              hasProduction={productionItems.length > 0}
-              currentPhase="creative"
-            />
-            
-            <div className="flex flex-1 overflow-hidden">
-              {/* Main Content */}
-              <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Header */}
-                <div className="border-b border-border bg-background/95 backdrop-blur-sm p-6">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex flex-1 overflow-hidden">
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Header */}
+              <div className="border-b border-border bg-background/95 backdrop-blur-sm p-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <Select value={selectedCampaignId} onValueChange={handleCampaignSelect}>
                       <SelectTrigger className="w-auto border-0 p-0 h-auto hover:bg-transparent focus:ring-0 shadow-none gap-2">
                         <div className="flex flex-col items-start gap-1">
@@ -806,7 +787,6 @@ export default function Creative() {
                 </Sheet>
               </div>
             )}
-            </div>
           </div>
         )}
       </div>
