@@ -45,6 +45,7 @@ export function MetaAccountConnect({
   const [selectedAccount, setSelectedAccount] = useState<string>("");
   const [selectedPage, setSelectedPage] = useState<string>("");
   const [oauthLoading, setOauthLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [step, setStep] = useState<'connect' | 'select-account' | 'select-page'>('connect');
 
   useEffect(() => {
@@ -118,6 +119,35 @@ export function MetaAccountConnect({
       toast.error(error.message || "Failed to connect to Meta");
     } finally {
       setOauthLoading(false);
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('refresh-meta-token', {
+        body: { brandId }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast.success("Meta token refreshed successfully", {
+          description: `Valid until ${new Date(data.newExpiresAt).toLocaleDateString()}`
+        });
+        onUpdate();
+      } else {
+        toast.error("Could not refresh token", {
+          description: data.error || "Please reconnect your Meta account"
+        });
+      }
+    } catch (error: any) {
+      console.error('Manual refresh error:', error);
+      toast.error("Failed to refresh token", {
+        description: "Please try reconnecting your Meta account"
+      });
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -241,6 +271,21 @@ export function MetaAccountConnect({
           </Button>
         )}
       </DialogTrigger>
+      
+      {/* Manual Refresh Button - shown when connected but not expired */}
+      {isConnected && !tokenExpired && (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="gap-2"
+          onClick={handleManualRefresh}
+          disabled={refreshing}
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Refresh Token'}
+        </Button>
+      )}
+      
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
