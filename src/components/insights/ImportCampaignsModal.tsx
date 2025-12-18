@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Download, Loader2, CheckCircle2, Circle } from 'lucide-react';
+import { Download, Loader2, CheckCircle2, Sparkles, ArrowRight, Package } from 'lucide-react';
 
 interface MetaCampaign {
   id: string;
@@ -24,6 +25,12 @@ interface MetaCampaign {
   dailyBudget?: string;
   lifetimeBudget?: string;
   alreadyImported: boolean;
+}
+
+interface ImportedCampaign {
+  id: string;
+  name: string;
+  workspaceId: string;
 }
 
 interface ImportCampaignsModalProps {
@@ -45,11 +52,16 @@ export function ImportCampaignsModal({
   dateRangeEnd,
   onImportComplete,
 }: ImportCampaignsModalProps) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [campaigns, setCampaigns] = useState<MetaCampaign[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  
+  // Post-import state
+  const [importedCampaigns, setImportedCampaigns] = useState<ImportedCampaign[]>([]);
+  const [showSuccessView, setShowSuccessView] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -155,9 +167,17 @@ export function ImportCampaignsModal({
         throw new Error(data?.error || syncError?.message || 'Failed to import campaigns');
       }
 
+      // Store imported campaigns for success view
+      const imported: ImportedCampaign[] = (data.campaigns || []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        workspaceId: c.workspaceId,
+      }));
+      
+      setImportedCampaigns(imported);
+      setShowSuccessView(true);
+      
       toast.success(`Successfully imported ${data.synced} campaign${data.synced !== 1 ? 's' : ''}`);
-      onOpenChange(false);
-      onImportComplete();
     } catch (err: any) {
       console.error('Error importing campaigns:', err);
       toast.error(err.message || 'Failed to import campaigns');
@@ -181,6 +201,100 @@ export function ImportCampaignsModal({
 
   const selectableCampaigns = campaigns.filter((c) => !c.alreadyImported);
   const allSelected = selectableCampaigns.length > 0 && selectedIds.size === selectableCampaigns.length;
+
+  const handleClose = () => {
+    onOpenChange(false);
+    // Reset state after close
+    setTimeout(() => {
+      setShowSuccessView(false);
+      setImportedCampaigns([]);
+    }, 300);
+    onImportComplete();
+  };
+
+  const handleLinkOffers = () => {
+    handleClose();
+    // Navigate to first imported campaign to link offer
+    if (importedCampaigns.length > 0) {
+      navigate(`/data?workspace=${importedCampaigns[0].workspaceId}`);
+    }
+  };
+
+  // Success View - shown after import
+  if (showSuccessView) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-md">
+          <div className="text-center py-6 space-y-6">
+            {/* Success Animation */}
+            <div className="relative mx-auto w-20 h-20">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-100 to-green-50 animate-pulse" />
+              <div className="absolute inset-2 rounded-full bg-white flex items-center justify-center">
+                <CheckCircle2 className="h-10 w-10 text-green-500" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-xl font-display font-bold text-foreground">
+                Campaigns Imported! 🎉
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                {importedCampaigns.length} campaign{importedCampaigns.length !== 1 ? 's' : ''} successfully imported
+              </p>
+            </div>
+
+            {/* Next Step Prompt */}
+            <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-4 space-y-3">
+              <div className="flex items-center gap-2 justify-center">
+                <Sparkles className="h-5 w-5 text-primary animate-sparkle-pulse" />
+                <span className="font-medium text-sm">One more step!</span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Link an offer to each campaign to unlock creative generation and production workflows.
+              </p>
+            </div>
+
+            {/* Imported Campaigns List */}
+            {importedCampaigns.length > 0 && (
+              <div className="space-y-2 text-left">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Imported campaigns
+                </p>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {importedCampaigns.slice(0, 5).map((c) => (
+                    <div key={c.id} className="flex items-center gap-2 text-sm p-2 rounded-lg bg-muted/30">
+                      <Package className="h-4 w-4 text-amber-500" />
+                      <span className="truncate">{c.name}</span>
+                      <Badge variant="outline" className="text-xs ml-auto shrink-0 bg-amber-50 text-amber-700 border-amber-200">
+                        Needs Offer
+                      </Badge>
+                    </div>
+                  ))}
+                  {importedCampaigns.length > 5 && (
+                    <p className="text-xs text-muted-foreground text-center py-1">
+                      +{importedCampaigns.length - 5} more
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-2 pt-2">
+              <Button onClick={handleLinkOffers} className="w-full">
+                <Package className="h-4 w-4 mr-2" />
+                Link Offers Now
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+              <Button variant="ghost" onClick={handleClose} className="w-full text-muted-foreground">
+                I'll do it later
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

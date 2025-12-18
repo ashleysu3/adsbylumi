@@ -731,6 +731,10 @@ export default function Data() {
             onBack={handleBackToHome}
             onUpdateGoal={(goal) => handleUpdateGoal(selectedCampaign.id, goal)}
             onDateRangeChange={handleDetailDateRangeChange}
+            onOfferLinked={() => {
+              // Refresh the campaign data after offer is linked
+              fetchCampaigns();
+            }}
             isLoading={syncing}
             dateRangeStart={format(getDateRange(detailDateRange, customDateRange).from, 'yyyy-MM-dd')}
             dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
