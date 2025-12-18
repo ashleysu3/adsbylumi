@@ -121,6 +121,10 @@ export default {
         "3xl": "1.5rem",
       },
       keyframes: {
+        "gradient-shift": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
         "accordion-down": {
           from: {
             height: "0",
