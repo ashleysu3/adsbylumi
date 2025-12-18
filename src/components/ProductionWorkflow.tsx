@@ -433,11 +433,14 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
 
           {currentStep === "copy" && (
             <CopyEditor
-              concept={updatedItem.concept}
-              uploadedAsset={workspace.user_uploaded_assets?.find(
-                (asset: any) => asset.linked_concept_id === item.concept_id || 
-                                asset.id === updatedItem.uploaded_asset_id
-              )}
+              concept={updatedItem.concept || {}}
+              uploadedAsset={
+                updatedItem.linkedAsset ||
+                workspace.user_uploaded_assets?.find(
+                  (asset: any) => asset.linked_concept_id === item.concept_id || 
+                                  asset.id === updatedItem.uploaded_asset_id
+                )
+              }
               workspace={workspace}
               initialCopy={updatedItem.final_copy}
               onApprove={handleCopyApprove}
