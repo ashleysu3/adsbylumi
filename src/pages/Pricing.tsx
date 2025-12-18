@@ -67,32 +67,53 @@ export default function Pricing() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="pt-28 pb-8 px-4">
-        <div className="container mx-auto max-w-4xl text-center">
+      {/* Hero Section - Clean & Professional */}
+      <section className="pt-32 pb-16 px-4">
+        <div className="container mx-auto max-w-3xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="space-y-8"
           >
-            <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
-              <Sparkles className="w-3 h-3 mr-1" />
-              14-Day Free Trial
-            </Badge>
-            <h1 className="font-display text-4xl md:text-6xl mb-6 leading-tight">
-              Run real ads,{" "}
-              <span className="relative inline-block">
-                <span className="text-5xl md:text-7xl bg-gradient-to-r from-primary via-pink-500 to-primary bg-[length:200%_auto] animate-[gradient-shift_3s_ease-in-out_infinite] bg-clip-text text-transparent font-bold">
-                  without keeping up with Ads Manager
-                </span>
-                <span className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-primary via-pink-500 to-primary bg-[length:200%_auto] animate-[gradient-shift_3s_ease-in-out_infinite] rounded-full" />
-                <span className="absolute -top-4 -right-6 text-primary animate-pulse text-lg">✦</span>
-                <span className="absolute -bottom-4 -left-5 text-pink-500 animate-pulse text-sm" style={{ animationDelay: '150ms' }}>✦</span>
+            {/* Trial Badge - Understated */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
+              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium bg-primary/8 text-primary border border-primary/15">
+                <Sparkles className="w-3.5 h-3.5" />
+                14-Day Free Trial
               </span>
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+            </motion.div>
+
+            {/* Headline - Clean Typography */}
+            <div className="space-y-2">
+              <h1 className="font-display text-4xl md:text-5xl lg:text-6xl text-foreground leading-[1.1] tracking-tight">
+                Run real ads,
+              </h1>
+              <h2 className="font-display text-4xl md:text-5xl lg:text-6xl leading-[1.1] tracking-tight">
+                <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
+                  without keeping up with
+                </span>
+              </h2>
+              <h2 className="font-display text-4xl md:text-5xl lg:text-6xl leading-[1.1] tracking-tight">
+                <span className="bg-gradient-to-r from-secondary via-accent to-glow bg-clip-text text-transparent">
+                  Ads Manager
+                </span>
+              </h2>
+            </div>
+
+            {/* Subheadline - Refined */}
+            <motion.p 
+              className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-normal"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
               Lumi builds and runs proven Meta ad strategies for coaches, course creators, and service providers—without ever leaving the platform.
-            </p>
+            </motion.p>
           </motion.div>
         </div>
       </section>
