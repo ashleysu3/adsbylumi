@@ -28,16 +28,16 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-audience-psychology]
-verify_jwt = false
+verify_jwt = true
 
 [functions.extract-offer-info]
 verify_jwt = true
 
 [functions.generate-product-psychology]
-verify_jwt = false
+verify_jwt = true
 
 [functions.recommend-campaign-template]
-verify_jwt = false
+verify_jwt = true
 
 [functions.meta-oauth-init]
 verify_jwt = true

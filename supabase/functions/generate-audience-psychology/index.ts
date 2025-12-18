@@ -14,6 +14,23 @@ function isValidUUID(id: string): boolean {
   return typeof id === 'string' && UUID_REGEX.test(id);
 }
 
+// Authenticate user and return user ID
+async function authenticateUser(req: Request, supabase: any): Promise<{ userId: string | null; error: string | null }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { userId: null, error: 'Authorization header required' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  
+  if (error || !user) {
+    return { userId: null, error: 'Invalid or expired token' };
+  }
+  
+  return { userId: user.id, error: null };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -22,6 +39,24 @@ serve(async (req) => {
   let parsedBrandId: string | null = null;
 
   try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Required environment variables are not configured');
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Authenticate user
+    const { userId, error: authError } = await authenticateUser(req, supabase);
+    if (authError || !userId) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body = await req.json();
     const { brandId } = body;
 
@@ -41,30 +76,35 @@ serve(async (req) => {
     }
 
     parsedBrandId = brandId;
-    console.log('Generating audience psychology for brand:', brandId);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!LOVABLE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('Required environment variables are not configured');
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Verify brand exists before proceeding
-    const { data: brandCheck, error: checkError } = await supabase
+    // Verify brand exists AND user owns it
+    const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('id')
+      .select('*')
       .eq('id', brandId)
       .single();
 
-    if (checkError || !brandCheck) {
+    if (brandError || !brand) {
       return new Response(
         JSON.stringify({ error: 'Brand not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Ownership check - ensure the authenticated user owns this brand
+    if (brand.user_id !== userId) {
+      console.log('Ownership check failed:', { brandUserId: brand.user_id, requestUserId: userId });
+      return new Response(
+        JSON.stringify({ error: 'Access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Generating audience psychology for brand:', brandId, 'by user:', userId);
+
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     // Update status to generating
@@ -72,15 +112,6 @@ serve(async (req) => {
       .from('brands')
       .update({ psychology_status: 'generating' })
       .eq('id', brandId);
-
-    // Fetch brand data
-    const { data: brand, error: brandError } = await supabase
-      .from('brands')
-      .select('*')
-      .eq('id', brandId)
-      .single();
-
-    if (brandError) throw brandError;
 
     const systemPrompt = `You are an expert in audience psychology and advertising strategy, trained in the "After Organic" methodology.
 Your task is to create a comprehensive psychological profile of the target audience based on brand information.

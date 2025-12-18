@@ -6,6 +6,52 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// URL validation to prevent SSRF attacks
+function isValidPublicUrl(urlString: string): { valid: boolean; error?: string } {
+  try {
+    const url = new URL(urlString);
+    
+    // Only allow HTTPS (and HTTP for dev)
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return { valid: false, error: 'Only HTTP/HTTPS URLs are allowed' };
+    }
+    
+    const hostname = url.hostname.toLowerCase();
+    
+    // Block private IP ranges, localhost, and cloud metadata endpoints
+    const blockedPatterns = [
+      /^127\./, // Loopback
+      /^10\./, // Private Class A
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./, // Private Class B
+      /^192\.168\./, // Private Class C
+      /^169\.254\./, // Link-local (AWS metadata)
+      /^0\./, // Invalid
+      /^localhost$/i,
+      /\.local$/i,
+      /^metadata/i, // Cloud metadata
+      /\.internal$/i,
+    ];
+    
+    if (blockedPatterns.some(pattern => pattern.test(hostname))) {
+      return { valid: false, error: 'Private or internal URLs are not allowed' };
+    }
+    
+    // Block direct IP addresses (require DNS names)
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      return { valid: false, error: 'Direct IP addresses are not allowed' };
+    }
+    
+    // Block IPv6 addresses
+    if (hostname.includes(':')) {
+      return { valid: false, error: 'IPv6 addresses are not allowed' };
+    }
+    
+    return { valid: true };
+  } catch (e) {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -13,26 +59,68 @@ serve(async (req) => {
 
   try {
     const { offerUrl, offerName } = await req.json();
-    console.log('Extracting offer info from:', offerUrl);
-
+    
+    // Input validation
     if (!offerUrl) {
-      throw new Error('Offer URL is required');
+      return new Response(
+        JSON.stringify({ error: 'Offer URL is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    if (typeof offerUrl !== 'string' || offerUrl.length > 500) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid URL format or URL too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (offerName && (typeof offerName !== 'string' || offerName.length > 200)) {
+      return new Response(
+        JSON.stringify({ error: 'Offer name too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // SSRF protection - validate URL
+    const urlValidation = isValidPublicUrl(offerUrl);
+    if (!urlValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: urlValidation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Extracting offer info from:', offerUrl);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Fetch offer page content - get as much as possible
+    // Fetch offer page content with timeout and size limits
     let offerContent = '';
     let fetchSuccess = false;
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const offerResponse = await fetch(offerUrl, {
+        signal: controller.signal,
+        redirect: 'follow',
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (YourAdAssistant/1.0)'
         }
       });
+      
+      clearTimeout(timeout);
+
+      // Check content length before reading
+      const contentLength = offerResponse.headers.get('content-length');
+      if (contentLength && parseInt(contentLength) > 2000000) {
+        console.log('Content too large, limiting extraction');
+      }
+
       const html = await offerResponse.text();
       
       // Extract text content more thoroughly - remove scripts, styles, but keep structure hints
@@ -50,12 +138,15 @@ serve(async (req) => {
         .replace(/&quot;/g, '"')
         .replace(/\s+/g, ' ')
         .trim()
-        .substring(0, 25000); // Increased to 25k chars for more content
+        .substring(0, 25000); // Limit to 25k chars
       
       fetchSuccess = offerContent.length > 200;
       console.log(`Extracted ${offerContent.length} characters from page`);
-    } catch (error) {
-      console.error('Error fetching offer page:', error);
+    } catch (error: any) {
+      console.error('Error fetching offer page:', error.message);
+      if (error.name === 'AbortError') {
+        console.log('Request timed out');
+      }
       offerContent = '';
     }
 

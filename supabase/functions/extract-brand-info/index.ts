@@ -6,6 +6,52 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// URL validation to prevent SSRF attacks
+function isValidPublicUrl(urlString: string): { valid: boolean; error?: string } {
+  try {
+    const url = new URL(urlString);
+    
+    // Only allow HTTPS (and HTTP for dev)
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return { valid: false, error: 'Only HTTP/HTTPS URLs are allowed' };
+    }
+    
+    const hostname = url.hostname.toLowerCase();
+    
+    // Block private IP ranges, localhost, and cloud metadata endpoints
+    const blockedPatterns = [
+      /^127\./, // Loopback
+      /^10\./, // Private Class A
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./, // Private Class B
+      /^192\.168\./, // Private Class C
+      /^169\.254\./, // Link-local (AWS metadata)
+      /^0\./, // Invalid
+      /^localhost$/i,
+      /\.local$/i,
+      /^metadata/i, // Cloud metadata
+      /\.internal$/i,
+    ];
+    
+    if (blockedPatterns.some(pattern => pattern.test(hostname))) {
+      return { valid: false, error: 'Private or internal URLs are not allowed' };
+    }
+    
+    // Block direct IP addresses (require DNS names)
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+      return { valid: false, error: 'Direct IP addresses are not allowed' };
+    }
+    
+    // Block IPv6 addresses
+    if (hostname.includes(':')) {
+      return { valid: false, error: 'IPv6 addresses are not allowed' };
+    }
+    
+    return { valid: true };
+  } catch (e) {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -13,27 +59,71 @@ serve(async (req) => {
 
   try {
     const { websiteUrl } = await req.json();
-    console.log('Extracting brand info from:', websiteUrl);
-
+    
+    // Input validation
     if (!websiteUrl) {
-      throw new Error('Website URL is required');
+      return new Response(
+        JSON.stringify({ error: 'Website URL is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    if (typeof websiteUrl !== 'string' || websiteUrl.length > 500) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid URL format or URL too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // SSRF protection - validate URL
+    const urlValidation = isValidPublicUrl(websiteUrl);
+    if (!urlValidation.valid) {
+      return new Response(
+        JSON.stringify({ error: urlValidation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Extracting brand info from:', websiteUrl);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    // Fetch website content
+    // Fetch website content with timeout and size limits
     let websiteContent = '';
     try {
-      const websiteResponse = await fetch(websiteUrl);
-      const html = await websiteResponse.text();
-      // Extract text content (simple extraction, strips HTML tags)
-      websiteContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 5000);
-    } catch (error) {
-      console.error('Error fetching website:', error);
-      websiteContent = 'Unable to fetch website content';
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      const websiteResponse = await fetch(websiteUrl, {
+        signal: controller.signal,
+        redirect: 'follow',
+        headers: {
+          'User-Agent': 'YourAdAssistant/1.0 (Content Extraction Bot)',
+        }
+      });
+      
+      clearTimeout(timeout);
+
+      // Check content length before reading
+      const contentLength = websiteResponse.headers.get('content-length');
+      if (contentLength && parseInt(contentLength) > 2000000) {
+        console.log('Content too large, skipping fetch');
+        websiteContent = 'Unable to fetch website content - page too large';
+      } else {
+        const html = await websiteResponse.text();
+        // Extract text content (simple extraction, strips HTML tags)
+        websiteContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 5000);
+      }
+    } catch (error: any) {
+      console.error('Error fetching website:', error.message);
+      if (error.name === 'AbortError') {
+        websiteContent = 'Unable to fetch website content - request timeout';
+      } else {
+        websiteContent = 'Unable to fetch website content';
+      }
     }
 
     const systemPrompt = `You are a brand strategist analyzing websites to extract key business information.
