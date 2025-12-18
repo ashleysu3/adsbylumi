@@ -84,13 +84,13 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
       (asset: any) => asset.linked_concept_id === item.concept_id
     );
     
-    if (latestAsset) {
-      // Update production item with full asset object (not just ID)
-      // This is required by build-meta-campaign to upload to Meta
-      const productionItems = workspace.production_items || [];
-      const updatedItems = productionItems.map((pi: any) =>
-        pi.id === item.id ? { 
-          ...pi, 
+    // Update production item with status "uploaded" and asset info
+    const productionItems = workspace.production_items || [];
+    const updatedItems = productionItems.map((pi: any) =>
+      pi.id === item.id ? { 
+        ...pi, 
+        status: "uploaded",
+        ...(latestAsset && {
           uploaded_asset_id: latestAsset.id,
           linkedAsset: {
             id: latestAsset.id,
@@ -99,16 +99,19 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
             type: latestAsset.file_type,
             fileName: latestAsset.file_name
           }
-        } : pi
-      );
-      
-      await supabase
-        .from("campaign_workspaces")
-        .update({ production_items: updatedItems })
-        .eq("id", workspace.id);
-      
-      setUpdatedItem({ 
-        ...updatedItem, 
+        })
+      } : pi
+    );
+    
+    await supabase
+      .from("campaign_workspaces")
+      .update({ production_items: updatedItems })
+      .eq("id", workspace.id);
+    
+    setUpdatedItem({ 
+      ...updatedItem, 
+      status: "uploaded",
+      ...(latestAsset && {
         uploaded_asset_id: latestAsset.id,
         linkedAsset: {
           id: latestAsset.id,
@@ -117,8 +120,8 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
           type: latestAsset.file_type,
           fileName: latestAsset.file_name
         }
-      });
-    }
+      })
+    });
     
     handleNext("copy");
     onUpdate();
