@@ -209,10 +209,15 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center space-x-3">
-              <Button onClick={() => setCreateAdModalOpen(true)} className="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:opacity-90 text-white font-semibold shadow-lg shadow-lumi-pink-1/30">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Create a new ad!
-              </Button>
+              <button 
+                onClick={() => setCreateAdModalOpen(true)} 
+                className="relative group p-[3px] rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:shadow-lg hover:shadow-lumi-pink-1/30 transition-all"
+              >
+                <span className="flex items-center px-4 py-2 rounded-md bg-white text-foreground font-semibold group-hover:bg-white/95 transition-colors">
+                  <Sparkles className="mr-2 h-4 w-4 text-lumi-pink-1" />
+                  Create a new ad!
+                </span>
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
