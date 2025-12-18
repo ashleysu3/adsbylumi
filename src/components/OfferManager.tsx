@@ -115,7 +115,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
       if (workspaceError) throw workspaceError;
 
       toast.success(`Campaign workspace created for ${offer.name}!`);
-      navigate(`/workspace/${workspace.id}`);
+      navigate(`/creative?workspace=${workspace.id}`);
     } catch (error: any) {
       console.error('Error creating campaign:', error);
       toast.error(error.message || 'Failed to create campaign');
