@@ -83,6 +83,12 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
     { label: "Editing help", message: "How should I edit my videos for maximum engagement?" },
     { label: "B-roll ideas", message: "What kind of b-roll footage should I capture?" },
   ],
+  'add-creative': [
+    { label: "Upload my creative", message: "I have new creative ready. Walk me through the upload process." },
+    { label: "Brainstorm angles", message: "Help me come up with fresh creative angles for my campaign." },
+    { label: "What performs best?", message: "What types of creative are performing best right now?" },
+    { label: "Refresh strategy", message: "How do I know when my creative needs refreshing?" },
+  ],
 };
 
 // Helper to format time ago
