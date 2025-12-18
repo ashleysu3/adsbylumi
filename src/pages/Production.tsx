@@ -90,12 +90,14 @@ export default function Production() {
         return items.length > 0;
       });
 
-      const options: WorkspaceOption[] = validWorkspaces.map(w => ({
-        id: w.id,
-        name: w.name,
-        itemCount: Array.isArray(w.production_items) ? w.production_items.length : 0,
-        updatedAt: w.updated_at,
-      }));
+      const options: WorkspaceOption[] = validWorkspaces
+        .filter(w => w.id && w.id.trim() !== '') // Ensure valid IDs
+        .map(w => ({
+          id: w.id,
+          name: w.name || 'Untitled Workspace',
+          itemCount: Array.isArray(w.production_items) ? w.production_items.length : 0,
+          updatedAt: w.updated_at,
+        }));
 
       setWorkspaceOptions(options);
 
