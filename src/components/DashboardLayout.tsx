@@ -10,11 +10,9 @@ import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
 import { CreateAdModal } from "@/components/CreateAdModal";
 import lumiLogo from "@/assets/lumi-logo.png";
-
 interface DashboardLayoutProps {
   children: ReactNode;
 }
-
 export default function DashboardLayout({
   children
 }: DashboardLayoutProps) {
@@ -209,15 +207,12 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center space-x-3">
-              <button 
-                onClick={() => setCreateAdModalOpen(true)} 
-                className="relative group p-[3px] rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:shadow-lg hover:shadow-lumi-pink-1/30 transition-all overflow-hidden"
-              >
+              <button onClick={() => setCreateAdModalOpen(true)} className="relative group p-[3px] rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:shadow-lg hover:shadow-lumi-pink-1/30 transition-all overflow-hidden">
                 {/* Shimmer overlay on hover */}
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
-                <span className="relative flex items-center px-4 py-2 rounded-md bg-white text-foreground font-semibold group-hover:bg-white/95 transition-colors">
+                <span className="relative flex items-center py-2 rounded-md bg-white group-hover:bg-white/95 transition-colors font-medium px-[12px] text-lumi-charcoal">
                   <Sparkles className="mr-2 h-4 w-4 text-lumi-pink-1 group-hover:rotate-12 transition-transform duration-300" />
-                  CREATE A NEW AD
+                  ​New Ad Creation                    
                 </span>
               </button>
               <DropdownMenu>
@@ -291,10 +286,7 @@ export default function DashboardLayout({
                         h-12 px-6 rounded-t-xl rounded-b-none relative
                         flex items-center justify-center
                         transition-all duration-300 font-semibold
-                        ${isActive 
-                          ? 'bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-lg shadow-lumi-pink-1/30' 
-                          : 'bg-card/80 text-muted-foreground hover:text-foreground hover:bg-card border border-border/50'
-                        }
+                        ${isActive ? 'bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-lg shadow-lumi-pink-1/30' : 'bg-card/80 text-muted-foreground hover:text-foreground hover:bg-card border border-border/50'}
                       `}>
                       <Icon className={`mr-2 h-4 w-4 ${isActive ? 'animate-sparkle-pulse' : ''}`} />
                       {item.label}
