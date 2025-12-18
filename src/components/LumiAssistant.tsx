@@ -77,7 +77,7 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
   ],
 };
 
-function LumiAssistantUI({ recommendation, className }: { recommendation: LumiRecommendation | null; className?: string }) {
+function LumiAssistantUI({ recommendation, onDismissForSession, className }: { recommendation: LumiRecommendation | null; onDismissForSession?: () => void; className?: string }) {
   const location = useLocation();
   const { messages, addMessage, setBrandId } = useLumi();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -249,6 +249,16 @@ function LumiAssistantUI({ recommendation, className }: { recommendation: LumiRe
                     <MessageCircle className="h-3 w-3" />
                     Have a question? Chat with Lumi
                   </button>
+                  
+                  {/* Pause recommendations */}
+                  {onDismissForSession && (
+                    <button
+                      onClick={onDismissForSession}
+                      className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors w-full text-center"
+                    >
+                      Pause recommendations this session
+                    </button>
+                  )}
                 </div>
               </Card>
             </motion.div>
@@ -410,25 +420,46 @@ interface LumiAssistantContextType {
   recommendation: LumiRecommendation | null;
   setRecommendation: (rec: LumiRecommendation | null) => void;
   clearRecommendation: () => void;
+  dismissForSession: () => void;
+  isPausedForSession: boolean;
 }
 
 const LumiAssistantContext = createContext<LumiAssistantContextType | undefined>(undefined);
 
 export function LumiAssistantProvider({ children }: { children: ReactNode }) {
   const [recommendation, setRecommendationState] = useState<LumiRecommendation | null>(null);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [isPausedForSession, setIsPausedForSession] = useState(false);
 
   const setRecommendation = (rec: LumiRecommendation | null) => {
+    // Don't show if paused or already dismissed this session
+    if (isPausedForSession) return;
+    if (rec && dismissedIds.has(rec.id)) return;
     setRecommendationState(rec);
   };
 
   const clearRecommendation = () => {
+    if (recommendation) {
+      setDismissedIds(prev => new Set(prev).add(recommendation.id));
+    }
+    setRecommendationState(null);
+  };
+
+  const dismissForSession = () => {
+    setIsPausedForSession(true);
     setRecommendationState(null);
   };
 
   return (
-    <LumiAssistantContext.Provider value={{ recommendation, setRecommendation, clearRecommendation }}>
+    <LumiAssistantContext.Provider value={{ 
+      recommendation, 
+      setRecommendation, 
+      clearRecommendation, 
+      dismissForSession,
+      isPausedForSession 
+    }}>
       {children}
-      <LumiAssistantUI recommendation={recommendation} />
+      <LumiAssistantUI recommendation={recommendation} onDismissForSession={dismissForSession} />
     </LumiAssistantContext.Provider>
   );
 }
