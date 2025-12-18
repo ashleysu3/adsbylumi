@@ -294,6 +294,10 @@ Deno.serve(async (req) => {
       result.warnings.push(`${result.failedAds.length} asset(s) failed to upload and will be skipped.`);
     }
 
+    // Determine launch status (ACTIVE or PAUSED)
+    const launchStatus = answers?.launchStatus === 'active' ? 'ACTIVE' : 'PAUSED';
+    console.log('Launch status:', launchStatus);
+
     // Step 2: Create Campaign
     const accountId = metaAccountId.replace('act_', '');
     
@@ -305,7 +309,7 @@ Deno.serve(async (req) => {
         body: new URLSearchParams({
           name: campaignBaseName,
           objective: metaObjective,
-          status: 'PAUSED',
+          status: launchStatus,
           special_ad_categories: '[]',
           access_token: metaAccessToken
         })
@@ -342,7 +346,7 @@ Deno.serve(async (req) => {
         age_min: 18,
         age_max: 65
       }),
-      status: 'PAUSED',
+      status: launchStatus,
       access_token: metaAccessToken
     };
 
@@ -399,7 +403,7 @@ Deno.serve(async (req) => {
         bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
         daily_budget: Math.round(dailyBudgetCents * 0.5).toString(),
         targeting: JSON.stringify(warmTargeting),
-        status: 'PAUSED',
+        status: launchStatus,
         access_token: metaAccessToken
       };
 
