@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lumi lumi-button-glow",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lumi hover:shadow-glow lumi-button-glow",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-md hover:shadow-lg",
-        outline: "border-2 border-primary text-primary bg-background hover:bg-primary hover:text-primary-foreground",
+        outline: "border-2 border-primary text-primary bg-background hover:bg-primary hover:text-primary-foreground hover:shadow-glow",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-md hover:shadow-lg",
         ghost: "hover:bg-muted hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline font-semibold",
-        lumi: "bg-gradient-lumi text-primary-foreground shadow-lumi lumi-button-glow",
-        warm: "bg-gradient-warm text-primary-foreground shadow-lumi lumi-button-glow",
-        glow: "bg-primary text-primary-foreground shadow-glow animate-glow-pulse",
+        lumi: "bg-gradient-lumi text-primary-foreground shadow-lumi hover:shadow-glow lumi-button-glow hover:scale-[1.02]",
+        warm: "bg-gradient-warm text-primary-foreground shadow-lumi hover:shadow-glow lumi-button-glow hover:scale-[1.02]",
+        glow: "bg-primary text-primary-foreground shadow-glow animate-glow-pulse hover:scale-[1.02]",
       },
       size: {
         default: "h-11 px-6 py-3",

@@ -337,9 +337,9 @@ export default function Dashboard() {
         )}
 
         {/* Campaign Planning Card */}
-        <Card className="rounded-2xl border-primary/20 bg-gradient-to-br from-background to-primary/5">
+        <Card variant="gradient" className="rounded-2xl bg-gradient-to-br from-background to-lumi-purple-1/5">
           <CardHeader>
-            <CardTitle className="font-display">Ready to shine? ✨</CardTitle>
+            <CardTitle className="font-display text-gradient-lumi">Ready to shine? ✨</CardTitle>
             <CardDescription>
               Lumi will guide you through creating a clear strategy for your next Meta campaign.
             </CardDescription>
@@ -354,7 +354,7 @@ export default function Dashboard() {
         {/* Main Content - Single Column */}
         <div className="space-y-6">
           {/* Brand Details Card */}
-            <Card data-section="brand-details">
+            <Card variant="glow" data-section="brand-details">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
