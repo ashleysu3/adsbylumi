@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { LayoutTemplate, Plus, Edit, Trash2, Save, X, Zap, Target, DollarSign, Calendar, Link2, Layout, Users } from "lucide-react";
+import { LayoutTemplate, Plus, Edit, Trash2, Save, X, Zap, Target, DollarSign, Calendar, Link2, Layout, Users, GripVertical, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface KPIBenchmark {
@@ -46,6 +46,7 @@ interface CampaignTemplate {
   kpi_priorities?: string[];
   journey_stages?: string[];
   kpi_benchmarks?: Record<string, KPIBenchmark>;
+  sort_order?: number;
 }
 
 const KPI_OPTIONS = [
@@ -149,7 +150,7 @@ export default function AdminTemplates() {
       const { data, error } = await supabase
         .from("campaign_templates")
         .select("*")
-        .order("name", { ascending: true });
+        .order("sort_order", { ascending: true });
 
       if (error) throw error;
       // Cast data to our interface since prepopulated_fields is typed as Json in Supabase
@@ -295,6 +296,94 @@ export default function AdminTemplates() {
     } catch (error: any) {
       toast.error("Failed to update status");
       console.error(error);
+    }
+  };
+
+  const handleDuplicate = async (template: CampaignTemplate) => {
+    try {
+      const maxSortOrder = Math.max(...templates.map(t => t.sort_order || 0), 0);
+      const duplicateData = {
+        name: `${template.name} (Copy)`,
+        slug: `${template.slug}-copy-${Date.now()}`,
+        description: template.description,
+        long_description: template.long_description,
+        icon: template.icon,
+        objective: template.objective,
+        optimization_event: template.optimization_event,
+        audience_type: template.audience_type,
+        campaign_structure: template.campaign_structure,
+        budget_suggestion: template.budget_suggestion,
+        use_case: template.use_case,
+        strategy_template: template.strategy_template as Json,
+        prepopulated_fields: template.prepopulated_fields as Json,
+        purpose: template.purpose || null,
+        kpi_priorities: (template.kpi_priorities || []) as Json,
+        journey_stages: (template.journey_stages || ["grow", "nurture", "convert"]) as unknown as Json,
+        kpi_benchmarks: (template.kpi_benchmarks || {}) as unknown as Json,
+        active: false,
+        sort_order: maxSortOrder + 1,
+      };
+
+      const { error } = await supabase
+        .from("campaign_templates")
+        .insert([duplicateData]);
+
+      if (error) throw error;
+      toast.success("Template duplicated!");
+      fetchTemplates();
+    } catch (error: any) {
+      toast.error("Failed to duplicate template");
+      console.error(error);
+    }
+  };
+
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    setDragOverIndex(index);
+  };
+
+  const handleDragEnd = async () => {
+    if (draggedIndex === null || dragOverIndex === null || draggedIndex === dragOverIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newTemplates = [...templates];
+    const [removed] = newTemplates.splice(draggedIndex, 1);
+    newTemplates.splice(dragOverIndex, 0, removed);
+
+    // Update local state immediately for smooth UX
+    setTemplates(newTemplates);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+
+    // Persist new order to database
+    try {
+      const updates = newTemplates.map((t, index) => ({
+        id: t.id,
+        sort_order: index,
+      }));
+
+      for (const update of updates) {
+        await supabase
+          .from("campaign_templates")
+          .update({ sort_order: update.sort_order })
+          .eq("id", update.id);
+      }
+      toast.success("Order saved");
+    } catch (error) {
+      toast.error("Failed to save order");
+      fetchTemplates(); // Revert on error
     }
   };
 
@@ -1124,24 +1213,41 @@ EVALUATION PRIORITY:
               </CardContent>
             </Card>
           ) : (
-            templates.map((template) => (
-              <Card key={template.id}>
+            templates.map((template, index) => (
+              <Card
+                key={template.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`transition-all cursor-move ${
+                  draggedIndex === index ? 'opacity-50 scale-[0.98]' : ''
+                } ${dragOverIndex === index ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg">{template.name}</CardTitle>
-                        {!template.active && <Badge variant="outline">Inactive</Badge>}
-                        <Badge variant="secondary">{template.objective}</Badge>
-                        <Badge variant="outline">{template.audience_type}</Badge>
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className="mt-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground">
+                        <GripVertical className="h-5 w-5" />
                       </div>
-                      <CardDescription>{template.description}</CardDescription>
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-lg">{template.name}</CardTitle>
+                          {!template.active && <Badge variant="outline">Inactive</Badge>}
+                          <Badge variant="secondary">{template.objective}</Badge>
+                          <Badge variant="outline">{template.audience_type}</Badge>
+                        </div>
+                        <CardDescription>{template.description}</CardDescription>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(template)}>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => handleDuplicate(template)} title="Duplicate">
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(template)} title="Edit">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(template.id)}>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(template.id)} title="Delete">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
