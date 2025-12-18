@@ -12,6 +12,12 @@ verify_jwt = true
 [functions.fetch-meta-campaigns]
 verify_jwt = true
 
+[functions.fetch-account-overview]
+verify_jwt = true
+
+[functions.fetch-ad-breakdown]
+verify_jwt = true
+
 [functions.generate-weekly-report]
 verify_jwt = true
 
