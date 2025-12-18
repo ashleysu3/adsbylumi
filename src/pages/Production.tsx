@@ -41,6 +41,7 @@ export default function Production() {
   const [uploadedAssets, setUploadedAssets] = useState<UploadedAsset[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { setRecommendation } = useLumiAssistant();
 
   useEffect(() => {
     fetchWorkspace();
@@ -209,6 +210,34 @@ export default function Production() {
     return item.status === filterStatus;
   });
 
+  // Contextual Lumi recommendations (must be before early returns)
+  const approvedCount = statusCounts.approved;
+  useEffect(() => {
+    if (loading || !workspace) return;
+    
+    if (approvedCount >= 3) {
+      setRecommendation({
+        id: "production-ready-to-build",
+        title: "Ready to Launch!",
+        message: `You have ${approvedCount} approved concepts — that's enough to build your campaign! Let's get it live.`,
+        actionLabel: "Build Campaign",
+        onAction: handleBuildCampaign,
+      });
+    } else if (statusCounts.completed > 0 && statusCounts.pending > 0) {
+      setRecommendation({
+        id: "production-keep-going",
+        title: "Great Progress!",
+        message: `${statusCounts.completed} concepts done, ${statusCounts.pending} to go. Keep the momentum!`,
+      });
+    } else if (statusCounts.total > 0 && statusCounts.pending === statusCounts.total) {
+      setRecommendation({
+        id: "production-get-started",
+        title: "Time to Record!",
+        message: "Your creative concepts are ready. Click any card to start recording or uploading assets.",
+      });
+    }
+  }, [loading, workspace, approvedCount, statusCounts.completed, statusCounts.pending, statusCounts.total, setRecommendation]);
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -236,34 +265,6 @@ export default function Production() {
       </DashboardLayout>
     );
   }
-
-  // Contextual Lumi recommendations
-  const { setRecommendation } = useLumiAssistant();
-  const approvedCount = statusCounts.approved;
-  
-  useEffect(() => {
-    if (approvedCount >= 3) {
-      setRecommendation({
-        id: "production-ready-to-build",
-        title: "Ready to Launch!",
-        message: `You have ${approvedCount} approved concepts — that's enough to build your campaign! Let's get it live.`,
-        actionLabel: "Build Campaign",
-        onAction: handleBuildCampaign,
-      });
-    } else if (statusCounts.completed > 0 && statusCounts.pending > 0) {
-      setRecommendation({
-        id: "production-keep-going",
-        title: "Great Progress!",
-        message: `${statusCounts.completed} concepts done, ${statusCounts.pending} to go. Keep the momentum!`,
-      });
-    } else if (statusCounts.total > 0 && statusCounts.pending === statusCounts.total) {
-      setRecommendation({
-        id: "production-get-started",
-        title: "Time to Record!",
-        message: "Your creative concepts are ready. Click any card to start recording or uploading assets.",
-      });
-    }
-  }, [approvedCount, statusCounts.completed, statusCounts.pending, statusCounts.total, setRecommendation]);
 
   return (
     <DashboardLayout>
