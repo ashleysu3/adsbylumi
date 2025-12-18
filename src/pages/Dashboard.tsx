@@ -11,7 +11,8 @@ import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { LumiLoader } from "@/components/LumiLoader";
+import { PageShimmer } from "@/components/GradientShimmer";
+import { useLumiRecommend } from "@/components/LumiRecommendPopup";
 import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { setRecommendation } = useLumiRecommend();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
@@ -32,6 +34,7 @@ export default function Dashboard() {
   const hasShownConfetti = useRef(false);
   const hasHandledCheckout = useRef(false);
   const hasCheckedBrand = useRef(false);
+  const hasShownRecommendation = useRef(false);
 
   // Handle checkout success
   useEffect(() => {
@@ -233,12 +236,37 @@ export default function Dashboard() {
     }
   };
 
+  // Show contextual recommendation based on incomplete items
+  useEffect(() => {
+    if (!loading && brand && !hasShownRecommendation.current) {
+      hasShownRecommendation.current = true;
+      const incompleteItems = getIncompleteItems();
+      
+      if (incompleteItems.length > 0) {
+        const firstIncomplete = incompleteItems[0];
+        setRecommendation({
+          id: `dashboard-${firstIncomplete.section}`,
+          title: "Lumi recommends",
+          message: `${firstIncomplete.label} to unlock better campaign recommendations and creative.`,
+          actionLabel: "Let's do it",
+          onAction: () => scrollToSection(firstIncomplete.section),
+        });
+      } else if (!brand.meta_account_id) {
+        setRecommendation({
+          id: "dashboard-meta",
+          title: "Lumi recommends",
+          message: "Connect your Meta ad account to start building and launching campaigns directly from Lumi!",
+          actionLabel: "Connect Meta",
+          onAction: () => scrollToSection("meta-account"),
+        });
+      }
+    }
+  }, [loading, brand, offers]);
+
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <LumiLoader size="lg" message="Loading your Lumi Home..." />
-        </div>
+        <PageShimmer />
       </DashboardLayout>
     );
   }
