@@ -107,3 +107,6 @@ verify_jwt = true
 
 [functions.customer-portal]
 verify_jwt = true
+
+[functions.generate-angle-copy]
+verify_jwt = true
