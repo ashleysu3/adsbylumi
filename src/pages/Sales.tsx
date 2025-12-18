@@ -3,6 +3,7 @@ import { TypingHeadline } from "@/components/TypingHeadline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { CheckCircle, X, Check, Sparkles, ArrowRight, Sparkle, Heart, Zap, Eye, BarChart3, Calendar, Users, FileText, Upload, Settings, Send } from "lucide-react";
@@ -13,7 +14,8 @@ import { ScaleOnScroll } from "@/components/animations/ScaleOnScroll";
 import { FloatingElement } from "@/components/animations/FloatingElement";
 import { MagneticButton, GradientText } from "@/components/animations/SmoothScroll";
 import { CursorGlow } from "@/components/animations/CursorTrail";
-import { WaitlistModal } from "@/components/WaitlistModal";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import lumiLogo from "@/assets/lumi-logo.png";
 import lumiBulb from "@/assets/lumi-bulb.png";
 
@@ -67,7 +69,57 @@ const StepCard = ({ step, index }: { step: StepData; index: number }) => {
 const Sales = () => {
   const navigate = useNavigate();
   const heroRef = useRef(null);
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    setLoading(true);
+    try {
+      const trimmedEmail = email.trim().toLowerCase();
+      const trimmedName = name.trim();
+      
+      const { error } = await supabase.from("waitlist").insert({
+        name: trimmedName,
+        email: trimmedEmail
+      });
+      
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("You're already on the waitlist! We'll be in touch soon.");
+        } else {
+          throw error;
+        }
+      } else {
+        setSuccess(true);
+        toast.success("You're on the list! ✨");
+      }
+      
+      // Sync to Flodesk
+      try {
+        await supabase.functions.invoke('sync-flodesk', {
+          body: { 
+            email: trimmedEmail, 
+            firstName: trimmedName.split(' ')[0] || '',
+            lastName: trimmedName.split(' ').slice(1).join(' ') || '',
+            segment: 'waitlist' 
+          }
+        });
+      } catch (flodeskErr) {
+        console.error('Flodesk sync failed:', flodeskErr);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const { scrollYProgress: heroProgress } = useScroll({
     target: heroRef,
@@ -274,18 +326,69 @@ const Sales = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.7 }}
-              className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-4 justify-center px-4 sm:px-0"
+              className="mt-8 sm:mt-10 px-4 sm:px-0 w-full max-w-md mx-auto"
             >
-              <MagneticButton>
-                <Button
-                  size="lg"
-                  onClick={() => setWaitlistOpen(true)}
-                  className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 rounded-full shadow-lumi lumi-button-glow min-h-[52px] w-full sm:w-auto whitespace-nowrap"
+              {!success ? (
+                <form onSubmit={handleWaitlistSubmit} className="space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Input
+                      type="text"
+                      placeholder="Your name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="h-12 rounded-full bg-background/80 backdrop-blur-sm border-border focus:border-primary px-5"
+                      required
+                    />
+                    <Input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="h-12 rounded-full bg-background/80 backdrop-blur-sm border-border focus:border-primary px-5"
+                      required
+                    />
+                  </div>
+                  <MagneticButton className="w-full">
+                    <Button
+                      type="submit"
+                      size="lg"
+                      disabled={loading}
+                      className="w-full text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 rounded-full shadow-lumi lumi-button-glow min-h-[52px]"
+                    >
+                      {loading ? (
+                        <motion.div 
+                          className="flex items-center gap-2"
+                          animate={{ opacity: [1, 0.5, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        >
+                          <Sparkles className="w-5 h-5" />
+                          Adding you...
+                        </motion.div>
+                      ) : (
+                        <>
+                          Join the Lumi Waitlist
+                          <ArrowRight className="w-5 h-5 ml-2 flex-shrink-0" />
+                        </>
+                      )}
+                    </Button>
+                  </MagneticButton>
+                  <p className="text-xs text-muted-foreground text-center">No spam, ever. Just Lumi goodness.</p>
+                </form>
+              ) : (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-background/80 backdrop-blur-sm rounded-2xl p-6 border border-primary/30 text-center"
                 >
-                  Join the Lumi Waitlist
-                  <ArrowRight className="w-5 h-5 ml-2 flex-shrink-0" />
-                </Button>
-              </MagneticButton>
+                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle className="w-6 h-6 text-primary" />
+                  </div>
+                  <h3 className="font-display text-xl text-foreground mb-1">You're In! 🎉</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Welcome to the Lumi family, {name.split(' ')[0]}! We'll let you know when it's your turn.
+                  </p>
+                </motion.div>
+              )}
             </motion.div>
           </motion.div>
         </div>
@@ -604,17 +707,69 @@ const Sales = () => {
                 Waitlist members get first access as Lumi rolls out.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center px-2 sm:px-0">
-                <MagneticButton>
-                  <Button
-                    size="lg"
-                    onClick={() => setWaitlistOpen(true)}
-                    className="text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 rounded-full shadow-lumi lumi-button-glow min-h-[52px] w-full sm:w-auto whitespace-nowrap"
+              {/* Inline form for bottom CTA */}
+              <div className="max-w-md mx-auto px-2 sm:px-0">
+                {!success ? (
+                  <form onSubmit={handleWaitlistSubmit} className="space-y-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Input
+                        type="text"
+                        placeholder="Your name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="h-12 rounded-full bg-background border-border focus:border-primary px-5"
+                        required
+                      />
+                      <Input
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="h-12 rounded-full bg-background border-border focus:border-primary px-5"
+                        required
+                      />
+                    </div>
+                    <MagneticButton className="w-full">
+                      <Button
+                        type="submit"
+                        size="lg"
+                        disabled={loading}
+                        className="w-full text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 rounded-full shadow-lumi lumi-button-glow min-h-[52px]"
+                      >
+                        {loading ? (
+                          <motion.div 
+                            className="flex items-center gap-2"
+                            animate={{ opacity: [1, 0.5, 1] }}
+                            transition={{ duration: 1, repeat: Infinity }}
+                          >
+                            <Sparkles className="w-5 h-5" />
+                            Adding you...
+                          </motion.div>
+                        ) : (
+                          <>
+                            Join the Lumi Waitlist
+                            <ArrowRight className="w-5 h-5 ml-2 flex-shrink-0" />
+                          </>
+                        )}
+                      </Button>
+                    </MagneticButton>
+                    <p className="text-xs text-muted-foreground text-center">No spam, ever. Just Lumi goodness.</p>
+                  </form>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-card rounded-2xl p-6 border border-primary/30 text-center"
                   >
-                    Join the Lumi Waitlist
-                    <ArrowRight className="w-5 h-5 ml-2 flex-shrink-0" />
-                  </Button>
-                </MagneticButton>
+                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
+                      <CheckCircle className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="font-display text-xl text-foreground mb-1">You're In! 🎉</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Welcome to the Lumi family, {name.split(' ')[0]}! We'll let you know when it's your turn.
+                    </p>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           </ScaleOnScroll>
@@ -648,9 +803,6 @@ const Sales = () => {
           <p>© 2025 Lumi. All rights reserved.</p>
         </div>
       </motion.footer>
-
-      {/* Waitlist Modal */}
-      <WaitlistModal open={waitlistOpen} onOpenChange={setWaitlistOpen} />
     </div>
   );
 };
