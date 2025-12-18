@@ -127,7 +127,7 @@ export function RecordingGuide({ concept = {}, onComplete, onBack }: RecordingGu
         <Button variant="outline" onClick={onBack}>
           ← Back
         </Button>
-        <Button onClick={onComplete} disabled={!allChecked}>
+        <Button onClick={onComplete}>
           Mark as Recorded →
         </Button>
       </div>
