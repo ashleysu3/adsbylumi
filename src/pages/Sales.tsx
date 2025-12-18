@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { TypingHeadline } from "@/components/TypingHeadline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { MagneticButton, GradientText } from "@/components/animations/SmoothScro
 import { CursorGlow } from "@/components/animations/CursorTrail";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 import lumiLogo from "@/assets/lumi-logo.png";
 import lumiBulb from "@/assets/lumi-bulb.png";
 
@@ -63,6 +64,181 @@ const StepCard = ({ step, index }: { step: StepData; index: number }) => {
         </div>
       </motion.div>
     </ScrollReveal>
+  );
+};
+
+// Waitlist Success Component with Confetti
+const WaitlistSuccessState = ({ name }: { name: string }) => {
+  useEffect(() => {
+    // Lumi brand colors for confetti
+    const lumiColors = ['#F97316', '#EC4899', '#A78BFA', '#93C5FD'];
+    
+    // Initial burst
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: lumiColors,
+    });
+    
+    // Side cannons
+    setTimeout(() => {
+      confetti({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: lumiColors,
+      });
+      confetti({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: lumiColors,
+      });
+    }, 150);
+    
+    // Sparkle burst
+    setTimeout(() => {
+      confetti({
+        particleCount: 30,
+        spread: 100,
+        origin: { y: 0.5 },
+        colors: lumiColors,
+        shapes: ['star'],
+        scalar: 1.2,
+      });
+    }, 400);
+  }, []);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 200, 
+        damping: 15,
+        duration: 0.6 
+      }}
+      className="relative"
+    >
+      {/* Glow background */}
+      <motion.div
+        className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 blur-xl"
+        animate={{
+          scale: [1, 1.05, 1],
+          opacity: [0.5, 0.8, 0.5],
+        }}
+        transition={{
+          duration: 3,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+      
+      <div className="relative bg-background/90 backdrop-blur-md rounded-3xl p-8 border border-primary/40 lumi-success-glow">
+        {/* Floating sparkles */}
+        <motion.div
+          className="absolute -top-3 -right-3"
+          animate={{ 
+            rotate: [0, 15, -15, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <Sparkles className="w-8 h-8 text-primary" />
+        </motion.div>
+        
+        <motion.div
+          className="absolute -bottom-2 -left-2"
+          animate={{ 
+            rotate: [0, -15, 15, 0],
+            scale: [1, 1.1, 1],
+          }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+        >
+          <Sparkle className="w-6 h-6 text-secondary" />
+        </motion.div>
+        
+        {/* Success icon with animation */}
+        <motion.div 
+          className="w-16 h-16 rounded-full bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center mx-auto mb-4"
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 200, 
+            damping: 12,
+            delay: 0.2 
+          }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.5, type: "spring", stiffness: 300 }}
+          >
+            <CheckCircle className="w-8 h-8 text-primary-foreground" />
+          </motion.div>
+        </motion.div>
+        
+        {/* Text content with stagger */}
+        <motion.h3 
+          className="font-display text-2xl text-gradient-lumi mb-2"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          You're In!
+        </motion.h3>
+        
+        <motion.p 
+          className="text-base text-foreground/90 mb-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          Welcome to the Lumi family, <span className="font-medium text-primary">{name.split(' ')[0]}</span>!
+        </motion.p>
+        
+        <motion.p 
+          className="text-sm text-muted-foreground"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          We'll let you know when it's your turn to shine.
+        </motion.p>
+        
+        {/* Animated hearts/sparkles at bottom */}
+        <motion.div 
+          className="flex justify-center gap-3 mt-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+        >
+          {['✨', '💜', '🧡', '💖', '✨'].map((emoji, i) => (
+            <motion.span
+              key={i}
+              className="text-lg"
+              animate={{ 
+                y: [0, -5, 0],
+                scale: [1, 1.1, 1],
+              }}
+              transition={{ 
+                duration: 1.5, 
+                repeat: Infinity, 
+                delay: i * 0.15,
+                ease: "easeInOut" 
+              }}
+            >
+              {emoji}
+            </motion.span>
+          ))}
+        </motion.div>
+      </div>
+    </motion.div>
   );
 };
 
@@ -375,19 +551,7 @@ const Sales = () => {
                   <p className="text-xs text-muted-foreground text-center">No spam, ever. Just Lumi goodness.</p>
                 </form>
               ) : (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="bg-background/80 backdrop-blur-sm rounded-2xl p-6 border border-primary/30 text-center"
-                >
-                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-3">
-                    <CheckCircle className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="font-display text-xl text-foreground mb-1">You're In! 🎉</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Welcome to the Lumi family, {name.split(' ')[0]}! We'll let you know when it's your turn.
-                  </p>
-                </motion.div>
+                <WaitlistSuccessState name={name} />
               )}
             </motion.div>
           </motion.div>
