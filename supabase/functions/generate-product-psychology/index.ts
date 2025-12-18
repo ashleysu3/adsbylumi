@@ -14,12 +14,47 @@ function isValidUUID(id: string): boolean {
   return typeof id === 'string' && UUID_REGEX.test(id);
 }
 
+// Authenticate user and return user ID
+async function authenticateUser(req: Request, supabase: any): Promise<{ userId: string | null; error: string | null }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { userId: null, error: 'Authorization header required' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  
+  if (error || !user) {
+    return { userId: null, error: 'Invalid or expired token' };
+  }
+  
+  return { userId: user.id, error: null };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Required environment variables are not configured');
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Authenticate user
+    const { userId, error: authError } = await authenticateUser(req, supabase);
+    if (authError || !userId) {
+      return new Response(
+        JSON.stringify({ error: authError || 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body = await req.json();
     const { offerId, brandId } = body;
 
@@ -45,22 +80,10 @@ serve(async (req) => {
       );
     }
 
-    console.log('Generating product psychology for offer:', offerId);
-
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!LOVABLE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('Required environment variables are not configured');
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Fetch offer and verify it exists
+    // Fetch offer and verify ownership through brand
     const { data: offer, error: offerError } = await supabase
       .from('offers')
-      .select('*')
+      .select('*, brands!inner(user_id)')
       .eq('id', offerId)
       .single();
 
@@ -69,6 +92,22 @@ serve(async (req) => {
         JSON.stringify({ error: 'Offer not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Ownership check - ensure the authenticated user owns this offer's brand
+    if (offer.brands.user_id !== userId) {
+      console.log('Ownership check failed:', { brandUserId: offer.brands.user_id, requestUserId: userId });
+      return new Response(
+        JSON.stringify({ error: 'Access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Generating product psychology for offer:', offerId, 'by user:', userId);
+
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     // Use brandId from offer if not provided
@@ -163,7 +202,7 @@ Generate a product-specific psychological profile.`;
 
     console.log('Product psychology generated and saved successfully');
 
-    // Trigger campaign template recommendation
+    // Trigger campaign template recommendation (internal call with service role)
     console.log('Triggering campaign template recommendation...');
     try {
       const recommendResponse = await fetch(`${SUPABASE_URL}/functions/v1/recommend-campaign-template`, {
@@ -171,8 +210,9 @@ Generate a product-specific psychological profile.`;
         headers: {
           'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
           'Content-Type': 'application/json',
+          'x-internal-call': 'true', // Mark as internal call
         },
-        body: JSON.stringify({ offerId }),
+        body: JSON.stringify({ offerId, _internalUserId: userId }),
       });
 
       if (!recommendResponse.ok) {

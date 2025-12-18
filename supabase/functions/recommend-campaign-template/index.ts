@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-call',
 };
 
 // UUID validation regex
@@ -14,14 +14,61 @@ function isValidUUID(id: string): boolean {
   return typeof id === 'string' && UUID_REGEX.test(id);
 }
 
+// Authenticate user and return user ID
+async function authenticateUser(req: Request, supabase: any): Promise<{ userId: string | null; error: string | null }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { userId: null, error: 'Authorization header required' };
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  
+  if (error || !user) {
+    return { userId: null, error: 'Invalid or expired token' };
+  }
+  
+  return { userId: user.id, error: null };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Required environment variables are not configured');
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
     const body = await req.json();
-    const { offerId } = body;
+    const { offerId, _internalUserId } = body;
+    
+    // Check if this is an internal call from generate-product-psychology
+    const isInternalCall = req.headers.get('x-internal-call') === 'true' && _internalUserId;
+    
+    let userId: string;
+    
+    if (isInternalCall && _internalUserId && isValidUUID(_internalUserId)) {
+      // Trust the internal user ID from generate-product-psychology
+      userId = _internalUserId;
+      console.log('Internal call from generate-product-psychology, user:', userId);
+    } else {
+      // External call - authenticate normally
+      const { userId: authUserId, error: authError } = await authenticateUser(req, supabase);
+      if (authError || !authUserId) {
+        return new Response(
+          JSON.stringify({ error: authError || 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      userId = authUserId;
+    }
 
     // Input validation
     if (!offerId) {
@@ -38,22 +85,10 @@ serve(async (req) => {
       );
     }
 
-    console.log('Recommending campaign template for offer:', offerId);
-
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!LOVABLE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('Required environment variables are not configured');
-    }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Fetch offer data and verify it exists
+    // Fetch offer and verify ownership through brand
     const { data: offer, error: offerError } = await supabase
       .from('offers')
-      .select('*')
+      .select('*, brands!inner(user_id)')
       .eq('id', offerId)
       .single();
 
@@ -62,6 +97,22 @@ serve(async (req) => {
         JSON.stringify({ error: 'Offer not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Ownership check - ensure the authenticated user owns this offer's brand
+    if (offer.brands.user_id !== userId) {
+      console.log('Ownership check failed:', { brandUserId: offer.brands.user_id, requestUserId: userId });
+      return new Response(
+        JSON.stringify({ error: 'Access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Recommending campaign template for offer:', offerId, 'by user:', userId);
+
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     // Fetch all active campaign templates
