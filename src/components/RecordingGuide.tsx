@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Video, Lightbulb } from "lucide-react";
+import { Video, Sparkle } from "lucide-react";
 import { useState } from "react";
 
 interface RecordingGuideProps {
@@ -110,7 +110,7 @@ export function RecordingGuide({ concept = {}, onComplete, onBack }: RecordingGu
       {/* Pro Tips */}
       <Card className="p-6 space-y-3 bg-primary/5 border-primary/20">
         <div className="flex items-center gap-2">
-          <Lightbulb className="h-5 w-5 text-primary" />
+          <Sparkle className="h-5 w-5 text-primary" />
           <h3 className="font-semibold">Pro Tips</h3>
         </div>
         <ul className="space-y-2 text-sm text-muted-foreground ml-7">

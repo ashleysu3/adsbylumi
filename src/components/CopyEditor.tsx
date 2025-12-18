@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Lightbulb, FileText, Sparkles, Loader2, Shuffle, Crop, Upload } from "lucide-react";
+import { Sparkle, FileText, Sparkles, Loader2, Shuffle, Crop, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -514,7 +514,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
 
                 {/* Placement-Specific Tips */}
                 <Alert>
-                  <Lightbulb className="h-4 w-4" />
+                  <Sparkle className="h-4 w-4" />
                   <AlertDescription>
                     <div className="space-y-2">
                       <p className="font-semibold text-sm">
@@ -606,7 +606,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
           {aiResponse?.cta_reasoning && (
             <Card className="p-3 bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
               <div className="flex items-start gap-2">
-                <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <Sparkle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm space-y-1">
                   <p className="font-semibold text-blue-900 dark:text-blue-100">
                     AI Recommends: {ctaOptions.find(o => o.value === copy.call_to_action)?.label}
@@ -654,7 +654,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
       {/* AI Insights */}
       <Card className="p-4 bg-primary/5 border-primary/20">
         <div className="flex items-start gap-2">
-          <Lightbulb className="h-5 w-5 text-primary mt-0.5" />
+          <Sparkle className="h-5 w-5 text-primary mt-0.5" />
           <div className="space-y-3">
             <h4 className="font-semibold text-sm">
               {aiResponse ? "Why This Copy Works" : "Copy Best Practices"}

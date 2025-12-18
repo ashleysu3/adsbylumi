@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Home, Lightbulb, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, LayoutTemplate, Ticket } from "lucide-react";
+import { Home, Sparkle, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, LayoutTemplate, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
@@ -174,7 +174,7 @@ export default function DashboardLayout({
   };
   const tabItems = [{
     path: "/planning",
-    icon: Lightbulb,
+    icon: Sparkle,
     label: "STRATEGY",
     lightColor: "tab-orange-light",
     darkColor: "tab-orange-dark"

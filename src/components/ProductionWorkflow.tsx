@@ -8,7 +8,7 @@ import { RecordingGuide } from "./RecordingGuide";
 import { DesignGuide } from "./DesignGuide";
 import { CopyEditor } from "./CopyEditor";
 import { DragDropUploader } from "./DragDropUploader";
-import { CheckCircle2, ArrowRight, Lightbulb } from "lucide-react";
+import { CheckCircle2, ArrowRight, Sparkle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -224,7 +224,7 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
               {((item as any).guidance || (item as any).notes || item.concept?.guidance || item.concept?.notes) && (
                 <Card className="p-4 bg-primary/5 border-primary/20">
                   <h3 className="font-semibold text-primary mb-2 flex items-center gap-2">
-                    <Lightbulb className="h-4 w-4" />
+                    <Sparkle className="h-4 w-4" />
                     Creative Direction
                   </h3>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">

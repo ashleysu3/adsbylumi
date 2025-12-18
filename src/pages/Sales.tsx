@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { CheckCircle, X, Check, Sparkles, ArrowRight, Lightbulb, Heart, Zap, Eye, BarChart3, Calendar, Users, FileText, Upload, Settings, Send } from "lucide-react";
+import { CheckCircle, X, Check, Sparkles, ArrowRight, Sparkle, Heart, Zap, Eye, BarChart3, Calendar, Users, FileText, Upload, Settings, Send } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { ParallaxSection } from "@/components/animations/ParallaxSection";
 import { StaggerChildren, StaggerItem } from "@/components/animations/StaggerChildren";
@@ -91,7 +91,7 @@ const Sales = () => {
         "IG traffic",
         "Video views (trust builder)"
       ],
-      icon: <Lightbulb className="w-7 h-7" />
+      icon: <Sparkle className="w-7 h-7" />
     },
     {
       number: "STEP 2",
@@ -626,7 +626,7 @@ const Sales = () => {
         <div className="container mx-auto max-w-2xl text-center">
           <ScrollReveal>
             <div className="flex items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-              <Lightbulb className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
+              <Sparkle className="w-5 h-5 sm:w-6 sm:h-6 text-primary flex-shrink-0" />
               <span className="text-base sm:text-lg font-medium text-primary">Ready to light things up?</span>
             </div>
             <p className="text-sm sm:text-base text-muted-foreground">

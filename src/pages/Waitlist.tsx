@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Lightbulb, Sparkles, Target, Layers, Zap, Users, Heart, CheckCircle, ArrowRight, Package, Wand2 } from "lucide-react";
+import { Sparkle, Sparkles, Target, Layers, Zap, Users, Heart, CheckCircle, ArrowRight, Package, Wand2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ScrollReveal, StaggerChildren, StaggerItem, FloatingElement } from "@/components/animations";
@@ -64,7 +64,7 @@ const Waitlist = () => {
             <div className="flex items-center justify-center gap-3">
               <FloatingElement duration={3} distance={5}>
                 <div className="w-12 h-12 rounded-2xl bg-gradient-warm flex items-center justify-center shadow-lumi">
-                  <Lightbulb className="w-6 h-6 text-primary-foreground" />
+                  <Sparkle className="w-6 h-6 text-primary-foreground" />
                 </div>
               </FloatingElement>
               <span className="font-display text-3xl text-foreground">Lumi</span>
@@ -285,7 +285,7 @@ const Waitlist = () => {
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mt-0.5 shrink-0">
-                        <Lightbulb className="w-3 h-3 text-primary" />
+                        <Sparkle className="w-3 h-3 text-primary" />
                       </div>
                       <span>{item}</span>
                     </li>
@@ -441,7 +441,7 @@ const Waitlist = () => {
           <ScrollReveal>
             <FloatingElement duration={4} distance={8}>
               <div className="w-20 h-20 rounded-3xl bg-gradient-warm flex items-center justify-center mx-auto mb-8 shadow-glow">
-                <Lightbulb className="w-10 h-10 text-primary-foreground" />
+                <Sparkle className="w-10 h-10 text-primary-foreground" />
               </div>
             </FloatingElement>
 
@@ -498,7 +498,7 @@ const Waitlist = () => {
         <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-gradient-warm flex items-center justify-center">
-              <Lightbulb className="w-5 h-5 text-primary-foreground" />
+              <Sparkle className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-display text-xl text-foreground">Lumi</span>
           </div>
