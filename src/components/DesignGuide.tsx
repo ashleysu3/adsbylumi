@@ -183,7 +183,7 @@ export function DesignGuide({ concept = {}, onComplete, onBack }: DesignGuidePro
         <Button variant="outline" onClick={onBack}>
           ← Back
         </Button>
-        <Button onClick={onComplete} disabled={!allChecked}>
+        <Button onClick={onComplete}>
           Mark as Designed →
         </Button>
       </div>

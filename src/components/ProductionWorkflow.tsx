@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RecordingGuide } from "./RecordingGuide";
@@ -24,9 +24,33 @@ type Step = "review" | "create" | "upload" | "copy" | "done";
 
 const steps: Step[] = ["review", "create", "upload", "copy", "done"];
 
+// Helper to determine the correct step based on item status
+function getStepForStatus(status: string): Step {
+  switch (status) {
+    case "recorded":
+      return "upload";
+    case "uploaded":
+      return "copy";
+    case "approved":
+      return "done";
+    default:
+      return "review";
+  }
+}
+
 export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }: ProductionWorkflowProps) {
-  const [currentStep, setCurrentStep] = useState<Step>("review");
+  const [currentStep, setCurrentStep] = useState<Step>(() => getStepForStatus(item?.status));
   const [updatedItem, setUpdatedItem] = useState(item);
+
+  // Update step when item status changes (e.g., after marking as recorded)
+  useEffect(() => {
+    if (updatedItem?.status) {
+      const correctStep = getStepForStatus(updatedItem.status);
+      if (correctStep !== currentStep && steps.indexOf(correctStep) > steps.indexOf(currentStep)) {
+        setCurrentStep(correctStep);
+      }
+    }
+  }, [updatedItem?.status]);
 
   const currentStepIndex = steps.indexOf(currentStep);
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
