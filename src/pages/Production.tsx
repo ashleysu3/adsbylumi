@@ -131,9 +131,12 @@ export default function Production() {
     }
   };
 
-  const loadWorkspace = async (workspaceId: string) => {
+  const loadWorkspace = async (workspaceId: string, opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
+
       const { data, error } = await supabase
         .from("campaign_workspaces")
         .select("*")
@@ -145,18 +148,24 @@ export default function Production() {
       setWorkspace(data);
       const items = Array.isArray(data.production_items) ? data.production_items : [];
       setProductionItems(items);
-      
+
+      // Keep the workflow dialog stable by refreshing the selected item in-place (prevents step “jumping”)
+      if (workflowOpen && selectedItem?.id) {
+        const freshSelected = items.find((i: any) => i.id === selectedItem.id);
+        if (freshSelected) setSelectedItem(freshSelected);
+      }
+
       // Save to localStorage
       localStorage.setItem(LAST_WORKSPACE_KEY, workspaceId);
 
-      if (items.length === 0) {
+      if (!silent && items.length === 0) {
         toast.info("No production items yet. Send concepts to production from the Creative dashboard.");
       }
     } catch (error: any) {
       console.error("Error loading workspace:", error);
       toast.error("Failed to load workspace");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -167,7 +176,8 @@ export default function Production() {
 
   const handleWorkspaceUpdate = async () => {
     if (workspace?.id) {
-      await loadWorkspace(workspace.id);
+      // Avoid flicker/unmount while the workflow dialog is open
+      await loadWorkspace(workspace.id, { silent: true });
     }
   };
 
