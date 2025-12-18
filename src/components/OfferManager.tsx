@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { LumiRecommendedBadge } from "./LumiRecommendedBadge";
 
 interface Offer {
   id: string;
@@ -333,7 +334,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
 
                         {offer.recommended_template_id && getRecommendedTemplate(offer.recommended_template_id) && (
                           <div className="pt-4 border-t">
-                            <p className="text-sm font-medium mb-2 text-gradient-lumi">✨ Recommended Campaign</p>
+                            <LumiRecommendedBadge label="Recommended Campaign" size="sm" className="mb-2" />
                             <div className="bg-gradient-to-br from-lumi-purple-1/5 to-lumi-pink-1/5 p-3 rounded-lg space-y-3 border border-primary/20">
                               <div className="flex items-center gap-2">
                                 <Sparkles className="h-4 w-4 text-primary animate-sparkle-pulse" />
