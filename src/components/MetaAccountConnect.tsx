@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Link2, Loader2, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Link2, Loader2, ExternalLink, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ interface MetaAccountConnectProps {
   currentAccountId?: string | null;
   currentPageId?: string | null;
   currentPageName?: string | null;
+  tokenExpired?: boolean;
   onUpdate: () => void;
 }
 
@@ -34,6 +35,7 @@ export function MetaAccountConnect({
   currentAccountId, 
   currentPageId,
   currentPageName,
+  tokenExpired = false,
   onUpdate 
 }: MetaAccountConnectProps) {
   const [open, setOpen] = useState(false);
@@ -214,6 +216,7 @@ export function MetaAccountConnect({
   };
 
   const isConnected = currentAccountId && currentPageId;
+  const needsReconnect = tokenExpired || (isConnected && !currentPageName);
 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
@@ -221,7 +224,12 @@ export function MetaAccountConnect({
       if (!newOpen) resetState();
     }}>
       <DialogTrigger asChild>
-        {isConnected ? (
+        {needsReconnect ? (
+          <Button variant="destructive" size="sm" className="gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Reconnect Meta
+          </Button>
+        ) : isConnected ? (
           <Button variant="outline" size="sm">
             <Link2 className="mr-2 h-4 w-4" />
             Change Connection
@@ -236,15 +244,33 @@ export function MetaAccountConnect({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {isConnected ? "Change Meta Connection" : "Connect Meta Account"}
+            {needsReconnect ? "Reconnect Meta Account" : isConnected ? "Change Meta Connection" : "Connect Meta Account"}
           </DialogTitle>
           <DialogDescription>
-            Connect your Meta Business account to enable campaign creation.
+            {needsReconnect 
+              ? "Your Meta connection has expired. Please reconnect to continue managing your campaigns."
+              : "Connect your Meta Business account to enable campaign creation."
+            }
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {isConnected && (
+          {needsReconnect && isConnected && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-sm mb-4">
+              <p className="font-medium mb-2 flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-4 w-4" />
+                Connection Expired
+              </p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Your Meta access has expired. Please reconnect to continue syncing campaigns and performance data.
+              </p>
+              <div className="space-y-1 text-xs">
+                <p><span className="text-muted-foreground">Previous Account:</span> <code>{currentAccountId}</code></p>
+                <p><span className="text-muted-foreground">Page:</span> {currentPageName || currentPageId}</p>
+              </div>
+            </div>
+          )}
+          {isConnected && !needsReconnect && (
             <div className="rounded-lg bg-muted p-3 text-sm mb-4">
               <p className="font-medium mb-2 flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
