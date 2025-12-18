@@ -49,10 +49,15 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace.user_uploaded_assets || [];
-  
+
+  // Resolve the concept ID we should link uploads to when used inside a specific production item
+  const conceptLinkId = productionItem
+    ? (productionItem.concept_id || (productionItem as any).conceptId || productionItem.id)
+    : null;
+
   // Filter assets to only show those linked to this specific concept
-  const relevantAssets = productionItem?.concept_id 
-    ? uploadedAssets.filter((asset: any) => asset.linked_concept_id === productionItem.concept_id)
+  const relevantAssets = conceptLinkId
+    ? uploadedAssets.filter((asset: any) => asset.linked_concept_id === conceptLinkId)
     : uploadedAssets;
   
   // Get all available concepts from creative_mix
@@ -166,8 +171,9 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
           file_url: urlData.publicUrl,
           storage_path: filePath,
           uploaded_at: new Date().toISOString(),
-          linked_concept_id: productionItem?.concept_id || null,
-          linked_concept_title: productionItem?.concept?.title || null
+          linked_concept_id: conceptLinkId,
+          linked_concept_title:
+            productionItem?.concept?.title || productionItem?.linked_concept_title || (productionItem as any)?.hook || null,
         });
 
         setUploadProgress(((i + 1) / validFiles.length) * 100);
