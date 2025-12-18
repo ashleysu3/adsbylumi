@@ -80,8 +80,10 @@ export default function Pricing() {
               14-Day Free Trial
             </Badge>
             <h1 className="font-display text-4xl md:text-6xl mb-4 leading-tight">
-              Stop overpaying for{" "}
-              <span className="text-primary">Meta ads help</span>
+              Your ads deserve{" "}
+              <span className="text-primary bg-gradient-to-r from-primary to-pink-500 bg-clip-text text-transparent">agency-level results</span>
+              <br className="hidden md:block" />
+              <span className="text-2xl md:text-4xl text-muted-foreground font-normal">without the agency price tag</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Get agency-level Meta advertising results at a fraction of the cost. 
