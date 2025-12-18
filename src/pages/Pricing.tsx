@@ -54,27 +54,27 @@ export default function Pricing() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-3 md:py-4 flex justify-between items-center">
           <img
             src={lumiLogo}
             alt="Lumi"
-            className="h-12 cursor-pointer"
+            className="h-8 md:h-12 cursor-pointer"
             onClick={() => navigate("/")}
           />
-          <Button onClick={() => navigate("/auth")} variant="outline">
+          <Button onClick={() => navigate("/auth")} variant="outline" size="sm" className="text-xs md:text-sm h-9 md:h-11 px-3 md:px-6">
             Log In / Sign Up
           </Button>
         </div>
       </header>
 
       {/* Hero Section - Clean & Professional */}
-      <section className="pt-32 pb-16 px-4">
+      <section className="pt-24 md:pt-32 pb-10 md:pb-16 px-4">
         <div className="container mx-auto max-w-3xl text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="space-y-8"
+            className="space-y-6 md:space-y-8"
           >
             {/* Trial Badge - Understated */}
             <motion.div
@@ -82,23 +82,23 @@ export default function Pricing() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.4, delay: 0.1 }}
             >
-              <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium bg-primary/8 text-primary border border-primary/15">
-                <Sparkles className="w-3.5 h-3.5" />
+              <span className="inline-flex items-center gap-1.5 px-3 md:px-4 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium bg-primary/8 text-primary border border-primary/15">
+                <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5" />
                 14-Day Free Trial
               </span>
             </motion.div>
 
             {/* Headline - Clean Typography */}
-            <div className="space-y-2">
-              <h1 className="font-display text-4xl md:text-5xl lg:text-6xl text-foreground leading-[1.1] tracking-tight">
+            <div className="space-y-1 md:space-y-2">
+              <h1 className="font-display text-3xl md:text-5xl lg:text-6xl text-foreground leading-[1.15] md:leading-[1.1] tracking-tight">
                 Run real ads,
               </h1>
-              <h2 className="font-display text-4xl md:text-5xl lg:text-6xl leading-[1.1] tracking-tight">
+              <h2 className="font-display text-3xl md:text-5xl lg:text-6xl leading-[1.15] md:leading-[1.1] tracking-tight">
                 <span className="bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
                   without keeping up with
                 </span>
               </h2>
-              <h2 className="font-display text-4xl md:text-5xl lg:text-6xl leading-[1.1] tracking-tight">
+              <h2 className="font-display text-3xl md:text-5xl lg:text-6xl leading-[1.15] md:leading-[1.1] tracking-tight">
                 <span className="bg-gradient-to-r from-secondary via-accent to-glow bg-clip-text text-transparent">
                   Ads Manager
                 </span>
@@ -107,7 +107,7 @@ export default function Pricing() {
 
             {/* Subheadline - Refined */}
             <motion.p 
-              className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-normal"
+              className="text-base md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-normal px-2"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.3 }}

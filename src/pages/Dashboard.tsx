@@ -293,14 +293,14 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-6 md:space-y-8">
         {/* Brand Header */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-3xl font-display tracking-tight">
+            <h2 className="text-2xl md:text-3xl font-display tracking-tight">
               {brand.name}
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-sm md:text-base text-muted-foreground">
               Your Lumi Home — everything about your brand at a glance.
             </p>
           </div>
@@ -314,7 +314,7 @@ export default function Dashboard() {
                   "destructive"
                 }
                 className={cn(
-                  "text-sm px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity",
+                  "text-xs md:text-sm px-2 md:px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity self-start",
                   calculateBrandProgress().percentage === 100 && "border-green-500 text-green-700 dark:text-green-400"
                 )}
               >

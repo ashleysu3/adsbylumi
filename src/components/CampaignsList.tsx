@@ -186,31 +186,32 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
   return (
     <Card variant="glow">
-      <CardHeader>
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <CardTitle>My Campaigns</CardTitle>
-            <CardDescription>Active and draft campaign workspaces</CardDescription>
+            <CardTitle className="text-lg md:text-xl">My Campaigns</CardTitle>
+            <CardDescription className="text-sm">Active and draft campaign workspaces</CardDescription>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-2">
               <Switch
                 id="show-archived"
                 checked={showArchived}
                 onCheckedChange={setShowArchived}
               />
-              <Label htmlFor="show-archived" className="text-sm cursor-pointer">
-                Show Archived
+              <Label htmlFor="show-archived" className="text-xs md:text-sm cursor-pointer whitespace-nowrap">
+                Archived
               </Label>
             </div>
-            <Button onClick={() => navigate("/planning")}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Campaign
+            <Button onClick={() => navigate("/planning")} size="sm" className="h-9">
+              <Plus className="h-4 w-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">New Campaign</span>
+              <span className="sm:hidden">New</span>
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3 md:px-6">
         {campaigns.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">No campaigns yet</p>
@@ -235,38 +236,40 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                   }
                 }}
               >
-                <CardContent className="pt-4">
-                  <div className="flex items-center justify-between gap-4">
+                <CardContent className="pt-3 pb-3 md:pt-4 md:pb-4 px-3 md:px-4">
+                  <div className="flex items-start justify-between gap-2 md:gap-4">
                     <div 
-                      className="flex-1 cursor-pointer"
+                      className="flex-1 min-w-0 cursor-pointer"
                       onClick={(e) => {
                         if (!addCreativeMode) {
                           navigate(getNavigationRoute(campaign));
                         }
                       }}
                     >
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h4 className="font-semibold">{campaign.name}</h4>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <h4 className="font-semibold text-sm md:text-base truncate">{campaign.name}</h4>
                         {addCreativeMode && (
-                          <Badge className="bg-primary/20 text-primary border border-primary/30 gap-1.5">
+                          <Badge className="bg-primary/20 text-primary border border-primary/30 gap-1 text-xs">
                             <ImagePlus className="h-3 w-3" />
-                            Select to add creative
+                            <span className="hidden sm:inline">Select to add creative</span>
+                            <span className="sm:hidden">Add</span>
                           </Badge>
                         )}
                         {campaign.archived && (
-                          <Badge variant="outline">Archived</Badge>
+                          <Badge variant="outline" className="text-xs">Archived</Badge>
                         )}
                         {!isPublished(campaign.progress_status) && !addCreativeMode && (
-                          <Badge variant="outline" className="border-yellow-500/50 text-yellow-700 dark:text-yellow-400">
+                          <Badge variant="outline" className="border-yellow-500/50 text-yellow-700 dark:text-yellow-400 text-xs">
                             Draft
                           </Badge>
                         )}
-                        <Badge className={getStatusColor(campaign.progress_status)}>
-                          {getStatusLabel(campaign.progress_status)}
+                        <Badge className={`${getStatusColor(campaign.progress_status)} text-xs`}>
+                          <span className="hidden sm:inline">{getStatusLabel(campaign.progress_status)}</span>
+                          <span className="sm:hidden">{getStatusLabel(campaign.progress_status).split(' ')[0]}</span>
                         </Badge>
                       </div>
                       {campaign.offer_name && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs md:text-sm text-muted-foreground truncate">
                           {campaign.offer_name}
                         </p>
                       )}
