@@ -11,15 +11,102 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { assetUrl, assetStoragePath, metaAccountId, metaAccessToken, fileName } = await req.json();
-
-    if (!metaAccountId || !metaAccessToken) {
-      throw new Error('Meta account ID and access token are required');
+    // 1. Authenticate user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing Authorization header');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // Create auth client with user's token
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('User authenticated:', user.id);
+
+    // Create service role client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 2. Parse request - NOTE: We no longer accept metaAccessToken as a parameter
+    const { assetUrl, assetStoragePath, brandId, fileName } = await req.json();
+
+    if (!brandId) {
+      console.error('Missing brandId parameter');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Brand ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 3. Verify brand ownership
+    const { data: brand, error: brandError } = await supabase
+      .from('brands')
+      .select('user_id, meta_account_id')
+      .eq('id', brandId)
+      .single();
+
+    if (brandError || !brand) {
+      console.error('Brand not found:', brandId);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Brand not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (brand.user_id !== user.id) {
+      console.error('Access denied: User', user.id, 'does not own brand', brandId);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const metaAccountId = brand.meta_account_id;
+    if (!metaAccountId) {
+      console.error('No Meta account connected for brand:', brandId);
+      return new Response(
+        JSON.stringify({ success: false, error: 'No Meta account connected for this brand' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 4. Get Meta token from database (never accept as parameter)
+    const { data: metaAccessToken, error: tokenError } = await supabase
+      .rpc('get_meta_token', { p_brand_id: brandId });
+
+    if (tokenError || !metaAccessToken) {
+      console.error('Failed to retrieve Meta token:', tokenError?.message);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Meta token not found. Please reconnect your Meta account.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 5. Validate storage path belongs to this brand (if provided)
+    if (assetStoragePath && !assetStoragePath.startsWith(`${brandId}/`)) {
+      console.error('Invalid asset path for brand:', brandId, 'path:', assetStoragePath);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid asset path' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Uploading asset to Meta:', assetStoragePath || assetUrl);
 
@@ -34,7 +121,10 @@ Deno.serve(async (req) => {
 
       if (downloadError) {
         console.error('Download error:', downloadError);
-        throw new Error(`Failed to download asset: ${downloadError.message}`);
+        return new Response(
+          JSON.stringify({ success: false, error: `Failed to download asset: ${downloadError.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       assetData = downloadData;
@@ -43,12 +133,19 @@ Deno.serve(async (req) => {
       // If we have a URL, fetch it directly
       const response = await fetch(assetUrl);
       if (!response.ok) {
-        throw new Error(`Failed to fetch asset from URL: ${response.statusText}`);
+        console.error('Failed to fetch asset from URL:', response.statusText);
+        return new Response(
+          JSON.stringify({ success: false, error: `Failed to fetch asset from URL: ${response.statusText}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
       assetData = await response.blob();
       contentType = response.headers.get('content-type') || 'application/octet-stream';
     } else {
-      throw new Error('Either assetUrl or assetStoragePath is required');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Either assetUrl or assetStoragePath is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Determine if image or video based on content type or file extension
@@ -82,7 +179,10 @@ Deno.serve(async (req) => {
       
       if (initData.error) {
         console.error('Video upload init error:', initData.error);
-        throw new Error(initData.error.message || 'Failed to initialize video upload');
+        return new Response(
+          JSON.stringify({ success: false, error: initData.error.message || 'Failed to initialize video upload' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       const { upload_session_id, video_id } = initData;
@@ -108,7 +208,10 @@ Deno.serve(async (req) => {
       
       if (transferData.error) {
         console.error('Video transfer error:', transferData.error);
-        throw new Error(transferData.error.message || 'Failed to transfer video');
+        return new Response(
+          JSON.stringify({ success: false, error: transferData.error.message || 'Failed to transfer video' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       // Step 3: Finish upload
@@ -131,7 +234,10 @@ Deno.serve(async (req) => {
       
       if (finishData.error) {
         console.error('Video finish error:', finishData.error);
-        throw new Error(finishData.error.message || 'Failed to finish video upload');
+        return new Response(
+          JSON.stringify({ success: false, error: finishData.error.message || 'Failed to finish video upload' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       console.log('Video uploaded successfully:', video_id);
@@ -178,7 +284,10 @@ Deno.serve(async (req) => {
 
       if (imageData.error) {
         console.error('Image upload error:', imageData.error);
-        throw new Error(imageData.error.message || 'Failed to upload image');
+        return new Response(
+          JSON.stringify({ success: false, error: imageData.error.message || 'Failed to upload image' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       // Extract hash from response - response format is { images: { bytes: { hash: "...", url: "..." } } }
@@ -187,7 +296,10 @@ Deno.serve(async (req) => {
 
       if (!imageHash) {
         console.error('Unexpected image response:', imageData);
-        throw new Error('Failed to get image hash from Meta response');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get image hash from Meta response' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
       console.log('Image uploaded successfully:', imageHash);
