@@ -81,6 +81,7 @@ Deno.serve(async (req) => {
       context: context?.context 
     });
 
+    // Use tool calling to get structured response with follow-ups
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -93,8 +94,46 @@ Deno.serve(async (req) => {
           { role: 'system', content: contextPrompt },
           ...messages,
         ],
-        temperature: 0.7,
-        max_tokens: 1024,
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'respond_with_followups',
+              description: 'Respond to the user and suggest 2-3 follow-up questions they might want to ask next.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  response: {
+                    type: 'string',
+                    description: 'Your response to the user. Keep it short and actionable (2-4 sentences max).'
+                  },
+                  followups: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        label: {
+                          type: 'string',
+                          description: 'Short button label (2-4 words)'
+                        },
+                        message: {
+                          type: 'string',
+                          description: 'The full question or request to send'
+                        }
+                      },
+                      required: ['label', 'message'],
+                      additionalProperties: false
+                    },
+                    description: 'Suggest 2-3 natural follow-up questions based on the conversation. Make them specific to what was just discussed.'
+                  }
+                },
+                required: ['response', 'followups'],
+                additionalProperties: false
+              }
+            }
+          }
+        ],
+        tool_choice: { type: 'function', function: { name: 'respond_with_followups' } },
       }),
     });
 
@@ -120,12 +159,31 @@ Deno.serve(async (req) => {
     }
 
     const data = await response.json();
-    const aiResponse = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't process that. Please try again.";
+    
+    // Parse the tool call response
+    let aiResponse = "I'm sorry, I couldn't process that. Please try again.";
+    let followups: { label: string; message: string }[] = [];
+    
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (toolCall?.function?.arguments) {
+      try {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        aiResponse = parsed.response || aiResponse;
+        followups = parsed.followups || [];
+      } catch (e) {
+        console.error('Failed to parse tool call arguments:', e);
+        // Fallback to plain content if available
+        aiResponse = data.choices?.[0]?.message?.content || aiResponse;
+      }
+    } else if (data.choices?.[0]?.message?.content) {
+      // Fallback if no tool call
+      aiResponse = data.choices[0].message.content;
+    }
 
     console.log('Lumi response generated successfully');
 
     return new Response(
-      JSON.stringify({ response: aiResponse }),
+      JSON.stringify({ response: aiResponse, followups }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {

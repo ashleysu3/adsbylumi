@@ -7,7 +7,7 @@ import { Send, Loader2, X, Sparkle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LumiCharacter } from "./LumiCharacter";
-import { useLumi } from "@/contexts/LumiContext";
+import { useLumi, Message } from "@/contexts/LumiContext";
 
 interface LumiChatProps {
   context: 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production';
@@ -16,10 +16,6 @@ interface LumiChatProps {
   trigger?: ReactNode;
 }
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
 
 const contextStarters: Record<string, { label: string; message: string }[]> = {
   creative: [
@@ -131,7 +127,8 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
 
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.response || "I'm sorry, I couldn't process that. Please try again."
+        content: data.response || "I'm sorry, I couldn't process that. Please try again.",
+        followups: data.followups || []
       };
       addMessage(assistantMessage);
     } catch (error) {
@@ -212,22 +209,39 @@ export function LumiChat({ context, workspace, brand, trigger }: LumiChatProps) 
             ) : (
               <div className="space-y-4">
                 {messages.map((message, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {message.role === 'assistant' && (
-                      <LumiCharacter size="sm" state="idle" className="mr-2 flex-shrink-0 mt-1" />
-                    )}
+                  <div key={idx} className="space-y-2">
                     <div
-                      className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                        message.role === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      {message.role === 'assistant' && (
+                        <LumiCharacter size="sm" state="idle" className="mr-2 flex-shrink-0 mt-1" />
+                      )}
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                          message.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted'
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      </div>
                     </div>
+                    {/* Follow-up suggestions after the latest assistant message */}
+                    {message.role === 'assistant' && message.followups && message.followups.length > 0 && idx === messages.length - 1 && !isLoading && (
+                      <div className="flex flex-wrap gap-2 ml-10">
+                        {message.followups.map((followup, fIdx) => (
+                          <Button
+                            key={fIdx}
+                            variant="outline"
+                            size="sm"
+                            className="h-auto py-1.5 px-3 text-xs"
+                            onClick={() => sendMessage(followup.message)}
+                          >
+                            {followup.label}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {isLoading && (
