@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RefreshCw, Copy, Check, Sparkles, FileText, MessageSquare, Type, Pencil, Save, X, Star } from "lucide-react";
+import { RefreshCw, Copy, Check, Sparkles, FileText, MessageSquare, Type, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AngleCopyNav } from "./AngleCopyNav";
@@ -42,7 +42,9 @@ interface CopyPreviewProps {
   onAngleChange: (angleId: string) => void;
   angleCopy: Record<string, AngleCopy>;
   onRegenerateAngleCopy: (angleId: string) => Promise<void>;
+  onRegenerateSingle?: (angleId: string, type: keyof AngleCopy, index: number) => Promise<void>;
   isRegenerating: boolean;
+  regeneratingId?: string | null;
   selections?: Record<string, CopySelections>;
   onSelectionsChange?: (angleId: string, selections: CopySelections) => void;
   onCopyEdit?: (angleId: string, type: keyof AngleCopy, index: number, newText: string) => void;
@@ -78,7 +80,9 @@ export function CopyPreview({
   onAngleChange,
   angleCopy,
   onRegenerateAngleCopy,
+  onRegenerateSingle,
   isRegenerating,
+  regeneratingId,
   selections = {},
   onSelectionsChange,
   onCopyEdit,
@@ -152,6 +156,11 @@ export function CopyPreview({
     return h + d + p;
   };
 
+  const handleRegenerateSingle = async (type: keyof AngleCopy, index: number) => {
+    if (!onRegenerateSingle) return;
+    await onRegenerateSingle(activeAngleId, type, index);
+  };
+
   const renderVariationCard = (
     variation: CopyVariation, 
     index: number, 
@@ -162,126 +171,136 @@ export function CopyPreview({
     const isCopied = copiedId === id;
     const isEditing = editingId === id;
     const isSelected = (currentSelections[typeKey] || []).includes(index);
+    const isItemRegenerating = regeneratingId === id;
 
     return (
       <Card
         key={id}
         className={cn(
-          "p-4 transition-all hover:shadow-md group relative",
-          type === "primary" && "p-5",
-          isSelected && "ring-2 ring-primary bg-primary/5"
+          "cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98] h-full group relative",
+          isSelected && "ring-2 ring-primary bg-primary/5",
+          isItemRegenerating && "opacity-60 pointer-events-none"
         )}
+        onClick={() => handleSelectionToggle(typeKey as keyof AngleCopy, index)}
       >
-        <div className="flex items-start gap-3">
-          {/* Selection checkbox */}
-          {onSelectionsChange && (
-            <div className="pt-1">
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={() => handleSelectionToggle(typeKey as keyof AngleCopy, index)}
-                className="h-5 w-5"
-              />
-            </div>
-          )}
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <Badge variant="outline" className="text-xs shrink-0">
-                {variation.framework}
-              </Badge>
-              {variation.character_count && (
-                <span className="text-xs text-muted-foreground">
-                  {variation.character_count} chars
-                </span>
-              )}
-              {variation.length && (
-                <Badge variant="secondary" className="text-xs capitalize">
-                  {variation.length}
-                </Badge>
-              )}
-              {isSelected && (
-                <Badge className="text-xs gap-1 bg-primary">
-                  <Star className="h-3 w-3" />
-                  Selected
-                </Badge>
-              )}
-            </div>
-            
-            {isEditing ? (
-              <div className="space-y-2">
-                {type === "primary" ? (
-                  <Textarea
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    className="min-h-[120px] text-sm"
-                    autoFocus
-                  />
-                ) : (
-                  <Input
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    className="text-sm"
-                    autoFocus
-                  />
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => handleSaveEdit(typeKey as keyof AngleCopy, index)}
-                    className="gap-1"
-                  >
-                    <Save className="h-3 w-3" />
-                    Save
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCancelEdit}
-                    className="gap-1"
-                  >
-                    <X className="h-3 w-3" />
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className={cn(
-                "text-sm",
-                type === "headline" && "font-semibold text-base",
-                type === "primary" && "whitespace-pre-wrap text-muted-foreground"
-              )}>
-                {variation.text}
-              </p>
-            )}
+        {isItemRegenerating && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-lg z-10">
+            <RefreshCw className="h-5 w-5 animate-spin text-primary" />
           </div>
-          
-          {!isEditing && (
-            <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        )}
+        <CardHeader className="pb-2 pt-3 sm:pt-4 px-3 sm:px-4">
+          <div className="flex items-start justify-between gap-2">
+            <Badge variant="outline" className="text-xs font-normal gap-1 sm:gap-1.5 px-2 py-0.5">
+              {variation.framework}
+              {variation.length && (
+                <span className="text-muted-foreground capitalize">• {variation.length}</span>
+              )}
+            </Badge>
+            <div className="flex items-center gap-1">
+              {onRegenerateSingle && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRegenerateSingle(typeKey, index);
+                  }}
+                  disabled={isItemRegenerating}
+                  title="Regenerate this copy"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              )}
               {onCopyEdit && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleStartEdit(id, variation.text)}
+                  className="h-7 w-7 sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartEdit(id, variation.text);
+                  }}
+                  title="Edit this copy"
                 >
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="h-3 w-3" />
                 </Button>
               )}
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
-                onClick={() => handleCopy(variation.text, id)}
+                className="h-7 w-7 sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopy(variation.text, id);
+                }}
+                title="Copy to clipboard"
               >
                 {isCopied ? (
-                  <Check className="h-4 w-4 text-green-500" />
+                  <Check className="h-3 w-3 text-green-500" />
                 ) : (
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-3 w-3" />
                 )}
               </Button>
+              {onSelectionsChange && (
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => handleSelectionToggle(typeKey as keyof AngleCopy, index)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-5 w-5"
+                />
+              )}
             </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 sm:space-y-3">
+          {isEditing ? (
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              {type === "primary" ? (
+                <Textarea
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="min-h-[120px] text-sm"
+                  autoFocus
+                />
+              ) : (
+                <Input
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="text-sm"
+                  autoFocus
+                />
+              )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleSaveEdit(typeKey as keyof AngleCopy, index)}
+                  className="gap-1"
+                >
+                  <Save className="h-3 w-3" />
+                  Save
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCancelEdit}
+                  className="gap-1"
+                >
+                  <X className="h-3 w-3" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className={cn(
+              "text-xs sm:text-sm leading-relaxed",
+              type === "headline" && "font-medium",
+              type === "primary" && "whitespace-pre-wrap text-muted-foreground line-clamp-4"
+            )}>
+              {variation.text}
+            </p>
           )}
-        </div>
+        </CardContent>
       </Card>
     );
   };
@@ -303,7 +322,7 @@ export function CopyPreview({
       <div className="flex items-center justify-end gap-2 sm:gap-3">
         {getSelectedCount() > 0 && (
           <Badge variant="secondary" className="gap-1 text-xs sm:text-sm">
-            <Star className="h-3 w-3" />
+            <Check className="h-3 w-3" />
             {getSelectedCount()} selected
           </Badge>
         )}
@@ -315,7 +334,7 @@ export function CopyPreview({
           className="min-h-[44px] gap-2"
         >
           <RefreshCw className={cn("h-4 w-4", isRegenerating && "animate-spin")} />
-          {isRegenerating ? "Regenerating..." : "Regenerate Copy"}
+          {isRegenerating ? "Regenerating..." : "Regenerate All"}
         </Button>
       </div>
 

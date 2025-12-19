@@ -32,8 +32,8 @@ const formatIcons = {
 
 const formatLabels = {
   talking_head: "Talking Head",
-  broll: "B-Roll / Lofi Video",
-  graphic: "Graphic / Static",
+  broll: "B-Roll",
+  graphic: "Graphic",
 };
 
 export function CreativeCell({ 
@@ -65,8 +65,7 @@ export function CreativeCell({
         <div className="flex items-start justify-between gap-2">
           <Badge variant="outline" className="text-xs font-normal gap-1 sm:gap-1.5 px-2 py-0.5">
             <Icon className="h-3 w-3" />
-            <span className="hidden sm:inline">{formatLabels[cell.format]}</span>
-            <span className="sm:hidden">{cell.format === "talking_head" ? "Video" : cell.format === "broll" ? "B-Roll" : "Graphic"}</span>
+            {formatLabels[cell.format]}
           </Badge>
           <div className="flex items-center gap-1">
             {onRegenerate && (

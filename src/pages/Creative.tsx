@@ -76,6 +76,7 @@ export default function Creative() {
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
   const [angleCopy, setAngleCopy] = useState<Record<string, any>>({});
   const [regeneratingCopy, setRegeneratingCopy] = useState(false);
+  const [regeneratingCopyId, setRegeneratingCopyId] = useState<string | null>(null);
   const [copySelections, setCopySelections] = useState<Record<string, { headlines: number[]; descriptions: number[]; primary_copy: number[] }>>({});
   const [completedAngles, setCompletedAngles] = useState<Set<string>>(new Set());
 
@@ -571,6 +572,73 @@ export default function Creative() {
     
     setAngleCopy(newAngleCopy);
     await saveCreativeState({ angle_copy: newAngleCopy });
+  };
+
+  // Handle single copy regeneration
+  const handleRegenerateSingleCopy = async (angleId: string, type: "headlines" | "descriptions" | "primary_copy", index: number) => {
+    if (!workspace) return;
+    
+    const id = `${angleId}-${type === "headlines" ? "headline" : type === "descriptions" ? "description" : "primary"}-${index}`;
+    setRegeneratingCopyId(id);
+    
+    try {
+      const currentAngleCopy = angleCopy[angleId];
+      const angle = availableAngles.find(a => a.id === angleId);
+      const variation = currentAngleCopy?.[type]?.[index];
+      
+      if (!angle || !variation) {
+        throw new Error("Copy variation not found");
+      }
+      
+      // Call edge function to regenerate single copy
+      const { data, error } = await supabase.functions.invoke('generate-angle-copy', {
+        body: {
+          angles: [angle],
+          brandName: workspace.brands?.name || workspace.name,
+          strategyData: workspace.strategy_json,
+          offerData: {
+            name: workspace.offer_name,
+            description: workspace.offer_description,
+            price_point: workspace.offer_price,
+          },
+          audiencePsychology: workspace.brands?.audience_psychology,
+          singleRegenerate: {
+            type,
+            index,
+            framework: variation.framework,
+          },
+        }
+      });
+      
+      if (error) throw error;
+      
+      // Update the specific variation
+      const newVariation = data.angle_copy?.[angleId]?.[type]?.[0];
+      if (newVariation) {
+        const updatedVariations = [...currentAngleCopy[type]];
+        updatedVariations[index] = {
+          ...newVariation,
+          character_count: newVariation.text?.length || 0,
+        };
+        
+        const newAngleCopy = {
+          ...angleCopy,
+          [angleId]: {
+            ...currentAngleCopy,
+            [type]: updatedVariations,
+          },
+        };
+        
+        setAngleCopy(newAngleCopy);
+        await saveCreativeState({ angle_copy: newAngleCopy });
+        toast.success("Copy regenerated!");
+      }
+    } catch (err: any) {
+      console.error("Failed to regenerate single copy:", err);
+      toast.error(err.message || "Failed to regenerate copy");
+    } finally {
+      setRegeneratingCopyId(null);
+    }
   };
 
   const saveCreativeState = async (updates: any) => {
@@ -1084,7 +1152,9 @@ export default function Creative() {
                         onAngleChange={setActiveAngleId}
                         angleCopy={angleCopy}
                         onRegenerateAngleCopy={regenerateAngleCopy}
+                        onRegenerateSingle={handleRegenerateSingleCopy}
                         isRegenerating={regeneratingCopy}
+                        regeneratingId={regeneratingCopyId}
                         selections={copySelections}
                         onSelectionsChange={handleCopySelectionsChange}
                         onCopyEdit={handleCopyEdit}
