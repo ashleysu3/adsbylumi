@@ -9,7 +9,12 @@ import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
 import { CreateAdModal } from "@/components/CreateAdModal";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { MobileFloatingAction } from "@/components/MobileFloatingAction";
+import { MobileHeader } from "@/components/MobileHeader";
+import { useIsMobile } from "@/hooks/use-mobile";
 import lumiLogo from "@/assets/lumi-logo.png";
+
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -18,6 +23,7 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [brand, setBrand] = useState<any>(null);
@@ -198,7 +204,51 @@ export default function DashboardLayout({
     darkColor: "tab-blue-dark"
   }];
   if (!user) return null;
-  return <div className="min-h-screen bg-background">
+
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <MobileHeader 
+          user={user} 
+          profile={profile} 
+          isAdmin={isAdmin}
+          onShowWalkthrough={handleShowWalkthrough}
+        />
+
+        <main className="px-4 py-4">{children}</main>
+
+        <MobileFloatingAction onClick={() => setCreateAdModalOpen(true)} />
+        <MobileBottomNav />
+
+        {walkthroughOpen && (
+          <OnboardingWalkthrough 
+            steps={walkthroughSteps} 
+            onClose={() => setWalkthroughOpen(false)} 
+            onActionClick={handleWalkthroughAction} 
+          />
+        )}
+
+        {tourActive && tourConfig && (
+          <GuidedTour 
+            targetSelector={tourConfig.targetSelector} 
+            title={tourConfig.title} 
+            description={tourConfig.description} 
+            onClose={() => {
+              setTourActive(false);
+              setTourConfig(null);
+            }} 
+          />
+        )}
+
+        <CreateAdModal open={createAdModalOpen} onOpenChange={setCreateAdModalOpen} />
+      </div>
+    );
+  }
+
+  // Desktop layout
+  return (
+    <div className="min-h-screen bg-background">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
@@ -277,13 +327,14 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* Mobile-optimized navigation tabs */}
+          {/* Desktop navigation tabs */}
           <nav className="flex items-end justify-start mt-4 md:mt-6 -mb-3 md:-mb-4 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
             <div className="flex space-x-1 pb-px">
               {tabItems.map(item => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path;
-              return <Link key={item.path} to={item.path}>
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                return (
+                  <Link key={item.path} to={item.path}>
                     <div className={`
                         h-10 md:h-12 px-3 md:px-6 rounded-t-xl rounded-b-none relative
                         flex items-center justify-center
@@ -294,8 +345,9 @@ export default function DashboardLayout({
                       <span className="hidden sm:inline">{item.label}</span>
                       <span className="sm:hidden">{item.label.split(' ')[0]}</span>
                     </div>
-                  </Link>;
-            })}
+                  </Link>
+                );
+              })}
             </div>
           </nav>
         </div>
@@ -306,10 +358,11 @@ export default function DashboardLayout({
       {walkthroughOpen && <OnboardingWalkthrough steps={walkthroughSteps} onClose={() => setWalkthroughOpen(false)} onActionClick={handleWalkthroughAction} />}
 
       {tourActive && tourConfig && <GuidedTour targetSelector={tourConfig.targetSelector} title={tourConfig.title} description={tourConfig.description} onClose={() => {
-      setTourActive(false);
-      setTourConfig(null);
-    }} />}
+        setTourActive(false);
+        setTourConfig(null);
+      }} />}
 
       <CreateAdModal open={createAdModalOpen} onOpenChange={setCreateAdModalOpen} />
-    </div>;
+    </div>
+  );
 }
