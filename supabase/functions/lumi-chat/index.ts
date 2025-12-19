@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders } from '../_shared/cors.ts';
 
 const LUMI_SYSTEM_PROMPT = `You are Lumi, a sharp and strategic AI ad assistant. Your tone is warm but efficient — like a brilliant friend who respects your time.
 
@@ -50,6 +46,9 @@ IMPORTANT: Keep responses SHORT (2-4 sentences). Ask one question at a time. Don
 
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
