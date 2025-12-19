@@ -1066,68 +1066,54 @@ export default function Creative() {
                       />
                     </div>
 
-                    {/* Toggle between Copy and Creative with progress */}
-                    <div className="flex justify-center mb-4">
-                      <div className="inline-flex items-center bg-muted rounded-full p-1 relative">
-                        {/* Step indicators */}
-                        <div className="absolute -top-6 left-0 right-0 flex justify-center gap-6 text-[10px] text-muted-foreground">
-                          <span className={cn(
-                            "transition-colors",
-                            creativeTab === "copy" && "text-primary font-medium"
-                          )}>Step 1</span>
-                          <span className={cn(
-                            "transition-colors",
-                            creativeTab === "ideas" && "text-primary font-medium"
-                          )}>Step 2</span>
-                        </div>
-                        
-                        <button
-                          onClick={() => setCreativeTab("copy")}
-                          className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
-                            creativeTab === "copy"
-                              ? "bg-background text-foreground shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          <FileText className="h-4 w-4" />
-                          Copy
-                          {(() => {
-                            const angleSel = copySelections[activeAngleId];
-                            const count = angleSel 
-                              ? (angleSel.headlines?.length || 0) + (angleSel.descriptions?.length || 0) + (angleSel.primary_copy?.length || 0)
-                              : 0;
-                            return count > 0 ? (
-                              <Badge variant="secondary" className="h-5 px-1.5 text-xs gap-0.5 bg-green-500/20 text-green-700">
-                                <Check className="h-3 w-3" />
-                              </Badge>
-                            ) : null;
-                          })()}
-                        </button>
-                        <button
-                          onClick={() => setCreativeTab("ideas")}
-                          className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
-                            creativeTab === "ideas"
-                              ? "bg-background text-foreground shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          <Lightbulb className="h-4 w-4" />
-                          Creative
-                          {(() => {
-                            const activeAngle = selectedAngles.find(a => a.id === activeAngleId);
-                            const count = activeAngle 
-                              ? productionItems.filter(item => item.angleName === activeAngle.name).length 
-                              : 0;
-                            return count > 0 ? (
-                              <Badge variant="secondary" className="h-5 px-1.5 text-xs gap-0.5 bg-green-500/20 text-green-700">
-                                <Check className="h-3 w-3" />
-                              </Badge>
-                            ) : null;
-                          })()}
-                        </button>
-                      </div>
+                    {/* Toggle between Copy and Creative */}
+                    <div className="flex items-center bg-muted rounded-full p-1 w-full">
+                      <button
+                        onClick={() => setCreativeTab("copy")}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all",
+                          creativeTab === "copy"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <FileText className="h-4 w-4" />
+                        Copy
+                        {(() => {
+                          const angleSel = copySelections[activeAngleId];
+                          const count = angleSel 
+                            ? (angleSel.headlines?.length || 0) + (angleSel.descriptions?.length || 0) + (angleSel.primary_copy?.length || 0)
+                            : 0;
+                          return count > 0 ? (
+                            <Badge variant="secondary" className="h-5 px-1.5 text-xs gap-0.5 bg-green-500/20 text-green-700">
+                              <Check className="h-3 w-3" />
+                            </Badge>
+                          ) : null;
+                        })()}
+                      </button>
+                      <button
+                        onClick={() => setCreativeTab("ideas")}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all",
+                          creativeTab === "ideas"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <Lightbulb className="h-4 w-4" />
+                        Creative
+                        {(() => {
+                          const activeAngle = selectedAngles.find(a => a.id === activeAngleId);
+                          const count = activeAngle 
+                            ? productionItems.filter(item => item.angleName === activeAngle.name).length 
+                            : 0;
+                          return count > 0 ? (
+                            <Badge variant="secondary" className="h-5 px-1.5 text-xs gap-0.5 bg-green-500/20 text-green-700">
+                              <Check className="h-3 w-3" />
+                            </Badge>
+                          ) : null;
+                        })()}
+                      </button>
                     </div>
 
                     {creativeTab === "ideas" ? (
