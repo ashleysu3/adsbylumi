@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Plus, Trash2, Users, RefreshCw, Search, UserPlus } from "lucide-react";
+import { Plus, Trash2, Users, RefreshCw, Search, UserPlus, CalendarPlus } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
 import { format } from "date-fns";
@@ -47,7 +47,9 @@ export default function AdminSubscriptions() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [grantDialogOpen, setGrantDialogOpen] = useState(false);
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
+  const [extendDialogOpen, setExtendDialogOpen] = useState(false);
   const [subToRevoke, setSubToRevoke] = useState<Subscription | null>(null);
+  const [subToExtend, setSubToExtend] = useState<Subscription | null>(null);
   const [searchEmail, setSearchEmail] = useState("");
 
   // Form state for granting
@@ -56,6 +58,10 @@ export default function AdminSubscriptions() {
   const [selectedStatus, setSelectedStatus] = useState<"active" | "trial">("active");
   const [trialEndDate, setTrialEndDate] = useState("");
   const [granting, setGranting] = useState(false);
+  
+  // Extend trial state
+  const [newEndDate, setNewEndDate] = useState("");
+  const [extending, setExtending] = useState(false);
 
   useEffect(() => {
     checkAdminAndFetch();
@@ -222,6 +228,43 @@ export default function AdminSubscriptions() {
     }
   };
 
+  const handleExtendTrial = async () => {
+    if (!subToExtend || !newEndDate) {
+      toast.error("Please select a new end date");
+      return;
+    }
+
+    setExtending(true);
+    const { error } = await supabase
+      .from("subscriptions")
+      .update({
+        current_period_end: newEndDate,
+      })
+      .eq("id", subToExtend.id);
+
+    if (error) {
+      toast.error("Failed to extend trial");
+      console.error(error);
+    } else {
+      toast.success(`Trial extended to ${format(new Date(newEndDate), "MMM d, yyyy")}`);
+      fetchData();
+    }
+    setExtendDialogOpen(false);
+    setSubToExtend(null);
+    setNewEndDate("");
+    setExtending(false);
+  };
+
+  const openExtendDialog = (sub: Subscription) => {
+    setSubToExtend(sub);
+    // Default to 14 days from current end date or today
+    const baseDate = sub.current_period_end ? new Date(sub.current_period_end) : new Date();
+    const newDate = new Date(baseDate);
+    newDate.setDate(newDate.getDate() + 14);
+    setNewEndDate(newDate.toISOString().split("T")[0]);
+    setExtendDialogOpen(true);
+  };
+
   const filteredSubscriptions = subscriptions.filter(sub =>
     sub.user_email?.toLowerCase().includes(searchEmail.toLowerCase())
   );
@@ -356,6 +399,18 @@ export default function AdminSubscriptions() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
+                              {/* Extend Trial - for code-based trials */}
+                              {isCodeBased && sub.status === "trial" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1"
+                                  onClick={() => openExtendDialog(sub)}
+                                >
+                                  <CalendarPlus className="w-3.5 h-3.5" />
+                                  Extend
+                                </Button>
+                              )}
                               {isCodeBased && isActive && (
                                 <Button
                                   variant="outline"
@@ -503,6 +558,80 @@ export default function AdminSubscriptions() {
             </Button>
             <Button variant="destructive" onClick={handleRevokeSubscription}>
               Revoke Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Extend Trial Dialog */}
+      <Dialog open={extendDialogOpen} onOpenChange={setExtendDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Extend Trial Period</DialogTitle>
+            <DialogDescription>
+              Extend the trial for <strong>{subToExtend?.user_email}</strong>.
+              {subToExtend?.current_period_end && (
+                <span className="block mt-1">
+                  Current end date: {format(new Date(subToExtend.current_period_end), "MMM d, yyyy")}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>New End Date</Label>
+              <Input
+                type="date"
+                value={newEndDate}
+                onChange={(e) => setNewEndDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 7);
+                  setNewEndDate(d.toISOString().split("T")[0]);
+                }}
+              >
+                +7 days
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 14);
+                  setNewEndDate(d.toISOString().split("T")[0]);
+                }}
+              >
+                +14 days
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 30);
+                  setNewEndDate(d.toISOString().split("T")[0]);
+                }}
+              >
+                +30 days
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleExtendTrial} disabled={extending || !newEndDate}>
+              {extending ? "Extending..." : "Extend Trial"}
             </Button>
           </DialogFooter>
         </DialogContent>
