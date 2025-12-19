@@ -157,7 +157,6 @@ Generate a deep, actionable psychological profile.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        response_format: { type: "json_object" }
       }),
     });
 
@@ -173,8 +172,32 @@ Generate a deep, actionable psychological profile.`;
     }
 
     const aiData = await aiResponse.json();
-    const content = aiData.choices[0].message.content;
-    const psychology = JSON.parse(content);
+    console.log('AI Response received');
+
+    const content =
+      aiData?.choices?.[0]?.message?.content ??
+      aiData?.choices?.[0]?.text ??
+      aiData?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
+      "";
+
+    if (!content) {
+      console.error('Unexpected AI response shape:', aiData);
+      throw new Error('AI response was empty or in an unexpected format');
+    }
+
+    console.log('Raw AI content:', content);
+
+    // Extract JSON robustly
+    const extractJsonObject = (text: string) => {
+      const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      const raw = (codeBlock?.[1] ?? text).trim();
+      const firstBrace = raw.indexOf('{');
+      const lastBrace = raw.lastIndexOf('}');
+      const candidate = firstBrace !== -1 && lastBrace !== -1 ? raw.slice(firstBrace, lastBrace + 1) : raw;
+      return JSON.parse(candidate);
+    };
+
+    const psychology = extractJsonObject(content);
 
     // Update brand with psychology data
     const { error: updateError } = await supabase
