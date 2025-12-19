@@ -155,7 +155,6 @@ Be specific and insightful. Use the actual language and positioning from the web
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        response_format: { type: "json_object" }
       }),
     });
 
@@ -169,7 +168,16 @@ Be specific and insightful. Use the actual language and positioning from the web
     console.log('AI Response received');
     
     const content = aiData.choices[0].message.content;
-    const brandInfo = JSON.parse(content);
+    console.log('Raw AI content:', content);
+    
+    // Extract JSON from the response (may be wrapped in markdown code blocks)
+    let jsonStr = content;
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim();
+    }
+    
+    const brandInfo = JSON.parse(jsonStr);
 
     console.log('Brand info extracted successfully');
 
