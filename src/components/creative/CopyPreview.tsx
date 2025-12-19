@@ -51,22 +51,36 @@ interface CopyPreviewProps {
   hideAngleNav?: boolean;
 }
 
+// Character limit recommendations for Meta ads
+const charLimits = {
+  headline: { ideal: 40, max: 50 },
+  description: { ideal: 27, max: 40 },
+  primary: { ideal: 125, max: 200 },
+};
+
+const getCharCountColor = (count: number, type: "headline" | "description" | "primary") => {
+  const limits = charLimits[type];
+  if (count <= limits.ideal) return "text-green-600";
+  if (count <= limits.max) return "text-amber-600";
+  return "text-red-500";
+};
+
 const sectionConfig = {
   headlines: {
     label: "Headlines",
-    description: "Short, punchy headlines for your ads (max 40 characters)",
+    description: "Short, punchy headlines (ideal: 27-40 chars)",
     icon: Type,
     type: "headline" as const,
   },
   descriptions: {
     label: "Descriptions",
-    description: "Ad descriptions that expand on your headline (max 125 characters)",
+    description: "Link descriptions (ideal: ~27 chars)",
     icon: FileText,
     type: "description" as const,
   },
   primary_copy: {
     label: "Primary Copy",
-    description: "Primary text variations in different lengths",
+    description: "Primary text (ideal: 125 chars, max ~200)",
     icon: MessageSquare,
     type: "primary" as const,
   },
@@ -172,6 +186,9 @@ export function CopyPreview({
     const isEditing = editingId === id;
     const isSelected = (currentSelections[typeKey] || []).includes(index);
     const isItemRegenerating = regeneratingId === id;
+    const charCount = variation.character_count || variation.text?.length || 0;
+    const charCountColor = getCharCountColor(charCount, type);
+    const limits = charLimits[type];
 
     return (
       <Card
@@ -190,12 +207,17 @@ export function CopyPreview({
         )}
         <CardHeader className="pb-2 pt-3 sm:pt-4 px-3 sm:px-4">
           <div className="flex items-start justify-between gap-2">
-            <Badge variant="outline" className="text-xs font-normal gap-1 sm:gap-1.5 px-2 py-0.5">
-              {variation.framework}
-              {variation.length && (
-                <span className="text-muted-foreground capitalize">• {variation.length}</span>
-              )}
-            </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline" className="text-xs font-normal gap-1 sm:gap-1.5 px-2 py-0.5">
+                {variation.framework}
+                {variation.length && (
+                  <span className="text-muted-foreground capitalize">• {variation.length}</span>
+                )}
+              </Badge>
+              <span className={cn("text-xs font-medium", charCountColor)} title={`Ideal: ≤${limits.ideal}, Max: ${limits.max}`}>
+                {charCount} chars
+              </span>
+            </div>
             <div className="flex items-center gap-1">
               {onRegenerateSingle && (
                 <Button
