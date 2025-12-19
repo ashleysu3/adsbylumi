@@ -1,9 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders } from '../_shared/cors.ts';
 
 interface FlodeskRequest {
   email: string;
@@ -76,6 +72,9 @@ async function getSegmentId(authHeader: string, segmentName: string): Promise<st
 }
 
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -113,7 +112,6 @@ serve(async (req) => {
     }
 
     // Step 2: Create or update the subscriber WITH segment_ids in the same request
-    // According to Flodesk API docs, segment_ids can be included in the subscriber creation
     const subscriberPayload: Record<string, any> = {
       email: email.toLowerCase().trim(),
     };
@@ -166,6 +164,8 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error('[FLODESK] Error:', error.message, error.stack);
+    const origin = req.headers.get('origin');
+    const corsHeaders = getCorsHeaders(origin);
     return new Response(
       JSON.stringify({ error: error.message, stack: error.stack }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
