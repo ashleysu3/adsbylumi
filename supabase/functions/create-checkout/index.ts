@@ -1,27 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-
-// CORS with origin allowlist for payment security
-const ALLOWED_ORIGINS = [
-  'https://youradassistant.app',
-  'https://www.youradassistant.app',
-  'https://staging.youradassistant.app',
-  /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/,
-  /^https:\/\/[a-z0-9-]+\.lovable\.app$/,
-  'http://localhost:5173',
-  'http://localhost:3000',
-];
-
-function getCorsHeaders(origin: string | null): Record<string, string> {
-  const isAllowed = origin && ALLOWED_ORIGINS.some(allowed => 
-    typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
-  );
-  return {
-    'Access-Control-Allow-Origin': isAllowed ? origin! : 'https://youradassistant.app',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  };
-}
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
@@ -47,7 +27,9 @@ serve(async (req) => {
     if (!priceId) throw new Error("Price ID is required");
     logStep("Price ID received", { priceId, promoCode: promoCode || "none" });
 
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header provided");
+    
     const token = authHeader.replace("Bearer ", "");
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
@@ -68,7 +50,7 @@ serve(async (req) => {
     }
 
     // Build checkout session options
-    const origin = req.headers.get("origin") || "http://localhost:3000";
+    const returnOrigin = origin || "http://localhost:3000";
     const sessionOptions: any = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -82,8 +64,8 @@ serve(async (req) => {
       subscription_data: {
         trial_period_days: 14,
       },
-      success_url: `${origin}/onboarding`,
-      cancel_url: `${origin}/pricing?checkout=canceled`,
+      success_url: `${returnOrigin}/onboarding`,
+      cancel_url: `${returnOrigin}/pricing?checkout=canceled`,
       metadata: {
         user_id: user.id,
       },
