@@ -9,6 +9,7 @@ interface ProductionItem {
   id: string;
   concept: any;
   status: string;
+  angleName?: string;
   linkedAsset?: {
     id: string;
     url: string;
@@ -36,9 +37,77 @@ interface ProductionItem {
   uploaded_asset_id?: string;
 }
 
+interface CopyVariation {
+  text: string;
+  framework: string;
+  character_count?: number;
+  length?: string;
+}
+
+interface AngleCopy {
+  headlines: CopyVariation[];
+  descriptions: CopyVariation[];
+  primary_copy: CopyVariation[];
+}
+
+interface CopySelections {
+  headlines: number[];
+  descriptions: number[];
+  primary_copy: number[];
+}
+
+// Get selected copy from angle-level copy based on selections
+function getSelectedAngleCopy(
+  angleName: string,
+  angles: any[],
+  angleCopy: Record<string, AngleCopy>,
+  copySelections: Record<string, CopySelections>
+): { headline: string; primaryText: string; description: string } | null {
+  // Find the angle by name to get its ID
+  const angle = angles?.find(a => a.name === angleName);
+  if (!angle) return null;
+  
+  const angleId = angle.id;
+  const copy = angleCopy?.[angleId];
+  const selections = copySelections?.[angleId];
+  
+  if (!copy) return null;
+  
+  // Get selected variations (or first if none selected)
+  const headlineIndices = selections?.headlines?.length > 0 ? selections.headlines : [0];
+  const descriptionIndices = selections?.descriptions?.length > 0 ? selections.descriptions : [0];
+  const primaryIndices = selections?.primary_copy?.length > 0 ? selections.primary_copy : [0];
+  
+  // Use first selected variation for the ad
+  const headline = copy.headlines?.[headlineIndices[0]]?.text || '';
+  const description = copy.descriptions?.[descriptionIndices[0]]?.text || '';
+  const primaryText = copy.primary_copy?.[primaryIndices[0]]?.text || '';
+  
+  return { headline, primaryText, description };
+}
+
 // Helper to normalize production item copy fields
-function normalizeCopy(item: ProductionItem): { headline: string; primaryText: string; description: string; cta: string } | null {
-  // Try new naming first
+function normalizeCopy(
+  item: ProductionItem, 
+  angles?: any[],
+  angleCopy?: Record<string, AngleCopy>,
+  copySelections?: Record<string, CopySelections>
+): { headline: string; primaryText: string; description: string; cta: string } | null {
+  // First, try to get copy from angle-level selections (preferred)
+  if (item.angleName && angleCopy && Object.keys(angleCopy).length > 0) {
+    const selectedCopy = getSelectedAngleCopy(item.angleName, angles || [], angleCopy, copySelections || {});
+    if (selectedCopy && (selectedCopy.headline || selectedCopy.primaryText)) {
+      console.log(`Using selected angle copy for ${item.angleName}`);
+      return {
+        headline: selectedCopy.headline,
+        primaryText: selectedCopy.primaryText,
+        description: selectedCopy.description,
+        cta: 'LEARN_MORE',
+      };
+    }
+  }
+  
+  // Fall back to item-level finalCopy (legacy)
   if (item.finalCopy) {
     return {
       headline: item.finalCopy.headline || '',
@@ -131,21 +200,31 @@ Deno.serve(async (req) => {
       warnings: []
     };
 
-    // Get approved production items with linked assets and final copy
+    // Extract angle-level copy data from creative_json
+    const creativeJson = workspace.creative_json as Record<string, any> || {};
+    const angles = creativeJson.angles || [];
+    const angleCopy: Record<string, AngleCopy> = creativeJson.angle_copy || {};
+    const copySelections: Record<string, CopySelections> = creativeJson.copy_selections || {};
+    
+    console.log(`Found ${angles.length} angles, ${Object.keys(angleCopy).length} angle copies, ${Object.keys(copySelections).length} copy selections`);
+
+    // Get approved production items with linked assets
+    // Copy can come from either item-level finalCopy OR angle-level angle_copy
     const approvedConcepts: ProductionItem[] = (workspace.production_items || []).filter(
       (item: ProductionItem) => {
         // Check status
         if (item.status !== 'approved') return false;
         // Check for asset (new or legacy)
         const hasAsset = item.linkedAsset || item.uploaded_asset_id;
-        // Check for copy (new or legacy)
-        const hasCopy = item.finalCopy || item.final_copy;
-        return hasAsset && hasCopy;
+        // Check for copy - either item-level or angle-level
+        const hasItemCopy = item.finalCopy || item.final_copy;
+        const hasAngleCopy = item.angleName && angleCopy && Object.keys(angleCopy).length > 0;
+        return hasAsset && (hasItemCopy || hasAngleCopy);
       }
     );
     
     if (approvedConcepts.length < 1) {
-      throw new Error('At least 1 approved creative with linked asset and finalized copy is required. Please complete the Production workflow first.');
+      throw new Error('At least 1 approved creative with linked asset is required. Please complete the Production workflow first.');
     }
 
     console.log(`Creating campaign with ${approvedConcepts.length} approved concepts`);
@@ -438,8 +517,8 @@ Deno.serve(async (req) => {
       const { item, assetId, assetType } = uploadedAssets[i];
       const adName = `Ad ${i + 1} - ${item.concept?.hookLabel || item.concept?.title || 'Creative'}`;
       
-      // Normalize copy fields (handles both old and new naming)
-      const copy = normalizeCopy(item);
+      // Normalize copy fields - prioritizes angle-level selected copy, then item-level copy
+      const copy = normalizeCopy(item, angles, angleCopy, copySelections);
       if (!copy) {
         console.error(`No copy found for ${adName}, skipping...`);
         result.failedAds.push({
