@@ -532,14 +532,75 @@ export default function Settings() {
 
                 <Card variant="glow">
                   <CardHeader>
-                    <CardTitle>Manage Subscription</CardTitle>
-                    <CardDescription>Update payment method, change plan, or cancel subscription</CardDescription>
+                    <CardTitle>Billing & Payment</CardTitle>
+                    <CardDescription>Manage your payment methods and billing information</CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <Button onClick={handleManageSubscription} disabled={portalLoading} className="gap-2">
-                      {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-                      {portalLoading ? 'Opening...' : 'Manage Billing'}
-                    </Button>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Button onClick={handleManageSubscription} disabled={portalLoading} variant="lumi" className="gap-2">
+                        {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                        Update Payment Method
+                      </Button>
+                      <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" className="gap-2">
+                        {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                        View Billing History
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Opens Stripe's secure billing portal where you can update payment methods, view invoices, and download receipts.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card variant="glow">
+                  <CardHeader>
+                    <CardTitle>Change Plan</CardTitle>
+                    <CardDescription>Upgrade, downgrade, or switch billing frequency</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-3">
+                      <Button onClick={() => navigate('/pricing')} variant="outline" className="gap-2">
+                        <Crown className="h-4 w-4" />
+                        View All Plans
+                      </Button>
+                      <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" className="gap-2">
+                        {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sliders className="h-4 w-4" />}
+                        Change Plan in Portal
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-destructive/30">
+                  <CardHeader>
+                    <CardTitle className="text-destructive">Cancel Subscription</CardTitle>
+                    <CardDescription>End your subscription at the end of the current billing period</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {cancelAtPeriodEnd ? (
+                      <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                        <p className="text-sm font-medium text-destructive mb-1">Subscription is set to cancel</p>
+                        <p className="text-xs text-muted-foreground">
+                          Your subscription will end on {subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString() : 'your next billing date'}. 
+                          You'll retain access until then.
+                        </p>
+                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" size="sm" className="mt-3 gap-2">
+                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                          Reactivate Subscription
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          If you cancel, you'll retain access to your current plan until the end of your billing period. 
+                          Your campaigns and data will be preserved.
+                        </p>
+                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="destructive" className="gap-2">
+                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                          Cancel Subscription
+                        </Button>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </>
