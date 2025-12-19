@@ -1,21 +1,96 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// CORS with origin allowlist for security
+const ALLOWED_ORIGINS = [
+  'https://youradassistant.app',
+  'https://www.youradassistant.app',
+  'https://staging.youradassistant.app',
+  /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/,
+  /^https:\/\/[a-z0-9-]+\.lovable\.app$/,
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const isAllowed = origin && ALLOWED_ORIGINS.some(allowed => 
+    typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
+  );
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin! : 'https://youradassistant.app',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // 1. AUTHENTICATE USER
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Create auth client to verify user
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('User authenticated:', user.id);
+
     const { code, brandId, redirectUri } = await req.json();
     
     if (!code || !brandId) {
       throw new Error('Code and brandId are required');
     }
+
+    // 2. VERIFY BRAND OWNERSHIP
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: brand, error: brandError } = await supabase
+      .from('brands')
+      .select('user_id')
+      .eq('id', brandId)
+      .single();
+
+    if (brandError || !brand) {
+      console.error('Brand not found:', brandId);
+      return new Response(
+        JSON.stringify({ error: 'Brand not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (brand.user_id !== user.id) {
+      console.error('Access denied: User', user.id, 'does not own brand', brandId);
+      return new Response(
+        JSON.stringify({ error: 'Access denied: You do not own this brand' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Brand ownership verified for user:', user.id);
 
     const META_APP_ID = Deno.env.get('META_APP_ID');
     const META_APP_SECRET = Deno.env.get('META_APP_SECRET');
@@ -120,11 +195,6 @@ Deno.serve(async (req) => {
     }
 
     // Store the access token securely in Supabase Vault
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Use the secure vault function to store the token
     const { data: vaultResult, error: vaultError } = await supabase
       .rpc('store_meta_token', {
         p_brand_id: brandId,
@@ -134,7 +204,6 @@ Deno.serve(async (req) => {
     if (vaultError) {
       console.error('Error storing access token in vault:', vaultError);
       // Don't throw - we still want to return success for the OAuth flow
-      // The token can be re-obtained if needed
     } else {
       console.log('Access token stored securely in vault for brand:', brandId);
     }
@@ -155,13 +224,13 @@ Deno.serve(async (req) => {
     }
       
     // Check if user has already selected an account (on re-connection)
-    const { data: brand } = await supabase
+    const { data: brandData } = await supabase
       .from('brands')
       .select('meta_account_id')
       .eq('id', brandId)
       .single();
       
-    if (brand?.meta_account_id) {
+    if (brandData?.meta_account_id) {
       console.log('Meta account already selected, triggering auto-sync...');
       // Get the token from vault for the sync call
       const { data: storedToken } = await supabase.rpc('get_meta_token', { p_brand_id: brandId });
@@ -171,11 +240,11 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
+            'Authorization': `Bearer ${supabaseServiceKey}`,
           },
           body: JSON.stringify({
             brandId,
-            metaAccountId: brand.meta_account_id,
+            metaAccountId: brandData.meta_account_id,
             metaAccessToken: storedToken
           })
         }).catch(err => {
