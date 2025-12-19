@@ -116,3 +116,6 @@ verify_jwt = true
 
 [functions.verify-landing-page-pixel]
 verify_jwt = true
+
+[functions.send-conversion-event]
+verify_jwt = true

@@ -74,6 +74,16 @@ export function OnboardingChecklist({ brand, offers, onEditBrand, onDismiss }: O
         section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       },
       actionLabel: "Connect Now"
+    },
+    {
+      id: "pixel-tracking",
+      title: "Configure Event Tracking",
+      description: "Ensure your pixel is tracking Purchase and Lead events",
+      completed: !!(brand?.meta_pixel_events?.Purchase?.active || brand?.meta_pixel_events?.Lead?.active),
+      action: () => {
+        window.location.href = '/settings/meta#pixel';
+      },
+      actionLabel: "Check Pixel"
     }
   ];
 

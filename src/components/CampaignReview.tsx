@@ -19,6 +19,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AdPreview } from "./AdPreview";
 import { PreBuildCopySummary } from "./PreBuildCopySummary";
+import { PixelPreflightCheck } from "./PixelPreflightCheck";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   const [showPreviews, setShowPreviews] = useState(true);
   const [confirmRepublish, setConfirmRepublish] = useState(false);
   const [launchAsActive, setLaunchAsActive] = useState(false);
+  const [pixelStatus, setPixelStatus] = useState<'ready' | 'warning' | 'error' | null>(null);
   
   // Check if campaign was already published
   const existingCampaignIds = workspace.meta_campaign_ids;
@@ -103,6 +105,16 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Pixel & Event Tracking Pre-flight Check */}
+          {isMetaReady && (
+            <PixelPreflightCheck
+              brandId={brand?.id}
+              landingPageUrl={workspace.offer_url}
+              campaignGoal={workspace.campaign_templates?.objective === 'OUTCOME_LEADS' ? 'leads' : 'sales'}
+              onStatusChange={setPixelStatus}
+            />
+          )}
+
           {/* Meta Connection Warning */}
           {!isMetaReady && (
             <Alert variant="destructive">
