@@ -19,47 +19,24 @@ export default function Auth() {
   const [resetLoading, setResetLoading] = useState(false);
   const navigate = useNavigate();
 
-  const validateInviteCode = async (code: string): Promise<boolean> => {
-    const { data, error } = await supabase
-      .from("invite_codes")
-      .select("*")
-      .eq("code", code.trim().toUpperCase())
-      .eq("active", true)
-      .maybeSingle();
-
-    if (error || !data) {
-      toast.error("Invalid invite code");
+  // Atomic invite code claim - prevents race conditions
+  const claimInviteCode = async (code: string): Promise<boolean> => {
+    const { data, error } = await supabase.rpc('claim_invite_code', { 
+      code_input: code 
+    });
+    
+    if (error) {
+      console.error('Invite code claim error:', error);
+      toast.error("Invalid or expired invite code");
       return false;
     }
-
-    // Check if code is expired
-    if (data.expires_at && new Date(data.expires_at) < new Date()) {
-      toast.error("This invite code has expired");
+    
+    if (!data) {
+      toast.error("Invalid, expired, or fully used invite code");
       return false;
     }
-
-    // Check if code has reached max uses
-    if (data.current_uses >= data.max_uses) {
-      toast.error("This invite code has reached its maximum uses");
-      return false;
-    }
-
+    
     return true;
-  };
-
-  const incrementInviteCodeUsage = async (code: string) => {
-    const { data } = await supabase
-      .from("invite_codes")
-      .select("id, current_uses")
-      .eq("code", code.trim().toUpperCase())
-      .single();
-
-    if (data) {
-      await supabase
-        .from("invite_codes")
-        .update({ current_uses: data.current_uses + 1 })
-        .eq("id", data.id);
-    }
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -83,7 +60,8 @@ export default function Auth() {
           return;
         }
 
-        const isValidCode = await validateInviteCode(inviteCode);
+        // Atomically claim the invite code (validates + increments in one operation)
+        const isValidCode = await claimInviteCode(inviteCode);
         if (!isValidCode) {
           setLoading(false);
           return;
@@ -100,9 +78,6 @@ export default function Auth() {
           },
         });
         if (error) throw error;
-        
-        // Increment invite code usage on successful signup
-        await incrementInviteCodeUsage(inviteCode);
         
         // Sync to Flodesk as active user
         try {
