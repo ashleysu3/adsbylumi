@@ -936,53 +936,65 @@ export default function Creative() {
                       />
                     </div>
 
-                    {/* Centered Tabs */}
-                    <Tabs value={creativeTab} onValueChange={(v) => setCreativeTab(v as CreativeTab)} className="w-full">
-                      <div className="flex justify-center">
-                        <TabsList className="grid w-full max-w-md grid-cols-2">
-                          <TabsTrigger value="ideas" className="gap-2 min-h-[44px]">
-                            <Lightbulb className="h-4 w-4" />
-                            Creative
-                          </TabsTrigger>
-                          <TabsTrigger value="copy" className="gap-2 min-h-[44px]">
-                            <FileText className="h-4 w-4" />
-                            Copy
-                          </TabsTrigger>
-                        </TabsList>
+                    {/* Toggle between Creative and Copy */}
+                    <div className="flex justify-center mb-4">
+                      <div className="inline-flex items-center bg-muted rounded-full p-1">
+                        <button
+                          onClick={() => setCreativeTab("ideas")}
+                          className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                            creativeTab === "ideas"
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <Lightbulb className="h-4 w-4" />
+                          Creative
+                        </button>
+                        <button
+                          onClick={() => setCreativeTab("copy")}
+                          className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                            creativeTab === "copy"
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <FileText className="h-4 w-4" />
+                          Copy
+                        </button>
                       </div>
+                    </div>
 
-                      <TabsContent value="ideas" className="mt-4">
-                        <CreativeGrid
-                          angles={selectedAngles}
-                          activeAngleId={activeAngleId}
-                          onAngleChange={setActiveAngleId}
-                          gridData={gridData}
-                          selectedCells={selectedCells}
-                          onCellToggle={handleCellToggle}
-                          onAddToChecklist={handleAddToChecklist}
-                          onAddSingleToChecklist={handleAddSingleToChecklist}
-                          onRegenerateCell={handleRegenerateCell}
-                          checklistIds={productionItems.map(item => item.id)}
-                          regeneratingCellId={regeneratingCellId}
-                          hideAngleNav={true}
-                        />
-                      </TabsContent>
-
-                      <TabsContent value="copy" className="mt-4">
-                        <CopyPreview
-                          angles={selectedAngles}
-                          activeAngleId={activeAngleId}
-                          onAngleChange={setActiveAngleId}
-                          angleCopy={angleCopy}
-                          onRegenerateAngleCopy={regenerateAngleCopy}
-                          isRegenerating={regeneratingCopy}
-                          selections={copySelections}
-                          onSelectionsChange={handleCopySelectionsChange}
-                          onCopyEdit={handleCopyEdit}
-                          hideAngleNav={true}
-                        />
-                      </TabsContent>
-                    </Tabs>
+                    {creativeTab === "ideas" ? (
+                      <CreativeGrid
+                        angles={selectedAngles}
+                        activeAngleId={activeAngleId}
+                        onAngleChange={setActiveAngleId}
+                        gridData={gridData}
+                        selectedCells={selectedCells}
+                        onCellToggle={handleCellToggle}
+                        onAddToChecklist={handleAddToChecklist}
+                        onAddSingleToChecklist={handleAddSingleToChecklist}
+                        onRegenerateCell={handleRegenerateCell}
+                        checklistIds={productionItems.map(item => item.id)}
+                        regeneratingCellId={regeneratingCellId}
+                        hideAngleNav={true}
+                      />
+                    ) : (
+                      <CopyPreview
+                        angles={selectedAngles}
+                        activeAngleId={activeAngleId}
+                        onAngleChange={setActiveAngleId}
+                        angleCopy={angleCopy}
+                        onRegenerateAngleCopy={regenerateAngleCopy}
+                        isRegenerating={regeneratingCopy}
+                        selections={copySelections}
+                        onSelectionsChange={handleCopySelectionsChange}
+                        onCopyEdit={handleCopyEdit}
+                        hideAngleNav={true}
+                      />
+                    )}
                   </div>
                 )}
               </div>
