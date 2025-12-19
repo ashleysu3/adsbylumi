@@ -14,6 +14,8 @@ interface MetaAccountConnectProps {
   currentAccountId?: string | null;
   currentPageId?: string | null;
   currentPageName?: string | null;
+  currentInstagramId?: string | null;
+  currentInstagramName?: string | null;
   tokenExpired?: boolean;
   onUpdate: () => void;
 }
@@ -30,11 +32,22 @@ interface FacebookPage {
   category?: string;
 }
 
+interface InstagramAccount {
+  id: string;
+  name: string;
+  username?: string;
+  profile_picture_url?: string;
+  linked_page_id: string;
+  linked_page_name: string;
+}
+
 export function MetaAccountConnect({ 
   brandId, 
   currentAccountId, 
   currentPageId,
   currentPageName,
+  currentInstagramId,
+  currentInstagramName,
   tokenExpired = false,
   onUpdate 
 }: MetaAccountConnectProps) {
@@ -42,11 +55,13 @@ export function MetaAccountConnect({
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<AdAccount[]>([]);
   const [pages, setPages] = useState<FacebookPage[]>([]);
+  const [instagramAccounts, setInstagramAccounts] = useState<InstagramAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string>("");
   const [selectedPage, setSelectedPage] = useState<string>("");
+  const [selectedInstagram, setSelectedInstagram] = useState<string>("");
   const [oauthLoading, setOauthLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [step, setStep] = useState<'connect' | 'select-account' | 'select-page'>('connect');
+  const [step, setStep] = useState<'connect' | 'select-account' | 'select-page' | 'select-instagram'>('connect');
 
   useEffect(() => {
     if (currentAccountId) {
@@ -55,7 +70,10 @@ export function MetaAccountConnect({
     if (currentPageId) {
       setSelectedPage(currentPageId);
     }
-  }, [currentAccountId, currentPageId]);
+    if (currentInstagramId) {
+      setSelectedInstagram(currentInstagramId);
+    }
+  }, [currentAccountId, currentPageId, currentInstagramId]);
 
   const handleOAuthFlow = async () => {
     setOauthLoading(true);
@@ -92,11 +110,13 @@ export function MetaAccountConnect({
 
           setAccounts(callbackData.accounts || []);
           setPages(callbackData.pages || []);
+          setInstagramAccounts(callbackData.instagramAccounts || []);
           
           const accountCount = callbackData.accounts?.length || 0;
           const pageCount = callbackData.pages?.length || 0;
+          const igCount = callbackData.instagramAccounts?.length || 0;
           
-          toast.success(`Found ${accountCount} ad account${accountCount !== 1 ? 's' : ''} and ${pageCount} Page${pageCount !== 1 ? 's' : ''}`);
+          toast.success(`Found ${accountCount} ad account${accountCount !== 1 ? 's' : ''}, ${pageCount} Page${pageCount !== 1 ? 's' : ''}, and ${igCount} Instagram account${igCount !== 1 ? 's' : ''}`);
           
           setStep('select-account');
         } else if (event.data.type === 'META_OAUTH_ERROR') {
@@ -151,6 +171,23 @@ export function MetaAccountConnect({
     }
   };
 
+  const handleSelectPage = () => {
+    if (!selectedPage) {
+      toast.error("Please select a Facebook Page");
+      return;
+    }
+    
+    // Find Instagram accounts linked to the selected page
+    const linkedInstagram = instagramAccounts.filter(ig => ig.linked_page_id === selectedPage);
+    
+    // If there's exactly one linked Instagram, auto-select it
+    if (linkedInstagram.length === 1) {
+      setSelectedInstagram(linkedInstagram[0].id);
+    }
+    
+    setStep('select-instagram');
+  };
+
   const handleSelectAccount = () => {
     if (!selectedAccount) {
       toast.error("Please select an ad account");
@@ -170,6 +207,7 @@ export function MetaAccountConnect({
     }
 
     const selectedPageData = pages.find(p => p.id === selectedPage);
+    const selectedInstagramData = instagramAccounts.find(ig => ig.id === selectedInstagram);
 
     setLoading(true);
     try {
@@ -178,7 +216,12 @@ export function MetaAccountConnect({
         .update({ 
           meta_account_id: selectedAccount,
           page_id: selectedPage,
-          page_name: selectedPageData?.name || null
+          page_name: selectedPageData?.name || null,
+          instagram_account_id: selectedInstagram || null,
+          instagram_account_name: selectedInstagramData?.name || selectedInstagramData?.username || null,
+          // Set defaults - multi-advertiser OFF, site links OFF
+          multi_advertiser_ads: false,
+          site_links_enabled: false
         })
         .eq('id', brandId);
 
@@ -241,6 +284,8 @@ export function MetaAccountConnect({
   const resetState = () => {
     setAccounts([]);
     setPages([]);
+    setInstagramAccounts([]);
+    setSelectedInstagram("");
     setStep('connect');
     setOauthLoading(false);
   };
@@ -467,8 +512,83 @@ export function MetaAccountConnect({
                   Back
                 </Button>
                 <Button 
+                  onClick={handleSelectPage} 
+                  disabled={!selectedPage || pages.length === 0}
+                  className="flex-1"
+                >
+                  Next: Select Instagram
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {step === 'select-instagram' && (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-medium">
+                  Step 3: Select Instagram Account
+                </Label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Your ads will also appear on Instagram from this account
+                </p>
+              </div>
+
+              {instagramAccounts.length === 0 ? (
+                <Card className="p-4 border-amber-500/50 bg-amber-500/5">
+                  <p className="text-sm text-amber-600 font-medium mb-2">No Instagram Accounts Found</p>
+                  <p className="text-xs text-muted-foreground">
+                    No Instagram Business accounts are linked to your Facebook Pages. You can still create ads, but they'll only appear on Facebook.
+                  </p>
+                </Card>
+              ) : (
+                <RadioGroup value={selectedInstagram} onValueChange={setSelectedInstagram}>
+                  <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2">
+                    {instagramAccounts.map((ig) => (
+                      <Card 
+                        key={ig.id}
+                        className={`p-3 cursor-pointer transition-colors hover:bg-accent ${
+                          selectedInstagram === ig.id ? 'border-primary bg-primary/5' : ''
+                        }`}
+                        onClick={() => setSelectedInstagram(ig.id)}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <RadioGroupItem value={ig.id} id={`ig-${ig.id}`} className="mt-0.5" />
+                          <div className="flex-1 space-y-1">
+                            <Label htmlFor={`ig-${ig.id}`} className="font-medium cursor-pointer">
+                              {ig.name || ig.username}
+                            </Label>
+                            {ig.username && (
+                              <p className="text-xs text-muted-foreground">@{ig.username}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Linked to: {ig.linked_page_name}
+                            </p>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </RadioGroup>
+              )}
+
+              <Separator />
+
+              <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  <strong>Ad Account:</strong> {accounts.find(a => a.id === selectedAccount)?.name || selectedAccount}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Facebook Page:</strong> {pages.find(p => p.id === selectedPage)?.name || selectedPage}
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => setStep('select-page')} className="flex-1">
+                  Back
+                </Button>
+                <Button 
                   onClick={handleSaveConnection} 
-                  disabled={loading || !selectedPage || pages.length === 0}
+                  disabled={loading}
                   className="flex-1"
                 >
                   {loading ? (

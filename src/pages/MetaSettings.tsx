@@ -81,6 +81,8 @@ export default function MetaSettings() {
           meta_account_id: null,
           page_id: null,
           page_name: null,
+          instagram_account_id: null,
+          instagram_account_name: null,
           meta_token_expires_at: null,
         })
         .eq('id', brand.id);
@@ -179,6 +181,12 @@ export default function MetaSettings() {
                     <div className="p-4 bg-muted/30 rounded-lg">
                       <p className="text-xs text-muted-foreground uppercase mb-1">Facebook Page</p>
                       <p className="text-sm font-medium">{brand.page_name}</p>
+                    </div>
+                  )}
+                  {brand?.instagram_account_name && (
+                    <div className="p-4 bg-muted/30 rounded-lg">
+                      <p className="text-xs text-muted-foreground uppercase mb-1">Instagram Account</p>
+                      <p className="text-sm font-medium">{brand.instagram_account_name}</p>
                     </div>
                   )}
                 </div>
