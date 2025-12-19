@@ -3,13 +3,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RefreshCw, Copy, Check, Sparkles, FileText, MessageSquare, Type, Pencil, Save, X, Star } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AngleCopyNav } from "./AngleCopyNav";
 
 interface CopyVariation {
   text: string;
@@ -30,8 +30,15 @@ interface CopySelections {
   primary_copy: number[];
 }
 
+interface AngleData {
+  id: string;
+  name: string;
+  description?: string;
+  hook?: string;
+}
+
 interface CopyPreviewProps {
-  angles: { id: string; name: string }[];
+  angles: AngleData[];
   activeAngleId: string;
   onAngleChange: (angleId: string) => void;
   angleCopy: Record<string, AngleCopy>;
@@ -269,30 +276,25 @@ export function CopyPreview({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header with angle selector */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="flex items-center gap-3">
-          <Select value={activeAngleId} onValueChange={onAngleChange}>
-            <SelectTrigger className="w-full sm:w-[280px] min-h-[44px]">
-              <SelectValue placeholder="Select angle" />
-            </SelectTrigger>
-            <SelectContent>
-              {angles.map((angle) => (
-                <SelectItem key={angle.id} value={angle.id}>
-                  {angle.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
+      {/* Visual angle navigation */}
+      <AngleCopyNav
+        angles={angles}
+        activeAngleId={activeAngleId}
+        onAngleChange={onAngleChange}
+        selections={selections}
+        angleCopy={angleCopy}
+      />
+
+      {/* Regenerate button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           {getSelectedCount() > 0 && (
             <Badge variant="secondary" className="gap-1">
               <Star className="h-3 w-3" />
-              {getSelectedCount()} selected
+              {getSelectedCount()} selected for this angle
             </Badge>
           )}
         </div>
-
         <Button
           variant="outline"
           size="sm"
@@ -304,16 +306,6 @@ export function CopyPreview({
           {isRegenerating ? "Regenerating..." : "Regenerate Copy"}
         </Button>
       </div>
-
-      {/* Selection info */}
-      {onSelectionsChange && hasAngleCopy && (
-        <Card className="p-3 bg-muted/50">
-          <p className="text-sm text-muted-foreground">
-            <Star className="h-4 w-4 inline mr-1 text-primary" />
-            Select your favorite variations for each type. Selected copy will be used when building your campaign.
-          </p>
-        </Card>
-      )}
 
       {/* Copy Content */}
       {!hasAngleCopy ? (

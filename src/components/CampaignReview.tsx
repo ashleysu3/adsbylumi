@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AdPreview } from "./AdPreview";
+import { PreBuildCopySummary } from "./PreBuildCopySummary";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -44,19 +45,34 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   const hasFacebookPage = !!brand?.page_id;
   const isMetaReady = hasMetaAccount && hasFacebookPage;
   
-  // Get approved concepts that have both linkedAsset AND finalCopy
+  // Get approved concepts that have both linkedAsset AND finalCopy or angle copy
+  const creativeJson = workspace.creative_json;
+  const copySelections = creativeJson?.copy_selections || {};
+  const angleCopy = creativeJson?.angleCopy || {};
+  
   const approvedConcepts = workspace.production_items?.filter((item: any) => item.status === 'approved') || [];
   const readyConcepts = approvedConcepts.filter((item: any) => {
     const hasAsset = item.linkedAsset?.url || item.uploaded_asset_id;
     const hasCopy = item.finalCopy?.headline || item.final_copy?.headline;
-    return hasAsset && hasCopy;
+    // Also check if angle has copy generated
+    const hasAngleCopy = item.angle && angleCopy[item.angle] && (
+      angleCopy[item.angle].headlines?.length > 0 ||
+      angleCopy[item.angle].descriptions?.length > 0 ||
+      angleCopy[item.angle].primary_copy?.length > 0
+    );
+    return hasAsset && (hasCopy || hasAngleCopy);
   });
   
   // Concepts that are approved but missing asset or copy
   const incompleteConcepts = approvedConcepts.filter((item: any) => {
     const hasAsset = item.linkedAsset?.url || item.uploaded_asset_id;
     const hasCopy = item.finalCopy?.headline || item.final_copy?.headline;
-    return !hasAsset || !hasCopy;
+    const hasAngleCopy = item.angle && angleCopy[item.angle] && (
+      angleCopy[item.angle].headlines?.length > 0 ||
+      angleCopy[item.angle].descriptions?.length > 0 ||
+      angleCopy[item.angle].primary_copy?.length > 0
+    );
+    return !hasAsset || (!hasCopy && !hasAngleCopy);
   });
   
   // Need at least 1 ready concept, budget, start date, AND Meta fully connected to publish
@@ -355,6 +371,12 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           </div>
         </CardContent>
       </Card>
+
+      {/* Pre-Build Copy Summary */}
+      <PreBuildCopySummary 
+        creativeJson={creativeJson}
+        productionItems={workspace.production_items}
+      />
 
       {/* Ad Previews */}
       {showPreviews && readyConcepts.length > 0 && (
