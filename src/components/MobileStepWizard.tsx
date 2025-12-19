@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useRef, TouchEvent } from "react";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ interface MobileStepWizardProps {
   canProceed?: boolean;
   isLoading?: boolean;
   showBackOnFirstStep?: boolean;
+  enableSwipe?: boolean;
 }
 
 export function MobileStepWizard({
@@ -33,9 +34,49 @@ export function MobileStepWizard({
   canProceed = true,
   isLoading = false,
   showBackOnFirstStep = false,
+  enableSwipe = true,
 }: MobileStepWizardProps) {
   const isLastStep = currentStep === totalSteps;
   const showBack = currentStep > 1 || showBackOnFirstStep;
+  
+  // Swipe handling
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
+  const minSwipeDistance = 50;
+
+  const handleTouchStart = (e: TouchEvent) => {
+    if (!enableSwipe) return;
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!enableSwipe) return;
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!enableSwipe) return;
+    
+    const distance = touchStartX.current - touchEndX.current;
+    const isSwipeLeft = distance > minSwipeDistance;
+    const isSwipeRight = distance < -minSwipeDistance;
+
+    if (isSwipeLeft && canProceed && !isLoading) {
+      // Swipe left = next step
+      if (isLastStep) {
+        onComplete?.();
+      } else {
+        onNext?.();
+      }
+    } else if (isSwipeRight && showBack && !isLoading) {
+      // Swipe right = previous step
+      onBack?.();
+    }
+
+    // Reset
+    touchStartX.current = 0;
+    touchEndX.current = 0;
+  };
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-8rem)]">
@@ -67,8 +108,13 @@ export function MobileStepWizard({
         </div>
       </div>
 
-      {/* Content - scrollable */}
-      <div className="flex-1 overflow-y-auto py-4">
+      {/* Content - scrollable with swipe */}
+      <div 
+        className="flex-1 overflow-y-auto py-4"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {children}
       </div>
 

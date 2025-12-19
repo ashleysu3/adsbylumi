@@ -12,7 +12,8 @@ import {
   Check,
   X,
   PlusCircle,
-  Package
+  Package,
+  DollarSign
 } from 'lucide-react';
 import { 
   getLumiKPIConfig, 
@@ -28,6 +29,8 @@ import { DateRangePicker } from './DateRangePicker';
 import { StatusFilter } from './StatusFilter';
 import { AccountOverview } from './AccountOverview';
 import { LinkOfferModal } from './LinkOfferModal';
+import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -117,9 +120,13 @@ export function InsightsHome({
   accountMetricsLoading,
 }: InsightsHomeProps) {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
   const [goalValue, setGoalValue] = useState<string>('');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live', 'paused', 'imported']);
+  
+  // Budget adjustment panel state
+  const [budgetPanelOpen, setBudgetPanelOpen] = useState<string | null>(null);
   
   // Link offer modal state
   const [linkOfferModal, setLinkOfferModal] = useState<{
