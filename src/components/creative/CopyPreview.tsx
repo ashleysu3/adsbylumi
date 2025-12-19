@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { RefreshCw, Copy, Check, Sparkles, FileText, MessageSquare, Type, Pencil, Save, X } from "lucide-react";
+import { RefreshCw, Copy, Check, CheckCircle2, Sparkles, FileText, MessageSquare, Type, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AngleCopyNav } from "./AngleCopyNav";
@@ -359,7 +359,7 @@ export function CopyPreview({
       <div className="flex items-center justify-end gap-2 sm:gap-3">
         {getSelectedCount() > 0 && (
           <Badge variant="secondary" className="gap-1 text-xs sm:text-sm">
-            <Check className="h-3 w-3" />
+            <CheckCircle2 className="h-3 w-3" />
             {getSelectedCount()} selected
           </Badge>
         )}
@@ -425,7 +425,7 @@ export function CopyPreview({
                   </h3>
                   {selectedCount > 0 && (
                     <Badge variant="secondary" className="text-xs gap-1">
-                      <Check className="h-3 w-3" />
+                      <CheckCircle2 className="h-3 w-3" />
                       {selectedCount} selected
                     </Badge>
                   )}
