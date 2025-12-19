@@ -10,6 +10,9 @@ import { toast } from "sonner";
 import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight } from "lucide-react";
 import { LumiCharacter } from "@/components/LumiCharacter";
 import { motion } from "framer-motion";
+import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
+import { formatInvokeError } from "@/lib/formatInvokeError";
+
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -38,17 +41,22 @@ export default function Onboarding() {
   };
 
   const handleExtractBrandInfo = async () => {
-    if (!websiteUrl) {
+    const normalizedWebsiteUrl = normalizeWebsiteUrl(websiteUrl);
+
+    if (!normalizedWebsiteUrl) {
       toast.error("Please enter a website URL first");
       return;
     }
+
+    // Keep UI + backend in sync (users often paste without https://)
+    if (normalizedWebsiteUrl !== websiteUrl) setWebsiteUrl(normalizedWebsiteUrl);
 
     setExtracting(true);
     toast.info("Analyzing your website...");
 
     try {
-      const { data, error } = await supabase.functions.invoke('extract-brand-info', {
-        body: { websiteUrl }
+      const { data, error } = await supabase.functions.invoke("extract-brand-info", {
+        body: { websiteUrl: normalizedWebsiteUrl },
       });
 
       if (error) throw error;
@@ -60,28 +68,31 @@ export default function Onboarding() {
 
       toast.success("Brand info extracted from website");
     } catch (error: any) {
-      console.error('Error extracting brand info:', error);
-      const message = error?.message || error?.details || "Unknown error";
-      toast.error(`Failed to extract brand info: ${message}. You can enter it manually.`);
+      console.error("Error extracting brand info:", error);
+      toast.error(`Failed to extract brand info: ${formatInvokeError(error)}. You can enter it manually.`);
     } finally {
       setExtracting(false);
     }
   };
 
   const handleStep1Next = async () => {
-    if (!brandName || !websiteUrl) {
+    const normalizedWebsiteUrl = normalizeWebsiteUrl(websiteUrl);
+
+    if (!brandName.trim() || !normalizedWebsiteUrl) {
       toast.error("Please fill in brand name and website URL");
       return;
     }
+
+    if (normalizedWebsiteUrl !== websiteUrl) setWebsiteUrl(normalizedWebsiteUrl);
 
     // Only auto-extract if we haven't extracted before AND fields are empty
     if (!hasExtracted && !valueProposition && !targetAudience && !industry) {
       setExtracting(true);
       toast.info("Analyzing your website before continuing...");
-      
+
       try {
-        const { data, error } = await supabase.functions.invoke('extract-brand-info', {
-          body: { websiteUrl }
+        const { data, error } = await supabase.functions.invoke("extract-brand-info", {
+          body: { websiteUrl: normalizedWebsiteUrl },
         });
 
         if (error) throw error;
@@ -93,9 +104,8 @@ export default function Onboarding() {
 
         toast.success("Brand info extracted successfully");
       } catch (error: any) {
-        console.error('Error extracting brand info:', error);
-        const message = error?.message || error?.details || "Unknown error";
-        toast.error(`Could not auto-extract info: ${message}. Please fill in manually on the next step.`);
+        console.error("Error extracting brand info:", error);
+        toast.error(`Could not auto-extract info: ${formatInvokeError(error)}. Please fill in manually on the next step.`);
         setHasExtracted(true); // Mark as attempted to prevent repeated tries
       } finally {
         setExtracting(false);
@@ -125,11 +135,11 @@ export default function Onboarding() {
         .insert({
           user_id: user.id,
           name: brandName,
-          website_url: websiteUrl,
+          website_url: normalizeWebsiteUrl(websiteUrl),
           industry,
           value_proposition: valueProposition,
           target_audience: targetAudience,
-          psychology_status: 'pending'
+          psychology_status: "pending",
         })
         .select()
         .single();

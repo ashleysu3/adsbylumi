@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getCorsHeaders } from '../_shared/cors.ts';
+import { corsHeadersWildcard } from '../_shared/cors.ts';
 
 // URL validation to prevent SSRF attacks
 function isValidPublicUrl(urlString: string): { valid: boolean; error?: string } {
@@ -49,25 +49,31 @@ function isValidPublicUrl(urlString: string): { valid: boolean; error?: string }
 }
 
 serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const corsHeaders = getCorsHeaders(origin);
+  const corsHeaders = corsHeadersWildcard;
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { websiteUrl } = await req.json();
-    
+    const body = await req.json().catch(() => ({}));
+    const websiteUrlInput = typeof body?.websiteUrl === 'string' ? body.websiteUrl.trim() : '';
+
     // Input validation
-    if (!websiteUrl) {
+    if (!websiteUrlInput) {
+      console.log('extract-brand-info: missing websiteUrl');
       return new Response(
         JSON.stringify({ error: 'Website URL is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (typeof websiteUrl !== 'string' || websiteUrl.length > 500) {
+    const websiteUrl = /^https?:\/\//i.test(websiteUrlInput)
+      ? websiteUrlInput
+      : `https://${websiteUrlInput}`;
+
+    if (websiteUrl.length > 500) {
+      console.log('extract-brand-info: url too long');
       return new Response(
         JSON.stringify({ error: 'Invalid URL format or URL too long' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -77,6 +83,7 @@ serve(async (req) => {
     // SSRF protection - validate URL
     const urlValidation = isValidPublicUrl(websiteUrl);
     if (!urlValidation.valid) {
+      console.log('extract-brand-info: url rejected', { reason: urlValidation.error });
       return new Response(
         JSON.stringify({ error: urlValidation.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

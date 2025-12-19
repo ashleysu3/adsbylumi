@@ -7,6 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
+import { formatInvokeError } from "@/lib/formatInvokeError";
+
 
 interface BrandEditDialogProps {
   open: boolean;
@@ -27,15 +30,21 @@ export function BrandEditDialog({ open, onOpenChange, brand, onUpdate }: BrandEd
   });
 
   const handleRegenerate = async () => {
-    if (!formData.website_url) {
+    const normalizedWebsiteUrl = normalizeWebsiteUrl(formData.website_url);
+
+    if (!normalizedWebsiteUrl) {
       toast.error("Please enter a website URL first");
       return;
     }
 
+    if (normalizedWebsiteUrl !== formData.website_url) {
+      setFormData(prev => ({ ...prev, website_url: normalizedWebsiteUrl }));
+    }
+
     setRegenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('extract-brand-info', {
-        body: { websiteUrl: formData.website_url }
+      const { data, error } = await supabase.functions.invoke("extract-brand-info", {
+        body: { websiteUrl: normalizedWebsiteUrl },
       });
 
       if (error) throw error;
@@ -49,8 +58,8 @@ export function BrandEditDialog({ open, onOpenChange, brand, onUpdate }: BrandEd
 
       toast.success("Brand info regenerated from website");
     } catch (error: any) {
-      console.error('Error regenerating:', error);
-      toast.error("Failed to regenerate brand info");
+      console.error("Error regenerating:", error);
+      toast.error(`Failed to regenerate brand info: ${formatInvokeError(error)}`);
     } finally {
       setRegenerating(false);
     }
