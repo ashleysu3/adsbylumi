@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { GeneratingModal } from "@/components/GeneratingModal";
 import { GridShimmer } from "@/components/GradientShimmer";
 import { OfferDialog } from "@/components/OfferDialog";
+import { MobilePlanningWizard } from "@/components/MobilePlanningWizard";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const iconMap: Record<string, any> = {
   Video,
@@ -29,6 +31,7 @@ const iconMap: Record<string, any> = {
 
 export default function Planning() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { setRecommendation } = useLumiAssistant();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -202,6 +205,44 @@ export default function Planning() {
         </Card>
       </DashboardLayout>;
   }
+
+  // Mobile Planning Wizard
+  if (isMobile) {
+    return (
+      <DashboardLayout>
+        <div className="px-4 pb-24">
+          <MobilePlanningWizard
+            brand={brand}
+            templates={templates}
+            offers={offers}
+            onCreateOffer={() => setShowOfferDialog(true)}
+            onOfferCreated={() => {
+              fetchData();
+            }}
+          />
+        </div>
+        
+        {/* Offer Dialog */}
+        <OfferDialog
+          open={showOfferDialog}
+          onOpenChange={setShowOfferDialog}
+          brandId={brand?.id}
+          onSuccess={() => {
+            fetchData();
+            setShowOfferDialog(false);
+          }}
+        />
+        
+        {/* Loading Modal */}
+        <GeneratingModal
+          isOpen={loading}
+          title="Creating your strategy..."
+        />
+      </DashboardLayout>
+    );
+  }
+
+  // Desktop Layout
   return <DashboardLayout>
       <div className="space-y-6 md:space-y-8 py-[2px]">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
