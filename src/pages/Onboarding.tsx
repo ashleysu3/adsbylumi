@@ -61,7 +61,8 @@ export default function Onboarding() {
       toast.success("Brand info extracted from website");
     } catch (error: any) {
       console.error('Error extracting brand info:', error);
-      toast.error("Failed to extract brand info. You can enter it manually.");
+      const message = error?.message || error?.details || "Unknown error";
+      toast.error(`Failed to extract brand info: ${message}. You can enter it manually.`);
     } finally {
       setExtracting(false);
     }
@@ -93,7 +94,8 @@ export default function Onboarding() {
         toast.success("Brand info extracted successfully");
       } catch (error: any) {
         console.error('Error extracting brand info:', error);
-        toast.error("Could not auto-extract info. Please fill in manually on the next step.");
+        const message = error?.message || error?.details || "Unknown error";
+        toast.error(`Could not auto-extract info: ${message}. Please fill in manually on the next step.`);
         setHasExtracted(true); // Mark as attempted to prevent repeated tries
       } finally {
         setExtracting(false);

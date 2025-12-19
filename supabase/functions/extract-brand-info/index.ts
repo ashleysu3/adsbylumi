@@ -166,18 +166,37 @@ Be specific and insightful. Use the actual language and positioning from the web
 
     const aiData = await aiResponse.json();
     console.log('AI Response received');
-    
-    const content = aiData.choices[0].message.content;
-    console.log('Raw AI content:', content);
-    
-    // Extract JSON from the response (may be wrapped in markdown code blocks)
-    let jsonStr = content;
-    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim();
+
+    const content =
+      aiData?.choices?.[0]?.message?.content ??
+      aiData?.choices?.[0]?.text ??
+      aiData?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
+      "";
+
+    if (!content) {
+      console.error('Unexpected AI response shape:', aiData);
+      throw new Error('AI response was empty or in an unexpected format');
     }
-    
-    const brandInfo = JSON.parse(jsonStr);
+
+    console.log('Raw AI content:', content);
+
+    const extractJsonObject = (text: string) => {
+      const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      const raw = (codeBlock?.[1] ?? text).trim();
+      const firstBrace = raw.indexOf('{');
+      const lastBrace = raw.lastIndexOf('}');
+      const candidate = firstBrace !== -1 && lastBrace !== -1 ? raw.slice(firstBrace, lastBrace + 1) : raw;
+      return JSON.parse(candidate);
+    };
+
+    const parsed = extractJsonObject(content);
+
+    const brandInfo = {
+      value_proposition: typeof parsed?.value_proposition === 'string' ? parsed.value_proposition : String(parsed?.value_proposition ?? ''),
+      target_audience: typeof parsed?.target_audience === 'string' ? parsed.target_audience : String(parsed?.target_audience ?? ''),
+      industry: typeof parsed?.industry === 'string' ? parsed.industry : String(parsed?.industry ?? ''),
+    };
+
 
     console.log('Brand info extracted successfully');
 
