@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -50,6 +49,29 @@ interface CopyPreviewProps {
   hideAngleNav?: boolean;
 }
 
+const sectionConfig = {
+  headlines: {
+    label: "Headlines",
+    description: "Short, punchy headlines for your ads (max 40 characters)",
+    icon: Type,
+    type: "headline" as const,
+  },
+  descriptions: {
+    label: "Descriptions",
+    description: "Ad descriptions that expand on your headline (max 125 characters)",
+    icon: FileText,
+    type: "description" as const,
+  },
+  primary_copy: {
+    label: "Primary Copy",
+    description: "Primary text variations in different lengths",
+    icon: MessageSquare,
+    type: "primary" as const,
+  },
+};
+
+const sectionOrder: (keyof typeof sectionConfig)[] = ["headlines", "descriptions", "primary_copy"];
+
 export function CopyPreview({
   angles,
   activeAngleId,
@@ -63,7 +85,6 @@ export function CopyPreview({
   hideAngleNav = false,
 }: CopyPreviewProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("headlines");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState<string>("");
 
@@ -131,148 +152,137 @@ export function CopyPreview({
     return h + d + p;
   };
 
-  const renderVariations = (variations: CopyVariation[], type: "headline" | "description" | "primary") => {
-    if (!variations || variations.length === 0) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          <p className="text-sm">No {type} variations generated yet.</p>
-        </div>
-      );
-    }
-
-    const typeKey = type === "headline" ? "headlines" : type === "description" ? "descriptions" : "primary_copy";
+  const renderVariationCard = (
+    variation: CopyVariation, 
+    index: number, 
+    type: "headline" | "description" | "primary",
+    typeKey: keyof CopySelections
+  ) => {
+    const id = `${activeAngleId}-${type}-${index}`;
+    const isCopied = copiedId === id;
+    const isEditing = editingId === id;
+    const isSelected = (currentSelections[typeKey] || []).includes(index);
 
     return (
-      <div className="grid gap-3">
-        {variations.map((variation, index) => {
-          const id = `${activeAngleId}-${type}-${index}`;
-          const isCopied = copiedId === id;
-          const isEditing = editingId === id;
-          const isSelected = (currentSelections[typeKey] || []).includes(index);
-
-          return (
-            <Card
-              key={id}
-              className={cn(
-                "p-4 transition-all hover:shadow-md group relative",
-                type === "primary" && "p-5",
-                isSelected && "ring-2 ring-primary bg-primary/5"
+      <Card
+        key={id}
+        className={cn(
+          "p-4 transition-all hover:shadow-md group relative",
+          type === "primary" && "p-5",
+          isSelected && "ring-2 ring-primary bg-primary/5"
+        )}
+      >
+        <div className="flex items-start gap-3">
+          {/* Selection checkbox */}
+          {onSelectionsChange && (
+            <div className="pt-1">
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => handleSelectionToggle(typeKey as keyof AngleCopy, index)}
+                className="h-5 w-5"
+              />
+            </div>
+          )}
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <Badge variant="outline" className="text-xs shrink-0">
+                {variation.framework}
+              </Badge>
+              {variation.character_count && (
+                <span className="text-xs text-muted-foreground">
+                  {variation.character_count} chars
+                </span>
               )}
-            >
-              <div className="flex items-start gap-3">
-                {/* Selection checkbox */}
-                {onSelectionsChange && (
-                  <div className="pt-1">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => handleSelectionToggle(typeKey as keyof AngleCopy, index)}
-                      className="h-5 w-5"
-                    />
-                  </div>
+              {variation.length && (
+                <Badge variant="secondary" className="text-xs capitalize">
+                  {variation.length}
+                </Badge>
+              )}
+              {isSelected && (
+                <Badge className="text-xs gap-1 bg-primary">
+                  <Star className="h-3 w-3" />
+                  Selected
+                </Badge>
+              )}
+            </div>
+            
+            {isEditing ? (
+              <div className="space-y-2">
+                {type === "primary" ? (
+                  <Textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="min-h-[120px] text-sm"
+                    autoFocus
+                  />
+                ) : (
+                  <Input
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="text-sm"
+                    autoFocus
+                  />
                 )}
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline" className="text-xs shrink-0">
-                      {variation.framework}
-                    </Badge>
-                    {variation.character_count && (
-                      <span className="text-xs text-muted-foreground">
-                        {variation.character_count} chars
-                      </span>
-                    )}
-                    {variation.length && (
-                      <Badge variant="secondary" className="text-xs capitalize">
-                        {variation.length}
-                      </Badge>
-                    )}
-                    {isSelected && (
-                      <Badge className="text-xs gap-1 bg-primary">
-                        <Star className="h-3 w-3" />
-                        Selected
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      {type === "primary" ? (
-                        <Textarea
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="min-h-[120px] text-sm"
-                          autoFocus
-                        />
-                      ) : (
-                        <Input
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="text-sm"
-                          autoFocus
-                        />
-                      )}
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveEdit(typeKey as keyof AngleCopy, index)}
-                          className="gap-1"
-                        >
-                          <Save className="h-3 w-3" />
-                          Save
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={handleCancelEdit}
-                          className="gap-1"
-                        >
-                          <X className="h-3 w-3" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className={cn(
-                      "text-sm",
-                      type === "headline" && "font-semibold text-base",
-                      type === "primary" && "whitespace-pre-wrap text-muted-foreground"
-                    )}>
-                      {variation.text}
-                    </p>
-                  )}
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleSaveEdit(typeKey as keyof AngleCopy, index)}
+                    className="gap-1"
+                  >
+                    <Save className="h-3 w-3" />
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelEdit}
+                    className="gap-1"
+                  >
+                    <X className="h-3 w-3" />
+                    Cancel
+                  </Button>
                 </div>
-                
-                {!isEditing && (
-                  <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {onCopyEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleStartEdit(id, variation.text)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleCopy(variation.text, id)}
-                    >
-                      {isCopied ? (
-                        <Check className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                )}
               </div>
-            </Card>
-          );
-        })}
-      </div>
+            ) : (
+              <p className={cn(
+                "text-sm",
+                type === "headline" && "font-semibold text-base",
+                type === "primary" && "whitespace-pre-wrap text-muted-foreground"
+              )}>
+                {variation.text}
+              </p>
+            )}
+          </div>
+          
+          {!isEditing && (
+            <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              {onCopyEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleStartEdit(id, variation.text)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleCopy(variation.text, id)}
+              >
+                {isCopied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
     );
   };
 
@@ -289,16 +299,14 @@ export function CopyPreview({
         />
       )}
 
-      {/* Regenerate button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {getSelectedCount() > 0 && (
-            <Badge variant="secondary" className="gap-1">
-              <Star className="h-3 w-3" />
-              {getSelectedCount()} selected for this angle
-            </Badge>
-          )}
-        </div>
+      {/* Regenerate button and selection count */}
+      <div className="flex items-center justify-end gap-2 sm:gap-3">
+        {getSelectedCount() > 0 && (
+          <Badge variant="secondary" className="gap-1 text-xs sm:text-sm">
+            <Star className="h-3 w-3" />
+            {getSelectedCount()} selected
+          </Badge>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -344,64 +352,44 @@ export function CopyPreview({
           </div>
         </Card>
       ) : (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="headlines" className="gap-2 min-h-[44px]">
-              <Type className="h-4 w-4" />
-              <span className="hidden sm:inline">Headlines</span>
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {currentSelections.headlines?.length || 0}/{currentAngleCopy?.headlines?.length || 0}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="descriptions" className="gap-2 min-h-[44px]">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Descriptions</span>
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {currentSelections.descriptions?.length || 0}/{currentAngleCopy?.descriptions?.length || 0}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="primary" className="gap-2 min-h-[44px]">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Primary</span>
-              <Badge variant="secondary" className="ml-1 text-xs">
-                {currentSelections.primary_copy?.length || 0}/{currentAngleCopy?.primary_copy?.length || 0}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
+        /* Grid layout matching Creative section */
+        <div className="space-y-4 sm:space-y-6">
+          {sectionOrder.map((sectionKey) => {
+            const config = sectionConfig[sectionKey];
+            const variations = currentAngleCopy?.[sectionKey] || [];
+            const selectedCount = currentSelections[sectionKey]?.length || 0;
+            const Icon = config.icon;
 
-          <TabsContent value="headlines" className="mt-0">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Short, punchy headlines for your ads (max 40 characters)
-                </p>
+            return (
+              <div key={sectionKey} className="space-y-2 sm:space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                    <Icon className="h-4 w-4" />
+                    {config.label}
+                  </h3>
+                  {selectedCount > 0 && (
+                    <Badge variant="secondary" className="text-xs gap-1">
+                      <Check className="h-3 w-3" />
+                      {selectedCount} selected
+                    </Badge>
+                  )}
+                </div>
+                
+                {variations.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground border rounded-lg bg-muted/20">
+                    <p className="text-sm">No {config.label.toLowerCase()} generated yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    {variations.map((variation, index) => 
+                      renderVariationCard(variation, index, config.type, sectionKey)
+                    )}
+                  </div>
+                )}
               </div>
-              {renderVariations(currentAngleCopy?.headlines || [], "headline")}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="descriptions" className="mt-0">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Ad descriptions that expand on your headline (max 125 characters)
-                </p>
-              </div>
-              {renderVariations(currentAngleCopy?.descriptions || [], "description")}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="primary" className="mt-0">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Primary text variations in different lengths
-                </p>
-              </div>
-              {renderVariations(currentAngleCopy?.primary_copy || [], "primary")}
-            </div>
-          </TabsContent>
-        </Tabs>
+            );
+          })}
+        </div>
       )}
     </div>
   );
