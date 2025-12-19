@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { RefreshCw, Copy, Check, Sparkles, FileText, MessageSquare, Type, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -214,9 +215,23 @@ export function CopyPreview({
                   <span className="text-muted-foreground capitalize">• {variation.length}</span>
                 )}
               </Badge>
-              <span className={cn("text-xs font-medium", charCountColor)} title={`Ideal: ≤${limits.ideal}, Max: ${limits.max}`}>
-                {charCount} chars
-              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={cn("text-xs font-medium cursor-help", charCountColor)}>
+                      {charCount} chars
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <div className="space-y-1">
+                      <p className="font-medium">Meta Ad Character Limits</p>
+                      <p className="text-green-600">Ideal: ≤ {limits.ideal} chars</p>
+                      <p className="text-amber-600">Acceptable: ≤ {limits.max} chars</p>
+                      <p className="text-red-500">Over max: truncated on mobile</p>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <div className="flex items-center gap-1">
               {onRegenerateSingle && (
