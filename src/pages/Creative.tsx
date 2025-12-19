@@ -77,9 +77,61 @@ export default function Creative() {
   const [angleCopy, setAngleCopy] = useState<Record<string, any>>({});
   const [regeneratingCopy, setRegeneratingCopy] = useState(false);
   const [copySelections, setCopySelections] = useState<Record<string, { headlines: number[]; descriptions: number[]; primary_copy: number[] }>>({});
+  const [completedAngles, setCompletedAngles] = useState<Set<string>>(new Set());
 
   // Lumi contextual recommendations
   const { setRecommendation } = useLumiAssistant();
+
+  // Helper to check if an angle is complete
+  const isAngleComplete = (angleId: string, angleName: string) => {
+    const angleSel = copySelections[angleId];
+    const hasCopySelections = angleSel && (
+      (angleSel.headlines?.length || 0) > 0 ||
+      (angleSel.descriptions?.length || 0) > 0 ||
+      (angleSel.primary_copy?.length || 0) > 0
+    );
+    const hasCreativeSelections = productionItems.some(item => item.angleName === angleName);
+    return hasCopySelections && hasCreativeSelections;
+  };
+
+  // Celebrate when an angle becomes fully complete
+  useEffect(() => {
+    if (!selectedAngleIds.length) return;
+    
+    const selectedAnglesData = availableAngles.filter(a => selectedAngleIds.includes(a.id));
+    
+    selectedAnglesData.forEach(angle => {
+      const isComplete = isAngleComplete(angle.id, angle.name);
+      const wasComplete = completedAngles.has(angle.id);
+      
+      if (isComplete && !wasComplete) {
+        // Angle just became complete - celebrate!
+        setCompletedAngles(prev => new Set([...prev, angle.id]));
+        
+        // Mini confetti burst
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.7 },
+          colors: ['#8B5CF6', '#D946EF', '#F97316', '#10B981'],
+          scalar: 0.8,
+          gravity: 1.2,
+        });
+        
+        toast.success(`"${angle.name}" is complete!`, {
+          description: "Great job! Move on to the next angle.",
+          duration: 3000,
+        });
+      } else if (!isComplete && wasComplete) {
+        // Angle became incomplete (user removed selections)
+        setCompletedAngles(prev => {
+          const next = new Set(prev);
+          next.delete(angle.id);
+          return next;
+        });
+      }
+    });
+  }, [copySelections, productionItems, selectedAngleIds, availableAngles]);
 
   useEffect(() => {
     fetchInitialData();
