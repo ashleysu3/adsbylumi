@@ -119,3 +119,6 @@ verify_jwt = true
 
 [functions.send-conversion-event]
 verify_jwt = true
+
+[functions.verify-meta-tokens]
+verify_jwt = false

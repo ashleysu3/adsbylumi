@@ -12,6 +12,7 @@ import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { PageShimmer } from "@/components/GradientShimmer";
+import { AlertsBanner } from "@/components/AlertsBanner";
 import { useLumiRecommend } from "@/components/LumiAssistant";
 import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
@@ -353,6 +354,9 @@ export default function Dashboard() {
             )}
           </Popover>
         </div>
+
+        {/* System Alerts */}
+        <AlertsBanner />
 
         {/* Onboarding Checklist */}
         {!checklistDismissed && (
