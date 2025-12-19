@@ -110,3 +110,9 @@ verify_jwt = true
 
 [functions.generate-angle-copy]
 verify_jwt = true
+
+[functions.check-pixel-status]
+verify_jwt = true
+
+[functions.verify-landing-page-pixel]
+verify_jwt = true

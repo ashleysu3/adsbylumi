@@ -68,6 +68,10 @@ export type Database = {
           industry: string | null
           meta_access_token: string | null
           meta_account_id: string | null
+          meta_pixel_events: Json | null
+          meta_pixel_id: string | null
+          meta_pixel_name: string | null
+          meta_pixel_verified_at: string | null
           meta_token_expires_at: string | null
           name: string
           notification_preferences: Json | null
@@ -89,6 +93,10 @@ export type Database = {
           industry?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
+          meta_pixel_events?: Json | null
+          meta_pixel_id?: string | null
+          meta_pixel_name?: string | null
+          meta_pixel_verified_at?: string | null
           meta_token_expires_at?: string | null
           name: string
           notification_preferences?: Json | null
@@ -110,6 +118,10 @@ export type Database = {
           industry?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
+          meta_pixel_events?: Json | null
+          meta_pixel_id?: string | null
+          meta_pixel_name?: string | null
+          meta_pixel_verified_at?: string | null
           meta_token_expires_at?: string | null
           name?: string
           notification_preferences?: Json | null

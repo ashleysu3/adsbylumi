@@ -13,6 +13,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { format, differenceInDays, addDays } from 'date-fns';
+import { PixelVerificationCard } from '@/components/PixelVerificationCard';
 
 export default function MetaSettings() {
   const navigate = useNavigate();
@@ -333,6 +334,17 @@ export default function MetaSettings() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Pixel Verification Card */}
+        <PixelVerificationCard 
+          brandId={brand?.id || ''} 
+          isMetaConnected={isConnected}
+          initialPixelData={brand?.meta_pixel_id ? {
+            id: brand.meta_pixel_id,
+            name: brand.meta_pixel_name || 'Meta Pixel',
+            events: brand.meta_pixel_events || {}
+          } : null}
+        />
       </div>
     </DashboardLayout>
   );
