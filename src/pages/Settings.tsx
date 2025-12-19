@@ -56,7 +56,7 @@ export default function Settings() {
     frequency_critical: 6,
   });
   
-  const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription } = useSubscription();
+  const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status } = useSubscription();
 
   useEffect(() => {
     fetchData();
@@ -177,6 +177,37 @@ export default function Settings() {
       toast.error('Failed to open billing portal. Please try again.');
     } finally {
       setPortalLoading(false);
+    }
+  };
+
+  const handleCancelCodeSubscription = async () => {
+    if (!confirm('Are you sure you want to cancel? This will end your access immediately.')) {
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ 
+          status: 'cancelled',
+          cancel_at_period_end: true 
+        })
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trial']);
+
+      if (error) throw error;
+
+      toast.success('Subscription cancelled');
+      refreshSubscription();
+    } catch (error: any) {
+      console.error('Error cancelling subscription:', error);
+      toast.error('Failed to cancel subscription');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -488,23 +519,53 @@ export default function Settings() {
                           <Crown className="h-5 w-5 text-primary animate-sparkle-pulse" />
                           <span className="text-gradient-lumi">{currentTier.name}</span> Plan
                         </CardTitle>
-                        <CardDescription>{isAnnual ? 'Annual' : 'Monthly'} billing</CardDescription>
+                        <CardDescription>
+                          {isCodeBased ? 'Activated via invite code' : isAnnual ? 'Annual billing' : 'Monthly billing'}
+                        </CardDescription>
                       </div>
-                      <Badge className="bg-gradient-lumi text-white border-0">Active</Badge>
+                      <div className="flex gap-2">
+                        {isTrial && (
+                          <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                            Trial
+                          </Badge>
+                        )}
+                        {isCodeBased && (
+                          <Badge variant="secondary" className="bg-purple-500/10 text-purple-600 border-purple-500/30">
+                            Invite Code
+                          </Badge>
+                        )}
+                        <Badge className="bg-gradient-lumi text-white border-0">
+                          {status === 'trial' ? 'Trial Active' : 'Active'}
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Current Price</p>
-                        <p className="text-2xl font-bold">
-                          ${isAnnual ? currentTier.annualPrice : currentTier.monthlyPrice}
-                          <span className="text-sm font-normal text-muted-foreground">/{isAnnual ? 'year' : 'month'}</span>
-                        </p>
-                      </div>
+                      {isCodeBased ? (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Subscription Type</p>
+                          <p className="text-lg font-medium">
+                            {isTrial ? 'Free Trial' : 'Complimentary Access'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            You received this plan via an invite code
+                          </p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Current Price</p>
+                          <p className="text-2xl font-bold">
+                            ${isAnnual ? currentTier.annualPrice : currentTier.monthlyPrice}
+                            <span className="text-sm font-normal text-muted-foreground">/{isAnnual ? 'year' : 'month'}</span>
+                          </p>
+                        </div>
+                      )}
                       {subscriptionEnd && (
                         <div>
-                          <p className="text-sm text-muted-foreground">{cancelAtPeriodEnd ? 'Cancels on' : 'Next billing date'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {cancelAtPeriodEnd ? 'Cancels on' : isTrial ? 'Trial ends on' : 'Next billing date'}
+                          </p>
                           <p className="text-lg font-medium">{new Date(subscriptionEnd).toLocaleDateString()}</p>
                           {cancelAtPeriodEnd && <Badge variant="destructive" className="mt-1">Cancelling</Badge>}
                         </div>
@@ -530,65 +591,99 @@ export default function Settings() {
                   </CardContent>
                 </Card>
 
-                <Card variant="glow">
-                  <CardHeader>
-                    <CardTitle>Billing & Payment</CardTitle>
-                    <CardDescription>Manage your payment methods and billing information</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Button onClick={handleManageSubscription} disabled={portalLoading} variant="lumi" className="gap-2">
-                        {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                        Update Payment Method
-                      </Button>
-                      <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" className="gap-2">
-                        {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
-                        View Billing History
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Opens Stripe's secure billing portal where you can update payment methods, view invoices, and download receipts.
-                    </p>
-                  </CardContent>
-                </Card>
+                {/* Only show billing management for Stripe subscriptions */}
+                {!isCodeBased && (
+                  <Card variant="glow">
+                    <CardHeader>
+                      <CardTitle>Billing & Payment</CardTitle>
+                      <CardDescription>Manage your payment methods and billing information</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="lumi" className="gap-2">
+                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                          Update Payment Method
+                        </Button>
+                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" className="gap-2">
+                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                          View Billing History
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Opens Stripe's secure billing portal where you can update payment methods, view invoices, and download receipts.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card variant="glow">
                   <CardHeader>
                     <CardTitle>Change Plan</CardTitle>
-                    <CardDescription>Upgrade, downgrade, or switch billing frequency</CardDescription>
+                    <CardDescription>
+                      {isCodeBased 
+                        ? 'Upgrade to a paid plan for additional features' 
+                        : 'Upgrade, downgrade, or switch billing frequency'
+                      }
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-3">
-                      <Button onClick={() => navigate('/pricing')} variant="outline" className="gap-2">
+                      <Button onClick={() => navigate('/pricing')} variant="lumi" className="gap-2">
                         <Crown className="h-4 w-4" />
                         View All Plans
                       </Button>
-                      <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" className="gap-2">
-                        {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sliders className="h-4 w-4" />}
-                        Change Plan in Portal
-                      </Button>
+                      {!isCodeBased && (
+                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" className="gap-2">
+                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sliders className="h-4 w-4" />}
+                          Change Plan in Portal
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-destructive/30">
                   <CardHeader>
-                    <CardTitle className="text-destructive">Cancel Subscription</CardTitle>
-                    <CardDescription>End your subscription at the end of the current billing period</CardDescription>
+                    <CardTitle className="text-destructive">
+                      {isTrial ? 'Cancel Trial' : 'Cancel Subscription'}
+                    </CardTitle>
+                    <CardDescription>
+                      {isTrial 
+                        ? 'Cancel your trial before being billed'
+                        : 'End your subscription at the end of the current billing period'
+                      }
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {cancelAtPeriodEnd ? (
                       <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
-                        <p className="text-sm font-medium text-destructive mb-1">Subscription is set to cancel</p>
+                        <p className="text-sm font-medium text-destructive mb-1">
+                          {isTrial ? 'Trial is set to cancel' : 'Subscription is set to cancel'}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          Your subscription will end on {subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString() : 'your next billing date'}. 
+                          Your {isTrial ? 'trial' : 'subscription'} will end on {subscriptionEnd ? new Date(subscriptionEnd).toLocaleDateString() : 'the scheduled date'}. 
                           You'll retain access until then.
                         </p>
-                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" size="sm" className="mt-3 gap-2">
-                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                          Reactivate Subscription
-                        </Button>
+                        {!isCodeBased && (
+                          <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" size="sm" className="mt-3 gap-2">
+                            {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                            Reactivate Subscription
+                          </Button>
+                        )}
                       </div>
+                    ) : isCodeBased ? (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          {isTrial 
+                            ? 'Cancel your trial to avoid being billed. Your access will end immediately upon cancellation.'
+                            : 'Cancel your complimentary access. Your data will be preserved but you\'ll need to subscribe to regain access.'
+                          }
+                        </p>
+                        <Button onClick={handleCancelCodeSubscription} disabled={saving} variant="destructive" className="gap-2">
+                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                          {isTrial ? 'Cancel Trial' : 'Cancel Access'}
+                        </Button>
+                      </>
                     ) : (
                       <>
                         <p className="text-sm text-muted-foreground">

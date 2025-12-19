@@ -17,6 +17,9 @@ interface SubscriptionState {
   cancelAtPeriodEnd: boolean;
   productId: string | null;
   priceId: string | null;
+  isCodeBased: boolean;
+  isTrial: boolean;
+  status: string | null;
 }
 
 interface SubscriptionContextType extends SubscriptionState {
@@ -36,6 +39,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     cancelAtPeriodEnd: false,
     productId: null,
     priceId: null,
+    isCodeBased: false,
+    isTrial: false,
+    status: null,
   });
 
   const checkSubscription = useCallback(async () => {
@@ -54,17 +60,21 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         return;
       }
 
-      const tier = getTierFromProductId(data.product_id) || getTierFromPriceId(data.price_id);
+      // For code-based subscriptions, use the tier directly from response
+      const tier = data.tier || getTierFromProductId(data.product_id) || getTierFromPriceId(data.price_id);
       
       setState({
         isLoading: false,
         isSubscribed: data.subscribed,
-        tier,
+        tier: tier as TierKey | null,
         isAnnual: isAnnualPrice(data.price_id),
         subscriptionEnd: data.subscription_end,
         cancelAtPeriodEnd: data.cancel_at_period_end,
         productId: data.product_id,
         priceId: data.price_id,
+        isCodeBased: data.is_code_based || false,
+        isTrial: data.is_trial || false,
+        status: data.status || null,
       });
     } catch (err) {
       console.error('Error in checkSubscription:', err);
@@ -88,6 +98,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           cancelAtPeriodEnd: false,
           productId: null,
           priceId: null,
+          isCodeBased: false,
+          isTrial: false,
+          status: null,
         });
       }
     });
