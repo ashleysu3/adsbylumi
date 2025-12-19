@@ -942,16 +942,11 @@ export default function Creative() {
                         <TabsList className="grid w-full max-w-md grid-cols-2">
                           <TabsTrigger value="ideas" className="gap-2 min-h-[44px]">
                             <Lightbulb className="h-4 w-4" />
-                            Ideas
+                            Creative
                           </TabsTrigger>
                           <TabsTrigger value="copy" className="gap-2 min-h-[44px]">
                             <FileText className="h-4 w-4" />
-                            Ad Copy
-                            {Object.keys(angleCopy).length > 0 && (
-                              <Badge variant="secondary" className="ml-1 text-xs">
-                                {Object.keys(angleCopy).length}
-                              </Badge>
-                            )}
+                            Copy
                           </TabsTrigger>
                         </TabsList>
                       </div>
