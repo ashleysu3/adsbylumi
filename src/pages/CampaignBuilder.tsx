@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignChat } from "@/components/CampaignChat";
+import { MobileCampaignBuilder } from "@/components/MobileCampaignBuilder";
 import { CampaignSummary } from "@/components/CampaignSummary";
 import { CampaignReview } from "@/components/CampaignReview";
 import { CampaignSuccess } from "@/components/CampaignSuccess";
@@ -19,11 +20,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
 export default function CampaignBuilder() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const workspaceId = searchParams.get("workspace");
 
   const [workspace, setWorkspace] = useState<any>(null);
@@ -248,6 +251,92 @@ export default function CampaignBuilder() {
     );
   }
 
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <DashboardLayout>
+        <div className="px-4 pb-24">
+          {/* Mobile Header */}
+          <div className="flex items-center gap-3 py-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/production?workspace=${workspaceId}`)}
+              className="touch-target"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-lg font-bold truncate">{workspace.name}</h1>
+              <p className="text-xs text-muted-foreground">Campaign Builder</p>
+            </div>
+            {(stage === 'chat' || stage === 'review') && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="touch-target">
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Start Over?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will clear all your choices. You'll start fresh.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleRestart}>
+                      Yes, Restart
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
+
+          {/* Mobile Content */}
+          {stage === 'chat' && (
+            <MobileCampaignBuilder
+              workspace={workspace}
+              answers={answers}
+              onAnswerUpdate={handleAnswerUpdate}
+              onComplete={handleReview}
+            />
+          )}
+
+          {stage === 'review' && (
+            <CampaignReview
+              workspace={workspace}
+              answers={answers}
+              onBack={handleBackToChat}
+              onPublish={handlePublish}
+            />
+          )}
+
+          {stage === 'publishing' && (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Publishing...</h3>
+              <p className="text-sm text-muted-foreground">
+                Creating your campaign on Meta
+              </p>
+            </div>
+          )}
+
+          {stage === 'success' && (
+            <CampaignSuccess
+              workspace={workspace}
+              campaignIds={campaignIds}
+              onBackToDashboard={() => navigate('/dashboard')}
+            />
+          )}
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Desktop Layout
   return (
     <DashboardLayout>
       <div className="space-y-6">
