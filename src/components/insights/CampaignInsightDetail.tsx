@@ -37,6 +37,7 @@ import {
 import { KPIProgressBar } from './KPIProgressBar';
 import { KPITrendIndicator } from './KPITrendIndicator';
 import { AdBreakdown } from './AdBreakdown';
+import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
 import { LinkOfferModal } from './LinkOfferModal';
 
 interface CampaignMetrics {
@@ -621,7 +622,23 @@ export function CampaignInsightDetail({
             </CardContent>
           </Card>
 
-          {/* SECTION 5.5: Ad-Level Breakdown */}
+          {/* SECTION 5.5: Budget Adjustment Panel */}
+          <BudgetAdjustmentPanel
+            workspaceId={campaign.id}
+            workspaceName={campaign.name}
+            currentBudget={campaign.metrics?.spend ? Math.round(campaign.metrics.spend / 7) : 20}
+            metrics={{
+              roas: campaign.metrics?.roas ?? undefined,
+              ctr: campaign.metrics?.clicks && campaign.metrics?.impressions 
+                ? (campaign.metrics.clicks / campaign.metrics.impressions) * 100 
+                : undefined,
+              frequency: campaign.metrics?.impressions && campaign.metrics?.spend
+                ? campaign.metrics.impressions / (campaign.metrics.spend * 10)
+                : undefined,
+            }}
+          />
+
+          {/* SECTION 5.6: Ad-Level Breakdown */}
           <AdBreakdown 
             workspaceId={campaign.id} 
             dateRangeStart={dateRangeStart}

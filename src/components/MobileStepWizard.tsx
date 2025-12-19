@@ -44,6 +44,18 @@ export function MobileStepWizard({
   const touchEndX = useRef<number>(0);
   const minSwipeDistance = 50;
 
+  // Haptic feedback helper
+  const triggerHaptic = (type: 'light' | 'medium' | 'heavy' = 'light') => {
+    if ('vibrate' in navigator) {
+      const patterns = {
+        light: 10,
+        medium: 25,
+        heavy: 50,
+      };
+      navigator.vibrate(patterns[type]);
+    }
+  };
+
   const handleTouchStart = (e: TouchEvent) => {
     if (!enableSwipe) return;
     touchStartX.current = e.touches[0].clientX;
@@ -62,14 +74,16 @@ export function MobileStepWizard({
     const isSwipeRight = distance < -minSwipeDistance;
 
     if (isSwipeLeft && canProceed && !isLoading) {
-      // Swipe left = next step
+      // Swipe left = next step - trigger haptic feedback
+      triggerHaptic('medium');
       if (isLastStep) {
         onComplete?.();
       } else {
         onNext?.();
       }
     } else if (isSwipeRight && showBack && !isLoading) {
-      // Swipe right = previous step
+      // Swipe right = previous step - trigger haptic feedback
+      triggerHaptic('light');
       onBack?.();
     }
 
