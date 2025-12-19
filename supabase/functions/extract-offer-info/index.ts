@@ -214,7 +214,6 @@ ${!fetchSuccess ? 'Since the page content could not be fetched, set needs_clarif
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        response_format: { type: "json_object" }
       }),
     });
 
@@ -226,9 +225,28 @@ ${!fetchSuccess ? 'Since the page content could not be fetched, set needs_clarif
 
     const aiData = await aiResponse.json();
     console.log('AI Response received');
-    
-    const content = aiData.choices[0].message.content;
-    const offerInfo = JSON.parse(content);
+
+    const rawContent =
+      aiData?.choices?.[0]?.message?.content ??
+      aiData?.choices?.[0]?.text ??
+      aiData?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
+      "";
+
+    if (!rawContent) {
+      console.error('Unexpected AI response shape:', aiData);
+      throw new Error('AI response was empty');
+    }
+
+    // Robust JSON extraction
+    const extractJson = (text: string) => {
+      const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      const raw = (codeBlock?.[1] ?? text).trim();
+      const first = raw.indexOf("{");
+      const last = raw.lastIndexOf("}");
+      return JSON.parse(first !== -1 && last !== -1 ? raw.slice(first, last + 1) : raw);
+    };
+
+    const offerInfo = extractJson(rawContent);
 
     // Add metadata about extraction
     offerInfo.extraction_success = fetchSuccess;

@@ -100,7 +100,6 @@ Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length}
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        response_format: { type: "json_object" },
       }),
     });
 
@@ -117,13 +116,27 @@ Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length}
     }
 
     const aiResponse = await response.json();
-    const content = aiResponse.choices?.[0]?.message?.content;
+    const rawContent =
+      aiResponse?.choices?.[0]?.message?.content ??
+      aiResponse?.choices?.[0]?.text ??
+      aiResponse?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
+      "";
 
-    if (!content) {
-      throw new Error("No content in AI response");
+    if (!rawContent) {
+      console.error("Unexpected AI response shape:", aiResponse);
+      throw new Error("AI response was empty");
     }
 
-    const parsed = JSON.parse(content);
+    // Robust JSON extraction
+    const extractJson = (text: string) => {
+      const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      const raw = (codeBlock?.[1] ?? text).trim();
+      const first = raw.indexOf("{");
+      const last = raw.lastIndexOf("}");
+      return JSON.parse(first !== -1 && last !== -1 ? raw.slice(first, last + 1) : raw);
+    };
+
+    const parsed = extractJson(rawContent);
 
     // Post-process to ensure angleId matches actual angle IDs
     // The AI sometimes uses angle names instead of IDs

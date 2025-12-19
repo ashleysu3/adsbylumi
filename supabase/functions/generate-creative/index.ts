@@ -627,7 +627,6 @@ Include a kb_compliance_report showing which KBs were applied.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        response_format: { type: "json_object" }
       }),
     });
 
@@ -652,8 +651,27 @@ Include a kb_compliance_report showing which KBs were applied.`;
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
-    const creativeData = JSON.parse(content);
+    const rawContent =
+      data?.choices?.[0]?.message?.content ??
+      data?.choices?.[0]?.text ??
+      data?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
+      "";
+
+    if (!rawContent) {
+      console.error('[GENERATE-CREATIVE] Unexpected AI response shape:', data);
+      throw new Error('AI response was empty');
+    }
+
+    // Robust JSON extraction
+    const extractJson = (text: string) => {
+      const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      const raw = (codeBlock?.[1] ?? text).trim();
+      const first = raw.indexOf("{");
+      const last = raw.lastIndexOf("}");
+      return JSON.parse(first !== -1 && last !== -1 ? raw.slice(first, last + 1) : raw);
+    };
+
+    const creativeData = extractJson(rawContent);
 
     console.log('[GENERATE-CREATIVE] Full-funnel creative generated successfully');
     console.log('[GENERATE-CREATIVE] Grow concepts:', creativeData.creative_mix?.grow?.length || 0);

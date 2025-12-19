@@ -171,7 +171,6 @@ Generate headline, primary_text, description, and call_to_action that:
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        response_format: { type: "json_object" }
       }),
     });
 
@@ -182,8 +181,27 @@ Generate headline, primary_text, description, and call_to_action that:
     }
 
     const aiData = await aiResponse.json();
-    const generatedContent = aiData.choices[0].message.content;
-    const parsedContent = JSON.parse(generatedContent);
+    const rawContent =
+      aiData?.choices?.[0]?.message?.content ??
+      aiData?.choices?.[0]?.text ??
+      aiData?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
+      "";
+
+    if (!rawContent) {
+      console.error('Unexpected AI response shape:', aiData);
+      throw new Error('AI response was empty');
+    }
+
+    // Robust JSON extraction
+    const extractJson = (text: string) => {
+      const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      const raw = (codeBlock?.[1] ?? text).trim();
+      const first = raw.indexOf("{");
+      const last = raw.lastIndexOf("}");
+      return JSON.parse(first !== -1 && last !== -1 ? raw.slice(first, last + 1) : raw);
+    };
+
+    const parsedContent = extractJson(rawContent);
 
     console.log('Successfully generated copy:', parsedContent);
 
