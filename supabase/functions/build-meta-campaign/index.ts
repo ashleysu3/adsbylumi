@@ -1,9 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// CORS with origin allowlist for security
+const ALLOWED_ORIGINS = [
+  'https://youradassistant.app',
+  'https://www.youradassistant.app',
+  'https://staging.youradassistant.app',
+  /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/,
+  /^https:\/\/[a-z0-9-]+\.lovable\.app$/,
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const isAllowed = origin && ALLOWED_ORIGINS.some(allowed => 
+    typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
+  );
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin! : 'https://youradassistant.app',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 interface ProductionItem {
   id: string;
@@ -138,36 +154,79 @@ interface BuildResult {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // 1. AUTHENTICATE USER
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Create auth client to verify user
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('User authenticated:', user.id);
+
     const { workspaceId, answers } = await req.json();
 
     if (!workspaceId) {
       throw new Error('Workspace ID is required');
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('Building Meta campaign for workspace:', workspaceId);
-
-    // Fetch workspace with brand data including page_id (without token - get from vault)
+    // 2. FETCH WORKSPACE WITH BRAND FOR OWNERSHIP CHECK
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
       .select(`
         *,
-        brands!inner(id, name, meta_account_id, page_id, page_name)
+        brands!inner(id, name, user_id, meta_account_id, page_id, page_name)
       `)
       .eq('id', workspaceId)
       .single();
 
-    if (workspaceError) throw workspaceError;
+    if (workspaceError) {
+      console.error('Workspace fetch error:', workspaceError);
+      throw new Error('Workspace not found');
+    }
 
     const brand = workspace.brands;
+
+    // 3. VERIFY OWNERSHIP
+    if (brand.user_id !== user.id) {
+      console.error('Access denied: User', user.id, 'does not own workspace', workspaceId);
+      return new Response(
+        JSON.stringify({ error: 'Access denied: You do not own this workspace' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Building Meta campaign for workspace:', workspaceId);
+
     const metaAccountId = brand.meta_account_id;
     const pageId = brand.page_id;
     
@@ -325,7 +384,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseKey}`,
+            'Authorization': `Bearer ${supabaseServiceKey}`,
           },
           body: JSON.stringify({
             assetUrl: item.linkedAsset.url,
