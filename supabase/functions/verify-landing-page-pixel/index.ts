@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders } from '../_shared/cors.ts';
 
 interface PixelDetectionResult {
   pixelIds: string[];
@@ -78,6 +74,9 @@ function detectPixelInHtml(html: string): PixelDetectionResult {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -143,7 +142,7 @@ Deno.serve(async (req) => {
 
       const { data: brand } = await supabase
         .from('brands')
-        .select('meta_pixel_id, meta_account_id, meta_access_token')
+        .select('meta_pixel_id, meta_account_id')
         .eq('id', brandId)
         .single();
 
@@ -153,18 +152,23 @@ Deno.serve(async (req) => {
       }
 
       // If we have an access token, try to fetch pixels to compare
-      if (!matchesBrand && brand?.meta_access_token && brand?.meta_account_id) {
-        const adAccountId = brand.meta_account_id.startsWith('act_') 
-          ? brand.meta_account_id 
-          : `act_${brand.meta_account_id}`;
+      if (!matchesBrand && brand?.meta_account_id) {
+        // Get access token from Vault
+        const { data: accessToken } = await supabase.rpc('get_meta_token', { p_brand_id: brandId });
         
-        const pixelsUrl = `https://graph.facebook.com/v21.0/${adAccountId}/adspixels?fields=id&access_token=${brand.meta_access_token}`;
-        const pixelsResponse = await fetch(pixelsUrl);
-        const pixelsData = await pixelsResponse.json();
+        if (accessToken) {
+          const adAccountId = brand.meta_account_id.startsWith('act_') 
+            ? brand.meta_account_id 
+            : `act_${brand.meta_account_id}`;
+          
+          const pixelsUrl = `https://graph.facebook.com/v21.0/${adAccountId}/adspixels?fields=id&access_token=${accessToken}`;
+          const pixelsResponse = await fetch(pixelsUrl);
+          const pixelsData = await pixelsResponse.json();
 
-        if (pixelsData.data) {
-          const accountPixelIds = pixelsData.data.map((p: { id: string }) => p.id);
-          matchesBrand = detection.pixelIds.some(id => accountPixelIds.includes(id));
+          if (pixelsData.data) {
+            const accountPixelIds = pixelsData.data.map((p: { id: string }) => p.id);
+            matchesBrand = detection.pixelIds.some(id => accountPixelIds.includes(id));
+          }
         }
       }
     }
@@ -206,6 +210,8 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error in verify-landing-page-pixel:', error);
+    const origin = req.headers.get('origin');
+    const corsHeaders = getCorsHeaders(origin);
     return new Response(
       JSON.stringify({ 
         success: false, 

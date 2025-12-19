@@ -1,9 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders } from '../_shared/cors.ts';
 
 interface ConversionEvent {
   eventName: 'Purchase' | 'Lead' | 'CompleteRegistration' | 'AddToCart' | 'InitiateCheckout' | 'ViewContent';
@@ -55,7 +51,6 @@ async function normalizeUserData(userData: ConversionEvent['userData']) {
     normalized.em = await hashValue(userData.email);
   }
   if (userData.phone) {
-    // Remove all non-numeric characters
     const cleanPhone = userData.phone.replace(/\D/g, '');
     normalized.ph = await hashValue(cleanPhone);
   }
@@ -97,6 +92,9 @@ async function normalizeUserData(userData: ConversionEvent['userData']) {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -126,10 +124,10 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get brand data including pixel and access token
+    // Get brand data including pixel and access token via Vault
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('meta_pixel_id, meta_access_token')
+      .select('meta_pixel_id')
       .eq('id', brandId)
       .single();
 
@@ -141,7 +139,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!brand.meta_pixel_id || !brand.meta_access_token) {
+    // Get access token from Vault
+    const { data: accessToken, error: tokenError } = await supabase.rpc('get_meta_token', { p_brand_id: brandId });
+
+    if (!brand.meta_pixel_id || !accessToken) {
       return new Response(
         JSON.stringify({ success: false, error: 'Pixel or access token not configured' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -149,11 +150,10 @@ Deno.serve(async (req) => {
     }
 
     const pixelId = brand.meta_pixel_id;
-    const accessToken = brand.meta_access_token;
 
     // Build the event payload
     const eventTime = event.eventTime || Math.floor(Date.now() / 1000);
-    const normalizedUserData = normalizeUserData(event.userData);
+    const normalizedUserData = await normalizeUserData(event.userData);
 
     const eventPayload: Record<string, any> = {
       event_name: event.eventName,
@@ -234,6 +234,8 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error in send-conversion-event:', error);
+    const origin = req.headers.get('origin');
+    const corsHeaders = getCorsHeaders(origin);
     return new Response(
       JSON.stringify({ 
         success: false, 
