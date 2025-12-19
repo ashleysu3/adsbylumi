@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Sparkles, Rocket, Clipboard, Grid3X3, ArrowLeft, ClipboardList, FileText, Lightbulb } from "lucide-react";
+import { Sparkles, Rocket, Clipboard, Grid3X3, ArrowLeft, ClipboardList, FileText, Lightbulb, Check } from "lucide-react";
 import { AngleCopyNav } from "@/components/creative/AngleCopyNav";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
@@ -26,7 +26,7 @@ import { LumiChat } from "@/components/LumiChat";
 import { cn } from "@/lib/utils";
 
 type DashboardStep = "select_angles" | "creative_grid";
-type CreativeTab = "ideas" | "copy";
+type CreativeTab = "copy" | "ideas"; // Copy first, then creative
 type GeneratingPhase = "angles" | "grid" | null;
 
 const angleGenerationSteps = [
@@ -67,7 +67,7 @@ export default function Creative() {
   
   // Creative state
   const [dashboardStep, setDashboardStep] = useState<DashboardStep>("select_angles");
-  const [creativeTab, setCreativeTab] = useState<CreativeTab>("ideas");
+  const [creativeTab, setCreativeTab] = useState<CreativeTab>("copy"); // Default to copy first
   const [availableAngles, setAvailableAngles] = useState<CreativeAngle[]>([]);
   const [selectedAngleIds, setSelectedAngleIds] = useState<string[]>([]);
   const [activeAngleId, setActiveAngleId] = useState<string>("");
@@ -933,24 +933,34 @@ export default function Creative() {
                         onAngleChange={setActiveAngleId}
                         selections={copySelections}
                         angleCopy={angleCopy}
+                        creativeSelections={
+                          // Build creative selections per angle from production items
+                          selectedAngles.reduce((acc, angle) => {
+                            acc[angle.id] = productionItems
+                              .filter(item => item.angleName === angle.name)
+                              .map(item => item.id);
+                            return acc;
+                          }, {} as Record<string, string[]>)
+                        }
+                        currentTab={creativeTab}
                       />
                     </div>
 
-                    {/* Toggle between Creative and Copy */}
+                    {/* Toggle between Copy and Creative with progress */}
                     <div className="flex justify-center mb-4">
-                      <div className="inline-flex items-center bg-muted rounded-full p-1">
-                        <button
-                          onClick={() => setCreativeTab("ideas")}
-                          className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
-                            creativeTab === "ideas"
-                              ? "bg-background text-foreground shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          <Lightbulb className="h-4 w-4" />
-                          Creative
-                        </button>
+                      <div className="inline-flex items-center bg-muted rounded-full p-1 relative">
+                        {/* Step indicators */}
+                        <div className="absolute -top-6 left-0 right-0 flex justify-center gap-6 text-[10px] text-muted-foreground">
+                          <span className={cn(
+                            "transition-colors",
+                            creativeTab === "copy" && "text-primary font-medium"
+                          )}>Step 1</span>
+                          <span className={cn(
+                            "transition-colors",
+                            creativeTab === "ideas" && "text-primary font-medium"
+                          )}>Step 2</span>
+                        </div>
+                        
                         <button
                           onClick={() => setCreativeTab("copy")}
                           className={cn(
@@ -962,6 +972,40 @@ export default function Creative() {
                         >
                           <FileText className="h-4 w-4" />
                           Copy
+                          {(() => {
+                            const angleSel = copySelections[activeAngleId];
+                            const count = angleSel 
+                              ? (angleSel.headlines?.length || 0) + (angleSel.descriptions?.length || 0) + (angleSel.primary_copy?.length || 0)
+                              : 0;
+                            return count > 0 ? (
+                              <Badge variant="secondary" className="h-5 px-1.5 text-xs gap-0.5 bg-green-500/20 text-green-700">
+                                <Check className="h-3 w-3" />
+                              </Badge>
+                            ) : null;
+                          })()}
+                        </button>
+                        <button
+                          onClick={() => setCreativeTab("ideas")}
+                          className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                            creativeTab === "ideas"
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <Lightbulb className="h-4 w-4" />
+                          Creative
+                          {(() => {
+                            const activeAngle = selectedAngles.find(a => a.id === activeAngleId);
+                            const count = activeAngle 
+                              ? productionItems.filter(item => item.angleName === activeAngle.name).length 
+                              : 0;
+                            return count > 0 ? (
+                              <Badge variant="secondary" className="h-5 px-1.5 text-xs gap-0.5 bg-green-500/20 text-green-700">
+                                <Check className="h-3 w-3" />
+                              </Badge>
+                            ) : null;
+                          })()}
                         </button>
                       </div>
                     </div>
