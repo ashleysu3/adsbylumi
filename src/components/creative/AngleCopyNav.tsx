@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Check, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface CopySelections {
   headlines: number[];
@@ -96,46 +95,43 @@ export function AngleCopyNav({
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
-        <ScrollArea className="flex-1">
-          <div className="flex gap-2 pb-2">
-            {angles.map((angle, index) => {
-              const isActive = angle.id === activeAngleId;
-              const { hasCopy, hasSelections } = getAngleStatus(angle.id);
-              const selectionCount = getSelectionCount(angle.id);
+        <div className="flex-1 flex gap-2 justify-between">
+          {angles.map((angle, index) => {
+            const isActive = angle.id === activeAngleId;
+            const { hasCopy, hasSelections } = getAngleStatus(angle.id);
+            const selectionCount = getSelectionCount(angle.id);
 
-              return (
-                <button
-                  key={angle.id}
-                  onClick={() => onAngleChange(angle.id)}
-                  className={cn(
-                    "relative flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap",
-                    "border hover:border-primary/50",
-                    isActive
-                      ? "bg-primary text-primary-foreground border-primary shadow-md"
-                      : hasSelections
-                      ? "bg-primary/10 border-primary/30 text-foreground"
-                      : hasCopy
-                      ? "bg-muted border-border text-foreground"
-                      : "bg-background border-border text-muted-foreground"
-                  )}
-                >
-                  <span className="text-xs opacity-60">{index + 1}.</span>
-                  <span className="max-w-[120px] truncate">{angle.name}</span>
-                  {hasSelections && (
-                    <Badge
-                      variant={isActive ? "secondary" : "default"}
-                      className="h-5 px-1.5 text-xs gap-0.5"
-                    >
-                      <Check className="h-3 w-3" />
-                      {selectionCount}
-                    </Badge>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+            return (
+              <button
+                key={angle.id}
+                onClick={() => onAngleChange(angle.id)}
+                className={cn(
+                  "relative flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-medium transition-all",
+                  "border hover:border-primary/50 min-w-0",
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary shadow-md"
+                    : hasSelections
+                    ? "bg-primary/10 border-primary/30 text-foreground"
+                    : hasCopy
+                    ? "bg-muted border-border text-foreground"
+                    : "bg-background border-border text-muted-foreground"
+                )}
+              >
+                <span className="text-xs opacity-60">{index + 1}.</span>
+                <span className="truncate">{angle.name}</span>
+                {hasSelections && (
+                  <Badge
+                    variant={isActive ? "secondary" : "default"}
+                    className="h-5 px-1.5 text-xs gap-0.5 shrink-0"
+                  >
+                    <Check className="h-3 w-3" />
+                    {selectionCount}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
         <Button
           variant="outline"
