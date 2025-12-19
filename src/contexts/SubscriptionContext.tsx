@@ -29,6 +29,20 @@ interface SubscriptionContextType extends SubscriptionState {
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
+function normalizeTierKey(tier: unknown): TierKey | null {
+  if (!tier || typeof tier !== 'string') return null;
+
+  // Back-compat for DB enum tiers used by code-based subscriptions
+  if (tier === 'starter') return 'solo';
+  if (tier === 'growth') return 'creator';
+  if (tier === 'agency_pro') return 'agency';
+
+  // Stripe-derived tiers already match our UI keys
+  if (tier in SUBSCRIPTION_TIERS) return tier as TierKey;
+
+  return null;
+}
+
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SubscriptionState>({
     isLoading: true,
@@ -60,8 +74,11 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         return;
       }
 
-      // For code-based subscriptions, use the tier directly from response
-      const tier = data.tier || getTierFromProductId(data.product_id) || getTierFromPriceId(data.price_id);
+      // Prefer explicit tier (code-based subscriptions), otherwise derive from Stripe ids
+      const tier =
+        normalizeTierKey(data.tier) ??
+        getTierFromProductId(data.product_id) ??
+        getTierFromPriceId(data.price_id);
       
       setState({
         isLoading: false,
