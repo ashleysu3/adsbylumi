@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Sparkles, Rocket, Clipboard, Grid3X3, ArrowLeft, ClipboardList, FileText, Lightbulb } from "lucide-react";
+import { AngleCopyNav } from "@/components/creative/AngleCopyNav";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { useLumiAssistant } from "@/components/LumiAssistant";
@@ -924,22 +925,36 @@ export default function Creative() {
                 ) : (
                   /* Step 2+: Creative Grid with Tabs */
                   <div className="space-y-4">
+                    {/* Angle Navigation - Above Tabs */}
+                    <div className="flex flex-col items-center">
+                      <AngleCopyNav
+                        angles={selectedAngles}
+                        activeAngleId={activeAngleId}
+                        onAngleChange={setActiveAngleId}
+                        selections={copySelections}
+                        angleCopy={angleCopy}
+                      />
+                    </div>
+
+                    {/* Centered Tabs */}
                     <Tabs value={creativeTab} onValueChange={(v) => setCreativeTab(v as CreativeTab)} className="w-full">
-                      <TabsList className="grid w-full max-w-md grid-cols-2">
-                        <TabsTrigger value="ideas" className="gap-2 min-h-[44px]">
-                          <Lightbulb className="h-4 w-4" />
-                          Ideas
-                        </TabsTrigger>
-                        <TabsTrigger value="copy" className="gap-2 min-h-[44px]">
-                          <FileText className="h-4 w-4" />
-                          Ad Copy
-                          {Object.keys(angleCopy).length > 0 && (
-                            <Badge variant="secondary" className="ml-1 text-xs">
-                              {Object.keys(angleCopy).length}
-                            </Badge>
-                          )}
-                        </TabsTrigger>
-                      </TabsList>
+                      <div className="flex justify-center">
+                        <TabsList className="grid w-full max-w-md grid-cols-2">
+                          <TabsTrigger value="ideas" className="gap-2 min-h-[44px]">
+                            <Lightbulb className="h-4 w-4" />
+                            Ideas
+                          </TabsTrigger>
+                          <TabsTrigger value="copy" className="gap-2 min-h-[44px]">
+                            <FileText className="h-4 w-4" />
+                            Ad Copy
+                            {Object.keys(angleCopy).length > 0 && (
+                              <Badge variant="secondary" className="ml-1 text-xs">
+                                {Object.keys(angleCopy).length}
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                        </TabsList>
+                      </div>
 
                       <TabsContent value="ideas" className="mt-4">
                         <CreativeGrid
@@ -954,6 +969,7 @@ export default function Creative() {
                           onRegenerateCell={handleRegenerateCell}
                           checklistIds={productionItems.map(item => item.id)}
                           regeneratingCellId={regeneratingCellId}
+                          hideAngleNav={true}
                         />
                       </TabsContent>
 
@@ -968,6 +984,7 @@ export default function Creative() {
                           selections={copySelections}
                           onSelectionsChange={handleCopySelectionsChange}
                           onCopyEdit={handleCopyEdit}
+                          hideAngleNav={true}
                         />
                       </TabsContent>
                     </Tabs>

@@ -47,6 +47,7 @@ interface CopyPreviewProps {
   selections?: Record<string, CopySelections>;
   onSelectionsChange?: (angleId: string, selections: CopySelections) => void;
   onCopyEdit?: (angleId: string, type: keyof AngleCopy, index: number, newText: string) => void;
+  hideAngleNav?: boolean;
 }
 
 export function CopyPreview({
@@ -59,6 +60,7 @@ export function CopyPreview({
   selections = {},
   onSelectionsChange,
   onCopyEdit,
+  hideAngleNav = false,
 }: CopyPreviewProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("headlines");
@@ -276,14 +278,16 @@ export function CopyPreview({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Visual angle navigation */}
-      <AngleCopyNav
-        angles={angles}
-        activeAngleId={activeAngleId}
-        onAngleChange={onAngleChange}
-        selections={selections}
-        angleCopy={angleCopy}
-      />
+      {/* Visual angle navigation - hidden when controlled externally */}
+      {!hideAngleNav && (
+        <AngleCopyNav
+          angles={angles}
+          activeAngleId={activeAngleId}
+          onAngleChange={onAngleChange}
+          selections={selections}
+          angleCopy={angleCopy}
+        />
+      )}
 
       {/* Regenerate button */}
       <div className="flex items-center justify-between">

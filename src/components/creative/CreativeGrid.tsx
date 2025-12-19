@@ -16,6 +16,7 @@ interface CreativeGridProps {
   onRegenerateCell?: (cellId: string) => void;
   checklistIds?: string[];
   regeneratingCellId?: string | null;
+  hideAngleNav?: boolean;
 }
 
 const rowLabels = {
@@ -38,6 +39,7 @@ export function CreativeGrid({
   onRegenerateCell,
   checklistIds = [],
   regeneratingCellId,
+  hideAngleNav = false,
 }: CreativeGridProps) {
   const activeAngle = angles.find(a => a.id === activeAngleId);
   const selectedCount = selectedCells.filter(id => 
@@ -46,40 +48,43 @@ export function CreativeGrid({
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header with angle selector */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="flex items-center gap-3">
-          <Select value={activeAngleId} onValueChange={onAngleChange}>
-            <SelectTrigger className="w-full sm:w-[280px] min-h-[44px]">
-              <SelectValue placeholder="Select angle" />
-            </SelectTrigger>
-            <SelectContent>
-              {angles.map((angle) => (
-                <SelectItem key={angle.id} value={angle.id}>
-                  {angle.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Header with angle selector - hidden when controlled externally */}
+      {!hideAngleNav && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex items-center gap-3">
+            <Select value={activeAngleId} onValueChange={onAngleChange}>
+              <SelectTrigger className="w-full sm:w-[280px] min-h-[44px]">
+                <SelectValue placeholder="Select angle" />
+              </SelectTrigger>
+              <SelectContent>
+                {angles.map((angle) => (
+                  <SelectItem key={angle.id} value={angle.id}>
+                    {angle.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {selectedCount > 0 && (
-            <Badge variant="secondary" className="gap-1 text-xs sm:text-sm">
-              <CheckCircle2 className="h-3 w-3" />
-              {selectedCount}
-            </Badge>
-          )}
-          <Button
-            onClick={onAddToChecklist}
-            disabled={selectedCount === 0}
-            size="sm"
-            className="min-h-[44px] flex-1 sm:flex-none"
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add to Checklist
-          </Button>
-        </div>
+      {/* Add to checklist button */}
+      <div className="flex items-center justify-end gap-2 sm:gap-3">
+        {selectedCount > 0 && (
+          <Badge variant="secondary" className="gap-1 text-xs sm:text-sm">
+            <CheckCircle2 className="h-3 w-3" />
+            {selectedCount}
+          </Badge>
+        )}
+        <Button
+          onClick={onAddToChecklist}
+          disabled={selectedCount === 0}
+          size="sm"
+          className="min-h-[44px]"
+        >
+          <Plus className="mr-1.5 h-4 w-4" />
+          Add to Checklist
+        </Button>
       </div>
 
       {/* Grid */}
