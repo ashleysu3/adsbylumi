@@ -12,6 +12,7 @@ import { CreateAdModal } from "@/components/CreateAdModal";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { MobileFloatingAction } from "@/components/MobileFloatingAction";
 import { MobileHeader } from "@/components/MobileHeader";
+import { MobileOnboardingTour, useMobileOnboardingTour } from "@/components/MobileOnboardingTour";
 import { useIsMobile } from "@/hooks/use-mobile";
 import lumiLogo from "@/assets/lumi-logo.png";
 
@@ -37,6 +38,19 @@ export default function DashboardLayout({
     description: string;
   } | null>(null);
   const [createAdModalOpen, setCreateAdModalOpen] = useState(false);
+  
+  // Mobile onboarding tour
+  const { showTour, hasSeenTour, startTour, completeTour } = useMobileOnboardingTour();
+  
+  // Auto-show tour for new mobile users
+  useEffect(() => {
+    if (isMobile && !hasSeenTour && user) {
+      const timer = setTimeout(() => {
+        startTour();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile, hasSeenTour, user, startTour]);
 
   // Determine context based on current route
   const getContextFromRoute = (): 'creative' | 'planning' | 'data' | 'campaign' | 'dashboard' | 'settings' | 'campaigns' | 'production' => {
@@ -213,7 +227,7 @@ export default function DashboardLayout({
           user={user} 
           profile={profile} 
           isAdmin={isAdmin}
-          onShowWalkthrough={handleShowWalkthrough}
+          onShowWalkthrough={() => startTour()}
         />
 
         <main className="px-4 py-4">{children}</main>
@@ -238,6 +252,14 @@ export default function DashboardLayout({
               setTourActive(false);
               setTourConfig(null);
             }} 
+          />
+        )}
+
+        {/* Mobile Onboarding Tour */}
+        {showTour && (
+          <MobileOnboardingTour 
+            onComplete={completeTour}
+            onSkip={completeTour}
           />
         )}
 

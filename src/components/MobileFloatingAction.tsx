@@ -11,6 +11,7 @@ export function MobileFloatingAction({ onClick, label = "New Ad", className }: M
   return (
     <button
       onClick={onClick}
+      data-tour="new-campaign"
       className={cn(
         "fixed right-4 bottom-20 z-40 md:hidden",
         "flex items-center justify-center gap-2",

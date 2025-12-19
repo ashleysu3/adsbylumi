@@ -3,11 +3,11 @@ import { Home, FolderKanban, Palette, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { path: "/dashboard", icon: Home, label: "Home" },
-  { path: "/campaigns", icon: FolderKanban, label: "Campaigns" },
-  { path: "/creative", icon: Palette, label: "Creative" },
-  { path: "/data", icon: BarChart3, label: "Insights" },
-  { path: "/settings", icon: Settings, label: "Settings" },
+  { path: "/dashboard", icon: Home, label: "Home", tourId: "dashboard" },
+  { path: "/campaigns", icon: FolderKanban, label: "Campaigns", tourId: "campaigns" },
+  { path: "/creative", icon: Palette, label: "Creative", tourId: "creative" },
+  { path: "/data", icon: BarChart3, label: "Insights", tourId: "insights" },
+  { path: "/settings", icon: Settings, label: "Settings", tourId: "settings" },
 ];
 
 export function MobileBottomNav() {
@@ -31,6 +31,7 @@ export function MobileBottomNav() {
             <Link
               key={item.path}
               to={item.path}
+              data-tour={item.tourId}
               className={cn(
                 "flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[64px] touch-target transition-colors",
                 active 
