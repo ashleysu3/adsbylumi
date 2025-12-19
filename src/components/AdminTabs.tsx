@@ -1,11 +1,12 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, LayoutTemplate, Ticket, BarChart3 } from "lucide-react";
+import { BookOpen, LayoutTemplate, Ticket, BarChart3, CreditCard } from "lucide-react";
 
 const adminTabs = [
   { path: "/admin/knowledge", label: "Knowledge", icon: BookOpen },
   { path: "/admin/templates", label: "Templates", icon: LayoutTemplate },
   { path: "/admin/invite-codes", label: "Invite Codes", icon: Ticket },
+  { path: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
   { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
 ];
 

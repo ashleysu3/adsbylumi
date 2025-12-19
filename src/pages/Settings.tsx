@@ -541,36 +541,68 @@ export default function Settings() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      {isCodeBased ? (
-                        <div>
-                          <p className="text-sm text-muted-foreground">Subscription Type</p>
-                          <p className="text-lg font-medium">
-                            {isTrial ? 'Free Trial' : 'Complimentary Access'}
-                          </p>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {/* Billing Amount */}
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          {isCodeBased ? 'Your Cost' : 'Current Price'}
+                        </p>
+                        <p className="text-2xl font-bold">
+                          {isCodeBased ? (
+                            <>$0<span className="text-sm font-normal text-muted-foreground">/month</span></>
+                          ) : (
+                            <>
+                              ${isAnnual ? currentTier.annualPrice : currentTier.monthlyPrice}
+                              <span className="text-sm font-normal text-muted-foreground">/{isAnnual ? 'year' : 'month'}</span>
+                            </>
+                          )}
+                        </p>
+                        {isCodeBased && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            You received this plan via an invite code
+                            Complimentary via invite code
                           </p>
-                        </div>
-                      ) : (
+                        )}
+                      </div>
+
+                      {/* Next Billing / End Date */}
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          {cancelAtPeriodEnd 
+                            ? 'Access Ends' 
+                            : isTrial 
+                              ? 'Trial Ends' 
+                              : isCodeBased 
+                                ? 'Access Period'
+                                : 'Next Billing Date'
+                          }
+                        </p>
+                        <p className="text-lg font-medium">
+                          {subscriptionEnd 
+                            ? new Date(subscriptionEnd).toLocaleDateString() 
+                            : isCodeBased 
+                              ? 'Ongoing'
+                              : '—'
+                          }
+                        </p>
+                        {cancelAtPeriodEnd && <Badge variant="destructive" className="mt-1">Cancelling</Badge>}
+                      </div>
+
+                      {/* Payment Method Quick Link */}
+                      {!isCodeBased && (
                         <div>
-                          <p className="text-sm text-muted-foreground">Current Price</p>
-                          <p className="text-2xl font-bold">
-                            ${isAnnual ? currentTier.annualPrice : currentTier.monthlyPrice}
-                            <span className="text-sm font-normal text-muted-foreground">/{isAnnual ? 'year' : 'month'}</span>
-                          </p>
-                        </div>
-                      )}
-                      {subscriptionEnd && (
-                        <div>
-                          <p className="text-sm text-muted-foreground">
-                            {cancelAtPeriodEnd ? 'Cancels on' : isTrial ? 'Trial ends on' : 'Next billing date'}
-                          </p>
-                          <p className="text-lg font-medium">{new Date(subscriptionEnd).toLocaleDateString()}</p>
-                          {cancelAtPeriodEnd && <Badge variant="destructive" className="mt-1">Cancelling</Badge>}
+                          <p className="text-sm text-muted-foreground">Payment Method</p>
+                          <Button 
+                            variant="link" 
+                            className="h-auto p-0 text-primary font-medium"
+                            onClick={handleManageSubscription}
+                            disabled={portalLoading}
+                          >
+                            {portalLoading ? 'Loading...' : 'Update Card →'}
+                          </Button>
                         </div>
                       )}
                     </div>
+
                     <div className="pt-4 border-t">
                       <p className="text-sm font-medium mb-2">Plan Limits</p>
                       <div className="grid gap-2 text-sm">
