@@ -75,6 +75,7 @@ export default function Creative() {
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
   const [angleCopy, setAngleCopy] = useState<Record<string, any>>({});
   const [regeneratingCopy, setRegeneratingCopy] = useState(false);
+  const [copySelections, setCopySelections] = useState<Record<string, { headlines: number[]; descriptions: number[]; primary_copy: number[] }>>({});
 
   // Lumi contextual recommendations
   const { setRecommendation } = useLumiAssistant();
@@ -232,6 +233,7 @@ export default function Creative() {
         setGridData(gridDataNormalized);
         setProductionItems(creativeData.productionItems || []);
         setAngleCopy(creativeData.angle_copy || {});
+        setCopySelections(creativeData.copy_selections || {});
         setDashboardStep(gridDataNormalized.length > 0 ? "creative_grid" : "select_angles");
         if (creativeData.selectedAngleIds?.length > 0) {
           setActiveAngleId(creativeData.selectedAngleIds[0]);
@@ -243,6 +245,7 @@ export default function Creative() {
         setGridData([]);
         setProductionItems([]);
         setAngleCopy({});
+        setCopySelections({});
         setDashboardStep("select_angles");
         setActiveAngleId("");
       }
@@ -484,6 +487,37 @@ export default function Creative() {
     } finally {
       setRegeneratingCopy(false);
     }
+  };
+
+  // Handle copy selection changes
+  const handleCopySelectionsChange = async (angleId: string, selections: { headlines: number[]; descriptions: number[]; primary_copy: number[] }) => {
+    const newSelections = { ...copySelections, [angleId]: selections };
+    setCopySelections(newSelections);
+    await saveCreativeState({ copy_selections: newSelections });
+  };
+
+  // Handle inline copy edits
+  const handleCopyEdit = async (angleId: string, type: "headlines" | "descriptions" | "primary_copy", index: number, newText: string) => {
+    const currentAngleCopy = angleCopy[angleId];
+    if (!currentAngleCopy) return;
+    
+    const updatedVariations = [...currentAngleCopy[type]];
+    updatedVariations[index] = {
+      ...updatedVariations[index],
+      text: newText,
+      character_count: newText.length,
+    };
+    
+    const newAngleCopy = {
+      ...angleCopy,
+      [angleId]: {
+        ...currentAngleCopy,
+        [type]: updatedVariations,
+      },
+    };
+    
+    setAngleCopy(newAngleCopy);
+    await saveCreativeState({ angle_copy: newAngleCopy });
   };
 
   const saveCreativeState = async (updates: any) => {
@@ -931,6 +965,9 @@ export default function Creative() {
                           angleCopy={angleCopy}
                           onRegenerateAngleCopy={regenerateAngleCopy}
                           isRegenerating={regeneratingCopy}
+                          selections={copySelections}
+                          onSelectionsChange={handleCopySelectionsChange}
+                          onCopyEdit={handleCopyEdit}
                         />
                       </TabsContent>
                     </Tabs>
