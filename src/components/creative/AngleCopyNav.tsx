@@ -130,9 +130,6 @@ export function AngleCopyNav({
                       {selectionCount}
                     </Badge>
                   )}
-                  {!hasCopy && !isActive && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-muted-foreground/50" />
-                  )}
                 </button>
               );
             })}
