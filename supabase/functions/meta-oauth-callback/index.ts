@@ -88,16 +88,33 @@ Deno.serve(async (req) => {
     console.log('Active ad accounts found:', activeAccounts.length);
 
     // Get user's Facebook Pages (required for ad creative creation)
-    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,category&access_token=${finalToken}`;
+    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`;
     
-    console.log('Fetching Facebook Pages...');
+    console.log('Fetching Facebook Pages with Instagram accounts...');
     const pagesResponse = await fetch(pagesUrl);
     const pagesData = await pagesResponse.json();
 
     let pages: any[] = [];
+    let instagramAccounts: any[] = [];
+    
     if (pagesResponse.ok && pagesData.data) {
       pages = pagesData.data;
       console.log('Facebook Pages found:', pages.length);
+      
+      // Extract Instagram accounts linked to Pages
+      for (const page of pagesData.data) {
+        if (page.instagram_business_account) {
+          instagramAccounts.push({
+            id: page.instagram_business_account.id,
+            name: page.instagram_business_account.name || page.instagram_business_account.username,
+            username: page.instagram_business_account.username,
+            profile_picture_url: page.instagram_business_account.profile_picture_url,
+            linked_page_id: page.id,
+            linked_page_name: page.name
+          });
+        }
+      }
+      console.log('Instagram accounts found:', instagramAccounts.length);
     } else {
       console.error('Failed to fetch pages:', pagesData);
     }
@@ -171,7 +188,8 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         success: true,
         accounts: activeAccounts,
-        pages: pages
+        pages: pages,
+        instagramAccounts: instagramAccounts
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -27,8 +27,8 @@ Deno.serve(async (req) => {
     oauthUrl.searchParams.set('client_id', META_APP_ID);
     oauthUrl.searchParams.set('redirect_uri', redirectUri);
     oauthUrl.searchParams.set('state', brandId);
-    // Include pages permissions required for ad creative creation
-    oauthUrl.searchParams.set('scope', 'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list');
+    // Include pages and Instagram permissions required for ad creative creation
+    oauthUrl.searchParams.set('scope', 'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list,instagram_basic,instagram_manage_insights');
     oauthUrl.searchParams.set('response_type', 'code');
 
     console.log('OAuth URL generated with pages permissions');

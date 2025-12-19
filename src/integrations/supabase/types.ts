@@ -66,6 +66,8 @@ export type Database = {
           created_at: string | null
           id: string
           industry: string | null
+          instagram_account_id: string | null
+          instagram_account_name: string | null
           meta_access_token: string | null
           meta_account_id: string | null
           meta_pixel_events: Json | null
@@ -73,11 +75,13 @@ export type Database = {
           meta_pixel_name: string | null
           meta_pixel_verified_at: string | null
           meta_token_expires_at: string | null
+          multi_advertiser_ads: boolean | null
           name: string
           notification_preferences: Json | null
           page_id: string | null
           page_name: string | null
           psychology_status: string | null
+          site_links_enabled: boolean | null
           target_audience: string | null
           updated_at: string | null
           user_id: string
@@ -91,6 +95,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           industry?: string | null
+          instagram_account_id?: string | null
+          instagram_account_name?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
           meta_pixel_events?: Json | null
@@ -98,11 +104,13 @@ export type Database = {
           meta_pixel_name?: string | null
           meta_pixel_verified_at?: string | null
           meta_token_expires_at?: string | null
+          multi_advertiser_ads?: boolean | null
           name: string
           notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null
           psychology_status?: string | null
+          site_links_enabled?: boolean | null
           target_audience?: string | null
           updated_at?: string | null
           user_id: string
@@ -116,6 +124,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           industry?: string | null
+          instagram_account_id?: string | null
+          instagram_account_name?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
           meta_pixel_events?: Json | null
@@ -123,11 +133,13 @@ export type Database = {
           meta_pixel_name?: string | null
           meta_pixel_verified_at?: string | null
           meta_token_expires_at?: string | null
+          multi_advertiser_ads?: boolean | null
           name?: string
           notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null
           psychology_status?: string | null
+          site_links_enabled?: boolean | null
           target_audience?: string | null
           updated_at?: string | null
           user_id?: string
