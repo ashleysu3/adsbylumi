@@ -11,11 +11,38 @@ serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authentication required' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // Create auth client to verify user
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } }
+    });
+    
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const { workspaceId, brandId, offerId } = await req.json();
     
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Use service role for data queries
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const questions: Array<{
       id: string;
@@ -29,18 +56,26 @@ serve(async (req) => {
       priority: 'critical' | 'important' | 'helpful';
     }> = [];
 
-    // Fetch workspace data
+    // Fetch workspace data and verify ownership
     let workspace = null;
     if (workspaceId) {
       const { data } = await supabase
         .from('campaign_workspaces')
-        .select('*, brands(*)')
+        .select('*, brands!inner(*)')
         .eq('id', workspaceId)
+        .eq('brands.user_id', user.id)
         .single();
       workspace = data;
+      
+      if (!workspace) {
+        return new Response(JSON.stringify({ error: 'Workspace not found or access denied' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
-    // Fetch brand data
+    // Fetch brand data with ownership check
     let brand = null;
     const effectiveBrandId = brandId || workspace?.brand_id;
     if (effectiveBrandId) {
@@ -48,21 +83,30 @@ serve(async (req) => {
         .from('brands')
         .select('*')
         .eq('id', effectiveBrandId)
+        .eq('user_id', user.id)
         .single();
       brand = data;
+      
+      if (!brand) {
+        return new Response(JSON.stringify({ error: 'Brand not found or access denied' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
-    // Fetch offer data if available
+    // Fetch offer data if available - verify via brand ownership
     let offer = null;
     if (offerId) {
       const { data } = await supabase
         .from('offers')
-        .select('*')
+        .select('*, brands!inner(user_id)')
         .eq('id', offerId)
+        .eq('brands.user_id', user.id)
         .single();
       offer = data;
-    } else if (workspace?.offer_name) {
-      // Try to find offer by name for this brand
+    } else if (workspace?.offer_name && effectiveBrandId) {
+      // Try to find offer by name for this brand (already verified ownership above)
       const { data } = await supabase
         .from('offers')
         .select('*')
@@ -224,6 +268,7 @@ serve(async (req) => {
     const ready = criticalQuestions.length === 0;
 
     console.log('Generation readiness check:', {
+      userId: user.id,
       workspaceId,
       brandId: effectiveBrandId,
       offerId: offer?.id,
