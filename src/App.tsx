@@ -26,6 +26,7 @@ import AdminKnowledge from "./pages/admin/Knowledge";
 import AdminAnalytics from "./pages/admin/Analytics";
 import AdminTemplates from "./pages/admin/Templates";
 import AdminInviteCodes from "./pages/admin/InviteCodes";
+import AdminSubscriptions from "./pages/admin/Subscriptions";
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
@@ -78,6 +79,7 @@ const App = () => {
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/templates" element={<AdminTemplates />} />
                   <Route path="/admin/invite-codes" element={<AdminInviteCodes />} />
+                  <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
