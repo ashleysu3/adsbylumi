@@ -704,6 +704,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_invite_code: { Args: { code_input: string }; Returns: boolean }
       delete_meta_token: { Args: { p_brand_id: string }; Returns: boolean }
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
       has_role: {
