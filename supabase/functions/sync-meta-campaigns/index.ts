@@ -1,9 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// CORS with origin allowlist for security
+const ALLOWED_ORIGINS = [
+  'https://youradassistant.app',
+  'https://www.youradassistant.app',
+  'https://staging.youradassistant.app',
+  /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/,
+  /^https:\/\/[a-z0-9-]+\.lovable\.app$/,
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const isAllowed = origin && ALLOWED_ORIGINS.some(allowed => 
+    typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
+  );
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin! : 'https://youradassistant.app',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 interface MetaCampaign {
   id: string;
@@ -16,12 +32,44 @@ interface MetaCampaign {
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // 1. AUTHENTICATE USER
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    // Create auth client to verify user
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Invalid authentication' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('User authenticated:', user.id);
+
     const body = await req.json().catch(() => ({}));
     const {
       brandId,
@@ -40,25 +88,35 @@ Deno.serve(async (req) => {
     }
 
     // Initialize Supabase client (service role)
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // 2. VERIFY BRAND OWNERSHIP
+    const { data: brandData, error: brandFetchError } = await supabase
+      .from('brands')
+      .select('user_id, meta_account_id')
+      .eq('id', brandId)
+      .single();
+
+    if (brandFetchError || !brandData) {
+      console.error('Brand not found:', brandId);
+      return new Response(
+        JSON.stringify({ error: 'Brand not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (brandData.user_id !== user.id) {
+      console.error('Access denied: User', user.id, 'does not own brand', brandId);
+      return new Response(
+        JSON.stringify({ error: 'Access denied: You do not own this brand' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Brand ownership verified for user:', user.id);
 
     // Resolve Meta account ID (can be provided, or pulled from the brand)
-    let metaAccountId = metaAccountIdFromBody;
-    if (!metaAccountId) {
-      const { data: brand, error: brandError } = await supabase
-        .from('brands')
-        .select('meta_account_id')
-        .eq('id', brandId)
-        .maybeSingle();
-
-      if (brandError) {
-        console.error('Error fetching brand meta_account_id:', brandError);
-      }
-
-      metaAccountId = brand?.meta_account_id ?? undefined;
-    }
+    let metaAccountId = metaAccountIdFromBody || brandData.meta_account_id;
 
     if (!metaAccountId) {
       throw new Error('Meta account not connected. Please select an ad account.');
