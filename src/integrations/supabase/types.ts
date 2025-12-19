@@ -58,6 +58,38 @@ export type Database = {
           },
         ]
       }
+      brand_vault_secrets: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          secret_name: string
+          vault_secret_id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          secret_name: string
+          vault_secret_id: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          secret_name?: string
+          vault_secret_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_vault_secrets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           alert_thresholds: Json | null
