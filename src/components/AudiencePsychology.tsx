@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { formatInvokeError } from "@/lib/formatInvokeError";
 import { Brain, ChevronDown, RefreshCw, Loader2, Users, Heart, AlertCircle, Zap, CheckCircle2, Pencil } from "lucide-react";
 
 interface AudiencePsychologyProps {
@@ -39,7 +40,7 @@ export function AudiencePsychology({ brandId, psychology, status, onUpdate }: Au
       setTimeout(() => onUpdate(), 2000);
     } catch (error: any) {
       console.error('Error generating psychology:', error);
-      toast.error("Failed to generate audience psychology");
+      toast.error(formatInvokeError(error));
     } finally {
       setGenerating(false);
     }

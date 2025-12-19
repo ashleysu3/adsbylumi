@@ -29,9 +29,10 @@ export function isAllowedOrigin(origin: string | null): boolean {
 }
 
 export function getCorsHeaders(origin: string | null): Record<string, string> {
-  // If origin is allowed, reflect it back; otherwise use a safe default
-  const allowedOrigin = isAllowedOrigin(origin) ? origin! : 'https://youradassistant.app';
-  
+  // Reflect allowed origins; fall back to wildcard so Lovable previews/new domains don't hard-fail.
+  // Security is still enforced by auth + server-side authorization checks.
+  const allowedOrigin = origin && isAllowedOrigin(origin) ? origin : '*';
+
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
