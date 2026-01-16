@@ -10,6 +10,7 @@ import { format, subDays, startOfDay, endOfDay, startOfYesterday, endOfYesterday
 import { RefreshCw, Link2Off, CheckCircle2, AlertTriangle, Link2, Download } from 'lucide-react';
 import { InsightsHome } from '@/components/insights/InsightsHome';
 import { CampaignInsightDetail } from '@/components/insights/CampaignInsightDetail';
+import { ResultsEmptyState } from '@/components/insights/ResultsEmptyState';
 import { useLumiAssistant } from '@/components/LumiAssistant';
 import { MetaConnectionAlert, MetaConnectionBanner } from '@/components/MetaConnectionAlert';
 import { ImportCampaignsModal } from '@/components/insights/ImportCampaignsModal';
@@ -703,16 +704,10 @@ export default function Data() {
           />
         )}
 
-        {/* Meta Not Connected Banner */}
-        {!metaConnected && !loading && (
-          <MetaConnectionBanner 
-            type="not_connected" 
-            className="mb-6"
-          />
-        )}
-
         {/* Main Content */}
-        {view === 'home' ? (
+        {!metaConnected && !loading ? (
+          <ResultsEmptyState />
+        ) : view === 'home' ? (
           <InsightsHome
             campaigns={campaigns}
             dateRange={globalDateRange}
