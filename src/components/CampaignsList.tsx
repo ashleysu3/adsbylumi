@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
+import { AdsEmptyState } from "./AdsEmptyState";
 
 interface Campaign {
   id: string;
@@ -213,12 +214,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
       </CardHeader>
       <CardContent className="px-3 md:px-6">
         {campaigns.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">No campaigns yet</p>
-            <Button onClick={() => navigate("/planning")}>
-              Create Your First Campaign
-            </Button>
-          </div>
+          <AdsEmptyState />
         ) : (
           <div className="space-y-3">
             {campaigns.map((campaign) => (
