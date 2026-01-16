@@ -1,12 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, FolderKanban, BarChart3, Settings } from "lucide-react";
+import { Home, FolderKanban, BarChart3, Palette } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { path: "/start", icon: Home, label: "Home", tourId: "start" },
   { path: "/campaigns", icon: FolderKanban, label: "My Ads", tourId: "campaigns" },
+  { path: "/creative-studio", icon: Palette, label: "Creative", tourId: "creative" },
   { path: "/data", icon: BarChart3, label: "Results", tourId: "results" },
-  { path: "/settings", icon: Settings, label: "Settings", tourId: "settings" },
 ];
 
 export function MobileBottomNav() {
