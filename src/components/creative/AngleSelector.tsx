@@ -34,38 +34,33 @@ export function AngleSelector({
     }
   };
 
-  const canContinue = selectedAngles.length >= 3 && selectedAngles.length <= 5;
+  const canContinue = selectedAngles.length >= 1 && selectedAngles.length <= 5;
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="text-center space-y-3 sm:space-y-4">
         <h2 className="text-xl sm:text-2xl font-display font-bold">Choose Your Creative Angles</h2>
         <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto px-2">
-          Select 3–5 angles. Each angle becomes a set of creative ideas.
+          Select up to 5 angles. Each angle becomes a set of creative ideas.
         </p>
         {/* Visual progress indicator with animations */}
         <div className="flex items-center justify-center gap-2">
           {[1, 2, 3, 4, 5].map((slot) => {
             const isFilled = slot <= selectedAngles.length;
-            const isRequired = slot <= 3;
             const isJustFilled = slot === selectedAngles.length;
             return (
               <div
                 key={slot}
                 className={cn(
                   "w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ease-out",
-                  isFilled
-                    ? "bg-primary"
-                    : isRequired
-                    ? "bg-muted-foreground/30 ring-1 ring-muted-foreground/50"
-                    : "bg-muted",
+                  isFilled ? "bg-primary" : "bg-muted",
                   isJustFilled && "animate-[bounce_0.4s_ease-out]",
                   isFilled && "scale-110"
                 )}
                 style={{
                   transitionDelay: isFilled ? `${(slot - 1) * 50}ms` : '0ms'
                 }}
-                title={isRequired ? `Required slot ${slot}` : `Optional slot ${slot}`}
+                title={`Slot ${slot}`}
               />
             );
           })}
@@ -74,7 +69,7 @@ export function AngleSelector({
             selectedAngles.length >= 1 ? "text-primary font-medium" : "text-muted-foreground"
           )}>
             {selectedAngles.length === 0 
-              ? "Pick one"
+              ? "Select at least 1"
               : selectedAngles.length === 5 
               ? "Max" 
               : `${selectedAngles.length}/5`}
