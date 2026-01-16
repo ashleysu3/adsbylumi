@@ -79,6 +79,8 @@ export default function Creative() {
   const [regeneratingCopyId, setRegeneratingCopyId] = useState<string | null>(null);
   const [copySelections, setCopySelections] = useState<Record<string, { headlines: number[]; descriptions: number[]; primary_copy: number[] }>>({});
   const [completedAngles, setCompletedAngles] = useState<Set<string>>(new Set());
+  const [copyGenerating, setCopyGenerating] = useState(false); // Background copy generation state
+  const [isPhase1Flow, setIsPhase1Flow] = useState(false); // Track if user came from simplified /create flow
 
   // Lumi contextual recommendations
   const { setRecommendation } = useLumiAssistant();
@@ -288,6 +290,20 @@ export default function Creative() {
         setProductionItems(creativeData.productionItems || []);
         setAngleCopy(creativeData.angle_copy || {});
         setCopySelections(creativeData.copy_selections || {});
+        
+        // Detect Phase 1 flow - has angles but only 1-2 selected and no grid yet
+        const isFromPhase1 = creativeData.phase1Flow === true && 
+          gridDataNormalized.length === 0 && 
+          (creativeData.selectedAngleIds?.length || 0) < 3;
+        setIsPhase1Flow(isFromPhase1);
+        
+        // Show helpful message for Phase 1 users who need to select more angles
+        if (isFromPhase1 && creativeData.selectedAngleIds?.length > 0) {
+          toast.info(`Select ${3 - (creativeData.selectedAngleIds?.length || 0)} more angles to generate your creative`, {
+            duration: 5000,
+          });
+        }
+        
         setDashboardStep(gridDataNormalized.length > 0 ? "creative_grid" : "select_angles");
         if (creativeData.selectedAngleIds?.length > 0) {
           setActiveAngleId(creativeData.selectedAngleIds[0]);
@@ -418,10 +434,19 @@ export default function Creative() {
       setActiveAngleId(selectedAngleIds[0]);
       setDashboardStep("creative_grid");
       
-      // Generate angle-level copy in background (don't block UI)
-      generateAngleCopy(selectedAngles).catch(err => {
-        console.error("Background copy generation failed:", err);
-      });
+      // Generate angle-level copy in background (with visual feedback)
+      setCopyGenerating(true);
+      generateAngleCopy(selectedAngles)
+        .then(() => {
+          toast.success("Ad copy ready!", { icon: "✨" });
+        })
+        .catch(err => {
+          console.error("Background copy generation failed:", err);
+          toast.error("Copy generation failed. Click 'Generate Copy' to try again.");
+        })
+        .finally(() => {
+          setCopyGenerating(false);
+        });
       
       // Save to workspace
       await saveCreativeState({
@@ -1035,13 +1060,31 @@ export default function Creative() {
                   </div>
                 ) : dashboardStep === "select_angles" ? (
                   /* Step 1: Angle Selection */
-                  <AngleSelector
-                    angles={availableAngles}
-                    selectedAngles={selectedAngleIds}
-                    onSelectionChange={setSelectedAngleIds}
-                    onContinue={generateCreativeGrid}
-                    isGenerating={generating}
-                  />
+                  <div className="space-y-4">
+                    {/* Phase 1 Flow Banner */}
+                    {isPhase1Flow && selectedAngleIds.length > 0 && selectedAngleIds.length < 3 && (
+                      <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30">
+                        <CardContent className="p-4 flex items-start gap-3">
+                          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                            <Sparkles className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Almost there!</p>
+                            <p className="text-sm text-muted-foreground">
+                              You've picked your first angle. Select {3 - selectedAngleIds.length} more to unlock your complete creative set with hooks, scripts, and ad copy.
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    <AngleSelector
+                      angles={availableAngles}
+                      selectedAngles={selectedAngleIds}
+                      onSelectionChange={setSelectedAngleIds}
+                      onContinue={generateCreativeGrid}
+                      isGenerating={generating}
+                    />
+                  </div>
                 ) : (
                   /* Step 2+: Creative Grid with Tabs */
                   <div className="space-y-4">
@@ -1131,6 +1174,26 @@ export default function Creative() {
                         regeneratingCellId={regeneratingCellId}
                         hideAngleNav={true}
                       />
+                    ) : copyGenerating ? (
+                      /* Copy is generating in background */
+                      <Card className="p-8">
+                        <div className="flex flex-col items-center gap-4 text-center">
+                          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg mb-2">Writing Your Ad Copy...</h3>
+                            <p className="text-sm text-muted-foreground max-w-md">
+                              Lumi is crafting headlines, descriptions, and primary copy for each of your angles. This usually takes 15-30 seconds.
+                            </p>
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            <Badge variant="outline" className="animate-pulse">Headlines</Badge>
+                            <Badge variant="outline" className="animate-pulse">Descriptions</Badge>
+                            <Badge variant="outline" className="animate-pulse">Primary Copy</Badge>
+                          </div>
+                        </div>
+                      </Card>
                     ) : (
                       <CopyPreview
                         angles={selectedAngles}
