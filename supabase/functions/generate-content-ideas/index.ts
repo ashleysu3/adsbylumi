@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { brand, offer, ideaType, existingIdeas } = await req.json();
+    const { brand, offer, ideaType, existingIdeas, count = 5 } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -37,7 +37,7 @@ Always explain the psychology behind each idea briefly.`;
       ? `\n\nExisting ideas to avoid duplicating:\n${existingIdeas.map((i: any) => `- ${i.title}`).join('\n')}`
       : '';
 
-    const userPrompt = `Generate 5 ${ideaType || 'creative'} content ideas for this brand and offer:
+    const userPrompt = `Generate ${count} ${ideaType || 'creative'} content idea${count > 1 ? 's' : ''} for this brand and offer:
 
 BRAND:
 - Name: ${brand?.name || 'Unknown'}
@@ -57,7 +57,7 @@ ${offer ? `OFFER:
 ${offer.product_psychology ? `- Psychology: ${JSON.stringify(offer.product_psychology)}` : ''}` : 'No specific offer selected.'}
 ${existingContext}
 
-Return a JSON array with exactly 5 ideas, each with:
+Return a JSON array with exactly ${count} idea${count > 1 ? 's' : ''}, each with:
 - title: A catchy, descriptive title (max 60 chars)
 - content: The full idea/script/concept (detailed but concise)
 - type: One of "hook", "script", "visual", "video", or "idea"
