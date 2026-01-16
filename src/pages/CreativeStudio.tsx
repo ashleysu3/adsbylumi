@@ -23,7 +23,7 @@ import { ProductionManager } from "@/components/creative/ProductionManager";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
 
-type WorkflowTab = "library" | "angles" | "copy_creative" | "build";
+type WorkflowTab = "angles" | "copy_creative" | "build";
 
 interface WorkspaceOption {
   id: string;
@@ -57,7 +57,7 @@ export default function CreativeStudio() {
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>("");
   const [workspace, setWorkspace] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<WorkflowTab>("library");
+  const [activeTab, setActiveTab] = useState<WorkflowTab>("angles");
   const [contentIdeas, setContentIdeas] = useState<any[]>([]);
   
   const [availableAngles, setAvailableAngles] = useState<CreativeAngle[]>([]);
@@ -188,7 +188,6 @@ export default function CreativeStudio() {
   };
 
   const workflowTabs = [
-    { id: "library" as const, label: "Library", icon: Library },
     { id: "angles" as const, label: "Angles", icon: Target },
     { id: "copy_creative" as const, label: "Copy & Creative", icon: FileText },
     { id: "build" as const, label: "Build", icon: Rocket },
@@ -213,21 +212,9 @@ export default function CreativeStudio() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             {workflowTabs.map(t => <TabsTrigger key={t.id} value={t.id} className="gap-2"><t.icon className="h-4 w-4" /><span className="hidden sm:inline">{t.label}</span></TabsTrigger>)}
           </TabsList>
-
-          <TabsContent value="library">
-            <Card><CardContent className="pt-6 text-center py-12">
-              <Library className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Content Library</h3>
-              <p className="text-muted-foreground text-sm mb-6">Save hooks, scripts, and ideas here.</p>
-              <div className="flex justify-center gap-3">
-                <Button variant="outline" onClick={() => navigate("/content-library")}>Open Library</Button>
-                <Button onClick={() => setActiveTab("angles")} className="gap-2">Continue <ArrowRight className="h-4 w-4" /></Button>
-              </div>
-            </CardContent></Card>
-          </TabsContent>
 
           <TabsContent value="angles">
             {!workspace ? (
