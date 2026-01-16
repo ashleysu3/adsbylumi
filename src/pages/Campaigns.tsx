@@ -67,10 +67,10 @@ export default function Campaigns() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight">
-              My <span className="text-gradient-lumi">Campaigns</span>
+              My <span className="text-gradient-lumi">Ads</span>
             </h1>
             <p className="text-muted-foreground mt-2">
-              Loading your campaigns...
+              Loading your ads...
             </p>
           </div>
           <GridShimmer count={4} className="grid-cols-1 md:grid-cols-2" />
@@ -95,12 +95,12 @@ export default function Campaigns() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight">
-              My <span className="text-gradient-lumi">Campaigns</span>
+              My <span className="text-gradient-lumi">Ads</span>
             </h1>
             <p className="text-muted-foreground mt-2">
               {isAddCreativeMode 
-                ? "Select a campaign to add new creative to" 
-                : "Active and draft campaign workspaces"}
+                ? "Select an ad to add new creative to" 
+                : "Your ads in progress and live"}
             </p>
           </div>
           {isAddCreativeMode && (

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Home, Sparkle, Palette, BarChart3, FolderKanban, Shield, LogOut, Settings, Clipboard, Sparkles, LayoutTemplate, Ticket } from "lucide-react";
+import { Home, BarChart3, FolderKanban, Shield, LogOut, Settings, Sparkles, LayoutTemplate, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
@@ -193,27 +193,21 @@ export default function DashboardLayout({
     }
   };
   const tabItems = [{
-    path: "/campaigns",
-    icon: FolderKanban,
-    label: "MY CAMPAIGNS",
+    path: "/start",
+    icon: Home,
+    label: "HOME",
     lightColor: "tab-orange-light",
     darkColor: "tab-orange-dark"
   }, {
-    path: "/creative",
-    icon: Palette,
-    label: "CREATIVE",
+    path: "/campaigns",
+    icon: FolderKanban,
+    label: "MY ADS",
     lightColor: "tab-pink-light",
     darkColor: "tab-pink-dark"
   }, {
-    path: "/production",
-    icon: Clipboard,
-    label: "PRODUCTION",
-    lightColor: "tab-purple-light",
-    darkColor: "tab-purple-dark"
-  }, {
     path: "/data",
     icon: BarChart3,
-    label: "INSIGHTS",
+    label: "RESULTS",
     lightColor: "tab-blue-light",
     darkColor: "tab-blue-dark"
   }];
