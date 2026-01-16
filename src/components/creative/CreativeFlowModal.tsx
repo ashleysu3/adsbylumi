@@ -330,9 +330,9 @@ export function CreativeFlowModal({ open, onOpenChange, workspaceId, onComplete 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* Header with Progress */}
-        <DialogHeader className="p-4 sm:p-6 pb-3 border-b">
+        <DialogHeader className="p-4 sm:p-6 pb-3 border-b shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-lg font-display flex items-center gap-2">
@@ -351,7 +351,7 @@ export function CreativeFlowModal({ open, onOpenChange, workspaceId, onComplete 
         </DialogHeader>
 
         {/* Content */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="p-4 sm:p-6">
           {step === "loading" && (
             <div className="flex items-center justify-center py-12">
