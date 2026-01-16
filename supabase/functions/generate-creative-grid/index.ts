@@ -11,14 +11,24 @@ serve(async (req) => {
   }
 
   try {
-    const { angles, brandName, strategyData, audiencePsychology, offerData } = await req.json();
+    const { 
+      angles, 
+      brandName, 
+      strategyData, 
+      audiencePsychology, 
+      offerData,
+      brandVoice,
+      messagingGuidelines,
+      productPsychology,
+      nicheContext
+    } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Fetch knowledge base
+    // Fetch ALL relevant knowledge base categories
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -27,45 +37,132 @@ serve(async (req) => {
       .from("knowledge_documents")
       .select("*")
       .eq("active", true)
-      .in("category", ["creative_angles", "hooks", "visual_hooks", "copy_frameworks", "scripts"]);
+      .in("category", [
+        "creative_angles", 
+        "hooks", 
+        "visual_hooks", 
+        "copy_frameworks", 
+        "scripts",
+        "psychology",
+        "buyer_psychology",
+        "niche",
+        "niche_knowledge",
+        "meta_best_practices",
+        "creative_department",
+        "ad_planner",
+        "customer_journey",
+        "offer_mapping"
+      ]);
 
     const kbContext = kbDocs?.map(doc => `## ${doc.title}\n${doc.content}`).join("\n\n") || "";
 
-    const systemPrompt = `You are Lumi's Creative Engine. Generate a 3×3 creative grid for each selected angle.
+    // Extract specific pain points and desires for targeted prompting
+    const painPoints = audiencePsychology?.painPoints || audiencePsychology?.pain_points || [];
+    const desires = audiencePsychology?.desires || [];
+    const objections = audiencePsychology?.objections || [];
+    const buyingTriggers = productPsychology?.buying_triggers || productPsychology?.buyingTriggers || [];
+
+    const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts. Your creative MUST be specific, emotionally resonant, and impossible to ignore.
 
 KNOWLEDGE BASE:
 ${kbContext}
 
-GRID STRUCTURE:
+=== CRITICAL RULES: SPECIFICITY IS EVERYTHING ===
+
+❌ BANNED PHRASES (NEVER USE):
+- "Take your X to the next level"
+- "Ready to transform your Y?"
+- "Struggling with X?"
+- "Want to achieve X?"
+- "Tired of X?"
+- "What if you could X?"
+- "Imagine if X"
+- "The secret to X"
+- "Finally, a solution for X"
+- "Stop doing X the hard way"
+- "Unlock your potential"
+- Any hook that could apply to ANY business
+
+✅ WHAT MAKES A HOOK SCROLL-STOPPING:
+- Names a SPECIFIC moment the audience has experienced
+- Uses unexpected specificity (numbers, details, micro-moments)
+- Creates pattern interruption
+- Feels like reading their diary or text messages
+- Is emotionally charged without being salesy
+
+=== EXAMPLE OUTPUT COMPARISON ===
+
+**GENERIC (DO NOT DO THIS):**
+Hook: "Struggling with your business? Watch this."
+Guidance: "Speak confidently to camera about the problem."
+
+**EXCELLENT (DO THIS):**
+Hook: "I used to rehearse my pitch 47 times before a webinar... then bomb anyway."
+Guidance: "Film on phone, looking slightly tired. Quick cuts between 3 frustrated moments. Text overlay: 'You too?' at 2-second mark."
+
+**GENERIC (DO NOT DO THIS):**
+Hook: "Want more clients? Here's how."
+Guidance: "Show testimonials and results."
+
+**EXCELLENT (DO THIS):**
+Hook: "My 3rd discovery call this week. Same objection. 'I need to think about it.' Again."
+Guidance: "POV shot of you hanging up phone, slump in chair. B-roll of empty calendar. Text: 'Sound familiar?'"
+
+**GENERIC (DO NOT DO THIS):**
+Hook: "The key to success is consistency."
+Guidance: "Create motivational graphic."
+
+**EXCELLENT (DO THIS):**  
+Hook: "Day 47. Still 0 sales. Everyone's asking when I'm going back to my 9-5."
+Guidance: "Handwritten note aesthetic, slightly crumpled paper texture. Raw vulnerability. Text appears like it's being typed."
+
+=== GRID STRUCTURE ===
 For each angle, create 9 creative cells organized as:
 
-ROWS (Audience Moment - DO NOT label these in output):
-- Row 1: "attention" - Gets attention, stops the scroll
-- Row 2: "trust" - Builds trust and credibility  
-- Row 3: "action" - Drives toward action
+ROWS (Audience Moment):
+- Row 1: "attention" - Gets attention, stops the scroll with pattern interruption
+- Row 2: "trust" - Builds trust through relatability and proof
+- Row 3: "action" - Drives toward action with urgency or clarity
 
 COLUMNS (Format Diversity):
-- Column 1: "talking_head" - Person speaking to camera
-- Column 2: "broll" - B-roll footage or lofi video
-- Column 3: "graphic" - Static image or graphic
+- Column 1: "talking_head" - Person speaking to camera (vulnerable, real, unpolished)
+- Column 2: "broll" - B-roll footage or lofi video (cinematic micro-moments)
+- Column 3: "graphic" - Static image or graphic (bold, unexpected, thumb-stopping)
 
-RULES:
-- Each cell must have a unique hook and guidance
-- Do NOT reuse the same format twice within a row
-- Write hooks as 1 short, compelling sentence
-- Write guidance as 1 brief execution tip
-- NO marketing jargon, funnel language, or technical terms
-- NO explanations of why something works
-- Write as if telling someone what to film or design next
+=== PSYCHOLOGY INTEGRATION REQUIREMENTS ===
+${painPoints.length > 0 ? `
+AUDIENCE PAIN POINTS TO REFERENCE (use these SPECIFIC phrases):
+${painPoints.map((p: string, i: number) => `${i + 1}. "${p}"`).join('\n')}
+` : ''}
 
-OUTPUT FORMAT:
-Return a JSON object with a "grid" array. Each cell object must have:
+${desires.length > 0 ? `
+AUDIENCE DESIRES TO PROMISE (these are what they WANT):
+${desires.map((d: string, i: number) => `${i + 1}. "${d}"`).join('\n')}
+` : ''}
+
+${objections.length > 0 ? `
+OBJECTIONS TO PREEMPTIVELY ADDRESS:
+${objections.map((o: string, i: number) => `${i + 1}. "${o}"`).join('\n')}
+` : ''}
+
+${buyingTriggers.length > 0 ? `
+BUYING TRIGGERS TO ACTIVATE:
+${buyingTriggers.map((t: string, i: number) => `${i + 1}. "${t}"`).join('\n')}
+` : ''}
+
+=== OUTPUT REQUIREMENTS ===
+Each cell MUST include:
 - id: unique string (e.g., "angle_attention_talking_head")
 - angleId: the angle's id this belongs to
 - row: "attention" | "trust" | "action"
 - format: "talking_head" | "broll" | "graphic"
-- hook: one compelling sentence (the opening idea)
-- guidance: one sentence of execution direction`;
+- hook: One compelling, SPECIFIC sentence that names a micro-moment or specific scenario
+- guidance: Detailed production notes (camera angles, text overlays, timing, mood)
+- psychology_trigger: Which psychological lever this pulls (curiosity, fear, desire, social proof, etc.)
+- pain_point_addressed: Which specific pain point from the list above this targets (or "general" if broad)
+- why_this_works: One sentence explaining the psychology (for the user's education)
+
+Return a JSON object with a "grid" array containing all cells.`;
 
     const anglesDescription = angles.map((a: any) => `- ID: "${a.id}" | Name: ${a.name}: ${a.description}`).join("\n");
 
@@ -73,20 +170,42 @@ Return a JSON object with a "grid" array. Each cell object must have:
 
 ${anglesDescription}
 
-IMPORTANT: Use the exact angle ID (not the name) for the angleId field. For example, if the angle ID is "quick_win_ads", set angleId to "quick_win_ads".
+IMPORTANT: Use the exact angle ID (not the name) for the angleId field.
 
-BRAND: ${brandName}
+=== BRAND CONTEXT ===
+Brand: ${brandName}
+${brandVoice ? `Brand Voice: ${brandVoice}` : ''}
+${nicheContext ? `Industry/Niche: ${nicheContext}` : ''}
 
-OFFER: ${offerData?.name || "Not specified"}
+=== OFFER CONTEXT ===
+Offer: ${offerData?.name || "Not specified"}
 ${offerData?.description ? `Description: ${offerData.description}` : ""}
 ${offerData?.price ? `Price: ${offerData.price}` : ""}
+${offerData?.url ? `URL: ${offerData.url}` : ""}
 
-STRATEGY CONTEXT:
+${messagingGuidelines ? `=== MESSAGING GUIDELINES ===
+${JSON.stringify(messagingGuidelines, null, 2)}` : ''}
+
+${productPsychology ? `=== PRODUCT PSYCHOLOGY ===
+${JSON.stringify(productPsychology, null, 2)}` : ''}
+
+=== STRATEGY CONTEXT ===
 ${JSON.stringify(strategyData, null, 2)}
 
-${audiencePsychology ? `AUDIENCE INSIGHTS:\n${JSON.stringify(audiencePsychology, null, 2)}` : ""}
+${audiencePsychology ? `=== FULL AUDIENCE PSYCHOLOGY ===
+${JSON.stringify(audiencePsychology, null, 2)}` : ""}
 
-Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length} angles = ${angles.length * 9} total cells).`;
+=== YOUR TASK ===
+Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length} angles = ${angles.length * 9} total cells).
+
+Remember:
+1. Each hook must be SPECIFIC - name a micro-moment, use numbers, reference real scenarios
+2. Each guidance must include production details (camera, timing, overlays)
+3. Draw directly from the pain points and desires listed above
+4. NO GENERIC HOOKS - if it could apply to any business, rewrite it
+5. Make it feel like you've read their journal`;
+
+    console.log("Generating creative grid with enriched context for", angles.length, "angles");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -139,7 +258,6 @@ Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length}
     const parsed = extractJson(rawContent);
 
     // Post-process to ensure angleId matches actual angle IDs
-    // The AI sometimes uses angle names instead of IDs
     const angleIdMap = new Map<string, string>();
     for (const angle of angles) {
       angleIdMap.set(angle.name.toLowerCase(), angle.id);
@@ -153,9 +271,15 @@ Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length}
         if (correctedId) {
           cell.angleId = correctedId;
         }
+        // Ensure new fields have defaults if AI didn't include them
+        cell.psychology_trigger = cell.psychology_trigger || "curiosity";
+        cell.pain_point_addressed = cell.pain_point_addressed || "general";
+        cell.why_this_works = cell.why_this_works || "";
         return cell;
       });
     }
+
+    console.log("Successfully generated", parsed.grid?.length || 0, "creative cells");
 
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

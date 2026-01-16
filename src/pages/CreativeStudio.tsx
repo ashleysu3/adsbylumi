@@ -153,8 +153,42 @@ export default function CreativeStudio() {
     setGenerating(true); setGeneratingPhase("grid");
     try {
       const angles = availableAngles.filter(a => selectedAngleIds.includes(a.id));
+      
+      // Get offer data for messaging guidelines and product psychology
+      let messagingGuidelines = null;
+      let productPsychology = null;
+      
+      if (workspace.offer_id) {
+        const { data: offerData } = await supabase
+          .from('offers')
+          .select('messaging_guidelines, product_psychology')
+          .eq('id', workspace.offer_id)
+          .single();
+        
+        if (offerData) {
+          messagingGuidelines = offerData.messaging_guidelines;
+          productPsychology = offerData.product_psychology;
+        }
+      }
+      
       const { data, error } = await supabase.functions.invoke('generate-creative-grid', {
-        body: { angles, brandName: workspace.brands?.name, strategyData: workspace.strategy_json, audiencePsychology: workspace.brands?.audience_psychology, offerData: { name: workspace.offer_name, description: workspace.offer_description, price: workspace.offer_price } }
+        body: { 
+          angles, 
+          brandName: workspace.brands?.name, 
+          strategyData: workspace.strategy_json, 
+          audiencePsychology: workspace.brands?.audience_psychology, 
+          offerData: { 
+            name: workspace.offer_name, 
+            description: workspace.offer_description, 
+            price: workspace.offer_price,
+            url: workspace.offer_url
+          },
+          // New enriched context
+          brandVoice: workspace.brands?.brand_voice,
+          messagingGuidelines,
+          productPsychology,
+          nicheContext: workspace.brands?.industry
+        }
       });
       if (error) throw error;
       setGridData(data.grid);
