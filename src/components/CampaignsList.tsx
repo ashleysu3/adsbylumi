@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { AdsEmptyState } from "./AdsEmptyState";
+import { CampaignDetailDrawer } from "./CampaignDetailDrawer";
 
 interface Campaign {
   id: string;
@@ -37,6 +38,8 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
   const [showArchived, setShowArchived] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [campaignToArchive, setCampaignToArchive] = useState<Campaign | null>(null);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
 
   useEffect(() => {
     fetchCampaigns();
@@ -238,7 +241,9 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={(e) => {
                         if (!addCreativeMode) {
-                          navigate(getNavigationRoute(campaign));
+                          e.stopPropagation();
+                          setSelectedCampaignId(campaign.id);
+                          setDetailDrawerOpen(true);
                         }
                       }}
                     >
@@ -307,7 +312,11 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0"
-                          onClick={() => navigate(getNavigationRoute(campaign))}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCampaignId(campaign.id);
+                            setDetailDrawerOpen(true);
+                          }}
                         >
                           <ArrowRight className="h-5 w-5 text-muted-foreground" />
                         </Button>
@@ -346,6 +355,13 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Campaign Detail Drawer */}
+      <CampaignDetailDrawer
+        open={detailDrawerOpen}
+        onOpenChange={setDetailDrawerOpen}
+        campaignId={selectedCampaignId}
+      />
     </Card>
   );
 }
