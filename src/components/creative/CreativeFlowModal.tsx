@@ -351,7 +351,8 @@ export function CreativeFlowModal({ open, onOpenChange, workspaceId, onComplete 
         </DialogHeader>
 
         {/* Content */}
-        <ScrollArea className="flex-1 p-4 sm:p-6">
+        <ScrollArea className="flex-1">
+          <div className="p-4 sm:p-6">
           {step === "loading" && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -616,6 +617,7 @@ export function CreativeFlowModal({ open, onOpenChange, workspaceId, onComplete 
               </div>
             </div>
           )}
+          </div>
         </ScrollArea>
 
         {/* Footer */}
