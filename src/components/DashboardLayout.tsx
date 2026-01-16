@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Home, BarChart3, FolderKanban, Shield, LogOut, Settings, Sparkles, LayoutTemplate, Ticket } from "lucide-react";
+import { Home, BarChart3, FolderKanban, Shield, LogOut, Settings, Sparkles, LayoutTemplate, Ticket, Library } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
@@ -325,6 +325,10 @@ export default function DashboardLayout({
                       </DropdownMenuItem>
                     </>}
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/content-library")}>
+                    <Library className="mr-2 h-4 w-4" />
+                    Content Library
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
                     Settings

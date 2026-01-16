@@ -395,6 +395,60 @@ export type Database = {
           },
         ]
       }
+      content_ideas: {
+        Row: {
+          brand_id: string
+          content: string | null
+          created_at: string
+          id: string
+          offer_id: string | null
+          status: string
+          tags: string[] | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          status?: string
+          tags?: string[] | null
+          title: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          offer_id?: string | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_ideas_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_ideas_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invite_codes: {
         Row: {
           active: boolean | null
