@@ -207,7 +207,7 @@ export default function DashboardLayout({
   }, {
     path: "/creative-studio",
     icon: Sparkles,
-    label: "CREATIVE",
+    label: "CREATIVE STUDIO",
     lightColor: "tab-purple-light",
     darkColor: "tab-purple-dark"
   }, {
