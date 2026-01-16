@@ -22,6 +22,7 @@ import Data from "./pages/Data";
 import Production from "./pages/Production";
 import WorkspaceRedirect from "./pages/WorkspaceRedirect";
 import CampaignBuilder from "./pages/CampaignBuilder";
+import { Navigate } from "react-router-dom";
 import Campaigns from "./pages/Campaigns";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import AdminKnowledge from "./pages/admin/Knowledge";
@@ -68,10 +69,10 @@ const App = () => {
                   <Route path="/start" element={<Start />} />
                   <Route path="/create" element={<Create />} />
                   <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/planning" element={<Planning />} />
-                  <Route path="/creative" element={<Creative />} />
+                  <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
+                  <Route path="/creative" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/data" element={<Data />} />
-                  <Route path="/production" element={<Production />} />
+                  <Route path="/production" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/campaigns" element={<Campaigns />} />
                   <Route path="/workspace/:workspaceId" element={<WorkspaceRedirect />} />
                   <Route path="/campaigns/build" element={<CampaignBuilder />} />
