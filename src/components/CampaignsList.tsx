@@ -361,6 +361,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
         open={detailDrawerOpen}
         onOpenChange={setDetailDrawerOpen}
         campaignId={selectedCampaignId}
+        onUpdate={fetchCampaigns}
       />
     </Card>
   );
