@@ -14,6 +14,8 @@ import Waitlist from "./pages/Waitlist";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
+import Start from "./pages/Start";
+import Create from "./pages/Create";
 import Planning from "./pages/Planning";
 import Creative from "./pages/Creative";
 import Data from "./pages/Data";
@@ -63,6 +65,8 @@ const App = () => {
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/start" element={<Start />} />
+                  <Route path="/create" element={<Create />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/planning" element={<Planning />} />
                   <Route path="/creative" element={<Creative />} />
