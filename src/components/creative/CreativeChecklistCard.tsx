@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Video, Film, Image, ChevronDown, ChevronUp, 
-  Upload, Eye, CheckCircle2, AlertCircle, Trash2
+  Upload, Eye, CheckCircle2, AlertCircle, Trash2, Maximize2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductionItem } from "./ProductionChecklistPanel";
@@ -24,6 +24,7 @@ interface CreativeChecklistCardProps {
   onUploadClick: () => void;
   onRemove: () => void;
   onPreview?: (asset: any) => void;
+  onAdPreview?: () => void;
 }
 
 export function CreativeChecklistCard({ 
@@ -31,7 +32,8 @@ export function CreativeChecklistCard({
   uploadedAsset, 
   onUploadClick, 
   onRemove,
-  onPreview 
+  onPreview,
+  onAdPreview 
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const Icon = formatIcons[item.format as keyof typeof formatIcons] || Image;
@@ -157,11 +159,22 @@ export function CreativeChecklistCard({
               </div>
               
               {/* Actions */}
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center">
+                {onAdPreview && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2"
+                    onClick={onAdPreview}
+                  >
+                    <Maximize2 className="h-4 w-4" />
+                    Preview Ad
+                  </Button>
+                )}
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive hover:text-destructive ml-auto"
                   onClick={onRemove}
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
