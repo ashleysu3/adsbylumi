@@ -71,10 +71,10 @@ export function AngleSelector({
           })}
           <span className={cn(
             "ml-2 text-xs sm:text-sm transition-colors duration-200",
-            selectedAngles.length >= 3 ? "text-primary font-medium" : "text-muted-foreground"
+            selectedAngles.length >= 1 ? "text-primary font-medium" : "text-muted-foreground"
           )}>
-            {selectedAngles.length < 3 
-              ? `${3 - selectedAngles.length} more`
+            {selectedAngles.length === 0 
+              ? "Pick one"
               : selectedAngles.length === 5 
               ? "Max" 
               : `${selectedAngles.length}/5`}

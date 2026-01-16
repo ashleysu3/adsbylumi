@@ -165,11 +165,11 @@ export default function Creative() {
         title: "Love What You See?",
         message: "Click the ✓ on any concept to add it to your production checklist. Aim for at least 3!",
       });
-    } else if (availableAngles.length > 0 && selectedAngleIds.length < 3) {
+    } else if (availableAngles.length > 0 && selectedAngleIds.length === 0) {
       setRecommendation({
         id: "creative-select-angles",
-        title: "Pick Your Angles",
-        message: "Select at least 3 creative angles to generate your unique ad concepts.",
+        title: "Pick Your Angle",
+        message: "Select a creative angle to generate your unique ad concepts.",
       });
     } else if (workspace && !availableAngles.length) {
       setRecommendation({
@@ -291,18 +291,9 @@ export default function Creative() {
         setAngleCopy(creativeData.angle_copy || {});
         setCopySelections(creativeData.copy_selections || {});
         
-        // Detect Phase 1 flow - has angles but only 1-2 selected and no grid yet
-        const isFromPhase1 = creativeData.phase1Flow === true && 
-          gridDataNormalized.length === 0 && 
-          (creativeData.selectedAngleIds?.length || 0) < 3;
+        // Detect Phase 1 flow - has angles from simplified /create wizard
+        const isFromPhase1 = creativeData.phase1Flow === true && gridDataNormalized.length === 0;
         setIsPhase1Flow(isFromPhase1);
-        
-        // Show helpful message for Phase 1 users who need to select more angles
-        if (isFromPhase1 && creativeData.selectedAngleIds?.length > 0) {
-          toast.info(`Select ${3 - (creativeData.selectedAngleIds?.length || 0)} more angles to generate your creative`, {
-            duration: 5000,
-          });
-        }
         
         setDashboardStep(gridDataNormalized.length > 0 ? "creative_grid" : "select_angles");
         if (creativeData.selectedAngleIds?.length > 0) {
@@ -404,8 +395,8 @@ export default function Creative() {
   };
 
   const generateCreativeGrid = async () => {
-    if (selectedAngleIds.length < 3) {
-      toast.error("Please select at least 3 angles");
+    if (selectedAngleIds.length === 0) {
+      toast.error("Please select at least 1 angle");
       return;
     }
 
@@ -1061,22 +1052,6 @@ export default function Creative() {
                 ) : dashboardStep === "select_angles" ? (
                   /* Step 1: Angle Selection */
                   <div className="space-y-4">
-                    {/* Phase 1 Flow Banner */}
-                    {isPhase1Flow && selectedAngleIds.length > 0 && selectedAngleIds.length < 3 && (
-                      <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30">
-                        <CardContent className="p-4 flex items-start gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                            <Sparkles className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">Almost there!</p>
-                            <p className="text-sm text-muted-foreground">
-                              You've picked your first angle. Select {3 - selectedAngleIds.length} more to unlock your complete creative set with hooks, scripts, and ad copy.
-                            </p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
                     <AngleSelector
                       angles={availableAngles}
                       selectedAngles={selectedAngleIds}
