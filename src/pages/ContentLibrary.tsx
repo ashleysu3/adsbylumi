@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plus, Search, Lightbulb, FileText, Video, Image, 
   Sparkles, MoreHorizontal, Edit2, Trash2, FolderOpen,
-  Filter, Tag, Wand2, Check, X, Loader2, Brain
+  Filter, Tag, Wand2, Check, X, Loader2, Brain, RefreshCw, CheckCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -276,7 +276,7 @@ export default function ContentLibrary() {
     }
   };
 
-  const saveAiIdea = async (suggestion: any) => {
+  const saveAiIdea = async (suggestion: any, index: number) => {
     try {
       const payload = {
         brand_id: brand.id,
@@ -292,11 +292,80 @@ export default function ContentLibrary() {
       if (error) throw error;
 
       toast.success("Idea saved to library!");
-      setAiSuggestions(prev => prev.filter(s => s.title !== suggestion.title));
+      setAiSuggestions(prev => prev.filter((_, i) => i !== index));
       fetchData();
     } catch (error: any) {
       console.error("Error saving AI idea:", error);
       toast.error("Failed to save idea");
+    }
+  };
+
+  const saveAllAiIdeas = async () => {
+    if (aiSuggestions.length === 0) return;
+    
+    try {
+      const payloads = aiSuggestions.map(suggestion => ({
+        brand_id: brand.id,
+        title: suggestion.title,
+        content: `${suggestion.content}\n\n---\n🧠 Psychology: ${suggestion.psychology}`,
+        type: suggestion.type,
+        offer_id: aiOfferId || null,
+        tags: suggestion.tags || [],
+        status: "idea",
+      }));
+
+      const { error } = await supabase.from("content_ideas").insert(payloads);
+      if (error) throw error;
+
+      toast.success(`${aiSuggestions.length} ideas saved to library!`);
+      setAiSuggestions([]);
+      fetchData();
+    } catch (error: any) {
+      console.error("Error saving all ideas:", error);
+      toast.error("Failed to save ideas");
+    }
+  };
+
+  const regenerateSingleIdea = async (index: number) => {
+    setAiSuggestions(prev => prev.map((s, i) => i === index ? { ...s, regenerating: true } : s));
+    
+    try {
+      let offerData = null;
+      if (aiOfferId) {
+        const { data } = await supabase
+          .from("offers")
+          .select("*")
+          .eq("id", aiOfferId)
+          .single();
+        offerData = data;
+      }
+
+      // Get current suggestions to avoid duplicates
+      const currentTitles = aiSuggestions.map(s => s.title);
+      const existingToAvoid = [...ideas.slice(0, 20), ...aiSuggestions.map(s => ({ title: s.title }))];
+
+      const { data, error } = await supabase.functions.invoke("generate-content-ideas", {
+        body: {
+          brand,
+          offer: offerData,
+          ideaType: aiSuggestions[index]?.type || aiIdeaType,
+          existingIdeas: existingToAvoid,
+          count: 1,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const newIdea = data.ideas?.[0];
+      if (newIdea) {
+        setAiSuggestions(prev => prev.map((s, i) => i === index ? newIdea : s));
+        toast.success("Idea regenerated!");
+      }
+    } catch (error: any) {
+      console.error("Error regenerating idea:", error);
+      toast.error("Failed to regenerate idea");
+      setAiSuggestions(prev => prev.map((s, i) => i === index ? { ...s, regenerating: false } : s));
     }
   };
 
@@ -686,38 +755,68 @@ export default function ContentLibrary() {
                 <p className="text-sm text-muted-foreground">
                   {aiSuggestions.length} idea{aiSuggestions.length !== 1 ? 's' : ''} generated
                 </p>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={generateAiIdeas}
-                  disabled={aiGenerating}
-                >
-                  {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Regenerate"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={saveAllAiIdeas}
+                    disabled={aiSuggestions.length === 0}
+                    className="gap-1"
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" />
+                    Save All
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={generateAiIdeas}
+                    disabled={aiGenerating}
+                  >
+                    {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Regenerate All"}
+                  </Button>
+                </div>
               </div>
               
               {aiSuggestions.map((suggestion, index) => {
                 const typeConfig = IDEA_TYPES.find(t => t.value === suggestion.type) || IDEA_TYPES[4];
                 const TypeIcon = typeConfig.icon;
+                const isRegenerating = suggestion.regenerating;
                 
                 return (
-                  <Card key={index} className="overflow-hidden">
+                  <Card key={index} className={cn("overflow-hidden transition-opacity", isRegenerating && "opacity-50")}>
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className={cn("p-1.5 rounded", typeConfig.color)}>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className={cn("p-1.5 rounded shrink-0", typeConfig.color)}>
                             <TypeIcon className="h-3.5 w-3.5" />
                           </div>
-                          <h4 className="font-medium text-sm">{suggestion.title}</h4>
+                          <h4 className="font-medium text-sm truncate">{suggestion.title}</h4>
                         </div>
-                        <Button 
-                          size="sm" 
-                          onClick={() => saveAiIdea(suggestion)}
-                          className="gap-1 shrink-0"
-                        >
-                          <Check className="h-3 w-3" />
-                          Save
-                        </Button>
+                        <div className="flex gap-1 shrink-0">
+                          <Button 
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => regenerateSingleIdea(index)}
+                            disabled={isRegenerating}
+                            className="h-8 w-8 p-0"
+                            title="Regenerate this idea"
+                          >
+                            {isRegenerating ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            onClick={() => saveAiIdea(suggestion, index)}
+                            className="gap-1"
+                            disabled={isRegenerating}
+                          >
+                            <Check className="h-3 w-3" />
+                            Save
+                          </Button>
+                        </div>
                       </div>
                       
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-3">
