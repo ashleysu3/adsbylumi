@@ -57,10 +57,18 @@ serve(async (req) => {
     const kbContext = kbDocs?.map(doc => `## ${doc.title}\n${doc.content}`).join("\n\n") || "";
 
     // Extract specific pain points and desires for targeted prompting
-    const painPoints = audiencePsychology?.painPoints || audiencePsychology?.pain_points || [];
-    const desires = audiencePsychology?.desires || [];
-    const objections = audiencePsychology?.objections || [];
-    const buyingTriggers = productPsychology?.buying_triggers || productPsychology?.buyingTriggers || [];
+    // Ensure all are arrays - data might be stored in various formats
+    const ensureArray = (val: unknown): string[] => {
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') return [val];
+      if (val && typeof val === 'object') return Object.values(val).filter(v => typeof v === 'string') as string[];
+      return [];
+    };
+    
+    const painPoints = ensureArray(audiencePsychology?.painPoints || audiencePsychology?.pain_points);
+    const desires = ensureArray(audiencePsychology?.desires);
+    const objections = ensureArray(audiencePsychology?.objections);
+    const buyingTriggers = ensureArray(productPsychology?.buying_triggers || productPsychology?.buyingTriggers);
 
     const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts. Your creative MUST be specific, emotionally resonant, and impossible to ignore.
 
