@@ -20,6 +20,7 @@ import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelecto
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { ProductionManager } from "@/components/creative/ProductionManager";
+import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
 
 type WorkflowTab = "library" | "angles" | "copy_creative" | "build";
@@ -50,6 +51,7 @@ const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "
 export default function CreativeStudio() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { showExplainer, closeExplainer } = useCreativeStudioExplainer();
   
   const [loading, setLoading] = useState(true);
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
@@ -311,6 +313,7 @@ export default function CreativeStudio() {
         </Tabs>
       </div>
       <GeneratingModal isOpen={generating} steps={generatingPhase === "angles" ? angleGenerationSteps : gridGenerationSteps} title={generatingPhase === "angles" ? "Generating Angles" : "Creating Concepts"} />
+      <CreativeStudioExplainer open={showExplainer} onClose={closeExplainer} />
     </DashboardLayout>
   );
 }
