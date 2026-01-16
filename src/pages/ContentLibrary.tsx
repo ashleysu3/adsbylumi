@@ -427,9 +427,14 @@ export default function ContentLibrary() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => navigate("/creative")} variant="outline" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Generate Angles & Ideas</span>
+              <span className="sm:hidden">Angles</span>
+            </Button>
             <Button onClick={openAiDialog} variant="outline" className="gap-2">
               <Wand2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Generate with AI</span>
+              <span className="hidden sm:inline">Quick Ideas</span>
               <span className="sm:hidden">AI</span>
             </Button>
             <Button onClick={openNewDialog} className="gap-2">

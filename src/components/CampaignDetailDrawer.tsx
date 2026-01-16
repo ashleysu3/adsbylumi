@@ -24,7 +24,8 @@ import {
   RefreshCw,
   Pencil,
   Check,
-  X
+  X,
+  Lightbulb
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -522,7 +523,18 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
         ) : null}
 
         {/* Footer Actions */}
-        <div className="pt-4 border-t mt-auto">
+        <div className="pt-4 border-t mt-auto space-y-2">
+          <Button 
+            onClick={() => {
+              navigate(`/creative?workspace=${workspace?.id}`);
+              onOpenChange(false);
+            }} 
+            className="w-full gap-2"
+            variant="outline"
+          >
+            <Lightbulb className="h-4 w-4" />
+            Generate Angles & Ideas
+          </Button>
           <Button 
             onClick={handleContinue} 
             className="w-full gap-2"
