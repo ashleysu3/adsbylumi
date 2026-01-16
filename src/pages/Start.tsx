@@ -121,13 +121,10 @@ export default function Start() {
           transition={{ duration: 0.5 }}
           className="text-center mb-8"
         >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <img 
-              src={lumiLogo} 
-              alt="Lumi" 
-              className="h-12 w-12 rounded-full"
-            />
-            <Sparkles className="h-5 w-5 text-lumi-pink-1 animate-pulse" />
+          <div className="flex items-center justify-center mb-4">
+            <div className="h-14 w-14 rounded-full bg-gradient-to-br from-lumi-orange-1/20 via-lumi-pink-1/20 to-lumi-purple-1/20 flex items-center justify-center">
+              <Sparkles className="h-7 w-7 text-lumi-pink-1 animate-pulse" />
+            </div>
           </div>
           <h1 className="text-3xl md:text-4xl font-display font-bold mb-2">
             What do you want to do today?
