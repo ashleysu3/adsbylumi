@@ -30,6 +30,7 @@ import { StatusFilter } from './StatusFilter';
 import { AccountOverview } from './AccountOverview';
 import { LinkOfferModal } from './LinkOfferModal';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
+import { MobileKPICarousel } from './MobileKPICarousel';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CampaignMetrics {
@@ -305,108 +306,154 @@ export function InsightsHome({
                       </div>
                     </div>
 
-                    {/* Metrics Row */}
-                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 lg:gap-8">
-                      {/* KPI Value with Progress */}
-                      <div className="space-y-1.5 min-w-[100px] sm:min-w-[140px]">
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                          {kpiConfig.primaryLabel}
-                        </p>
-                        <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                          {formatLumiKPIValue(primaryValue, kpiConfig.primary)}
-                        </p>
-                        {/* Trend Indicator */}
-                        <KPITrendIndicator
-                          currentValue={primaryValue}
-                          previousValue={getPrimaryKPIValue(campaign.previousMetrics || null, kpiConfig.primary)}
-                          kpiKey={kpiConfig.primary}
-                        />
-                        {/* Progress Bar */}
-                        <KPIProgressBar
-                          value={primaryValue}
-                          benchmark={kpiConfig.benchmark}
-                          userGoal={campaign.userGoal}
-                          kpiKey={kpiConfig.primary}
-                          className="w-24 sm:w-32"
-                        />
-                      </div>
-
-                      {/* Benchmark */}
-                      <div className="space-y-1">
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                          Benchmark
-                        </p>
-                        <p className="text-base sm:text-lg text-muted-foreground">
-                          {formatBenchmarkRange(kpiConfig.benchmark)}
-                        </p>
-                      </div>
-
-                      {/* User Goal (Editable) */}
-                      <div className="space-y-1">
-                        <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                          Your Goal
-                        </p>
-                        {editingGoal === campaign.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={goalValue}
-                              onChange={(e) => setGoalValue(e.target.value)}
-                              className="w-20 sm:w-24 h-8 rounded-lg text-base sm:text-lg"
-                              placeholder="$0.00"
-                              autoFocus
-                            />
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-8 w-8 text-green-600"
-                              onClick={() => handleSaveGoal(campaign.id)}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              size="icon" 
-                              variant="ghost" 
-                              className="h-8 w-8 text-muted-foreground"
-                              onClick={handleCancelEdit}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleStartEditGoal(campaign.id, campaign.userGoal)}
-                            className="flex items-center gap-2 text-base sm:text-lg text-muted-foreground hover:text-foreground transition-colors group"
-                          >
-                            {campaign.userGoal ? (
-                              <span>
-                                {kpiConfig.benchmark.unit === 'x' 
-                                  ? `${campaign.userGoal.toFixed(2)}x` 
-                                  : `${kpiConfig.benchmark.unit}${campaign.userGoal.toFixed(2)}`
-                                }
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground/50">Set goal</span>
-                            )}
-                            <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Status Badge */}
-                      <Badge 
-                        variant="outline"
-                        className={`
-                          rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium border flex-shrink-0
-                          ${status === 'healthy' ? 'bg-green-50 text-green-700 border-green-200' : ''}
-                          ${status === 'attention' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
-                          ${status === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : ''}
-                          ${status === 'no-data' ? 'bg-gray-50 text-gray-600 border-gray-200' : ''}
+                    {/* Metrics - Desktop vs Mobile */}
+                    {isMobile ? (
+                      /* Mobile: Swipeable KPI Carousel */
+                      <MobileKPICarousel
+                        slides={[
+                          {
+                            label: kpiConfig.primaryLabel,
+                            value: primaryValue,
+                            kpiKey: kpiConfig.primary,
+                            benchmark: kpiConfig.benchmark,
+                            userGoal: campaign.userGoal,
+                            previousValue: getPrimaryKPIValue(campaign.previousMetrics || null, kpiConfig.primary),
+                          },
+                          // Add secondary KPIs based on campaign type
+                          ...(campaign.metrics?.spend !== undefined ? [{
+                            label: 'Spend',
+                            value: campaign.metrics.spend,
+                            kpiKey: 'spend',
+                            benchmark: { min: 0, max: 1000, unit: '$' },
+                            previousValue: campaign.previousMetrics?.spend || null,
+                          }] : []),
+                          ...(campaign.metrics?.impressions !== undefined ? [{
+                            label: 'Impressions',
+                            value: campaign.metrics.impressions,
+                            kpiKey: 'impressions',
+                            benchmark: { min: 1000, max: 10000, unit: '' },
+                            previousValue: campaign.previousMetrics?.impressions || null,
+                          }] : []),
+                          ...(campaign.metrics?.clicks !== undefined ? [{
+                            label: 'Clicks',
+                            value: campaign.metrics.clicks,
+                            kpiKey: 'clicks',
+                            benchmark: { min: 50, max: 500, unit: '' },
+                            previousValue: campaign.previousMetrics?.clicks || null,
+                          }] : []),
+                        ]}
+                        statusLabel={statusLabel}
+                        statusColor={`
+                          ${status === 'healthy' ? 'bg-green-50 text-green-700' : ''}
+                          ${status === 'attention' ? 'bg-amber-50 text-amber-700' : ''}
+                          ${status === 'critical' ? 'bg-red-50 text-red-700' : ''}
+                          ${status === 'no-data' ? 'bg-gray-50 text-gray-600' : ''}
                         `}
-                      >
-                        {statusLabel}
-                      </Badge>
-                    </div>
+                      />
+                    ) : (
+                      /* Desktop: Horizontal metrics row */
+                      <div className="flex flex-wrap items-center gap-4 sm:gap-6 lg:gap-8">
+                        {/* KPI Value with Progress */}
+                        <div className="space-y-1.5 min-w-[100px] sm:min-w-[140px]">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                            {kpiConfig.primaryLabel}
+                          </p>
+                          <p className="text-2xl sm:text-3xl font-bold text-foreground">
+                            {formatLumiKPIValue(primaryValue, kpiConfig.primary)}
+                          </p>
+                          {/* Trend Indicator */}
+                          <KPITrendIndicator
+                            currentValue={primaryValue}
+                            previousValue={getPrimaryKPIValue(campaign.previousMetrics || null, kpiConfig.primary)}
+                            kpiKey={kpiConfig.primary}
+                          />
+                          {/* Progress Bar */}
+                          <KPIProgressBar
+                            value={primaryValue}
+                            benchmark={kpiConfig.benchmark}
+                            userGoal={campaign.userGoal}
+                            kpiKey={kpiConfig.primary}
+                            className="w-24 sm:w-32"
+                          />
+                        </div>
+
+                        {/* Benchmark */}
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                            Benchmark
+                          </p>
+                          <p className="text-base sm:text-lg text-muted-foreground">
+                            {formatBenchmarkRange(kpiConfig.benchmark)}
+                          </p>
+                        </div>
+
+                        {/* User Goal (Editable) */}
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                            Your Goal
+                          </p>
+                          {editingGoal === campaign.id ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                value={goalValue}
+                                onChange={(e) => setGoalValue(e.target.value)}
+                                className="w-20 sm:w-24 h-8 rounded-lg text-base sm:text-lg"
+                                placeholder="$0.00"
+                                autoFocus
+                              />
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 text-green-600"
+                                onClick={() => handleSaveGoal(campaign.id)}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 text-muted-foreground"
+                                onClick={handleCancelEdit}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleStartEditGoal(campaign.id, campaign.userGoal)}
+                              className="flex items-center gap-2 text-base sm:text-lg text-muted-foreground hover:text-foreground transition-colors group"
+                            >
+                              {campaign.userGoal ? (
+                                <span>
+                                  {kpiConfig.benchmark.unit === 'x' 
+                                    ? `${campaign.userGoal.toFixed(2)}x` 
+                                    : `${kpiConfig.benchmark.unit}${campaign.userGoal.toFixed(2)}`
+                                  }
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground/50">Set goal</span>
+                              )}
+                              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Status Badge */}
+                        <Badge 
+                          variant="outline"
+                          className={`
+                            rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium border flex-shrink-0
+                            ${status === 'healthy' ? 'bg-green-50 text-green-700 border-green-200' : ''}
+                            ${status === 'attention' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
+                            ${status === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                            ${status === 'no-data' ? 'bg-gray-50 text-gray-600 border-gray-200' : ''}
+                          `}
+                        >
+                          {statusLabel}
+                        </Badge>
+                      </div>
+                    )}
 
                     {/* Actions Row */}
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-2 border-t border-border/50">
