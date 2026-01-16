@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { CreativeFlowModal } from "@/components/creative/CreativeFlowModal";
 
 type ContentIdea = {
   id: string;
@@ -81,6 +82,12 @@ export default function ContentLibrary() {
   const [aiOfferId, setAiOfferId] = useState<string>("");
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
 
+  // Creative flow modal state
+  const [creativeModalOpen, setCreativeModalOpen] = useState(false);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [campaignSelectOpen, setCampaignSelectOpen] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -106,8 +113,8 @@ export default function ContentLibrary() {
 
       setBrand(brandData);
 
-      // Fetch offers and ideas in parallel
-      const [offersRes, ideasRes] = await Promise.all([
+      // Fetch offers, ideas, and campaigns in parallel
+      const [offersRes, ideasRes, campaignsRes] = await Promise.all([
         supabase
           .from("offers")
           .select("id, name")
@@ -119,16 +126,43 @@ export default function ContentLibrary() {
           .select("*")
           .eq("brand_id", brandData.id)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("campaign_workspaces")
+          .select("id, name, offer_name, progress_status, strategy_json")
+          .eq("brand_id", brandData.id)
+          .not("strategy_json", "is", null)
+          .order("updated_at", { ascending: false })
+          .limit(20),
       ]);
 
       if (offersRes.data) setOffers(offersRes.data);
       if (ideasRes.data) setIdeas(ideasRes.data as ContentIdea[]);
+      if (campaignsRes.data) setCampaigns(campaignsRes.data);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load content library");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenCreativeFlow = () => {
+    if (campaigns.length === 0) {
+      toast.error("No campaigns with strategy found. Create a campaign first.");
+      return;
+    }
+    if (campaigns.length === 1) {
+      setSelectedCampaignId(campaigns[0].id);
+      setCreativeModalOpen(true);
+    } else {
+      setCampaignSelectOpen(true);
+    }
+  };
+
+  const handleSelectCampaignForCreative = (campaignId: string) => {
+    setSelectedCampaignId(campaignId);
+    setCampaignSelectOpen(false);
+    setCreativeModalOpen(true);
   };
 
   const openNewDialog = () => {
@@ -427,7 +461,7 @@ export default function ContentLibrary() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => navigate("/creative")} variant="outline" className="gap-2">
+            <Button onClick={handleOpenCreativeFlow} variant="outline" className="gap-2">
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Generate Angles & Ideas</span>
               <span className="sm:hidden">Angles</span>
@@ -858,6 +892,38 @@ export default function ContentLibrary() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Campaign Select Dialog */}
+      <Dialog open={campaignSelectOpen} onOpenChange={setCampaignSelectOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select a Campaign</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {campaigns.map((campaign) => (
+              <Card
+                key={campaign.id}
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => handleSelectCampaignForCreative(campaign.id)}
+              >
+                <CardContent className="p-3">
+                  <p className="font-medium text-sm">{campaign.name}</p>
+                  {campaign.offer_name && (
+                    <p className="text-xs text-muted-foreground">{campaign.offer_name}</p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Creative Flow Modal */}
+      <CreativeFlowModal
+        open={creativeModalOpen}
+        onOpenChange={setCreativeModalOpen}
+        workspaceId={selectedCampaignId}
+      />
     </DashboardLayout>
   );
 }

@@ -28,6 +28,7 @@ import {
   Lightbulb
 } from "lucide-react";
 import { toast } from "sonner";
+import { CreativeFlowModal } from "@/components/creative/CreativeFlowModal";
 
 interface CampaignDetailDrawerProps {
   open: boolean;
@@ -62,6 +63,9 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
   const [editOfferName, setEditOfferName] = useState("");
   const [editOfferUrl, setEditOfferUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  
+  // Creative flow modal
+  const [showCreativeModal, setShowCreativeModal] = useState(false);
 
   useEffect(() => {
     if (open && campaignId) {
@@ -525,10 +529,7 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
         {/* Footer Actions */}
         <div className="pt-4 border-t mt-auto space-y-2">
           <Button 
-            onClick={() => {
-              navigate(`/creative?workspace=${workspace?.id}`);
-              onOpenChange(false);
-            }} 
+            onClick={() => setShowCreativeModal(true)} 
             className="w-full gap-2"
             variant="outline"
           >
@@ -554,6 +555,17 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
           </Button>
         </div>
       </SheetContent>
+
+      {/* Creative Flow Modal */}
+      <CreativeFlowModal
+        open={showCreativeModal}
+        onOpenChange={setShowCreativeModal}
+        workspaceId={campaignId}
+        onComplete={() => {
+          onUpdate?.();
+          fetchWorkspace();
+        }}
+      />
     </Sheet>
   );
 }
