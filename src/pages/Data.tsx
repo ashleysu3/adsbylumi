@@ -643,7 +643,7 @@ export default function Data() {
         {/* Page Header with Meta Status */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-display tracking-tight">Campaign Insights</h1>
+            <h1 className="text-xl sm:text-2xl font-display tracking-tight">Results</h1>
             <p className="text-muted-foreground text-xs sm:text-sm">Track performance and get AI recommendations</p>
           </div>
           
