@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plus, Search, Lightbulb, FileText, Video, Image, 
   Sparkles, MoreHorizontal, Edit2, Trash2, FolderOpen,
-  Filter, Tag
+  Filter, Tag, Wand2, Check, X, Loader2, Brain
 } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -72,6 +72,14 @@ export default function ContentLibrary() {
     offer_id: "",
     tags: "",
   });
+
+  // AI generation state
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [aiIdeaType, setAiIdeaType] = useState<string>("idea");
+  const [aiOfferId, setAiOfferId] = useState<string>("");
+  const [selectedOffer, setSelectedOffer] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -214,6 +222,84 @@ export default function ContentLibrary() {
     }
   };
 
+  // AI Generation
+  const openAiDialog = () => {
+    setAiSuggestions([]);
+    setAiIdeaType("idea");
+    setAiOfferId("");
+    setSelectedOffer(null);
+    setAiDialogOpen(true);
+  };
+
+  const generateAiIdeas = async () => {
+    setAiGenerating(true);
+    try {
+      // Fetch full offer data if selected
+      let offerData = null;
+      if (aiOfferId) {
+        const { data } = await supabase
+          .from("offers")
+          .select("*")
+          .eq("id", aiOfferId)
+          .single();
+        offerData = data;
+        setSelectedOffer(data);
+      }
+
+      const { data, error } = await supabase.functions.invoke("generate-content-ideas", {
+        body: {
+          brand,
+          offer: offerData,
+          ideaType: aiIdeaType,
+          existingIdeas: ideas.slice(0, 20), // Send recent ideas to avoid duplicates
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) {
+        if (data.error.includes("Rate limit")) {
+          toast.error("Rate limit exceeded. Please try again in a moment.");
+        } else if (data.error.includes("credits")) {
+          toast.error("AI credits depleted. Please add credits in Settings.");
+        } else {
+          throw new Error(data.error);
+        }
+        return;
+      }
+
+      setAiSuggestions(data.ideas || []);
+    } catch (error: any) {
+      console.error("Error generating ideas:", error);
+      toast.error(error.message || "Failed to generate ideas");
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const saveAiIdea = async (suggestion: any) => {
+    try {
+      const payload = {
+        brand_id: brand.id,
+        title: suggestion.title,
+        content: `${suggestion.content}\n\n---\n🧠 Psychology: ${suggestion.psychology}`,
+        type: suggestion.type,
+        offer_id: aiOfferId || null,
+        tags: suggestion.tags || [],
+        status: "idea",
+      };
+
+      const { error } = await supabase.from("content_ideas").insert(payload);
+      if (error) throw error;
+
+      toast.success("Idea saved to library!");
+      setAiSuggestions(prev => prev.filter(s => s.title !== suggestion.title));
+      fetchData();
+    } catch (error: any) {
+      console.error("Error saving AI idea:", error);
+      toast.error("Failed to save idea");
+    }
+  };
+
   // Filter ideas
   const filteredIdeas = ideas.filter(idea => {
     const matchesSearch = searchQuery === "" || 
@@ -271,10 +357,17 @@ export default function ContentLibrary() {
               Save hooks, scripts, and content ideas to use later
             </p>
           </div>
-          <Button onClick={openNewDialog} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Idea
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={openAiDialog} variant="outline" className="gap-2">
+              <Wand2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Generate with AI</span>
+              <span className="sm:hidden">AI</span>
+            </Button>
+            <Button onClick={openNewDialog} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Idea
+            </Button>
+          </div>
         </div>
 
         {/* Search & Filters */}
@@ -510,6 +603,154 @@ export default function ContentLibrary() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSave}>{editingIdea ? "Save Changes" : "Add Idea"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Generation Dialog */}
+      <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              AI Idea Generator
+            </DialogTitle>
+          </DialogHeader>
+          
+          {aiSuggestions.length === 0 ? (
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground">
+                Generate content ideas based on your brand psychology and offer details. The AI will analyze your audience and create tailored suggestions.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Idea Type</Label>
+                  <Select value={aiIdeaType} onValueChange={setAiIdeaType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {IDEA_TYPES.map(type => (
+                        <SelectItem key={type.value} value={type.value}>
+                          <span className="flex items-center gap-2">
+                            <type.icon className="h-4 w-4" />
+                            {type.label}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>For Offer (optional)</Label>
+                  <Select 
+                    value={aiOfferId || "none"} 
+                    onValueChange={(v) => setAiOfferId(v === "none" ? "" : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select offer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Any / General</SelectItem>
+                      {offers.map(offer => (
+                        <SelectItem key={offer.id} value={offer.id}>{offer.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <Button 
+                onClick={generateAiIdeas} 
+                disabled={aiGenerating} 
+                className="w-full gap-2"
+              >
+                {aiGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating ideas...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Generate 5 Ideas
+                  </>
+                )}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-2">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-muted-foreground">
+                  {aiSuggestions.length} idea{aiSuggestions.length !== 1 ? 's' : ''} generated
+                </p>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={generateAiIdeas}
+                  disabled={aiGenerating}
+                >
+                  {aiGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Regenerate"}
+                </Button>
+              </div>
+              
+              {aiSuggestions.map((suggestion, index) => {
+                const typeConfig = IDEA_TYPES.find(t => t.value === suggestion.type) || IDEA_TYPES[4];
+                const TypeIcon = typeConfig.icon;
+                
+                return (
+                  <Card key={index} className="overflow-hidden">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={cn("p-1.5 rounded", typeConfig.color)}>
+                            <TypeIcon className="h-3.5 w-3.5" />
+                          </div>
+                          <h4 className="font-medium text-sm">{suggestion.title}</h4>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          onClick={() => saveAiIdea(suggestion)}
+                          className="gap-1 shrink-0"
+                        >
+                          <Check className="h-3 w-3" />
+                          Save
+                        </Button>
+                      </div>
+                      
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-3">
+                        {suggestion.content}
+                      </p>
+                      
+                      <div className="bg-primary/5 rounded-lg p-2 mb-2">
+                        <p className="text-xs text-primary flex items-start gap-1.5">
+                          <Brain className="h-3 w-3 mt-0.5 shrink-0" />
+                          <span>{suggestion.psychology}</span>
+                        </p>
+                      </div>
+                      
+                      {suggestion.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {suggestion.tags.map((tag: string, i: number) => (
+                            <Badge key={i} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+          
+          <DialogFooter className="border-t pt-4">
+            <Button variant="outline" onClick={() => setAiDialogOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
