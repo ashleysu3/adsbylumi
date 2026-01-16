@@ -51,7 +51,7 @@ export default function Auth() {
         });
         if (error) throw error;
         toast.success("Welcome back!");
-        navigate("/dashboard");
+        navigate("/start");
       } else {
         // Validate invite code first for signup
         if (!inviteCode.trim()) {

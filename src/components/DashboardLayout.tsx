@@ -306,9 +306,9 @@ export default function DashboardLayout({
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")}>
+                  <DropdownMenuItem onClick={() => navigate("/start")}>
                     <Home className="mr-2 h-4 w-4" />
-                    My Brand
+                    Home
                   </DropdownMenuItem>
                   {isAdmin && <>
                       <DropdownMenuSeparator />

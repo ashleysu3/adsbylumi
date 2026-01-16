@@ -73,28 +73,31 @@ interface CreativeTemplate {
   thumbnail?: string;
 }
 
-// Mock creative templates (in production, these would come from the database)
+// Creative templates with real Canva template URLs
 const CREATIVE_TEMPLATES: CreativeTemplate[] = [
   {
     id: "talking-head-1",
     type: "video",
     name: "Talking Head Script",
     description: "Direct-to-camera script with proven hook structure",
-    canvaUrl: "https://www.canva.com/design/templates",
+    canvaUrl: "https://www.canva.com/design/DAGd9R4X_Ck/edit",
+    thumbnail: "https://marketplace.canva.com/EAFaQMYuZbo/1/0/1600w/canva-white-elegant-simple-quote-instagram-story-u_dMvlfrVxU.jpg",
   },
   {
     id: "carousel-1",
     type: "graphic",
     name: "Story Carousel",
     description: "5-slide carousel that tells your transformation story",
-    canvaUrl: "https://www.canva.com/design/templates",
+    canvaUrl: "https://www.canva.com/design/DAGKpB0mSYQ/edit",
+    thumbnail: "https://marketplace.canva.com/EAFXKFIDad4/1/0/1600w/canva-beige-minimalistic-modern-feminine-carousel-instagram-post-jJrNv-0gLJA.jpg",
   },
   {
     id: "broll-1",
     type: "hybrid",
     name: "B-Roll + Voiceover",
     description: "Visual montage with compelling voiceover script",
-    canvaUrl: "https://www.canva.com/design/templates",
+    canvaUrl: "https://www.canva.com/design/DAGd6JZF3OA/edit",
+    thumbnail: "https://marketplace.canva.com/EAFqNrAJGSQ/1/0/1600w/canva-grey-black-white-animated-new-product-launch-countdown-video-7CqGPNaQNsM.jpg",
   },
 ];
 

@@ -31,7 +31,7 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
           alt="Lumi" 
           className="h-8 object-contain cursor-pointer" 
           src={lumiLogo}
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/start")}
         />
 
         {/* User Menu */}
