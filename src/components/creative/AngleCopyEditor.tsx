@@ -1,0 +1,393 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Sparkles, Loader2, Plus, X, Save, RefreshCw,
+  FileText, ChevronDown, ChevronUp
+} from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { CreativeAngle } from "./AngleSelector";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+interface CopyVariation {
+  text: string;
+  framework?: string;
+  character_count?: number;
+  length?: "short" | "medium" | "long";
+}
+
+interface AngleCopyData {
+  headlines: CopyVariation[];
+  descriptions: CopyVariation[];
+  primary_copy: CopyVariation[];
+}
+
+interface AngleCopyEditorProps {
+  angles: CreativeAngle[];
+  selectedAngleIds: string[];
+  angleCopy: Record<string, AngleCopyData>;
+  brandInfo: any;
+  offerData: any;
+  audiencePsychology: any;
+  onCopyChange: (angleId: string, copy: AngleCopyData) => void;
+  onSave: () => void;
+  productionItemCount: number;
+}
+
+export function AngleCopyEditor({
+  angles,
+  selectedAngleIds,
+  angleCopy,
+  brandInfo,
+  offerData,
+  audiencePsychology,
+  onCopyChange,
+  onSave,
+  productionItemCount,
+}: AngleCopyEditorProps) {
+  const [activeAngle, setActiveAngle] = useState(selectedAngleIds[0] || "");
+  const [generating, setGenerating] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    headlines: true,
+    descriptions: false,
+    primary_copy: false,
+  });
+  
+  const selectedAngles = angles.filter(a => selectedAngleIds.includes(a.id));
+  const currentCopy = angleCopy[activeAngle] || { headlines: [], descriptions: [], primary_copy: [] };
+  
+  useEffect(() => {
+    if (selectedAngleIds.length > 0 && !selectedAngleIds.includes(activeAngle)) {
+      setActiveAngle(selectedAngleIds[0]);
+    }
+  }, [selectedAngleIds]);
+  
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+  
+  const generateCopy = async () => {
+    if (!activeAngle) return;
+    
+    setGenerating(true);
+    try {
+      const angle = angles.find(a => a.id === activeAngle);
+      if (!angle) throw new Error("Angle not found");
+      
+      const { data, error } = await supabase.functions.invoke("generate-angle-copy", {
+        body: {
+          angles: [angle],
+          brandInfo,
+          offerData,
+          audiencePsychology,
+        },
+      });
+      
+      if (error) throw error;
+      
+      const generatedCopy = data.angle_copy?.[activeAngle];
+      if (generatedCopy) {
+        onCopyChange(activeAngle, generatedCopy);
+        toast.success("Copy generated!");
+      }
+    } catch (e: any) {
+      console.error("Generate copy error:", e);
+      toast.error(e.message || "Failed to generate copy");
+    } finally {
+      setGenerating(false);
+    }
+  };
+  
+  const generateAllCopy = async () => {
+    setGenerating(true);
+    try {
+      const anglesToGenerate = angles.filter(a => selectedAngleIds.includes(a.id));
+      
+      const { data, error } = await supabase.functions.invoke("generate-angle-copy", {
+        body: {
+          angles: anglesToGenerate,
+          brandInfo,
+          offerData,
+          audiencePsychology,
+        },
+      });
+      
+      if (error) throw error;
+      
+      Object.entries(data.angle_copy || {}).forEach(([angleId, copy]) => {
+        onCopyChange(angleId, copy as AngleCopyData);
+      });
+      
+      toast.success(`Copy generated for ${Object.keys(data.angle_copy || {}).length} angles!`);
+    } catch (e: any) {
+      console.error("Generate all copy error:", e);
+      toast.error(e.message || "Failed to generate copy");
+    } finally {
+      setGenerating(false);
+    }
+  };
+  
+  const updateVariation = (
+    type: "headlines" | "descriptions" | "primary_copy",
+    index: number,
+    text: string
+  ) => {
+    const updated = { ...currentCopy };
+    if (!updated[type]) updated[type] = [];
+    updated[type][index] = { ...updated[type][index], text, character_count: text.length };
+    onCopyChange(activeAngle, updated);
+  };
+  
+  const addVariation = (type: "headlines" | "descriptions" | "primary_copy") => {
+    const updated = { ...currentCopy };
+    if (!updated[type]) updated[type] = [];
+    const defaultLength = type === "primary_copy" ? { length: "short" as const } : {};
+    updated[type].push({ text: "", ...defaultLength });
+    onCopyChange(activeAngle, updated);
+  };
+  
+  const removeVariation = (type: "headlines" | "descriptions" | "primary_copy", index: number) => {
+    const updated = { ...currentCopy };
+    updated[type] = updated[type].filter((_, i) => i !== index);
+    onCopyChange(activeAngle, updated);
+  };
+  
+  const hasCopy = currentCopy.headlines?.length > 0 || currentCopy.descriptions?.length > 0 || currentCopy.primary_copy?.length > 0;
+  const allAnglesHaveCopy = selectedAngleIds.every(id => {
+    const copy = angleCopy[id];
+    return copy && (copy.headlines?.length > 0 || copy.descriptions?.length > 0);
+  });
+  
+  if (selectedAngles.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-center py-12">
+          <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+          <h3 className="text-lg font-semibold">No Angles Selected</h3>
+          <p className="text-muted-foreground text-sm">Select angles in the previous step to generate copy.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">Copy Variations</CardTitle>
+          <Badge variant="secondary" className="text-xs">
+            {productionItemCount} creative{productionItemCount !== 1 ? "s" : ""} use this copy
+          </Badge>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="flex-1 flex flex-col space-y-4 overflow-hidden">
+        {/* Angle Tabs */}
+        {selectedAngles.length > 1 && (
+          <Tabs value={activeAngle} onValueChange={setActiveAngle}>
+            <TabsList className="w-full grid" style={{ gridTemplateColumns: `repeat(${Math.min(selectedAngles.length, 3)}, 1fr)` }}>
+              {selectedAngles.slice(0, 3).map(angle => (
+                <TabsTrigger key={angle.id} value={angle.id} className="text-xs truncate">
+                  {angle.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {selectedAngles.length > 3 && (
+              <div className="flex gap-1 mt-2 flex-wrap">
+                {selectedAngles.slice(3).map(angle => (
+                  <Button
+                    key={angle.id}
+                    variant={activeAngle === angle.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActiveAngle(angle.id)}
+                    className="text-xs"
+                  >
+                    {angle.name}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </Tabs>
+        )}
+        
+        {/* Generate Buttons */}
+        <div className="flex gap-2">
+          {!hasCopy ? (
+            <Button 
+              onClick={generateCopy} 
+              disabled={generating} 
+              className="flex-1 gap-2"
+            >
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Generate Copy
+            </Button>
+          ) : (
+            <Button 
+              onClick={generateCopy} 
+              disabled={generating} 
+              variant="outline" 
+              size="sm"
+              className="gap-2"
+            >
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Regenerate
+            </Button>
+          )}
+          {selectedAngles.length > 1 && !allAnglesHaveCopy && (
+            <Button 
+              onClick={generateAllCopy} 
+              disabled={generating} 
+              variant="outline" 
+              size="sm"
+              className="gap-2"
+            >
+              <Sparkles className="h-4 w-4" />
+              Generate All
+            </Button>
+          )}
+        </div>
+        
+        {/* Copy Sections */}
+        {hasCopy ? (
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            {/* Headlines */}
+            <Collapsible open={expandedSections.headlines} onOpenChange={() => toggleSection("headlines")}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Headlines</span>
+                    <Badge variant="secondary" className="text-xs">{currentCopy.headlines?.length || 0}</Badge>
+                  </div>
+                  {expandedSections.headlines ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2 space-y-2">
+                {currentCopy.headlines?.map((h, i) => (
+                  <div key={i} className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <Input
+                        value={h.text}
+                        onChange={(e) => updateVariation("headlines", i, e.target.value)}
+                        placeholder="Enter headline..."
+                        maxLength={40}
+                        className="pr-12"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                        {h.text?.length || 0}/40
+                      </span>
+                    </div>
+                    <Button size="icon" variant="ghost" onClick={() => removeVariation("headlines", i)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {(currentCopy.headlines?.length || 0) < 5 && (
+                  <Button variant="outline" size="sm" onClick={() => addVariation("headlines")} className="w-full gap-2">
+                    <Plus className="h-4 w-4" /> Add Headline
+                  </Button>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+            
+            {/* Descriptions */}
+            <Collapsible open={expandedSections.descriptions} onOpenChange={() => toggleSection("descriptions")}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Descriptions</span>
+                    <Badge variant="secondary" className="text-xs">{currentCopy.descriptions?.length || 0}</Badge>
+                  </div>
+                  {expandedSections.descriptions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2 space-y-2">
+                {currentCopy.descriptions?.map((d, i) => (
+                  <div key={i} className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <Input
+                        value={d.text}
+                        onChange={(e) => updateVariation("descriptions", i, e.target.value)}
+                        placeholder="Enter description..."
+                        maxLength={125}
+                        className="pr-14"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                        {d.text?.length || 0}/125
+                      </span>
+                    </div>
+                    <Button size="icon" variant="ghost" onClick={() => removeVariation("descriptions", i)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {(currentCopy.descriptions?.length || 0) < 5 && (
+                  <Button variant="outline" size="sm" onClick={() => addVariation("descriptions")} className="w-full gap-2">
+                    <Plus className="h-4 w-4" /> Add Description
+                  </Button>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+            
+            {/* Primary Copy */}
+            <Collapsible open={expandedSections.primary_copy} onOpenChange={() => toggleSection("primary_copy")}>
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Primary Copy</span>
+                    <Badge variant="secondary" className="text-xs">{currentCopy.primary_copy?.length || 0}</Badge>
+                  </div>
+                  {expandedSections.primary_copy ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2 space-y-3">
+                {currentCopy.primary_copy?.map((p, i) => (
+                  <div key={i} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs capitalize">{p.length || "short"}</Badge>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeVariation("primary_copy", i)}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <Textarea
+                      value={p.text}
+                      onChange={(e) => updateVariation("primary_copy", i, e.target.value)}
+                      placeholder="Enter primary copy..."
+                      rows={3}
+                      className="resize-none"
+                    />
+                  </div>
+                ))}
+                {(currentCopy.primary_copy?.length || 0) < 5 && (
+                  <Button variant="outline" size="sm" onClick={() => addVariation("primary_copy")} className="w-full gap-2">
+                    <Plus className="h-4 w-4" /> Add Primary Copy
+                  </Button>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center py-8">
+              <FileText className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">Generate copy to get started</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Save Button */}
+        {hasCopy && (
+          <Button onClick={onSave} className="w-full gap-2">
+            <Save className="h-4 w-4" />
+            Save Copy
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

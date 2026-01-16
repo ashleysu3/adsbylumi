@@ -19,6 +19,7 @@ import { GeneratingModal } from "@/components/GeneratingModal";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
+import { ProductionManager } from "@/components/creative/ProductionManager";
 import { Json } from "@/integrations/supabase/types";
 
 type WorkflowTab = "library" | "angles" | "copy_creative" | "build";
@@ -297,21 +298,15 @@ export default function CreativeStudio() {
           </TabsContent>
 
           <TabsContent value="build">
-            <Card><CardContent className="pt-6 space-y-6">
-              <div className="text-center">
-                <Rocket className="h-12 w-12 mx-auto text-primary/50 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Ready to Build</h3>
-                <p className="text-muted-foreground text-sm">Review your checklist and send to Meta</p>
-              </div>
-              <div className="border rounded-lg p-4">
-                <h4 className="font-medium mb-3">Checklist ({productionItems.length} concepts)</h4>
-                {productionItems.length === 0 ? <p className="text-sm text-muted-foreground">No concepts yet</p> : (
-                  <div className="space-y-2">{productionItems.map(i => <div key={i.id} className="flex items-center justify-between p-2 rounded bg-muted/50"><span className="text-sm">{i.hook}</span><Badge variant="secondary">{formatLabels[i.format as keyof typeof formatLabels]}</Badge></div>)}</div>
-                )}
-              </div>
-              <Button onClick={handleBuildCampaign} disabled={productionItems.length < 3} className="w-full gap-2" size="lg"><Rocket className="h-5 w-5" />Build Campaign</Button>
-              {productionItems.length < 3 && <p className="text-sm text-center text-muted-foreground">Add {3 - productionItems.length} more concepts</p>}
-            </CardContent></Card>
+            <ProductionManager
+              workspace={workspace}
+              productionItems={productionItems}
+              angles={availableAngles}
+              selectedAngleIds={selectedAngleIds}
+              onRemoveItem={removeFromChecklist}
+              onBuildCampaign={handleBuildCampaign}
+              onUpdateWorkspace={(updates) => setWorkspace((prev: any) => ({ ...prev, ...updates }))}
+            />
           </TabsContent>
         </Tabs>
       </div>
