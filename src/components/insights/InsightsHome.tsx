@@ -277,39 +277,42 @@ export function InsightsHome({
                 variant="glow"
                 className="rounded-2xl transition-all duration-300 hover:scale-[1.01]"
               >
-                <CardContent className="p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-6">
-                    {/* Campaign Info */}
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-3">
-                        <span className={`w-3 h-3 rounded-full ${statusDot}`} />
-                        <h3 className="font-display font-semibold text-lg">{campaign.name}</h3>
-                        {/* Offer Link Status Indicator */}
-                        {campaign.offerId ? (
-                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                            <Package className="h-3 w-3 mr-1" />
-                            {campaign.offerName || 'Offer Linked'}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
-                            <Package className="h-3 w-3 mr-1" />
-                            Needs Offer
-                          </Badge>
-                        )}
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col gap-4">
+                    {/* Campaign Info Row */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`w-3 h-3 rounded-full flex-shrink-0 ${statusDot}`} />
+                          <h3 className="font-display font-semibold text-base sm:text-lg truncate">{campaign.name}</h3>
+                          {/* Offer Link Status Indicator */}
+                          {campaign.offerId ? (
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 flex-shrink-0">
+                              <Package className="h-3 w-3 mr-1" />
+                              <span className="hidden sm:inline">{campaign.offerName || 'Offer Linked'}</span>
+                              <span className="sm:hidden">Lumi</span>
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 flex-shrink-0">
+                              <Package className="h-3 w-3 mr-1" />
+                              Needs Offer
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground pl-5">
+                          {kpiConfig.friendlyName} Campaign
+                        </p>
                       </div>
-                      <p className="text-sm text-muted-foreground pl-6">
-                        {kpiConfig.friendlyName} Campaign
-                      </p>
                     </div>
 
-                    {/* Primary KPI Display */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 lg:gap-10">
-                    {/* KPI Value with Progress */}
-                      <div className="space-y-2 min-w-[140px]">
+                    {/* Metrics Row */}
+                    <div className="flex flex-wrap items-center gap-4 sm:gap-6 lg:gap-8">
+                      {/* KPI Value with Progress */}
+                      <div className="space-y-1.5 min-w-[100px] sm:min-w-[140px]">
                         <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                           {kpiConfig.primaryLabel}
                         </p>
-                        <p className="text-3xl font-bold text-foreground">
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground">
                           {formatLumiKPIValue(primaryValue, kpiConfig.primary)}
                         </p>
                         {/* Trend Indicator */}
@@ -324,7 +327,7 @@ export function InsightsHome({
                           benchmark={kpiConfig.benchmark}
                           userGoal={campaign.userGoal}
                           kpiKey={kpiConfig.primary}
-                          className="w-32"
+                          className="w-24 sm:w-32"
                         />
                       </div>
 
@@ -333,7 +336,7 @@ export function InsightsHome({
                         <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                           Benchmark
                         </p>
-                        <p className="text-lg text-muted-foreground">
+                        <p className="text-base sm:text-lg text-muted-foreground">
                           {formatBenchmarkRange(kpiConfig.benchmark)}
                         </p>
                       </div>
@@ -349,7 +352,7 @@ export function InsightsHome({
                               type="number"
                               value={goalValue}
                               onChange={(e) => setGoalValue(e.target.value)}
-                              className="w-24 h-8 rounded-lg text-lg"
+                              className="w-20 sm:w-24 h-8 rounded-lg text-base sm:text-lg"
                               placeholder="$0.00"
                               autoFocus
                             />
@@ -373,7 +376,7 @@ export function InsightsHome({
                         ) : (
                           <button
                             onClick={() => handleStartEditGoal(campaign.id, campaign.userGoal)}
-                            className="flex items-center gap-2 text-lg text-muted-foreground hover:text-foreground transition-colors group"
+                            className="flex items-center gap-2 text-base sm:text-lg text-muted-foreground hover:text-foreground transition-colors group"
                           >
                             {campaign.userGoal ? (
                               <span>
@@ -394,7 +397,7 @@ export function InsightsHome({
                       <Badge 
                         variant="outline"
                         className={`
-                          rounded-full px-4 py-1.5 text-sm font-medium border
+                          rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium border flex-shrink-0
                           ${status === 'healthy' ? 'bg-green-50 text-green-700 border-green-200' : ''}
                           ${status === 'attention' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
                           ${status === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : ''}
@@ -403,23 +406,28 @@ export function InsightsHome({
                       >
                         {statusLabel}
                       </Badge>
+                    </div>
 
+                    {/* Actions Row */}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-2 border-t border-border/50">
                       {/* Add Creative Button - for imported/live campaigns */}
                       <Button
                         onClick={() => handleAddCreative(campaign)}
                         variant="outline"
                         size="sm"
-                        className="rounded-xl"
+                        className="rounded-xl text-xs sm:text-sm"
                       >
                         {campaign.offerId ? (
                           <>
-                            <PlusCircle className="h-4 w-4 mr-2" />
-                            Add Creative
+                            <PlusCircle className="h-4 w-4 mr-1 sm:mr-2" />
+                            <span className="hidden sm:inline">Add Creative</span>
+                            <span className="sm:hidden">Add</span>
                           </>
                         ) : (
                           <>
-                            <Package className="h-4 w-4 mr-2" />
-                            Link Offer
+                            <Package className="h-4 w-4 mr-1 sm:mr-2" />
+                            <span className="hidden sm:inline">Link Offer</span>
+                            <span className="sm:hidden">Link</span>
                           </>
                         )}
                       </Button>
@@ -428,10 +436,12 @@ export function InsightsHome({
                       <Button
                         onClick={() => onViewInsights(campaign.id)}
                         variant="lumi"
-                        className="rounded-xl"
+                        size="sm"
+                        className="rounded-xl text-xs sm:text-sm"
                       >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Insights
+                        <Eye className="h-4 w-4 mr-1 sm:mr-2" />
+                        <span className="hidden sm:inline">View Insights</span>
+                        <span className="sm:hidden">View</span>
                       </Button>
                     </div>
                   </div>
