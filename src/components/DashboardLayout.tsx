@@ -205,6 +205,12 @@ export default function DashboardLayout({
     lightColor: "tab-pink-light",
     darkColor: "tab-pink-dark"
   }, {
+    path: "/creative-studio",
+    icon: Sparkles,
+    label: "CREATIVE",
+    lightColor: "tab-purple-light",
+    darkColor: "tab-purple-dark"
+  }, {
     path: "/data",
     icon: BarChart3,
     label: "RESULTS",

@@ -35,6 +35,7 @@ import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
 import Pricing from "./pages/Pricing";
 import ContentLibrary from "./pages/ContentLibrary";
+import CreativeStudio from "./pages/CreativeStudio";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -82,6 +83,7 @@ const App = () => {
                   <Route path="/settings/meta" element={<MetaSettings />} />
                   <Route path="/settings/digest-preview" element={<WeeklyDigestPreview />} />
                   <Route path="/content-library" element={<ContentLibrary />} />
+                  <Route path="/creative-studio" element={<CreativeStudio />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/templates" element={<AdminTemplates />} />
