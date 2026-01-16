@@ -279,6 +279,15 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center space-x-2 md:space-x-3">
+              <Link to="/content-library">
+                <button className="relative group p-[2px] md:p-[3px] rounded-lg bg-muted hover:bg-muted/80 border border-border/50 transition-all overflow-hidden">
+                  <span className="relative flex items-center py-1.5 md:py-2 rounded-md bg-card group-hover:bg-card/95 transition-colors font-medium px-2 md:px-3 text-foreground text-xs md:text-sm">
+                    <Library className="mr-1 md:mr-2 h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
+                    <span className="hidden sm:inline">Library</span>
+                    <span className="sm:hidden">Lib</span>
+                  </span>
+                </button>
+              </Link>
               <button onClick={() => setCreateAdModalOpen(true)} className="relative group p-[2px] md:p-[3px] rounded-lg bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:shadow-lg hover:shadow-lumi-pink-1/30 transition-all overflow-hidden">
                 {/* Shimmer overlay on hover */}
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
