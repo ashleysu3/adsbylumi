@@ -330,7 +330,7 @@ export function CreativeFlowModal({ open, onOpenChange, workspaceId, onComplete 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-2xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* Header with Progress */}
         <DialogHeader className="p-4 sm:p-6 pb-3 border-b shrink-0">
           <div className="flex items-center justify-between">
@@ -621,7 +621,7 @@ export function CreativeFlowModal({ open, onOpenChange, workspaceId, onComplete 
         </ScrollArea>
 
         {/* Footer */}
-        <div className="border-t p-4 sm:p-6 pt-4 flex items-center justify-between gap-3">
+        <div className="border-t p-4 sm:p-6 pt-4 flex items-center justify-between gap-3 shrink-0">
           {step === "select_angles" && (
             <>
               <Button 
