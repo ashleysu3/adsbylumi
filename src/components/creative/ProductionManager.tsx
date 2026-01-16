@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Rocket, Upload, CheckCircle2, AlertCircle, 
-  Video, Film, Image, Eye, FolderOpen
+  Video, Film, Image, Eye, FolderOpen, Maximize2
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ import { ProductionItem } from "./ProductionChecklistPanel";
 import { CreativeChecklistCard } from "./CreativeChecklistCard";
 import { AngleCopyEditor } from "./AngleCopyEditor";
 import { CreativeAngle } from "./AngleSelector";
+import { AdPreviewModal } from "./AdPreviewModal";
 
 interface ProductionManagerProps {
   workspace: any;
@@ -36,6 +37,7 @@ export function ProductionManager({
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [previewAsset, setPreviewAsset] = useState<any>(null);
+  const [adPreviewItem, setAdPreviewItem] = useState<ProductionItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
@@ -156,6 +158,13 @@ export function ProductionManager({
     return productionItems.filter(item => item.angleName === angle.name).length;
   };
   
+  // Get copy for item's angle
+  const getCopyForItem = (item: ProductionItem) => {
+    const angle = angles.find(a => a.name === item.angleName);
+    if (!angle) return undefined;
+    return angleCopy[angle.id];
+  };
+  
   const isReadyToBuild = productionItems.length >= 3;
   const hasAnyCopy = Object.keys(angleCopy).length > 0;
   
@@ -213,6 +222,7 @@ export function ProductionManager({
                         onUploadClick={() => handleUploadClick(item.id)}
                         onRemove={() => onRemoveItem(item.id)}
                         onPreview={setPreviewAsset}
+                        onAdPreview={() => setAdPreviewItem(item)}
                       />
                     ))}
                   </div>
@@ -305,6 +315,19 @@ export function ProductionManager({
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Ad Preview Modal */}
+      {adPreviewItem && (
+        <AdPreviewModal
+          open={!!adPreviewItem}
+          onOpenChange={(open) => !open && setAdPreviewItem(null)}
+          item={adPreviewItem}
+          asset={getAssetForItem(adPreviewItem.id)}
+          angleCopy={getCopyForItem(adPreviewItem)}
+          brandName={workspace?.brands?.name}
+          websiteUrl={workspace?.offer_url || workspace?.brands?.website_url}
+        />
+      )}
     </>
   );
 }
