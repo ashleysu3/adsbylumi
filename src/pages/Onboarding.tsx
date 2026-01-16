@@ -177,7 +177,7 @@ export default function Onboarding() {
 
   const handleFinishOnboarding = () => {
     toast.success("Welcome to Lumi! ✨");
-    navigate("/dashboard");
+    navigate("/start");
   };
 
   if (checkingAuth) {

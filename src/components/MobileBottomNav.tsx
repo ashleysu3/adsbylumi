@@ -3,7 +3,7 @@ import { Home, FolderKanban, Palette, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { path: "/dashboard", icon: Home, label: "Home", tourId: "dashboard" },
+  { path: "/start", icon: Home, label: "Home", tourId: "start" },
   { path: "/campaigns", icon: FolderKanban, label: "Campaigns", tourId: "campaigns" },
   { path: "/creative", icon: Palette, label: "Creative", tourId: "creative" },
   { path: "/data", icon: BarChart3, label: "Insights", tourId: "insights" },
@@ -14,8 +14,8 @@ export function MobileBottomNav() {
   const location = useLocation();
 
   const isActive = (path: string) => {
-    if (path === "/dashboard") {
-      return location.pathname === "/" || location.pathname === "/dashboard";
+    if (path === "/start") {
+      return location.pathname === "/start" || location.pathname === "/dashboard";
     }
     return location.pathname.startsWith(path);
   };
