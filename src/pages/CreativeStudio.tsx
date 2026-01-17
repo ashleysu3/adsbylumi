@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import { LumiThinking } from "@/components/LumiThinking";
-import { LumiCharacter } from "@/components/LumiCharacter";
+import { SparkleIcon } from "@/components/SparkleIcon";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
@@ -462,7 +462,7 @@ export default function CreativeStudio() {
                   <X className="h-3 w-3" />
                 </Button>
                 <div className="flex items-start gap-3 pr-6">
-                  <LumiCharacter size="sm" state="idle" glow />
+                  <SparkleIcon size="sm" state="idle" glow />
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <HelpCircle className="h-4 w-4 text-primary" />

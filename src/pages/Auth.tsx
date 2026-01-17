@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { LumiCharacter } from "@/components/LumiCharacter";
+import { SparkleIcon } from "@/components/SparkleIcon";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 export default function Auth() {
@@ -227,7 +227,7 @@ export default function Auth() {
             >
               {loading ? (
                 <>
-                  <LumiCharacter size="xs" state="loading" className="mr-2" />
+                  <SparkleIcon size="xs" state="loading" className="mr-2" />
                   {isLogin ? "Signing in..." : "Setting things up..."}
                 </>
               ) : isLogin ? (

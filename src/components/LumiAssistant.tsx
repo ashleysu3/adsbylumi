@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { LumiCharacter } from "./LumiCharacter";
+import { SparkleIcon } from "./SparkleIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLumi } from "@/contexts/LumiContext";
@@ -262,7 +262,7 @@ function LumiAssistantUI({
                 {/* Header */}
                 <div className="flex items-start justify-between p-3 pb-2">
                   <div className="flex items-center gap-2">
-                    <LumiCharacter size="xs" state="idle" glow />
+                    <SparkleIcon size="xs" state="idle" glow />
                     <span className="text-xs font-semibold text-gradient-lumi">
                       {recommendation.title}
                     </span>
@@ -381,7 +381,7 @@ function LumiAssistantUI({
                 <div className="relative flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      <LumiCharacter size="sm" state={isLoading ? "thinking" : "idle"} />
+                      <SparkleIcon size="sm" state={isLoading ? "thinking" : "idle"} />
                       {/* Online indicator */}
                       <motion.div
                         className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white"
@@ -442,7 +442,7 @@ function LumiAssistantUI({
                     {messages.length === 0 ? (
                       <div className="space-y-4">
                         <div className="text-center py-4">
-                          <LumiCharacter size="md" state="idle" glow className="mx-auto mb-2" />
+                          <SparkleIcon size="md" state="idle" glow className="mx-auto mb-2" />
                           <h3 className="font-semibold text-sm mb-1">Hey there! 👋</h3>
                           <p className="text-xs text-muted-foreground max-w-xs mx-auto">
                             I'm Lumi — here to make Meta Ads simple.
@@ -476,7 +476,7 @@ function LumiAssistantUI({
                             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                           >
                             {message.role === 'assistant' && (
-                              <LumiCharacter size="xs" state="idle" className="mr-1.5 flex-shrink-0 mt-0.5" />
+                              <SparkleIcon size="xs" state="idle" className="mr-1.5 flex-shrink-0 mt-0.5" />
                             )}
                             <div
                               className={cn(
@@ -492,7 +492,7 @@ function LumiAssistantUI({
                         ))}
                         {isLoading && (
                           <div className="flex justify-start">
-                            <LumiCharacter size="xs" state="thinking" className="mr-1.5" />
+                            <SparkleIcon size="xs" state="thinking" className="mr-1.5" />
                             <div className="bg-muted rounded-xl px-3 py-2">
                               <Loader2 className="h-3 w-3 animate-spin" />
                             </div>

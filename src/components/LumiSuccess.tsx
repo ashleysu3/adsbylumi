@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { LumiCharacter } from "./LumiCharacter";
+import { SparkleIcon } from "./SparkleIcon";
 import { CheckCircle, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -51,7 +51,7 @@ export function LumiSuccess({
           
           {/* Lumi with success check */}
           <div className="relative mb-4 flex justify-center">
-            <LumiCharacter size="lg" state="talking" glow />
+            <SparkleIcon size="lg" state="talking" glow />
             <div className="absolute -bottom-1 -right-2 bg-green-500 rounded-full p-1 shadow-lg">
               <CheckCircle className="w-5 h-5 text-white" />
             </div>
@@ -79,7 +79,7 @@ export function LumiSuccessToast({
       className
     )}>
       <div className="relative">
-        <LumiCharacter size="xs" state="talking" glow />
+        <SparkleIcon size="xs" state="talking" glow />
       </div>
       <span className="text-sm font-medium">{message}</span>
     </div>

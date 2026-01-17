@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Lightbulb, Wand2, Brain, PenTool, Target } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { LumiCharacter } from "./LumiCharacter";
+import { SparkleIcon } from "./SparkleIcon";
 
 interface GeneratingModalProps {
   isOpen: boolean;
@@ -90,7 +90,7 @@ export function GeneratingModal({
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             >
-              <LumiCharacter size="xl" state="loading" glow />
+              <SparkleIcon size="xl" state="loading" glow />
             </motion.div>
 
             {/* Floating particles with Lumi colors */}

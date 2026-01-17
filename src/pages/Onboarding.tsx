@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight } from "lucide-react";
-import { LumiCharacter } from "@/components/LumiCharacter";
+import { SparkleIcon } from "@/components/SparkleIcon";
 import { motion } from "framer-motion";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { formatInvokeError } from "@/lib/formatInvokeError";
@@ -338,7 +338,7 @@ export default function Onboarding() {
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200, damping: 15 }}
                 >
-                  <LumiCharacter size="xl" state="idle" glow className="animate-float" />
+                  <SparkleIcon size="xl" state="idle" glow className="animate-float" />
                 </motion.div>
               </div>
 

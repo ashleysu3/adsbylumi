@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { LumiCharacter } from "./LumiCharacter";
+import { SparkleIcon } from "./SparkleIcon";
 
 interface LumiLoaderProps {
   size?: "sm" | "md" | "lg";
@@ -36,7 +36,7 @@ export function LumiLoader({ size = "md", message, className }: LumiLoaderProps)
         )} />
         
         {/* Lumi character */}
-        <LumiCharacter 
+        <SparkleIcon 
           size={size === "sm" ? "sm" : size === "md" ? "md" : "xl"} 
           state="loading" 
           glow 
@@ -70,7 +70,7 @@ export function LumiInlineLoader({ className }: { className?: string }) {
     <div className={cn("inline-flex items-center gap-2", className)}>
       <div className="w-5 h-5 relative">
         <div className="absolute inset-0 rounded-full bg-lumi-yellow/30 blur-sm animate-pulse" />
-        <LumiCharacter size="xs" state="loading" />
+        <SparkleIcon size="xs" state="loading" />
       </div>
     </div>
   );

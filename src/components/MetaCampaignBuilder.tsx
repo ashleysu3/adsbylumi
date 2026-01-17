@@ -9,7 +9,7 @@ import { Rocket, AlertCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { LumiLoader } from "./LumiLoader";
 import { LumiSuccess } from "./LumiSuccess";
-import { LumiCharacter } from "./LumiCharacter";
+import { SparkleIcon } from "./SparkleIcon";
 
 interface MetaCampaignBuilderProps {
   workspace: any;
@@ -77,7 +77,7 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
               <div className="mb-6 flex justify-center">
                 <div className="relative">
                   <div className="absolute inset-0 bg-glow/40 blur-xl rounded-full animate-pulse" />
-                  <LumiCharacter size="xl" state="talking" glow />
+                  <SparkleIcon size="xl" state="talking" glow />
                 </div>
               </div>
               
@@ -380,7 +380,7 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
                   >
                     {publishing ? (
                       <>
-                        <LumiCharacter size="xs" state="loading" className="mr-2" />
+                        <SparkleIcon size="xs" state="loading" className="mr-2" />
                         Publishing...
                       </>
                     ) : (
