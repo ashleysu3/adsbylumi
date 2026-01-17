@@ -374,38 +374,67 @@ export function ProductionManager({
               )}
             </CardHeader>
             <CardContent className="space-y-6">
-              {Object.entries(itemsByAngle).map(([angleName, items]) => {
-                const displayItems = getDisplayItems(items);
-                if (displayItems.length === 0) return null;
-                return (
-                  <div key={angleName} className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-semibold text-muted-foreground">{angleName}</h4>
-                      <Badge variant="outline" className="text-xs">{displayItems.length} creative{displayItems.length !== 1 ? "s" : ""}</Badge>
+              {showTopOnly && hasRankedItems ? (
+                /* When showing Top 5, display in rank order with angle as badge */
+                <div className="space-y-2">
+                  {rankedItems
+                    .sort((a, b) => a.rank - b.rank)
+                    .map((rankedItem) => {
+                      const item = productionItems.find(p => p.id === rankedItem.id);
+                      if (!item) return null;
+                      return (
+                        <CreativeChecklistCard
+                          key={item.id}
+                          item={item}
+                          uploadedAsset={getAssetForItem(item.id)}
+                          onUploadClick={() => handleUploadClick(item.id)}
+                          onRemove={() => onRemoveItem(item.id)}
+                          onPreview={setPreviewAsset}
+                          onAdPreview={() => setAdPreviewItem(item)}
+                          onSaveToLibrary={onSaveToLibrary ? () => handleSaveToLibrary(item) : undefined}
+                          savingToLibrary={savingToLibrary === item.id}
+                          rank={rankedItem.rank}
+                          rationale={rankedItem.rationale}
+                          showAngleBadge
+                        />
+                      );
+                    })}
+                </div>
+              ) : (
+                /* Default: group by angle */
+                Object.entries(itemsByAngle).map(([angleName, items]) => {
+                  const displayItems = getDisplayItems(items);
+                  if (displayItems.length === 0) return null;
+                  return (
+                    <div key={angleName} className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-muted-foreground">{angleName}</h4>
+                        <Badge variant="outline" className="text-xs">{displayItems.length} creative{displayItems.length !== 1 ? "s" : ""}</Badge>
+                      </div>
+                      <div className="space-y-2">
+                        {displayItems.map((item) => {
+                          const { rank, rationale } = getRankForItem(item.id);
+                          return (
+                            <CreativeChecklistCard
+                              key={item.id}
+                              item={item}
+                              uploadedAsset={getAssetForItem(item.id)}
+                              onUploadClick={() => handleUploadClick(item.id)}
+                              onRemove={() => onRemoveItem(item.id)}
+                              onPreview={setPreviewAsset}
+                              onAdPreview={() => setAdPreviewItem(item)}
+                              onSaveToLibrary={onSaveToLibrary ? () => handleSaveToLibrary(item) : undefined}
+                              savingToLibrary={savingToLibrary === item.id}
+                              rank={rank}
+                              rationale={rationale}
+                            />
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      {displayItems.map((item) => {
-                        const { rank, rationale } = getRankForItem(item.id);
-                        return (
-                          <CreativeChecklistCard
-                            key={item.id}
-                            item={item}
-                            uploadedAsset={getAssetForItem(item.id)}
-                            onUploadClick={() => handleUploadClick(item.id)}
-                            onRemove={() => onRemoveItem(item.id)}
-                            onPreview={setPreviewAsset}
-                            onAdPreview={() => setAdPreviewItem(item)}
-                            onSaveToLibrary={onSaveToLibrary ? () => handleSaveToLibrary(item) : undefined}
-                            savingToLibrary={savingToLibrary === item.id}
-                            rank={rank}
-                            rationale={rationale}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </CardContent>
           </Card>
           

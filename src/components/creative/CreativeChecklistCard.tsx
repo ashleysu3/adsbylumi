@@ -31,6 +31,7 @@ interface CreativeChecklistCardProps {
   savingToLibrary?: boolean;
   rank?: number;
   rationale?: string;
+  showAngleBadge?: boolean;
 }
 
 export function CreativeChecklistCard({ 
@@ -43,7 +44,8 @@ export function CreativeChecklistCard({
   onSaveToLibrary,
   savingToLibrary,
   rank,
-  rationale
+  rationale,
+  showAngleBadge = false
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
@@ -89,10 +91,10 @@ export function CreativeChecklistCard({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <Badge variant="secondary" className="text-xs">{formatLabel}</Badge>
-                  {item.angleName && (
-                    <Badge variant="outline" className="text-xs">{item.angleName}</Badge>
+                  {(showAngleBadge || !isRanked) && item.angleName && (
+                    <Badge variant="outline" className="text-xs bg-primary/5">{item.angleName}</Badge>
                   )}
-                  {isRanked && (
+                  {isRanked && !showAngleBadge && (
                     <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs gap-1">
                       <Trophy className="h-3 w-3" />
                       Top 5
