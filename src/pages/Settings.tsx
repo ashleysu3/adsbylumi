@@ -12,8 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { 
   User, Bell, Shield, CreditCard, LogOut, Loader2, ExternalLink, Crown,
-  Link2, Eye, Sliders, Mail, AlertTriangle, TrendingDown, Smile, X, Plus
+  Link2, Eye, Sliders, Mail, AlertTriangle, TrendingDown, Smile, X
 } from 'lucide-react';
+import EmojiQuickPicker from '@/components/EmojiQuickPicker';
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
@@ -431,24 +432,39 @@ export default function Settings() {
                       </div>
                       
                       {emojiSettings.brand_emojis.length < 6 && (
-                        <div className="flex gap-2">
-                          <Input
-                            value={newEmoji}
-                            onChange={(e) => setNewEmoji(e.target.value)}
-                            placeholder="Paste an emoji..."
-                            className="w-32"
-                            maxLength={4}
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <EmojiQuickPicker 
+                            onSelect={(emoji) => {
+                              if (emojiSettings.brand_emojis.length >= 6) {
+                                toast.error('Maximum 6 emojis allowed');
+                                return;
+                              }
+                              if (emojiSettings.brand_emojis.includes(emoji)) {
+                                toast.error('Emoji already added');
+                                return;
+                              }
+                              setEmojiSettings(prev => ({
+                                ...prev,
+                                brand_emojis: [...prev.brand_emojis, emoji]
+                              }));
+                            }}
+                            selectedEmojis={emojiSettings.brand_emojis}
                           />
-                          <Button variant="outline" size="sm" onClick={addEmoji} className="gap-1">
-                            <Plus className="h-4 w-4" />
-                            Add
-                          </Button>
+                          <span className="text-xs text-muted-foreground">or</span>
+                          <div className="flex gap-2">
+                            <Input
+                              value={newEmoji}
+                              onChange={(e) => setNewEmoji(e.target.value)}
+                              placeholder="Paste emoji..."
+                              className="w-24"
+                              maxLength={4}
+                            />
+                            <Button variant="ghost" size="sm" onClick={addEmoji}>
+                              Add
+                            </Button>
+                          </div>
                         </div>
                       )}
-                      
-                      <p className="text-xs text-muted-foreground">
-                        Tip: Copy emojis from your keyboard or sites like emojipedia.org
-                      </p>
                     </div>
                     
                     <Separator />
