@@ -66,10 +66,10 @@ export function LumiThinking({
 
     startTimeRef.current = Date.now();
 
-    // Rotate copy every 2.5 seconds
+    // Rotate copy every 4.5 seconds - calm, unhurried pace
     const copyInterval = setInterval(() => {
       setCurrentCopyIndex((prev) => (prev + 1) % activeCopy.length);
-    }, 2500);
+    }, 4500);
 
     // Smooth, unhurried progress animation
     const progressInterval = setInterval(() => {
