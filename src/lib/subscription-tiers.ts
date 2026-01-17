@@ -2,10 +2,10 @@
 export const SUBSCRIPTION_TIERS = {
   solo: {
     name: "Solo",
-    monthlyPriceId: "price_1Sa2ZYACcLoSGSlno4cOSbxP",
-    annualPriceId: "price_1Sa2ZlACcLoSGSlnrEd19gDv",
+    monthlyPriceId: "price_1SqhzNACcLoSGSlnGp86B5RM",
+    annualPriceId: "price_1Smg0LACcLoSGSln5d9ORSwW",
     monthlyProductId: "prod_TX6nzW8rB20cHj",
-    annualProductId: "prod_TX6nO1Y9or83uv",
+    annualProductId: "prod_TX6nzW8rB20cHj",
     monthlyPrice: 97,
     annualPrice: 970,
     limits: {
