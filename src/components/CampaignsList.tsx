@@ -242,6 +242,11 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                       onClick={(e) => {
                         if (!addCreativeMode) {
                           e.stopPropagation();
+                          // Direct navigation for in-progress creative campaigns
+                          if (['draft', 'creative_in_progress', 'waiting_for_assets'].includes(campaign.progress_status)) {
+                            navigate(`/creative-studio?workspace=${campaign.id}`);
+                            return;
+                          }
                           setSelectedCampaignId(campaign.id);
                           setDetailDrawerOpen(true);
                         }
@@ -314,6 +319,11 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                           className="h-8 w-8 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
+                            // Direct navigation for in-progress creative campaigns
+                            if (['draft', 'creative_in_progress', 'waiting_for_assets'].includes(campaign.progress_status)) {
+                              navigate(`/creative-studio?workspace=${campaign.id}`);
+                              return;
+                            }
                             setSelectedCampaignId(campaign.id);
                             setDetailDrawerOpen(true);
                           }}

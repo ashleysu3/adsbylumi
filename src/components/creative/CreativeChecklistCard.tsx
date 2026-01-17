@@ -3,9 +3,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Video, Film, Image, ChevronDown, ChevronUp, 
-  Upload, Eye, CheckCircle2, AlertCircle, Trash2, Maximize2
+  Upload, Eye, CheckCircle2, AlertCircle, Trash2, Maximize2,
+  Library, Loader2, Info, Trophy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductionItem } from "./ProductionChecklistPanel";
@@ -25,6 +27,10 @@ interface CreativeChecklistCardProps {
   onRemove: () => void;
   onPreview?: (asset: any) => void;
   onAdPreview?: () => void;
+  onSaveToLibrary?: () => void;
+  savingToLibrary?: boolean;
+  rank?: number;
+  rationale?: string;
 }
 
 export function CreativeChecklistCard({ 
@@ -33,35 +39,64 @@ export function CreativeChecklistCard({
   onUploadClick, 
   onRemove,
   onPreview,
-  onAdPreview 
+  onAdPreview,
+  onSaveToLibrary,
+  savingToLibrary,
+  rank,
+  rationale
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showRationale, setShowRationale] = useState(false);
   const Icon = formatIcons[item.format as keyof typeof formatIcons] || Image;
   const formatLabel = formatLabels[item.format as keyof typeof formatLabels] || item.format;
   
   const hasAsset = !!uploadedAsset;
+  const isRanked = typeof rank === 'number';
   
   return (
+    <TooltipProvider>
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className={cn(
         "transition-all border-l-4",
+        isRanked ? "border-l-amber-500 bg-amber-50/30 dark:bg-amber-950/10 ring-1 ring-amber-200 dark:ring-amber-800" :
         hasAsset ? "border-l-green-500 bg-green-50/30 dark:bg-green-950/10" : "border-l-primary/50"
       )}>
         <CollapsibleTrigger asChild>
           <CardContent className="pt-4 pb-4 cursor-pointer hover:bg-muted/30 transition-colors">
             <div className="flex items-start gap-3">
-              <div className={cn(
-                "h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                hasAsset ? "bg-green-100 dark:bg-green-900/30" : "bg-primary/10"
-              )}>
-                <Icon className={cn("h-5 w-5", hasAsset ? "text-green-600" : "text-primary")} />
-              </div>
+              {/* Rank Badge or Format Icon */}
+              {isRanked ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-amber-400 to-amber-600 text-white font-bold text-lg shadow-md">
+                      #{rank}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="max-w-xs">
+                    <p className="font-medium">Lumi's #{rank} Pick</p>
+                    {rationale && <p className="text-xs text-muted-foreground mt-1">{rationale}</p>}
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <div className={cn(
+                  "h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                  hasAsset ? "bg-green-100 dark:bg-green-900/30" : "bg-primary/10"
+                )}>
+                  <Icon className={cn("h-5 w-5", hasAsset ? "text-green-600" : "text-primary")} />
+                </div>
+              )}
               
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <Badge variant="secondary" className="text-xs">{formatLabel}</Badge>
                   {item.angleName && (
                     <Badge variant="outline" className="text-xs">{item.angleName}</Badge>
+                  )}
+                  {isRanked && (
+                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs gap-1">
+                      <Trophy className="h-3 w-3" />
+                      Top 5
+                    </Badge>
                   )}
                   {hasAsset && (
                     <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto flex-shrink-0" />
@@ -80,6 +115,19 @@ export function CreativeChecklistCard({
         <CollapsibleContent>
           <CardContent className="pt-0 pb-4 border-t">
             <div className="space-y-4 pt-4">
+              {/* Rationale for ranked items */}
+              {isRanked && rationale && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-start gap-2">
+                    <Info className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h5 className="text-xs font-semibold text-amber-800 dark:text-amber-300 uppercase mb-1">Why Lumi Picked This</h5>
+                      <p className="text-sm text-amber-700 dark:text-amber-400">{rationale}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {/* Instructions/Guidance */}
               <div>
                 <h5 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Creative Direction</h5>
@@ -159,22 +207,40 @@ export function CreativeChecklistCard({
               </div>
               
               {/* Actions */}
-              <div className="flex justify-between items-center">
-                {onAdPreview && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="gap-2"
-                    onClick={onAdPreview}
-                  >
-                    <Maximize2 className="h-4 w-4" />
-                    Preview Ad
-                  </Button>
-                )}
+              <div className="flex justify-between items-center gap-2">
+                <div className="flex items-center gap-2">
+                  {onAdPreview && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="gap-2"
+                      onClick={onAdPreview}
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                      Preview Ad
+                    </Button>
+                  )}
+                  {onSaveToLibrary && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={onSaveToLibrary}
+                      disabled={savingToLibrary}
+                    >
+                      {savingToLibrary ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Library className="h-4 w-4" />
+                      )}
+                      Save to Library
+                    </Button>
+                  )}
+                </div>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="text-destructive hover:text-destructive ml-auto"
+                  className="text-destructive hover:text-destructive"
                   onClick={onRemove}
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
@@ -186,5 +252,6 @@ export function CreativeChecklistCard({
         </CollapsibleContent>
       </Card>
     </Collapsible>
+    </TooltipProvider>
   );
 }
