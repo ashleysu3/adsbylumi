@@ -67,6 +67,7 @@ export default function CreativeStudio() {
   const [activeAngleId, setActiveAngleId] = useState<string>("");
   const [gridData, setGridData] = useState<CreativeCellData[]>([]);
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
+  const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
 
   const urlWorkspaceId = searchParams.get("workspace");
 
@@ -220,6 +221,45 @@ export default function CreativeStudio() {
     navigate(`/campaigns/build?workspace=${workspace.id}`);
   };
 
+  const saveToLibrary = async (cell: CreativeCellData) => {
+    if (!workspace) return;
+    setSavingToLibrary(cell.id);
+    try {
+      const { data: brandData } = await supabase
+        .from("brands")
+        .select("id")
+        .single();
+      
+      if (!brandData) throw new Error("No brand found");
+
+      const angle = availableAngles.find(a => a.id === cell.angleId);
+      
+      await supabase.from("content_ideas").insert({
+        brand_id: brandData.id,
+        offer_id: workspace.offer_id || null,
+        title: cell.hook,
+        content: JSON.stringify({
+          format: cell.format,
+          guidance: cell.guidance,
+          row: cell.row,
+          angle: angle?.name || "Unknown",
+          psychology_trigger: cell.psychology_trigger,
+          pain_point_addressed: cell.pain_point_addressed,
+          why_this_works: cell.why_this_works,
+        }),
+        type: "creative_concept",
+        status: "idea",
+        tags: [cell.format, cell.row, angle?.name || "creative"].filter(Boolean),
+      });
+
+      toast.success("Saved to Library");
+    } catch (error: any) {
+      toast.error("Failed to save: " + error.message);
+    } finally {
+      setSavingToLibrary(null);
+    }
+  };
+
   const workflowTabs = [
     { id: "angles" as const, label: "Angles", icon: Target },
     { id: "copy_creative" as const, label: "Copy & Creative", icon: FileText },
@@ -292,7 +332,12 @@ export default function CreativeStudio() {
                           </div>
                           <p className="font-medium text-sm">{cell.hook}</p>
                           <p className="text-xs text-muted-foreground">{cell.guidance}</p>
-                          {!isAdded && <Button size="sm" variant="outline" className="w-full" onClick={() => addToChecklist(cell)}>Add to Checklist</Button>}
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="ghost" className="flex-1" onClick={() => saveToLibrary(cell)} disabled={savingToLibrary === cell.id}>
+                              <Library className="h-3 w-3 mr-1" />Library
+                            </Button>
+                            {!isAdded && <Button size="sm" variant="outline" className="flex-1" onClick={() => addToChecklist(cell)}>Add</Button>}
+                          </div>
                         </CardContent>
                       </Card>
                     );
