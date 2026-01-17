@@ -153,10 +153,8 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     switch (campaign.progress_status) {
       case 'draft':
       case 'creative_in_progress':
-        return `/creative?workspace=${campaign.id}`;
-      
       case 'waiting_for_assets':
-        return `/production?workspace=${campaign.id}`;
+        return `/creative-studio?workspace=${campaign.id}`;
       
       case 'ready_to_publish':
       case 'publishing_to_meta':
@@ -167,7 +165,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
         return '/data';
       
       default:
-        return `/creative?workspace=${campaign.id}`;
+        return `/creative-studio?workspace=${campaign.id}`;
     }
   };
 
