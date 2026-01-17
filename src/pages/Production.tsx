@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Filter, Upload, Video, Image, X, ChevronDown } from "lucide-react";
+import { ArrowLeft, Filter, Upload, Video, Image, X, ChevronDown, CheckCircle2 } from "lucide-react";
 import { ProductionCard } from "@/components/ProductionCard";
 import { ProductionWorkflow } from "@/components/ProductionWorkflow";
 import { toast } from "sonner";
+import { syncAssetsToProductionItems } from "@/lib/sync-production-assets";
 import {
   Select,
   SelectContent,
@@ -146,7 +147,25 @@ export default function Production() {
       if (error) throw error;
 
       setWorkspace(data);
-      const items = Array.isArray(data.production_items) ? data.production_items : [];
+      let items = Array.isArray(data.production_items) ? data.production_items : [];
+      
+      // Auto-sync user_uploaded_assets to production_items
+      const userAssets = Array.isArray(data.user_uploaded_assets) ? data.user_uploaded_assets : [];
+      const syncResult = syncAssetsToProductionItems(items as any, userAssets as any);
+      
+      if (syncResult.updated) {
+        // Save synced items back to database
+        await supabase
+          .from("campaign_workspaces")
+          .update({ production_items: syncResult.items })
+          .eq("id", workspaceId);
+        
+        items = syncResult.items;
+        if (!silent) {
+          toast.success(`Synced ${syncResult.syncedCount} asset(s) to production items`);
+        }
+      }
+      
       setProductionItems(items);
 
       // Keep the workflow dialog stable by refreshing the selected item in-place (prevents step “jumping”)
@@ -211,6 +230,37 @@ export default function Production() {
     } catch (error: any) {
       console.error("Error removing item:", error);
       toast.error("Failed to remove concept");
+    }
+  };
+
+  // Quick approve handler for items with linked assets
+  const handleQuickApprove = async (itemId: string) => {
+    const item = productionItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const hasAsset = item.linkedAsset?.url || item.uploaded_asset_id;
+    if (!hasAsset) {
+      toast.error("Cannot approve: No asset linked to this concept");
+      return;
+    }
+
+    const updatedItems = productionItems.map(i => 
+      i.id === itemId ? { ...i, status: 'approved' } : i
+    );
+
+    try {
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({ production_items: updatedItems })
+        .eq("id", workspace.id);
+
+      if (error) throw error;
+
+      setProductionItems(updatedItems);
+      toast.success("Concept approved for campaign!");
+    } catch (error: any) {
+      console.error("Error approving item:", error);
+      toast.error("Failed to approve concept");
     }
   };
 
@@ -584,6 +634,7 @@ export default function Production() {
                 item={item} 
                 onClick={() => handleCardClick(item)} 
                 onRemove={handleRemoveItem}
+                onQuickApprove={handleQuickApprove}
               />
             ))}
           </div>

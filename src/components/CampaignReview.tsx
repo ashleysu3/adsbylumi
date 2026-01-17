@@ -14,7 +14,10 @@ import {
   Eye,
   AlertTriangle,
   Play,
-  Pause
+  Pause,
+  Upload,
+  FileText,
+  CheckCircle2
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AdPreview } from "./AdPreview";
@@ -23,6 +26,7 @@ import { PixelPreflightCheck } from "./PixelPreflightCheck";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { getReadinessSummary, isItemReadyForCampaign } from "@/lib/sync-production-assets";
 
 interface CampaignReviewProps {
   workspace: any;
@@ -329,12 +333,12 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
 
           <Separator />
 
-          {/* Creative Assets */}
+          {/* Creative Assets - Enhanced with detailed status */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Image className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">Creative Concepts ({readyConcepts.length} ready)</h3>
+                <h3 className="text-sm font-semibold">Creative Concepts</h3>
               </div>
               <Button 
                 variant="ghost" 
@@ -346,24 +350,52 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                 {showPreviews ? 'Hide Previews' : 'Show Previews'}
               </Button>
             </div>
+            
+            {/* Readiness Summary */}
+            {(() => {
+              const summary = getReadinessSummary(workspace.production_items || [], angleCopy);
+              return (
+                <div className="grid grid-cols-3 gap-2 p-3 bg-muted/30 rounded-lg">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 text-green-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span className="font-bold">{readyConcepts.length}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Ready</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 text-blue-600">
+                      <Upload className="h-4 w-4" />
+                      <span className="font-bold">{summary.uploaded}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">With Assets</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 text-purple-600">
+                      <Target className="h-4 w-4" />
+                      <span className="font-bold">{summary.total}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Total</p>
+                  </div>
+                </div>
+              );
+            })()}
+            
             <div className="space-y-2">
               {readyConcepts.length > 0 ? (
                 readyConcepts.map((item: any, index: number) => {
-                  const hasAsset = item.linkedAsset?.url || item.uploaded_asset_id;
-                  const hasCopy = item.finalCopy?.headline || item.final_copy?.headline;
+                  const { hasAsset, hasCopy } = isItemReadyForCampaign(item, angleCopy);
                   return (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-green-500/20">
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{item.concept?.title}</p>
+                        <p className="text-sm font-medium">{item.concept?.title || (item as any).hook || 'Untitled'}</p>
                         <p className="text-xs text-muted-foreground line-clamp-1">
-                          {item.concept?.hook}
+                          {item.concept?.hook || (item as any).guidance}
                         </p>
                         <div className="flex gap-2 mt-1">
-                          <Badge variant={hasAsset ? "default" : "destructive"} className="text-xs">
-                            {hasAsset ? '✓ Asset' : '✗ No Asset'}
-                          </Badge>
-                          <Badge variant={hasCopy ? "default" : "destructive"} className="text-xs">
-                            {hasCopy ? '✓ Copy' : '✗ No Copy'}
+                          <Badge variant="default" className="text-xs bg-green-500/10 text-green-600">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Ready
                           </Badge>
                         </div>
                       </div>
@@ -371,13 +403,80 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                         {item.concept?.stage === 'tofu' ? 'Grow' : 
                          item.concept?.stage === 'mofu' ? 'Nurture' : 
                          item.concept?.stage === 'bofu' ? 'Convert' : 
-                         item.concept?.stage || 'Grow'}
+                         item.stage || 'Grow'}
                       </Badge>
                     </div>
                   );
                 })
               ) : (
-                <p className="text-sm text-muted-foreground">No concepts ready (need asset + copy)</p>
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <p className="text-sm font-medium text-amber-600 mb-2">No concepts ready for campaign</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    To publish, concepts need:
+                  </p>
+                  <ul className="text-xs text-muted-foreground space-y-1 mb-3">
+                    <li className="flex items-center gap-2">
+                      <Upload className="h-3 w-3" /> Uploaded creative asset (video/image)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <FileText className="h-3 w-3" /> Ad copy (headline, description, primary text)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3 w-3" /> Status set to "Approved"
+                    </li>
+                  </ul>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => window.location.href = `/production?workspace=${workspace.id}`}
+                    className="w-full"
+                  >
+                    Go to Production
+                  </Button>
+                </div>
+              )}
+              
+              {/* Show incomplete concepts */}
+              {incompleteConcepts.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Not ready ({incompleteConcepts.length}):
+                  </p>
+                  {incompleteConcepts.slice(0, 3).map((item: any, index: number) => {
+                    const { hasAsset, hasCopy, reason } = isItemReadyForCampaign(item, angleCopy);
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg border border-dashed">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">
+                            {item.concept?.title || (item as any).hook || 'Untitled'}
+                          </p>
+                          <div className="flex gap-1 mt-1 flex-wrap">
+                            {!hasAsset && (
+                              <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/30">
+                                Needs Asset
+                              </Badge>
+                            )}
+                            {hasAsset && !hasCopy && (
+                              <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/30">
+                                Needs Copy
+                              </Badge>
+                            )}
+                            {hasAsset && hasCopy && item.status !== 'approved' && (
+                              <Badge variant="outline" className="text-xs text-amber-600 border-amber-500/30">
+                                Needs Approval
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {incompleteConcepts.length > 3 && (
+                    <p className="text-xs text-muted-foreground">
+                      +{incompleteConcepts.length - 3} more...
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
