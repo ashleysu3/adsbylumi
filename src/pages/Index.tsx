@@ -26,8 +26,8 @@ const PricingCards = ({ navigate }: { navigate: (path: string) => void }) => {
       key: "solo" as const,
       name: "Solo",
       description: "Perfect for solo coaches and course creators",
-      monthlyPrice: 147,
-      annualPrice: 1470,
+      monthlyPrice: 97,
+      annualPrice: 970,
       popular: true,
       comingSoon: false,
       features: SUBSCRIPTION_TIERS.solo.features,
@@ -655,11 +655,11 @@ const Index = () => {
           {/* Pricing Cards */}
           <PricingCards navigate={navigate} />
 
-          {/* Trial Info */}
+          {/* Billing Info */}
           <ScrollReveal delay={0.3}>
             <div className="mt-12 text-center">
               <p className="text-muted-foreground">
-                All plans include a 14-day free trial. Credit card required, but you won't be charged until your trial ends.
+                Cancel anytime. No questions asked.
               </p>
             </div>
           </ScrollReveal>
