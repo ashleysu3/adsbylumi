@@ -375,10 +375,16 @@ export default function CreativeStudio() {
             ) : (
               <div className="space-y-6">
                 {selectedAngleIds.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    {availableAngles.filter(a => selectedAngleIds.includes(a.id)).map(a => (
-                      <Button key={a.id} variant={activeAngleId === a.id ? "default" : "outline"} size="sm" onClick={() => setActiveAngleId(a.id)}>{a.name}</Button>
-                    ))}
+                  <div className="space-y-2">
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {availableAngles.filter(a => selectedAngleIds.includes(a.id)).map(a => (
+                        <Button key={a.id} variant={activeAngleId === a.id ? "default" : "outline"} size="sm" onClick={() => setActiveAngleId(a.id)}>{a.name}</Button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="text-primary">↑</span>
+                      <span>Click each angle to see all your concepts</span>
+                    </div>
                   </div>
                 )}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
