@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Shield, LogOut, LayoutTemplate, Ticket, BarChart3, Sparkles, CreditCard, Library, Settings } from "lucide-react";
+import { Shield, LogOut, LayoutTemplate, Ticket, BarChart3, Sparkles, CreditCard, Library, Settings, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -81,9 +81,13 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
               </>
             )}
             
+            <DropdownMenuItem onClick={() => navigate("/dashboard")} className="min-h-[44px]">
+              <Building2 className="mr-3 h-4 w-4" />
+              My Brand
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/content-library")} className="min-h-[44px]">
               <Library className="mr-3 h-4 w-4" />
-              Content Library
+              Concept Library
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/settings")} className="min-h-[44px]">
               <Settings className="mr-3 h-4 w-4" />

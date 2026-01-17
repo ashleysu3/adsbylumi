@@ -48,6 +48,11 @@ serve(async (req) => {
       return [];
     };
 
+    // Get emoji settings from brand (passed via brandInfo)
+    const useEmojis = brandInfo?.use_emojis !== false; // Default true
+    const brandEmojis = brandInfo?.brand_emojis || ['✨', '🎯', '💡', '🚀', '💪'];
+    const bulletEmoji = brandInfo?.bullet_emoji || '✅';
+
     // Extract offer-specific messaging guidelines
     const messagingGuidelines = offerData?.messaging_guidelines || {};
     const productPsychology = offerData?.product_psychology || {};
@@ -103,6 +108,26 @@ ${audiencePsychology?.pain_points?.length ? `Pain Points:\n${audiencePsychology.
 ${audiencePsychology?.objections?.length ? `Objections:\n${audiencePsychology.objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
 
 ${kbContext}
+
+## EMOJI & FORMATTING GUIDELINES
+${useEmojis ? `
+- USE emojis strategically (max 2-3 per primary copy)
+- Brand's preferred emojis: ${brandEmojis.join(' ')}
+- Use "${bulletEmoji}" for bullet points
+- Place emojis at the START of bullets, never mid-sentence
+` : `
+- DO NOT use any emojis in the copy
+- Use plain dashes (-) or bullet points (•) for lists
+`}
+
+## META BEST PRACTICES FOR PRIMARY COPY FORMATTING
+1. Start with a HOOK (first line must stop the scroll)
+2. Add a line break after the hook
+3. Use short paragraphs (2-3 sentences max)
+4. For bullet lists, use consistent formatting:
+   ${useEmojis ? `${bulletEmoji} Benefit one\n   ${bulletEmoji} Benefit two\n   ${bulletEmoji} Benefit three` : `• Benefit one\n   • Benefit two\n   • Benefit three`}
+5. End with a clear CTA on its own line
+6. Total structure: Hook → Problem → Solution → Benefits → CTA
 
 ## OUTPUT FORMAT
 Return valid JSON with this structure:
