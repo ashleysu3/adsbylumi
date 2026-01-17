@@ -233,7 +233,7 @@ export function CreativeChecklistCard({
                       ) : (
                         <Library className="h-4 w-4" />
                       )}
-                      Save to Library
+                      Save to Concept Library
                     </Button>
                   )}
                 </div>

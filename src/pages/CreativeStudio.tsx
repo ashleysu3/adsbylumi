@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -11,12 +11,14 @@ import {
   Target, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, FolderOpen, Video, Film, Image, Trash2,
-  ClipboardList, Library, Archive
+  X, HelpCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
+import { motion, AnimatePresence } from "framer-motion";
 import { LumiThinking } from "@/components/LumiThinking";
+import { LumiCharacter } from "@/components/LumiCharacter";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
@@ -24,7 +26,7 @@ import { ProductionManager } from "@/components/creative/ProductionManager";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
 
-type WorkflowTab = "angles" | "copy_creative" | "checklist" | "build";
+type WorkflowTab = "angles" | "copy_creative" | "build";
 
 interface WorkspaceOption {
   id: string;
@@ -48,6 +50,44 @@ const creativeGenerationCopy = [
 const formatIcons = { talking_head: Video, broll: Film, graphic: Image };
 const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic" };
 
+// Context-aware help messages for idle popup
+const getIdleHelpMessage = (
+  activeTab: WorkflowTab,
+  availableAngles: CreativeAngle[],
+  selectedAngleIds: string[],
+  gridData: CreativeCellData[],
+  productionItems: ProductionItem[]
+) => {
+  if (activeTab === "angles") {
+    if (availableAngles.length === 0) {
+      return "Click 'Generate Angles' to get AI-powered creative angle suggestions for your campaign.";
+    }
+    if (selectedAngleIds.length === 0) {
+      return "Select 1-3 angles that resonate with your offer, then click 'Generate Creative' to continue.";
+    }
+    return "Great picks! Click 'Generate Creative' to create hooks and concepts for your selected angles.";
+  }
+  if (activeTab === "copy_creative") {
+    if (gridData.length === 0) {
+      return "Head to the Angles tab to generate your creative concepts first.";
+    }
+    if (productionItems.length === 0) {
+      return "Browse the concepts and click 'Add to Checklist' on the ones you want to produce.";
+    }
+    return `You have ${productionItems.length} concepts ready. Add more or continue to the Build tab.`;
+  }
+  if (activeTab === "build") {
+    if (productionItems.length < 3) {
+      return `Add ${3 - productionItems.length} more concepts to unlock campaign building.`;
+    }
+    if (productionItems.length >= 6) {
+      return "Use 'Get Lumi's Top 5' to narrow down your best performers, then upload creative files.";
+    }
+    return "Upload your creative files to each concept, then build your campaign!";
+  }
+  return "Need help? Let me know what you're trying to accomplish.";
+};
+
 export default function CreativeStudio() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -69,8 +109,38 @@ export default function CreativeStudio() {
   const [activeAngleId, setActiveAngleId] = useState<string>("");
   const [gridData, setGridData] = useState<CreativeCellData[]>([]);
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
+  
+  // Idle help state
+  const [showIdleHelp, setShowIdleHelp] = useState(false);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const IDLE_TIMEOUT = 45000; // 45 seconds
 
   const urlWorkspaceId = searchParams.get("workspace");
+
+  // Idle detection
+  useEffect(() => {
+    const resetIdleTimer = () => {
+      setShowIdleHelp(false);
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+      idleTimerRef.current = setTimeout(() => {
+        setShowIdleHelp(true);
+      }, IDLE_TIMEOUT);
+    };
+
+    // Listen for user activity
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetIdleTimer));
+    resetIdleTimer();
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, resetIdleTimer));
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => { fetchInitialData(); }, []);
 
@@ -246,7 +316,7 @@ export default function CreativeStudio() {
       setProductionItems(updated);
       saveProductionItems(updated);
 
-      toast.success("Saved to Library & removed from checklist");
+      toast.success("Saved to Concept Library");
     } catch (error: any) {
       toast.error("Failed to save: " + error.message);
     }
@@ -255,7 +325,6 @@ export default function CreativeStudio() {
   const workflowTabs = [
     { id: "angles" as const, label: "Angles", icon: Target },
     { id: "copy_creative" as const, label: "Copy & Creative", icon: FileText },
-    { id: "checklist" as const, label: "Checklist", icon: ClipboardList },
     { id: "build" as const, label: "Build", icon: Rocket },
   ];
 
@@ -278,7 +347,7 @@ export default function CreativeStudio() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             {workflowTabs.map(t => <TabsTrigger key={t.id} value={t.id} className="gap-2"><t.icon className="h-4 w-4" /><span className="hidden sm:inline">{t.label}</span></TabsTrigger>)}
           </TabsList>
 
@@ -339,9 +408,9 @@ export default function CreativeStudio() {
                   <Card><CardContent className="pt-4">
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-medium">Production Checklist ({productionItems.length})</h4>
-                      <Button size="sm" variant="outline" onClick={() => setActiveTab("checklist")} className="gap-1">
-                        <ClipboardList className="h-3 w-3" />
-                        Manage
+                      <Button size="sm" variant="outline" onClick={() => setActiveTab("build")} className="gap-1">
+                        <Rocket className="h-3 w-3" />
+                        Go to Build
                       </Button>
                     </div>
                     <div className="space-y-2">
@@ -357,80 +426,7 @@ export default function CreativeStudio() {
                     </div>
                   </CardContent></Card>
                 )}
-                <div className="flex justify-end"><Button onClick={() => setActiveTab("checklist")} disabled={productionItems.length === 0} className="gap-2">Continue<ArrowRight className="h-4 w-4" /></Button></div>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="checklist">
-            {productionItems.length === 0 ? (
-              <Card><CardContent className="pt-6 text-center py-12">
-                <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Concepts Yet</h3>
-                <p className="text-muted-foreground text-sm mb-6">Add concepts from Copy & Creative to your checklist</p>
-                <Button onClick={() => setActiveTab("copy_creative")} variant="outline">Go to Copy & Creative</Button>
-              </CardContent></Card>
-            ) : (
-              <div className="space-y-4">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold">Your Creative Concepts</h3>
-                        <p className="text-sm text-muted-foreground">{productionItems.length} concept{productionItems.length !== 1 ? "s" : ""} ready to produce</p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      {productionItems.map(item => {
-                        const Icon = formatIcons[item.format as keyof typeof formatIcons] || Image;
-                        return (
-                          <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-primary/10 flex-shrink-0">
-                              <Icon className="h-5 w-5 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{item.hook}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="secondary" className="text-xs">{formatLabels[item.format as keyof typeof formatLabels]}</Badge>
-                                {item.angleName && <Badge variant="outline" className="text-xs">{item.angleName}</Badge>}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="gap-1 text-primary border-primary/30 hover:bg-primary/10"
-                                onClick={() => saveItemToLibrary(item)}
-                              >
-                                <Library className="h-4 w-4" />
-                                <span className="hidden sm:inline">Save</span>
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => removeFromChecklist(item.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <div className="flex justify-between items-center">
-                  <Button variant="outline" onClick={() => setActiveTab("copy_creative")} className="gap-2">
-                    <ArrowRight className="h-4 w-4 rotate-180" />
-                    Add More
-                  </Button>
-                  <Button onClick={() => setActiveTab("build")} disabled={productionItems.length < 3} className="gap-2">
-                    {productionItems.length < 3 ? `Need ${3 - productionItems.length} more` : "Continue to Build"}
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
+                <div className="flex justify-end"><Button onClick={() => setActiveTab("build")} disabled={productionItems.length === 0} className="gap-2">Continue to Build<ArrowRight className="h-4 w-4" /></Button></div>
               </div>
             )}
           </TabsContent>
@@ -450,6 +446,60 @@ export default function CreativeStudio() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Idle Help Popup - max 20% screen width */}
+      <AnimatePresence>
+        {showIdleHelp && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="fixed bottom-6 right-6 z-50 max-w-[20vw] min-w-[280px]"
+          >
+            <Card className="shadow-xl border-primary/20 bg-background/95 backdrop-blur-sm">
+              <CardContent className="pt-4 pb-4 relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 h-6 w-6"
+                  onClick={() => setShowIdleHelp(false)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+                <div className="flex items-start gap-3 pr-6">
+                  <LumiCharacter size="sm" state="idle" glow />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <HelpCircle className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-medium">Need help?</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {getIdleHelpMessage(activeTab, availableAngles, selectedAngleIds, gridData, productionItems)}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="link"
+                      className="px-0 h-auto text-xs text-primary"
+                      onClick={() => {
+                        setShowIdleHelp(false);
+                        // Navigate to the next logical step
+                        if (activeTab === "angles" && availableAngles.length > 0 && selectedAngleIds.length > 0) {
+                          generateCreativeGrid();
+                        } else if (activeTab === "copy_creative" && productionItems.length > 0) {
+                          setActiveTab("build");
+                        }
+                      }}
+                    >
+                      Show me what to do next →
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       <LumiThinking isOpen={generating} customCopy={creativeGenerationCopy} />
       <CreativeStudioExplainer open={showExplainer} onClose={closeExplainer} />
     </DashboardLayout>
