@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Library, Target, FileText, Rocket, 
+  Target, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, FolderOpen, Video, Film, Image, Trash2
 } from "lucide-react";
@@ -58,6 +58,7 @@ export default function CreativeStudio() {
   const [workspace, setWorkspace] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<WorkflowTab>("angles");
   const [contentIdeas, setContentIdeas] = useState<any[]>([]);
+  const [brandId, setBrandId] = useState<string>("");
   
   const [availableAngles, setAvailableAngles] = useState<CreativeAngle[]>([]);
   const [selectedAngleIds, setSelectedAngleIds] = useState<string[]>([]);
@@ -67,7 +68,6 @@ export default function CreativeStudio() {
   const [activeAngleId, setActiveAngleId] = useState<string>("");
   const [gridData, setGridData] = useState<CreativeCellData[]>([]);
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
-  const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
 
   const urlWorkspaceId = searchParams.get("workspace");
 
@@ -81,6 +81,8 @@ export default function CreativeStudio() {
       const { data: brandData } = await supabase
         .from("brands").select("*").eq("user_id", user.id).single();
       if (!brandData) { navigate("/dashboard"); return; }
+      
+      setBrandId(brandData.id);
 
       const { data: workspacesData } = await supabase
         .from("campaign_workspaces")
@@ -221,42 +223,31 @@ export default function CreativeStudio() {
     navigate(`/campaigns/build?workspace=${workspace.id}`);
   };
 
-  const saveToLibrary = async (cell: CreativeCellData) => {
-    if (!workspace) return;
-    setSavingToLibrary(cell.id);
+  const saveItemToLibrary = async (item: ProductionItem) => {
+    if (!workspace || !brandId) return;
     try {
-      const { data: brandData } = await supabase
-        .from("brands")
-        .select("id")
-        .single();
-      
-      if (!brandData) throw new Error("No brand found");
-
-      const angle = availableAngles.find(a => a.id === cell.angleId);
-      
       await supabase.from("content_ideas").insert({
-        brand_id: brandData.id,
+        brand_id: brandId,
         offer_id: workspace.offer_id || null,
-        title: cell.hook,
+        title: item.hook,
         content: JSON.stringify({
-          format: cell.format,
-          guidance: cell.guidance,
-          row: cell.row,
-          angle: angle?.name || "Unknown",
-          psychology_trigger: cell.psychology_trigger,
-          pain_point_addressed: cell.pain_point_addressed,
-          why_this_works: cell.why_this_works,
+          format: item.format,
+          guidance: item.guidance,
+          angle: item.angleName,
         }),
         type: "creative_concept",
         status: "idea",
-        tags: [cell.format, cell.row, angle?.name || "creative"].filter(Boolean),
+        tags: [item.format, item.angleName, "creative"].filter(Boolean),
       });
 
-      toast.success("Saved to Library");
+      // Remove from checklist after saving
+      const updated = productionItems.filter(i => i.id !== item.id);
+      setProductionItems(updated);
+      saveProductionItems(updated);
+
+      toast.success("Saved to Library & removed from checklist");
     } catch (error: any) {
       toast.error("Failed to save: " + error.message);
-    } finally {
-      setSavingToLibrary(null);
     }
   };
 
@@ -332,12 +323,11 @@ export default function CreativeStudio() {
                           </div>
                           <p className="font-medium text-sm">{cell.hook}</p>
                           <p className="text-xs text-muted-foreground">{cell.guidance}</p>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="ghost" className="flex-1" onClick={() => saveToLibrary(cell)} disabled={savingToLibrary === cell.id}>
-                              <Library className="h-3 w-3 mr-1" />Library
+                          {!isAdded && (
+                            <Button size="sm" variant="outline" className="w-full" onClick={() => addToChecklist(cell)}>
+                              Add to Checklist
                             </Button>
-                            {!isAdded && <Button size="sm" variant="outline" className="flex-1" onClick={() => addToChecklist(cell)}>Add</Button>}
-                          </div>
+                          )}
                         </CardContent>
                       </Card>
                     );

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Video, Film, Image, Plus, RefreshCw, Library } from "lucide-react";
+import { Video, Film, Image, Plus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface CreativeCellData {
@@ -23,10 +23,8 @@ interface CreativeCellProps {
   onToggle: (cellId: string) => void;
   onAddToChecklist?: (cellId: string) => void;
   onRegenerate?: (cellId: string) => void;
-  onSaveToLibrary?: (cell: CreativeCellData) => void;
   isInChecklist?: boolean;
   isRegenerating?: boolean;
-  isSavingToLibrary?: boolean;
 }
 
 const formatIcons = {
@@ -47,10 +45,8 @@ export function CreativeCell({
   onToggle, 
   onAddToChecklist, 
   onRegenerate,
-  onSaveToLibrary,
   isInChecklist,
   isRegenerating,
-  isSavingToLibrary
 }: CreativeCellProps) {
   const Icon = formatIcons[cell.format];
 
@@ -102,44 +98,27 @@ export function CreativeCell({
       <CardContent className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 sm:space-y-3">
         <p className="font-medium text-xs sm:text-sm leading-snug">{cell.hook}</p>
         <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{cell.guidance}</p>
-        <div className="flex gap-2">
-          {onSaveToLibrary && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex-1 min-h-[36px] sm:min-h-[32px] text-xs sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSaveToLibrary(cell);
-              }}
-              disabled={isSavingToLibrary}
-            >
-              <Library className="h-3 w-3 mr-1" />
-              Library
-            </Button>
-          )}
-          {onAddToChecklist && (
-            <Button
-              variant={isInChecklist ? "secondary" : "outline"}
-              size="sm"
-              className="flex-1 min-h-[36px] sm:min-h-[32px] text-xs sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToChecklist(cell.id);
-              }}
-              disabled={isInChecklist}
-            >
-              {isInChecklist ? (
-                "Added"
-              ) : (
-                <>
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add
-                </>
-              )}
-            </Button>
-          )}
-        </div>
+        {onAddToChecklist && (
+          <Button
+            variant={isInChecklist ? "secondary" : "outline"}
+            size="sm"
+            className="w-full min-h-[36px] sm:min-h-[32px] text-xs sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToChecklist(cell.id);
+            }}
+            disabled={isInChecklist}
+          >
+            {isInChecklist ? (
+              "Added"
+            ) : (
+              <>
+                <Plus className="h-3 w-3 mr-1" />
+                Add to Checklist
+              </>
+            )}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

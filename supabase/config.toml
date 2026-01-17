@@ -122,3 +122,6 @@ verify_jwt = true
 
 [functions.verify-meta-tokens]
 verify_jwt = false
+
+[functions.rank-creative-concepts]
+verify_jwt = true
