@@ -142,7 +142,7 @@ export default function Data() {
         title: "No Live Campaigns Yet",
         message: "Publish your first campaign to start tracking performance and get AI-powered insights.",
         actionLabel: "Create Campaign",
-        onAction: () => navigate("/planning"),
+        onAction: () => navigate("/create"),
       });
       return;
     }
