@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { 
   Link2, Link2Off, RefreshCw, CheckCircle, XCircle, 
   AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
-  ArrowLeft
+  ArrowLeft, Zap, WifiOff, Key
 } from 'lucide-react';
 import { format, differenceInDays, addDays } from 'date-fns';
 import { PixelVerificationCard } from '@/components/PixelVerificationCard';
@@ -22,6 +22,19 @@ export default function MetaSettings() {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [brand, setBrand] = useState<any>(null);
   const [hasValidToken, setHasValidToken] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+    error?: string;
+    details?: {
+      tokenValid?: boolean;
+      permissionsValid?: boolean;
+      permissions?: string[];
+      adAccountName?: string;
+      adAccountId?: string;
+    };
+  } | null>(null);
 
   useEffect(() => {
     fetchBrand();
@@ -150,6 +163,48 @@ export default function MetaSettings() {
     } catch (error) {
       console.error('Error disconnecting Meta:', error);
       toast.error('Failed to disconnect Meta account');
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!brand?.id) {
+      toast.error('No brand found');
+      return;
+    }
+
+    try {
+      setTesting(true);
+      setTestResult(null);
+
+      const { data, error } = await supabase.functions.invoke('test-meta-connection', {
+        body: { brandId: brand.id }
+      });
+
+      if (error) {
+        setTestResult({
+          success: false,
+          message: 'Test failed',
+          error: error.message || 'Could not complete connection test'
+        });
+        return;
+      }
+
+      setTestResult(data);
+
+      if (data.success) {
+        toast.success('Connection test passed!');
+      } else {
+        toast.error(data.message || 'Connection test failed');
+      }
+    } catch (error: any) {
+      console.error('Test connection error:', error);
+      setTestResult({
+        success: false,
+        message: 'Test failed',
+        error: error.message || 'An unexpected error occurred'
+      });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -369,7 +424,82 @@ export default function MetaSettings() {
                   </Alert>
                 )}
 
-                <div className="flex gap-3 pt-2">
+                {/* Test Connection Result */}
+                {testResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    testResult.success 
+                      ? 'bg-green-500/10 border-green-500/30' 
+                      : 'bg-destructive/10 border-destructive/30'
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      {testResult.success ? (
+                        <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium ${testResult.success ? 'text-green-600' : 'text-destructive'}`}>
+                          {testResult.message}
+                        </p>
+                        {testResult.error && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {testResult.error}
+                          </p>
+                        )}
+                        {testResult.details && (
+                          <div className="mt-3 space-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <Key className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">Token:</span>
+                              <Badge variant={testResult.details.tokenValid ? "default" : "destructive"} className={testResult.details.tokenValid ? "bg-green-500/10 text-green-600 border-green-500/30" : ""}>
+                                {testResult.details.tokenValid ? "Valid" : "Invalid"}
+                              </Badge>
+                            </div>
+                            {testResult.details.permissionsValid !== undefined && (
+                              <div className="flex items-center gap-2">
+                                <Shield className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-muted-foreground">Permissions:</span>
+                                <Badge variant={testResult.details.permissionsValid ? "default" : "secondary"} className={testResult.details.permissionsValid ? "bg-green-500/10 text-green-600 border-green-500/30" : ""}>
+                                  {testResult.details.permissionsValid ? "All granted" : "Some missing"}
+                                </Badge>
+                              </div>
+                            )}
+                            {testResult.details.adAccountName && (
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <span className="text-muted-foreground">Ad Account:</span>
+                                <span className="font-medium">{testResult.details.adAccountName}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => setTestResult(null)}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <Button 
+                    onClick={handleTestConnection} 
+                    disabled={testing}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    {testing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Zap className="h-4 w-4" />
+                    )}
+                    {testing ? "Testing..." : "Test Connection"}
+                  </Button>
                   <Button 
                     onClick={handleConnectMeta} 
                     disabled={connecting}
