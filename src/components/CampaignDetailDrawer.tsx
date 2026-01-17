@@ -243,8 +243,11 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
       navigate('/data');
     } else if (status === 'ready_to_publish' || status === 'publishing_to_meta') {
       navigate(`/campaigns/build?workspace=${workspace.id}`);
+    } else if (status === 'creative_in_progress' || status === 'waiting_for_assets') {
+      // For in-progress creative work - go to creative studio
+      navigate(`/creative-studio?workspace=${workspace.id}`);
     } else {
-      // For draft, creative_in_progress, waiting_for_assets - go to create flow
+      // For draft - go to create flow to start setup
       navigate(`/create?workspace=${workspace.id}`);
     }
     
