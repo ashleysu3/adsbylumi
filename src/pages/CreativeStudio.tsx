@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
-import { GeneratingModal } from "@/components/GeneratingModal";
+import { LumiThinking } from "@/components/LumiThinking";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
@@ -34,15 +34,14 @@ interface WorkspaceOption {
   productionCount: number;
 }
 
-const angleGenerationSteps = [
-  "Analyzing your brand strategy...",
-  "Identifying creative opportunities...",
-  "Crafting unique angles...",
-];
-
-const gridGenerationSteps = [
-  "Creating attention-grabbing hooks...",
-  "Building your creative concepts...",
+// Lumi-approved microcopy for creative generation
+const creativeGenerationCopy = [
+  "This is where Lumi does the thinking.",
+  "Finding the strongest angle to lead with.",
+  "Lining up your creative options.",
+  "Making the strategic call.",
+  "Setting this up the smart way.",
+  "Making this easy to execute.",
 ];
 
 const formatIcons = { talking_head: Video, broll: Film, graphic: Image };
@@ -333,7 +332,7 @@ export default function CreativeStudio() {
           </TabsContent>
         </Tabs>
       </div>
-      <GeneratingModal isOpen={generating} steps={generatingPhase === "angles" ? angleGenerationSteps : gridGenerationSteps} title={generatingPhase === "angles" ? "Generating Angles" : "Creating Concepts"} />
+      <LumiThinking isOpen={generating} customCopy={creativeGenerationCopy} />
       <CreativeStudioExplainer open={showExplainer} onClose={closeExplainer} />
     </DashboardLayout>
   );

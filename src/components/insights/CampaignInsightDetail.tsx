@@ -352,8 +352,12 @@ export function CampaignInsightDetail({
       {isLoading ? (
         <Card className="rounded-2xl">
           <CardContent className="p-12 flex flex-col items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--lumi-orange-1))] mb-4" />
-            <p className="text-muted-foreground">Lumi is gathering your insights...</p>
+            <div className="w-full max-w-sm mb-4">
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-[hsl(var(--lumi-orange-1))] to-[hsl(var(--lumi-orange-2))] rounded-full animate-pulse w-1/2" />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">Taking a look at the big picture.</p>
           </CardContent>
         </Card>
       ) : (
