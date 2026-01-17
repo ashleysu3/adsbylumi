@@ -380,6 +380,15 @@ export function AngleCopyEditor({
           </div>
         )}
         
+        {/* Explanation */}
+        <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3 border border-border/50">
+          <p className="leading-relaxed">
+            <span className="font-medium text-foreground">Why the same copy for each angle?</span>{" "}
+            Meta's algorithm tests different combinations of your headlines, descriptions, and primary copy across all your creatives. 
+            Having 3-5 variations per field gives Meta the options it needs to find winning combinations — without overwhelming the system.
+          </p>
+        </div>
+        
         {/* Save Button */}
         {hasCopy && (
           <Button onClick={onSave} className="w-full gap-2">
