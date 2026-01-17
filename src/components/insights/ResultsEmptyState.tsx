@@ -71,7 +71,7 @@ export function ResultsEmptyState({ onShowDemo }: ResultsEmptyStateProps) {
         <Button 
           size="lg" 
           className="flex-1 gap-2 h-12"
-          onClick={() => navigate('/settings')}
+          onClick={() => navigate('/settings/meta')}
         >
           <Link2 className="w-5 h-5" />
           Connect Meta Account

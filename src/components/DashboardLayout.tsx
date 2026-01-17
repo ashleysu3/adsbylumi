@@ -161,10 +161,10 @@ export default function DashboardLayout({
         }, {
           id: 'campaign',
           title: 'Create Your First Campaign',
-          description: 'Use the Ad Planner to build a strategic campaign with AI-generated creative assets.',
+          description: 'Use the Ad Wizard to build a strategic campaign with AI-generated creative assets.',
           completed: data.context.campaignCount > 0,
-          action: data.context.campaignCount === 0 ? 'Start Planning' : undefined,
-          route: '/planning'
+          action: data.context.campaignCount === 0 ? 'Create Ad' : undefined,
+          route: '/create'
         }];
         setWalkthroughSteps(steps);
         setWalkthroughOpen(true);
