@@ -23,10 +23,13 @@ export default function MetaSettings() {
   const [brand, setBrand] = useState<any>(null);
   const [hasValidToken, setHasValidToken] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [autoTesting, setAutoTesting] = useState(false);
+  const [connectionHealth, setConnectionHealth] = useState<'checking' | 'healthy' | 'warning' | 'error' | null>(null);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
     error?: string;
+    isAutoTest?: boolean;
     details?: {
       tokenValid?: boolean;
       permissionsValid?: boolean;
@@ -39,6 +42,48 @@ export default function MetaSettings() {
   useEffect(() => {
     fetchBrand();
   }, []);
+
+  // Auto-test connection when brand is loaded and connected
+  useEffect(() => {
+    if (brand?.id && brand?.meta_account_id && hasValidToken && !testResult) {
+      runAutoTest();
+    }
+  }, [brand?.id, brand?.meta_account_id, hasValidToken]);
+
+  const runAutoTest = async () => {
+    if (!brand?.id || autoTesting) return;
+
+    try {
+      setAutoTesting(true);
+      setConnectionHealth('checking');
+
+      const { data, error } = await supabase.functions.invoke('test-meta-connection', {
+        body: { brandId: brand.id }
+      });
+
+      if (error) {
+        setConnectionHealth('error');
+        return;
+      }
+
+      if (data.success) {
+        if (data.details?.permissionsValid === false) {
+          setConnectionHealth('warning');
+        } else {
+          setConnectionHealth('healthy');
+        }
+      } else {
+        setConnectionHealth('error');
+      }
+
+      // Store result but don't show the full panel unless manually tested
+      setTestResult({ ...data, isAutoTest: true });
+    } catch {
+      setConnectionHealth('error');
+    } finally {
+      setAutoTesting(false);
+    }
+  };
 
   const fetchBrand = async () => {
     try {
@@ -175,33 +220,45 @@ export default function MetaSettings() {
     try {
       setTesting(true);
       setTestResult(null);
+      setConnectionHealth('checking');
 
       const { data, error } = await supabase.functions.invoke('test-meta-connection', {
         body: { brandId: brand.id }
       });
 
       if (error) {
+        setConnectionHealth('error');
         setTestResult({
           success: false,
           message: 'Test failed',
-          error: error.message || 'Could not complete connection test'
+          error: error.message || 'Could not complete connection test',
+          isAutoTest: false
         });
         return;
       }
 
-      setTestResult(data);
-
+      // Update health status based on result
       if (data.success) {
+        if (data.details?.permissionsValid === false) {
+          setConnectionHealth('warning');
+        } else {
+          setConnectionHealth('healthy');
+        }
         toast.success('Connection test passed!');
       } else {
+        setConnectionHealth('error');
         toast.error(data.message || 'Connection test failed');
       }
+
+      setTestResult({ ...data, isAutoTest: false });
     } catch (error: any) {
       console.error('Test connection error:', error);
+      setConnectionHealth('error');
       setTestResult({
         success: false,
         message: 'Test failed',
-        error: error.message || 'An unexpected error occurred'
+        error: error.message || 'An unexpected error occurred',
+        isAutoTest: false
       });
     } finally {
       setTesting(false);
@@ -285,12 +342,43 @@ export default function MetaSettings() {
                   </>
                 )}
               </CardTitle>
-              <Badge 
-                variant={isConnected ? (isExpired ? "destructive" : isExpiringSoon ? "secondary" : "default") : isPartiallyConnected ? "secondary" : "outline"}
-                className={isConnected && !isExpired && !isExpiringSoon ? "bg-green-500/10 text-green-500 border-green-500/30" : isPartiallyConnected ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : ""}
-              >
-                {isConnected ? (isExpired ? "Expired" : isExpiringSoon ? "Expiring Soon" : "Active") : isPartiallyConnected ? "Token Missing" : "Inactive"}
-              </Badge>
+              <div className="flex items-center gap-2">
+                {/* Connection Health Indicator */}
+                {isConnected && connectionHealth && (
+                  <div className="flex items-center gap-1.5">
+                    {connectionHealth === 'checking' && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span className="text-xs">Verifying...</span>
+                      </div>
+                    )}
+                    {connectionHealth === 'healthy' && (
+                      <div className="flex items-center gap-1.5 text-green-600">
+                        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-xs font-medium">Verified</span>
+                      </div>
+                    )}
+                    {connectionHealth === 'warning' && (
+                      <div className="flex items-center gap-1.5 text-amber-600">
+                        <div className="h-2 w-2 rounded-full bg-amber-500" />
+                        <span className="text-xs font-medium">Limited</span>
+                      </div>
+                    )}
+                    {connectionHealth === 'error' && (
+                      <div className="flex items-center gap-1.5 text-destructive">
+                        <div className="h-2 w-2 rounded-full bg-destructive" />
+                        <span className="text-xs font-medium">Issue</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <Badge 
+                  variant={isConnected ? (isExpired ? "destructive" : isExpiringSoon ? "secondary" : "default") : isPartiallyConnected ? "secondary" : "outline"}
+                  className={isConnected && !isExpired && !isExpiringSoon ? "bg-green-500/10 text-green-500 border-green-500/30" : isPartiallyConnected ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : ""}
+                >
+                  {isConnected ? (isExpired ? "Expired" : isExpiringSoon ? "Expiring Soon" : "Active") : isPartiallyConnected ? "Token Missing" : "Inactive"}
+                </Badge>
+              </div>
             </div>
             <CardDescription>
               {isConnected 
@@ -424,8 +512,8 @@ export default function MetaSettings() {
                   </Alert>
                 )}
 
-                {/* Test Connection Result */}
-                {testResult && (
+                {/* Test Connection Result - Only show full panel for manual tests or errors */}
+                {testResult && (!testResult.isAutoTest || !testResult.success) && (
                   <div className={`p-4 rounded-lg border ${
                     testResult.success 
                       ? 'bg-green-500/10 border-green-500/30' 
@@ -471,6 +559,24 @@ export default function MetaSettings() {
                                 <span className="font-medium">{testResult.details.adAccountName}</span>
                               </div>
                             )}
+                          </div>
+                        )}
+                        {/* Troubleshooting tips for errors */}
+                        {!testResult.success && (
+                          <div className="mt-4 p-3 bg-muted/50 rounded-md">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Troubleshooting:</p>
+                            <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                              {testResult.details?.tokenValid === false && (
+                                <li>Your token may have expired. Try reconnecting your Meta account.</li>
+                              )}
+                              {testResult.details?.permissionsValid === false && (
+                                <li>Some permissions are missing. Reconnect and approve all requested permissions.</li>
+                              )}
+                              {!testResult.details?.tokenValid && (
+                                <li>Check if you've changed your Meta password recently.</li>
+                              )}
+                              <li>Try disconnecting and reconnecting your Meta account.</li>
+                            </ul>
                           </div>
                         )}
                       </div>
