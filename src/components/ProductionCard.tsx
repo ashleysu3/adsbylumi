@@ -36,6 +36,7 @@ interface ProductionCardProps {
   item: ProductionItem;
   onClick: () => void;
   onRemove?: (itemId: string) => void;
+  onQuickApprove?: (itemId: string) => void;
 }
 
 const formatIcons: Record<string, any> = {
@@ -91,11 +92,15 @@ const statusConfig = {
   },
 };
 
-export function ProductionCard({ item, onClick, onRemove }: ProductionCardProps) {
+export function ProductionCard({ item, onClick, onRemove, onQuickApprove }: ProductionCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const FormatIcon = formatIcons[item.format] || Video;
   const statusInfo = statusConfig[item.status];
   const StatusIcon = statusInfo.icon;
+  
+  // Check if item has a linked asset but isn't approved yet
+  const hasAsset = !!(item as any).linkedAsset?.url || !!(item as any).uploaded_asset_id;
+  const canQuickApprove = hasAsset && item.status !== 'approved' && item.status !== 'uploaded';
 
   const stageLabels: Record<string, string> = {
     tofu: "TOFU - Awareness",
@@ -177,16 +182,42 @@ export function ProductionCard({ item, onClick, onRemove }: ProductionCardProps)
             </p>
           )}
 
+          {/* Asset indicator for items with linked assets */}
+          {hasAsset && !isComplete && (
+            <div className="p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+              <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                Asset linked — ready to approve
+              </p>
+            </div>
+          )}
+
           {/* Status & Action */}
           <div className="flex items-center justify-between pt-2 border-t">
             <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
-            <Button
-              variant={isComplete ? "lumi" : "outline"}
-              size="sm"
-              disabled={isComplete}
-            >
-              {statusInfo.buttonText}
-            </Button>
+            <div className="flex items-center gap-2">
+              {canQuickApprove && onQuickApprove && (
+                <Button
+                  variant="lumi"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onQuickApprove(item.id);
+                  }}
+                >
+                  Approve
+                </Button>
+              )}
+              {!canQuickApprove && (
+                <Button
+                  variant={isComplete ? "lumi" : "outline"}
+                  size="sm"
+                  disabled={isComplete}
+                >
+                  {statusInfo.buttonText}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </Card>

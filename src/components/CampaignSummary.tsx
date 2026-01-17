@@ -11,9 +11,12 @@ import {
   Zap,
   CheckCircle2,
   Circle,
-  PartyPopper
+  PartyPopper,
+  Upload,
+  AlertCircle
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { getReadinessSummary } from "@/lib/sync-production-assets";
 
 interface CampaignSummaryProps {
   workspace: any;
@@ -139,7 +142,7 @@ export function CampaignSummary({ workspace, answers, stage }: CampaignSummaryPr
 
         <Separator />
 
-        {/* Creative Assets */}
+        {/* Creative Assets - Enhanced Readiness */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Image className="h-4 w-4 text-primary" />
@@ -147,18 +150,70 @@ export function CampaignSummary({ workspace, answers, stage }: CampaignSummaryPr
           </div>
           <div className="ml-6 space-y-2">
             {workspace.production_items?.length > 0 ? (
-              <>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total Concepts:</span>
-                  <span className="font-medium">{workspace.production_items.length}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Approved:</span>
-                  <span className="font-medium">
-                    {workspace.production_items.filter((i: any) => i.status === 'approved').length}
-                  </span>
-                </div>
-              </>
+              (() => {
+                const angleCopy = workspace.creative_json?.angleCopy || {};
+                const summary = getReadinessSummary(workspace.production_items, angleCopy);
+                
+                // Determine readiness status
+                let statusBadge;
+                if (summary.ready >= 1) {
+                  statusBadge = (
+                    <Badge className="bg-green-500/10 text-green-600 text-xs">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Ready
+                    </Badge>
+                  );
+                } else if (summary.uploaded > 0) {
+                  statusBadge = (
+                    <Badge className="bg-amber-500/10 text-amber-600 text-xs">
+                      <Upload className="h-3 w-3 mr-1" />
+                      Needs Approval
+                    </Badge>
+                  );
+                } else {
+                  statusBadge = (
+                    <Badge className="bg-red-500/10 text-red-600 text-xs">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Needs Assets
+                    </Badge>
+                  );
+                }
+                
+                return (
+                  <>
+                    <div className="mb-2">
+                      {statusBadge}
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Ready for Ads:</span>
+                      <span className="font-medium text-green-600">{summary.ready}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">With Assets:</span>
+                      <span className="font-medium">{summary.uploaded}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Total:</span>
+                      <span className="font-medium">{summary.total}</span>
+                    </div>
+                    {summary.needsAsset > 0 && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        {summary.needsAsset} need assets
+                      </p>
+                    )}
+                    {summary.needsCopy > 0 && (
+                      <p className="text-xs text-amber-600">
+                        {summary.needsCopy} need copy
+                      </p>
+                    )}
+                    {summary.needsApproval > 0 && (
+                      <p className="text-xs text-amber-600">
+                        {summary.needsApproval} need approval
+                      </p>
+                    )}
+                  </>
+                );
+              })()
             ) : (
               <p className="text-xs text-muted-foreground">No assets uploaded yet</p>
             )}
