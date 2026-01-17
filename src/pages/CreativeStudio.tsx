@@ -421,28 +421,6 @@ export default function CreativeStudio() {
                     );
                   })}
                 </div>
-                {productionItems.length > 0 && (
-                  <Card><CardContent className="pt-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium">Production Checklist ({productionItems.length})</h4>
-                      <Button size="sm" variant="outline" onClick={() => setActiveTab("build")} className="gap-1">
-                        <Rocket className="h-3 w-3" />
-                        Go to Build
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      {productionItems.slice(0, 3).map(item => (
-                        <div key={item.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
-                          <span className="text-sm truncate flex-1">{item.hook}</span>
-                          <Badge variant="secondary">{formatLabels[item.format as keyof typeof formatLabels]}</Badge>
-                        </div>
-                      ))}
-                      {productionItems.length > 3 && (
-                        <p className="text-xs text-muted-foreground text-center">+{productionItems.length - 3} more items</p>
-                      )}
-                    </div>
-                  </CardContent></Card>
-                )}
                 <div className="flex justify-end"><Button onClick={() => setActiveTab("build")} disabled={productionItems.length === 0} className="gap-2">Continue to Build<ArrowRight className="h-4 w-4" /></Button></div>
               </div>
             )}
