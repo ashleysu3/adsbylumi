@@ -6,6 +6,11 @@ import confetti from "canvas-confetti";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { BrandEditDialog } from "@/components/BrandEditDialog";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
@@ -14,16 +19,27 @@ import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { PageShimmer } from "@/components/GradientShimmer";
 import { AlertsBanner } from "@/components/AlertsBanner";
 import { useLumiRecommend } from "@/components/LumiAssistant";
-import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link, AlertTriangle } from "lucide-react";
+import EmojiQuickPicker from "@/components/EmojiQuickPicker";
+import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link, AlertTriangle, Smile, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+interface EmojiSettings {
+  use_emojis: boolean;
+  brand_emojis: string[];
+  bullet_emoji: string;
+}
+
+const DEFAULT_EMOJIS = ['✨', '🎯', '💡', '🚀', '💪', '⭐'];
+const BULLET_OPTIONS = ['✅', '→', '•', '✓', '▸', '★', '💫', '🔥'];
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setRecommendation } = useLumiRecommend();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [brand, setBrand] = useState<any>(null);
   const [subscription, setSubscription] = useState<any>(null);
   const [offers, setOffers] = useState<any[]>([]);
@@ -32,6 +48,12 @@ export default function Dashboard() {
     return localStorage.getItem('onboarding-dismissed') === 'true';
   });
   const [progressPopoverOpen, setProgressPopoverOpen] = useState(false);
+  const [emojiSettings, setEmojiSettings] = useState<EmojiSettings>({
+    use_emojis: true,
+    brand_emojis: DEFAULT_EMOJIS,
+    bullet_emoji: '✅',
+  });
+  const [newEmoji, setNewEmoji] = useState('');
   const hasShownConfetti = useRef(false);
   const hasHandledCheckout = useRef(false);
   const hasCheckedBrand = useRef(false);
@@ -209,6 +231,15 @@ export default function Dashboard() {
 
       if (brandError) throw brandError;
       setBrand(brandData);
+      
+      // Load emoji settings from brand
+      if (brandData) {
+        setEmojiSettings({
+          use_emojis: brandData.use_emojis ?? true,
+          brand_emojis: brandData.brand_emojis ?? DEFAULT_EMOJIS,
+          bullet_emoji: brandData.bullet_emoji ?? '✅',
+        });
+      }
 
       // Fetch subscription
       const { data: subData } = await supabase
@@ -235,6 +266,54 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveEmojiSettings = async () => {
+    if (!brand) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('brands')
+        .update({ 
+          use_emojis: emojiSettings.use_emojis,
+          brand_emojis: emojiSettings.brand_emojis,
+          bullet_emoji: emojiSettings.bullet_emoji,
+        })
+        .eq('id', brand.id);
+
+      if (error) throw error;
+      toast.success('Emoji settings saved');
+    } catch (error) {
+      console.error('Error saving emoji settings:', error);
+      toast.error('Failed to save emoji settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addEmoji = () => {
+    if (!newEmoji.trim()) return;
+    if (emojiSettings.brand_emojis.length >= 6) {
+      toast.error('Maximum 6 emojis allowed');
+      return;
+    }
+    if (emojiSettings.brand_emojis.includes(newEmoji.trim())) {
+      toast.error('Emoji already added');
+      return;
+    }
+    setEmojiSettings(prev => ({
+      ...prev,
+      brand_emojis: [...prev.brand_emojis, newEmoji.trim()]
+    }));
+    setNewEmoji('');
+  };
+
+  const removeEmoji = (emoji: string) => {
+    setEmojiSettings(prev => ({
+      ...prev,
+      brand_emojis: prev.brand_emojis.filter(e => e !== emoji)
+    }));
   };
 
   // Show contextual recommendation based on incomplete items
@@ -368,9 +447,30 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Main Content - Single Column */}
-        <div className="space-y-6">
-          {/* Brand Details Card */}
+        {/* Tabs Navigation */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="flex-wrap h-auto gap-1">
+            <TabsTrigger value="overview" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="brand-copy" className="gap-2">
+              <Smile className="h-4 w-4" />
+              Brand Copy
+            </TabsTrigger>
+            <TabsTrigger value="psychology" className="gap-2">
+              <Brain className="h-4 w-4" />
+              Audience Psychology
+            </TabsTrigger>
+            <TabsTrigger value="offers" className="gap-2">
+              <Package className="h-4 w-4" />
+              Offers
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Brand Details Card */}
             <Card variant="glow" data-section="brand-details">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -416,7 +516,6 @@ export default function Dashboard() {
                   <p className="text-sm font-medium mb-2">Meta Ad Account</p>
                   {brand.meta_account_id ? (
                     <div className="space-y-3">
-                      {/* Check if token might be expired */}
                       {brand.meta_token_expires_at && new Date(brand.meta_token_expires_at) < new Date() && (
                         <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm">
                           <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
@@ -462,8 +561,180 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Audience Psychology */}
+          {/* Brand Copy Tab */}
+          <TabsContent value="brand-copy" className="space-y-6">
+            <Card variant="glow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Smile className="h-5 w-5" />
+                  Emoji Preferences
+                </CardTitle>
+                <CardDescription>
+                  Control how emojis are used in your AI-generated ad copy. Meta recommends strategic emoji use for higher engagement.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Use Emojis in Copy</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable or disable emoji usage in generated headlines, descriptions, and primary copy
+                    </p>
+                  </div>
+                  <Switch
+                    checked={emojiSettings.use_emojis}
+                    onCheckedChange={(checked) => setEmojiSettings(prev => ({ ...prev, use_emojis: checked }))}
+                  />
+                </div>
+                
+                {emojiSettings.use_emojis && (
+                  <>
+                    <Separator />
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-base">Your Brand Emojis</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Choose up to 6 emojis that represent your brand. These will be used in your ad copy.
+                        </p>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {emojiSettings.brand_emojis.map((emoji) => (
+                          <div 
+                            key={emoji}
+                            className="flex items-center gap-1 px-3 py-2 bg-muted rounded-lg border"
+                          >
+                            <span className="text-xl">{emoji}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 hover:bg-destructive/20"
+                              onClick={() => removeEmoji(emoji)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {emojiSettings.brand_emojis.length < 6 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <EmojiQuickPicker 
+                            onSelect={(emoji) => {
+                              if (emojiSettings.brand_emojis.length >= 6) {
+                                toast.error('Maximum 6 emojis allowed');
+                                return;
+                              }
+                              if (emojiSettings.brand_emojis.includes(emoji)) {
+                                toast.error('Emoji already added');
+                                return;
+                              }
+                              setEmojiSettings(prev => ({
+                                ...prev,
+                                brand_emojis: [...prev.brand_emojis, emoji]
+                              }));
+                            }}
+                            selectedEmojis={emojiSettings.brand_emojis}
+                          />
+                          <span className="text-xs text-muted-foreground">or</span>
+                          <div className="flex gap-2">
+                            <Input
+                              value={newEmoji}
+                              onChange={(e) => setNewEmoji(e.target.value)}
+                              placeholder="Paste emoji..."
+                              className="w-24"
+                              maxLength={4}
+                            />
+                            <Button variant="ghost" size="sm" onClick={addEmoji}>
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-base">Bullet Point Style</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Choose the emoji or symbol used for bullet points in your primary copy
+                        </p>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2">
+                        {BULLET_OPTIONS.map((bullet) => (
+                          <Button
+                            key={bullet}
+                            variant={emojiSettings.bullet_emoji === bullet ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setEmojiSettings(prev => ({ ...prev, bullet_emoji: bullet }))}
+                            className="text-lg w-10 h-10 p-0"
+                          >
+                            {bullet}
+                          </Button>
+                        ))}
+                      </div>
+                      
+                      <div className="bg-muted/50 rounded-lg p-4 border">
+                        <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Preview</p>
+                        <div className="space-y-1 text-sm">
+                          <p>{emojiSettings.bullet_emoji} Stop wasting time on ads that don't convert</p>
+                          <p>{emojiSettings.bullet_emoji} Get AI-powered creative that actually works</p>
+                          <p>{emojiSettings.bullet_emoji} Launch campaigns in minutes, not days</p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                <div className="pt-4">
+                  <Button onClick={handleSaveEmojiSettings} disabled={saving} variant="lumi">
+                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Save Emoji Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Meta Best Practices for Copy</CardTitle>
+                <CardDescription>How Lumi formats your primary copy based on Meta's recommendations</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">✓ What Lumi Does</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Uses line breaks for readability</li>
+                      <li>• Adds strategic emoji placement</li>
+                      <li>• Creates scannable bullet lists</li>
+                      <li>• Varies copy lengths (short/medium/long)</li>
+                      <li>• Puts the hook first, CTA last</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">✗ What Lumi Avoids</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Emoji overload (max 2-3 per section)</li>
+                      <li>• Wall-of-text paragraphs</li>
+                      <li>• ALL CAPS abuse</li>
+                      <li>• Clickbait or misleading claims</li>
+                      <li>• Generic, non-specific language</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Audience Psychology Tab */}
+          <TabsContent value="psychology" className="space-y-6">
             <div data-section="audience-psychology">
               <AudiencePsychology
                 brandId={brand.id}
@@ -472,16 +743,19 @@ export default function Dashboard() {
                 onUpdate={fetchBrandData}
               />
             </div>
+          </TabsContent>
 
-          {/* Offers Manager */}
-          <div data-section="offers">
-            <OfferManager
-              brandId={brand.id}
-              offers={offers}
-              onUpdate={fetchBrandData}
-            />
-          </div>
-        </div>
+          {/* Offers Tab */}
+          <TabsContent value="offers" className="space-y-6">
+            <div data-section="offers">
+              <OfferManager
+                brandId={brand.id}
+                offers={offers}
+                onUpdate={fetchBrandData}
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <BrandEditDialog
