@@ -790,6 +790,34 @@ export default function Creative() {
     setProductionItems(updatedItems);
     saveCreativeState({ productionItems: updatedItems });
   };
+
+  const handleSaveToLibraryFromChecklist = async (item: ProductionItem) => {
+    if (!brand?.id) return;
+    try {
+      await supabase.from("content_ideas").insert({
+        brand_id: brand.id,
+        offer_id: workspace?.offer_id || null,
+        title: item.hook,
+        content: JSON.stringify({
+          format: item.format,
+          guidance: item.guidance,
+          angle: item.angleName,
+        }),
+        type: "creative_concept",
+        status: "idea",
+        tags: [item.format, item.angleName, "creative"].filter(Boolean),
+      });
+
+      // Remove from checklist after saving
+      const updated = productionItems.filter(i => i.id !== item.id);
+      setProductionItems(updated);
+      saveCreativeState({ productionItems: updated });
+
+      toast.success("Saved to Library & removed from checklist");
+    } catch (error: any) {
+      toast.error("Failed to save: " + error.message);
+    }
+  };
   const handleRegenerateCell = async (cellId: string) => {
     const cell = gridData.find(c => c.id === cellId);
     if (!cell) return;
@@ -1185,7 +1213,9 @@ export default function Creative() {
                   items={productionItems}
                   onToggleComplete={handleToggleComplete}
                   onRemove={handleRemoveFromChecklist}
+                  onSaveToLibrary={handleSaveToLibraryFromChecklist}
                   workspaceId={workspace?.id}
+                  brandId={brand?.id}
                 />
               </div>
             )}
@@ -1219,7 +1249,9 @@ export default function Creative() {
                         items={productionItems}
                         onToggleComplete={handleToggleComplete}
                         onRemove={handleRemoveFromChecklist}
+                        onSaveToLibrary={handleSaveToLibraryFromChecklist}
                         workspaceId={workspace?.id}
+                        brandId={brand?.id}
                       />
                     </div>
                   </SheetContent>
