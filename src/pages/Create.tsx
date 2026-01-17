@@ -290,7 +290,7 @@ export default function Create() {
       if (workspaceError) throw workspaceError;
 
       toast.success("Campaign created! Let's create your ad.");
-      navigate(`/creative?workspace=${workspace.id}`);
+      navigate(`/creative-studio?workspace=${workspace.id}`);
     } catch (error: any) {
       console.error("Error creating campaign:", error);
       toast.error(error.message || "Failed to create campaign");

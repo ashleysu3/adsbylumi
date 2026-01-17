@@ -207,7 +207,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                 Archived
               </Label>
             </div>
-            <Button onClick={() => navigate("/planning")} size="sm" className="h-9">
+            <Button onClick={() => navigate("/create")} size="sm" className="h-9">
               <Plus className="h-4 w-4 mr-1 md:mr-2" />
               <span className="hidden sm:inline">New Campaign</span>
               <span className="sm:hidden">New</span>
