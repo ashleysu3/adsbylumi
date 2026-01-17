@@ -64,7 +64,7 @@ export default function Dashboard() {
     const checkoutStatus = searchParams.get("checkout");
     if (checkoutStatus === "success" && !hasHandledCheckout.current) {
       hasHandledCheckout.current = true;
-      toast.success("Welcome to Lumi! Your 14-day free trial has started.", {
+      toast.success("Welcome to Lumi! Your subscription is now active.", {
         duration: 5000,
       });
       // Clear the query param

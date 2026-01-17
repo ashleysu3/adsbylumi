@@ -6,8 +6,8 @@ export const SUBSCRIPTION_TIERS = {
     annualPriceId: "price_1Sa2ZlACcLoSGSlnrEd19gDv",
     monthlyProductId: "prod_TX6nzW8rB20cHj",
     annualProductId: "prod_TX6nO1Y9or83uv",
-    monthlyPrice: 147,
-    annualPrice: 1470,
+    monthlyPrice: 97,
+    annualPrice: 970,
     limits: {
       brands: 1,
       adAccounts: 1,
@@ -20,7 +20,6 @@ export const SUBSCRIPTION_TIERS = {
       "Smart audience targeting",
       "Performance tracking & insights",
       "Weekly optimization reports",
-      "14-day free trial included",
     ],
   },
   creator: {

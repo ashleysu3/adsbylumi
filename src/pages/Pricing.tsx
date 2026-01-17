@@ -76,7 +76,7 @@ export default function Pricing() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="space-y-6 md:space-y-8"
           >
-            {/* Trial Badge - Understated */}
+            {/* Badge - Understated */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -84,7 +84,7 @@ export default function Pricing() {
             >
               <span className="inline-flex items-center gap-1.5 px-3 md:px-4 py-1 md:py-1.5 rounded-full text-xs md:text-sm font-medium bg-primary/8 text-primary border border-primary/15">
                 <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                14-Day Free Trial
+                Launch Your Ads Today
               </span>
             </motion.div>
 
@@ -210,7 +210,7 @@ export default function Pricing() {
                           </>
                         ) : (
                           <>
-                            Start Your Free Trial
+                            Get Started
                             <ArrowRight className="w-5 h-5" />
                           </>
                         )}
@@ -325,7 +325,7 @@ export default function Pricing() {
                   </div>
                   <h3 className="font-semibold text-foreground">Lumi</h3>
                   <div>
-                    <span className="text-2xl font-bold text-primary">$147</span>
+                    <span className="text-2xl font-bold text-primary">$97</span>
                     <span className="text-muted-foreground text-sm">/mo</span>
                   </div>
                   <ul className="text-sm space-y-2 text-left">
@@ -339,7 +339,7 @@ export default function Pricing() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                      14-day free trial
+                      Cancel anytime
                     </li>
                   </ul>
                 </CardContent>
