@@ -330,6 +330,33 @@ export default function CreativeStudio() {
 
   if (loading) return <DashboardLayout><div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></DashboardLayout>;
 
+  // No workspaces with strategy - show helpful empty state
+  if (workspaces.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold"><span className="text-gradient-lumi">Creative Studio</span></h1>
+            <p className="text-muted-foreground text-sm">Build ad creative from ideation to launch</p>
+          </div>
+          <Card>
+            <CardContent className="pt-6 text-center py-12">
+              <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No campaigns ready for creative</h3>
+              <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
+                Create a new ad campaign first, then come back here to generate creative angles, hooks, and copy.
+              </p>
+              <Button onClick={() => navigate("/create")} className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Create New Ad
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -338,12 +365,10 @@ export default function CreativeStudio() {
             <h1 className="text-2xl font-bold"><span className="text-gradient-lumi">Creative Studio</span></h1>
             <p className="text-muted-foreground text-sm">Build ad creative from ideation to launch</p>
           </div>
-          {workspaces.length > 0 && (
-            <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
-              <SelectTrigger className="w-full sm:w-[280px]"><FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Select campaign" /></SelectTrigger>
-              <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
-            </Select>
-          )}
+          <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
+            <SelectTrigger className="w-full sm:w-[280px]"><FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Select campaign" /></SelectTrigger>
+            <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
