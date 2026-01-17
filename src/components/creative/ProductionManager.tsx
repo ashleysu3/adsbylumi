@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { 
   Rocket, Upload, CheckCircle2, AlertCircle, 
   Video, Film, Image, Eye, FolderOpen, Maximize2,
-  Sparkles, Loader2, Filter
+  Sparkles, Loader2, Filter, Library, Info
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +54,7 @@ export function ProductionManager({
   const [rankedItems, setRankedItems] = useState<RankedItem[]>([]);
   const [overallStrategy, setOverallStrategy] = useState<string>("");
   const [showTopOnly, setShowTopOnly] = useState(false);
+  const [movingToLibrary, setMovingToLibrary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
@@ -92,6 +93,13 @@ export function ProductionManager({
   // Count items with assets
   const itemsWithAssets = productionItems.filter(item => getAssetForItem(item.id)).length;
   
+  // Check if at least one creative is uploaded
+  const hasAtLeastOneUpload = productionItems.some(item => getAssetForItem(item.id));
+  
+  // Updated readiness check - needs 3+ concepts AND at least one upload
+  const isReadyToBuild = productionItems.length >= 3 && hasAtLeastOneUpload;
+  const hasAnyCopy = Object.keys(angleCopy).length > 0;
+  
   const handleRankConcepts = async () => {
     if (!brandId) {
       toast.error("Brand not found");
@@ -112,6 +120,30 @@ export function ProductionManager({
       toast.error(e.message || "Failed to rank concepts");
     } finally {
       setIsRanking(false);
+    }
+  };
+  
+  const handleMoveOthersToLibrary = async () => {
+    if (!onSaveToLibrary || !hasRankedItems) return;
+    
+    const rankedIds = rankedItems.map(r => r.id);
+    const nonRankedItems = productionItems.filter(item => !rankedIds.includes(item.id));
+    
+    if (nonRankedItems.length === 0) {
+      toast.info("All items are already in your top picks!");
+      return;
+    }
+    
+    setMovingToLibrary(true);
+    try {
+      for (const item of nonRankedItems) {
+        await onSaveToLibrary(item);
+      }
+      toast.success(`Moved ${nonRankedItems.length} concepts to Concept Library`);
+    } catch (error: any) {
+      toast.error("Failed to move some items: " + error.message);
+    } finally {
+      setMovingToLibrary(false);
     }
   };
   
@@ -230,9 +262,6 @@ export function ProductionManager({
     return angleCopy[angle.id];
   };
   
-  const isReadyToBuild = productionItems.length >= 3;
-  const hasAnyCopy = Object.keys(angleCopy).length > 0;
-  
   if (productionItems.length === 0) {
     return (
       <Card>
@@ -260,23 +289,55 @@ export function ProductionManager({
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Left: Creative Checklist (3/5) */}
         <div className="lg:col-span-3 space-y-4">
+          {/* Recommendation Banner */}
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
+            <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Lumi recommends: 12-15 creatives maximum</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Starting with fewer, high-quality creatives helps the algorithm learn faster.
+                {productionItems.length > 15 && (
+                  <span className="text-amber-600 dark:text-amber-400 ml-1">
+                    You have {productionItems.length} — consider narrowing down with "Get Lumi's Top 5".
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-lg">Production Checklist</CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
                   {hasRankedItems && (
-                    <Button
-                      variant={showTopOnly ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setShowTopOnly(!showTopOnly)}
-                      className="gap-1"
-                    >
-                      <Filter className="h-3 w-3" />
-                      {showTopOnly ? "Show All" : "Top 5 Only"}
-                    </Button>
+                    <>
+                      <Button
+                        variant={showTopOnly ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowTopOnly(!showTopOnly)}
+                        className="gap-1"
+                      >
+                        <Filter className="h-3 w-3" />
+                        {showTopOnly ? "Show All" : "Top 5 Only"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleMoveOthersToLibrary}
+                        disabled={movingToLibrary}
+                        className="gap-1"
+                      >
+                        {movingToLibrary ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Library className="h-3 w-3" />
+                        )}
+                        Move Others to Concept Library
+                      </Button>
+                    </>
                   )}
-                  {canRank && (
+                  {canRank && !hasRankedItems && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -348,25 +409,46 @@ export function ProductionManager({
             </CardContent>
           </Card>
           
-          {/* Build Campaign Button */}
+          {/* Build Campaign Button with Status */}
           <Card className={cn(
             "border-2 transition-all",
-            isReadyToBuild ? "border-primary" : "border-dashed"
+            isReadyToBuild ? "border-green-500" : "border-dashed"
           )}>
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
                   {isReadyToBuild ? (
-                    <CheckCircle2 className="h-6 w-6 text-primary" />
+                    <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    </div>
                   ) : (
-                    <AlertCircle className="h-6 w-6 text-muted-foreground" />
+                    <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                      <AlertCircle className="h-6 w-6 text-amber-600" />
+                    </div>
                   )}
                   <div>
-                    <p className="font-medium">
-                      {isReadyToBuild ? "Ready to build!" : `Need ${3 - productionItems.length} more concepts`}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">
+                        {isReadyToBuild ? "Ready for Publishing" : "Needs Creative"}
+                      </p>
+                      <Badge 
+                        variant={isReadyToBuild ? "default" : "secondary"}
+                        className={cn(
+                          isReadyToBuild 
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" 
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                        )}
+                      >
+                        {isReadyToBuild ? "✓ Ready" : "In Progress"}
+                      </Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      {productionItems.length} concept{productionItems.length !== 1 ? "s" : ""} in checklist
+                      {productionItems.length < 3 
+                        ? `Need ${3 - productionItems.length} more concepts`
+                        : !hasAtLeastOneUpload
+                          ? "Upload at least 1 creative file to continue"
+                          : `${itemsWithAssets}/${productionItems.length} creatives uploaded`
+                      }
                     </p>
                   </div>
                 </div>
@@ -374,7 +456,10 @@ export function ProductionManager({
                   onClick={onBuildCampaign} 
                   disabled={!isReadyToBuild}
                   size="lg"
-                  className="gap-2"
+                  className={cn(
+                    "gap-2",
+                    isReadyToBuild && "bg-green-600 hover:bg-green-700"
+                  )}
                 >
                   <Rocket className="h-5 w-5" />
                   Build Campaign
