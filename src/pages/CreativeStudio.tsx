@@ -381,10 +381,21 @@ export default function CreativeStudio() {
                         <Button key={a.id} variant={activeAngleId === a.id ? "default" : "outline"} size="sm" onClick={() => setActiveAngleId(a.id)}>{a.name}</Button>
                       ))}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="text-primary">↑</span>
+                    <motion.div 
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5, duration: 0.4 }}
+                      className="flex items-center gap-2 text-xs text-muted-foreground"
+                    >
+                      <motion.span 
+                        animate={{ y: [0, -3, 0] }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                        className="text-primary"
+                      >
+                        ↑
+                      </motion.span>
                       <span>Click each angle to see all your concepts</span>
-                    </div>
+                    </motion.div>
                   </div>
                 )}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
