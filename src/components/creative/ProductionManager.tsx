@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Rocket, Upload, CheckCircle2, AlertCircle, 
-  Video, Film, Image, Eye, FolderOpen, Maximize2
+  Video, Film, Image, Eye, FolderOpen, Maximize2,
+  Sparkles, Loader2, Filter
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +18,11 @@ import { AngleCopyEditor } from "./AngleCopyEditor";
 import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
 
+interface RankedItem extends ProductionItem {
+  rank: number;
+  rationale: string;
+}
+
 interface ProductionManagerProps {
   workspace: any;
   productionItems: ProductionItem[];
@@ -24,6 +31,8 @@ interface ProductionManagerProps {
   onRemoveItem: (id: string) => void;
   onBuildCampaign: () => void;
   onUpdateWorkspace: (updates: any) => void;
+  onSaveToLibrary?: (item: ProductionItem) => void;
+  brandId?: string;
 }
 
 export function ProductionManager({
@@ -34,15 +43,25 @@ export function ProductionManager({
   onRemoveItem,
   onBuildCampaign,
   onUpdateWorkspace,
+  onSaveToLibrary,
+  brandId,
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [previewAsset, setPreviewAsset] = useState<any>(null);
   const [adPreviewItem, setAdPreviewItem] = useState<ProductionItem | null>(null);
+  const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
+  const [isRanking, setIsRanking] = useState(false);
+  const [rankedItems, setRankedItems] = useState<RankedItem[]>([]);
+  const [overallStrategy, setOverallStrategy] = useState<string>("");
+  const [showTopOnly, setShowTopOnly] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
   const creativeJson = workspace?.creative_json || {};
   const angleCopy = creativeJson.angle_copy || {};
+  
+  const canRank = productionItems.length >= 6;
+  const hasRankedItems = rankedItems.length > 0;
   
   // Group items by angle
   const itemsByAngle = productionItems.reduce((acc, item) => {
@@ -52,6 +71,19 @@ export function ProductionManager({
     return acc;
   }, {} as Record<string, ProductionItem[]>);
   
+  // Get rank info for an item
+  const getRankForItem = (itemId: string): { rank?: number; rationale?: string } => {
+    const ranked = rankedItems.find(r => r.id === itemId);
+    return ranked ? { rank: ranked.rank, rationale: ranked.rationale } : {};
+  };
+  
+  // Filter items if showing top only
+  const getDisplayItems = (items: ProductionItem[]) => {
+    if (!showTopOnly || !hasRankedItems) return items;
+    const rankedIds = rankedItems.map(r => r.id);
+    return items.filter(item => rankedIds.includes(item.id));
+  };
+  
   // Get asset linked to a specific production item
   const getAssetForItem = (itemId: string) => {
     return uploadedAssets.find((a: any) => a.linked_concept_id === itemId);
@@ -59,6 +91,39 @@ export function ProductionManager({
   
   // Count items with assets
   const itemsWithAssets = productionItems.filter(item => getAssetForItem(item.id)).length;
+  
+  const handleRankConcepts = async () => {
+    if (!brandId) {
+      toast.error("Brand not found");
+      return;
+    }
+    setIsRanking(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('rank-creative-concepts', {
+        body: { items: productionItems, brandId }
+      });
+      if (error) throw error;
+      setRankedItems(data.rankedItems || []);
+      setOverallStrategy(data.overallStrategy || "");
+      setShowTopOnly(true);
+      toast.success("Lumi's Top 5 ready!");
+    } catch (e: any) {
+      console.error("Ranking error:", e);
+      toast.error(e.message || "Failed to rank concepts");
+    } finally {
+      setIsRanking(false);
+    }
+  };
+  
+  const handleSaveToLibrary = async (item: ProductionItem) => {
+    if (!onSaveToLibrary) return;
+    setSavingToLibrary(item.id);
+    try {
+      await onSaveToLibrary(item);
+    } finally {
+      setSavingToLibrary(null);
+    }
+  };
   
   // Handle file selection for a specific item
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
@@ -197,37 +262,89 @@ export function ProductionManager({
         <div className="lg:col-span-3 space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-lg">Production Checklist</CardTitle>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {hasRankedItems && (
+                    <Button
+                      variant={showTopOnly ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setShowTopOnly(!showTopOnly)}
+                      className="gap-1"
+                    >
+                      <Filter className="h-3 w-3" />
+                      {showTopOnly ? "Show All" : "Top 5 Only"}
+                    </Button>
+                  )}
+                  {canRank && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRankConcepts}
+                            disabled={isRanking}
+                            className="gap-1 bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:from-amber-100 hover:to-amber-200"
+                          >
+                            {isRanking ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3 w-3" />
+                            )}
+                            Get Lumi's Top 5
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>AI will rank your {productionItems.length} concepts and pick the top 5</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   <Badge variant={itemsWithAssets === productionItems.length ? "default" : "secondary"}>
                     {itemsWithAssets}/{productionItems.length} uploaded
                   </Badge>
                 </div>
               </div>
+              {overallStrategy && (
+                <p className="text-sm text-muted-foreground mt-2 bg-muted/50 p-2 rounded-md">
+                  <span className="font-medium">Lumi's Strategy:</span> {overallStrategy}
+                </p>
+              )}
             </CardHeader>
             <CardContent className="space-y-6">
-              {Object.entries(itemsByAngle).map(([angleName, items]) => (
-                <div key={angleName} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-semibold text-muted-foreground">{angleName}</h4>
-                    <Badge variant="outline" className="text-xs">{items.length} creative{items.length !== 1 ? "s" : ""}</Badge>
+              {Object.entries(itemsByAngle).map(([angleName, items]) => {
+                const displayItems = getDisplayItems(items);
+                if (displayItems.length === 0) return null;
+                return (
+                  <div key={angleName} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-semibold text-muted-foreground">{angleName}</h4>
+                      <Badge variant="outline" className="text-xs">{displayItems.length} creative{displayItems.length !== 1 ? "s" : ""}</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {displayItems.map((item) => {
+                        const { rank, rationale } = getRankForItem(item.id);
+                        return (
+                          <CreativeChecklistCard
+                            key={item.id}
+                            item={item}
+                            uploadedAsset={getAssetForItem(item.id)}
+                            onUploadClick={() => handleUploadClick(item.id)}
+                            onRemove={() => onRemoveItem(item.id)}
+                            onPreview={setPreviewAsset}
+                            onAdPreview={() => setAdPreviewItem(item)}
+                            onSaveToLibrary={onSaveToLibrary ? () => handleSaveToLibrary(item) : undefined}
+                            savingToLibrary={savingToLibrary === item.id}
+                            rank={rank}
+                            rationale={rationale}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {items.map((item) => (
-                      <CreativeChecklistCard
-                        key={item.id}
-                        item={item}
-                        uploadedAsset={getAssetForItem(item.id)}
-                        onUploadClick={() => handleUploadClick(item.id)}
-                        onRemove={() => onRemoveItem(item.id)}
-                        onPreview={setPreviewAsset}
-                        onAdPreview={() => setAdPreviewItem(item)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
           

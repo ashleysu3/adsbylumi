@@ -363,6 +363,8 @@ export default function CreativeStudio() {
               onRemoveItem={removeFromChecklist}
               onBuildCampaign={handleBuildCampaign}
               onUpdateWorkspace={(updates) => setWorkspace((prev: any) => ({ ...prev, ...updates }))}
+              onSaveToLibrary={saveItemToLibrary}
+              brandId={brandId}
             />
           </TabsContent>
         </Tabs>
