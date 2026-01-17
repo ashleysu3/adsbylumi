@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Video, FileText, ShoppingCart, TrendingUp, Plus, Target, Users, Layers, PlusCircle, Sparkles, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { LumiCharacter } from "@/components/LumiCharacter";
+import { SparkleIcon } from "@/components/SparkleIcon";
 import { LumiThinking } from "@/components/LumiThinking";
 import { OfferDialog } from "@/components/OfferDialog";
 import confetti from "canvas-confetti";
@@ -666,7 +666,7 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
                           <div className="flex gap-4">
                             {/* Lumi Character */}
                             <div className="flex-shrink-0">
-                              <LumiCharacter size="lg" glow />
+                              <SparkleIcon size="lg" glow />
                             </div>
                             
                             {/* Recommendation Content */}

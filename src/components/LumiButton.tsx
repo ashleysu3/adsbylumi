@@ -2,7 +2,7 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { LumiCharacter } from "./LumiCharacter";
+import { SparkleIcon } from "./SparkleIcon";
 import { Loader2 } from "lucide-react";
 
 const lumiButtonVariants = cva(
@@ -68,7 +68,7 @@ const LumiButton = React.forwardRef<HTMLButtonElement, LumiButtonProps>(
         {loading ? (
           <>
             {showLumiLoader ? (
-              <LumiCharacter size="xs" state="loading" />
+              <SparkleIcon size="xs" state="loading" />
             ) : (
               <Loader2 className="h-4 w-4 animate-spin" />
             )}

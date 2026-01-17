@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Video, FileText, ShoppingCart, PhoneCall, TrendingUp, Play, Info, Plus, Target, Users } from "lucide-react";
 import { toast } from "sonner";
 
-import { LumiCharacter } from "@/components/LumiCharacter";
+import { SparkleIcon } from "@/components/SparkleIcon";
 import { LumiRecommendedBadge } from "@/components/LumiRecommendedBadge";
 import { useLumiAssistant } from "@/components/LumiAssistant";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -672,7 +672,7 @@ export default function Planning() {
                         <div className="pt-2 border-t">
                           <p className="text-xs text-muted-foreground mb-3"><strong>Use this for:</strong> {template.use_case}</p>
                           <Button className="w-full" variant="lumi" onClick={() => handleTemplateClick(template)} disabled={loading}>
-                            {loading ? <><LumiCharacter size="xs" state="loading" className="mr-2" />Setting up...</> : "Let's Go"}
+                            {loading ? <><SparkleIcon size="xs" state="loading" className="mr-2" />Setting up...</> : "Let's Go"}
                           </Button>
                         </div>
                       </CardContent>
@@ -720,7 +720,7 @@ export default function Planning() {
                 setShowDetails(false);
                 handleTemplateClick(selectedTemplate);
               }} disabled={loading}>
-                    {loading ? <><LumiCharacter size="xs" state="loading" className="mr-2" />Loading...</> : "Choose This Template"}
+                    {loading ? <><SparkleIcon size="xs" state="loading" className="mr-2" />Loading...</> : "Choose This Template"}
                   </Button>
                   <Button variant="outline" onClick={() => setShowDetails(false)}>Cancel</Button>
                 </div>

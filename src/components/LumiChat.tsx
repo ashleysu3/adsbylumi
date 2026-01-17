@@ -6,7 +6,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from 
 import { Send, Loader2, X, Sparkle, Copy, Check, Lightbulb, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LumiCharacter } from "./LumiCharacter";
+import { SparkleIcon } from "./SparkleIcon";
 import { useLumi, Message } from "@/contexts/LumiContext";
 
 interface ConversationInsight {
@@ -223,7 +223,7 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
       className="fixed bottom-6 right-6 h-16 px-6 rounded-full shadow-glow bg-gradient-lumi hover:opacity-90 text-white gap-3 z-50 group"
       size="lg"
     >
-      <LumiCharacter size="md" state="idle" glow className="group-hover:animate-none" />
+      <SparkleIcon size="md" state="idle" glow className="group-hover:animate-none" />
       <span className="font-semibold text-base">Ask Lumi</span>
     </Button>
   );
@@ -237,7 +237,7 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
         <DrawerHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <LumiCharacter size="md" state={isLoading ? "thinking" : "idle"} glow />
+              <SparkleIcon size="md" state={isLoading ? "thinking" : "idle"} glow />
               <div>
                 <DrawerTitle className="text-lg font-display">Lumi</DrawerTitle>
                 <p className="text-xs text-muted-foreground">Meta Ads, Simplified.</p>
@@ -254,7 +254,7 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
             {messages.length === 0 ? (
               <div className="space-y-6">
                 <div className="text-center py-8">
-                  <LumiCharacter size="lg" state="idle" glow className="mx-auto mb-4" />
+                  <SparkleIcon size="lg" state="idle" glow className="mx-auto mb-4" />
                   <h3 className="font-display font-semibold mb-2">Hey there! 👋</h3>
                   <p className="text-sm text-muted-foreground max-w-md mx-auto">
                     I'm Lumi — here to make Meta Ads simple. Ask me anything about strategy, creative, or performance.
@@ -288,7 +288,7 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
                       className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} group`}
                     >
                       {message.role === 'assistant' && (
-                        <LumiCharacter size="sm" state="idle" className="mr-2 flex-shrink-0 mt-1" />
+                        <SparkleIcon size="sm" state="idle" className="mr-2 flex-shrink-0 mt-1" />
                       )}
                       <div className="relative max-w-[80%]">
                         <div
@@ -363,7 +363,7 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
                 ))}
                 {isLoading && (
                   <div className="flex justify-start">
-                    <LumiCharacter size="sm" state="thinking" className="mr-2" />
+                    <SparkleIcon size="sm" state="thinking" className="mr-2" />
                     <div className="bg-muted rounded-2xl px-4 py-3">
                       <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
