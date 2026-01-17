@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Video, FileText, ShoppingCart, TrendingUp, Plus, Target, Users, Layers, PlusCircle, Sparkles, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { LumiCharacter } from "@/components/LumiCharacter";
-import { GeneratingModal } from "@/components/GeneratingModal";
+import { LumiThinking } from "@/components/LumiThinking";
 import { OfferDialog } from "@/components/OfferDialog";
 import confetti from "canvas-confetti";
 
@@ -779,18 +779,8 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Generating Modal */}
-      <GeneratingModal 
-        isOpen={loading} 
-        title="Creating Campaign Strategy" 
-        steps={[
-          "Setting up campaign workspace...", 
-          "Loading template configuration...", 
-          "Applying messaging framework...", 
-          "Configuring KPI benchmarks...", 
-          "Preparing creative workspace..."
-        ]} 
-      />
+      {/* Lumi thinking state */}
+      <LumiThinking isOpen={loading} />
       
       {/* Offer Dialog */}
       {brand && (

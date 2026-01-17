@@ -15,8 +15,7 @@ import { AngleCopyNav } from "@/components/creative/AngleCopyNav";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { useLumiAssistant } from "@/components/LumiAssistant";
-import { LumiLoader } from "@/components/LumiLoader";
-import { GeneratingModal } from "@/components/GeneratingModal";
+import { LumiThinking, LumiThinkingInline } from "@/components/LumiThinking";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
 import { CreativeGrid } from "@/components/creative/CreativeGrid";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
@@ -29,20 +28,13 @@ type DashboardStep = "select_angles" | "creative_grid";
 type CreativeTab = "copy" | "ideas"; // Copy first, then creative
 type GeneratingPhase = "angles" | "grid" | null;
 
-const angleGenerationSteps = [
-  "Analyzing your brand strategy...",
-  "Identifying creative opportunities...",
-  "Exploring psychological triggers...",
-  "Crafting unique angles...",
-  "Building your options..."
-];
-
-const gridGenerationSteps = [
-  "Preparing your selected angles...",
-  "Creating attention-grabbing hooks...",
-  "Designing trust-building ideas...",
-  "Developing action-driving concepts...",
-  "Organizing your creative grid..."
+// Lumi-approved creative copy
+const creativeLoadingCopy = [
+  "This is where Lumi does the thinking.",
+  "Finding the strongest angle to lead with.",
+  "Lining up your creative options.",
+  "Making the strategic call.",
+  "Setting this up the smart way.",
 ];
 
 export default function Creative() {
@@ -868,7 +860,7 @@ export default function Creative() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <LumiLoader size="lg" message="Loading Creative Studio..." />
+          <LumiThinkingInline isOpen={true} />
         </div>
       </DashboardLayout>
     );
@@ -876,11 +868,7 @@ export default function Creative() {
 
   return (
     <DashboardLayout>
-      <GeneratingModal 
-        isOpen={generating}
-        title={generatingPhase === "angles" ? "Discovering creative angles..." : "Building your creative ideas..."}
-        steps={generatingPhase === "angles" ? angleGenerationSteps : gridGenerationSteps}
-      />
+      <LumiThinking isOpen={generating} customCopy={creativeLoadingCopy} />
       
       
       <div className="flex h-[calc(100vh-4rem-53px)] w-full overflow-hidden">

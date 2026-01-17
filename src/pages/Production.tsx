@@ -345,9 +345,11 @@ export default function Production() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading production dashboard...</p>
+          <div className="text-center w-full max-w-sm">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-4">
+              <div className="h-full bg-gradient-to-r from-[hsl(var(--lumi-orange-1))] to-[hsl(var(--lumi-orange-2))] rounded-full animate-pulse w-2/3" />
+            </div>
+            <p className="text-sm text-muted-foreground">Getting oriented…</p>
           </div>
         </div>
       </DashboardLayout>

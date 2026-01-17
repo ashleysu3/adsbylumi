@@ -20,7 +20,7 @@ import { SmartCropSuggestions } from "./SmartCropSuggestions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { GeneratingModal } from "@/components/GeneratingModal";
+import { LumiThinking } from "@/components/LumiThinking";
 
 interface CopyEditorProps {
   concept: any;
@@ -785,30 +785,8 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
         </DialogContent>
       </Dialog>
 
-      {/* Generating Modal for finalize-ad-copy */}
-      <GeneratingModal 
-        isOpen={isGenerating} 
-        title="Generating Ad Copy"
-        steps={[
-          "Analyzing your concept...",
-          "Applying brand voice...",
-          "Writing headlines...",
-          "Crafting primary text...",
-          "Optimizing for placement..."
-        ]}
-      />
-
-      {/* Generating Modal for copy variations */}
-      <GeneratingModal 
-        isOpen={isGeneratingVariations} 
-        title="Loading Copy Directions"
-        steps={[
-          "Analyzing concept angles...",
-          "Generating headline variations...",
-          "Creating copy frameworks...",
-          "Building direction options..."
-        ]}
-      />
+      {/* Lumi thinking states */}
+      <LumiThinking isOpen={isGenerating || isGeneratingVariations} />
     </div>
   );
 }

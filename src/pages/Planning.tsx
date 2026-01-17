@@ -8,13 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Video, FileText, ShoppingCart, PhoneCall, TrendingUp, Play, Info, Plus, Target, Users } from "lucide-react";
 import { toast } from "sonner";
-import { LumiLoader } from "@/components/LumiLoader";
+
 import { LumiCharacter } from "@/components/LumiCharacter";
 import { LumiRecommendedBadge } from "@/components/LumiRecommendedBadge";
 import { useLumiAssistant } from "@/components/LumiAssistant";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { GeneratingModal } from "@/components/GeneratingModal";
+import { LumiThinking } from "@/components/LumiThinking";
 import { GridShimmer } from "@/components/GradientShimmer";
 import { OfferDialog } from "@/components/OfferDialog";
 import { MobilePlanningWizard } from "@/components/MobilePlanningWizard";
@@ -233,11 +233,8 @@ export default function Planning() {
           }}
         />
         
-        {/* Loading Modal */}
-        <GeneratingModal
-          isOpen={loading}
-          title="Creating your strategy..."
-        />
+        {/* Loading State */}
+        <LumiThinking isOpen={loading} />
       </DashboardLayout>
     );
   }
@@ -731,8 +728,8 @@ export default function Planning() {
           </DialogContent>
         </Dialog>
 
-        {/* Generating Modal for strategy creation */}
-        <GeneratingModal isOpen={loading} title="Creating Campaign Strategy" steps={["Setting up campaign workspace...", "Loading template configuration...", "Applying messaging framework...", "Configuring KPI benchmarks...", "Preparing creative workspace..."]} />
+        {/* Lumi thinking state for strategy creation */}
+        <LumiThinking isOpen={loading} />
         
         {/* Offer Dialog */}
         {brand && (
