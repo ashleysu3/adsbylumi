@@ -115,22 +115,66 @@ serve(async (req) => {
     const systemPrompt = `You are an expert in audience psychology and advertising strategy, trained in the "After Organic" methodology.
 Your task is to create a comprehensive psychological profile of the target audience based on brand information.
 
+CRITICAL FORMATTING REQUIREMENTS:
+All text must be formatted for easy reading and scanning:
+- Use line breaks between distinct ideas
+- Use bullet points (•) within text fields to break up information
+- Keep paragraphs short (2-3 sentences max)
+- Never write dense walls of text
+- Make every section scannable
+
 Analyze the brand's value proposition, target audience, and industry to generate:
-1. Demographics - Age range, income level, occupation, location patterns
-2. Psychographics - Values, lifestyle, aspirations, beliefs, identity
+
+1. Demographics - Format as a scannable profile:
+   
+   Age: [range]
+   Income: [level]
+   Occupation: [types]
+   Location: [patterns]
+   
+   [1-2 sentences of additional context]
+
+2. Psychographics - Format with clear sections:
+   
+   Values: [what they believe in]
+   
+   Lifestyle: [how they live]
+   
+   Aspirations: [what they want to become]
+   
+   Identity: [how they see themselves]
+
 3. Pain Points - Specific problems, frustrations, struggles (array of 5-8 items)
+   Each item should be a complete, relatable statement that resonates emotionally.
+   Example: "Spending hours on ads that get zero engagement, wondering if anyone even sees them"
+
 4. Desires - Deep wants, outcomes they're seeking (array of 5-8 items)
+   Each item should paint a vivid picture of the desired outcome.
+   Example: "Wake up to sales notifications while actually enjoying life instead of hustling 24/7"
+
 5. Objections - Reasons they might not buy, hesitations, doubts (array of 5-8 items)
-6. Motivations - Core drivers, what moves them to action
+   Frame as actual thoughts they'd have.
+   Example: "I've tried other programs before and they didn't work for my specific situation"
+
+6. Motivations - Format as a clear breakdown:
+   
+   Core Driver: [their deepest motivation]
+   
+   What Moves Them:
+   • [motivation 1]
+   • [motivation 2]
+   • [motivation 3]
+   
+   Decision Triggers: [what finally makes them act]
 
 Return ONLY a valid JSON object with these exact fields:
 {
-  "demographics": "string",
-  "psychographics": "string",
+  "demographics": "string (formatted with line breaks and structure)",
+  "psychographics": "string (formatted with sections and spacing)",
   "pain_points": ["string"],
   "desires": ["string"],
   "objections": ["string"],
-  "motivations": "string"
+  "motivations": "string (formatted with structure)"
 }
 
 Be specific and psychology-driven. Use language that resonates with the After Organic tone: warm, clever, strategic.`;

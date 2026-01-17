@@ -153,27 +153,61 @@ serve(async (req) => {
 
 Your task is to analyze ALL the copy on the page and extract EVERYTHING that could be useful for creating compelling ads.
 
+FORMATTING REQUIREMENTS (CRITICAL):
+All text fields must be formatted for easy reading:
+- Use line breaks between distinct ideas
+- Use bullet points (•) for lists within text
+- Keep paragraphs short (2-3 sentences max)
+- Use spacing to separate sections
+- Never write walls of text
+
 EXTRACT THE FOLLOWING (be thorough - pull actual quotes and language from the page):
 
 1. **raw_copy_highlights** - Array of 5-10 of the most compelling phrases, headlines, or copy snippets directly from the page. These are exact quotes or near-quotes that capture the offer's voice.
 
-2. **description** - A comprehensive description of what the product/offer includes (4-6 sentences). Include what's included, how it's delivered, format, duration, and any bonuses.
+2. **description** - A comprehensive, well-formatted description of what the product/offer includes. Structure it like this:
+
+   [What it is - 1-2 sentences]
+   
+   What's Included:
+   • [Item 1]
+   • [Item 2]
+   • [Item 3]
+   
+   [How it's delivered + any bonuses - 1-2 sentences]
 
 3. **price_point** - The price in text format (e.g., "$47", "$997", "Free", "$297/month"). Include any payment plans, crossed-out prices, or "value" comparisons if mentioned.
 
-4. **target_outcome** - The main transformation or result. Be SPECIFIC about the before/after state. What will change in their life/business?
+4. **target_outcome** - The main transformation or result, formatted clearly:
+   
+   Before: [Current state/problem]
+   
+   After: [Transformed state/result]
+   
+   Be SPECIFIC about what will change in their life/business.
 
-5. **key_benefits** - Array of 5-7 specific benefits or features mentioned. Use the exact language from the page when possible.
+5. **key_benefits** - Array of 5-7 specific benefits. Each benefit should be a clear, complete statement.
 
-6. **pain_points_addressed** - Array of 3-5 pain points or problems the offer solves. What struggles does the target audience currently face?
+6. **pain_points_addressed** - Array of 3-5 pain points. Format each as a complete, relatable statement the audience would identify with.
 
 7. **unique_selling_points** - Array of 2-4 differentiators (guarantees, bonuses, methodology, credentials, speed of results, unique approach).
 
-8. **social_proof** - Specific testimonials, results, numbers, or credibility markers. Include exact quotes if available, specific numbers ("helped 500+ students"), media mentions, etc.
+8. **social_proof** - Specific testimonials, results, numbers, or credibility markers. Format as:
+   
+   • [Result/testimonial 1]
+   • [Result/testimonial 2]
+   
+   Include exact quotes if available, specific numbers ("helped 500+ students"), media mentions, etc.
 
 9. **emotional_hooks** - Array of 3-4 emotional triggers the page appeals to (freedom, confidence, security, status, belonging, achievement, etc.)
 
-10. **target_audience_indicators** - Who is this explicitly for? Job titles, situations, demographics, or "this is for you if..." statements.
+10. **target_audience_indicators** - Who is this explicitly for? Format clearly:
+    
+    This is for:
+    • [Audience type 1]
+    • [Audience type 2]
+    
+    Include job titles, situations, demographics, or "this is for you if..." statements.
 
 11. **tone_and_voice** - Describe the overall tone (professional, conversational, urgent, luxurious, friendly, authoritative, etc.)
 
