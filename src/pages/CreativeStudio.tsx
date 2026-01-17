@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   Target, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
-  Sparkles, ArrowRight, FolderOpen, Video, Film, Image, Trash2
+  Sparkles, ArrowRight, FolderOpen, Video, Film, Image, Trash2,
+  ClipboardList, Library, Archive
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -23,7 +24,7 @@ import { ProductionManager } from "@/components/creative/ProductionManager";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
 
-type WorkflowTab = "angles" | "copy_creative" | "build";
+type WorkflowTab = "angles" | "copy_creative" | "checklist" | "build";
 
 interface WorkspaceOption {
   id: string;
@@ -254,6 +255,7 @@ export default function CreativeStudio() {
   const workflowTabs = [
     { id: "angles" as const, label: "Angles", icon: Target },
     { id: "copy_creative" as const, label: "Copy & Creative", icon: FileText },
+    { id: "checklist" as const, label: "Checklist", icon: ClipboardList },
     { id: "build" as const, label: "Build", icon: Rocket },
   ];
 
@@ -276,7 +278,7 @@ export default function CreativeStudio() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             {workflowTabs.map(t => <TabsTrigger key={t.id} value={t.id} className="gap-2"><t.icon className="h-4 w-4" /><span className="hidden sm:inline">{t.label}</span></TabsTrigger>)}
           </TabsList>
 
@@ -335,21 +337,100 @@ export default function CreativeStudio() {
                 </div>
                 {productionItems.length > 0 && (
                   <Card><CardContent className="pt-4">
-                    <h4 className="font-medium mb-3">Production Checklist ({productionItems.length})</h4>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium">Production Checklist ({productionItems.length})</h4>
+                      <Button size="sm" variant="outline" onClick={() => setActiveTab("checklist")} className="gap-1">
+                        <ClipboardList className="h-3 w-3" />
+                        Manage
+                      </Button>
+                    </div>
                     <div className="space-y-2">
-                      {productionItems.map(item => (
+                      {productionItems.slice(0, 3).map(item => (
                         <div key={item.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
                           <span className="text-sm truncate flex-1">{item.hook}</span>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">{formatLabels[item.format as keyof typeof formatLabels]}</Badge>
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeFromChecklist(item.id)}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
+                          <Badge variant="secondary">{formatLabels[item.format as keyof typeof formatLabels]}</Badge>
                         </div>
                       ))}
+                      {productionItems.length > 3 && (
+                        <p className="text-xs text-muted-foreground text-center">+{productionItems.length - 3} more items</p>
+                      )}
                     </div>
                   </CardContent></Card>
                 )}
-                <div className="flex justify-end"><Button onClick={() => setActiveTab("build")} disabled={productionItems.length === 0} className="gap-2">Continue<ArrowRight className="h-4 w-4" /></Button></div>
+                <div className="flex justify-end"><Button onClick={() => setActiveTab("checklist")} disabled={productionItems.length === 0} className="gap-2">Continue<ArrowRight className="h-4 w-4" /></Button></div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="checklist">
+            {productionItems.length === 0 ? (
+              <Card><CardContent className="pt-6 text-center py-12">
+                <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Concepts Yet</h3>
+                <p className="text-muted-foreground text-sm mb-6">Add concepts from Copy & Creative to your checklist</p>
+                <Button onClick={() => setActiveTab("copy_creative")} variant="outline">Go to Copy & Creative</Button>
+              </CardContent></Card>
+            ) : (
+              <div className="space-y-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold">Your Creative Concepts</h3>
+                        <p className="text-sm text-muted-foreground">{productionItems.length} concept{productionItems.length !== 1 ? "s" : ""} ready to produce</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {productionItems.map(item => {
+                        const Icon = formatIcons[item.format as keyof typeof formatIcons] || Image;
+                        return (
+                          <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-primary/10 flex-shrink-0">
+                              <Icon className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{item.hook}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="secondary" className="text-xs">{formatLabels[item.format as keyof typeof formatLabels]}</Badge>
+                                {item.angleName && <Badge variant="outline" className="text-xs">{item.angleName}</Badge>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1 text-primary border-primary/30 hover:bg-primary/10"
+                                onClick={() => saveItemToLibrary(item)}
+                              >
+                                <Library className="h-4 w-4" />
+                                <span className="hidden sm:inline">Save</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => removeFromChecklist(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <div className="flex justify-between items-center">
+                  <Button variant="outline" onClick={() => setActiveTab("copy_creative")} className="gap-2">
+                    <ArrowRight className="h-4 w-4 rotate-180" />
+                    Add More
+                  </Button>
+                  <Button onClick={() => setActiveTab("build")} disabled={productionItems.length < 3} className="gap-2">
+                    {productionItems.length < 3 ? `Need ${3 - productionItems.length} more` : "Continue to Build"}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </TabsContent>
