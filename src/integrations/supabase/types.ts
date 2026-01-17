@@ -94,7 +94,9 @@ export type Database = {
         Row: {
           alert_thresholds: Json | null
           audience_psychology: Json | null
+          brand_emojis: string[] | null
           brand_voice: string | null
+          bullet_emoji: string | null
           created_at: string | null
           id: string
           industry: string | null
@@ -116,6 +118,7 @@ export type Database = {
           site_links_enabled: boolean | null
           target_audience: string | null
           updated_at: string | null
+          use_emojis: boolean | null
           user_id: string
           value_proposition: string | null
           website_url: string | null
@@ -123,7 +126,9 @@ export type Database = {
         Insert: {
           alert_thresholds?: Json | null
           audience_psychology?: Json | null
+          brand_emojis?: string[] | null
           brand_voice?: string | null
+          bullet_emoji?: string | null
           created_at?: string | null
           id?: string
           industry?: string | null
@@ -145,6 +150,7 @@ export type Database = {
           site_links_enabled?: boolean | null
           target_audience?: string | null
           updated_at?: string | null
+          use_emojis?: boolean | null
           user_id: string
           value_proposition?: string | null
           website_url?: string | null
@@ -152,7 +158,9 @@ export type Database = {
         Update: {
           alert_thresholds?: Json | null
           audience_psychology?: Json | null
+          brand_emojis?: string[] | null
           brand_voice?: string | null
+          bullet_emoji?: string | null
           created_at?: string | null
           id?: string
           industry?: string | null
@@ -174,6 +182,7 @@ export type Database = {
           site_links_enabled?: boolean | null
           target_audience?: string | null
           updated_at?: string | null
+          use_emojis?: boolean | null
           user_id?: string
           value_proposition?: string | null
           website_url?: string | null
