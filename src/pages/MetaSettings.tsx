@@ -19,7 +19,9 @@ export default function MetaSettings() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [brand, setBrand] = useState<any>(null);
+  const [hasValidToken, setHasValidToken] = useState(false);
 
   useEffect(() => {
     fetchBrand();
@@ -41,6 +43,18 @@ export default function MetaSettings() {
 
       if (error && error.code !== 'PGRST116') throw error;
       setBrand(data);
+
+      // Check if token exists in vault (separately from brand data)
+      if (data?.id && data?.meta_account_id) {
+        try {
+          const { data: tokenData, error: tokenError } = await supabase.rpc('get_meta_token', {
+            p_brand_id: data.id
+          });
+          setHasValidToken(!!tokenData && !tokenError);
+        } catch {
+          setHasValidToken(false);
+        }
+      }
     } catch (error) {
       console.error('Error fetching brand:', error);
       toast.error('Failed to load Meta connection status');
@@ -50,18 +64,56 @@ export default function MetaSettings() {
   };
 
   const handleConnectMeta = async () => {
+    if (!brand?.id) {
+      setConnectionError('No brand found. Please complete your brand setup first.');
+      toast.error('No brand found. Please complete onboarding first.');
+      return;
+    }
+
     try {
       setConnecting(true);
-      const { data, error } = await supabase.functions.invoke('meta-oauth-init');
+      setConnectionError(null);
+
+      // Get the current URL for redirect
+      const redirectUri = `${window.location.origin}/meta-callback`;
+
+      const { data, error } = await supabase.functions.invoke('meta-oauth-init', {
+        body: {
+          brandId: brand.id,
+          redirectUri: redirectUri
+        }
+      });
       
-      if (error) throw error;
+      if (error) {
+        console.error('OAuth init error:', error);
+        const errorMessage = error.message || 'Failed to start Meta connection';
+        setConnectionError(errorMessage);
+        toast.error(errorMessage);
+        setConnecting(false);
+        return;
+      }
+
+      if (data?.error) {
+        console.error('OAuth init returned error:', data.error);
+        setConnectionError(data.error);
+        toast.error(data.error);
+        setConnecting(false);
+        return;
+      }
       
       if (data?.authUrl) {
         window.location.href = data.authUrl;
+      } else {
+        const errorMessage = 'No authorization URL received from Meta';
+        setConnectionError(errorMessage);
+        toast.error(errorMessage);
+        setConnecting(false);
       }
     } catch (error: any) {
       console.error('Error connecting Meta:', error);
-      toast.error('Failed to start Meta connection');
+      const errorMessage = error?.message || 'Failed to start Meta connection. Please try again.';
+      setConnectionError(errorMessage);
+      toast.error(errorMessage);
       setConnecting(false);
     }
   };
@@ -74,6 +126,9 @@ export default function MetaSettings() {
     }
 
     try {
+      // Delete token from vault
+      await supabase.rpc('delete_meta_token', { p_brand_id: brand.id });
+
       const { error } = await supabase
         .from('brands')
         .update({
@@ -89,6 +144,7 @@ export default function MetaSettings() {
 
       if (error) throw error;
 
+      setHasValidToken(false);
       toast.success('Meta account disconnected');
       fetchBrand();
     } catch (error) {
@@ -97,7 +153,10 @@ export default function MetaSettings() {
     }
   };
 
-  const isConnected = !!(brand?.meta_access_token && brand?.meta_account_id);
+  // Connection is valid if we have an account ID AND a valid token in vault
+  const hasAccountId = !!brand?.meta_account_id;
+  const isConnected = hasAccountId && hasValidToken;
+  const isPartiallyConnected = hasAccountId && !hasValidToken; // Has account but token missing/expired
   const tokenExpiresAt = brand?.meta_token_expires_at ? new Date(brand.meta_token_expires_at) : null;
   const daysUntilExpiry = tokenExpiresAt ? differenceInDays(tokenExpiresAt, new Date()) : null;
   const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7;
@@ -138,6 +197,17 @@ export default function MetaSettings() {
           </div>
         </div>
 
+        {/* Connection Error Alert */}
+        {connectionError && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="flex flex-col gap-2">
+              <span className="font-medium">Connection Error</span>
+              <span>{connectionError}</span>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Connection Status Card */}
         <Card variant="gradient">
           <CardHeader>
@@ -148,6 +218,11 @@ export default function MetaSettings() {
                     <CheckCircle className="h-5 w-5 text-green-500" />
                     Connected
                   </>
+                ) : isPartiallyConnected ? (
+                  <>
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                    Reconnection Required
+                  </>
                 ) : (
                   <>
                     <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -156,21 +231,81 @@ export default function MetaSettings() {
                 )}
               </CardTitle>
               <Badge 
-                variant={isConnected ? (isExpired ? "destructive" : isExpiringSoon ? "secondary" : "default") : "outline"}
-                className={isConnected && !isExpired && !isExpiringSoon ? "bg-green-500/10 text-green-500 border-green-500/30" : ""}
+                variant={isConnected ? (isExpired ? "destructive" : isExpiringSoon ? "secondary" : "default") : isPartiallyConnected ? "secondary" : "outline"}
+                className={isConnected && !isExpired && !isExpiringSoon ? "bg-green-500/10 text-green-500 border-green-500/30" : isPartiallyConnected ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : ""}
               >
-                {isConnected ? (isExpired ? "Expired" : isExpiringSoon ? "Expiring Soon" : "Active") : "Inactive"}
+                {isConnected ? (isExpired ? "Expired" : isExpiringSoon ? "Expiring Soon" : "Active") : isPartiallyConnected ? "Token Missing" : "Inactive"}
               </Badge>
             </div>
             <CardDescription>
               {isConnected 
                 ? "Your Meta ad account is connected and syncing"
+                : isPartiallyConnected
+                ? "Your Meta account needs to be reconnected to restore access"
                 : "Connect your Meta account to manage ads and track performance"
               }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isConnected ? (
+            {/* Partially Connected State - Needs Reconnection */}
+            {isPartiallyConnected && (
+              <>
+                <Alert className="border-amber-500/30 bg-amber-500/5">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <AlertDescription>
+                    <span className="font-medium block mb-1">Your Meta connection has lost its access token.</span>
+                    <span className="text-muted-foreground">
+                      This can happen when:
+                    </span>
+                    <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
+                      <li>The token expired (tokens last ~60 days)</li>
+                      <li>You changed your Meta password</li>
+                      <li>You revoked app permissions in Meta settings</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="p-4 bg-muted/30 rounded-lg">
+                    <p className="text-xs text-muted-foreground uppercase mb-1">Previous Ad Account</p>
+                    <p className="font-mono text-sm">{brand?.meta_account_id}</p>
+                  </div>
+                  {brand?.page_name && (
+                    <div className="p-4 bg-muted/30 rounded-lg opacity-60">
+                      <p className="text-xs text-muted-foreground uppercase mb-1">Previous Page</p>
+                      <p className="text-sm font-medium">{brand.page_name}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button 
+                    onClick={handleConnectMeta} 
+                    disabled={connecting}
+                    variant="lumi"
+                    className="gap-2"
+                  >
+                    {connecting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Reconnect Meta Account
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleDisconnectMeta}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Link2Off className="h-4 w-4 mr-2" />
+                    Disconnect
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {/* Fully Connected State */}
+            {isConnected && (
               <>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="p-4 bg-muted/30 rounded-lg">
@@ -258,7 +393,10 @@ export default function MetaSettings() {
                   </Button>
                 </div>
               </>
-            ) : (
+            )}
+
+            {/* Not Connected State */}
+            {!isConnected && !isPartiallyConnected && (
               <div className="text-center py-6">
                 <div className="w-16 h-16 rounded-full bg-gradient-lumi/10 flex items-center justify-center mx-auto mb-4">
                   <Link2 className="h-8 w-8 text-lumi-orange-1" />
