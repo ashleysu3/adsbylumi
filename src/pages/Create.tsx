@@ -101,6 +101,18 @@ const CREATIVE_TEMPLATES: CreativeTemplate[] = [
   },
 ];
 
+const STORAGE_KEY = "create_wizard_progress";
+
+interface WizardProgress {
+  currentStep: number;
+  selectedOfferId: string;
+  selectedTemplateId: string;
+  selectedAngle: CreativeAngle | null;
+  generatedAngles: CreativeAngle[];
+  selectedCreativeTemplates: string[];
+  savedAt: number;
+}
+
 export default function Create() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -126,6 +138,46 @@ export default function Create() {
   const [showOfferDialog, setShowOfferDialog] = useState(false);
   const [newOfferName, setNewOfferName] = useState("");
   const [newOfferUrl, setNewOfferUrl] = useState("");
+
+  // Resume state
+  const [showResumePrompt, setShowResumePrompt] = useState(false);
+  const [savedProgress, setSavedProgress] = useState<WizardProgress | null>(null);
+
+  // Save progress to localStorage whenever wizard state changes
+  useEffect(() => {
+    if (!loading && brand && currentStep > 0) {
+      const progress: WizardProgress = {
+        currentStep,
+        selectedOfferId,
+        selectedTemplateId,
+        selectedAngle,
+        generatedAngles,
+        selectedCreativeTemplates,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    }
+  }, [currentStep, selectedOfferId, selectedTemplateId, selectedAngle, generatedAngles, selectedCreativeTemplates, loading, brand]);
+
+  // Clear saved progress
+  const clearSavedProgress = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setSavedProgress(null);
+    setShowResumePrompt(false);
+  };
+
+  // Restore progress from saved state
+  const restoreProgress = () => {
+    if (savedProgress) {
+      setCurrentStep(savedProgress.currentStep);
+      setSelectedOfferId(savedProgress.selectedOfferId);
+      setSelectedTemplateId(savedProgress.selectedTemplateId);
+      setSelectedAngle(savedProgress.selectedAngle);
+      setGeneratedAngles(savedProgress.generatedAngles);
+      setSelectedCreativeTemplates(savedProgress.selectedCreativeTemplates);
+      setShowResumePrompt(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -172,6 +224,36 @@ export default function Create() {
         .order("sort_order");
 
       setTemplates(templatesData || []);
+
+      // Check for saved progress after data is loaded
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const progress: WizardProgress = JSON.parse(saved);
+          // Only show resume if progress is less than 24 hours old and has meaningful state
+          const isRecent = Date.now() - progress.savedAt < 24 * 60 * 60 * 1000;
+          const hasMeaningfulProgress = progress.currentStep > 1 || progress.selectedOfferId;
+          
+          if (isRecent && hasMeaningfulProgress) {
+            // Validate that the saved offer still exists
+            const offerStillExists = !progress.selectedOfferId || 
+              (offersData || []).some(o => o.id === progress.selectedOfferId);
+            
+            if (offerStillExists) {
+              setSavedProgress(progress);
+              setShowResumePrompt(true);
+            } else {
+              // Clear invalid progress
+              localStorage.removeItem(STORAGE_KEY);
+            }
+          } else {
+            // Clear stale progress
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        } catch {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load data");
@@ -289,6 +371,9 @@ export default function Create() {
 
       if (workspaceError) throw workspaceError;
 
+      // Clear saved progress on successful completion
+      clearSavedProgress();
+      
       toast.success("Campaign created! Let's create your ad.");
       navigate(`/creative-studio?workspace=${workspace.id}`);
     } catch (error: any) {
@@ -413,6 +498,56 @@ export default function Create() {
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto">
+        {/* Resume Progress Prompt */}
+        <AnimatePresence>
+          {showResumePrompt && savedProgress && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-4"
+            >
+              <Card className="border-2 border-lumi-pink-1/30 bg-gradient-to-r from-lumi-pink-1/5 to-lumi-purple-1/5">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0">
+                      <img 
+                        src={lumiLogo} 
+                        alt="Lumi" 
+                        className="h-10 w-10 rounded-full"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">Welcome back! 👋</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        You left off at step {savedProgress.currentStep} of {totalSteps}.
+                        Want to pick up where you left off?
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <Button 
+                          size="sm" 
+                          onClick={restoreProgress}
+                          className="gap-1"
+                        >
+                          <ArrowRight className="h-3.5 w-3.5" />
+                          Resume
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={clearSavedProgress}
+                        >
+                          Start fresh
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <MobileStepWizard
           currentStep={currentStep}
           totalSteps={totalSteps}
