@@ -28,11 +28,17 @@ import {
   Image,
   Layers,
   Wand2,
-  Rocket
+  Rocket,
+  Instagram,
+  Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import lumiLogo from "@/assets/lumi-logo.png";
+import { SocialGrowthFlow } from "@/components/SocialGrowthFlow";
+
+// System offer ID for social growth
+const SOCIAL_GROWTH_OFFER_ID = "system-social-growth";
 
 // Types
 interface Offer {
@@ -138,6 +144,9 @@ export default function Create() {
   const [showOfferDialog, setShowOfferDialog] = useState(false);
   const [newOfferName, setNewOfferName] = useState("");
   const [newOfferUrl, setNewOfferUrl] = useState("");
+  
+  // Social growth flow state
+  const [showSocialGrowthFlow, setShowSocialGrowthFlow] = useState(false);
 
   // Resume state
   const [showResumePrompt, setShowResumePrompt] = useState(false);
@@ -572,8 +581,53 @@ export default function Create() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-4"
               >
-                {offers.length > 0 ? (
+                {/* Social Growth Flow */}
+                {showSocialGrowthFlow ? (
+                  <SocialGrowthFlow
+                    brandId={brand.id}
+                    brandName={brand.name}
+                    instagramAccountId={brand.instagram_account_id}
+                    instagramAccountName={brand.instagram_account_name}
+                    audiencePsychology={brand.audience_psychology}
+                    onComplete={(data) => {
+                      // Store social growth data and continue to next step
+                      console.log("Social growth data:", data);
+                      setShowSocialGrowthFlow(false);
+                      toast.success("Social growth campaign configured!");
+                      // Navigate to a dedicated social growth creative flow
+                      navigate(`/creative-studio?type=social-growth&objective=${data.objective}`);
+                    }}
+                    onConnectInstagram={() => navigate("/settings/meta")}
+                    onBack={() => {
+                      setShowSocialGrowthFlow(false);
+                      setSelectedOfferId("");
+                    }}
+                  />
+                ) : offers.length > 0 || true ? (
                   <>
+                    {/* System offer: Grow Social Following */}
+                    <StepOption
+                      selected={selectedOfferId === SOCIAL_GROWTH_OFFER_ID}
+                      onSelect={() => {
+                        setSelectedOfferId(SOCIAL_GROWTH_OFFER_ID);
+                        setShowSocialGrowthFlow(true);
+                      }}
+                      icon={<Instagram className="h-5 w-5" />}
+                      title="Grow my Instagram following"
+                      description="Get more followers with strategic content promotion"
+                      badge="Popular"
+                    />
+                    
+                    {/* Divider */}
+                    {offers.length > 0 && (
+                      <div className="flex items-center gap-3 py-2">
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-xs text-muted-foreground">or promote an offer</span>
+                        <div className="flex-1 h-px bg-border" />
+                      </div>
+                    )}
+                    
+                    {/* User's offers */}
                     {offers.map((offer) => (
                       <StepOption
                         key={offer.id}

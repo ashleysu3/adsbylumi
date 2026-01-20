@@ -125,3 +125,6 @@ verify_jwt = false
 
 [functions.rank-creative-concepts]
 verify_jwt = true
+
+[functions.analyze-instagram-posts]
+verify_jwt = true
