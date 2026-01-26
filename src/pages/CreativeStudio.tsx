@@ -186,11 +186,27 @@ export default function CreativeStudio() {
       const { data } = await supabase.from("campaign_workspaces").select("*, brands(*)").eq("id", id).single();
       setWorkspace(data);
       const c = data?.creative_json as Record<string, any> | null;
-      setAvailableAngles(c?.angles || []);
-      setSelectedAngleIds(c?.selectedAngleIds || []);
-      setGridData(c?.gridData || []);
-      setActiveAngleId(c?.selectedAngleIds?.[0] || "");
+      const loadedAngles = c?.angles || [];
+      const loadedAngleIds = new Set(loadedAngles.map((a: any) => a.id));
+      
+      // Validate selectedAngleIds - only keep IDs that exist in available angles
+      const storedSelectedIds = c?.selectedAngleIds || [];
+      const validSelectedIds = storedSelectedIds.filter((id: string) => loadedAngleIds.has(id));
+      
+      // Validate gridData - only keep cells whose angleId exists
+      const loadedGridData = c?.gridData || [];
+      const validGridData = loadedGridData.filter((cell: any) => loadedAngleIds.has(cell.angleId));
+      
+      setAvailableAngles(loadedAngles);
+      setSelectedAngleIds(validSelectedIds);
+      setGridData(validGridData);
+      setActiveAngleId(validSelectedIds[0] || "");
       setProductionItems((data?.production_items as any[]) || []);
+      
+      // If there's a mismatch, clean up the stored data
+      if (validSelectedIds.length !== storedSelectedIds.length || validGridData.length !== loadedGridData.length) {
+        console.warn('Cleaned up stale angle references from workspace');
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -214,7 +230,11 @@ export default function CreativeStudio() {
       });
       if (error) throw error;
       setAvailableAngles(data.angles);
-      await saveCreativeState({ angles: data.angles });
+      // Clear previous selections when regenerating angles (they're now invalid)
+      setSelectedAngleIds([]);
+      setGridData([]);
+      setActiveAngleId("");
+      await saveCreativeState({ angles: data.angles, selectedAngleIds: [], gridData: [] });
       toast.success("Angles ready!");
       setActiveTab("angles");
     } catch (e: any) { toast.error(e.message || "Failed"); }
