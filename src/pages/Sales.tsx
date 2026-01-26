@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { CheckCircle, X, Check, Sparkles, ArrowRight, Sparkle, Heart, Zap, Eye, BarChart3, Calendar, Users, FileText, Upload, Settings, Send } from "lucide-react";
@@ -419,12 +420,21 @@ const Sales = () => {
             transition={{ type: "spring", stiffness: 400 }}
           />
           <div className="flex items-center gap-2 sm:gap-3">
-            <MagneticButton>
-              <Button onClick={() => navigate("/auth?signup=true")} variant="glow" className="rounded-full text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 min-h-[44px] animate-glow-pulse">
-                <span className="hidden sm:inline">Have an invite code?</span>
-                <span className="sm:hidden">Got a code?</span>
-              </Button>
-            </MagneticButton>
+            <TooltipProvider>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <MagneticButton>
+                    <Button onClick={() => navigate("/auth?signup=true")} variant="glow" className="rounded-full text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 min-h-[44px] animate-glow-pulse">
+                      <span className="hidden sm:inline">Have an invite code?</span>
+                      <span className="sm:hidden">Got a code?</span>
+                    </Button>
+                  </MagneticButton>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[220px] text-center">
+                  <p className="text-sm">Invite codes are sent to waitlist members. <span className="text-primary font-medium">Join below</span> to get yours!</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <MagneticButton>
               <Button onClick={() => navigate("/auth")} variant="outline" className="rounded-full text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-2.5 min-h-[44px]">
                 Log In
