@@ -18,12 +18,14 @@ import {
   Users, RefreshCw, Search, User, Bug, CreditCard, FileText, 
   MessageSquare, Send, DollarSign, XCircle, Gift, Mail, 
   Building2, Calendar as CalendarIcon, Globe, Loader2, Plus, Trash2,
-  Filter, History, X, Activity, Rocket, Package, UserPlus, AlertCircle
+  Filter, History, X, Activity, Rocket, Package, UserPlus, AlertCircle,
+  Eye
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 interface Profile {
   id: string;
@@ -114,6 +116,7 @@ const ACTIVITY_ICONS: Record<string, { icon: any; color: string }> = {
 
 export default function AdminUsers() {
   const navigate = useNavigate();
+  const { startImpersonation, isImpersonating, impersonatedUser } = useImpersonation();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -1218,6 +1221,45 @@ export default function AdminUsers() {
 
                 {/* Actions Tab */}
                 <TabsContent value="actions" className="space-y-4 pr-4">
+                  {/* Impersonation */}
+                  <Card className="border-amber-500/30 bg-amber-500/5">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Eye className="w-4 h-4" /> View As User
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Impersonate this user to see the app from their perspective. Useful for debugging issues they report.
+                      </p>
+                      {isImpersonating && impersonatedUser?.id === selectedUser?.id ? (
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                          Currently impersonating this user
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          className="w-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                          onClick={() => {
+                            if (selectedUser && userDetails?.profile) {
+                              startImpersonation({
+                                id: selectedUser.id,
+                                email: userDetails.profile.email,
+                                fullName: userDetails.profile.full_name,
+                              });
+                              setDetailOpen(false);
+                              toast.success(`Now viewing as ${userDetails.profile.email}`);
+                              navigate("/dashboard");
+                            }
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Start Impersonating
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+
                   {/* Email Actions */}
                   <Card>
                     <CardHeader className="pb-2">
