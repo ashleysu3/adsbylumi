@@ -436,7 +436,21 @@ const Sales = () => {
                   <TooltipTrigger asChild>
                     <MagneticButton>
                       <Button onClick={() => navigate("/auth?signup=true")} variant="glow" className="rounded-full text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 min-h-[44px] animate-glow-pulse">
-                        <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <motion.span
+                          animate={{ 
+                            scale: [1, 1.2, 1],
+                            opacity: [1, 0.7, 1],
+                            rotate: [0, 15, 0]
+                          }}
+                          transition={{ 
+                            duration: 2,
+                            repeat: Infinity,
+                            repeatDelay: 3,
+                            ease: "easeInOut"
+                          }}
+                        >
+                          <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </motion.span>
                         <span className="hidden sm:inline">Have an invite code?</span>
                         <span className="sm:hidden">Got a code?</span>
                       </Button>
