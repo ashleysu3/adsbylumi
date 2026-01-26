@@ -10,22 +10,32 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { 
   Users, RefreshCw, Search, User, Bug, CreditCard, FileText, 
   MessageSquare, Send, DollarSign, XCircle, Gift, Mail, 
-  Building2, Calendar, Globe, Loader2, Plus, Trash2
+  Building2, Calendar as CalendarIcon, Globe, Loader2, Plus, Trash2,
+  Filter, History, X
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Profile {
   id: string;
   email: string;
   full_name: string | null;
   created_at: string;
+  subscription?: {
+    tier: string;
+    status: string;
+    stripe_subscription_id?: string;
+    current_period_end?: string;
+  } | null;
 }
 
 interface UserDetails {
@@ -43,6 +53,25 @@ interface UserDetails {
   } | null;
 }
 
+interface AuditLog {
+  id: string;
+  admin_id: string;
+  admin_email: string;
+  target_user_id: string | null;
+  target_user_email: string | null;
+  action: string;
+  action_category: string;
+  details: Record<string, any>;
+  created_at: string;
+}
+
+interface Filters {
+  subscriptionStatus: string;
+  planTier: string;
+  dateFrom: Date | undefined;
+  dateTo: Date | undefined;
+}
+
 const tierDisplayNames: Record<string, string> = {
   starter: "Solo",
   growth: "Creator",
@@ -58,6 +87,12 @@ const EMAIL_TEMPLATES = [
   { value: "custom", label: "✍️ Custom", description: "Write custom message" },
 ];
 
+const CATEGORY_COLORS: Record<string, string> = {
+  billing: "bg-green-500/10 text-green-600 border-green-500/20",
+  subscription: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  communication: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+};
+
 export default function AdminUsers() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<Profile[]>([]);
@@ -69,6 +104,18 @@ export default function AdminUsers() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLogsLoading, setAuditLogsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"users" | "audit">("users");
+  
+  // Filter states
+  const [filters, setFilters] = useState<Filters>({
+    subscriptionStatus: "",
+    planTier: "",
+    dateFrom: undefined,
+    dateTo: undefined,
+  });
   
   // Form states
   const [refundAmount, setRefundAmount] = useState("");
@@ -107,19 +154,82 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      toast.error("Failed to load users");
-      console.error(error);
+    
+    // Build filter object
+    const filterObj: Record<string, string> = {};
+    if (filters.subscriptionStatus) filterObj.subscriptionStatus = filters.subscriptionStatus;
+    if (filters.planTier) filterObj.planTier = filters.planTier;
+    if (filters.dateFrom) filterObj.dateFrom = filters.dateFrom.toISOString();
+    if (filters.dateTo) filterObj.dateTo = filters.dateTo.toISOString();
+    
+    const hasFilters = Object.keys(filterObj).length > 0;
+    
+    if (hasFilters) {
+      // Use edge function for filtered queries
+      try {
+        const { data, error } = await supabase.functions.invoke("admin-user-management", {
+          body: { action: "list_users", filters: filterObj },
+        });
+        if (error) throw error;
+        setUsers(data.users || []);
+      } catch (error) {
+        toast.error("Failed to load users");
+        console.error(error);
+      }
     } else {
-      setUsers(data || []);
+      // Simple query for unfiltered
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        toast.error("Failed to load users");
+        console.error(error);
+      } else {
+        setUsers(data || []);
+      }
     }
     setLoading(false);
   };
+  
+  const fetchAuditLogs = async () => {
+    setAuditLogsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: { action: "get_audit_logs" },
+      });
+      if (error) throw error;
+      setAuditLogs(data.logs || []);
+    } catch (error) {
+      toast.error("Failed to load audit logs");
+      console.error(error);
+    }
+    setAuditLogsLoading(false);
+  };
+  
+  useEffect(() => {
+    if (activeTab === "audit" && auditLogs.length === 0) {
+      fetchAuditLogs();
+    }
+  }, [activeTab]);
+  
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers();
+    }
+  }, [filters]);
+  
+  const clearFilters = () => {
+    setFilters({
+      subscriptionStatus: "",
+      planTier: "",
+      dateFrom: undefined,
+      dateTo: undefined,
+    });
+  };
+  
+  const hasActiveFilters = filters.subscriptionStatus || filters.planTier || filters.dateFrom || filters.dateTo;
 
   const fetchUserDetails = async (user: Profile) => {
     setSelectedUser(user);
@@ -288,75 +398,302 @@ export default function AdminUsers() {
               View and manage user accounts, subscriptions, and support history
             </p>
           </div>
-          <Button variant="outline" onClick={fetchUsers} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setActiveTab(activeTab === "users" ? "audit" : "users")}>
+              {activeTab === "users" ? (
+                <><History className="w-4 h-4 mr-2" />Audit Log</>
+              ) : (
+                <><Users className="w-4 h-4 mr-2" />Users</>
+              )}
+            </Button>
+            <Button variant="outline" onClick={activeTab === "users" ? fetchUsers : fetchAuditLogs} disabled={loading || auditLogsLoading}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${(loading || auditLogsLoading) ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
-        <Card className="border-border">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-primary" />
-                  All Users
-                </CardTitle>
-                <CardDescription>
-                  {users.length} user{users.length !== 1 ? "s" : ""} total
-                </CardDescription>
-              </div>
-              <div className="relative w-full sm:w-80">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by email or name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading...</div>
-            ) : filteredUsers.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No users found.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredUsers.map((user) => (
-                      <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => fetchUserDetails(user)}>
-                        <TableCell className="font-medium">{user.email}</TableCell>
-                        <TableCell>{user.full_name || "—"}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {format(new Date(user.created_at), "MMM d, yyyy")}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fetchUserDetails(user); }}>
-                            <User className="w-4 h-4 mr-2" />
-                            View Details
+        {activeTab === "users" ? (
+          <>
+            {/* Filters */}
+            <Card className="border-border">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center gap-2"
+                  >
+                    <Filter className="w-4 h-4" />
+                    Filters
+                    {hasActiveFilters && (
+                      <Badge variant="secondary" className="ml-1">Active</Badge>
+                    )}
+                  </Button>
+                  {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters}>
+                      <X className="w-4 h-4 mr-1" />
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              {showFilters && (
+                <CardContent className="pt-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Subscription Status Filter */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Subscription Status</label>
+                      <Select
+                        value={filters.subscriptionStatus}
+                        onValueChange={(value) => setFilters(f => ({ ...f, subscriptionStatus: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any status</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                          <SelectItem value="trial">Trial</SelectItem>
+                          <SelectItem value="none">No subscription</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Plan Tier Filter */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Plan Tier</label>
+                      <Select
+                        value={filters.planTier}
+                        onValueChange={(value) => setFilters(f => ({ ...f, planTier: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any tier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Any tier</SelectItem>
+                          <SelectItem value="starter">Solo</SelectItem>
+                          <SelectItem value="growth">Creator</SelectItem>
+                          <SelectItem value="agency_pro">Agency</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Date From Filter */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Joined From</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !filters.dateFrom && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {filters.dateFrom ? format(filters.dateFrom, "PPP") : "Select date"}
                           </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filters.dateFrom}
+                            onSelect={(date) => setFilters(f => ({ ...f, dateFrom: date }))}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {/* Date To Filter */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Joined To</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !filters.dateTo && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {filters.dateTo ? format(filters.dateTo, "PPP") : "Select date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={filters.dateTo}
+                            onSelect={(date) => setFilters(f => ({ ...f, dateTo: date }))}
+                            initialFocus
+                            className={cn("p-3 pointer-events-auto")}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            {/* Users Table */}
+            <Card className="border-border">
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-primary" />
+                      All Users
+                    </CardTitle>
+                    <CardDescription>
+                      {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""} {hasActiveFilters ? "matching filters" : "total"}
+                    </CardDescription>
+                  </div>
+                  <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by email or name..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                    Loading users...
+                  </div>
+                ) : filteredUsers.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No users found.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Plan</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Joined</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredUsers.map((user) => (
+                          <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => fetchUserDetails(user)}>
+                            <TableCell className="font-medium">{user.email}</TableCell>
+                            <TableCell>{user.full_name || "—"}</TableCell>
+                            <TableCell>
+                              {user.subscription ? (
+                                <Badge variant="outline">
+                                  {tierDisplayNames[user.subscription.tier] || user.subscription.tier}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {user.subscription ? (
+                                <Badge variant={user.subscription.status === "active" ? "default" : "secondary"}>
+                                  {user.subscription.status}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">None</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {format(new Date(user.created_at), "MMM d, yyyy")}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fetchUserDetails(user); }}>
+                                <User className="w-4 h-4 mr-2" />
+                                View
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          /* Audit Logs Tab */
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="w-5 h-5 text-primary" />
+                Admin Audit Log
+              </CardTitle>
+              <CardDescription>
+                Track all admin actions for accountability
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {auditLogsLoading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                  Loading audit logs...
+                </div>
+              ) : auditLogs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <History className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  No audit logs yet
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {auditLogs.map((log) => (
+                    <div key={log.id} className="p-4 border border-border rounded-lg bg-muted/30">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge 
+                              variant="outline" 
+                              className={CATEGORY_COLORS[log.action_category] || ""}
+                            >
+                              {log.action_category}
+                            </Badge>
+                            <span className="font-medium">{log.action}</span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <span className="font-medium">{log.admin_email}</span>
+                            {log.target_user_email && (
+                              <> → <span className="font-medium">{log.target_user_email}</span></>
+                            )}
+                          </div>
+                          {log.details && Object.keys(log.details).length > 0 && (
+                            <div className="mt-2 text-xs text-muted-foreground bg-muted/50 p-2 rounded font-mono">
+                              {Object.entries(log.details).map(([key, value]) => (
+                                <div key={key}>
+                                  {key}: {JSON.stringify(value)}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
+                          {format(new Date(log.created_at), "MMM d, yyyy h:mm a")}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* User Details Dialog */}

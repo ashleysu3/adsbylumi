@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface RequestBody {
-  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email";
+  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs";
   userId?: string;
   userEmail?: string;
   refundAmount?: number;
@@ -16,6 +16,13 @@ interface RequestBody {
   newTier?: string;
   emailTemplate?: string;
   customMessage?: string;
+  // Filters for list_users
+  filters?: {
+    subscriptionStatus?: string;
+    planTier?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  };
 }
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -52,9 +59,32 @@ serve(async (req) => {
     if (!roleData) throw new Error("Admin access required");
 
     const body: RequestBody = await req.json();
-    const { action, userId, userEmail } = body;
+    const { action, userId, userEmail, filters } = body;
 
-    logStep("Processing action", { action, userId, userEmail });
+    logStep("Processing action", { action, userId, userEmail, filters });
+
+    // Helper to log admin actions
+    const logAdminAction = async (
+      targetUserId: string | null,
+      targetUserEmail: string | null,
+      actionName: string,
+      actionCategory: string,
+      details: Record<string, unknown> = {}
+    ) => {
+      try {
+        await supabaseAdmin.from("admin_audit_logs").insert({
+          admin_id: userData.user.id,
+          admin_email: userData.user.email || "unknown",
+          target_user_id: targetUserId,
+          target_user_email: targetUserEmail,
+          action: actionName,
+          action_category: actionCategory,
+          details,
+        });
+      } catch (err) {
+        logStep("Failed to log audit action", { error: err });
+      }
+    };
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2023-10-16",
@@ -225,6 +255,14 @@ serve(async (req) => {
       });
 
       logStep("Refund created", { refundId: refund.id, amount: refund.amount });
+      
+      // Log audit action
+      await logAdminAction(userId || null, userEmail, "Refund processed", "billing", {
+        refund_id: refund.id,
+        amount: refund.amount / 100,
+        currency: refund.currency,
+        payment_intent_id: payment.id,
+      });
 
       return new Response(JSON.stringify({
         success: true,
@@ -260,6 +298,11 @@ serve(async (req) => {
       }
 
       logStep("Subscription cancelled", { subscriptionId: cancelled.id });
+      
+      // Log audit action
+      await logAdminAction(userId || null, userEmail, "Subscription cancelled", "subscription", {
+        subscription_id: cancelled.id,
+      });
 
       return new Response(JSON.stringify({
         success: true,
@@ -296,6 +339,12 @@ serve(async (req) => {
       });
 
       logStep("Credit applied", { amount: creditAmount, months: body.creditMonths });
+      
+      // Log audit action
+      await logAdminAction(userId || null, userEmail, "Credit applied", "billing", {
+        credit_amount: creditAmount / 100,
+        months: body.creditMonths,
+      });
 
       return new Response(JSON.stringify({
         success: true,
@@ -315,6 +364,11 @@ serve(async (req) => {
           .update({ tier: body.newTier })
           .eq("user_id", userId);
       }
+      
+      // Log audit action
+      await logAdminAction(userId || null, userEmail, "Subscription tier updated", "subscription", {
+        new_tier: body.newTier,
+      });
 
       return new Response(JSON.stringify({
         success: true,
@@ -380,11 +434,91 @@ serve(async (req) => {
       }
 
       logStep("Email sent", { template: body.emailTemplate, to: userEmail });
+      
+      // Log audit action
+      await logAdminAction(userId || null, userEmail, "Email sent", "communication", {
+        template: body.emailTemplate,
+        subject: template.subject,
+      });
 
       return new Response(JSON.stringify({
         success: true,
         message: `Email sent to ${userEmail}`,
       }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // List users with filters
+    if (action === "list_users") {
+      let query = supabaseAdmin
+        .from("profiles")
+        .select(`
+          id, email, full_name, created_at
+        `)
+        .order("created_at", { ascending: false });
+
+      // Date filters
+      if (filters?.dateFrom) {
+        query = query.gte("created_at", filters.dateFrom);
+      }
+      if (filters?.dateTo) {
+        query = query.lte("created_at", filters.dateTo);
+      }
+
+      const { data: profiles, error: profilesError } = await query;
+      if (profilesError) throw profilesError;
+
+      // Get subscriptions for all users
+      const { data: subscriptions } = await supabaseAdmin
+        .from("subscriptions")
+        .select("user_id, tier, status, stripe_subscription_id, current_period_end");
+
+      const subscriptionMap = new Map();
+      subscriptions?.forEach((sub: any) => {
+        subscriptionMap.set(sub.user_id, sub);
+      });
+
+      // Apply subscription filters and combine data
+      let combinedUsers = profiles?.map((profile: any) => ({
+        ...profile,
+        subscription: subscriptionMap.get(profile.id) || null,
+      })) || [];
+
+      // Filter by subscription status
+      if (filters?.subscriptionStatus) {
+        if (filters.subscriptionStatus === "none") {
+          combinedUsers = combinedUsers.filter((u: any) => !u.subscription);
+        } else {
+          combinedUsers = combinedUsers.filter((u: any) => 
+            u.subscription?.status === filters.subscriptionStatus
+          );
+        }
+      }
+
+      // Filter by plan tier
+      if (filters?.planTier) {
+        combinedUsers = combinedUsers.filter((u: any) => 
+          u.subscription?.tier === filters.planTier
+        );
+      }
+
+      return new Response(JSON.stringify({ users: combinedUsers }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get audit logs
+    if (action === "get_audit_logs") {
+      const { data: logs, error: logsError } = await supabaseAdmin
+        .from("admin_audit_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      if (logsError) throw logsError;
+
+      return new Response(JSON.stringify({ logs: logs || [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
