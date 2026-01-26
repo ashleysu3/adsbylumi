@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignsList } from "@/components/CampaignsList";
+import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
 import { GridShimmer } from "@/components/GradientShimmer";
 import { toast } from "sonner";
 import { LumiChat } from "@/components/LumiChat";
@@ -120,6 +121,11 @@ export default function Campaigns() {
             </button>
           )}
         </div>
+
+        {/* Resume incomplete workspace banner */}
+        {!isAddCreativeMode && (
+          <ResumeWorkspaceBanner brandId={brandId} />
+        )}
 
         <CampaignsList 
           brandId={brandId} 

@@ -507,7 +507,7 @@ export default function Create() {
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto">
-        {/* Resume Progress Prompt */}
+        {/* Resume Progress Prompt - Enhanced with preview */}
         <AnimatePresence>
           {showResumePrompt && savedProgress && (
             <motion.div
@@ -516,30 +516,90 @@ export default function Create() {
               exit={{ opacity: 0, y: -20 }}
               className="mb-4"
             >
-              <Card className="border-2 border-lumi-pink-1/30 bg-gradient-to-r from-lumi-pink-1/5 to-lumi-purple-1/5">
+              <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/10 overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
-                      <img 
-                        src={lumiLogo} 
-                        alt="Lumi" 
-                        className="h-10 w-10 rounded-full"
-                      />
+                      <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <img 
+                          src={lumiLogo} 
+                          alt="Lumi" 
+                          className="h-8 w-8"
+                        />
+                      </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">Welcome back! 👋</p>
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        You left off at step {savedProgress.currentStep} of {totalSteps}.
-                        Want to pick up where you left off?
-                      </p>
+                      <p className="font-semibold text-sm">Resume where you left off? 👋</p>
+                      
+                      {/* Progress Preview */}
+                      <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex -space-x-1">
+                            {Array.from({ length: totalSteps }).map((_, i) => (
+                              <div 
+                                key={i}
+                                className={cn(
+                                  "h-2 w-2 rounded-full border border-background",
+                                  i < savedProgress.currentStep 
+                                    ? "bg-primary" 
+                                    : "bg-muted-foreground/30"
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            Step {savedProgress.currentStep} of {totalSteps}
+                          </span>
+                        </div>
+                        
+                        {/* Show what was selected */}
+                        <div className="space-y-1.5 text-xs">
+                          {savedProgress.selectedOfferId && (
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 className="h-3 w-3 text-green-500" />
+                              <span className="text-muted-foreground">Offer:</span>
+                              <span className="font-medium truncate">
+                                {offers.find(o => o.id === savedProgress.selectedOfferId)?.name || "Selected"}
+                              </span>
+                            </div>
+                          )}
+                          {savedProgress.selectedTemplateId && (
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 className="h-3 w-3 text-green-500" />
+                              <span className="text-muted-foreground">Strategy:</span>
+                              <span className="font-medium truncate">
+                                {templates.find(t => t.id === savedProgress.selectedTemplateId)?.name || "Selected"}
+                              </span>
+                            </div>
+                          )}
+                          {savedProgress.selectedAngle && (
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 className="h-3 w-3 text-green-500" />
+                              <span className="text-muted-foreground">Angle:</span>
+                              <span className="font-medium truncate">
+                                {savedProgress.selectedAngle.name}
+                              </span>
+                            </div>
+                          )}
+                          {savedProgress.generatedAngles.length > 0 && !savedProgress.selectedAngle && (
+                            <div className="flex items-center gap-1.5">
+                              <Sparkles className="h-3 w-3 text-amber-500" />
+                              <span className="text-muted-foreground">
+                                {savedProgress.generatedAngles.length} angles generated
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="flex gap-2 mt-3">
                         <Button 
                           size="sm" 
                           onClick={restoreProgress}
-                          className="gap-1"
+                          className="gap-1.5"
                         >
                           <ArrowRight className="h-3.5 w-3.5" />
-                          Resume
+                          Continue
                         </Button>
                         <Button 
                           size="sm" 
