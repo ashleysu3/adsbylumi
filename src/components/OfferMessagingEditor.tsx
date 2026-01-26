@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Save, Plus, X, MessageSquare, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, X, MessageSquare, Sparkles } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AutoSaveIndicator, SaveStatus } from '@/components/AutoSaveIndicator';
 
 interface MessagingGuidelines {
   core_message?: string;
@@ -34,38 +35,81 @@ export function OfferMessagingEditor({
   onUpdate
 }: OfferMessagingEditorProps) {
   const [guidelines, setGuidelines] = useState<MessagingGuidelines>(initialGuidelines || {});
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [isOpen, setIsOpen] = useState(false);
   const [newBenefit, setNewBenefit] = useState('');
   const [newDontSay, setNewDontSay] = useState('');
   const [newAlwaysInclude, setNewAlwaysInclude] = useState('');
   const [newExample, setNewExample] = useState({ type: 'headline', text: '' });
+  
+  // Track if we've made any changes (to avoid saving on initial load)
+  const hasChangedRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   useEffect(() => {
     if (initialGuidelines) {
       setGuidelines(initialGuidelines);
+      // Mark initial load complete after a tick
+      setTimeout(() => {
+        isInitialLoadRef.current = false;
+      }, 100);
     }
   }, [initialGuidelines]);
 
-  const handleSave = async () => {
-    setSaving(true);
+  // Auto-save function
+  const performSave = useCallback(async (guidelinesToSave: MessagingGuidelines) => {
+    setSaveStatus("saving");
     try {
       const { error } = await supabase
         .from('offers')
-        .update({ messaging_guidelines: JSON.parse(JSON.stringify(guidelines)) })
+        .update({ messaging_guidelines: JSON.parse(JSON.stringify(guidelinesToSave)) })
         .eq('id', offerId);
 
       if (error) throw error;
       
-      toast.success('Messaging guidelines saved');
-      onUpdate?.(guidelines);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+      onUpdate?.(guidelinesToSave);
     } catch (error) {
       console.error('Error saving messaging guidelines:', error);
-      toast.error('Failed to save guidelines');
-    } finally {
-      setSaving(false);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     }
-  };
+  }, [offerId, onUpdate]);
+
+  // Debounced auto-save when guidelines change
+  useEffect(() => {
+    // Skip initial load
+    if (isInitialLoadRef.current) return;
+    
+    // Skip if no meaningful content
+    const hasContent = guidelines.core_message || 
+      (guidelines.key_benefits?.length || 0) > 0 ||
+      (guidelines.dont_say?.length || 0) > 0 ||
+      (guidelines.always_include?.length || 0) > 0 ||
+      (guidelines.approved_examples?.length || 0) > 0 ||
+      guidelines.tone_notes ||
+      guidelines.competitor_differentiation;
+    
+    if (!hasContent) return;
+
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Debounce save by 1.5 seconds
+    saveTimeoutRef.current = setTimeout(() => {
+      performSave(guidelines);
+    }, 1500);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [guidelines, performSave]);
 
   const addToArray = (field: keyof MessagingGuidelines, value: string, clearFn: () => void) => {
     if (!value.trim()) return;
@@ -120,7 +164,10 @@ export function OfferMessagingEditor({
               </Badge>
             )}
           </div>
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2">
+            {isOpen && <AutoSaveIndicator status={saveStatus} size="sm" />}
+            <Sparkles className="h-4 w-4 text-muted-foreground" />
+          </div>
         </Button>
       </CollapsibleTrigger>
       
@@ -297,14 +344,10 @@ export function OfferMessagingEditor({
           </div>
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="w-full">
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
-          )}
-          Save Messaging Guidelines
-        </Button>
+        {/* Auto-save status indicator at bottom */}
+        <div className="flex items-center justify-center pt-2 border-t">
+          <AutoSaveIndicator status={saveStatus} showLabel />
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
