@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { Send, Loader2, X, Sparkle, Copy, Check, Lightbulb, Rocket } from "lucide-react";
+import { Send, Loader2, X, Sparkle, Copy, Check, Lightbulb, Rocket, Bug } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SparkleIcon } from "./SparkleIcon";
 import { useLumi, Message } from "@/contexts/LumiContext";
+import { BugReportModal } from "./BugReportModal";
 
 interface ConversationInsight {
   timestamp: string;
@@ -99,8 +100,21 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
   const [isLoading, setIsLoading] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [hasShownInitialMessage, setHasShownInitialMessage] = useState(false);
+  const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const starters = customStarters || contextStarters[context] || contextStarters.dashboard;
+
+  // Fetch user email for bug reports
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+    };
+    fetchUserEmail();
+  }, []);
 
   const open = internalOpen;
   const setOpen = (value: boolean) => {
@@ -243,11 +257,31 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
                 <p className="text-xs text-muted-foreground">Meta Ads, Simplified.</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => setBugReportOpen(true)}
+              >
+                <Bug className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Report Bug</span>
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </DrawerHeader>
+
+        {/* Bug Report Modal */}
+        <BugReportModal 
+          open={bugReportOpen} 
+          onOpenChange={setBugReportOpen}
+          context={context}
+          recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
+          userEmail={userEmail}
+        />
 
         <div className="flex flex-col h-[calc(85vh-120px)]">
           <ScrollArea className="flex-1 p-4" ref={scrollRef}>
