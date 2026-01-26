@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import lumiLogo from "@/assets/lumi-logo.png";
+
+const REMEMBERED_EMAIL_KEY = "lumi_remembered_email";
 
 export default function Auth() {
   // Check for signup query param to auto-switch to signup form
@@ -21,7 +24,17 @@ export default function Auth() {
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
+
+  // Load remembered email on mount
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   // Atomic invite code claim - prevents race conditions
   const claimInviteCode = async (code: string): Promise<boolean> => {
@@ -54,6 +67,14 @@ export default function Auth() {
           password,
         });
         if (error) throw error;
+        
+        // Handle remember me preference
+        if (rememberMe) {
+          localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+        } else {
+          localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+        }
+        
         toast.success("Welcome back!");
         navigate("/start");
       } else {
@@ -223,6 +244,21 @@ export default function Auth() {
                 className="h-11"
               />
             </div>
+            {isLogin && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                />
+                <Label 
+                  htmlFor="rememberMe" 
+                  className="text-sm font-normal text-muted-foreground cursor-pointer"
+                >
+                  Remember me
+                </Label>
+              </div>
+            )}
             <Button
               type="submit"
               className="w-full h-11 text-base"
