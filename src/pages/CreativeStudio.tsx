@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -25,6 +25,7 @@ import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { ProductionManager } from "@/components/creative/ProductionManager";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
+import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 
 type WorkflowTab = "angles" | "copy_creative" | "build";
 
@@ -114,6 +115,9 @@ export default function CreativeStudio() {
   const [showIdleHelp, setShowIdleHelp] = useState(false);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const IDLE_TIMEOUT = 45000; // 45 seconds
+
+  // Auto-save state
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   const urlWorkspaceId = searchParams.get("workspace");
 
@@ -210,16 +214,34 @@ export default function CreativeStudio() {
     } catch (e) { console.error(e); }
   };
 
-  const saveCreativeState = async (updates: any) => {
+  const saveCreativeState = useCallback(async (updates: any) => {
     if (!workspace) return;
-    const cur = (workspace.creative_json || {}) as Record<string, any>;
-    await supabase.from("campaign_workspaces").update({ creative_json: { ...cur, ...updates }, updated_at: new Date().toISOString() }).eq("id", workspace.id);
-  };
+    setSaveStatus("saving");
+    try {
+      const cur = (workspace.creative_json || {}) as Record<string, any>;
+      await supabase.from("campaign_workspaces").update({ creative_json: { ...cur, ...updates }, updated_at: new Date().toISOString() }).eq("id", workspace.id);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (error) {
+      console.error("Failed to save creative state:", error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    }
+  }, [workspace]);
 
-  const saveProductionItems = async (items: ProductionItem[]) => {
+  const saveProductionItems = useCallback(async (items: ProductionItem[]) => {
     if (!workspace) return;
-    await supabase.from("campaign_workspaces").update({ production_items: items as unknown as Json, updated_at: new Date().toISOString() }).eq("id", workspace.id);
-  };
+    setSaveStatus("saving");
+    try {
+      await supabase.from("campaign_workspaces").update({ production_items: items as unknown as Json, updated_at: new Date().toISOString() }).eq("id", workspace.id);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (error) {
+      console.error("Failed to save production items:", error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    }
+  }, [workspace]);
 
   const generateAngles = async () => {
     if (!workspace?.strategy_json) { toast.error("Complete strategy first"); return; }
@@ -381,9 +403,12 @@ export default function CreativeStudio() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold"><span className="text-gradient-lumi">Creative Studio</span></h1>
-            <p className="text-muted-foreground text-sm">Build ad creative from ideation to launch</p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold"><span className="text-gradient-lumi">Creative Studio</span></h1>
+              <p className="text-muted-foreground text-sm">Build ad creative from ideation to launch</p>
+            </div>
+            {workspace && <AutoSaveIndicator status={saveStatus} />}
           </div>
           <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
             <SelectTrigger className="w-full sm:w-[280px]"><FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Select campaign" /></SelectTrigger>
