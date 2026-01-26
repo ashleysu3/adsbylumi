@@ -8,9 +8,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 export function FloatingBugButton() {
   const isMobile = useIsMobile();
-  
-  // Hide on mobile to avoid blocking content
-  if (isMobile) return null;
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const location = useLocation();
@@ -24,6 +21,9 @@ export function FloatingBugButton() {
     };
     fetchUserEmail();
   }, []);
+
+  // Hide on mobile to avoid blocking content
+  if (isMobile) return null;
 
   const context = location.pathname;
 
