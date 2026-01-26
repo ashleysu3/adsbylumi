@@ -152,9 +152,14 @@ export default function Create() {
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [savedProgress, setSavedProgress] = useState<WizardProgress | null>(null);
 
+  // Auto-save state
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+
   // Save progress to localStorage whenever wizard state changes
   useEffect(() => {
     if (!loading && brand && currentStep > 0) {
+      setSaveStatus("saving");
+      
       const progress: WizardProgress = {
         currentStep,
         selectedOfferId,
@@ -165,6 +170,11 @@ export default function Create() {
         savedAt: Date.now(),
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+      
+      // Show saved status
+      setSaveStatus("saved");
+      const timer = setTimeout(() => setSaveStatus("idle"), 2000);
+      return () => clearTimeout(timer);
     }
   }, [currentStep, selectedOfferId, selectedTemplateId, selectedAngle, generatedAngles, selectedCreativeTemplates, loading, brand]);
 
@@ -628,6 +638,7 @@ export default function Create() {
           canProceed={canProceed()}
           isLoading={isGeneratingAngles || isCreatingCampaign}
           nextLabel={currentStep === 3 ? "Generate Angles" : "Continue"}
+          saveStatus={saveStatus}
           completeLabel="Create My Ad"
           showBackOnFirstStep={true}
         >

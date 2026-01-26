@@ -2,6 +2,7 @@ import { ReactNode, useState, useRef, TouchEvent } from "react";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AutoSaveIndicator, SaveStatus } from "./AutoSaveIndicator";
 
 interface MobileStepWizardProps {
   currentStep: number;
@@ -18,6 +19,7 @@ interface MobileStepWizardProps {
   isLoading?: boolean;
   showBackOnFirstStep?: boolean;
   enableSwipe?: boolean;
+  saveStatus?: SaveStatus;
 }
 
 export function MobileStepWizard({
@@ -35,6 +37,7 @@ export function MobileStepWizard({
   isLoading = false,
   showBackOnFirstStep = false,
   enableSwipe = true,
+  saveStatus,
 }: MobileStepWizardProps) {
   const isLastStep = currentStep === totalSteps;
   const showBack = currentStep > 1 || showBackOnFirstStep;
@@ -112,9 +115,17 @@ export function MobileStepWizard({
 
         {/* Step info */}
         <div className="text-center">
-          <p className="text-xs text-muted-foreground mb-1">
-            Step {currentStep} of {totalSteps}
-          </p>
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <p className="text-xs text-muted-foreground">
+              Step {currentStep} of {totalSteps}
+            </p>
+            {saveStatus && (
+              <>
+                <span className="text-muted-foreground/50">•</span>
+                <AutoSaveIndicator status={saveStatus} size="sm" />
+              </>
+            )}
+          </div>
           <h2 className="text-xl font-display font-bold">{title}</h2>
           {subtitle && (
             <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
