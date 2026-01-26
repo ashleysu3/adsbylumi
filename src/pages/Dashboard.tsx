@@ -17,6 +17,7 @@ import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
 import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { InlineProgressChecklist } from "@/components/InlineProgressChecklist";
 import { PageShimmer } from "@/components/GradientShimmer";
 import { AlertsBanner } from "@/components/AlertsBanner";
 import { useLumiRecommend } from "@/components/LumiAssistant";
@@ -391,60 +392,30 @@ export default function Dashboard() {
               Your Lumi Home — everything about your brand at a glance.
             </p>
           </div>
-          <Popover open={progressPopoverOpen} onOpenChange={setProgressPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Badge 
-                variant={
-                  calculateBrandProgress().percentage === 100 ? "outline" : 
-                  calculateBrandProgress().percentage >= 80 ? "default" : 
-                  calculateBrandProgress().percentage >= 40 ? "secondary" : 
-                  "destructive"
-                }
-                className={cn(
-                  "text-xs md:text-sm px-2 md:px-3 py-1 cursor-pointer hover:opacity-80 transition-opacity self-start",
-                  calculateBrandProgress().percentage === 100 && "border-green-500 text-green-700 dark:text-green-400"
-                )}
-              >
-                {calculateBrandProgress().percentage === 100 ? (
-                  <>
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Profile Complete
-                  </>
-                ) : (
-                  <>
-                    {`${calculateBrandProgress().percentage}% Complete`}
-                    <ChevronDown className="h-3 w-3 ml-1" />
-                  </>
-                )}
-              </Badge>
-            </PopoverTrigger>
-            {calculateBrandProgress().percentage < 100 && (
-              <PopoverContent className="w-64 p-3" align="end">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground mb-3">Complete your profile:</p>
-                  {getIncompleteItems().map((item, index) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => scrollToSection(item.section)}
-                        className="w-full flex items-center gap-2 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent px-2 py-2 rounded transition-colors group"
-                      >
-                        <Icon className="h-4 w-4 flex-shrink-0 group-hover:text-primary transition-colors" />
-                        <span>{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </PopoverContent>
-            )}
-          </Popover>
+          {calculateBrandProgress().percentage === 100 && (
+            <Badge 
+              variant="outline"
+              className="text-xs md:text-sm px-2 md:px-3 py-1 border-green-500 text-green-700 dark:text-green-400 self-start"
+            >
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Profile Complete
+            </Badge>
+          )}
         </div>
+
+        {/* Inline Progress Checklist - more prominent than popover */}
+        {calculateBrandProgress().percentage < 100 && (
+          <InlineProgressChecklist 
+            brand={brand}
+            offers={offers}
+            onScrollToSection={scrollToSection}
+          />
+        )}
 
         {/* System Alerts */}
         <AlertsBanner />
 
-        {/* Onboarding Checklist */}
+        {/* Detailed Onboarding Checklist (collapsible) */}
         {!checklistDismissed && (
           <OnboardingChecklist
             brand={brand}

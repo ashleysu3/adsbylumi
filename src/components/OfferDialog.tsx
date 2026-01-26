@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,7 @@ interface OfferDialogProps {
 export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDialogProps) {
   const [loading, setLoading] = useState(false);
   const [extracting, setExtracting] = useState(false);
+  const [autoExtractPending, setAutoExtractPending] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [showExtractedDetails, setShowExtractedDetails] = useState(false);
   const [formData, setFormData] = useState({
@@ -61,6 +62,83 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     target_outcome: "",
     page_goal: "" as PageGoal | "",
   });
+
+  const extractDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastExtractedUrl = useRef<string>("");
+
+  // Auto-extract when URL is pasted/changed (debounced)
+  const triggerAutoExtract = useCallback((url: string) => {
+    if (!url || url.length < 10) return;
+    
+    // Clear any pending extraction
+    if (extractDebounceRef.current) {
+      clearTimeout(extractDebounceRef.current);
+    }
+    
+    // Don't re-extract the same URL
+    if (url === lastExtractedUrl.current) return;
+    
+    setAutoExtractPending(true);
+    
+    // Debounce for 1.5s after user stops typing
+    extractDebounceRef.current = setTimeout(async () => {
+      if (extracting) {
+        setAutoExtractPending(false);
+        return;
+      }
+      
+      setExtracting(true);
+      setAutoExtractPending(false);
+      setExtractedData(null);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('extract-offer-info', {
+          body: { 
+            offerUrl: url,
+            offerName: formData.name 
+          }
+        });
+
+        if (error) throw error;
+
+        lastExtractedUrl.current = url;
+        setExtractedData(data);
+
+        // Update form with core fields
+        setFormData(prev => ({
+          ...prev,
+          description: data.description || prev.description,
+          price_point: data.price_point || prev.price_point,
+          target_outcome: data.target_outcome || prev.target_outcome,
+        }));
+
+        if (data.needs_clarification) {
+          toast.info("Some info couldn't be found - please review and fill in the gaps");
+        } else {
+          toast.success("✨ Page analyzed! Review the extracted info.");
+        }
+      } catch (error: any) {
+        console.error('Auto-extract error:', error);
+        // Silent fail for auto-extract
+      } finally {
+        setExtracting(false);
+      }
+    }, 1500);
+  }, [extracting, formData.name]);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (extractDebounceRef.current) {
+        clearTimeout(extractDebounceRef.current);
+      }
+    };
+  }, []);
+
+  const handleUrlChange = (value: string) => {
+    setFormData(prev => ({ ...prev, url: value }));
+    triggerAutoExtract(value);
+  };
 
   const handleExtractInfo = async () => {
     if (!formData.url) {
@@ -80,7 +158,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
 
       if (error) throw error;
 
-      // Store full extracted data
+      lastExtractedUrl.current = formData.url;
       setExtractedData(data);
 
       // Update form with core fields
@@ -175,6 +253,8 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     if (!open) {
       setExtractedData(null);
       setShowExtractedDetails(false);
+      lastExtractedUrl.current = "";
+      setAutoExtractPending(false);
     }
     onOpenChange(open);
   };
@@ -203,34 +283,44 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
 
           <div className="space-y-2">
             <Label htmlFor="url">Offer URL</Label>
-            <div className="flex gap-2">
+            <div className="relative">
               <Input
                 id="url"
                 type="url"
                 value={formData.url}
-                onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
+                onChange={(e) => handleUrlChange(e.target.value)}
                 placeholder="https://example.com/offer"
+                className="pr-10"
                 required
               />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleExtractInfo}
-                disabled={extracting}
-              >
+              {/* Status indicator */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 {extracting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Extract
-                  </>
-                )}
-              </Button>
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                ) : autoExtractPending ? (
+                  <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                ) : extractedData ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                ) : null}
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              {extracting ? (
+                <>
+                  <Sparkles className="h-3 w-3 animate-pulse" />
+                  Analyzing your offer page...
+                </>
+              ) : extractedData ? (
+                <>
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                  Page analyzed — info extracted below
+                </>
+              ) : autoExtractPending ? (
+                "Will analyze when you stop typing..."
+              ) : (
+                "Paste your URL and we'll automatically extract offer details"
+              )}
+            </p>
           </div>
 
           {/* Extraction Status & Summary */}

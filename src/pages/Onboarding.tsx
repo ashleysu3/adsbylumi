@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight } from "lucide-react";
+import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight, CheckCircle2 } from "lucide-react";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { motion } from "framer-motion";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
@@ -21,12 +21,15 @@ export default function Onboarding() {
   const [extracting, setExtracting] = useState(false);
   const [step, setStep] = useState(1);
   const [hasExtracted, setHasExtracted] = useState(false);
+  const [autoExtractPending, setAutoExtractPending] = useState(false);
 
   const [brandName, setBrandName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [industry, setIndustry] = useState("");
   const [valueProposition, setValueProposition] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
+
+  const extractDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -38,6 +41,69 @@ export default function Onboarding() {
       navigate('/auth');
     }
     setCheckingAuth(false);
+  };
+
+  // Auto-extract when URL is pasted/changed (debounced)
+  const triggerAutoExtract = useCallback((url: string) => {
+    const normalizedUrl = normalizeWebsiteUrl(url);
+    if (!normalizedUrl || normalizedUrl.length < 10) return;
+    
+    // Clear any pending extraction
+    if (extractDebounceRef.current) {
+      clearTimeout(extractDebounceRef.current);
+    }
+    
+    setAutoExtractPending(true);
+    
+    // Debounce for 1.5s after user stops typing
+    extractDebounceRef.current = setTimeout(async () => {
+      // Don't auto-extract if already extracting or already extracted
+      if (extracting || hasExtracted) {
+        setAutoExtractPending(false);
+        return;
+      }
+      
+      setExtracting(true);
+      setAutoExtractPending(false);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke("extract-brand-info", {
+          body: { websiteUrl: normalizedUrl },
+        });
+
+        if (error) throw error;
+
+        setValueProposition(data.value_proposition || "");
+        setTargetAudience(data.target_audience || "");
+        setIndustry(data.industry || "");
+        setHasExtracted(true);
+
+        toast.success("✨ Website analyzed! Review the extracted info below.");
+      } catch (error: any) {
+        console.error("Auto-extract error:", error);
+        // Silent fail for auto-extract - user can still click Extract manually
+      } finally {
+        setExtracting(false);
+      }
+    }, 1500);
+  }, [extracting, hasExtracted]);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (extractDebounceRef.current) {
+        clearTimeout(extractDebounceRef.current);
+      }
+    };
+  }, []);
+
+  const handleWebsiteUrlChange = (value: string) => {
+    setWebsiteUrl(value);
+    // Reset extraction state when URL changes significantly
+    if (hasExtracted && value !== websiteUrl) {
+      setHasExtracted(false);
+    }
+    triggerAutoExtract(value);
   };
 
   const handleExtractBrandInfo = async () => {
@@ -221,37 +287,44 @@ export default function Onboarding() {
 
               <div className="space-y-2">
                 <Label htmlFor="websiteUrl">Website URL</Label>
-                <div className="flex gap-2">
+                <div className="relative">
                   <Input
                     id="websiteUrl"
                     type="url"
                     variant="glow"
                     value={websiteUrl}
-                    onChange={(e) => setWebsiteUrl(e.target.value)}
+                    onChange={(e) => handleWebsiteUrlChange(e.target.value)}
                     placeholder="https://example.com"
+                    className="pr-10"
                     required
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleExtractBrandInfo}
-                    disabled={extracting || !websiteUrl}
-                  >
+                  {/* Status indicator in input */}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
                     {extracting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Extract
-                      </>
-                    )}
-                  </Button>
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    ) : autoExtractPending ? (
+                      <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                    ) : hasExtracted ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    ) : null}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Lumi will analyze your website to understand your brand better
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  {extracting ? (
+                    <>
+                      <Sparkles className="h-3 w-3 animate-pulse" />
+                      Analyzing your website...
+                    </>
+                  ) : hasExtracted ? (
+                    <>
+                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                      Website analyzed — info extracted below
+                    </>
+                  ) : autoExtractPending ? (
+                    "Will analyze when you stop typing..."
+                  ) : (
+                    "Paste your URL and Lumi will automatically analyze it"
+                  )}
                 </p>
               </div>
 
