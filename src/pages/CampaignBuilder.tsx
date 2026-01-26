@@ -8,6 +8,7 @@ import { CampaignSummary } from "@/components/CampaignSummary";
 import { CampaignReview } from "@/components/CampaignReview";
 import { CampaignSuccess } from "@/components/CampaignSuccess";
 import { Button } from "@/components/ui/button";
+import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +37,7 @@ export default function CampaignBuilder() {
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [campaignIds, setCampaignIds] = useState<any>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   useEffect(() => {
     if (workspaceId && !workspace) {
@@ -105,6 +107,7 @@ export default function CampaignBuilder() {
   };
 
   const saveProgress = async (newAnswers: any) => {
+    setSaveStatus("saving");
     try {
       await supabase
         .from('campaign_workspaces')
@@ -113,12 +116,17 @@ export default function CampaignBuilder() {
           updated_at: new Date().toISOString()
         })
         .eq('id', workspaceId);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {
       console.error('Error saving progress:', error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     }
   };
 
   const saveChatHistory = async (messages: any[]) => {
+    setSaveStatus("saving");
     try {
       await supabase
         .from('campaign_workspaces')
@@ -127,8 +135,12 @@ export default function CampaignBuilder() {
           updated_at: new Date().toISOString()
         })
         .eq('id', workspaceId);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {
       console.error('Error saving chat history:', error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
     }
   };
 
@@ -289,7 +301,15 @@ export default function CampaignBuilder() {
             </Button>
             <div className="flex-1 min-w-0">
               <h1 className="text-lg font-bold truncate">{workspace.name}</h1>
-              <p className="text-xs text-muted-foreground">Campaign Builder</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">Campaign Builder</p>
+                {saveStatus !== "idle" && (
+                  <>
+                    <span className="text-muted-foreground/50">•</span>
+                    <AutoSaveIndicator status={saveStatus} size="sm" />
+                  </>
+                )}
+              </div>
             </div>
             {(stage === 'chat' || stage === 'review') && (
               <AlertDialog>
@@ -377,7 +397,15 @@ export default function CampaignBuilder() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold">Campaign Builder</h1>
-              <p className="text-muted-foreground">{workspace.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-muted-foreground">{workspace.name}</p>
+                {saveStatus !== "idle" && (
+                  <>
+                    <span className="text-muted-foreground/50">•</span>
+                    <AutoSaveIndicator status={saveStatus} />
+                  </>
+                )}
+              </div>
             </div>
             
             {/* Restart Button - only show during chat or review stages */}
