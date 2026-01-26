@@ -1,13 +1,14 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, LayoutTemplate, Ticket, BarChart3, CreditCard, Bug } from "lucide-react";
+import { BookOpen, LayoutTemplate, Ticket, BarChart3, CreditCard, Bug, Users } from "lucide-react";
 
 const adminTabs = [
+  { path: "/admin/users", label: "Users", icon: Users },
+  { path: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
+  { path: "/admin/bug-reports", label: "Bug Reports", icon: Bug },
   { path: "/admin/knowledge", label: "Knowledge", icon: BookOpen },
   { path: "/admin/templates", label: "Templates", icon: LayoutTemplate },
   { path: "/admin/invite-codes", label: "Invite Codes", icon: Ticket },
-  { path: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
-  { path: "/admin/bug-reports", label: "Bug Reports", icon: Bug },
   { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
@@ -19,7 +20,7 @@ export default function AdminTabs() {
 
   return (
     <Tabs value={currentTab} onValueChange={(value) => navigate(value)} className="mb-6">
-      <TabsList>
+      <TabsList className="flex-wrap h-auto gap-1">
         {adminTabs.map((tab) => (
           <TabsTrigger key={tab.path} value={tab.path} className="gap-2">
             <tab.icon className="h-4 w-4" />

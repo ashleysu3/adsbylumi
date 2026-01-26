@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Shield, LogOut, LayoutTemplate, Ticket, BarChart3, Sparkles, CreditCard, Library, Settings, Building2 } from "lucide-react";
+import { Shield, LogOut, LayoutTemplate, Ticket, BarChart3, Sparkles, CreditCard, Library, Settings, Building2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -57,6 +57,14 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
             {isAdmin && (
               <>
                 <DropdownMenuLabel className="text-xs text-muted-foreground">Admin</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => navigate("/admin/users")} className="min-h-[44px]">
+                  <Users className="mr-3 h-4 w-4" />
+                  User Management
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/admin/subscriptions")} className="min-h-[44px]">
+                  <CreditCard className="mr-3 h-4 w-4" />
+                  Subscriptions
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/admin/knowledge")} className="min-h-[44px]">
                   <Shield className="mr-3 h-4 w-4" />
                   Knowledge Base
@@ -68,10 +76,6 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
                 <DropdownMenuItem onClick={() => navigate("/admin/invite-codes")} className="min-h-[44px]">
                   <Ticket className="mr-3 h-4 w-4" />
                   Invite Codes
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/admin/subscriptions")} className="min-h-[44px]">
-                  <CreditCard className="mr-3 h-4 w-4" />
-                  Subscriptions
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/admin/analytics")} className="min-h-[44px]">
                   <BarChart3 className="mr-3 h-4 w-4" />
