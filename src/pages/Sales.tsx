@@ -420,22 +420,34 @@ const Sales = () => {
             transition={{ type: "spring", stiffness: 400 }}
           />
           <div className="flex items-center gap-2 sm:gap-3">
-            <TooltipProvider>
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <MagneticButton>
-                    <Button onClick={() => navigate("/auth?signup=true")} variant="glow" className="rounded-full text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 min-h-[44px] animate-glow-pulse">
-                      <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">Have an invite code?</span>
-                      <span className="sm:hidden">Got a code?</span>
-                    </Button>
-                  </MagneticButton>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[220px] text-center">
-                  <p className="text-sm">Invite codes are sent to waitlist members. <span className="text-primary font-medium">Join below</span> to get yours!</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div className="relative">
+              <motion.div 
+                className="absolute -top-6 left-1/2 -translate-x-1/2 z-10"
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.4 }}
+              >
+                <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full shadow-glow whitespace-nowrap">
+                  Early Access
+                </Badge>
+              </motion.div>
+              <TooltipProvider>
+                <Tooltip delayDuration={300}>
+                  <TooltipTrigger asChild>
+                    <MagneticButton>
+                      <Button onClick={() => navigate("/auth?signup=true")} variant="glow" className="rounded-full text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 min-h-[44px] animate-glow-pulse">
+                        <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Have an invite code?</span>
+                        <span className="sm:hidden">Got a code?</span>
+                      </Button>
+                    </MagneticButton>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[220px] text-center">
+                    <p className="text-sm">Invite codes are sent to waitlist members. <span className="text-primary font-medium">Join below</span> to get yours!</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <MagneticButton>
               <Button onClick={() => navigate("/auth")} variant="outline" className="rounded-full text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-2.5 min-h-[44px]">
                 Log In
