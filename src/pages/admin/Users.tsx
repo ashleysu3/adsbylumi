@@ -740,13 +740,13 @@ export default function AdminUsers() {
 
       {/* User Details Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              {selectedUser?.email}
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <User className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              <span className="truncate">{selectedUser?.email}</span>
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm">
               {selectedUser?.full_name || "No name"} — Joined {selectedUser && format(new Date(selectedUser.created_at), "PPP")}
             </DialogDescription>
           </DialogHeader>
@@ -757,30 +757,31 @@ export default function AdminUsers() {
             </div>
           ) : userDetails && (
             <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col">
-              <TabsList className="grid grid-cols-6 w-full">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="bugs">Bugs ({userDetails.bugReports.length})</TabsTrigger>
-                <TabsTrigger value="notes">Notes ({userDetails.adminNotes.length})</TabsTrigger>
-                <TabsTrigger value="billing">Billing</TabsTrigger>
-                <TabsTrigger value="actions">Actions</TabsTrigger>
+              {/* Mobile: scrollable horizontal tabs, Desktop: grid */}
+              <TabsList className="flex sm:grid sm:grid-cols-6 w-full overflow-x-auto gap-1 h-auto p-1">
+                <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Overview</TabsTrigger>
+                <TabsTrigger value="activity" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Activity</TabsTrigger>
+                <TabsTrigger value="bugs" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Bugs ({userDetails.bugReports.length})</TabsTrigger>
+                <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Notes ({userDetails.adminNotes.length})</TabsTrigger>
+                <TabsTrigger value="billing" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Billing</TabsTrigger>
+                <TabsTrigger value="actions" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Actions</TabsTrigger>
               </TabsList>
 
-              <ScrollArea className="flex-1 mt-4">
+              <ScrollArea className="flex-1 mt-3 sm:mt-4">
                 {/* Overview Tab */}
-                <TabsContent value="overview" className="space-y-4 pr-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <TabsContent value="overview" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     {/* Profile Card */}
                     <Card>
-                      <CardHeader className="pb-2">
+                      <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <User className="w-4 h-4" /> Profile
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        <div className="flex justify-between">
+                      <CardContent className="space-y-2 text-xs sm:text-sm px-3 sm:px-6 pb-3 sm:pb-6">
+                        <div className="flex justify-between gap-2">
                           <span className="text-muted-foreground">Email</span>
-                          <span>{userDetails.profile?.email}</span>
+                          <span className="truncate text-right max-w-[180px]">{userDetails.profile?.email}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Name</span>
@@ -795,17 +796,17 @@ export default function AdminUsers() {
 
                     {/* Brand Card */}
                     <Card>
-                      <CardHeader className="pb-2">
+                      <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <Building2 className="w-4 h-4" /> Brand
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
+                      <CardContent className="space-y-2 text-xs sm:text-sm px-3 sm:px-6 pb-3 sm:pb-6">
                         {userDetails.brand ? (
                           <>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Name</span>
-                              <span>{userDetails.brand.name}</span>
+                              <span className="truncate max-w-[120px]">{userDetails.brand.name}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Industry</span>
@@ -813,11 +814,11 @@ export default function AdminUsers() {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Website</span>
-                              <span className="truncate max-w-[150px]">{userDetails.brand.website_url || "—"}</span>
+                              <span className="truncate max-w-[120px]">{userDetails.brand.website_url || "—"}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Meta Connected</span>
-                              <Badge variant={userDetails.brand.meta_account_id ? "default" : "secondary"}>
+                              <Badge variant={userDetails.brand.meta_account_id ? "default" : "secondary"} className="text-xs">
                                 {userDetails.brand.meta_account_id ? "Yes" : "No"}
                               </Badge>
                             </div>
@@ -830,27 +831,27 @@ export default function AdminUsers() {
 
                     {/* Subscription Card */}
                     <Card>
-                      <CardHeader className="pb-2">
+                      <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <CreditCard className="w-4 h-4" /> Subscription
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
+                      <CardContent className="space-y-2 text-xs sm:text-sm px-3 sm:px-6 pb-3 sm:pb-6">
                         {userDetails.subscription ? (
                           <>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Plan</span>
-                              <Badge>{tierDisplayNames[userDetails.subscription.tier] || userDetails.subscription.tier}</Badge>
+                              <Badge className="text-xs">{tierDisplayNames[userDetails.subscription.tier] || userDetails.subscription.tier}</Badge>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Status</span>
-                              <Badge variant={userDetails.subscription.status === "active" ? "default" : "secondary"}>
+                              <Badge variant={userDetails.subscription.status === "active" ? "default" : "secondary"} className="text-xs">
                                 {userDetails.subscription.status}
                               </Badge>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Type</span>
-                              <Badge variant="outline">
+                              <Badge variant="outline" className="text-xs">
                                 {userDetails.subscription.stripe_subscription_id ? "Stripe" : "Code-Based"}
                               </Badge>
                             </div>
@@ -869,17 +870,17 @@ export default function AdminUsers() {
 
                     {/* Campaigns Card */}
                     <Card>
-                      <CardHeader className="pb-2">
+                      <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <FileText className="w-4 h-4" /> Recent Campaigns
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
+                      <CardContent className="space-y-2 text-xs sm:text-sm px-3 sm:px-6 pb-3 sm:pb-6">
                         {userDetails.campaigns.length > 0 ? (
                           userDetails.campaigns.slice(0, 5).map((campaign: any) => (
-                            <div key={campaign.id} className="flex justify-between items-center">
-                              <span className="truncate max-w-[150px]">{campaign.name}</span>
-                              <Badge variant="outline" className="text-xs">
+                            <div key={campaign.id} className="flex justify-between items-center gap-2">
+                              <span className="truncate max-w-[120px]">{campaign.name}</span>
+                              <Badge variant="outline" className="text-xs whitespace-nowrap">
                                 {campaign.progress_status}
                               </Badge>
                             </div>
@@ -893,7 +894,7 @@ export default function AdminUsers() {
                 </TabsContent>
 
                 {/* Activity Timeline Tab */}
-                <TabsContent value="activity" className="space-y-4 pr-4">
+                <TabsContent value="activity" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
                   {activityLoading ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
@@ -909,9 +910,9 @@ export default function AdminUsers() {
                   ) : (
                     <div className="relative">
                       {/* Timeline line */}
-                      <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
+                      <div className="absolute left-4 sm:left-5 top-0 bottom-0 w-px bg-border" />
                       
-                      <div className="space-y-4">
+                      <div className="space-y-3 sm:space-y-4">
                         {userActivity.map((activity, index) => {
                           const activityConfig = ACTIVITY_ICONS[activity.type] || { 
                             icon: Activity, 
@@ -920,23 +921,23 @@ export default function AdminUsers() {
                           const IconComponent = activityConfig.icon;
                           
                           return (
-                            <div key={activity.id} className="relative flex gap-4 pb-2">
+                            <div key={activity.id} className="relative flex gap-2 sm:gap-4 pb-2">
                               {/* Icon */}
                               <div className={cn(
-                                "relative z-10 flex items-center justify-center w-10 h-10 rounded-full shrink-0",
+                                "relative z-10 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full shrink-0",
                                 activityConfig.color
                               )}>
-                                <IconComponent className="w-5 h-5" />
+                                <IconComponent className="w-4 h-4 sm:w-5 sm:h-5" />
                               </div>
                               
                               {/* Content */}
-                              <div className="flex-1 pt-1">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <p className="font-medium text-sm">{activity.title}</p>
-                                    <p className="text-sm text-muted-foreground">{activity.description}</p>
+                              <div className="flex-1 pt-0.5 sm:pt-1 min-w-0">
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-2">
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-xs sm:text-sm truncate">{activity.title}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{activity.description}</p>
                                     {activity.metadata && Object.keys(activity.metadata).length > 0 && (
-                                      <div className="flex gap-2 mt-1">
+                                      <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
                                         {Object.entries(activity.metadata).map(([key, value]) => (
                                           <Badge key={key} variant="outline" className="text-xs">
                                             {key}: {String(value)}
@@ -945,11 +946,13 @@ export default function AdminUsers() {
                                       </div>
                                     )}
                                   </div>
-                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
                                     {format(new Date(activity.timestamp), "MMM d, yyyy")}
-                                    <br />
-                                    <span className="text-xs opacity-70">
-                                      {format(new Date(activity.timestamp), "h:mm a")}
+                                    <span className="hidden sm:inline">
+                                      <br />
+                                      <span className="text-xs opacity-70">
+                                        {format(new Date(activity.timestamp), "h:mm a")}
+                                      </span>
                                     </span>
                                   </span>
                                 </div>
@@ -963,40 +966,38 @@ export default function AdminUsers() {
                 </TabsContent>
 
                 {/* Bug Reports Tab */}
-                <TabsContent value="bugs" className="space-y-4 pr-4">
+                <TabsContent value="bugs" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
                   {userDetails.bugReports.length === 0 ? (
                     <Card>
-                      <CardContent className="py-8 text-center text-muted-foreground">
-                        <Bug className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <CardContent className="py-6 sm:py-8 text-center text-muted-foreground">
+                        <Bug className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-50" />
                         No bug reports from this user
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {userDetails.bugReports.map((bug: any) => (
                         <Card key={bug.id}>
-                          <CardContent className="pt-4">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Badge variant={
-                                    bug.status === "resolved" ? "default" :
-                                    bug.status === "in_progress" ? "secondary" : "outline"
-                                  }>
-                                    {bug.status}
-                                  </Badge>
-                                  <Badge variant="outline">{bug.priority}</Badge>
-                                  <span className="text-xs text-muted-foreground">
-                                    {format(new Date(bug.created_at), "MMM d, yyyy h:mm a")}
-                                  </span>
-                                </div>
-                                <p className="text-sm">{bug.details}</p>
-                                {bug.current_page && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Page: {bug.current_page}
-                                  </p>
-                                )}
+                          <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6 pb-3 sm:pb-4">
+                            <div className="flex flex-col gap-2">
+                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                <Badge variant={
+                                  bug.status === "resolved" ? "default" :
+                                  bug.status === "in_progress" ? "secondary" : "outline"
+                                } className="text-xs">
+                                  {bug.status}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs">{bug.priority}</Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(bug.created_at), "MMM d, yyyy")}
+                                </span>
                               </div>
+                              <p className="text-xs sm:text-sm">{bug.details}</p>
+                              {bug.current_page && (
+                                <p className="text-xs text-muted-foreground">
+                                  Page: {bug.current_page}
+                                </p>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
@@ -1006,15 +1007,15 @@ export default function AdminUsers() {
                 </TabsContent>
 
                 {/* Notes Tab */}
-                <TabsContent value="notes" className="space-y-4 pr-4">
+                <TabsContent value="notes" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
                   <Card>
-                    <CardHeader className="pb-2">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                       <CardTitle className="text-sm">Add Note</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex gap-2">
+                    <CardContent className="space-y-3 px-3 sm:px-6 pb-3 sm:pb-6">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Select value={noteCategory} onValueChange={setNoteCategory}>
-                          <SelectTrigger className="w-32">
+                          <SelectTrigger className="w-full sm:w-32 h-10">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1029,13 +1030,13 @@ export default function AdminUsers() {
                           placeholder="Add a note about this user..."
                           value={newNote}
                           onChange={(e) => setNewNote(e.target.value)}
-                          className="flex-1 min-h-[80px]"
+                          className="flex-1 min-h-[80px] text-sm"
                         />
                       </div>
                       <Button 
                         onClick={handleAddNote} 
                         disabled={!newNote.trim() || actionLoading === "note"}
-                        className="w-full"
+                        className="w-full h-10 sm:h-11"
                       >
                         {actionLoading === "note" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
                         Add Note
@@ -1045,30 +1046,30 @@ export default function AdminUsers() {
 
                   {userDetails.adminNotes.length === 0 ? (
                     <Card>
-                      <CardContent className="py-8 text-center text-muted-foreground">
-                        <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <CardContent className="py-6 sm:py-8 text-center text-muted-foreground">
+                        <MessageSquare className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-50" />
                         No notes yet
                       </CardContent>
                     </Card>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {userDetails.adminNotes.map((note: any) => (
                         <Card key={note.id}>
-                          <CardContent className="pt-4">
+                          <CardContent className="pt-3 sm:pt-4 px-3 sm:px-6 pb-3 sm:pb-4">
                             <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Badge variant="outline">{note.category}</Badge>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
+                                  <Badge variant="outline" className="text-xs">{note.category}</Badge>
                                   <span className="text-xs text-muted-foreground">
-                                    {format(new Date(note.created_at), "MMM d, yyyy h:mm a")}
+                                    {format(new Date(note.created_at), "MMM d, yyyy")}
                                   </span>
                                 </div>
-                                <p className="text-sm whitespace-pre-wrap">{note.note}</p>
+                                <p className="text-xs sm:text-sm whitespace-pre-wrap">{note.note}</p>
                               </div>
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                className="h-8 w-8 text-destructive hover:text-destructive flex-shrink-0"
                                 onClick={() => handleDeleteNote(note.id)}
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1082,20 +1083,20 @@ export default function AdminUsers() {
                 </TabsContent>
 
                 {/* Billing Tab */}
-                <TabsContent value="billing" className="space-y-4 pr-4">
+                <TabsContent value="billing" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
                   {userDetails.stripeInfo?.customer ? (
                     <>
                       {/* Stripe Customer Info */}
                       <Card>
-                        <CardHeader className="pb-2">
+                        <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                           <CardTitle className="text-sm flex items-center gap-2">
                             <CreditCard className="w-4 h-4" /> Stripe Customer
                           </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                          <div className="flex justify-between">
+                        <CardContent className="space-y-2 text-xs sm:text-sm px-3 sm:px-6 pb-3 sm:pb-6">
+                          <div className="flex justify-between gap-2">
                             <span className="text-muted-foreground">Customer ID</span>
-                            <span className="font-mono text-xs">{userDetails.stripeInfo.customer.id}</span>
+                            <span className="font-mono text-xs truncate max-w-[140px]">{userDetails.stripeInfo.customer.id}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Balance</span>
@@ -1113,19 +1114,19 @@ export default function AdminUsers() {
 
                       {/* Stripe Subscriptions */}
                       <Card>
-                        <CardHeader className="pb-2">
+                        <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                           <CardTitle className="text-sm">Stripe Subscriptions</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                           {userDetails.stripeInfo.subscriptions.length === 0 ? (
-                            <p className="text-muted-foreground text-sm">No subscriptions</p>
+                            <p className="text-muted-foreground text-xs sm:text-sm">No subscriptions</p>
                           ) : (
                             <div className="space-y-2">
                               {userDetails.stripeInfo.subscriptions.map((sub: any) => (
-                                <div key={sub.id} className="p-3 bg-muted/50 rounded-lg text-sm">
-                                  <div className="flex items-center justify-between mb-1">
-                                    <span className="font-mono text-xs">{sub.id}</span>
-                                    <Badge variant={sub.status === "active" ? "default" : "secondary"}>
+                                <div key={sub.id} className="p-2 sm:p-3 bg-muted/50 rounded-lg text-xs sm:text-sm">
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-mono text-xs truncate max-w-[120px]">{sub.id}</span>
+                                    <Badge variant={sub.status === "active" ? "default" : "secondary"} className="text-xs">
                                       {sub.status}
                                     </Badge>
                                   </div>
@@ -1135,7 +1136,7 @@ export default function AdminUsers() {
                                     </div>
                                   )}
                                   <div className="text-xs text-muted-foreground mt-1">
-                                    Current period: {format(new Date(sub.current_period_start * 1000), "MMM d")} - {format(new Date(sub.current_period_end * 1000), "MMM d, yyyy")}
+                                    {format(new Date(sub.current_period_start * 1000), "MMM d")} - {format(new Date(sub.current_period_end * 1000), "MMM d, yyyy")}
                                   </div>
                                 </div>
                               ))}
@@ -1146,23 +1147,23 @@ export default function AdminUsers() {
 
                       {/* Recent Payments */}
                       <Card>
-                        <CardHeader className="pb-2">
+                        <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                           <CardTitle className="text-sm">Recent Payments</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                           {userDetails.stripeInfo.payments.length === 0 ? (
-                            <p className="text-muted-foreground text-sm">No payments</p>
+                            <p className="text-muted-foreground text-xs sm:text-sm">No payments</p>
                           ) : (
                             <div className="space-y-2">
                               {userDetails.stripeInfo.payments.slice(0, 5).map((payment: any) => (
-                                <div key={payment.id} className="flex items-center justify-between text-sm p-2 bg-muted/30 rounded">
-                                  <div>
+                                <div key={payment.id} className="flex items-center justify-between text-xs sm:text-sm p-2 bg-muted/30 rounded gap-2">
+                                  <div className="min-w-0">
                                     <span className="font-medium">${(payment.amount / 100).toFixed(2)}</span>
-                                    <span className="text-muted-foreground ml-2">
-                                      {format(new Date(payment.created * 1000), "MMM d, yyyy")}
+                                    <span className="text-muted-foreground ml-1 sm:ml-2 text-xs">
+                                      {format(new Date(payment.created * 1000), "MMM d")}
                                     </span>
                                   </div>
-                                  <Badge variant={payment.status === "succeeded" ? "default" : "secondary"}>
+                                  <Badge variant={payment.status === "succeeded" ? "default" : "secondary"} className="text-xs">
                                     {payment.status}
                                   </Badge>
                                 </div>
@@ -1174,28 +1175,28 @@ export default function AdminUsers() {
 
                       {/* Recent Invoices */}
                       <Card>
-                        <CardHeader className="pb-2">
+                        <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                           <CardTitle className="text-sm">Recent Invoices</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                           {userDetails.stripeInfo.invoices.length === 0 ? (
-                            <p className="text-muted-foreground text-sm">No invoices</p>
+                            <p className="text-muted-foreground text-xs sm:text-sm">No invoices</p>
                           ) : (
                             <div className="space-y-2">
                               {userDetails.stripeInfo.invoices.slice(0, 5).map((invoice: any) => (
-                                <div key={invoice.id} className="flex items-center justify-between text-sm p-2 bg-muted/30 rounded">
-                                  <div>
+                                <div key={invoice.id} className="flex items-center justify-between text-xs sm:text-sm p-2 bg-muted/30 rounded gap-2">
+                                  <div className="min-w-0 truncate">
                                     <span className="font-medium">{invoice.number || "Draft"}</span>
-                                    <span className="text-muted-foreground ml-2">
+                                    <span className="text-muted-foreground ml-1 sm:ml-2">
                                       ${(invoice.amount_due / 100).toFixed(2)}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant={invoice.status === "paid" ? "default" : "secondary"}>
+                                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                                    <Badge variant={invoice.status === "paid" ? "default" : "secondary"} className="text-xs">
                                       {invoice.status}
                                     </Badge>
                                     {invoice.hosted_invoice_url && (
-                                      <Button variant="ghost" size="sm" asChild>
+                                      <Button variant="ghost" size="sm" asChild className="h-7 w-7 p-0">
                                         <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer">
                                           <Globe className="w-3 h-3" />
                                         </a>
@@ -1211,8 +1212,8 @@ export default function AdminUsers() {
                     </>
                   ) : (
                     <Card>
-                      <CardContent className="py-8 text-center text-muted-foreground">
-                        <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <CardContent className="py-6 sm:py-8 text-center text-muted-foreground">
+                        <CreditCard className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-50" />
                         No Stripe customer found for this user
                       </CardContent>
                     </Card>
@@ -1220,16 +1221,16 @@ export default function AdminUsers() {
                 </TabsContent>
 
                 {/* Actions Tab */}
-                <TabsContent value="actions" className="space-y-4 pr-4">
+                <TabsContent value="actions" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
                   {/* Impersonation */}
                   <Card className="border-amber-500/30 bg-amber-500/5">
-                    <CardHeader className="pb-2">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                       <CardTitle className="text-sm flex items-center gap-2">
                         <Eye className="w-4 h-4" /> View As User
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-3">
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-3">
                         Impersonate this user to see the app from their perspective. Useful for debugging issues they report.
                       </p>
                       {isImpersonating && impersonatedUser?.id === selectedUser?.id ? (
@@ -1239,7 +1240,7 @@ export default function AdminUsers() {
                       ) : (
                         <Button
                           variant="outline"
-                          className="w-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                          className="w-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10 h-10 sm:h-11"
                           onClick={() => {
                             if (selectedUser && userDetails?.profile) {
                               startImpersonation({
@@ -1262,14 +1263,14 @@ export default function AdminUsers() {
 
                   {/* Email Actions */}
                   <Card>
-                    <CardHeader className="pb-2">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                       <CardTitle className="text-sm flex items-center gap-2">
                         <Mail className="w-4 h-4" /> Send Email
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 px-3 sm:px-6 pb-3 sm:pb-6">
                       <Select value={selectedEmailTemplate} onValueChange={setSelectedEmailTemplate}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 sm:h-11 text-sm">
                           <SelectValue placeholder="Select email template..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -1286,14 +1287,14 @@ export default function AdminUsers() {
                           placeholder="Enter your custom message..."
                           value={customEmailMessage}
                           onChange={(e) => setCustomEmailMessage(e.target.value)}
-                          className="min-h-[100px]"
+                          className="min-h-[100px] text-sm"
                         />
                       )}
 
                       <Button 
                         onClick={handleSendEmail}
                         disabled={!selectedEmailTemplate || actionLoading === "email"}
-                        className="w-full"
+                        className="w-full h-10 sm:h-11"
                       >
                         {actionLoading === "email" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                         Send Email
@@ -1303,16 +1304,16 @@ export default function AdminUsers() {
 
                   {/* Billing Actions */}
                   <Card>
-                    <CardHeader className="pb-2">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                       <CardTitle className="text-sm flex items-center gap-2">
                         <DollarSign className="w-4 h-4" /> Billing Actions
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
                       {/* Give Credit */}
                       <div className="space-y-2">
-                        <p className="text-sm font-medium">Give Credit</p>
-                        <div className="flex gap-2">
+                        <p className="text-xs sm:text-sm font-medium">Give Credit</p>
+                        <div className="flex flex-wrap gap-2">
                           {[1, 2, 3].map((months) => (
                             <Button
                               key={months}
@@ -1320,6 +1321,7 @@ export default function AdminUsers() {
                               size="sm"
                               onClick={() => handleGiveCredit(months)}
                               disabled={actionLoading === "credit"}
+                              className="h-9 sm:h-10 text-xs sm:text-sm flex-1 min-w-[80px]"
                             >
                               <Gift className="w-3 h-3 mr-1" />
                               {months} month{months > 1 ? "s" : ""}
@@ -1330,19 +1332,20 @@ export default function AdminUsers() {
 
                       {/* Process Refund */}
                       <div className="space-y-2">
-                        <p className="text-sm font-medium">Process Refund</p>
-                        <div className="flex gap-2">
+                        <p className="text-xs sm:text-sm font-medium">Process Refund</p>
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Input
                             type="number"
                             placeholder="Amount (leave empty for full)"
                             value={refundAmount}
                             onChange={(e) => setRefundAmount(e.target.value)}
-                            className="flex-1"
+                            className="flex-1 h-10 sm:h-11 text-sm"
                           />
                           <Button
                             variant="outline"
                             onClick={handleRefund}
                             disabled={actionLoading === "refund"}
+                            className="h-10 sm:h-11 w-full sm:w-auto"
                           >
                             {actionLoading === "refund" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DollarSign className="w-4 h-4 mr-2" />}
                             Refund
@@ -1352,12 +1355,12 @@ export default function AdminUsers() {
 
                       {/* Cancel Subscription */}
                       <div className="space-y-2">
-                        <p className="text-sm font-medium">Subscription Management</p>
+                        <p className="text-xs sm:text-sm font-medium">Subscription Management</p>
                         <Button
                           variant="destructive"
                           onClick={handleCancelSubscription}
                           disabled={actionLoading === "cancel"}
-                          className="w-full"
+                          className="w-full h-10 sm:h-11"
                         >
                           {actionLoading === "cancel" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
                           Cancel Subscription
