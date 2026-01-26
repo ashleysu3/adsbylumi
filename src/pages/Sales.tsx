@@ -420,7 +420,7 @@ const Sales = () => {
           />
           <div className="flex items-center gap-2 sm:gap-3">
             <MagneticButton>
-              <Button onClick={() => navigate("/auth?signup=true")} variant="lumi" className="rounded-full text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 min-h-[44px]">
+              <Button onClick={() => navigate("/auth?signup=true")} variant="glow" className="rounded-full text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 min-h-[44px] animate-glow-pulse">
                 <span className="hidden sm:inline">Have an invite code?</span>
                 <span className="sm:hidden">Got a code?</span>
               </Button>
