@@ -445,8 +445,8 @@ const Sales = () => {
                     </Button>
                   </MagneticButton>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-[220px] text-center">
-                  <p className="text-sm">Invite codes are sent to waitlist members. <span className="text-primary font-medium">Join below</span> to get yours!</p>
+                <TooltipContent side="bottom" className="max-w-[240px] text-center">
+                  <p className="text-sm">Skip the line! ✨ <span className="text-primary font-medium">Join our waitlist</span> and we'll send your exclusive code when it's your turn.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
