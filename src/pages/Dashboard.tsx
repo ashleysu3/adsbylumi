@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import confetti from "canvas-confetti";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,7 @@ export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setRecommendation } = useLumiRecommend();
+  const { getEffectiveUserId, isImpersonating } = useImpersonation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [brand, setBrand] = useState<any>(null);
@@ -213,17 +215,22 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch user's first brand
+      // Use effective user ID for impersonation support
+      const effectiveUserId = await getEffectiveUserId();
+      if (!effectiveUserId) return;
+
+      // Fetch user's first brand (use effective ID for admins impersonating)
       const { data: brandData, error: brandError } = await supabase
         .from("brands")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       // If no brand exists and we haven't redirected yet, send to onboarding
-      if (!brandData && !hasCheckedBrand.current) {
+      // Don't redirect when impersonating - the impersonated user may not have a brand
+      if (!brandData && !hasCheckedBrand.current && !isImpersonating) {
         hasCheckedBrand.current = true;
         navigate("/onboarding");
         return;
@@ -241,11 +248,11 @@ export default function Dashboard() {
         });
       }
 
-      // Fetch subscription
+      // Fetch subscription (use effective user ID)
       const { data: subData } = await supabase
         .from("subscriptions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .single();
 
       setSubscription(subData);

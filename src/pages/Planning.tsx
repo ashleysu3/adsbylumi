@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ const iconMap: Record<string, any> = {
 export default function Planning() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { getEffectiveUserId } = useImpersonation();
   const { setRecommendation } = useLumiAssistant();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -67,9 +69,14 @@ export default function Planning() {
         }
       } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Use effective user ID for impersonation support
+      const effectiveUserId = await getEffectiveUserId();
+      if (!effectiveUserId) return;
+
       const {
         data: brandData
-      } = await supabase.from("brands").select("*").eq("user_id", user.id).single();
+      } = await supabase.from("brands").select("*").eq("user_id", effectiveUserId).single();
       setBrand(brandData);
       const {
         data: templatesData

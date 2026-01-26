@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,7 @@ const STATUS_OPTIONS = [{
 }];
 export default function ContentLibrary() {
   const navigate = useNavigate();
+  const { getEffectiveUserId } = useImpersonation();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
@@ -119,9 +121,14 @@ export default function ContentLibrary() {
         navigate("/auth");
         return;
       }
+
+      // Use effective user ID for impersonation support
+      const effectiveUserId = await getEffectiveUserId();
+      if (!effectiveUserId) return;
+
       const {
         data: brandData
-      } = await supabase.from("brands").select("*").eq("user_id", user.id).single();
+      } = await supabase.from("brands").select("*").eq("user_id", effectiveUserId).single();
       if (!brandData) {
         navigate("/dashboard");
         return;
