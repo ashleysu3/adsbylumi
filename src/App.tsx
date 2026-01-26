@@ -8,6 +8,7 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { LumiProvider } from "@/contexts/LumiContext";
 import { LumiAssistantProvider } from "@/components/LumiAssistant";
 import SplashScreen from "@/components/SplashScreen";
+import { FloatingBugButton } from "@/components/FloatingBugButton";
 import Index from "./pages/Index";
 import Sales from "./pages/Sales";
 import Waitlist from "./pages/Waitlist";
@@ -63,6 +64,7 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <LumiAssistantProvider>
+                <FloatingBugButton />
                 <Routes>
                   <Route path="/" element={<Sales />} />
                   <Route path="/waitlist" element={<Waitlist />} />
