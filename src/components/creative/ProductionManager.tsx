@@ -17,6 +17,7 @@ import { CreativeChecklistCard } from "./CreativeChecklistCard";
 import { AngleCopyEditor } from "./AngleCopyEditor";
 import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
+import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 
 interface RankedItem extends ProductionItem {
   rank: number;
@@ -228,12 +229,16 @@ export function ProductionManager({
     fileInputRef.current?.click();
   };
   
+  // Auto-save state for copy changes
+  const [copySaveStatus, setCopySaveStatus] = useState<SaveStatus>("idle");
+  
   const handleCopyChange = (angleId: string, copy: any) => {
     const updatedAngleCopy = { ...angleCopy, [angleId]: copy };
     onUpdateWorkspace({ creative_json: { ...creativeJson, angle_copy: updatedAngleCopy } });
   };
   
   const handleSaveCopy = async () => {
+    setCopySaveStatus("saving");
     try {
       await supabase
         .from('campaign_workspaces')
@@ -242,8 +247,12 @@ export function ProductionManager({
           updated_at: new Date().toISOString(),
         })
         .eq('id', workspace.id);
+      setCopySaveStatus("saved");
+      setTimeout(() => setCopySaveStatus("idle"), 2000);
       toast.success("Copy saved!");
     } catch (e) {
+      setCopySaveStatus("error");
+      setTimeout(() => setCopySaveStatus("idle"), 3000);
       toast.error("Failed to save copy");
     }
   };
@@ -500,7 +509,11 @@ export function ProductionManager({
         
         {/* Right: Copy Editor (2/5) */}
         <div className="lg:col-span-2">
-          <div className="sticky top-4">
+          <div className="sticky top-4 space-y-2">
+            {/* Copy Editor Save Status */}
+            <div className="flex items-center justify-end px-1">
+              <AutoSaveIndicator status={copySaveStatus} size="sm" />
+            </div>
             <AngleCopyEditor
               angles={angles}
               selectedAngleIds={selectedAngleIds}

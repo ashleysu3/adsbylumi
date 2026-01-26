@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Upload, X, FileVideo, FileImage, File, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 
 interface AssetUploaderProps {
   workspace: any;
@@ -20,6 +21,7 @@ interface UploadedAsset {
 
 export function AssetUploader({ workspace, onUpdate }: AssetUploaderProps) {
   const [uploading, setUploading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const assets = Array.isArray(workspace.user_uploaded_assets) 
     ? workspace.user_uploaded_assets 
     : [];
@@ -47,14 +49,19 @@ export function AssetUploader({ workspace, onUpdate }: AssetUploaderProps) {
       const updatedAssets = [...localAssets, ...newAssets];
       setLocalAssets(updatedAssets);
       
+      setSaveStatus("saving");
       await onUpdate({ 
         user_uploaded_assets: updatedAssets,
         progress_status: updatedAssets.length > 0 ? "ready_to_publish" : workspace.progress_status
       });
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
       
       toast.success(`${files.length} file(s) uploaded successfully`);
     } catch (error) {
       console.error("Upload error:", error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
       toast.error("Failed to upload files");
     } finally {
       setUploading(false);
@@ -67,8 +74,17 @@ export function AssetUploader({ workspace, onUpdate }: AssetUploaderProps) {
   const removeAsset = async (assetId: string) => {
     const updatedAssets = localAssets.filter(a => a.id !== assetId);
     setLocalAssets(updatedAssets);
-    await onUpdate({ user_uploaded_assets: updatedAssets });
-    toast.success("Asset removed");
+    setSaveStatus("saving");
+    try {
+      await onUpdate({ user_uploaded_assets: updatedAssets });
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
+      toast.success("Asset removed");
+    } catch (error) {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+      toast.error("Failed to remove asset");
+    }
   };
 
   const getFileIcon = (fileType: string) => {
@@ -87,10 +103,15 @@ export function AssetUploader({ workspace, onUpdate }: AssetUploaderProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Upload Your Final Creative</CardTitle>
-          <CardDescription>
-            Upload your finished videos, images, and other creative assets
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Upload Your Final Creative</CardTitle>
+              <CardDescription>
+                Upload your finished videos, images, and other creative assets
+              </CardDescription>
+            </div>
+            <AutoSaveIndicator status={saveStatus} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
