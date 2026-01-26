@@ -10,7 +10,11 @@ import { SparkleIcon } from "@/components/SparkleIcon";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  // Check for signup query param to auto-switch to signup form
+  const searchParams = new URLSearchParams(window.location.search);
+  const startWithSignup = searchParams.get('signup') === 'true';
+  
+  const [isLogin, setIsLogin] = useState(!startWithSignup);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
