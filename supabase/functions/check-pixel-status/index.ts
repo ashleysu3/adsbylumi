@@ -34,10 +34,10 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get brand data including Meta token
+    // Get brand data (meta_account_id only)
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('meta_account_id, meta_access_token')
+      .select('meta_account_id')
       .eq('id', brandId)
       .single();
 
@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!brand.meta_access_token || !brand.meta_account_id) {
+    if (!brand.meta_account_id) {
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -60,7 +60,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    const accessToken = brand.meta_access_token;
+    // SECURITY FIX: Use secure RPC to retrieve token from vault instead of direct column access
+    const { data: accessToken, error: tokenError } = await supabase
+      .rpc('get_meta_token', { p_brand_id: brandId });
+
+    if (tokenError || !accessToken) {
+      console.error('Error fetching meta token:', tokenError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Meta account not connected',
+          needsConnection: true 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     const adAccountId = brand.meta_account_id.startsWith('act_') 
       ? brand.meta_account_id 
       : `act_${brand.meta_account_id}`;
