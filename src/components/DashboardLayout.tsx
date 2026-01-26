@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
@@ -25,6 +26,7 @@ export default function DashboardLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
+  const { getEffectiveUserId } = useImpersonation();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [brand, setBrand] = useState<any>(null);
@@ -64,29 +66,34 @@ export default function DashboardLayout({
     return 'dashboard';
   };
   useEffect(() => {
-    supabase.auth.getUser().then(({
-      data: {
-        user
-      }
-    }) => {
+    const fetchData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate("/auth");
-      } else {
-        setUser(user);
-        supabase.from("profiles").select("*").eq("id", user.id).single().then(({
-          data
-        }) => setProfile(data));
-        supabase.from("brands").select("*").eq("user_id", user.id).order("created_at", {
-          ascending: false
-        }).limit(1).single().then(({
-          data
-        }) => setBrand(data));
-        supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single().then(({
-          data
-        }) => setIsAdmin(!!data));
+        return;
       }
-    });
-  }, [navigate]);
+      setUser(user);
+      
+      // Use effective user ID for impersonation support
+      const effectiveUserId = await getEffectiveUserId();
+      if (!effectiveUserId) return;
+
+      // Fetch profile and brand with effective user ID
+      supabase.from("profiles").select("*").eq("id", effectiveUserId).single().then(({
+        data
+      }) => setProfile(data));
+      supabase.from("brands").select("*").eq("user_id", effectiveUserId).order("created_at", {
+        ascending: false
+      }).limit(1).single().then(({
+        data
+      }) => setBrand(data));
+      // Admin check uses actual user ID (not impersonated)
+      supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").single().then(({
+        data
+      }) => setIsAdmin(!!data));
+    };
+    fetchData();
+  }, [navigate, getEffectiveUserId]);
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     toast.success("Signed out successfully");

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { toast } from 'sonner';
 import { 
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
@@ -35,6 +36,7 @@ interface AlertThresholds {
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { getEffectiveUserId } = useImpersonation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
@@ -70,9 +72,13 @@ export default function Settings() {
         return;
       }
 
+      // Use effective user ID for impersonation support
+      const effectiveUserId = await getEffectiveUserId();
+      if (!effectiveUserId) return;
+
       const [profileRes, brandRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('brands').select('*').eq('user_id', user.id).single(),
+        supabase.from('profiles').select('*').eq('id', effectiveUserId).single(),
+        supabase.from('brands').select('*').eq('user_id', effectiveUserId).single(),
       ]);
 
       setProfile(profileRes.data);

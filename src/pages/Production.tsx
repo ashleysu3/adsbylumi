@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,6 +41,7 @@ const LAST_WORKSPACE_KEY = "production_last_workspace_id";
 export default function Production() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { getEffectiveUserId } = useImpersonation();
   const workspaceIdParam = searchParams.get("workspace");
   
   const [loading, setLoading] = useState(true);

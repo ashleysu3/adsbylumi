@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignsList } from "@/components/CampaignsList";
 import { GridShimmer } from "@/components/GradientShimmer";
@@ -10,6 +11,7 @@ import { LumiChat } from "@/components/LumiChat";
 export default function Campaigns() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { getEffectiveUserId } = useImpersonation();
   const [loading, setLoading] = useState(true);
   const [brandId, setBrandId] = useState<string | null>(null);
   const [brand, setBrand] = useState<any>(null);
@@ -36,17 +38,23 @@ export default function Campaigns() {
         return;
       }
 
+      // Use effective user ID for impersonation support
+      const effectiveUserId = await getEffectiveUserId();
+      if (!effectiveUserId) return;
+
       const { data: brandData, error } = await supabase
         .from("brands")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", effectiveUserId)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      setBrandId(brandData.id);
-      setBrand(brandData);
+      if (brandData) {
+        setBrandId(brandData.id);
+        setBrand(brandData);
+      }
     } catch (error: any) {
       toast.error("Failed to load brand data");
       console.error(error);
