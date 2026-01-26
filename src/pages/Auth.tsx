@@ -201,7 +201,7 @@ export default function Auth() {
                     className="h-11 font-mono"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Need a code? <a href="/" className="text-primary hover:underline">Join the waitlist</a>
+                    Don't have a code yet? <a href="/#waitlist" className="text-primary hover:underline font-medium">Get on the waitlist</a>
                   </p>
                 </div>
               </>
