@@ -6,7 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { LumiProvider } from "@/contexts/LumiContext";
+import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { LumiAssistantProvider } from "@/components/LumiAssistant";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import SplashScreen from "@/components/SplashScreen";
 import { FloatingBugButton } from "@/components/FloatingBugButton";
 import Index from "./pages/Index";
@@ -60,12 +62,14 @@ const App = () => {
       <TooltipProvider>
         <SubscriptionProvider>
           <LumiProvider>
-            <SplashScreen isVisible={showSplash} />
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <LumiAssistantProvider>
-                <FloatingBugButton />
+            <ImpersonationProvider>
+              <SplashScreen isVisible={showSplash} />
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <LumiAssistantProvider>
+                  <ImpersonationBanner />
+                  <FloatingBugButton />
                 <Routes>
                   <Route path="/" element={<Sales />} />
                   <Route path="/waitlist" element={<Waitlist />} />
@@ -100,10 +104,11 @@ const App = () => {
                 </Routes>
               </LumiAssistantProvider>
             </BrowserRouter>
-          </LumiProvider>
-        </SubscriptionProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+          </ImpersonationProvider>
+        </LumiProvider>
+      </SubscriptionProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
   );
 };
 
