@@ -532,10 +532,11 @@ const Sales = () => {
             </motion.p>
 
             <motion.div
+              id="waitlist"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.7 }}
-              className="mt-8 sm:mt-10 px-4 sm:px-0 w-full max-w-md mx-auto"
+              className="mt-8 sm:mt-10 px-4 sm:px-0 w-full max-w-md mx-auto scroll-mt-24"
             >
               {!success ? (
                 <form onSubmit={handleWaitlistSubmit} className="space-y-3">
