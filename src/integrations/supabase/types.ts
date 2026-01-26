@@ -189,6 +189,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bug_reports: {
+        Row: {
+          assigned_to: string | null
+          context: string | null
+          conversation_context: string | null
+          created_at: string
+          current_page: string | null
+          current_url: string | null
+          details: string | null
+          id: string
+          priority: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          screenshot_url: string | null
+          status: string
+          updated_at: string
+          user_agent: string | null
+          user_email: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          context?: string | null
+          conversation_context?: string | null
+          created_at?: string
+          current_page?: string | null
+          current_url?: string | null
+          details?: string | null
+          id?: string
+          priority?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          screenshot_url?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_email: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          context?: string | null
+          conversation_context?: string | null
+          created_at?: string
+          current_page?: string | null
+          current_url?: string | null
+          details?: string | null
+          id?: string
+          priority?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          screenshot_url?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_email?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       campaign_templates: {
         Row: {
           active: boolean | null
