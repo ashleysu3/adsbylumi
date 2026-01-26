@@ -418,11 +418,19 @@ const Sales = () => {
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400 }}
           />
-          <MagneticButton>
-            <Button onClick={() => navigate("/auth")} variant="outline" className="rounded-full text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-2.5 min-h-[44px]">
-              Log In
-            </Button>
-          </MagneticButton>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <MagneticButton>
+              <Button onClick={() => navigate("/auth?signup=true")} variant="lumi" className="rounded-full text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 min-h-[44px]">
+                <span className="hidden sm:inline">Have an invite code?</span>
+                <span className="sm:hidden">Got a code?</span>
+              </Button>
+            </MagneticButton>
+            <MagneticButton>
+              <Button onClick={() => navigate("/auth")} variant="outline" className="rounded-full text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-2.5 min-h-[44px]">
+                Log In
+              </Button>
+            </MagneticButton>
+          </div>
         </div>
       </motion.header>
 
