@@ -11,7 +11,7 @@ import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
 import { CreateAdModal } from "@/components/CreateAdModal";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
-import { MobileFloatingAction } from "@/components/MobileFloatingAction";
+// MobileFloatingAction removed - duplicate of Lumi chat button
 import { MobileHeader } from "@/components/MobileHeader";
 import { MobileOnboardingTour, useMobileOnboardingTour } from "@/components/MobileOnboardingTour";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -239,7 +239,8 @@ export default function DashboardLayout({
 
         <main className="px-4 py-4">{children}</main>
 
-        <MobileFloatingAction onClick={() => setCreateAdModalOpen(true)} />
+        {/* Removed MobileFloatingAction - users can access "New Ad" from dashboard cards and header */}
+        {/* LumiAssistant provides the floating chat button */}
         <MobileBottomNav />
 
         {walkthroughOpen && (
