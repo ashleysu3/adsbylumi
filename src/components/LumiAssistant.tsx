@@ -255,9 +255,13 @@ function LumiAssistantUI({
     return null;
   }
 
+  // Check if mobile for positioning
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <>
-      <div className={cn("fixed bottom-6 right-6 z-50", className)}>
+      {/* Position higher on mobile to avoid covering bottom nav (which is 64px + safe area) */}
+      <div className={cn("fixed z-50", "bottom-24 right-4 md:bottom-6 md:right-6", className)}>
         <AnimatePresence mode="wait">
           {/* Recommendation Popup - Small card style */}
           {isExpanded && !isDismissed && recommendation && !chatOpen ? (
