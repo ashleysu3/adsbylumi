@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface RequestBody {
-  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs";
+  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity";
   userId?: string;
   userEmail?: string;
   refundAmount?: number;
@@ -519,6 +519,179 @@ serve(async (req) => {
       if (logsError) throw logsError;
 
       return new Response(JSON.stringify({ logs: logs || [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Get user activity timeline
+    if (action === "get_user_activity") {
+      if (!userId) throw new Error("userId required");
+
+      // Get brand for this user
+      const { data: brand } = await supabaseAdmin
+        .from("brands")
+        .select("id, name, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const brandId = brand?.id;
+
+      // Fetch all activity data in parallel
+      const [
+        campaignsResult,
+        offersResult,
+        subscriptionResult,
+        bugReportsResult,
+        profileResult,
+      ] = await Promise.all([
+        // Campaigns created
+        brandId
+          ? supabaseAdmin
+              .from("campaign_workspaces")
+              .select("id, name, created_at, progress_status, meta_campaign_status, published_at")
+              .eq("brand_id", brandId)
+              .order("created_at", { ascending: false })
+              .limit(50)
+          : Promise.resolve({ data: [] }),
+        // Offers created
+        brandId
+          ? supabaseAdmin
+              .from("offers")
+              .select("id, name, created_at")
+              .eq("brand_id", brandId)
+              .order("created_at", { ascending: false })
+              .limit(50)
+          : Promise.resolve({ data: [] }),
+        // Subscription history
+        supabaseAdmin
+          .from("subscriptions")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false }),
+        // Bug reports
+        supabaseAdmin
+          .from("bug_reports")
+          .select("id, created_at, status, priority")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(20),
+        // Profile for signup date
+        supabaseAdmin
+          .from("profiles")
+          .select("created_at, email")
+          .eq("id", userId)
+          .single(),
+      ]);
+
+      // Build activity timeline
+      const activities: Array<{
+        id: string;
+        type: string;
+        title: string;
+        description: string;
+        timestamp: string;
+        metadata?: Record<string, unknown>;
+      }> = [];
+
+      // Add signup event
+      if (profileResult.data) {
+        activities.push({
+          id: `signup-${userId}`,
+          type: "signup",
+          title: "Account Created",
+          description: `User signed up with ${profileResult.data.email}`,
+          timestamp: profileResult.data.created_at,
+        });
+      }
+
+      // Add brand creation
+      if (brand) {
+        activities.push({
+          id: `brand-${brand.id}`,
+          type: "brand",
+          title: "Brand Created",
+          description: `Created brand "${brand.name}"`,
+          timestamp: brand.created_at,
+        });
+      }
+
+      // Add campaigns
+      if (campaignsResult.data) {
+        for (const campaign of campaignsResult.data) {
+          activities.push({
+            id: `campaign-${campaign.id}`,
+            type: "campaign",
+            title: "Campaign Created",
+            description: `Created campaign "${campaign.name}"`,
+            timestamp: campaign.created_at,
+            metadata: {
+              status: campaign.progress_status,
+              metaStatus: campaign.meta_campaign_status,
+            },
+          });
+
+          // Add published event if applicable
+          if (campaign.published_at) {
+            activities.push({
+              id: `campaign-published-${campaign.id}`,
+              type: "campaign_published",
+              title: "Campaign Published",
+              description: `Published campaign "${campaign.name}" to Meta`,
+              timestamp: campaign.published_at,
+            });
+          }
+        }
+      }
+
+      // Add offers
+      if (offersResult.data) {
+        for (const offer of offersResult.data) {
+          activities.push({
+            id: `offer-${offer.id}`,
+            type: "offer",
+            title: "Offer Created",
+            description: `Created offer "${offer.name}"`,
+            timestamp: offer.created_at,
+          });
+        }
+      }
+
+      // Add subscription events
+      if (subscriptionResult.data) {
+        for (const sub of subscriptionResult.data) {
+          activities.push({
+            id: `subscription-${sub.id}`,
+            type: "subscription",
+            title: "Subscription Started",
+            description: `Started ${sub.tier} plan`,
+            timestamp: sub.created_at,
+            metadata: { tier: sub.tier, status: sub.status },
+          });
+        }
+      }
+
+      // Add bug reports
+      if (bugReportsResult.data) {
+        for (const bug of bugReportsResult.data) {
+          activities.push({
+            id: `bug-${bug.id}`,
+            type: "bug_report",
+            title: "Bug Report Submitted",
+            description: `Submitted a ${bug.priority || "normal"} priority bug report`,
+            timestamp: bug.created_at,
+            metadata: { status: bug.status, priority: bug.priority },
+          });
+        }
+      }
+
+      // Sort by timestamp descending
+      activities.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+
+      return new Response(JSON.stringify({ activities }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

@@ -18,7 +18,7 @@ import {
   Users, RefreshCw, Search, User, Bug, CreditCard, FileText, 
   MessageSquare, Send, DollarSign, XCircle, Gift, Mail, 
   Building2, Calendar as CalendarIcon, Globe, Loader2, Plus, Trash2,
-  Filter, History, X
+  Filter, History, X, Activity, Rocket, Package, UserPlus, AlertCircle
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
@@ -51,6 +51,15 @@ interface UserDetails {
     payments: any[];
     invoices: any[];
   } | null;
+}
+
+interface UserActivity {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  metadata?: Record<string, any>;
 }
 
 interface AuditLog {
@@ -93,6 +102,16 @@ const CATEGORY_COLORS: Record<string, string> = {
   communication: "bg-purple-500/10 text-purple-600 border-purple-500/20",
 };
 
+const ACTIVITY_ICONS: Record<string, { icon: any; color: string }> = {
+  signup: { icon: UserPlus, color: "text-green-500 bg-green-500/10" },
+  brand: { icon: Building2, color: "text-blue-500 bg-blue-500/10" },
+  campaign: { icon: Rocket, color: "text-purple-500 bg-purple-500/10" },
+  campaign_published: { icon: Send, color: "text-primary bg-primary/10" },
+  offer: { icon: Package, color: "text-orange-500 bg-orange-500/10" },
+  subscription: { icon: CreditCard, color: "text-emerald-500 bg-emerald-500/10" },
+  bug_report: { icon: AlertCircle, color: "text-red-500 bg-red-500/10" },
+};
+
 export default function AdminUsers() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<Profile[]>([]);
@@ -108,6 +127,8 @@ export default function AdminUsers() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [auditLogsLoading, setAuditLogsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"users" | "audit">("users");
+  const [userActivity, setUserActivity] = useState<UserActivity[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
   
   // Filter states
   const [filters, setFilters] = useState<Filters>({
@@ -236,6 +257,7 @@ export default function AdminUsers() {
     setDetailOpen(true);
     setDetailsLoading(true);
     setUserDetails(null);
+    setUserActivity([]);
 
     try {
       const { data, error } = await supabase.functions.invoke("admin-user-management", {
@@ -244,11 +266,28 @@ export default function AdminUsers() {
 
       if (error) throw error;
       setUserDetails(data);
+      
+      // Fetch activity in parallel
+      fetchUserActivity(user.id);
     } catch (error: any) {
       toast.error("Failed to load user details");
       console.error(error);
     }
     setDetailsLoading(false);
+  };
+  
+  const fetchUserActivity = async (userId: string) => {
+    setActivityLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: { action: "get_user_activity", userId },
+      });
+      if (error) throw error;
+      setUserActivity(data.activities || []);
+    } catch (error: any) {
+      console.error("Failed to load activity:", error);
+    }
+    setActivityLoading(false);
   };
 
   const handleRefund = async () => {
@@ -715,8 +754,9 @@ export default function AdminUsers() {
             </div>
           ) : userDetails && (
             <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col">
-              <TabsList className="grid grid-cols-5 w-full">
+              <TabsList className="grid grid-cols-6 w-full">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
                 <TabsTrigger value="bugs">Bugs ({userDetails.bugReports.length})</TabsTrigger>
                 <TabsTrigger value="notes">Notes ({userDetails.adminNotes.length})</TabsTrigger>
                 <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -847,6 +887,76 @@ export default function AdminUsers() {
                       </CardContent>
                     </Card>
                   </div>
+                </TabsContent>
+
+                {/* Activity Timeline Tab */}
+                <TabsContent value="activity" className="space-y-4 pr-4">
+                  {activityLoading ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                      Loading activity...
+                    </div>
+                  ) : userActivity.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-8 text-center text-muted-foreground">
+                        <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        No activity recorded for this user
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="relative">
+                      {/* Timeline line */}
+                      <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
+                      
+                      <div className="space-y-4">
+                        {userActivity.map((activity, index) => {
+                          const activityConfig = ACTIVITY_ICONS[activity.type] || { 
+                            icon: Activity, 
+                            color: "text-muted-foreground bg-muted" 
+                          };
+                          const IconComponent = activityConfig.icon;
+                          
+                          return (
+                            <div key={activity.id} className="relative flex gap-4 pb-2">
+                              {/* Icon */}
+                              <div className={cn(
+                                "relative z-10 flex items-center justify-center w-10 h-10 rounded-full shrink-0",
+                                activityConfig.color
+                              )}>
+                                <IconComponent className="w-5 h-5" />
+                              </div>
+                              
+                              {/* Content */}
+                              <div className="flex-1 pt-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <p className="font-medium text-sm">{activity.title}</p>
+                                    <p className="text-sm text-muted-foreground">{activity.description}</p>
+                                    {activity.metadata && Object.keys(activity.metadata).length > 0 && (
+                                      <div className="flex gap-2 mt-1">
+                                        {Object.entries(activity.metadata).map(([key, value]) => (
+                                          <Badge key={key} variant="outline" className="text-xs">
+                                            {key}: {String(value)}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                    {format(new Date(activity.timestamp), "MMM d, yyyy")}
+                                    <br />
+                                    <span className="text-xs opacity-70">
+                                      {format(new Date(activity.timestamp), "h:mm a")}
+                                    </span>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {/* Bug Reports Tab */}
