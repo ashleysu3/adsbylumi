@@ -159,8 +159,8 @@ Deno.serve(async (req) => {
 
     // Send the email
     const emailResponse = await resend.emails.send({
-      from: 'Bug Reports <bugs@youradassistant.app>',
-      to: ['support@youradassistant.app'],
+      from: 'Bug Reports <bugs@adsbylumi.com>',
+      to: ['support@adsbylumi.com'],
       reply_to: userEmail,
       subject: `🐛 Bug Report: ${currentPage} - ${formattedTimestamp}`,
       html: emailHtml,
