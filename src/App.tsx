@@ -32,6 +32,7 @@ import AdminTemplates from "./pages/admin/Templates";
 import AdminInviteCodes from "./pages/admin/InviteCodes";
 import AdminSubscriptions from "./pages/admin/Subscriptions";
 import AdminBugReports from "./pages/admin/BugReports";
+import AdminUsers from "./pages/admin/Users";
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
@@ -93,6 +94,7 @@ const App = () => {
                   <Route path="/admin/invite-codes" element={<AdminInviteCodes />} />
                   <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
                   <Route path="/admin/bug-reports" element={<AdminBugReports />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
