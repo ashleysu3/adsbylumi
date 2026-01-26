@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Loader2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Loader2, RotateCcw, Save } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 
@@ -138,6 +138,27 @@ export default function CampaignBuilder() {
 
   const handleBackToChat = () => {
     setStage('chat');
+  };
+
+  const handleSaveAsDraft = async () => {
+    try {
+      // Save current state explicitly
+      await supabase
+        .from('campaign_workspaces')
+        .update({ 
+          chat_history: chatHistory,
+          campaign_builder_answers: answers,
+          progress_status: 'draft',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workspaceId);
+
+      toast.success("Progress saved as draft");
+      navigate('/campaigns');
+    } catch (error: any) {
+      console.error('Error saving draft:', error);
+      toast.error("Failed to save draft");
+    }
   };
 
   const handleRestart = async () => {
@@ -281,13 +302,17 @@ export default function CampaignBuilder() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Start Over?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will clear all your choices. You'll start fresh.
+                      You can save your progress as a draft to continue later, or start completely fresh.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter>
+                  <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleRestart}>
-                      Yes, Restart
+                    <Button variant="outline" onClick={handleSaveAsDraft} className="gap-2">
+                      <Save className="h-4 w-4" />
+                      Save as Draft
+                    </Button>
+                    <AlertDialogAction onClick={handleRestart} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Start Fresh
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -368,13 +393,17 @@ export default function CampaignBuilder() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Restart Campaign Builder?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will clear all your answers and chat history. You'll start from the beginning with a fresh conversation. This action cannot be undone.
+                      You can save your current progress as a draft to continue later, or start completely fresh. Starting fresh will clear all your answers and chat history.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter>
+                  <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleRestart}>
-                      Yes, Restart
+                    <Button variant="outline" onClick={handleSaveAsDraft} className="gap-2">
+                      <Save className="h-4 w-4" />
+                      Save as Draft
+                    </Button>
+                    <AlertDialogAction onClick={handleRestart} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Start Fresh
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
