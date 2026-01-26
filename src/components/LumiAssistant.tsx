@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, createContext, useContext, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, ArrowRight, MessageCircle, Send, Loader2, Sparkle, History, CheckCircle, XCircle, Minimize2, Maximize2 } from "lucide-react";
+import { X, Sparkles, ArrowRight, MessageCircle, Send, Loader2, Sparkle, History, CheckCircle, XCircle, Minimize2, Maximize2, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLumi } from "@/contexts/LumiContext";
 import { useLocation } from "react-router-dom";
+import { BugReportModal } from "./BugReportModal";
 
 export interface LumiRecommendation {
   id: string;
@@ -135,7 +136,20 @@ function LumiAssistantUI({
   const [activeTab, setActiveTab] = useState<"chat" | "history">("chat");
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user email for bug reports
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+    };
+    fetchUserEmail();
+  }, []);
 
   // Determine context from route
   const getContextFromRoute = (): string => {
@@ -399,6 +413,13 @@ function LumiAssistantUI({
                   </div>
                   <div className="flex items-center gap-1">
                     <button
+                      onClick={() => setBugReportOpen(true)}
+                      className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                      title="Report a bug"
+                    >
+                      <Bug className="h-4 w-4 text-white" />
+                    </button>
+                    <button
                       onClick={() => setIsMaximized(!isMaximized)}
                       className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
                     >
@@ -635,6 +656,15 @@ function LumiAssistantUI({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Bug Report Modal */}
+      <BugReportModal 
+        open={bugReportOpen} 
+        onOpenChange={setBugReportOpen}
+        context={context}
+        recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
+        userEmail={userEmail}
+      />
     </>
   );
 }
