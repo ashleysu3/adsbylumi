@@ -42,6 +42,7 @@ import Pricing from "./pages/Pricing";
 import ContentLibrary from "./pages/ContentLibrary";
 import CreativeStudio from "./pages/CreativeStudio";
 import NotFound from "./pages/NotFound";
+import Demo from "./pages/Demo";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => {
                   <Route path="/waitlist" element={<Waitlist />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/demo" element={<Demo />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/start" element={<Start />} />
                   <Route path="/create" element={<Create />} />
