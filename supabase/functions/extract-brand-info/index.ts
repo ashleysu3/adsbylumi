@@ -99,15 +99,18 @@ serve(async (req) => {
 
     // Fetch website content with timeout and size limits
     let websiteContent = '';
+    let pageTitle = '';
+    let metaDescription = '';
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
       const websiteResponse = await fetch(websiteUrl, {
         signal: controller.signal,
         redirect: 'follow',
         headers: {
-          'User-Agent': 'YourAdAssistant/1.0 (Content Extraction Bot)',
+          'User-Agent': 'Mozilla/5.0 (compatible; YourAdAssistant/1.0; +https://youradassistant.com)',
+          'Accept': 'text/html,application/xhtml+xml',
         }
       });
       
@@ -115,13 +118,69 @@ serve(async (req) => {
 
       // Check content length before reading
       const contentLength = websiteResponse.headers.get('content-length');
-      if (contentLength && parseInt(contentLength) > 2000000) {
+      if (contentLength && parseInt(contentLength) > 3000000) {
         console.log('Content too large, skipping fetch');
         websiteContent = 'Unable to fetch website content - page too large';
       } else {
         const html = await websiteResponse.text();
-        // Extract text content (simple extraction, strips HTML tags)
-        websiteContent = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 5000);
+        
+        // Extract page title
+        const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+        pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
+        
+        // Extract meta description
+        const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                              html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+        metaDescription = metaDescMatch ? metaDescMatch[1].trim() : '';
+        
+        // Extract og:description as fallback
+        if (!metaDescription) {
+          const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+          metaDescription = ogDescMatch ? ogDescMatch[1].trim() : '';
+        }
+        
+        // Extract headings (h1, h2, h3) for key messaging
+        const headings: string[] = [];
+        const headingMatches = html.matchAll(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi);
+        for (const match of headingMatches) {
+          const headingText = match[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+          if (headingText && headingText.length > 3 && headingText.length < 200) {
+            headings.push(headingText);
+          }
+          if (headings.length >= 15) break;
+        }
+        
+        // Extract main content areas (article, main, sections)
+        let mainContent = '';
+        const mainMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i) ||
+                          html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+        if (mainMatch) {
+          mainContent = mainMatch[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+        
+        // Extract body content as fallback, removing scripts/styles
+        let bodyContent = html
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+          .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+          .replace(/<header[\s\S]*?<\/header>/gi, '')
+          .replace(/<!--[\s\S]*?-->/g, '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        // Build structured content for AI
+        const contentParts: string[] = [];
+        
+        if (pageTitle) contentParts.push(`PAGE TITLE: ${pageTitle}`);
+        if (metaDescription) contentParts.push(`META DESCRIPTION: ${metaDescription}`);
+        if (headings.length > 0) contentParts.push(`KEY HEADINGS:\n${headings.map(h => `- ${h}`).join('\n')}`);
+        if (mainContent) contentParts.push(`MAIN CONTENT:\n${mainContent.substring(0, 3000)}`);
+        if (!mainContent && bodyContent) contentParts.push(`PAGE CONTENT:\n${bodyContent.substring(0, 3000)}`);
+        
+        websiteContent = contentParts.join('\n\n');
+        console.log('Extracted content length:', websiteContent.length);
       }
     } catch (error: any) {
       console.error('Error fetching website:', error.message);
@@ -133,21 +192,31 @@ serve(async (req) => {
     }
 
     const systemPrompt = `You are a brand strategist analyzing websites to extract key business information.
-Your task is to analyze the website content and extract:
-1. Value Proposition (What they offer) - A clear, concise statement of what the business provides
-2. Target Audience (Who they serve) - Detailed description of their ideal customer
-3. Industry - The primary industry or niche they operate in
+Your task is to analyze the website content and extract ACCURATE, SPECIFIC information:
 
-Return ONLY a valid JSON object with these exact fields:
+1. Value Proposition (What they offer) - Be SPECIFIC about their actual products/services. Don't be vague.
+   Examples: "Online fitness coaching programs for busy professionals" NOT "solutions to help you succeed"
+   
+2. Target Audience (Who they serve) - Describe the SPECIFIC person they help. Use details from their copy.
+   Examples: "Women over 40 who want to lose weight without restrictive diets" NOT "people looking to improve"
+   
+3. Industry - The specific niche, not broad categories.
+   Examples: "Online fitness coaching" or "E-commerce marketing" NOT "Professional Services"
+
+RULES:
+- Use EXACT language and specifics from the website when possible
+- If the website mentions specific outcomes, include them
+- If you can't determine something clearly, say "Could not determine from website"
+- Be concise but specific - aim for 1-2 sentences max per field
+
+Return ONLY a valid JSON object:
 {
   "value_proposition": "string",
   "target_audience": "string", 
   "industry": "string"
-}
+}`;
 
-Be specific and insightful. Use the actual language and positioning from the website.`;
-
-    const userPrompt = `Analyze this website content and extract the brand information:\n\n${websiteContent}`;
+    const userPrompt = `Analyze this website content and extract SPECIFIC brand information. Use the exact language from the site where possible:\n\nWEBSITE URL: ${websiteUrl}\n\n${websiteContent}`;
 
     console.log('Calling Lovable AI for brand extraction...');
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
