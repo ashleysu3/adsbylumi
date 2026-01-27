@@ -96,17 +96,14 @@ export function MetaAccountConnect({
         if (event.origin !== window.location.origin) return;
         
         if (event.data.type === 'META_OAUTH_SUCCESS') {
-          const { code } = event.data;
           popup?.close();
-
-          const { data: callbackData, error: callbackError } = await supabase.functions.invoke(
-            'meta-oauth-callback',
-            {
-              body: { code, brandId, redirectUri }
-            }
-          );
-
-          if (callbackError) throw callbackError;
+          
+          // Use the data already returned from the edge function (called by the popup)
+          const callbackData = event.data.data;
+          
+          if (!callbackData) {
+            throw new Error('No data received from OAuth callback');
+          }
 
           setAccounts(callbackData.accounts || []);
           setPages(callbackData.pages || []);
@@ -119,6 +116,7 @@ export function MetaAccountConnect({
           toast.success(`Found ${accountCount} ad account${accountCount !== 1 ? 's' : ''}, ${pageCount} Page${pageCount !== 1 ? 's' : ''}, and ${igCount} Instagram account${igCount !== 1 ? 's' : ''}`);
           
           setStep('select-account');
+          setOauthLoading(false);
         } else if (event.data.type === 'META_OAUTH_ERROR') {
           throw new Error(event.data.error || 'OAuth failed');
         }
