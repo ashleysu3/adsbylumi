@@ -41,6 +41,7 @@ import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
 import Pricing from "./pages/Pricing";
 import ContentLibrary from "./pages/ContentLibrary";
 import CreativeStudio from "./pages/CreativeStudio";
+import Glossary from "./pages/Glossary";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -92,6 +93,7 @@ const App = () => {
                   <Route path="/settings/digest-preview" element={<WeeklyDigestPreview />} />
                   <Route path="/content-library" element={<ContentLibrary />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
+                  <Route path="/glossary" element={<Glossary />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/templates" element={<AdminTemplates />} />
