@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,7 +29,8 @@ import {
   Search,
   ExternalLink,
   Loader2,
-  Send
+  Send,
+  Archive
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -82,6 +84,7 @@ export default function AdminBugReports() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [hideClosedResolved, setHideClosedResolved] = useState(true);
   const [selectedReport, setSelectedReport] = useState<BugReport | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -275,8 +278,15 @@ export default function AdminBugReports() {
     
     const matchesStatus = statusFilter === "all" || report.status === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    // Hide closed/resolved reports unless explicitly showing them
+    const isClosedOrResolved = report.status === 'closed' || report.status === 'resolved';
+    const passesClosedFilter = !hideClosedResolved || !isClosedOrResolved || statusFilter === 'closed' || statusFilter === 'resolved';
+    
+    return matchesSearch && matchesStatus && passesClosedFilter;
   });
+  
+  const closedResolvedCount = reports.filter(r => r.status === 'closed' || r.status === 'resolved').length;
+  const activeCount = reports.length - closedResolvedCount;
 
   const getStatusBadge = (status: string) => {
     const option = STATUS_OPTIONS.find(o => o.value === status);
@@ -318,7 +328,13 @@ export default function AdminBugReports() {
             <div className="flex items-center gap-3">
               <Bug className="h-6 w-6 text-destructive" />
               <h1 className="text-2xl font-display font-semibold">Bug Reports</h1>
-              <Badge variant="secondary">{reports.length}</Badge>
+              <Badge variant="secondary">{activeCount} active</Badge>
+              {closedResolvedCount > 0 && (
+                <Badge variant="outline" className="text-muted-foreground">
+                  <Archive className="h-3 w-3 mr-1" />
+                  {closedResolvedCount} closed
+                </Badge>
+              )}
             </div>
             <Button onClick={fetchReports} variant="outline" size="sm" className="gap-2">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -350,6 +366,16 @@ export default function AdminBugReports() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md border bg-background">
+              <Switch
+                id="hide-closed"
+                checked={hideClosedResolved}
+                onCheckedChange={setHideClosedResolved}
+              />
+              <Label htmlFor="hide-closed" className="text-sm whitespace-nowrap cursor-pointer">
+                Hide closed
+              </Label>
+            </div>
           </div>
 
           {/* Reports List */}
