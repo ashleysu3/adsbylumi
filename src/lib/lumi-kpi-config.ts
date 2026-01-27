@@ -134,22 +134,22 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
     friendlyName: 'Facebook Traffic',
   },
   
-  // Video Views → Cost per Video View
+  // Video Views → Cost per ThruPlay
   'video-views': {
     primary: 'costPerThruPlay',
-    primaryLabel: 'Cost Per Video View',
+    primaryLabel: 'Cost Per ThruPlay',
     benchmark: { min: 0.02, max: 0.08, unit: '$' },
     friendlyName: 'Video Views',
   },
   'VIDEO_VIEWS': {
     primary: 'costPerThruPlay',
-    primaryLabel: 'Cost Per Video View',
+    primaryLabel: 'Cost Per ThruPlay',
     benchmark: { min: 0.02, max: 0.08, unit: '$' },
     friendlyName: 'Video Views',
   },
   'ThruPlay Video Views': {
     primary: 'costPerThruPlay',
-    primaryLabel: 'Cost Per Video View',
+    primaryLabel: 'Cost Per ThruPlay',
     benchmark: { min: 0.02, max: 0.08, unit: '$' },
     friendlyName: 'Video Views',
   },
@@ -157,13 +157,13 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
   // Engagement → CPM
   'Engagement': {
     primary: 'cpm',
-    primaryLabel: 'Cost Per 1,000 Views',
+    primaryLabel: 'Cost Per 1000 Views',
     benchmark: { min: 3, max: 10, unit: '$' },
     friendlyName: 'Engagement',
   },
   'ENGAGEMENT': {
     primary: 'cpm',
-    primaryLabel: 'Cost Per 1,000 Views',
+    primaryLabel: 'Cost Per 1000 Views',
     benchmark: { min: 3, max: 10, unit: '$' },
     friendlyName: 'Engagement',
   },
@@ -171,13 +171,13 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
   // Awareness → CPM
   'REACH': {
     primary: 'cpm',
-    primaryLabel: 'Cost Per 1,000 People Reached',
+    primaryLabel: 'Cost Per 1000 Impressions',
     benchmark: { min: 2, max: 8, unit: '$' },
     friendlyName: 'Reach',
   },
   'BRAND_AWARENESS': {
     primary: 'cpm',
-    primaryLabel: 'Cost Per 1,000 People Reached',
+    primaryLabel: 'Cost Per 1000 Impressions',
     benchmark: { min: 3, max: 12, unit: '$' },
     friendlyName: 'Brand Awareness',
   },

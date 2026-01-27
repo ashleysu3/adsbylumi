@@ -5,7 +5,7 @@ import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Home, BarChart3, FolderKanban, Shield, LogOut, Settings, Sparkles, LayoutTemplate, Ticket, Library, Building2 } from "lucide-react";
+import { Home, BarChart3, FolderKanban, Shield, LogOut, Settings, Sparkles, LayoutTemplate, Ticket, Library, Building2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
@@ -359,6 +359,10 @@ export default function DashboardLayout({
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/glossary")}>
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Ads Glossary
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleShowWalkthrough}>
                     <Sparkles className="mr-2 h-4 w-4" />

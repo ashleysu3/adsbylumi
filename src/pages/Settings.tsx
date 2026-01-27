@@ -13,8 +13,9 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { toast } from 'sonner';
 import { 
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
-  Link2, Sliders, Mail, AlertTriangle, TrendingDown, Eye
+  Link2, Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen
 } from 'lucide-react';
+import { GlossaryTooltip } from '@/components/GlossaryTooltip';
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
@@ -390,13 +391,26 @@ export default function Settings() {
 
           {/* Alert Thresholds Tab */}
           <TabsContent value="alerts" className="space-y-6">
+            {/* Glossary link */}
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="py-3 flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Not sure what these terms mean?
+                </p>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/glossary')} className="gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  View Ads Glossary
+                </Button>
+              </CardContent>
+            </Card>
+
             <Card variant="glow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5" />
-                  Click Rate Thresholds
+                  <GlossaryTooltip term="ctr">CTR Thresholds</GlossaryTooltip>
                 </CardTitle>
-                <CardDescription>Set your minimum acceptable click-through rate (% of people who click your ad)</CardDescription>
+                <CardDescription>Set your minimum acceptable click-through rate percentages</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -432,9 +446,9 @@ export default function Settings() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingDown className="h-5 w-5" />
-                  Return on Spend Thresholds
+                  <GlossaryTooltip term="roas">ROAS Thresholds</GlossaryTooltip>
                 </CardTitle>
-                <CardDescription>Set your minimum acceptable return (e.g., 2x means $2 earned for every $1 spent)</CardDescription>
+                <CardDescription>Set your minimum acceptable return on ad spend</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -466,7 +480,9 @@ export default function Settings() {
 
             <Card variant="glow">
               <CardHeader>
-                <CardTitle>Ad Frequency Thresholds</CardTitle>
+                <CardTitle>
+                  <GlossaryTooltip term="frequency">Ad Frequency Thresholds</GlossaryTooltip>
+                </CardTitle>
                 <CardDescription>Set when to alert about creative fatigue</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
