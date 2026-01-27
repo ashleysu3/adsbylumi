@@ -16,6 +16,11 @@ export default function Auth() {
   // Check for signup query param to auto-switch to signup form
   const searchParams = new URLSearchParams(window.location.search);
   const startWithSignup = searchParams.get('signup') === 'true';
+  const returnToParam = searchParams.get('returnTo');
+  const safeReturnTo =
+    returnToParam && returnToParam.startsWith('/') && !returnToParam.startsWith('//')
+      ? returnToParam
+      : null;
   
   const [isLogin, setIsLogin] = useState(!startWithSignup);
   const [email, setEmail] = useState("");
@@ -76,7 +81,7 @@ export default function Auth() {
         }
         
         toast.success("Welcome back!");
-        navigate("/start");
+        navigate(safeReturnTo || "/start");
       } else {
         // Validate invite code first for signup
         if (!inviteCode.trim()) {
