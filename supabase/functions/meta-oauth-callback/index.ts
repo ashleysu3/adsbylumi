@@ -1,25 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
-
-// CORS with origin allowlist for security
-const ALLOWED_ORIGINS = [
-  'https://youradassistant.app',
-  'https://www.youradassistant.app',
-  'https://staging.youradassistant.app',
-  /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/,
-  /^https:\/\/[a-z0-9-]+\.lovable\.app$/,
-  'http://localhost:5173',
-  'http://localhost:3000',
-];
-
-function getCorsHeaders(origin: string | null): Record<string, string> {
-  const isAllowed = origin && ALLOWED_ORIGINS.some(allowed => 
-    typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
-  );
-  return {
-    'Access-Control-Allow-Origin': isAllowed ? origin! : 'https://youradassistant.app',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  };
-}
+import { getCorsHeaders } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -28,6 +8,11 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  console.log('[meta-oauth-callback] request received', {
+    method: req.method,
+    origin,
+  });
 
   try {
     // 1. AUTHENTICATE USER

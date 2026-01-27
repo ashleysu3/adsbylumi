@@ -3,6 +3,8 @@
 
 const ALLOWED_ORIGINS = [
   // Production domains
+  'https://adsbylumi.com',
+  'https://www.adsbylumi.com',
   'https://youradassistant.app',
   'https://www.youradassistant.app',
   'https://staging.youradassistant.app',
