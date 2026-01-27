@@ -57,7 +57,7 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
   campaign: [
     { label: "Review settings", message: "Can you review my campaign settings before I publish?" },
     { label: "Audience selection", message: "Help me decide on the best audience targeting for this campaign." },
-    { label: "Budget allocation", message: "How should I allocate my budget between ad sets?" },
+    { label: "Budget allocation", message: "How should I allocate my budget across my ads?" },
     { label: "Missing anything?", message: "Am I missing anything important before launching this campaign?" },
   ],
   dashboard: [

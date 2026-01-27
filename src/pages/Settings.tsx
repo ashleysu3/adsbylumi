@@ -394,9 +394,9 @@ export default function Settings() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5" />
-                  CTR Thresholds
+                  Click Rate Thresholds
                 </CardTitle>
-                <CardDescription>Set your minimum acceptable click-through rate percentages</CardDescription>
+                <CardDescription>Set your minimum acceptable click-through rate (% of people who click your ad)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -432,9 +432,9 @@ export default function Settings() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingDown className="h-5 w-5" />
-                  ROAS Thresholds
+                  Return on Spend Thresholds
                 </CardTitle>
-                <CardDescription>Set your minimum acceptable return on ad spend</CardDescription>
+                <CardDescription>Set your minimum acceptable return (e.g., 2x means $2 earned for every $1 spent)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
