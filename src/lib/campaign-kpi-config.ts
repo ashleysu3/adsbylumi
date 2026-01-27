@@ -123,12 +123,12 @@ export function getGoalDescription(objective: string | null | undefined): string
 
 export function getKPILabel(kpiKey: string): string {
   const labels: Record<string, string> = {
-    ctr: 'Click-Through Rate',
+    ctr: 'Click Rate',
     cpc: 'Cost Per Click',
-    cpm: 'Cost Per 1000 Impressions',
-    frequency: 'Frequency',
+    cpm: 'Cost Per 1,000 Views',
+    frequency: 'Times Shown Per Person',
     cpl_cpp: 'Cost Per Result',
-    roas: 'Return on Ad Spend',
+    roas: 'Return on Spend',
     linkClicks: 'Link Clicks',
     videoViews: 'Video Views',
   };

@@ -36,8 +36,8 @@ const recommendationMapping: Record<string, string> = {
 const recommendationMessages: Record<string, string> = {
   purchase: "This template is optimized for direct sales, guiding viewers straight to checkout with proven conversion strategies.",
   free_resource: "Perfect for growing your email list with a valuable lead magnet that attracts your ideal audience.",
-  visit_page: "Drives quality traffic to your page and builds your retargeting audience for future campaigns.",
-  video_trust: "Build trust with your ideal audience through engaging video content—perfect for future retargeting or launching.",
+  visit_page: "Drives quality traffic to your page and builds a warm audience for future campaigns.",
+  video_trust: "Build trust with your ideal audience through engaging video content—perfect for warming people up before launching.",
   social_growth: "Grow your social presence and build engaged audiences for future campaigns and offers."
 };
 
@@ -524,7 +524,7 @@ export function CreateAdModal({ open, onOpenChange }: CreateAdModalProps) {
                               </div>
                               <div>
                                 <p className="font-medium">Build trust with your ideal audience via video</p>
-                                <p className="text-sm text-muted-foreground mt-1">Perfect for future retargeting or launching</p>
+                                <p className="text-sm text-muted-foreground mt-1">Perfect for warming people up before launching</p>
                               </div>
                             </div>
                           </button>
