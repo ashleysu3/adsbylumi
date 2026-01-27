@@ -88,6 +88,7 @@ const App = () => {
                   <Route path="/workspace/:workspaceId" element={<WorkspaceRedirect />} />
                   <Route path="/campaigns/build" element={<CampaignBuilder />} />
                   <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
+                  <Route path="/meta-callback" element={<MetaOAuthCallback />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/settings/meta" element={<MetaSettings />} />
                   <Route path="/settings/digest-preview" element={<WeeklyDigestPreview />} />
