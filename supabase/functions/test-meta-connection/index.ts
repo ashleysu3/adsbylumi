@@ -44,32 +44,40 @@ Deno.serve(async (req) => {
 
     console.log('Testing Meta connection for brand:', brandId);
 
-    // Get the Meta token from vault
-    const { data: token, error: tokenError } = await supabase.rpc('get_meta_token', {
-      p_brand_id: brandId
-    });
+    // NOTE: get_meta_token currently fails in this environment with:
+    // "permission denied for function _crypto_aead_det_noncegen".
+    // Until vault decrypt is fixed, use the token stored on the brand record.
+    const { data: brand, error: brandError } = await supabase
+      .from('brands')
+      .select('meta_account_id, page_id, page_name, meta_access_token')
+      .eq('id', brandId)
+      .single();
 
-    if (tokenError || !token) {
-      console.error('Token retrieval error:', tokenError);
+    if (brandError || !brand) {
       return new Response(
         JSON.stringify({
           success: false,
-          message: 'No Meta access token found',
-          error: 'Token not found in vault. Please reconnect your Meta account.',
-          details: { tokenValid: false }
+          message: 'Brand not found',
+          error: 'Could not load brand record',
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    // Get brand info for account ID
-    const { data: brand, error: brandError } = await supabase
-      .from('brands')
-      .select('meta_account_id, page_id, page_name')
-      .eq('id', brandId)
-      .single();
+    const token = brand.meta_access_token;
+    if (!token) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'No Meta access token found',
+          error: 'Please reconnect your Meta account.',
+          details: { tokenValid: false },
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
 
-    if (brandError || !brand?.meta_account_id) {
+    if (!brand?.meta_account_id) {
       return new Response(
         JSON.stringify({
           success: false,

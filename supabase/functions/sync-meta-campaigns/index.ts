@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     // 2. VERIFY BRAND OWNERSHIP
     const { data: brandData, error: brandFetchError } = await supabase
       .from('brands')
-      .select('user_id, meta_account_id')
+      .select('user_id, meta_account_id, meta_access_token')
       .eq('id', brandId)
       .single();
 
@@ -122,19 +122,10 @@ Deno.serve(async (req) => {
       throw new Error('Meta account not connected. Please select an ad account.');
     }
 
-    // Resolve Meta access token (can be provided, or pulled server-side)
-    let metaAccessToken = metaAccessTokenFromBody;
-    if (!metaAccessToken) {
-      const { data: tokenData, error: tokenError } = await supabase.rpc('get_meta_token', {
-        p_brand_id: brandId,
-      });
-
-      if (tokenError) {
-        console.error('Error retrieving Meta token via get_meta_token:', tokenError);
-      }
-
-      metaAccessToken = (tokenData as string | null) ?? undefined;
-    }
+    // Resolve Meta access token (can be provided, or pulled from brand record)
+    // NOTE: get_meta_token currently fails in this environment with a crypto permissions error,
+    // so we avoid it here.
+    let metaAccessToken = metaAccessTokenFromBody || (brandData as any)?.meta_access_token;
 
     if (!metaAccessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
