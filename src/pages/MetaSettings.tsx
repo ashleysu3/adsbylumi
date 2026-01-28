@@ -102,16 +102,11 @@ export default function MetaSettings() {
       if (error && error.code !== 'PGRST116') throw error;
       setBrand(data);
 
-      // Check if token exists in vault (separately from brand data)
-      if (data?.id && data?.meta_account_id) {
-        try {
-          const { data: tokenData, error: tokenError } = await supabase.rpc('get_meta_token', {
-            p_brand_id: data.id
-          });
-          setHasValidToken(!!tokenData && !tokenError);
-        } catch {
-          setHasValidToken(false);
-        }
+      // Determine token presence without an RPC call.
+      // (The vault migration has been flaky in some environments and can falsely report "missing token",
+      // which makes the UI show "Not Connected" even after a successful OAuth exchange.)
+      if (data?.id) {
+        setHasValidToken(!!data?.meta_access_token || !!data?.meta_token_expires_at);
       }
     } catch (error) {
       console.error('Error fetching brand:', error);
