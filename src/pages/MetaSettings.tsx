@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,19 +7,20 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { MetaAccountConnect } from '@/components/MetaAccountConnect';
+import { useLumi } from '@/contexts/LumiContext';
 import { 
-  Link2, Link2Off, RefreshCw, CheckCircle, XCircle, 
+  Link2, Link2Off, CheckCircle, XCircle, 
   AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
-  ArrowLeft, Zap, WifiOff, Key
+  ArrowLeft, Zap, Key
 } from 'lucide-react';
-import { format, differenceInDays, addDays } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { PixelVerificationCard } from '@/components/PixelVerificationCard';
 
 export default function MetaSettings() {
   const navigate = useNavigate();
+  const { brandId: activeBrandId, setBrandId: setActiveBrandId } = useLumi();
   const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [brand, setBrand] = useState<any>(null);
   const [hasValidToken, setHasValidToken] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -93,81 +94,48 @@ export default function MetaSettings() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('brands')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+      // Must be a string literal (not built dynamically) so the typed client returns a real row shape.
+      const brandSelect =
+        'id,user_id,name,meta_account_id,page_id,page_name,instagram_account_id,instagram_account_name,meta_token_expires_at,meta_pixel_id,meta_pixel_name,meta_pixel_events' as const;
 
-      if (error && error.code !== 'PGRST116') throw error;
-      setBrand(data);
+      const fetchById = async (id: string) => {
+        const { data, error } = await supabase
+          .from('brands')
+          .select(brandSelect)
+          .eq('id', id)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      };
 
-      // Determine token presence without an RPC call.
-      // (The vault migration has been flaky in some environments and can falsely report "missing token",
-      // which makes the UI show "Not Connected" even after a successful OAuth exchange.)
-      if (data?.id) {
-        setHasValidToken(!!data?.meta_access_token || !!data?.meta_token_expires_at);
+      const fetchLatestForUser = async () => {
+        const { data, error } = await supabase
+          .from('brands')
+          .select(brandSelect)
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        return data;
+      };
+
+      const data = activeBrandId ? (await fetchById(activeBrandId)) : (await fetchLatestForUser());
+      const resolved = data ?? (await fetchLatestForUser());
+
+      setBrand(resolved);
+      if (resolved?.id) {
+        setActiveBrandId(resolved.id);
+        // Avoid reading meta_access_token client-side; treat meta_token_expires_at as the "token present" signal.
+        setHasValidToken(!!resolved.meta_token_expires_at);
+      } else {
+        setHasValidToken(false);
       }
     } catch (error) {
       console.error('Error fetching brand:', error);
       toast.error('Failed to load Meta connection status');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleConnectMeta = async () => {
-    if (!brand?.id) {
-      setConnectionError('No brand found. Please complete your brand setup first.');
-      toast.error('No brand found. Please complete onboarding first.');
-      return;
-    }
-
-    try {
-      setConnecting(true);
-      setConnectionError(null);
-
-      // Get the current URL for redirect
-      const redirectUri = `${window.location.origin}/meta-callback`;
-
-      const { data, error } = await supabase.functions.invoke('meta-oauth-init', {
-        body: {
-          brandId: brand.id,
-          redirectUri: redirectUri
-        }
-      });
-      
-      if (error) {
-        console.error('OAuth init error:', error);
-        const errorMessage = error.message || 'Failed to start Meta connection';
-        setConnectionError(errorMessage);
-        toast.error(errorMessage);
-        setConnecting(false);
-        return;
-      }
-
-      if (data?.error) {
-        console.error('OAuth init returned error:', data.error);
-        setConnectionError(data.error);
-        toast.error(data.error);
-        setConnecting(false);
-        return;
-      }
-      
-      if (data?.authUrl) {
-        window.location.href = data.authUrl;
-      } else {
-        const errorMessage = 'No authorization URL received from Meta';
-        setConnectionError(errorMessage);
-        toast.error(errorMessage);
-        setConnecting(false);
-      }
-    } catch (error: any) {
-      console.error('Error connecting Meta:', error);
-      const errorMessage = error?.message || 'Failed to start Meta connection. Please try again.';
-      setConnectionError(errorMessage);
-      toast.error(errorMessage);
-      setConnecting(false);
     }
   };
 
@@ -304,17 +272,6 @@ export default function MetaSettings() {
           </div>
         </div>
 
-        {/* Connection Error Alert */}
-        {connectionError && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="flex flex-col gap-2">
-              <span className="font-medium">Connection Error</span>
-              <span>{connectionError}</span>
-            </AlertDescription>
-          </Alert>
-        )}
-
         {/* Connection Status Card */}
         <Card variant="gradient">
           <CardHeader>
@@ -417,19 +374,16 @@ export default function MetaSettings() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button 
-                    onClick={handleConnectMeta} 
-                    disabled={connecting}
-                    variant="lumi"
-                    className="gap-2"
-                  >
-                    {connecting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                    Reconnect Meta Account
-                  </Button>
+                  <MetaAccountConnect
+                    brandId={brand.id}
+                    currentAccountId={brand.meta_account_id}
+                    currentPageId={brand.page_id}
+                    currentPageName={brand.page_name}
+                    currentInstagramId={brand.instagram_account_id}
+                    currentInstagramName={brand.instagram_account_name}
+                    tokenExpired
+                    onUpdate={fetchBrand}
+                  />
                   <Button 
                     variant="ghost" 
                     onClick={handleDisconnectMeta}
@@ -601,19 +555,16 @@ export default function MetaSettings() {
                     )}
                     {testing ? "Testing..." : "Test Connection"}
                   </Button>
-                  <Button 
-                    onClick={handleConnectMeta} 
-                    disabled={connecting}
-                    variant={isExpired || isExpiringSoon ? "lumi" : "outline"}
-                    className="gap-2"
-                  >
-                    {connecting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                    {isExpired ? "Reconnect Account" : "Refresh Connection"}
-                  </Button>
+                  <MetaAccountConnect
+                    brandId={brand.id}
+                    currentAccountId={brand.meta_account_id}
+                    currentPageId={brand.page_id}
+                    currentPageName={brand.page_name}
+                    currentInstagramId={brand.instagram_account_id}
+                    currentInstagramName={brand.instagram_account_name}
+                    tokenExpired={isExpired || isExpiringSoon}
+                    onUpdate={fetchBrand}
+                  />
                   <Button 
                     variant="ghost" 
                     onClick={handleDisconnectMeta}
@@ -636,25 +587,22 @@ export default function MetaSettings() {
                 <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
                   Link your Meta Business account to create, manage, and track your Facebook and Instagram ads directly from Lumi.
                 </p>
-                <Button 
-                  onClick={handleConnectMeta} 
-                  disabled={connecting}
-                  variant="lumi"
-                  size="lg"
-                  className="gap-2"
-                >
-                  {connecting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Link2 className="h-4 w-4" />
-                      Connect Meta Account
-                    </>
-                  )}
-                </Button>
+                {brand?.id ? (
+                  <MetaAccountConnect
+                    brandId={brand.id}
+                    currentAccountId={brand.meta_account_id}
+                    currentPageId={brand.page_id}
+                    currentPageName={brand.page_name}
+                    currentInstagramId={brand.instagram_account_id}
+                    currentInstagramName={brand.instagram_account_name}
+                    triggerSize="lg"
+                    onUpdate={fetchBrand}
+                  />
+                ) : (
+                  <Button variant="lumi" size="lg" onClick={() => navigate('/dashboard')}>
+                    Go to Dashboard
+                  </Button>
+                )}
               </div>
             )}
           </CardContent>
