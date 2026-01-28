@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface RequestBody {
-  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity";
+  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity" | "delete_user";
   userId?: string;
   userEmail?: string;
   refundAmount?: number;
@@ -692,6 +692,69 @@ serve(async (req) => {
       );
 
       return new Response(JSON.stringify({ activities }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Delete user account completely
+    if (action === "delete_user") {
+      if (!userId) throw new Error("userId required");
+
+      logStep("Starting user deletion", { userId });
+
+      // Get user info before deletion for audit log
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", userId)
+        .single();
+
+      const targetEmail = profile?.email || userEmail || "unknown";
+      const targetName = profile?.full_name || "Unknown User";
+
+      // Cancel any active Stripe subscriptions first
+      if (targetEmail && targetEmail !== "unknown") {
+        try {
+          const customers = await stripe.customers.list({ email: targetEmail, limit: 1 });
+          if (customers.data.length > 0) {
+            const subscriptions = await stripe.subscriptions.list({
+              customer: customers.data[0].id,
+              status: "active",
+              limit: 10,
+            });
+
+            for (const sub of subscriptions.data) {
+              await stripe.subscriptions.cancel(sub.id);
+              logStep("Cancelled Stripe subscription", { subscriptionId: sub.id });
+            }
+          }
+        } catch (stripeError) {
+          logStep("Error cancelling Stripe subscriptions", { error: stripeError });
+          // Continue with deletion even if Stripe fails
+        }
+      }
+
+      // Delete the user from Supabase Auth (this will cascade to related tables via foreign keys)
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+      if (deleteError) {
+        logStep("Failed to delete user", { error: deleteError.message });
+        throw new Error(`Failed to delete user: ${deleteError.message}`);
+      }
+
+      logStep("User deleted successfully", { userId, email: targetEmail });
+
+      // Log audit action
+      await logAdminAction(userId, targetEmail, "User account deleted", "subscription", {
+        user_name: targetName,
+        user_email: targetEmail,
+        deleted_by: userData.user.email,
+      });
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Account for ${targetEmail} has been permanently deleted`,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
