@@ -92,33 +92,60 @@ export function MetaAccountConnect({
         'width=600,height=700,scrollbars=yes'
       );
 
-      const handleCallback = async (event: MessageEvent) => {
+      const handleCallback = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
-        
-        if (event.data.type === 'META_OAUTH_SUCCESS') {
-          popup?.close();
-          
-          // Use the data already returned from the edge function (called by the popup)
-          const callbackData = event.data.data;
-          
-          if (!callbackData) {
-            throw new Error('No data received from OAuth callback');
-          }
 
-          setAccounts(callbackData.accounts || []);
-          setPages(callbackData.pages || []);
-          setInstagramAccounts(callbackData.instagramAccounts || []);
-          
-          const accountCount = callbackData.accounts?.length || 0;
-          const pageCount = callbackData.pages?.length || 0;
-          const igCount = callbackData.instagramAccounts?.length || 0;
-          
-          toast.success(`Found ${accountCount} ad account${accountCount !== 1 ? 's' : ''}, ${pageCount} Page${pageCount !== 1 ? 's' : ''}, and ${igCount} Instagram account${igCount !== 1 ? 's' : ''}`);
-          
-          setStep('select-account');
+        if (event.data?.type === 'META_OAUTH_SUCCESS') {
+          // Defer async work so errors are caught/handled (async event handlers don't propagate).
+          void (async () => {
+            try {
+              popup?.close();
+
+              // Prefer the full payload (popup completed the exchange)
+              let callbackData = event.data.data;
+
+              // Back-compat: if popup only sent `code`, complete exchange here.
+              if (!callbackData && event.data.code) {
+                const { data: exchanged, error: exchangeError } = await supabase.functions.invoke(
+                  'meta-oauth-callback',
+                  {
+                    body: { code: event.data.code, brandId, redirectUri },
+                  }
+                );
+                if (exchangeError) throw exchangeError;
+                callbackData = exchanged;
+              }
+
+              if (!callbackData) {
+                throw new Error('No data received from OAuth callback');
+              }
+
+              setAccounts(callbackData.accounts || []);
+              setPages(callbackData.pages || []);
+              setInstagramAccounts(callbackData.instagramAccounts || []);
+
+              const accountCount = callbackData.accounts?.length || 0;
+              const pageCount = callbackData.pages?.length || 0;
+              const igCount = callbackData.instagramAccounts?.length || 0;
+
+              toast.success(
+                `Found ${accountCount} ad account${accountCount !== 1 ? 's' : ''}, ${pageCount} Page${pageCount !== 1 ? 's' : ''}, and ${igCount} Instagram account${igCount !== 1 ? 's' : ''}`
+              );
+
+              setStep('select-account');
+            } catch (err: any) {
+              console.error('OAuth callback handling error:', err);
+              toast.error(err?.message || 'OAuth failed');
+            } finally {
+              setOauthLoading(false);
+              window.removeEventListener('message', handleCallback);
+            }
+          })();
+        } else if (event.data?.type === 'META_OAUTH_ERROR') {
+          const msg = event.data.error || 'OAuth failed';
+          toast.error(msg);
           setOauthLoading(false);
-        } else if (event.data.type === 'META_OAUTH_ERROR') {
-          throw new Error(event.data.error || 'OAuth failed');
+          window.removeEventListener('message', handleCallback);
         }
       };
 

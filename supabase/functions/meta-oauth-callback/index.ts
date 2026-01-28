@@ -217,25 +217,23 @@ Deno.serve(async (req) => {
       
     if (brandData?.meta_account_id) {
       console.log('Meta account already selected, triggering auto-sync...');
-      // Get the token from vault for the sync call
-      const { data: storedToken } = await supabase.rpc('get_meta_token', { p_brand_id: brandId });
-      
-      if (storedToken) {
-        fetch(`${supabaseUrl}/functions/v1/sync-meta-campaigns`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-          },
-          body: JSON.stringify({
-            brandId,
-            metaAccountId: brandData.meta_account_id,
-            metaAccessToken: storedToken
-          })
-        }).catch(err => {
-          console.error('Background sync failed:', err);
-        });
-      }
+
+      // Use the freshly exchanged token instead of calling get_meta_token.
+      // (Service-role calls don't have user JWT context, and vault migrations can be flaky.)
+      fetch(`${supabaseUrl}/functions/v1/sync-meta-campaigns`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({
+          brandId,
+          metaAccountId: brandData.meta_account_id,
+          metaAccessToken: finalToken,
+        }),
+      }).catch((err) => {
+        console.error('Background sync failed:', err);
+      });
     }
 
     return new Response(

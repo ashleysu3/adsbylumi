@@ -37,25 +37,84 @@ export default function MetaOAuthCallback() {
       // ignore
     }
 
+    // Popup flow — complete the exchange here and send the full payload back to the opener.
+    // This prevents the parent window from needing to re-invoke the callback (and eliminates race conditions).
     if (window.opener) {
-      if (error) {
-        window.opener.postMessage(
-          { 
-            type: 'META_OAUTH_ERROR', 
-            error: errorDescription || error 
-          },
-          window.location.origin
-        );
-      } else if (code) {
-        window.opener.postMessage(
-          { 
-            type: 'META_OAUTH_SUCCESS', 
-            code 
-          },
-          window.location.origin
-        );
-      }
-      window.close();
+      (async () => {
+        try {
+          if (error) {
+            window.opener.postMessage(
+              { type: 'META_OAUTH_ERROR', error: errorDescription || error },
+              window.location.origin
+            );
+            window.close();
+            return;
+          }
+
+          if (!code) {
+            window.opener.postMessage(
+              { type: 'META_OAUTH_ERROR', error: 'Missing authorization code.' },
+              window.location.origin
+            );
+            window.close();
+            return;
+          }
+
+          if (!brandId) {
+            window.opener.postMessage(
+              { type: 'META_OAUTH_ERROR', error: 'Missing brand context (state).' },
+              window.location.origin
+            );
+            window.close();
+            return;
+          }
+
+          // Ensure the popup has a session (same-site cookies sometimes fail depending on browser settings)
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (!sessionData.session) {
+            window.opener.postMessage(
+              { type: 'META_OAUTH_ERROR', error: 'Please sign in to finish connecting your Meta account.' },
+              window.location.origin
+            );
+            window.close();
+            return;
+          }
+
+          const invokeWithTimeout = async () => {
+            const invokePromise = supabase.functions.invoke('meta-oauth-callback', {
+              body: { code, brandId, redirectUri },
+            });
+
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error('Request timed out. Please try again.')), 45000);
+            });
+
+            return Promise.race([invokePromise, timeoutPromise]);
+          };
+
+          const { data, error: invokeError } = await invokeWithTimeout();
+          if (invokeError) throw invokeError;
+          if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : 'OAuth callback failed');
+
+          window.opener.postMessage(
+            { type: 'META_OAUTH_SUCCESS', code, data },
+            window.location.origin
+          );
+          window.close();
+        } catch (e: any) {
+          const msg = formatInvokeError(e);
+          try {
+            window.opener.postMessage(
+              { type: 'META_OAUTH_ERROR', error: msg },
+              window.location.origin
+            );
+          } catch {
+            // ignore
+          }
+          window.close();
+        }
+      })();
+
       return;
     }
 
@@ -101,9 +160,9 @@ export default function MetaOAuthCallback() {
             body: { code, brandId, redirectUri },
           });
 
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error("Request timed out. Please try again.")), 20000);
-          });
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error("Request timed out. Please try again.")), 45000);
+            });
 
           return Promise.race([invokePromise, timeoutPromise]);
         };
