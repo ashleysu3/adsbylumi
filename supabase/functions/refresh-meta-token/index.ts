@@ -124,15 +124,20 @@ async function refreshBrandToken(
 ): Promise<{ success: boolean; error?: string; newExpiresAt?: string }> {
   console.log(`Refreshing token for brand: ${brandId}`);
 
-  // Get current token from vault
-  const { data: currentToken, error: tokenError } = await supabase.rpc('get_meta_token', {
-    p_brand_id: brandId
-  });
+  // NOTE: get_meta_token currently fails in this environment with a crypto permissions error.
+  // Until vault decrypt is fixed, use the token stored on the brand record.
+  const { data: brand, error: brandError } = await supabase
+    .from('brands')
+    .select('meta_access_token')
+    .eq('id', brandId)
+    .single();
 
-  if (tokenError || !currentToken) {
-    console.error(`No token found for brand ${brandId}:`, tokenError);
+  if (brandError || !brand?.meta_access_token) {
+    console.error(`No token found for brand ${brandId}:`, brandError);
     return { success: false, error: 'No existing token found' };
   }
+
+  const currentToken = brand.meta_access_token;
 
   // Exchange for a new long-lived token
   // Meta's token refresh endpoint
@@ -162,26 +167,16 @@ async function refreshBrandToken(
 
   console.log('New token received, expires in:', refreshData.expires_in, 'seconds');
 
-  // Store the new token in vault
-  const { error: storeError } = await supabase.rpc('store_meta_token', {
-    p_brand_id: brandId,
-    p_token: refreshData.access_token
-  });
-
-  if (storeError) {
-    console.error('Error storing new token:', storeError);
-    return { success: false, error: 'Failed to store refreshed token' };
-  }
-
   // Calculate new expiration date (Meta long-lived tokens last ~60 days)
   const expiresInSeconds = refreshData.expires_in || 5184000; // Default to 60 days
   const newExpiresAt = new Date();
   newExpiresAt.setSeconds(newExpiresAt.getSeconds() + expiresInSeconds);
 
-  // Update the expiration date in the brands table
+  // Update the token + expiration date in the brands table
   const { error: updateError } = await supabase
     .from('brands')
     .update({ 
+      meta_access_token: refreshData.access_token,
       meta_token_expires_at: newExpiresAt.toISOString(),
       updated_at: new Date().toISOString()
     })

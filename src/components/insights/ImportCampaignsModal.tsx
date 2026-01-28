@@ -85,12 +85,15 @@ export function ImportCampaignsModal({
         .map((w) => (w.meta_campaign_ids as any)?.campaignId)
         .filter(Boolean);
 
-      // Get meta token from vault
-      const { data: tokenData, error: tokenError } = await supabase.rpc('get_meta_token', {
-        p_brand_id: brandId,
-      });
+      // Get meta token from the brand record.
+      // NOTE: get_meta_token RPC is currently failing with a crypto permissions error in this environment.
+      const { data: brand, error: brandError } = await supabase
+        .from('brands')
+        .select('meta_access_token')
+        .eq('id', brandId)
+        .single();
 
-      if (tokenError || !tokenData) {
+      if (brandError || !brand?.meta_access_token) {
         throw new Error('Failed to retrieve Meta access token');
       }
 
@@ -98,7 +101,7 @@ export function ImportCampaignsModal({
       const { data, error: fetchError } = await supabase.functions.invoke('fetch-meta-campaigns', {
         body: {
           metaAccountId,
-          metaAccessToken: tokenData,
+          metaAccessToken: brand.meta_access_token,
           dateRangeStart,
           dateRangeEnd,
           existingCampaignIds,
@@ -145,12 +148,14 @@ export function ImportCampaignsModal({
     setImporting(true);
 
     try {
-      // Get meta token from vault
-      const { data: tokenData, error: tokenError } = await supabase.rpc('get_meta_token', {
-        p_brand_id: brandId,
-      });
+      // Get meta token from the brand record.
+      const { data: brand, error: brandError } = await supabase
+        .from('brands')
+        .select('meta_access_token')
+        .eq('id', brandId)
+        .single();
 
-      if (tokenError || !tokenData) {
+      if (brandError || !brand?.meta_access_token) {
         throw new Error('Failed to retrieve Meta access token');
       }
 
@@ -158,7 +163,7 @@ export function ImportCampaignsModal({
         body: {
           brandId,
           metaAccountId,
-          metaAccessToken: tokenData,
+          metaAccessToken: brand.meta_access_token,
           campaignIds: Array.from(selectedIds),
         },
       });
