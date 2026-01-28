@@ -17,6 +17,7 @@ interface MetaAccountConnectProps {
   currentInstagramId?: string | null;
   currentInstagramName?: string | null;
   tokenExpired?: boolean;
+  triggerSize?: "sm" | "default" | "lg";
   onUpdate: () => void;
 }
 
@@ -49,6 +50,7 @@ export function MetaAccountConnect({
   currentInstagramId,
   currentInstagramName,
   tokenExpired = false,
+  triggerSize = "sm",
   onUpdate 
 }: MetaAccountConnectProps) {
   const [open, setOpen] = useState(false);
@@ -325,17 +327,17 @@ export function MetaAccountConnect({
     }}>
       <DialogTrigger asChild>
         {needsReconnect ? (
-          <Button variant="destructive" size="sm" className="gap-2">
+          <Button variant="destructive" size={triggerSize} className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Reconnect Meta
           </Button>
         ) : isConnected ? (
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size={triggerSize}>
             <Link2 className="mr-2 h-4 w-4" />
             Change Connection
           </Button>
         ) : (
-          <Button variant="default" size="sm">
+          <Button variant="default" size={triggerSize}>
             <Link2 className="mr-2 h-4 w-4" />
             Connect Meta Account
           </Button>
