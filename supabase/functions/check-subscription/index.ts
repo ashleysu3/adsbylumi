@@ -38,12 +38,11 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // First, check the local subscriptions table for code-based or trial subscriptions
+    // First, check the local subscriptions table
     const { data: localSub, error: localSubError } = await supabaseClient
       .from('subscriptions')
       .select('*')
       .eq('user_id', user.id)
-      .in('status', ['active', 'trial'])
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -55,8 +54,27 @@ serve(async (req) => {
         hasStripeId: !!localSub.stripe_subscription_id 
       });
 
-      // If it's a code-based subscription (no Stripe ID), return it directly
-      if (!localSub.stripe_subscription_id) {
+      // Check if subscription is cancelled - user should lose access
+      if (localSub.status === 'cancelled' || localSub.status === 'canceled') {
+        logStep("Subscription is cancelled, denying access");
+        return new Response(JSON.stringify({
+          subscribed: false,
+          product_id: null,
+          price_id: null,
+          tier: null,
+          status: 'cancelled',
+          subscription_end: localSub.current_period_end,
+          cancel_at_period_end: false,
+          is_code_based: false,
+          is_trial: false
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // If it's a code-based subscription (no Stripe ID) and active/trial, return it directly
+      if (!localSub.stripe_subscription_id && (localSub.status === 'active' || localSub.status === 'trial')) {
         logStep("Code-based or trial subscription found", { tier: localSub.tier, status: localSub.status });
         return new Response(JSON.stringify({
           subscribed: true,

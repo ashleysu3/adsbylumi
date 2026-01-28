@@ -19,7 +19,7 @@ import {
   MessageSquare, Send, DollarSign, XCircle, Gift, Mail, 
   Building2, Calendar as CalendarIcon, Globe, Loader2, Plus, Trash2,
   Filter, History, X, Activity, Rocket, Package, UserPlus, AlertCircle,
-  Eye
+  Eye, AlertTriangle, UserX
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
@@ -147,6 +147,7 @@ export default function AdminUsers() {
   const [noteCategory, setNoteCategory] = useState("general");
   const [selectedEmailTemplate, setSelectedEmailTemplate] = useState("");
   const [customEmailMessage, setCustomEmailMessage] = useState("");
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
 
   useEffect(() => {
     checkAdminAndFetch();
@@ -420,6 +421,37 @@ export default function AdminUsers() {
     } catch (error: any) {
       toast.error(error.message || "Failed to delete note");
     }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser || !userDetails?.profile?.email) return;
+    
+    // Require typing the exact email to confirm
+    if (deleteConfirmEmail !== userDetails.profile.email) {
+      toast.error("Please type the exact email to confirm deletion");
+      return;
+    }
+    
+    setActionLoading("delete");
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: { 
+          action: "delete_user", 
+          userId: selectedUser.id,
+          userEmail: userDetails.profile.email,
+        },
+      });
+      if (error) throw error;
+      toast.success(data.message);
+      setDetailOpen(false);
+      setSelectedUser(null);
+      setUserDetails(null);
+      setDeleteConfirmEmail("");
+      fetchUsers(); // Refresh the list
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete user");
+    }
+    setActionLoading(null);
   };
 
   const filteredUsers = users.filter(user =>
@@ -1365,6 +1397,49 @@ export default function AdminUsers() {
                           {actionLoading === "cancel" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
                           Cancel Subscription
                         </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Danger Zone - Delete Account */}
+                  <Card className="border-destructive/50 bg-destructive/5">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                      <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="w-4 h-4" /> Danger Zone
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
+                      <div className="space-y-3">
+                        <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                          <p className="text-xs sm:text-sm font-medium text-destructive mb-1">
+                            Delete User Account
+                          </p>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            This will permanently delete the user's account, cancel any active Stripe subscriptions, and remove all associated data (brands, campaigns, etc.). This action cannot be undone.
+                          </p>
+                          <div className="space-y-2">
+                            <Input
+                              type="text"
+                              placeholder={`Type "${userDetails?.profile?.email}" to confirm`}
+                              value={deleteConfirmEmail}
+                              onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+                              className="h-10 text-sm bg-background"
+                            />
+                            <Button
+                              variant="destructive"
+                              onClick={handleDeleteUser}
+                              disabled={actionLoading === "delete" || deleteConfirmEmail !== userDetails?.profile?.email}
+                              className="w-full h-10 sm:h-11"
+                            >
+                              {actionLoading === "delete" ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <UserX className="w-4 h-4 mr-2" />
+                              )}
+                              Permanently Delete Account
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
