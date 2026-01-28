@@ -124,9 +124,12 @@ serve(async (req) => {
 
     // PAGE GOAL MAPPING - These take priority over AI recommendations
     const pageGoalToTemplate: Record<string, string> = {
-      'purchase': 'low-ticket-product-sales', // Direct purchase → Sales campaign
-      'discovery_call': 'discovery-call-application', // Book a call → Discovery call campaign  
-      'free_resource': 'lead-magnet-downloads', // Free download → Lead magnet campaign
+      'purchase': 'sell-offer', // Direct purchase → Sales campaign
+      'discovery_call': 'discovery-call', // Book a call → Discovery call campaign  
+      'free_resource': 'lead-magnet', // Free download → Lead magnet campaign
+      'traffic_to_instagram': 'social-traffic', // Grow IG following → Traffic campaign
+      'video_views': 'video-views', // Build awareness → Video views campaign
+      'grow_following': 'social-traffic', // Generic social growth → Traffic campaign
     };
 
     // If page_goal is set and maps to a known template, use it directly
@@ -141,6 +144,9 @@ serve(async (req) => {
           'purchase': 'This offer directs visitors to make a purchase, so a sales-focused campaign will drive conversions most effectively.',
           'discovery_call': 'This offer is designed to book discovery or sales calls, making a call-focused campaign the ideal choice for qualified lead generation.',
           'free_resource': 'This offer provides a free resource to capture leads, so a lead magnet campaign will maximize opt-ins and build your list.',
+          'traffic_to_instagram': 'This campaign is designed to drive traffic to your Instagram profile, helping you grow your following and build social proof.',
+          'video_views': 'This campaign focuses on getting more eyes on your video content, building awareness and trust with your audience.',
+          'grow_following': 'This campaign is optimized to grow your social media following by driving qualified traffic to your profile.',
         };
         
         // Update offer with recommendation
