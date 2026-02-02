@@ -12,6 +12,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LumiThinking } from "@/components/LumiThinking";
 
+export interface TextOverlay {
+  text: string;
+  timing: string;
+}
+
 export interface ProductionItem {
   id: string;
   format: "talking_head" | "broll" | "graphic";
@@ -20,6 +25,13 @@ export interface ProductionItem {
   angleName: string;
   completed: boolean;
   assetNote?: string;
+  // Talking head specific fields
+  script_lines?: string[];
+  text_overlays?: TextOverlay[];
+  caption_reminder?: boolean;
+  // Psychology fields
+  psychology_trigger?: string;
+  why_this_works?: string;
 }
 
 export interface RankedItem extends ProductionItem {

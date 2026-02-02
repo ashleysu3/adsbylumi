@@ -347,13 +347,60 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                   {/* Talking Head Format */}
                   {item.format === "talking_head" && (
                     <>
-                      {item.concept?.script && (
+                      {/* Caption Reminder */}
+                      {(item.caption_reminder || item.concept?.caption_reminder) && (
+                        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                            <span className="text-base">🔇</span>
+                            85% of users watch without sound — captions are essential!
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Line-by-Line Script */}
+                      {(item.script_lines?.length > 0 || item.concept?.script_lines?.length > 0) && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">📜 Line-by-Line Script</p>
+                          <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                            {(item.script_lines || item.concept?.script_lines || []).map((line: string, i: number) => (
+                              <div key={i} className="flex gap-2 items-start">
+                                <span className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded shrink-0">
+                                  {i + 1}
+                                </span>
+                                <p className="text-sm">{line}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Text Overlays */}
+                      {(item.text_overlays?.length > 0 || item.concept?.text_overlays?.length > 0) && (
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-2">📝 Text Overlays / Titles</p>
+                          <div className="space-y-2">
+                            {(item.text_overlays || item.concept?.text_overlays || []).map((overlay: any, i: number) => (
+                              <div key={i} className="p-3 bg-muted/50 rounded-md border-l-2 border-primary/50">
+                                <p className="text-sm font-medium">"{overlay.text || overlay}"</p>
+                                {overlay.timing && (
+                                  <p className="text-xs text-muted-foreground mt-1">⏱️ {overlay.timing}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Legacy script field fallback */}
+                      {item.concept?.script && !item.script_lines?.length && !item.concept?.script_lines?.length && (
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Script</p>
                           <p className="text-sm mt-1 whitespace-pre-wrap">{item.concept.script}</p>
                         </div>
                       )}
-                      {item.concept?.overlay_text && (
+                      
+                      {/* Legacy overlay_text fallback */}
+                      {item.concept?.overlay_text && !item.text_overlays?.length && !item.concept?.text_overlays?.length && (
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Overlay Text</p>
                           <div className="space-y-1 mt-1">

@@ -137,6 +137,33 @@ COLUMNS (Format Diversity):
 - Column 2: "broll" - B-roll footage or lofi video (cinematic micro-moments)
 - Column 3: "graphic" - Static image or graphic (bold, unexpected, thumb-stopping)
 
+=== TALKING HEAD FORMAT - SPECIAL REQUIREMENTS ===
+For ALL talking_head format cells, you MUST include these ADDITIONAL fields:
+1. **script_lines**: An array of 4-8 short lines (each line is what the person says, one natural sentence/phrase at a time). Keep each line short enough to say in 3-5 seconds.
+2. **text_overlays**: An array of 2-4 text overlay suggestions that should appear on screen during the video. Include timing hints (e.g., "Show at hook", "Display during problem section").
+3. **caption_reminder**: Always set to true. The user will see a reminder that 85% of users watch without sound, so captions are essential.
+
+Example talking_head output:
+{
+  "format": "talking_head",
+  "hook": "I used to rehearse my pitch 47 times... then bomb anyway.",
+  "script_lines": [
+    "I used to rehearse my pitch 47 times before every webinar.",
+    "And I'd still bomb. Every. Single. Time.",
+    "Then I realized... I wasn't nervous about the content.",
+    "I was nervous because I didn't believe my own offer.",
+    "The day I fixed that? Everything changed.",
+    "Here's what I did differently..."
+  ],
+  "text_overlays": [
+    { "text": "47 rehearsals. Still bombed.", "timing": "Show at hook (0-3s)" },
+    { "text": "The real problem?", "timing": "Show during problem reveal (8-12s)" },
+    { "text": "Here's what I changed 👇", "timing": "Show before CTA (18-22s)" }
+  ],
+  "caption_reminder": true,
+  "guidance": "Film selfie-style on phone. Natural lighting. Look slightly tired at start, then energized as you reveal the solution."
+}
+
 === PSYCHOLOGY INTEGRATION REQUIREMENTS ===
 ${painPoints.length > 0 ? `
 AUDIENCE PAIN POINTS TO REFERENCE (use these SPECIFIC phrases):
@@ -169,6 +196,11 @@ Each cell MUST include:
 - psychology_trigger: Which psychological lever this pulls (curiosity, fear, desire, social proof, etc.)
 - pain_point_addressed: Which specific pain point from the list above this targets (or "general" if broad)
 - why_this_works: One sentence explaining the psychology (for the user's education)
+
+ADDITIONAL FIELDS FOR talking_head FORMAT ONLY:
+- script_lines: Array of 4-8 short script lines (one sentence/phrase each, 3-5 seconds to speak)
+- text_overlays: Array of objects with "text" and "timing" properties for on-screen text
+- caption_reminder: boolean (always true for talking_head)
 
 Return a JSON object with a "grid" array containing all cells.`;
 
@@ -283,6 +315,13 @@ Remember:
         cell.psychology_trigger = cell.psychology_trigger || "curiosity";
         cell.pain_point_addressed = cell.pain_point_addressed || "general";
         cell.why_this_works = cell.why_this_works || "";
+        
+        // Ensure talking_head specific fields have defaults
+        if (cell.format === "talking_head") {
+          cell.script_lines = cell.script_lines || [];
+          cell.text_overlays = cell.text_overlays || [];
+          cell.caption_reminder = true; // Always true for talking head
+        }
         return cell;
       });
     }

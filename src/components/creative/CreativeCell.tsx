@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Video, Film, Image, Plus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export interface TextOverlay {
+  text: string;
+  timing: string;
+}
+
 export interface CreativeCellData {
   id: string;
   format: "talking_head" | "broll" | "graphic";
@@ -15,6 +20,10 @@ export interface CreativeCellData {
   psychology_trigger?: string;
   pain_point_addressed?: string;
   why_this_works?: string;
+  // Talking head specific fields
+  script_lines?: string[];
+  text_overlays?: TextOverlay[];
+  caption_reminder?: boolean;
 }
 
 interface CreativeCellProps {
