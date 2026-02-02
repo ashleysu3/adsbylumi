@@ -29,6 +29,62 @@ import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 
 type WorkflowTab = "angles" | "copy_creative" | "build";
 
+function normalizeScriptLines(input: unknown): string[] | undefined {
+  if (!input) return undefined;
+
+  const splitSentences = (text: string) => {
+    // Normalize whitespace first
+    const normalized = text.replace(/\s+/g, " ").trim();
+    // Split while keeping punctuation
+    const parts = normalized.split(/([.!?])\s+/);
+    const lines: string[] = [];
+    for (let i = 0; i < parts.length; i += 2) {
+      const sentence = `${parts[i] ?? ""}${parts[i + 1] ?? ""}`.trim();
+      if (sentence) lines.push(sentence);
+    }
+    return lines;
+  };
+
+  const splitLines = (text: string) => {
+    const byNewline = text
+      .split(/\r?\n+/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (byNewline.length > 1) return byNewline;
+    return splitSentences(text);
+  };
+
+  // String
+  if (typeof input === "string") {
+    const lines = splitLines(input).filter(Boolean);
+    return lines.length ? lines.slice(0, 8) : undefined;
+  }
+
+  // Array (usually string[])
+  if (Array.isArray(input)) {
+    const rawStrings = input.filter((v) => typeof v === "string") as string[];
+    if (rawStrings.length === 0) return undefined;
+
+    // If we got a single mega-paragraph, split it into teleprompter-friendly lines
+    if (rawStrings.length === 1) {
+      const one = rawStrings[0].trim();
+      if (!one) return undefined;
+      const lines = splitLines(one).filter(Boolean);
+      return lines.length ? lines.slice(0, 8) : undefined;
+    }
+
+    // If we got multiple entries, also split any that contain newlines
+    const flattened = rawStrings
+      .flatMap((s) => (s.includes("\n") ? splitLines(s) : [s.trim()]))
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    return flattened.length ? flattened.slice(0, 8) : undefined;
+  }
+
+  return undefined;
+}
+
 interface WorkspaceOption {
   id: string;
   name: string;
@@ -205,7 +261,12 @@ export default function CreativeStudio() {
       setSelectedAngleIds(validSelectedIds);
       setGridData(validGridData);
       setActiveAngleId(validSelectedIds[0] || "");
-      setProductionItems((data?.production_items as any[]) || []);
+
+      const loadedProductionItems = ((data?.production_items as any[]) || []).map((pi: any) => {
+        const normalized = normalizeScriptLines(pi?.script_lines);
+        return normalized ? { ...pi, script_lines: normalized } : pi;
+      });
+      setProductionItems(loadedProductionItems);
       
       // If there's a mismatch, clean up the stored data
       if (validSelectedIds.length !== storedSelectedIds.length || validGridData.length !== loadedGridData.length) {
@@ -332,7 +393,7 @@ export default function CreativeStudio() {
       visual_hook_options: cell.visual_hook_options,
       hook_technique: cell.hook_technique,
       delivery_style: cell.delivery_style,
-      script_lines: cell.script_lines,
+      script_lines: normalizeScriptLines(cell.script_lines) || cell.script_lines,
       text_overlays: cell.text_overlays,
       caption_reminder: cell.caption_reminder,
       // Psychology fields
