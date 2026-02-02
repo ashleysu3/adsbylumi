@@ -5,13 +5,21 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Video, Film, Image, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Video, Film, Image, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp, Copy, Mic, Type, Eye, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LumiThinking } from "@/components/LumiThinking";
 
+const hookTechniqueLabels: Record<string, { label: string; color: string }> = {
+  mid_sentence: { label: "Mid-Sentence Start", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  confession: { label: "Confession", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
+  controversial: { label: "Controversial", color: "bg-red-500/10 text-red-600 border-red-500/20" },
+  specific_number: { label: "Specific Number", color: "bg-green-500/10 text-green-600 border-green-500/20" },
+  pattern_interrupt: { label: "Pattern Interrupt", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+};
 export interface TextOverlay {
   text: string;
   timing: string;
@@ -90,10 +98,30 @@ export function ProductionChecklistPanel({
   const [showTopOnly, setShowTopOnly] = useState(false);
   const [expandedRationale, setExpandedRationale] = useState<string | null>(null);
   const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const completedCount = items.filter((item) => item.completed).length;
   const hasMinimumItems = items.length >= 3;
   const canRank = items.length >= 6;
+
+  const toggleExpand = (id: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const copyScriptToClipboard = (scriptLines: string[] | undefined) => {
+    if (!scriptLines || scriptLines.length === 0) {
+      toast.error("No script to copy");
+      return;
+    }
+    const scriptText = scriptLines.join("\n");
+    navigator.clipboard.writeText(scriptText);
+    toast.success("Script copied to clipboard!");
+  };
   const itemsNeeded = Math.max(0, 3 - items.length);
 
   // Get display items based on ranking state
@@ -269,6 +297,10 @@ export function ProductionChecklistPanel({
                     <div className="space-y-2">
                       {formatItems.map((item) => {
                         const ranked = isRankedItem(item);
+                        const isExpanded = expandedItems.has(item.id);
+                        const isTalkingHead = item.format === "talking_head";
+                        const hasScriptDetails = isTalkingHead && (item.script_lines?.length || item.verbal_hook || item.written_hook || item.visual_hook);
+                        
                         return (
                           <div
                             key={item.id}
@@ -303,10 +335,18 @@ export function ProductionChecklistPanel({
                                 <p className="text-xs text-muted-foreground mt-1">
                                   {item.guidance}
                                 </p>
-                                <div className="flex items-center gap-2 mt-2">
+                                <div className="flex items-center gap-2 mt-2 flex-wrap">
                                   <Badge variant="outline" className="text-xs">
                                     {item.angleName}
                                   </Badge>
+                                  {item.hook_technique && hookTechniqueLabels[item.hook_technique] && (
+                                    <Badge 
+                                      variant="outline" 
+                                      className={cn("text-xs", hookTechniqueLabels[item.hook_technique].color)}
+                                    >
+                                      {hookTechniqueLabels[item.hook_technique].label}
+                                    </Badge>
+                                  )}
                                   {ranked && item.rationale && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -334,6 +374,34 @@ export function ProductionChecklistPanel({
                                 )}
                               </div>
                               <div className="flex items-center gap-1">
+                                {/* Copy Script button for talking head */}
+                                {isTalkingHead && item.script_lines?.length && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={() => copyScriptToClipboard(item.script_lines)}
+                                    title="Copy script to clipboard"
+                                  >
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                                {/* Expand/collapse for talking head details */}
+                                {hasScriptDetails && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={() => toggleExpand(item.id)}
+                                    title={isExpanded ? "Collapse details" : "Expand script details"}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronUp className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <ChevronDown className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -354,6 +422,144 @@ export function ProductionChecklistPanel({
                                 </Button>
                               </div>
                             </div>
+
+                            {/* Expanded Talking Head Details */}
+                            {isTalkingHead && isExpanded && (
+                              <div className="mt-4 pt-4 border-t border-border space-y-4">
+                                {/* Three-Hook System */}
+                                <div className="grid gap-3">
+                                  {/* Verbal Hook */}
+                                  {item.verbal_hook && (
+                                    <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                                      <div className="flex items-center gap-2 text-blue-600 mb-1">
+                                        <Mic className="h-3.5 w-3.5" />
+                                        <span className="text-xs font-semibold uppercase">Verbal Hook</span>
+                                      </div>
+                                      <p className="text-sm font-medium">"{item.verbal_hook}"</p>
+                                    </div>
+                                  )}
+
+                                  {/* Written Hook */}
+                                  {item.written_hook && (
+                                    <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                                      <div className="flex items-center gap-2 text-purple-600 mb-1">
+                                        <Type className="h-3.5 w-3.5" />
+                                        <span className="text-xs font-semibold uppercase">Written Hook (On Screen)</span>
+                                      </div>
+                                      <p className="text-sm font-medium">"{item.written_hook}"</p>
+                                    </div>
+                                  )}
+
+                                  {/* Visual Hook */}
+                                  {(item.visual_hook || item.visual_hook_options?.length) && (
+                                    <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                                      <div className="flex items-center gap-2 text-green-600 mb-1">
+                                        <Eye className="h-3.5 w-3.5" />
+                                        <span className="text-xs font-semibold uppercase">Visual Hook Options</span>
+                                      </div>
+                                      {item.visual_hook_options && item.visual_hook_options.length > 0 ? (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                          {item.visual_hook_options.map((option, idx) => (
+                                            <Badge key={idx} variant="outline" className="bg-green-500/10 text-green-700 border-green-500/30">
+                                              {option}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm">{item.visual_hook}</p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Line-by-Line Script */}
+                                {item.script_lines && item.script_lines.length > 0 && (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                                        📜 Your Script
+                                      </h4>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1"
+                                        onClick={() => copyScriptToClipboard(item.script_lines)}
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                        Copy Script
+                                      </Button>
+                                    </div>
+                                    <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                                      {item.script_lines.map((line, idx) => (
+                                        <div key={idx} className="flex gap-2 text-sm">
+                                          <span className="text-muted-foreground w-5 shrink-0 text-right">{idx + 1}.</span>
+                                          <span className={cn(
+                                            line.includes("(pause)") || line.includes("(lean") ? "italic text-muted-foreground" : ""
+                                          )}>{line}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Text Overlays */}
+                                {item.text_overlays && item.text_overlays.length > 0 && (
+                                  <div className="space-y-2">
+                                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                                      📝 Text Overlays
+                                    </h4>
+                                    <div className="space-y-2">
+                                      {item.text_overlays.map((overlay, idx) => (
+                                        <div
+                                          key={idx}
+                                          className={cn(
+                                            "p-2 rounded border text-sm",
+                                            overlay.type === "hook" && "bg-blue-500/5 border-blue-500/20",
+                                            overlay.type === "transition" && "bg-amber-500/5 border-amber-500/20",
+                                            overlay.type === "cta" && "bg-green-500/5 border-green-500/20",
+                                            overlay.type === "insight" && "bg-purple-500/5 border-purple-500/20",
+                                            !overlay.type && "bg-muted/50"
+                                          )}
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                              {overlay.type && (
+                                                <Badge variant="outline" className="text-[10px] uppercase">
+                                                  {overlay.type}
+                                                </Badge>
+                                              )}
+                                              <span>"{overlay.text}"</span>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground shrink-0">
+                                              ⏱️ {overlay.timing}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Delivery Style Tip */}
+                                {item.delivery_style && (
+                                  <div className="p-3 bg-muted/30 rounded-lg">
+                                    <p className="text-sm italic text-muted-foreground">
+                                      💡 <span className="font-medium">Delivery:</span> {item.delivery_style}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Caption Reminder */}
+                                {item.caption_reminder !== false && (
+                                  <Alert className="border-amber-500/30 bg-amber-500/5">
+                                    <Volume2 className="h-4 w-4 text-amber-600" />
+                                    <AlertDescription className="text-amber-700 text-sm">
+                                      🔇 85% of viewers watch without sound — always add captions!
+                                    </AlertDescription>
+                                  </Alert>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
