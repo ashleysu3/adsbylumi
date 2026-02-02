@@ -8,6 +8,7 @@ import { RecordingGuide } from "./RecordingGuide";
 import { DesignGuide } from "./DesignGuide";
 import { DragDropUploader } from "./DragDropUploader";
 import { CheckCircle2, ArrowRight, Sparkle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -347,6 +348,44 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                   {/* Talking Head Format */}
                   {item.format === "talking_head" && (
                     <>
+                      {/* Multi-Hook System - NEW */}
+                      {(item.verbal_hook || item.written_hook || item.visual_hook || 
+                        item.concept?.verbal_hook || item.concept?.written_hook || item.concept?.visual_hook) && (
+                        <div className="space-y-3">
+                          <p className="text-sm font-semibold text-foreground">🎯 Three-Hook System</p>
+                          
+                          {/* Verbal Hook */}
+                          {(item.verbal_hook || item.concept?.verbal_hook) && (
+                            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                              <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">🗣️ VERBAL HOOK (What you SAY)</p>
+                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                "{item.verbal_hook || item.concept?.verbal_hook}"
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Written Hook */}
+                          {(item.written_hook || item.concept?.written_hook) && (
+                            <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
+                              <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">✍️ WRITTEN HOOK (Text on screen)</p>
+                              <p className="text-sm font-medium text-purple-900 dark:text-purple-100">
+                                "{item.written_hook || item.concept?.written_hook}"
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Visual Hook */}
+                          {(item.visual_hook || item.concept?.visual_hook) && (
+                            <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                              <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">👁️ VISUAL HOOK (What viewers SEE)</p>
+                              <p className="text-sm text-green-900 dark:text-green-100">
+                                {item.visual_hook || item.concept?.visual_hook}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       {/* Caption Reminder */}
                       {(item.caption_reminder || item.concept?.caption_reminder) && (
                         <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
@@ -380,7 +419,21 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                           <p className="text-sm font-medium text-muted-foreground mb-2">📝 Text Overlays / Titles</p>
                           <div className="space-y-2">
                             {(item.text_overlays || item.concept?.text_overlays || []).map((overlay: any, i: number) => (
-                              <div key={i} className="p-3 bg-muted/50 rounded-md border-l-2 border-primary/50">
+                              <div key={i} className={cn(
+                                "p-3 bg-muted/50 rounded-md border-l-2",
+                                overlay.type === "hook" && "border-blue-500",
+                                overlay.type === "transition" && "border-purple-500",
+                                overlay.type === "insight" && "border-green-500",
+                                overlay.type === "cta" && "border-orange-500",
+                                !overlay.type && "border-primary/50"
+                              )}>
+                                <div className="flex items-center gap-2 mb-1">
+                                  {overlay.type && (
+                                    <Badge variant="outline" className="text-[10px] uppercase">
+                                      {overlay.type}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <p className="text-sm font-medium">"{overlay.text || overlay}"</p>
                                 {overlay.timing && (
                                   <p className="text-xs text-muted-foreground mt-1">⏱️ {overlay.timing}</p>

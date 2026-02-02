@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 export interface TextOverlay {
   text: string;
   timing: string;
+  type?: "hook" | "transition" | "insight" | "cta";
 }
 
 export interface CreativeCellData {
@@ -20,7 +21,10 @@ export interface CreativeCellData {
   psychology_trigger?: string;
   pain_point_addressed?: string;
   why_this_works?: string;
-  // Talking head specific fields
+  // Talking head specific fields - multi-hook system
+  verbal_hook?: string;
+  written_hook?: string;
+  visual_hook?: string;
   script_lines?: string[];
   text_overlays?: TextOverlay[];
   caption_reminder?: boolean;

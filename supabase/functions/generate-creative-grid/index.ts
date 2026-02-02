@@ -138,15 +138,40 @@ COLUMNS (Format Diversity):
 - Column 3: "graphic" - Static image or graphic (bold, unexpected, thumb-stopping)
 
 === TALKING HEAD FORMAT - SPECIAL REQUIREMENTS ===
-For ALL talking_head format cells, you MUST include these ADDITIONAL fields:
-1. **script_lines**: An array of 4-8 short lines (each line is what the person says, one natural sentence/phrase at a time). Keep each line short enough to say in 3-5 seconds.
-2. **text_overlays**: An array of 2-4 text overlay suggestions that should appear on screen during the video. Include timing hints (e.g., "Show at hook", "Display during problem section").
-3. **caption_reminder**: Always set to true. The user will see a reminder that 85% of users watch without sound, so captions are essential.
+For ALL talking_head format cells, create a MULTI-HOOK SCRIPT with these REQUIRED fields:
+
+1. **verbal_hook**: The opening spoken line that stops the scroll (what they SAY first - pattern interrupt, controversial take, or vulnerable confession)
+2. **written_hook**: The text overlay that appears on screen at the start (complements but differs from verbal - creates curiosity gap)
+3. **visual_hook**: What the viewer SEES in the first 1-3 seconds (setting, expression, action, prop, or unexpected visual)
+4. **script_lines**: Array of 4-8 short spoken lines (3-5 seconds each). Structure: Hook → Problem → Agitation → Solution tease → CTA
+5. **text_overlays**: Array of 3-5 text overlays with timing. Each should ADD context, not just repeat what's spoken.
+6. **caption_reminder**: Always true (85% watch without sound)
+
+=== HOOK TYPES THAT WORK ===
+VERBAL HOOKS (what they say):
+- Confession: "I lost $12,000 on my first launch..."
+- Controversial: "Funnels are dead. Here's what's replacing them."
+- Pattern interrupt: "Don't hire a VA. Seriously."
+- Specific number: "I made 47 cold calls. 3 answered. 1 changed everything."
+
+WRITTEN HOOKS (text on screen):
+- Curiosity gap: "What I wish I knew before..." 
+- Bold claim: "This simple shift = 3x conversions"
+- Social proof: "How I went from $0 → $50k/mo"
+- Direct challenge: "Still doing THIS in 2024?"
+
+VISUAL HOOKS (what they see):
+- Vulnerable moment (messy desk, tired face, real emotion)
+- Unexpected setting (car, closet, walking)
+- Prop or visual metaphor (burning paper, empty wallet)
+- B-roll cut to result/proof
 
 Example talking_head output:
 {
   "format": "talking_head",
-  "hook": "I used to rehearse my pitch 47 times... then bomb anyway.",
+  "verbal_hook": "I used to rehearse my pitch 47 times... then bomb anyway.",
+  "written_hook": "47 rehearsals. Still bombed. 🤦",
+  "visual_hook": "Film in dimly lit office at night, looking exhausted, rubbing eyes before speaking",
   "script_lines": [
     "I used to rehearse my pitch 47 times before every webinar.",
     "And I'd still bomb. Every. Single. Time.",
@@ -156,9 +181,10 @@ Example talking_head output:
     "Here's what I did differently..."
   ],
   "text_overlays": [
-    { "text": "47 rehearsals. Still bombed.", "timing": "Show at hook (0-3s)" },
-    { "text": "The real problem?", "timing": "Show during problem reveal (8-12s)" },
-    { "text": "Here's what I changed 👇", "timing": "Show before CTA (18-22s)" }
+    { "text": "47 rehearsals. Still bombed. 🤦", "timing": "Show at hook (0-3s)", "type": "hook" },
+    { "text": "The REAL problem?", "timing": "Show during problem reveal (8-12s)", "type": "transition" },
+    { "text": "It wasn't the script.", "timing": "Show during realization (12-15s)", "type": "insight" },
+    { "text": "Here's what I changed 👇", "timing": "Show before CTA (18-22s)", "type": "cta" }
   ],
   "caption_reminder": true,
   "guidance": "Film selfie-style on phone. Natural lighting. Look slightly tired at start, then energized as you reveal the solution."
@@ -198,8 +224,11 @@ Each cell MUST include:
 - why_this_works: One sentence explaining the psychology (for the user's education)
 
 ADDITIONAL FIELDS FOR talking_head FORMAT ONLY:
+- verbal_hook: The opening spoken line (pattern interrupt, confession, or controversial take)
+- written_hook: The text overlay that appears first (creates curiosity gap, differs from verbal)
+- visual_hook: What viewers SEE in first 1-3 seconds (setting, expression, prop, action)
 - script_lines: Array of 4-8 short script lines (one sentence/phrase each, 3-5 seconds to speak)
-- text_overlays: Array of objects with "text" and "timing" properties for on-screen text
+- text_overlays: Array of objects with "text", "timing", and "type" (hook/transition/insight/cta) properties
 - caption_reminder: boolean (always true for talking_head)
 
 Return a JSON object with a "grid" array containing all cells.`;
@@ -318,6 +347,9 @@ Remember:
         
         // Ensure talking_head specific fields have defaults
         if (cell.format === "talking_head") {
+          cell.verbal_hook = cell.verbal_hook || cell.hook || "";
+          cell.written_hook = cell.written_hook || "";
+          cell.visual_hook = cell.visual_hook || "";
           cell.script_lines = cell.script_lines || [];
           cell.text_overlays = cell.text_overlays || [];
           cell.caption_reminder = true; // Always true for talking head

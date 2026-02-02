@@ -15,6 +15,7 @@ import { LumiThinking } from "@/components/LumiThinking";
 export interface TextOverlay {
   text: string;
   timing: string;
+  type?: "hook" | "transition" | "insight" | "cta";
 }
 
 export interface ProductionItem {
@@ -25,7 +26,10 @@ export interface ProductionItem {
   angleName: string;
   completed: boolean;
   assetNote?: string;
-  // Talking head specific fields
+  // Talking head multi-hook system
+  verbal_hook?: string;
+  written_hook?: string;
+  visual_hook?: string;
   script_lines?: string[];
   text_overlays?: TextOverlay[];
   caption_reminder?: boolean;
