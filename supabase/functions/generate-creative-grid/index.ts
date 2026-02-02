@@ -363,16 +363,81 @@ Remember:
       throw new Error("AI response was empty");
     }
 
-    // Robust JSON extraction
-    const extractJson = (text: string) => {
-      const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-      const raw = (codeBlock?.[1] ?? text).trim();
-      const first = raw.indexOf("{");
-      const last = raw.lastIndexOf("}");
-      return JSON.parse(first !== -1 && last !== -1 ? raw.slice(first, last + 1) : raw);
+    // Robust JSON extraction with error recovery
+    const extractJson = (text: string): unknown => {
+      // Step 1: Remove markdown code blocks
+      let cleaned = text
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
+
+      // Step 2: Find JSON boundaries
+      const jsonStart = cleaned.indexOf("{");
+      const jsonEnd = cleaned.lastIndexOf("}");
+
+      if (jsonStart === -1 || jsonEnd === -1) {
+        throw new Error("No JSON object found in response");
+      }
+
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+
+      // Step 3: Attempt parse with error handling
+      try {
+        return JSON.parse(cleaned);
+      } catch (e) {
+        console.log("Initial JSON parse failed, attempting repair...");
+        
+        // Step 4: Try to fix common issues
+        cleaned = cleaned
+          .replace(/,\s*}/g, "}") // Remove trailing commas before }
+          .replace(/,\s*]/g, "]") // Remove trailing commas before ]
+          .replace(/[\x00-\x1F\x7F]/g, " ") // Remove control characters
+          .replace(/\n\s*\n/g, "\n") // Remove double newlines
+          .replace(/"\s*\n\s*"/g, '", "') // Fix broken string arrays
+          .replace(/:\s*,/g, ': "",') // Fix empty values before comma
+          .replace(/:\s*}/g, ': ""}'); // Fix empty values before }
+
+        try {
+          return JSON.parse(cleaned);
+        } catch (e2) {
+          console.log("Second parse attempt failed, trying brace balancing...");
+          
+          // Step 5: Balance unbalanced braces/brackets
+          let braces = 0, brackets = 0;
+          for (const char of cleaned) {
+            if (char === '{') braces++;
+            if (char === '}') braces--;
+            if (char === '[') brackets++;
+            if (char === ']') brackets--;
+          }
+          
+          // Add missing closing brackets/braces
+          while (brackets > 0) { cleaned += ']'; brackets--; }
+          while (braces > 0) { cleaned += '}'; braces--; }
+          
+          try {
+            return JSON.parse(cleaned);
+          } catch (e3) {
+            // Step 6: Check for truncation indicators
+            if (cleaned.includes('...') || cleaned.includes('[truncated]') || cleaned.length > 25000) {
+              console.error("Response appears to be truncated. Length:", cleaned.length);
+              throw new Error("AI response was truncated. The creative grid is too large - try generating for fewer angles.");
+            }
+            
+            // Log the problematic area for debugging
+            const errorMatch = (e3 as Error).message.match(/position (\d+)/);
+            if (errorMatch) {
+              const pos = parseInt(errorMatch[1]);
+              console.error("JSON error near:", cleaned.substring(Math.max(0, pos - 100), pos + 100));
+            }
+            
+            throw new Error(`Failed to parse AI response: ${(e3 as Error).message}`);
+          }
+        }
+      }
     };
 
-    const parsed = extractJson(rawContent);
+    const parsed = extractJson(rawContent) as { grid?: unknown[] };
 
     // Post-process to ensure angleId matches actual angle IDs
     const angleIdMap = new Map<string, string>();
