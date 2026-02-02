@@ -30,6 +30,9 @@ export interface ProductionItem {
   verbal_hook?: string;
   written_hook?: string;
   visual_hook?: string;
+  visual_hook_options?: string[];
+  hook_technique?: "mid_sentence" | "confession" | "controversial" | "specific_number" | "pattern_interrupt";
+  delivery_style?: string;
   script_lines?: string[];
   text_overlays?: TextOverlay[];
   caption_reminder?: boolean;
