@@ -312,6 +312,47 @@ export default function AdminBugReports() {
     );
   };
 
+  // Helper to detect if a report has credits or refunds applied
+  const getCompensationBadges = (resolutionNotes: string | null) => {
+    if (!resolutionNotes) return null;
+    
+    const badges: React.ReactNode[] = [];
+    
+    // Check for credit applied
+    const creditMatch = resolutionNotes.match(/(\d+)\s*month\(s\)\s*credit\s*applied\s*\(\$([0-9.]+)\)/i);
+    if (creditMatch) {
+      badges.push(
+        <Badge key="credit" variant="outline" className="gap-1 bg-green-50 text-green-700 border-green-200">
+          <Gift className="h-3 w-3" />
+          ${creditMatch[2]} credit
+        </Badge>
+      );
+    }
+    
+    // Check for refund issued
+    const refundMatch = resolutionNotes.match(/Refund\s*issued:\s*\$([0-9.]+)/i);
+    if (refundMatch) {
+      badges.push(
+        <Badge key="refund" variant="outline" className="gap-1 bg-amber-50 text-amber-700 border-amber-200">
+          <DollarSign className="h-3 w-3" />
+          ${refundMatch[1]} refund
+        </Badge>
+      );
+    }
+    
+    // Check for subscription cancellation
+    if (resolutionNotes.toLowerCase().includes('subscription set to cancel')) {
+      badges.push(
+        <Badge key="cancelled" variant="outline" className="gap-1 bg-red-50 text-red-700 border-red-200">
+          <XCircle className="h-3 w-3" />
+          Cancelled
+        </Badge>
+      );
+    }
+    
+    return badges.length > 0 ? badges : null;
+  };
+
   const openDetail = (report: BugReport) => {
     setSelectedReport(report);
     setResolutionNotes(report.resolution_notes || "");
@@ -401,9 +442,10 @@ export default function AdminBugReports() {
                   <CardContent className="p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                           {getStatusBadge(report.status)}
                           {getPriorityBadge(report.priority)}
+                          {getCompensationBadges(report.resolution_notes)}
                           <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(report.created_at), { addSuffix: true })}
                           </span>
