@@ -321,21 +321,28 @@ Deno.serve(async (req) => {
           throw new Error('No active subscription found');
         }
 
-        // Extend the trial/billing by adding a trial period
         const subscription = subscriptions.data[0];
-        const currentEnd = subscription.current_period_end;
-        const newTrialEnd = currentEnd + (months * 30 * 24 * 60 * 60); // Add months in seconds
+        
+        // Get the subscription's monthly price to calculate credit amount
+        const priceId = subscription.items.data[0]?.price?.id;
+        if (!priceId) {
+          throw new Error('Unable to determine subscription price');
+        }
+        
+        const price = await stripe.prices.retrieve(priceId);
+        const monthlyAmount = price.unit_amount || 0; // Amount in cents
+        const creditAmount = monthlyAmount * months;
 
-        await stripe.subscriptions.update(subscription.id, {
-          trial_end: newTrialEnd,
-          proration_behavior: 'none',
+        // Apply credit to customer balance (negative = credit)
+        await stripe.customers.update(customerId, {
+          balance: (customers.data[0].balance || 0) - creditAmount,
         });
 
         // Update bug report
         await supabaseAdmin
           .from('bug_reports')
           .update({
-            resolution_notes: `${resolutionNotes || ''}\n\n${months} month(s) credit applied`,
+            resolution_notes: `${resolutionNotes || ''}\n\n${months} month(s) credit applied ($${(creditAmount / 100).toFixed(2)})`,
             updated_at: new Date().toISOString(),
           })
           .eq('id', reportId);
@@ -343,8 +350,8 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            message: `${months} month(s) credit applied`,
-            newBillingDate: new Date(newTrialEnd * 1000).toISOString()
+            message: `${months} month(s) credit applied ($${(creditAmount / 100).toFixed(2)})`,
+            creditAmount: creditAmount / 100
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
