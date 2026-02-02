@@ -325,7 +325,10 @@ export default function CreativeStudio() {
       guidance: cell.guidance, 
       angleName: angle?.name || "", 
       completed: false,
-      // Talking head specific fields
+      // Talking head multi-hook system
+      verbal_hook: cell.verbal_hook,
+      written_hook: cell.written_hook,
+      visual_hook: cell.visual_hook,
       script_lines: cell.script_lines,
       text_overlays: cell.text_overlays,
       caption_reminder: cell.caption_reminder,

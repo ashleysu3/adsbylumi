@@ -66,6 +66,8 @@ serve(async (req) => {
       graphic: "Static Graphic / Image (bold, unexpected, thumb-stopping)"
     };
 
+    const isTalkingHead = cell.format === "talking_head";
+    
     const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts.
 
 KNOWLEDGE BASE:
@@ -102,6 +104,22 @@ Guidance: "Show testimonials and results."
 Hook: "My 3rd discovery call this week. Same objection. 'I need to think about it.' Again."
 Guidance: "POV shot of you hanging up phone, slump in chair. B-roll of empty calendar. Text overlay: 'Sound familiar?' at 2 seconds."
 
+${isTalkingHead ? `
+=== TALKING HEAD MULTI-HOOK REQUIREMENTS ===
+For talking head format, you MUST create THREE DISTINCT HOOKS that work together:
+
+1. **verbal_hook**: What they SAY first (pattern interrupt, confession, controversial take)
+   Examples: "I lost $12,000 on my first launch...", "Funnels are dead.", "Don't hire a VA. Seriously."
+
+2. **written_hook**: Text overlay on screen (creates curiosity gap, DIFFERENT from verbal)
+   Examples: "What I wish I knew before...", "This simple shift = 3x conversions", "Still doing THIS in 2024?"
+
+3. **visual_hook**: What viewers SEE in first 1-3 seconds
+   Examples: "Sitting in car, looking defeated", "Messy desk with empty coffee cups", "Walking through empty office at night"
+
+These three hooks must COMPLEMENT each other and align with the ANGLE's core message.
+` : ''}
+
 === PSYCHOLOGY TO USE ===
 ${painPoints.length > 0 ? `Pain Points: ${painPoints.slice(0, 3).map((p: string) => `"${p}"`).join(', ')}` : ''}
 ${desires.length > 0 ? `Desires: ${desires.slice(0, 3).map((d: string) => `"${d}"`).join(', ')}` : ''}
@@ -114,7 +132,16 @@ Output ONLY valid JSON with this exact structure:
   "guidance": "Detailed production guidance with camera angles, timing, overlays",
   "psychology_trigger": "The psychological lever being pulled",
   "pain_point_addressed": "Which specific pain point this targets",
-  "why_this_works": "One sentence explanation for user education"
+  "why_this_works": "One sentence explanation for user education"${isTalkingHead ? `,
+  "verbal_hook": "Opening spoken line - pattern interrupt or confession",
+  "written_hook": "Text overlay that creates curiosity gap",
+  "visual_hook": "What viewers see in first 1-3 seconds",
+  "script_lines": ["Line 1", "Line 2", "Line 3", "Line 4", "Line 5"],
+  "text_overlays": [
+    { "text": "Hook text", "timing": "0-3s", "type": "hook" },
+    { "text": "Transition text", "timing": "8-12s", "type": "transition" },
+    { "text": "CTA text", "timing": "18-22s", "type": "cta" }
+  ]` : ''}
 }`;
 
     const userPrompt = `Generate a FRESH, COMPLETELY DIFFERENT creative idea for this slot:
@@ -203,6 +230,15 @@ REQUIREMENTS:
       psychology_trigger: parsed.psychology_trigger || "curiosity",
       pain_point_addressed: parsed.pain_point_addressed || "general",
       why_this_works: parsed.why_this_works || "",
+      // Talking head specific fields
+      ...(isTalkingHead && {
+        verbal_hook: parsed.verbal_hook || parsed.hook || "",
+        written_hook: parsed.written_hook || "",
+        visual_hook: parsed.visual_hook || "",
+        script_lines: parsed.script_lines || [],
+        text_overlays: parsed.text_overlays || [],
+        caption_reminder: true,
+      }),
     };
 
     console.log("Successfully regenerated cell:", regeneratedCell.id);
