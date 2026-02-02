@@ -318,7 +318,21 @@ export default function CreativeStudio() {
 
   const addToChecklist = (cell: CreativeCellData) => {
     const angle = availableAngles.find(a => a.id === cell.angleId);
-    const newItem: ProductionItem = { id: `prod_${Date.now()}`, format: cell.format, hook: cell.hook, guidance: cell.guidance, angleName: angle?.name || "", completed: false };
+    const newItem: ProductionItem = { 
+      id: `prod_${Date.now()}`, 
+      format: cell.format, 
+      hook: cell.hook, 
+      guidance: cell.guidance, 
+      angleName: angle?.name || "", 
+      completed: false,
+      // Talking head specific fields
+      script_lines: cell.script_lines,
+      text_overlays: cell.text_overlays,
+      caption_reminder: cell.caption_reminder,
+      // Psychology fields
+      psychology_trigger: cell.psychology_trigger,
+      why_this_works: cell.why_this_works,
+    };
     const updated = [...productionItems, newItem];
     setProductionItems(updated);
     saveProductionItems(updated);
