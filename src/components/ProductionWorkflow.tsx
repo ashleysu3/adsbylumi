@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { RecordingGuide } from "./RecordingGuide";
 import { DesignGuide } from "./DesignGuide";
 import { DragDropUploader } from "./DragDropUploader";
-import { CheckCircle2, ArrowRight, Sparkle } from "lucide-react";
+import { CheckCircle2, ArrowRight, Sparkle, Copy, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -24,6 +24,15 @@ interface ProductionWorkflowProps {
 type Step = "review" | "create" | "upload" | "done";
 
 const steps: Step[] = ["review", "create", "upload", "done"];
+
+// Hook technique labels for user-friendly display
+const hookTechniqueLabels: Record<string, string> = {
+  mid_sentence: "Mid-Sentence Start",
+  confession: "Confession Hook",
+  controversial: "Controversial Take",
+  specific_number: "Specific Number",
+  pattern_interrupt: "Pattern Interrupt",
+};
 
 // Helper to determine the correct step based on item status
 function getStepForStatus(status: string): Step {
@@ -345,73 +354,123 @@ export function ProductionWorkflow({ item, workspace, open, onClose, onUpdate }:
                     </div>
                   )}
 
-                  {/* Talking Head Format */}
-                  {item.format === "talking_head" && (
-                    <>
-                      {/* Multi-Hook System - NEW */}
-                      {(item.verbal_hook || item.written_hook || item.visual_hook || 
-                        item.concept?.verbal_hook || item.concept?.written_hook || item.concept?.visual_hook) && (
-                        <div className="space-y-3">
-                          <p className="text-sm font-semibold text-foreground">🎯 Three-Hook System</p>
-                          
-                          {/* Verbal Hook */}
-                          {(item.verbal_hook || item.concept?.verbal_hook) && (
-                            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-                              <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">🗣️ VERBAL HOOK (What you SAY)</p>
-                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                                "{item.verbal_hook || item.concept?.verbal_hook}"
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* Written Hook */}
-                          {(item.written_hook || item.concept?.written_hook) && (
-                            <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
-                              <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">✍️ WRITTEN HOOK (Text on screen)</p>
-                              <p className="text-sm font-medium text-purple-900 dark:text-purple-100">
-                                "{item.written_hook || item.concept?.written_hook}"
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* Visual Hook */}
-                          {(item.visual_hook || item.concept?.visual_hook) && (
-                            <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
-                              <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">👁️ VISUAL HOOK (What viewers SEE)</p>
-                              <p className="text-sm text-green-900 dark:text-green-100">
-                                {item.visual_hook || item.concept?.visual_hook}
-                              </p>
-                            </div>
-                          )}
-                        </div>
+              {/* Talking Head Format */}
+              {item.format === "talking_head" && (
+                <>
+                  {/* Hook Technique Badge & Delivery Style */}
+                  {(item.hook_technique || item.concept?.hook_technique || item.delivery_style || item.concept?.delivery_style) && (
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      {(item.hook_technique || item.concept?.hook_technique) && (
+                        <Badge variant="outline" className="gap-1 bg-primary/5 border-primary/20">
+                          <Lightbulb className="h-3 w-3" />
+                          {hookTechniqueLabels[item.hook_technique || item.concept?.hook_technique] || "Pattern Interrupt"}
+                        </Badge>
                       )}
+                      {(item.delivery_style || item.concept?.delivery_style) && (
+                        <span className="text-xs text-muted-foreground italic">
+                          💡 {item.delivery_style || item.concept?.delivery_style}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
-                      {/* Caption Reminder */}
-                      {(item.caption_reminder || item.concept?.caption_reminder) && (
-                        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200 flex items-center gap-2">
-                            <span className="text-base">🔇</span>
-                            85% of users watch without sound — captions are essential!
+                  {/* Multi-Hook System - NEW */}
+                  {(item.verbal_hook || item.written_hook || item.visual_hook || 
+                    item.concept?.verbal_hook || item.concept?.written_hook || item.concept?.visual_hook) && (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">🎯 Three-Hook System</p>
+                      
+                      {/* Verbal Hook */}
+                      {(item.verbal_hook || item.concept?.verbal_hook) && (
+                        <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">🗣️ VERBAL HOOK (What you SAY)</p>
+                          <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                            "{item.verbal_hook || item.concept?.verbal_hook}"
                           </p>
                         </div>
                       )}
                       
-                      {/* Line-by-Line Script */}
-                      {(item.script_lines?.length > 0 || item.concept?.script_lines?.length > 0) && (
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground mb-2">📜 Line-by-Line Script</p>
-                          <div className="space-y-2 bg-muted/50 rounded-lg p-3">
-                            {(item.script_lines || item.concept?.script_lines || []).map((line: string, i: number) => (
-                              <div key={i} className="flex gap-2 items-start">
-                                <span className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded shrink-0">
-                                  {i + 1}
-                                </span>
-                                <p className="text-sm">{line}</p>
-                              </div>
-                            ))}
-                          </div>
+                      {/* Written Hook */}
+                      {(item.written_hook || item.concept?.written_hook) && (
+                        <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg">
+                          <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">✍️ WRITTEN HOOK (Text on screen)</p>
+                          <p className="text-sm font-medium text-purple-900 dark:text-purple-100">
+                            "{item.written_hook || item.concept?.written_hook}"
+                          </p>
                         </div>
                       )}
+                      
+                      {/* Visual Hook */}
+                      {(item.visual_hook || item.concept?.visual_hook) && (
+                        <div className="p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                          <p className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">👁️ VISUAL HOOK (What viewers SEE)</p>
+                          <p className="text-sm text-green-900 dark:text-green-100">
+                            {item.visual_hook || item.concept?.visual_hook}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Visual Hook Options - Pick Your Setting */}
+                  {(item.visual_hook_options?.length > 0 || item.concept?.visual_hook_options?.length > 0) && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">🎬 Choose Your Setting (Pick one that works for you)</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(item.visual_hook_options || item.concept?.visual_hook_options || []).map((option: string, i: number) => (
+                          <Badge 
+                            key={i} 
+                            variant="outline" 
+                            className="py-1.5 px-3 text-xs cursor-pointer hover:bg-primary/10 hover:border-primary/40 transition-colors"
+                          >
+                            {option}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Caption Reminder */}
+                  {(item.caption_reminder || item.concept?.caption_reminder) && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                        <span className="text-base">🔇</span>
+                        85% of users watch without sound — captions are essential!
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Line-by-Line Script with Copy Button */}
+                  {(item.script_lines?.length > 0 || item.concept?.script_lines?.length > 0) && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium text-muted-foreground">📜 Your Script (Read these lines to camera)</p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => {
+                            const lines = item.script_lines || item.concept?.script_lines || [];
+                            navigator.clipboard.writeText(lines.join('\n\n'));
+                            toast.success("Script copied to clipboard!");
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                          Copy Script
+                        </Button>
+                      </div>
+                      <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                        {(item.script_lines || item.concept?.script_lines || []).map((line: string, i: number) => (
+                          <div key={i} className="flex gap-2 items-start">
+                            <span className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded shrink-0">
+                              {i + 1}
+                            </span>
+                            <p className="text-sm">{line}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                       {/* Text Overlays */}
                       {(item.text_overlays?.length > 0 || item.concept?.text_overlays?.length > 0) && (

@@ -105,17 +105,44 @@ Hook: "My 3rd discovery call this week. Same objection. 'I need to think about i
 Guidance: "POV shot of you hanging up phone, slump in chair. B-roll of empty calendar. Text overlay: 'Sound familiar?' at 2 seconds."
 
 ${isTalkingHead ? `
-=== TALKING HEAD MULTI-HOOK REQUIREMENTS ===
-For talking head format, you MUST create THREE DISTINCT HOOKS that work together:
+=== TALKING HEAD - DESIGNED FOR NON-ACTORS ===
+Your users are coaches, course creators, and service providers - NOT actors or professional content creators.
+They want to record a simple video on their phone and get back to work.
 
+SCRIPT PHILOSOPHY:
+- Write like they're texting a friend, not performing on stage
+- Each line = one breath, one thought (easy to read on teleprompter)
+- Include natural speech patterns ("Look...", "Here's the thing...", "So...", "Honestly?")
+- Suggest delivery cues sparingly: "(pause)" or "(lean in)" only when essential
+
+LOW-PRODUCTION VISUAL HOOK OPTIONS (always provide 2-3 alternatives):
+Based on the user's niche, suggest EVERYDAY activities they might actually do:
+- Coaches/consultants: "at your desk", "walking to car", "morning coffee"
+- Health/fitness: "post-workout", "in kitchen", "getting ready"
+- Creatives: "at workspace", "with your tools", "mid-project"
+- Service providers: "between client calls", "checking emails", "end of day"
+- General: "sitting in parked car", "petting your dog", "walking down stairs", "making coffee"
+
+MID-SENTENCE START TECHNIQUE (extremely effective - creates instant curiosity):
+Examples:
+- "—anyway, that's when I knew I had to change something."
+- "—and she looked at me like I was crazy, but..."
+- "—so I tried it, and honestly? I didn't expect this."
+
+HOOK TECHNIQUE TYPES (label each with one):
+- "mid_sentence" - Starting mid-thought
+- "confession" - Vulnerable admission
+- "controversial" - Bold/contrarian take
+- "specific_number" - Using exact numbers for credibility
+- "pattern_interrupt" - Unexpected statement
+
+For talking head format, you MUST create:
 1. **verbal_hook**: What they SAY first (pattern interrupt, confession, controversial take)
-   Examples: "I lost $12,000 on my first launch...", "Funnels are dead.", "Don't hire a VA. Seriously."
-
 2. **written_hook**: Text overlay on screen (creates curiosity gap, DIFFERENT from verbal)
-   Examples: "What I wish I knew before...", "This simple shift = 3x conversions", "Still doing THIS in 2024?"
-
-3. **visual_hook**: What viewers SEE in first 1-3 seconds
-   Examples: "Sitting in car, looking defeated", "Messy desk with empty coffee cups", "Walking through empty office at night"
+3. **visual_hook**: What viewers SEE in first 1-3 seconds - MUST be simple/everyday
+4. **visual_hook_options**: Array of 2-3 ALTERNATIVE simple visual hook ideas
+5. **hook_technique**: One of the technique types above
+6. **delivery_style**: Brief note on how to deliver (emphasize authenticity, not acting)
 
 These three hooks must COMPLEMENT each other and align with the ANGLE's core message.
 ` : ''}
@@ -135,7 +162,10 @@ Output ONLY valid JSON with this exact structure:
   "why_this_works": "One sentence explanation for user education"${isTalkingHead ? `,
   "verbal_hook": "Opening spoken line - pattern interrupt or confession",
   "written_hook": "Text overlay that creates curiosity gap",
-  "visual_hook": "What viewers see in first 1-3 seconds",
+  "visual_hook": "What viewers see in first 1-3 seconds - SIMPLE and EVERYDAY",
+  "visual_hook_options": ["Option 1 - simple everyday setting", "Option 2 - alternative easy setup", "Option 3 - another simple option"],
+  "hook_technique": "mid_sentence | confession | controversial | specific_number | pattern_interrupt",
+  "delivery_style": "Brief note on authentic delivery - no acting required",
   "script_lines": ["Line 1", "Line 2", "Line 3", "Line 4", "Line 5"],
   "text_overlays": [
     { "text": "Hook text", "timing": "0-3s", "type": "hook" },
@@ -235,6 +265,9 @@ REQUIREMENTS:
         verbal_hook: parsed.verbal_hook || parsed.hook || "",
         written_hook: parsed.written_hook || "",
         visual_hook: parsed.visual_hook || "",
+        visual_hook_options: parsed.visual_hook_options || [],
+        hook_technique: parsed.hook_technique || "pattern_interrupt",
+        delivery_style: parsed.delivery_style || "Conversational and authentic - no acting required.",
         script_lines: parsed.script_lines || [],
         text_overlays: parsed.text_overlays || [],
         caption_reminder: true,

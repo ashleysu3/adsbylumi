@@ -137,15 +137,52 @@ COLUMNS (Format Diversity):
 - Column 2: "broll" - B-roll footage or lofi video (cinematic micro-moments)
 - Column 3: "graphic" - Static image or graphic (bold, unexpected, thumb-stopping)
 
-=== TALKING HEAD FORMAT - SPECIAL REQUIREMENTS ===
-For ALL talking_head format cells, create a MULTI-HOOK SCRIPT with these REQUIRED fields:
+=== TALKING HEAD FORMAT - DESIGNED FOR NON-ACTORS ===
+Your users are coaches, course creators, and service providers - NOT actors or professional content creators.
+They want to record a simple video on their phone and get back to work. No elaborate productions.
 
-1. **verbal_hook**: The opening spoken line that stops the scroll (what they SAY first - pattern interrupt, controversial take, or vulnerable confession)
+SCRIPT PHILOSOPHY:
+- Write like they're texting a friend, not performing on stage
+- Each line = one breath, one thought (easy to read on teleprompter)
+- Include natural speech patterns ("Look...", "Here's the thing...", "So...", "Honestly?")
+- Suggest delivery cues sparingly: "(pause)" or "(lean in)" only when essential
+- Structure: Hook → "Here's the thing" transition → Problem → Pivot → Soft CTA
+
+LOW-PRODUCTION VISUAL HOOK OPTIONS (always provide 2-3 alternatives):
+Based on the user's niche, suggest EVERYDAY activities they might actually do:
+- Coaches/consultants: "at your desk", "walking to car", "morning coffee", "post-meeting in hallway"
+- Health/fitness: "post-workout", "in kitchen", "getting ready", "at the gym"
+- Creatives: "at workspace", "with your tools", "mid-project", "studio background"
+- Service providers: "between client calls", "checking emails", "end of day", "walking outside"
+- General (always appropriate): "sitting in parked car", "petting your dog", "walking down stairs", "making coffee"
+
+MID-SENTENCE START TECHNIQUE (use for at least 1 of 3 talking head cells per angle):
+This is extremely effective because it creates instant curiosity - viewers feel like they walked into a private conversation.
+Examples:
+- "—anyway, that's when I knew I had to change something."
+- "—and she looked at me like I was crazy, but..."
+- "—so I tried it, and honestly? I didn't expect this."
+- "—but here's what nobody tells you about that."
+- "—and that's exactly why I stopped doing it."
+
+HOOK TECHNIQUE TYPES (label each talking_head with one):
+- "mid_sentence" - Starting mid-thought (most powerful, feels like eavesdropping)
+- "confession" - Vulnerable admission ("I used to...", "I'll be honest...")
+- "controversial" - Bold/contrarian take ("Funnels are dead.", "Don't hire a VA.")
+- "specific_number" - Using exact numbers for credibility ("47 calls", "$12,000")
+- "pattern_interrupt" - Unexpected statement that stops the scroll
+
+For ALL talking_head format cells, include these REQUIRED fields:
+
+1. **verbal_hook**: The opening spoken line (pattern interrupt, controversial take, or vulnerable confession)
 2. **written_hook**: The text overlay that appears on screen at the start (complements but differs from verbal - creates curiosity gap)
-3. **visual_hook**: What the viewer SEES in the first 1-3 seconds (setting, expression, action, prop, or unexpected visual)
-4. **script_lines**: Array of 4-8 short spoken lines (3-5 seconds each). Structure: Hook → Problem → Agitation → Solution tease → CTA
-5. **text_overlays**: Array of 3-5 text overlays with timing. Each should ADD context, not just repeat what's spoken.
-6. **caption_reminder**: Always true (85% watch without sound)
+3. **visual_hook**: What the viewer SEES in the first 1-3 seconds (setting, expression, action, prop, or unexpected visual) - make it EVERYDAY and SIMPLE
+4. **visual_hook_options**: Array of 2-3 ALTERNATIVE simple visual hooks so user can pick what works for their space
+5. **hook_technique**: One of "mid_sentence", "confession", "controversial", "specific_number", "pattern_interrupt"
+6. **delivery_style**: Brief note on how to deliver ("conversational, like telling a friend" NOT "act excited")
+7. **script_lines**: Array of 4-8 short spoken lines (3-5 seconds each). Structure: Hook → Problem → Agitation → Solution tease → CTA
+8. **text_overlays**: Array of 3-5 text overlays with timing. Each should ADD context, not just repeat what's spoken.
+9. **caption_reminder**: Always true (85% watch without sound)
 
 === HOOK TYPES THAT WORK ===
 VERBAL HOOKS (what they say):
@@ -153,6 +190,7 @@ VERBAL HOOKS (what they say):
 - Controversial: "Funnels are dead. Here's what's replacing them."
 - Pattern interrupt: "Don't hire a VA. Seriously."
 - Specific number: "I made 47 cold calls. 3 answered. 1 changed everything."
+- Mid-sentence: "—anyway, that's when I realized..."
 
 WRITTEN HOOKS (text on screen):
 - Curiosity gap: "What I wish I knew before..." 
@@ -160,34 +198,41 @@ WRITTEN HOOKS (text on screen):
 - Social proof: "How I went from $0 → $50k/mo"
 - Direct challenge: "Still doing THIS in 2024?"
 
-VISUAL HOOKS (what they see):
-- Vulnerable moment (messy desk, tired face, real emotion)
-- Unexpected setting (car, closet, walking)
-- Prop or visual metaphor (burning paper, empty wallet)
-- B-roll cut to result/proof
+VISUAL HOOKS (what they see) - KEEP THESE SIMPLE:
+- Everyday moments: "sitting at desk with messy coffee cup", "in car after a meeting", "petting dog on couch"
+- Subtle emotion: "slightly tired face", "knowing smile", "contemplative look"
+- Low-effort actions: "walking while talking", "looking at phone then up", "closing laptop"
+- NO elaborate staging: Don't suggest burning paper, empty wallets, or anything that requires props they don't have
 
 Example talking_head output:
 {
   "format": "talking_head",
-  "verbal_hook": "I used to rehearse my pitch 47 times... then bomb anyway.",
-  "written_hook": "47 rehearsals. Still bombed. 🤦",
-  "visual_hook": "Film in dimly lit office at night, looking exhausted, rubbing eyes before speaking",
+  "hook": "—anyway, that's when I knew something had to change.",
+  "verbal_hook": "—anyway, that's when I knew something had to change.",
+  "written_hook": "The moment everything shifted",
+  "visual_hook": "Sitting in car after a meeting, slightly tired expression",
+  "visual_hook_options": [
+    "Sitting in parked car, slightly tired expression",
+    "Walking into your home office, coffee in hand",
+    "At desk with natural lighting, end of day vibe"
+  ],
+  "hook_technique": "mid_sentence",
+  "delivery_style": "Conversational, like debriefing with a friend after a long day. No acting required - just be real.",
   "script_lines": [
-    "I used to rehearse my pitch 47 times before every webinar.",
-    "And I'd still bomb. Every. Single. Time.",
-    "Then I realized... I wasn't nervous about the content.",
-    "I was nervous because I didn't believe my own offer.",
-    "The day I fixed that? Everything changed.",
-    "Here's what I did differently..."
+    "—anyway, that's when I knew something had to change.",
+    "I'd been doing the same thing for months...",
+    "Working harder, not smarter. Sound familiar?",
+    "(pause) Here's what I realized...",
+    "The problem wasn't my effort. It was my approach.",
+    "Once I switched to [method], everything clicked."
   ],
   "text_overlays": [
-    { "text": "47 rehearsals. Still bombed. 🤦", "timing": "Show at hook (0-3s)", "type": "hook" },
-    { "text": "The REAL problem?", "timing": "Show during problem reveal (8-12s)", "type": "transition" },
-    { "text": "It wasn't the script.", "timing": "Show during realization (12-15s)", "type": "insight" },
-    { "text": "Here's what I changed 👇", "timing": "Show before CTA (18-22s)", "type": "cta" }
+    { "text": "The moment everything shifted", "timing": "0-3s", "type": "hook" },
+    { "text": "Sound familiar? 👀", "timing": "6-9s", "type": "transition" },
+    { "text": "The ONE thing I changed →", "timing": "15-18s", "type": "cta" }
   ],
   "caption_reminder": true,
-  "guidance": "Film selfie-style on phone. Natural lighting. Look slightly tired at start, then energized as you reveal the solution."
+  "guidance": "Record in your car or at your desk. Natural lighting. You're just telling a friend about a realization you had. No performance needed."
 }
 
 === PSYCHOLOGY INTEGRATION REQUIREMENTS ===
@@ -226,7 +271,10 @@ Each cell MUST include:
 ADDITIONAL FIELDS FOR talking_head FORMAT ONLY:
 - verbal_hook: The opening spoken line (pattern interrupt, confession, or controversial take)
 - written_hook: The text overlay that appears first (creates curiosity gap, differs from verbal)
-- visual_hook: What viewers SEE in first 1-3 seconds (setting, expression, prop, action)
+- visual_hook: What viewers SEE in first 1-3 seconds - MUST be simple/everyday (no elaborate staging)
+- visual_hook_options: Array of 2-3 alternative simple visual hook ideas
+- hook_technique: One of "mid_sentence", "confession", "controversial", "specific_number", "pattern_interrupt"
+- delivery_style: Brief note on how to deliver (emphasize authenticity, not acting)
 - script_lines: Array of 4-8 short script lines (one sentence/phrase each, 3-5 seconds to speak)
 - text_overlays: Array of objects with "text", "timing", and "type" (hook/transition/insight/cta) properties
 - caption_reminder: boolean (always true for talking_head)
@@ -350,6 +398,9 @@ Remember:
           cell.verbal_hook = cell.verbal_hook || cell.hook || "";
           cell.written_hook = cell.written_hook || "";
           cell.visual_hook = cell.visual_hook || "";
+          cell.visual_hook_options = cell.visual_hook_options || [];
+          cell.hook_technique = cell.hook_technique || "pattern_interrupt";
+          cell.delivery_style = cell.delivery_style || "Conversational and authentic - no acting required.";
           cell.script_lines = cell.script_lines || [];
           cell.text_overlays = cell.text_overlays || [];
           cell.caption_reminder = true; // Always true for talking head
