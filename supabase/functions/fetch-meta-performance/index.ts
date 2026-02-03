@@ -16,6 +16,29 @@ Deno.serve(async (req) => {
       throw new Error('Workspace ID is required');
     }
 
+    // Validate date format to prevent URL injection
+    const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (dateRangeStart && !dateFormatRegex.test(dateRangeStart)) {
+      throw new Error('Invalid dateRangeStart format. Expected YYYY-MM-DD');
+    }
+    if (dateRangeEnd && !dateFormatRegex.test(dateRangeEnd)) {
+      throw new Error('Invalid dateRangeEnd format. Expected YYYY-MM-DD');
+    }
+    
+    // Additional validation: ensure dates are valid and in reasonable range
+    if (dateRangeStart) {
+      const startDate = new Date(dateRangeStart);
+      if (isNaN(startDate.getTime())) {
+        throw new Error('Invalid dateRangeStart value');
+      }
+    }
+    if (dateRangeEnd) {
+      const endDate = new Date(dateRangeEnd);
+      if (isNaN(endDate.getTime())) {
+        throw new Error('Invalid dateRangeEnd value');
+      }
+    }
+
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
