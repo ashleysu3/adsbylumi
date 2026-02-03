@@ -6,14 +6,33 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Video, Film, Image, ChevronDown, ChevronUp, 
-  Upload, Eye, CheckCircle2, AlertCircle, Trash2, Maximize2,
-  Library, Loader2, Info, Trophy
+  Upload, Eye, CheckCircle2, Trash2, Maximize2,
+  Library, Loader2, Info, Trophy, Mic, Type, Brain, Sparkles, Copy, Volume2
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ProductionItem } from "./ProductionChecklistPanel";
 
 const formatIcons = { talking_head: Video, broll: Film, graphic: Image };
 const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic" };
+
+// Hook technique labels and explanations
+const hookTechniqueLabels: Record<string, { label: string; color: string }> = {
+  mid_sentence: { label: "Mid-Sentence Start", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+  confession: { label: "Confession", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
+  controversial: { label: "Controversial", color: "bg-red-500/10 text-red-600 border-red-500/20" },
+  specific_number: { label: "Specific Number", color: "bg-green-500/10 text-green-600 border-green-500/20" },
+  pattern_interrupt: { label: "Pattern Interrupt", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+};
+
+const hookTechniqueExplanations: Record<string, string> = {
+  mid_sentence: "Starting mid-thought makes viewers feel like they walked into a private conversation. Instant curiosity.",
+  confession: "Vulnerability builds trust fast. Admitting a struggle or mistake creates an emotional connection.",
+  controversial: "Bold takes stop the scroll. Challenging common beliefs makes people want to hear your reasoning.",
+  specific_number: "Exact numbers signal credibility and experience. Generic claims get ignored; specifics get attention.",
+  pattern_interrupt: "The unexpected breaks mental autopilot. When something doesn't fit the pattern, we pay attention.",
+};
 
 interface CreativeChecklistCardProps {
   item: ProductionItem;
@@ -54,6 +73,18 @@ export function CreativeChecklistCard({
   
   const hasAsset = !!uploadedAsset;
   const isRanked = typeof rank === 'number';
+  const isTalkingHead = item.format === "talking_head";
+  const hasScriptDetails = isTalkingHead && (item.script_lines?.length || item.verbal_hook || item.written_hook || item.visual_hook);
+
+  const copyScriptToClipboard = () => {
+    if (!item.script_lines || item.script_lines.length === 0) {
+      toast.error("No script to copy");
+      return;
+    }
+    const scriptText = item.script_lines.join("\n");
+    navigator.clipboard.writeText(scriptText);
+    toast.success("Script copied to clipboard!");
+  };
   
   return (
     <TooltipProvider>
@@ -138,16 +169,187 @@ export function CreativeChecklistCard({
                 </div>
               </div>
               
-              {/* Format-specific instructions */}
+              {/* Talking Head - Full Hook Education */}
               {item.format === "talking_head" && (
-                <div>
-                  <h5 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Recording Tips</h5>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>Use good lighting (natural light or ring light)</li>
-                    <li>Eye level camera, look directly at lens</li>
-                    <li>Record in vertical (9:16) for Stories/Reels</li>
-                    <li>Speak naturally, as if to a friend</li>
-                  </ul>
+                <div className="space-y-4">
+                  {/* Three-Hook System Explainer */}
+                  <div className="p-3 rounded-lg bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-green-500/5 border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-semibold">The Three-Hook System</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Capture attention in the first 3 seconds with hooks that work together:
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <Mic className="h-3 w-3 text-blue-500" />
+                        <span className="font-medium">Verbal</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Type className="h-3 w-3 text-purple-500" />
+                        <span className="font-medium">Written</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Eye className="h-3 w-3 text-green-500" />
+                        <span className="font-medium">Visual</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hook Cards */}
+                  <div className="grid gap-3">
+                    {/* Verbal Hook */}
+                    {item.verbal_hook && (
+                      <div className="p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                        <div className="flex items-center gap-2 text-blue-600 mb-1">
+                          <Mic className="h-3.5 w-3.5" />
+                          <span className="text-xs font-semibold uppercase">Verbal Hook</span>
+                        </div>
+                        <p className="text-sm font-medium">"{item.verbal_hook}"</p>
+                      </div>
+                    )}
+
+                    {/* Written Hook */}
+                    {item.written_hook && (
+                      <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                        <div className="flex items-center gap-2 text-purple-600 mb-1">
+                          <Type className="h-3.5 w-3.5" />
+                          <span className="text-xs font-semibold uppercase">Written Hook (On Screen)</span>
+                        </div>
+                        <p className="text-sm font-medium">"{item.written_hook}"</p>
+                      </div>
+                    )}
+
+                    {/* Visual Hook */}
+                    {(item.visual_hook || item.visual_hook_options?.length) && (
+                      <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                        <div className="flex items-center gap-2 text-green-600 mb-1">
+                          <Eye className="h-3.5 w-3.5" />
+                          <span className="text-xs font-semibold uppercase">Visual Hook Options</span>
+                        </div>
+                        {item.visual_hook_options && item.visual_hook_options.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {item.visual_hook_options.map((option, idx) => (
+                              <Badge key={idx} variant="outline" className="bg-green-500/10 text-green-700 border-green-500/30">
+                                {option}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm">{item.visual_hook}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Why This Works - Psychology Card */}
+                  {(item.psychology_trigger || item.why_this_works || item.hook_technique) && (
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Brain className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-semibold">Why This Works</span>
+                      </div>
+                      {item.psychology_trigger && (
+                        <Badge variant="outline" className="mb-2 text-xs bg-primary/10 text-primary border-primary/30">
+                          {item.psychology_trigger}
+                        </Badge>
+                      )}
+                      {item.why_this_works && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {item.why_this_works}
+                        </p>
+                      )}
+                      {item.hook_technique && hookTechniqueExplanations[item.hook_technique] && !item.why_this_works && (
+                        <p className="text-sm text-muted-foreground">
+                          {hookTechniqueExplanations[item.hook_technique]}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Line-by-Line Script */}
+                  {item.script_lines && item.script_lines.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-semibold text-muted-foreground uppercase">📜 Your Script</h5>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1"
+                          onClick={copyScriptToClipboard}
+                        >
+                          <Copy className="h-3 w-3" />
+                          Copy Script
+                        </Button>
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                        {item.script_lines.map((line, idx) => (
+                          <div key={idx} className="flex gap-2 text-sm">
+                            <span className="text-muted-foreground w-5 shrink-0 text-right">{idx + 1}.</span>
+                            <span className={cn(
+                              line.includes("(pause)") || line.includes("(lean") ? "italic text-muted-foreground" : ""
+                            )}>{line}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Text Overlays */}
+                  {item.text_overlays && item.text_overlays.length > 0 && (
+                    <div className="space-y-2">
+                      <h5 className="text-xs font-semibold text-muted-foreground uppercase">📝 Text Overlays</h5>
+                      <div className="space-y-2">
+                        {item.text_overlays.map((overlay, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              "p-2 rounded border text-sm",
+                              overlay.type === "hook" && "bg-blue-500/5 border-blue-500/20",
+                              overlay.type === "transition" && "bg-amber-500/5 border-amber-500/20",
+                              overlay.type === "cta" && "bg-green-500/5 border-green-500/20",
+                              overlay.type === "insight" && "bg-purple-500/5 border-purple-500/20",
+                              !overlay.type && "bg-muted/50"
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                {overlay.type && (
+                                  <Badge variant="outline" className="text-[10px] uppercase">
+                                    {overlay.type}
+                                  </Badge>
+                                )}
+                                <span>"{overlay.text}"</span>
+                              </div>
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                ⏱️ {overlay.timing}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Delivery Style Tip */}
+                  {item.delivery_style && (
+                    <div className="p-3 bg-muted/30 rounded-lg">
+                      <p className="text-sm italic text-muted-foreground">
+                        💡 <span className="font-medium">Delivery:</span> {item.delivery_style}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Caption Reminder */}
+                  {item.caption_reminder !== false && (
+                    <Alert className="border-amber-500/30 bg-amber-500/5">
+                      <Volume2 className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-amber-700 text-sm">
+                        🔇 85% of viewers watch without sound — always add captions!
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
               )}
               
