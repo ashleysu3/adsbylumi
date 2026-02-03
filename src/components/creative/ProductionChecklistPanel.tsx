@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Video, Film, Image, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp, Copy, Mic, Type, Eye, Volume2 } from "lucide-react";
+import { Video, Film, Image, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp, Copy, Mic, Type, Eye, Volume2, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,15 @@ const hookTechniqueLabels: Record<string, { label: string; color: string }> = {
   controversial: { label: "Controversial", color: "bg-red-500/10 text-red-600 border-red-500/20" },
   specific_number: { label: "Specific Number", color: "bg-green-500/10 text-green-600 border-green-500/20" },
   pattern_interrupt: { label: "Pattern Interrupt", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+};
+
+// Hook technique explanations for education
+const hookTechniqueExplanations: Record<string, string> = {
+  mid_sentence: "Starting mid-thought makes viewers feel like they walked into a private conversation. Instant curiosity.",
+  confession: "Vulnerability builds trust fast. Admitting a struggle or mistake creates an emotional connection.",
+  controversial: "Bold takes stop the scroll. Challenging common beliefs makes people want to hear your reasoning.",
+  specific_number: "Exact numbers signal credibility and experience. Generic claims get ignored; specifics get attention.",
+  pattern_interrupt: "The unexpected breaks mental autopilot. When something doesn't fit the pattern, we pay attention.",
 };
 export interface TextOverlay {
   text: string;
@@ -426,7 +435,32 @@ export function ProductionChecklistPanel({
                             {/* Expanded Talking Head Details */}
                             {isTalkingHead && isExpanded && (
                               <div className="mt-4 pt-4 border-t border-border space-y-4">
-                                {/* Three-Hook System */}
+                                {/* Three-Hook System Explainer */}
+                                <div className="p-3 rounded-lg bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-green-500/5 border">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Sparkles className="h-4 w-4 text-primary" />
+                                    <span className="text-sm font-semibold">The Three-Hook System</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mb-3">
+                                    Capture attention in the first 3 seconds with hooks that work together:
+                                  </p>
+                                  <div className="grid grid-cols-3 gap-2 text-xs">
+                                    <div className="flex items-center gap-1.5">
+                                      <Mic className="h-3 w-3 text-blue-500" />
+                                      <span className="font-medium">Verbal</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <Type className="h-3 w-3 text-purple-500" />
+                                      <span className="font-medium">Written</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <Eye className="h-3 w-3 text-green-500" />
+                                      <span className="font-medium">Visual</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Hook Cards */}
                                 <div className="grid gap-3">
                                   {/* Verbal Hook */}
                                   {item.verbal_hook && (
@@ -471,6 +505,31 @@ export function ProductionChecklistPanel({
                                     </div>
                                   )}
                                 </div>
+
+                                {/* Why This Works - Psychology Card */}
+                                {(item.psychology_trigger || item.why_this_works || item.hook_technique) && (
+                                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Brain className="h-4 w-4 text-primary" />
+                                      <span className="text-sm font-semibold">Why This Works</span>
+                                    </div>
+                                    {item.psychology_trigger && (
+                                      <Badge variant="outline" className="mb-2 text-xs bg-primary/10 text-primary border-primary/30">
+                                        {item.psychology_trigger}
+                                      </Badge>
+                                    )}
+                                    {item.why_this_works && (
+                                      <p className="text-sm text-muted-foreground mb-2">
+                                        {item.why_this_works}
+                                      </p>
+                                    )}
+                                    {item.hook_technique && hookTechniqueExplanations[item.hook_technique] && !item.why_this_works && (
+                                      <p className="text-sm text-muted-foreground">
+                                        {hookTechniqueExplanations[item.hook_technique]}
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
 
                                 {/* Line-by-Line Script */}
                                 {item.script_lines && item.script_lines.length > 0 && (
