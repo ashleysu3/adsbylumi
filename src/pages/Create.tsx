@@ -123,7 +123,7 @@ export default function Create() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 3;
 
   // Data
   const [brand, setBrand] = useState<any>(null);
@@ -601,8 +601,6 @@ export default function Create() {
       case 1: return !!selectedOfferId;
       case 2: return !!selectedTemplateId;
       case 3: return !!selectedTemplateId;
-      case 4: return !!selectedAngle;
-      case 5: return selectedCreativeTemplates.length > 0;
       default: return false;
     }
   };
@@ -612,8 +610,6 @@ export default function Create() {
       case 1: return "Choose your offer";
       case 2: return "Recommended strategy";
       case 3: return "Campaign structure";
-      case 4: return "Your creative angle";
-      case 5: return "Pick a template";
       default: return "";
     }
   };
@@ -623,8 +619,6 @@ export default function Create() {
       case 1: return "What are we promoting?";
       case 2: return "Lumi's recommendation based on your offer";
       case 3: return "How we'll structure your campaign";
-      case 4: return "The psychology-driven hook for your ad";
-      case 5: return "Choose how you want to create your ad";
       default: return "";
     }
   };
@@ -707,23 +701,6 @@ export default function Create() {
                               <span className="text-muted-foreground">Strategy:</span>
                               <span className="font-medium truncate">
                                 {templates.find(t => t.id === savedProgress.selectedTemplateId)?.name || "Selected"}
-                              </span>
-                            </div>
-                          )}
-                          {savedProgress.selectedAngle && (
-                            <div className="flex items-center gap-1.5">
-                              <CheckCircle2 className="h-3 w-3 text-green-500" />
-                              <span className="text-muted-foreground">Angle:</span>
-                              <span className="font-medium truncate">
-                                {savedProgress.selectedAngle.name}
-                              </span>
-                            </div>
-                          )}
-                          {savedProgress.generatedAngles.length > 0 && !savedProgress.selectedAngle && (
-                            <div className="flex items-center gap-1.5">
-                              <Sparkles className="h-3 w-3 text-amber-500" />
-                              <span className="text-muted-foreground">
-                                {savedProgress.generatedAngles.length} angles generated
                               </span>
                             </div>
                           )}
