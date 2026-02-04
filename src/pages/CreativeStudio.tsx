@@ -26,6 +26,7 @@ import { ProductionManager } from "@/components/creative/ProductionManager";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
+import { useBrand } from "@/contexts/BrandContext";
 
 type WorkflowTab = "angles" | "copy_creative" | "build";
 
@@ -149,6 +150,7 @@ export default function CreativeStudio() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { showExplainer, closeExplainer } = useCreativeStudioExplainer();
+  const { activeBrand, loading: brandLoading } = useBrand();
   
   const [loading, setLoading] = useState(true);
   const [workspaces, setWorkspaces] = useState<WorkspaceOption[]>([]);
@@ -202,23 +204,29 @@ export default function CreativeStudio() {
     };
   }, []);
 
-  useEffect(() => { fetchInitialData(); }, []);
+  useEffect(() => { 
+    if (!brandLoading) {
+      fetchInitialData(); 
+    }
+  }, [brandLoading, activeBrand?.id]);
 
   const fetchInitialData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/auth"); return; }
 
-      const { data: brandData } = await supabase
-        .from("brands").select("*").eq("user_id", user.id).single();
-      if (!brandData) { navigate("/dashboard"); return; }
+      // Use active brand from context instead of querying directly
+      if (!activeBrand) { 
+        navigate("/dashboard"); 
+        return; 
+      }
       
-      setBrandId(brandData.id);
+      setBrandId(activeBrand.id);
 
       const { data: workspacesData } = await supabase
         .from("campaign_workspaces")
         .select("id, name, offer_name, creative_json, production_items, strategy_json")
-        .eq("brand_id", brandData.id)
+        .eq("brand_id", activeBrand.id)
         .not("strategy_json", "is", null)
         .order("updated_at", { ascending: false });
 
@@ -233,7 +241,7 @@ export default function CreativeStudio() {
       if (targetId) await loadWorkspace(targetId);
 
       const { data: ideasData } = await supabase
-        .from("content_ideas").select("*").eq("brand_id", brandData.id).order("created_at", { ascending: false }).limit(50);
+        .from("content_ideas").select("*").eq("brand_id", activeBrand.id).order("created_at", { ascending: false }).limit(50);
       setContentIdeas(ideasData || []);
     } catch (e) { console.error(e); toast.error("Failed to load"); }
     finally { setLoading(false); }
