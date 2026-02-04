@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { LumiProvider } from "@/contexts/LumiContext";
+import { BrandProvider } from "@/contexts/BrandContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { LumiAssistantProvider } from "@/components/LumiAssistant";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
@@ -64,6 +65,7 @@ const App = () => {
         <SubscriptionProvider>
           <LumiProvider>
             <ImpersonationProvider>
+              <BrandProvider>
               <SplashScreen isVisible={showSplash} />
               <Toaster />
               <Sonner />
@@ -107,9 +109,10 @@ const App = () => {
                 </Routes>
               </LumiAssistantProvider>
             </BrowserRouter>
-          </ImpersonationProvider>
-        </LumiProvider>
-      </SubscriptionProvider>
+          </BrandProvider>
+        </ImpersonationProvider>
+      </LumiProvider>
+    </SubscriptionProvider>
     </TooltipProvider>
   </QueryClientProvider>
   );

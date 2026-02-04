@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { 
   Rocket, Upload, CheckCircle2, AlertCircle, 
   Video, Film, Image, Eye, FolderOpen, Maximize2,
-  Sparkles, Loader2, Filter, Library, Info
+  Sparkles, Loader2, Filter, Library, Info, Download
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ import { CreativeChecklistCard } from "./CreativeChecklistCard";
 import { AngleCopyEditor } from "./AngleCopyEditor";
 import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
+import { ExportChecklistModal } from "./ExportChecklistModal";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 
 interface RankedItem extends ProductionItem {
@@ -56,6 +57,7 @@ export function ProductionManager({
   const [overallStrategy, setOverallStrategy] = useState<string>("");
   const [showTopOnly, setShowTopOnly] = useState(false);
   const [movingToLibrary, setMovingToLibrary] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
@@ -319,6 +321,25 @@ export function ProductionManager({
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-lg">Production Checklist</CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Export Button */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExportModalOpen(true)}
+                          className="gap-1"
+                        >
+                          <Download className="h-3 w-3" />
+                          Export
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Download CSV to share with your client or creative team</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                   {hasRankedItems && (
                     <>
                       <Button
@@ -572,6 +593,16 @@ export function ProductionManager({
           websiteUrl={workspace?.offer_url || workspace?.brands?.website_url}
         />
       )}
+
+      {/* Export Checklist Modal */}
+      <ExportChecklistModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        productionItems={productionItems}
+        angleCopy={angleCopy}
+        brandName={workspace?.brands?.name}
+        offerName={workspace?.offer_name}
+      />
     </>
   );
 }

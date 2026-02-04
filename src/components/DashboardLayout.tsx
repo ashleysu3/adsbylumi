@@ -15,6 +15,7 @@ import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { MobileHeader } from "@/components/MobileHeader";
 import { MobileOnboardingTour, useMobileOnboardingTour } from "@/components/MobileOnboardingTour";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { BrandSelector } from "@/components/BrandSelector";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 interface DashboardLayoutProps {
@@ -284,6 +285,7 @@ export default function DashboardLayout({
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <img alt="Lumi" className="h-8 md:h-16 object-contain my-1 md:my-2 mx-2 md:mx-4" src={lumiLogo} />
+              <BrandSelector className="ml-2 hidden md:flex" />
             </div>
 
             <div className="flex items-center space-x-2 md:space-x-3">

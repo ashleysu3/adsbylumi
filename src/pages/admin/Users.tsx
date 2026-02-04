@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -32,6 +33,7 @@ interface Profile {
   email: string;
   full_name: string | null;
   created_at: string;
+  is_agency_user?: boolean;
   subscription?: {
     tier: string;
     status: string;
@@ -1290,6 +1292,54 @@ export default function AdminUsers() {
                           Start Impersonating
                         </Button>
                       )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Agency Mode Toggle */}
+                  <Card className="border-purple-500/30 bg-purple-500/5">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-purple-600" /> Agency Mode
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+                        Enable agency mode to allow this user to manage multiple brands from one account.
+                      </p>
+                      <div className="flex items-center justify-between p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Agency Mode</span>
+                          {userDetails?.profile?.is_agency_user && (
+                            <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-500/30">
+                              Enabled
+                            </Badge>
+                          )}
+                        </div>
+                        <Switch
+                          checked={userDetails?.profile?.is_agency_user ?? false}
+                          onCheckedChange={async (checked) => {
+                            if (!selectedUser) return;
+                            setActionLoading("agency");
+                            try {
+                              const { data, error } = await supabase.functions.invoke("admin-user-management", {
+                                body: { 
+                                  action: "toggle_agency_mode", 
+                                  userId: selectedUser.id,
+                                  userEmail: userDetails?.profile?.email,
+                                  isAgencyUser: checked,
+                                },
+                              });
+                              if (error) throw error;
+                              toast.success(data.message);
+                              fetchUserDetails(selectedUser);
+                            } catch (error: any) {
+                              toast.error(error.message || "Failed to toggle agency mode");
+                            }
+                            setActionLoading(null);
+                          }}
+                          disabled={actionLoading === "agency"}
+                        />
+                      </div>
                     </CardContent>
                   </Card>
 
