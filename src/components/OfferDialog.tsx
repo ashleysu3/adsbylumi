@@ -16,8 +16,8 @@ type PageGoal = 'purchase' | 'discovery_call' | 'free_resource' | 'other';
 const PAGE_GOAL_OPTIONS: { value: PageGoal; label: string; description: string }[] = [
   { value: 'purchase', label: 'Purchase', description: 'Buy a product or service directly' },
   { value: 'discovery_call', label: 'Book a Call', description: 'Schedule a discovery or sales call' },
-  { value: 'free_resource', label: 'Free Resource', description: 'Download a lead magnet or freebie' },
-  { value: 'other', label: 'Other', description: 'Something else (webinar, waitlist, etc.)' },
+  { value: 'free_resource', label: 'Collect Leads', description: 'Capture name/email (lead magnet, webinar, challenge)' },
+  { value: 'other', label: 'Other', description: 'Something else (waitlist, community, etc.)' },
 ];
 
 interface ExtractedData {
@@ -348,11 +348,11 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                 <p className="text-sm text-muted-foreground">{extractedData.content_summary}</p>
               )}
 
-              {/* Clarification Questions */}
+              {/* Clarification Questions - User can answer these in the form fields below */}
               {extractedData.needs_clarification && extractedData.clarification_questions?.length ? (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
                   <p className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-2">
-                    Please help fill in these gaps:
+                    We couldn't find some details — please fill them in below:
                   </p>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     {extractedData.clarification_questions.map((q, i) => (
@@ -362,6 +362,9 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                       </li>
                     ))}
                   </ul>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">
+                    ↓ Edit the fields below to add missing info
+                  </p>
                 </div>
               ) : null}
 
@@ -478,35 +481,81 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
             </RadioGroup>
           </div>
 
+          {/* Editable extracted fields - clear visual that these can be edited */}
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="description">Description</Label>
+              {extractedData && formData.description && (
+                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                  ✨ Auto-filled • Click to edit
+                </span>
+              )}
+            </div>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={3}
               placeholder="What's included in this offer..."
+              className={`transition-all ${
+                extractedData && formData.description 
+                  ? 'border-primary/30 bg-primary/5 focus:bg-background cursor-text' 
+                  : ''
+              }`}
             />
+            {!formData.description && extractedData?.needs_clarification && (
+              <p className="text-xs text-destructive">← This info is missing, please fill it in</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price_point">Price</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="price_point">Price</Label>
+              {extractedData && formData.price_point && (
+                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                  ✨ Auto-filled • Click to edit
+                </span>
+              )}
+            </div>
             <Input
               id="price_point"
               value={formData.price_point}
               onChange={(e) => setFormData(prev => ({ ...prev, price_point: e.target.value }))}
-              placeholder="$997"
+              placeholder="$997 or Free"
+              className={`transition-all ${
+                extractedData && formData.price_point 
+                  ? 'border-primary/30 bg-primary/5 focus:bg-background cursor-text' 
+                  : ''
+              }`}
             />
+            {!formData.price_point && extractedData?.needs_clarification && (
+              <p className="text-xs text-destructive">← This info is missing, please fill it in</p>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="target_outcome">Target Outcome</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="target_outcome">Target Outcome</Label>
+              {extractedData && formData.target_outcome && (
+                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                  ✨ Auto-filled • Click to edit
+                </span>
+              )}
+            </div>
             <Input
               id="target_outcome"
               value={formData.target_outcome}
               onChange={(e) => setFormData(prev => ({ ...prev, target_outcome: e.target.value }))}
               placeholder="What transformation does this deliver?"
+              className={`transition-all ${
+                extractedData && formData.target_outcome 
+                  ? 'border-primary/30 bg-primary/5 focus:bg-background cursor-text' 
+                  : ''
+              }`}
             />
+            {!formData.target_outcome && extractedData?.needs_clarification && (
+              <p className="text-xs text-destructive">← This info is missing, please fill it in</p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
