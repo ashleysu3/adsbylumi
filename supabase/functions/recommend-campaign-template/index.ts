@@ -143,7 +143,7 @@ serve(async (req) => {
         const reasonMap: Record<string, string> = {
           'purchase': 'This offer directs visitors to make a purchase, so a sales-focused campaign will drive conversions most effectively.',
           'discovery_call': 'This offer is designed to book discovery or sales calls, making a call-focused campaign the ideal choice for qualified lead generation.',
-          'free_resource': 'This offer provides a free resource to capture leads, so a lead magnet campaign will maximize opt-ins and build your list.',
+          'free_resource': 'This offer captures email and name (lead magnet, webinar, challenge, etc.), so an email capture campaign will maximize opt-ins and build your list.',
           'traffic_to_instagram': 'This campaign is designed to drive traffic to your Instagram profile, helping you grow your following and build social proof.',
           'video_views': 'This campaign focuses on getting more eyes on your video content, building awareness and trust with your audience.',
           'grow_following': 'This campaign is optimized to grow your social media following by driving qualified traffic to your profile.',
