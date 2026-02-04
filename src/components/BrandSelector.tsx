@@ -24,8 +24,8 @@ export function BrandSelector({ className, compact = false }: BrandSelectorProps
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  // Don't show if not an agency user or only one brand
-  if (!isAgencyUser || brands.length <= 1) {
+  // Don't show if not an agency user
+  if (!isAgencyUser) {
     return null;
   }
 
@@ -55,12 +55,17 @@ export function BrandSelector({ className, compact = false }: BrandSelectorProps
           )}
         >
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center">
-              <Building2 className="h-3.5 w-3.5 text-primary" />
+            <div className="h-6 w-6 rounded-md bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center">
+              <Building2 className="h-3.5 w-3.5 text-white" />
             </div>
             {!compact && (
               <div className="flex flex-col items-start">
-                <span className="text-xs text-muted-foreground font-normal">Brand</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground font-normal">Brand</span>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-lumi-purple-1/10 text-lumi-purple-1 border-0">
+                    Agency
+                  </Badge>
+                </div>
                 <span className="text-sm font-medium truncate max-w-[120px]">
                   {activeBrand?.name || 'Select Brand'}
                 </span>
