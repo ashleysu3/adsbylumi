@@ -35,11 +35,18 @@ export const lumiKPIConfig: Record<string, LumiKPIConfig> = {
     benchmark: { min: 20, max: 100, unit: '$' },
     friendlyName: 'Discovery Call',
   },
+  'Email Capture': {
+    primary: 'cpl',
+    primaryLabel: 'Cost Per Lead',
+    benchmark: { min: 3, max: 20, unit: '$' },
+    friendlyName: 'Email Capture',
+  },
+  // Keep legacy mapping for existing campaigns
   'Lead Magnet Downloads': {
     primary: 'cpl',
     primaryLabel: 'Cost Per Lead',
     benchmark: { min: 3, max: 20, unit: '$' },
-    friendlyName: 'Lead Magnet',
+    friendlyName: 'Email Capture',
   },
   
   // Webinar campaigns → CPL
