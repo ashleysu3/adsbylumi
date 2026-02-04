@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface RequestBody {
-  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity" | "delete_user";
+  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity" | "delete_user" | "toggle_agency_mode";
   userId?: string;
   userEmail?: string;
   refundAmount?: number;
@@ -16,6 +16,7 @@ interface RequestBody {
   newTier?: string;
   emailTemplate?: string;
   customMessage?: string;
+  isAgencyUser?: boolean;
   // Filters for list_users
   filters?: {
     subscriptionStatus?: string;
@@ -158,10 +159,10 @@ serve(async (req) => {
     if (action === "get_user_details") {
       if (!userId) throw new Error("userId required");
 
-      // Get profile
+      // Get profile including is_agency_user
       const { data: profile } = await supabaseAdmin
         .from("profiles")
-        .select("*")
+        .select("*, is_agency_user")
         .eq("id", userId)
         .single();
 
@@ -758,6 +759,34 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Toggle agency mode for a user
+    if (action === "toggle_agency_mode") {
+      if (!userId) throw new Error("userId required");
+      const isAgency = body.isAgencyUser ?? false;
+
+      const { error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ is_agency_user: isAgency })
+        .eq("id", userId);
+
+      if (updateError) throw updateError;
+
+      logStep("Agency mode toggled", { userId, isAgencyUser: isAgency });
+
+      // Log audit action
+      await logAdminAction(userId, userEmail || null, isAgency ? "Agency mode enabled" : "Agency mode disabled", "subscription", {
+        is_agency_user: isAgency,
+      });
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: `Agency mode ${isAgency ? "enabled" : "disabled"} for user`,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     throw new Error(`Unknown action: ${action}`);
   } catch (error: any) {
