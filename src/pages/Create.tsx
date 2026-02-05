@@ -450,85 +450,8 @@ export default function Create() {
   };
 
   const handleComplete = async () => {
-    if (!selectedAngle || selectedCreativeTemplates.length === 0) {
-      toast.error("Please select at least one creative template");
-      return;
-    }
-
-    setIsCreatingCampaign(true);
-    try {
-      const selectedOffer = offers.find(o => o.id === selectedOfferId);
-      const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
-
-      if (!selectedOffer || !selectedTemplate) {
-        throw new Error("Missing offer or template selection");
-      }
-
-      // Create strategy
-      const strategyInsert = {
-        brand_id: brand.id,
-        template_id: selectedTemplate.id,
-        name: `${selectedTemplate.name} - ${selectedOffer.name}`,
-        campaign_type: selectedTemplate.strategy_template?.campaign_type || "cold",
-        messaging_framework: selectedTemplate.strategy_template?.messaging_framework,
-        audience_psychology: selectedTemplate.strategy_template?.audience_psychology,
-        optimization_goals: selectedTemplate.strategy_template?.optimization_goals,
-        kpi_benchmarks: selectedTemplate.strategy_template?.kpi_benchmarks,
-        status: "active",
-        offer_name: selectedOffer.name,
-        offer_url: selectedOffer.url,
-        offer_price: selectedOffer.price_point,
-        offer_description: selectedOffer.description,
-      };
-
-      const { data: strategy, error: strategyError } = await supabase
-        .from("strategies")
-        .insert(strategyInsert)
-        .select()
-        .single();
-
-      if (strategyError) throw strategyError;
-
-      // Create workspace with the selected angle and creative templates
-      const workspaceInsert = {
-        brand_id: brand.id as string,
-        strategy_id: strategy.id,
-        template_id: selectedTemplate.id,
-        name: `${selectedTemplate.name} - ${selectedOffer.name}`,
-        strategy_json: selectedTemplate.strategy_template as any,
-        progress_status: "creative_in_progress",
-        offer_id: selectedOffer.id,
-        offer_name: selectedOffer.name,
-        offer_url: selectedOffer.url,
-        offer_price: selectedOffer.price_point,
-        offer_description: selectedOffer.description,
-        creative_json: {
-          angles: generatedAngles.map(a => ({ ...a })),
-          selectedAngleIds: [selectedAngle.id],
-          selectedCreativeTemplates: selectedCreativeTemplates,
-          phase1Flow: true,
-        } as any,
-      };
-
-      const { data: workspace, error: workspaceError } = await supabase
-        .from("campaign_workspaces")
-        .insert([workspaceInsert])
-        .select()
-        .single();
-
-      if (workspaceError) throw workspaceError;
-
-      // Clear saved progress on successful completion
-      clearSavedProgress();
-      
-      toast.success("Campaign created! Let's create your ad.");
-      navigate(`/creative-studio?workspace=${workspace.id}`);
-    } catch (error: any) {
-      console.error("Error creating campaign:", error);
-      toast.error(error.message || "Failed to create campaign");
-    } finally {
-      setIsCreatingCampaign(false);
-    }
+    // Streamlined flow: generate angles and navigate to Creative Studio
+    await handleGenerateAndNavigate();
   };
 
   const generateCreativeAngles = async () => {
