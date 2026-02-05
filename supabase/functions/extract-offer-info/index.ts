@@ -1,5 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 // URL validation to prevent SSRF attacks
@@ -48,7 +46,7 @@ function isValidPublicUrl(urlString: string): { valid: boolean; error?: string }
   }
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
 
