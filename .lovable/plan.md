@@ -1,238 +1,321 @@
 
-# My Brand Onboarding Wizard + Content Assets System
+# Enhanced Audience Psychology System with Content Assets Integration
 
 ## Overview
 
-This plan implements two interconnected features:
+This plan enhances the psychology system to create a two-tier psychological profile structure:
 
-1. **Guided Onboarding Wizard** - A step-by-step wizard on the My Brand page that guides new users through all four sections (Overview, Brand Copy, Audience Psychology, Offers) with clear navigation and progress tracking
+1. **Brand-Level Psychology** - General audience profile for the brand overall
+2. **Offer-Level Psychology** - Detailed profile relating the ideal client to each specific offer
 
-2. **Content Assets Library** - A new feature in the Brand Copy tab where users can paste valuable content (testimonials, webinar scripts, survey responses, client objections/questions) that feeds into AI creative generation
+Additionally, content assets (testimonials, scripts, etc.) will be used to enrich the AI-generated psychology, and users will be prompted to update their psychology when new content is added.
 
 ---
 
 ## Technical Implementation
 
-### Part 1: Database Schema
+### Part 1: Database Schema Enhancement
 
-Create a new `brand_content_assets` table to store the pasted content:
+Add a new column to track when content assets were last used to generate psychology:
 
 ```sql
-CREATE TABLE brand_content_assets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  brand_id UUID REFERENCES brands(id) ON DELETE CASCADE NOT NULL,
-  asset_type TEXT NOT NULL CHECK (asset_type IN (
-    'testimonials',
-    'webinar_scripts', 
-    'survey_answers',
-    'client_objections',
-    'client_questions',
-    'other'
-  )),
-  content TEXT NOT NULL,
-  label TEXT, -- optional user-provided label
-  offer_ids UUID[] DEFAULT '{}', -- link to specific offers (empty = brand-wide)
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Add tracking columns to brands table
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS 
+  psychology_content_hash TEXT;
+-- Stores a hash of content asset IDs used when psychology was last generated
 
--- Enable RLS
-ALTER TABLE brand_content_assets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS
+  psychology_generated_at TIMESTAMPTZ;
+-- When the psychology was last generated/updated
 
--- RLS policy: users can only access their own brand's assets
-CREATE POLICY "Users can manage their brand's content assets"
-  ON brand_content_assets FOR ALL
-  USING (
-    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
-  );
+-- Add offer-specific audience psychology column to offers table
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS
+  offer_audience_psychology JSONB;
+-- Stores offer-specific audience insights (how the ideal client relates to THIS offer)
+
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS
+  psychology_content_hash TEXT;
+-- Tracks which content assets were used when offer psychology was generated
 ```
 
 ---
 
-### Part 2: New Components
+### Part 2: Content Assets → Psychology Integration
 
-#### 1. `BrandOnboardingWizard.tsx`
+#### Update `generate-audience-psychology` Edge Function
 
-A wizard overlay that appears for users who haven't completed their brand profile. Uses the existing `MobileStepWizard` component pattern but adapted for desktop+mobile.
-
-```text
-+------------------------------------------+
-|  Step 1 of 4: Brand Basics               |
-|  [●] [○] [○] [○]                         |
-|                                          |
-|  Complete your brand profile to unlock   |
-|  powerful AI-driven campaigns.           |
-|                                          |
-|  +------------------------------------+  |
-|  | Brand Name: [input]                |  |
-|  | Website: [input]                   |  |
-|  | Industry: [input]                  |  |
-|  +------------------------------------+  |
-|                                          |
-|       [Skip for now]    [Continue →]     |
-+------------------------------------------+
-```
-
-**Steps:**
-- Step 1: Overview (Brand basics + positioning)
-- Step 2: Brand Copy (Emoji settings + Content Assets)
-- Step 3: Audience Psychology (Generate/review/approve)
-- Step 4: Offers (Add first offer)
-
-**Logic:**
-- Shows automatically if brand profile is incomplete (< 100%)
-- Can be dismissed with "Skip for now" 
-- Each step auto-advances when requirements are met
-- Confetti celebration on completion
-
-#### 2. `ContentAssetsEditor.tsx`
-
-A collapsible card in the Brand Copy tab for managing content assets.
-
-```text
-+------------------------------------------+
-| 📚 Your Content Library (optional)       |
-| Paste existing content to supercharge    |
-| your AI-generated ads.                   |
-+------------------------------------------+
-| ▼ Testimonials                           |
-|   +------------------------------------+ |
-|   | [Paste testimonials here...]       | |
-|   +------------------------------------+ |
-|   Link to: ○ All Offers  ○ Specific... | |
-+------------------------------------------+
-| ▼ Webinar/Challenge Scripts              |
-| ▼ Survey Responses                       |
-| ▼ Client Objections & Questions          |
-| ▼ Other Useful Content                   |
-+------------------------------------------+
-|                     [Save Content]       |
-+------------------------------------------+
-```
-
-**Features:**
-- Collapsible sections for each content type
-- Multi-line textarea for each category
-- Toggle: "Apply to all offers" or select specific offer(s)
-- Auto-save on blur
-- Visual indicator showing content is available
-
----
-
-### Part 3: AI Integration
-
-Modify these edge functions to include content assets:
-
-#### `generate-creative-angles/index.ts`
-Add fetching of `brand_content_assets` and include in the prompt:
+Enhance the function to:
+1. Fetch all content assets for the brand
+2. Include them in the AI prompt as real language/insights
+3. Store a hash of which assets were used
+4. Generate a richer, more specific psychology profile
 
 ```typescript
+// In generate-audience-psychology/index.ts
+
 // Fetch content assets for this brand
 const { data: contentAssets } = await supabase
   .from("brand_content_assets")
-  .select("*")
+  .select("id, asset_type, content")
   .eq("brand_id", brandId);
 
-// Build content context
+// Build content context for the AI
 let contentContext = "";
 if (contentAssets?.length) {
-  contentContext = "\n\nUSER-PROVIDED CONTENT ASSETS:\n";
+  contentContext = "\n\nREAL USER-PROVIDED CONTENT:\n";
   contentAssets.forEach(asset => {
-    contentContext += `\n## ${asset.asset_type.toUpperCase()}:\n${asset.content}\n`;
+    const typeLabel = {
+      testimonials: "CLIENT TESTIMONIALS (real words from clients)",
+      survey_answers: "SURVEY RESPONSES (actual pain points in client language)",
+      client_objections: "COMMON OBJECTIONS & QUESTIONS",
+      webinar_scripts: "WEBINAR/CHALLENGE SCRIPTS"
+    }[asset.asset_type] || asset.asset_type.toUpperCase();
+    
+    contentContext += `\n## ${typeLabel}\n${asset.content}\n`;
   });
-  contentContext += "\nUse these real testimonials, objections, and language patterns to create more authentic, specific angles.\n";
+  contentContext += "\nIMPORTANT: Use the EXACT language, phrases, and specific pain points from the content above. These are REAL words from REAL clients.\n";
 }
+
+// Generate hash of content asset IDs for tracking
+const contentHash = contentAssets?.length 
+  ? contentAssets.map(a => a.id).sort().join(',')
+  : null;
+
+// After saving psychology, also save the hash
+await supabase
+  .from('brands')
+  .update({
+    audience_psychology: psychology,
+    psychology_status: 'completed',
+    psychology_content_hash: contentHash,
+    psychology_generated_at: new Date().toISOString()
+  })
+  .eq('id', brandId);
 ```
 
-#### `generate-angle-copy/index.ts`
-Same pattern - fetch and inject content assets.
+#### Update `generate-product-psychology` Edge Function
 
-#### `generate-creative-grid/index.ts` 
-Same pattern - content assets provide real language for hooks and scripts.
+Similarly enhance to:
+1. Include brand-level psychology as foundation
+2. Fetch offer-specific content assets
+3. Generate offer-audience psychology (how the ideal client relates to this specific offer)
+4. Store in the new `offer_audience_psychology` field
 
 ---
 
-### Part 4: Component Updates
+### Part 3: Prompt User to Update Psychology
 
-#### `Dashboard.tsx` (My Brand page)
+#### New Component: `PsychologyUpdatePrompt.tsx`
 
-**Changes:**
-1. Add state to track wizard visibility: `showOnboardingWizard`
-2. Show wizard overlay when profile is incomplete and user hasn't dismissed it
-3. Add `ContentAssetsEditor` component to Brand Copy tab
-4. Update tab switching to work with wizard navigation
+A non-intrusive banner/card that appears when:
+- New content assets have been added since psychology was last generated
+- The content hash doesn't match
 
-#### New wizard flow logic:
+```text
++--------------------------------------------------+
+| 📝 New content added since your last psychology  |
+|    profile. Want Lumi to incorporate it?         |
+|                                                   |
+|    [Update Psychology]    [Dismiss for now]      |
++--------------------------------------------------+
+```
+
+#### Integration in `ContentAssetsEditor.tsx`
+
+After saving a content asset:
+1. Check if brand has existing psychology
+2. Compare current content hash with stored hash
+3. If different, show a prompt asking if they want to regenerate
 
 ```typescript
-// Show wizard if:
-// 1. Brand profile < 100% complete
-// 2. User hasn't dismissed the wizard for this brand
-// 3. It's within the first 7 days of brand creation
-const shouldShowWizard = useMemo(() => {
-  if (!brand) return false;
-  const dismissedKey = `brand-wizard-dismissed-${brand.id}`;
-  if (localStorage.getItem(dismissedKey)) return false;
+// After saving an asset
+const checkPsychologyUpdate = async () => {
+  if (!brand?.audience_psychology) return; // No psychology yet
   
-  const progress = calculateBrandProgress();
-  return progress.percentage < 100;
-}, [brand]);
+  const { data: assets } = await supabase
+    .from('brand_content_assets')
+    .select('id')
+    .eq('brand_id', brandId);
+    
+  const currentHash = assets?.map(a => a.id).sort().join(',') || '';
+  
+  if (brand.psychology_content_hash !== currentHash) {
+    // Show prompt to update psychology
+    setShowPsychologyUpdatePrompt(true);
+  }
+};
+```
+
+#### Integration in Dashboard Psychology Tab
+
+Show an alert when content assets exist but weren't used in the current psychology:
+
+```typescript
+// In AudiencePsychology component
+const hasNewContent = useMemo(() => {
+  if (!contentAssets?.length) return false;
+  const currentHash = contentAssets.map(a => a.id).sort().join(',');
+  return currentHash !== brand?.psychology_content_hash;
+}, [contentAssets, brand?.psychology_content_hash]);
 ```
 
 ---
 
-### Part 5: Files to Create/Modify
+### Part 4: Offer-Level Audience Psychology
 
-**New Files:**
-- `src/components/BrandOnboardingWizard.tsx` - Main wizard component
-- `src/components/ContentAssetsEditor.tsx` - Content library UI
-- `supabase/migrations/xxx_add_content_assets.sql` - Database migration
+#### Update `OfferManager.tsx`
 
-**Modified Files:**
-- `src/pages/Dashboard.tsx` - Add wizard trigger + ContentAssetsEditor
-- `supabase/functions/generate-creative-angles/index.ts` - Fetch + use assets
-- `supabase/functions/generate-angle-copy/index.ts` - Fetch + use assets  
-- `supabase/functions/generate-creative-grid/index.ts` - Fetch + use assets
+Display the offer-specific audience psychology (how the ideal client relates to this offer):
+
+```typescript
+// Inside the offer card expansion
+{offer.offer_audience_psychology && (
+  <div className="space-y-3">
+    <h5 className="font-semibold text-sm">How Your Audience Relates to This Offer</h5>
+    
+    {offer.offer_audience_psychology.why_they_need_this && (
+      <div>
+        <p className="text-xs font-medium">Why They Need This</p>
+        <p className="text-sm text-muted-foreground">
+          {offer.offer_audience_psychology.why_they_need_this}
+        </p>
+      </div>
+    )}
+    
+    {offer.offer_audience_psychology.specific_hesitations?.length > 0 && (
+      <div>
+        <p className="text-xs font-medium">Specific Hesitations About This Offer</p>
+        <ul className="text-sm text-muted-foreground">
+          {offer.offer_audience_psychology.specific_hesitations.map((h, i) => (
+            <li key={i}>• {h}</li>
+          ))}
+        </ul>
+      </div>
+    )}
+    
+    {/* Additional offer-audience insights */}
+  </div>
+)}
+```
+
+#### Update `generate-product-psychology` to Include Offer-Audience Psychology
+
+The AI prompt will generate:
+1. **Product Psychology** (current) - positioning, product-specific pain points, buying triggers
+2. **Offer-Audience Psychology** (new) - how the ideal client relates to THIS specific offer
+
+```typescript
+const systemPrompt = `...
+Generate TWO related profiles:
+
+1. PRODUCT PSYCHOLOGY (how this product is positioned)
+   - positioning
+   - product_pain_points
+   - product_desires
+   - product_objections
+   - buying_triggers
+
+2. OFFER-AUDIENCE PSYCHOLOGY (how YOUR audience relates to THIS offer)
+   - why_they_need_this: Why someone with their psychology needs THIS specific offer
+   - moment_they_realize: The moment they realize they need this (specific scenario)
+   - specific_hesitations: Array of objections specific to THIS offer/price point
+   - what_finally_convinces: What makes them say yes to THIS (not just any solution)
+   - alternative_they_tried: What they've tried before that didn't work
+   - emotional_before_after: Before state → After state specific to this offer
+
+Return JSON with both "product_psychology" and "offer_audience_psychology" objects.
+...`;
+```
 
 ---
 
-### Part 6: UX Details
+### Part 5: Creative Generation Integration
 
-#### Wizard Step Navigation
+#### Update Edge Functions to Use Both Psychology Levels
 
-Each step has:
-- Clear title and description
-- Progress dots (clickable if previous steps complete)
-- "Back" button (except step 1)
-- "Continue" / "Skip for now" buttons
-- Auto-advance when step requirements are met
+**`generate-creative-angles/index.ts`**:
+```typescript
+// Include both brand-level and offer-level psychology
+const systemPrompt = `...
+=== BRAND-LEVEL AUDIENCE PSYCHOLOGY ===
+${JSON.stringify(audiencePsychology, null, 2)}
 
-#### Content Assets UX
+=== OFFER-SPECIFIC AUDIENCE INSIGHTS ===
+Why They Need This: ${offerAudiencePsychology?.why_they_need_this || 'Not specified'}
+Moment of Realization: ${offerAudiencePsychology?.moment_they_realize || 'Not specified'}
+Specific Hesitations: ${offerAudiencePsychology?.specific_hesitations?.join('\n') || 'Not specified'}
+What Convinces Them: ${offerAudiencePsychology?.what_finally_convinces || 'Not specified'}
 
-- Optional - never blocks the wizard
-- Clear labels explaining what each field is for
-- Examples placeholder text:
-  - Testimonials: "Paste client testimonials, reviews, or success stories..."
-  - Webinar Scripts: "Paste your webinar intro, key points, or challenge day scripts..."
-  - Survey Answers: "Paste responses from surveys about pain points, goals, etc..."
-  - Objections: "What questions or objections do clients commonly raise?"
-- Badge showing "3 assets saved" when content exists
-- Linked offers show as chips
+Use the brand-level psychology for broad appeal, and the offer-specific insights for targeted messaging.
+...`;
+```
 
-#### Mobile Considerations
+**`generate-creative-grid/index.ts`** and **`generate-angle-copy/index.ts`**:
+- Pass offer_audience_psychology alongside product_psychology
+- AI uses both to create highly targeted hooks, scripts, and copy
 
-- Wizard uses same swipe navigation as MobilePlanningWizard
-- Textarea height adapts to content
-- Offer selector uses a bottom sheet on mobile
+---
+
+### Part 6: Files to Create/Modify
+
+**Database Migration** (new):
+```sql
+-- Add psychology tracking and offer-audience psychology columns
+ALTER TABLE brands 
+  ADD COLUMN IF NOT EXISTS psychology_content_hash TEXT,
+  ADD COLUMN IF NOT EXISTS psychology_generated_at TIMESTAMPTZ;
+
+ALTER TABLE offers
+  ADD COLUMN IF NOT EXISTS offer_audience_psychology JSONB,
+  ADD COLUMN IF NOT EXISTS psychology_content_hash TEXT;
+```
+
+**New Component**:
+- `src/components/PsychologyUpdatePrompt.tsx` - Banner prompting users to update psychology
+
+**Modified Files**:
+- `src/components/ContentAssetsEditor.tsx` - Add psychology update check after save
+- `src/components/AudiencePsychology.tsx` - Show "new content available" alert
+- `src/components/OfferManager.tsx` - Display offer-audience psychology
+- `supabase/functions/generate-audience-psychology/index.ts` - Use content assets
+- `supabase/functions/generate-product-psychology/index.ts` - Generate offer-audience psychology
+- `supabase/functions/generate-creative-angles/index.ts` - Use both psychology levels
+- `supabase/functions/generate-creative-grid/index.ts` - Use both psychology levels
+- `supabase/functions/generate-angle-copy/index.ts` - Use both psychology levels
+
+---
+
+### Part 7: UX Flow
+
+#### When User Adds Content Assets:
+1. User pastes testimonials/scripts/etc. in Content Library
+2. Clicks Save
+3. If brand psychology exists and wasn't generated with these assets:
+   - Show banner: "Want to update your audience psychology with this new content?"
+   - User clicks "Update" → triggers regeneration with content context
+   - Or clicks "Later" → banner dismisses (reappears on next save)
+
+#### When User Views Audience Psychology:
+1. If content assets exist but weren't used in generation:
+   - Show info badge: "3 content assets available - regenerate to include"
+2. Regenerate button always visible
+3. On regenerate, includes all content assets
+
+#### When User Adds/Views Offers:
+1. Each offer shows its own "How Your Audience Relates to This Offer" section
+2. This is distinct from the general product psychology
+3. Both are used when generating creative for that offer
 
 ---
 
 ### Implementation Order
 
-1. Create database migration for `brand_content_assets` table
-2. Create `ContentAssetsEditor.tsx` component
-3. Add ContentAssetsEditor to Dashboard Brand Copy tab
-4. Create `BrandOnboardingWizard.tsx` component
-5. Integrate wizard into Dashboard.tsx
-6. Update edge functions to fetch and use content assets
-7. Test full flow: onboarding → content input → creative generation
+1. Create database migration for new columns
+2. Update `generate-audience-psychology` to use content assets
+3. Update `generate-product-psychology` to generate offer-audience psychology
+4. Create `PsychologyUpdatePrompt` component
+5. Update `ContentAssetsEditor` to check for psychology updates
+6. Update `AudiencePsychology` to show content availability indicator
+7. Update `OfferManager` to display offer-audience psychology
+8. Update all creative generation edge functions to use both psychology levels
+9. Test full flow: add content → update psychology → generate creative
