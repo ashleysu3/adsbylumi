@@ -1,17 +1,18 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders } from '../_shared/cors.ts';
+import { createClient } from "npm:@supabase/supabase-js@2";
 
-serve(async (req) => {
-  const origin = req.headers.get('origin');
-  const corsHeaders = getCorsHeaders(origin);
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+};
 
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-     const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -23,6 +24,8 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    console.log("[generate-creative-angles] Fetching knowledge base...");
+
     const { data: kbDocs } = await supabase
       .from("knowledge_documents")
       .select("*")
@@ -31,40 +34,39 @@ serve(async (req) => {
 
     const kbContext = kbDocs?.map(doc => `## ${doc.title}\n${doc.content}`).join("\n\n") || "";
 
-     // Fetch content assets for this brand
-     let contentAssetsContext = "";
-     if (brandId) {
-       const { data: contentAssets } = await supabase
-         .from("brand_content_assets")
-         .select("*")
-         .eq("brand_id", brandId);
-       
-       if (contentAssets?.length) {
-         contentAssetsContext = "\n\nUSER-PROVIDED CONTENT ASSETS:\n";
-         contentAssetsContext += "The user has provided the following real content. Use this authentic language, testimonials, and insights to create more specific and genuine angles:\n\n";
-         
-         contentAssets.forEach((asset: any) => {
-           // Filter by offer if specified
-           if (offerId && asset.offer_ids?.length > 0 && !asset.offer_ids.includes(offerId)) {
-             return; // Skip if not linked to this offer
-           }
-           
-           const typeLabels: Record<string, string> = {
-             testimonials: 'CLIENT TESTIMONIALS',
-             webinar_scripts: 'WEBINAR/CHALLENGE SCRIPTS',
-             survey_answers: 'SURVEY RESPONSES',
-             client_objections: 'CLIENT OBJECTIONS & QUESTIONS',
-             client_questions: 'CLIENT QUESTIONS',
-             other: 'OTHER CONTENT'
-           };
-           
-           contentAssetsContext += `## ${typeLabels[asset.asset_type] || asset.asset_type.toUpperCase()}:\n${asset.content}\n\n`;
-         });
-         
-         contentAssetsContext += "IMPORTANT: Incorporate specific phrases, pain points, and language from the above content to create authentic, resonant angles that sound like the user's actual clients.\n";
-       }
-     }
- 
+    // Fetch content assets for this brand
+    let contentAssetsContext = "";
+    if (brandId) {
+      const { data: contentAssets } = await supabase
+        .from("brand_content_assets")
+        .select("*")
+        .eq("brand_id", brandId);
+      
+      if (contentAssets?.length) {
+        contentAssetsContext = "\n\nUSER-PROVIDED CONTENT ASSETS:\n";
+        contentAssetsContext += "The user has provided the following real content. Use this authentic language, testimonials, and insights to create more specific and genuine angles:\n\n";
+        
+        contentAssets.forEach((asset: any) => {
+          if (offerId && asset.offer_ids?.length > 0 && !asset.offer_ids.includes(offerId)) {
+            return;
+          }
+          
+          const typeLabels: Record<string, string> = {
+            testimonials: 'CLIENT TESTIMONIALS',
+            webinar_scripts: 'WEBINAR/CHALLENGE SCRIPTS',
+            survey_answers: 'SURVEY RESPONSES',
+            client_objections: 'CLIENT OBJECTIONS & QUESTIONS',
+            client_questions: 'CLIENT QUESTIONS',
+            other: 'OTHER CONTENT'
+          };
+          
+          contentAssetsContext += `## ${typeLabels[asset.asset_type] || asset.asset_type.toUpperCase()}:\n${asset.content}\n\n`;
+        });
+        
+        contentAssetsContext += "IMPORTANT: Incorporate specific phrases, pain points, and language from the above content to create authentic, resonant angles that sound like the user's actual clients.\n";
+      }
+    }
+
     // Build conversation insights context if available
     let insightsContext = "";
     if (conversationInsights && conversationInsights.length > 0) {
@@ -86,37 +88,37 @@ serve(async (req) => {
       insightsContext += "\nIMPORTANT: Incorporate these user insights to create angles that directly address their specific pain points, desires, objections, and unique value propositions mentioned in the conversations above.\n";
     }
 
-     // Build pre-generation context from user direction
-     let preGenContext = "";
-     if (preGenerationContext) {
-       preGenContext = "\n\n=== USER DIRECTION FOR THIS CREATIVE ROUND ===\n";
-       
-       if (preGenerationContext.quickSelections?.length > 0) {
-         preGenContext += "The user indicated the following about their audience/needs:\n";
-         
-         const selectionMappings: Record<string, string> = {
-           "audience_early_journey": "- Audience is early in their awareness journey and needs more education before they'll buy",
-           "audience_skeptical": "- Audience is skeptical and has objections that need to be addressed (trust is key)",
-           "previous_generic": "- Previous creative felt too generic - need more specific, authentic angles",
-           "need_urgency": "- Need more urgency and scarcity messaging to drive action",
-           "highlight_transformation": "- Want to emphasize the transformation and end results",
-           "focus_pain_point": "- Focus deeply on the core pain point"
-         };
-         
-         preGenerationContext.quickSelections.forEach((sel: string) => {
-           if (selectionMappings[sel]) {
-             preGenContext += selectionMappings[sel] + "\n";
-           }
-         });
-       }
-       
-       if (preGenerationContext.additionalNotes?.trim()) {
-         preGenContext += `\nAdditional direction from user: "${preGenerationContext.additionalNotes}"\n`;
-       }
-       
-       preGenContext += "\nIMPORTANT: Prioritize angles that address the user's specific direction above. This is fresh input for THIS creative round.\n";
-     }
- 
+    // Build pre-generation context from user direction
+    let preGenContext = "";
+    if (preGenerationContext) {
+      preGenContext = "\n\n=== USER DIRECTION FOR THIS CREATIVE ROUND ===\n";
+      
+      if (preGenerationContext.quickSelections?.length > 0) {
+        preGenContext += "The user indicated the following about their audience/needs:\n";
+        
+        const selectionMappings: Record<string, string> = {
+          "audience_early_journey": "- Audience is early in their awareness journey and needs more education before they'll buy",
+          "audience_skeptical": "- Audience is skeptical and has objections that need to be addressed (trust is key)",
+          "previous_generic": "- Previous creative felt too generic - need more specific, authentic angles",
+          "need_urgency": "- Need more urgency and scarcity messaging to drive action",
+          "highlight_transformation": "- Want to emphasize the transformation and end results",
+          "focus_pain_point": "- Focus deeply on the core pain point"
+        };
+        
+        preGenerationContext.quickSelections.forEach((sel: string) => {
+          if (selectionMappings[sel]) {
+            preGenContext += selectionMappings[sel] + "\n";
+          }
+        });
+      }
+      
+      if (preGenerationContext.additionalNotes?.trim()) {
+        preGenContext += `\nAdditional direction from user: "${preGenerationContext.additionalNotes}"\n`;
+      }
+      
+      preGenContext += "\nIMPORTANT: Prioritize angles that address the user's specific direction above. This is fresh input for THIS creative round.\n";
+    }
+
     // Build offer-audience psychology context
     let offerAudienceContext = "";
     if (offerAudiencePsychology) {
@@ -146,10 +148,10 @@ serve(async (req) => {
 
 KNOWLEDGE BASE:
 ${kbContext}
- ${contentAssetsContext}
+${contentAssetsContext}
 ${insightsContext}
 ${offerAudienceContext}
- ${preGenContext}
+${preGenContext}
 
 RULES:
 - Generate exactly 10-12 creative angles
@@ -159,7 +161,7 @@ RULES:
 - Write as if explaining to a friend who has never run ads
 - Focus on what resonates emotionally, not why it works strategically
 ${conversationInsights?.length > 0 ? "- PRIORITIZE angles that address the specific insights shared by the user in previous conversations" : ""}
- ${preGenerationContext ? "- PRIORITIZE the user's specific direction for this creative round" : ""}
+${preGenerationContext ? "- PRIORITIZE the user's specific direction for this creative round" : ""}
 
 ANGLE TYPES TO CONSIDER (but don't expose these labels):
 - Relatable Struggle (showing the problem they face)
@@ -197,6 +199,8 @@ ${productPsychology ? `PRODUCT PSYCHOLOGY:\n${JSON.stringify(productPsychology, 
 
 Generate 10-12 creative angles that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}`;
 
+    console.log("[generate-creative-angles] Calling AI API...");
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -214,7 +218,7 @@ Generate 10-12 creative angles that would resonate with this audience and offer.
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI API error:", response.status, errorText);
+      console.error("[generate-creative-angles] AI API error:", response.status, errorText);
       if (response.status === 429) {
         throw new Error("429: Rate limit exceeded");
       }
@@ -232,9 +236,11 @@ Generate 10-12 creative angles that would resonate with this audience and offer.
       "";
 
     if (!rawContent) {
-      console.error("Unexpected AI response shape:", aiResponse);
+      console.error("[generate-creative-angles] Unexpected AI response shape:", aiResponse);
       throw new Error("AI response was empty");
     }
+
+    console.log("[generate-creative-angles] Parsing AI response...");
 
     // Robust JSON extraction
     const extractJson = (text: string) => {
@@ -247,11 +253,13 @@ Generate 10-12 creative angles that would resonate with this audience and offer.
 
     const parsed = extractJson(rawContent);
 
+    console.log("[generate-creative-angles] Success - generated", parsed.angles?.length || 0, "angles");
+
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
-    console.error("Error in generate-creative-angles:", error);
+    console.error("[generate-creative-angles] Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Failed to generate angles";
     return new Response(
       JSON.stringify({ error: errorMessage }),
