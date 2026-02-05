@@ -1451,11 +1451,11 @@ export default function AdminUsers() {
                     </CardContent>
                   </Card>
 
-                  {/* Danger Zone - Delete Account */}
+                  {/* Delete Account */}
                   <Card className="border-destructive/50 bg-destructive/5">
                     <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
                       <CardTitle className="text-sm flex items-center gap-2 text-destructive">
-                        <AlertTriangle className="w-4 h-4" /> Danger Zone
+                        <AlertTriangle className="w-4 h-4" /> Delete Account
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
