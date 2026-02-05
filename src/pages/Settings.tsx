@@ -322,7 +322,7 @@ export default function Settings() {
                       {metaConnected ? `Connected (${brand?.meta_account_id})` : 'Not connected'}
                     </span>
                   </div>
-                  <Button onClick={() => navigate('/settings/meta')} variant="outline" className="gap-2">
+                   <Button onClick={() => navigate('/meta-settings')} variant="outline" className="gap-2">
                     {metaConnected ? 'Manage' : 'Connect'}
                     <ExternalLink className="h-4 w-4" />
                   </Button>

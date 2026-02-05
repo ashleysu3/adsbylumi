@@ -5,7 +5,7 @@ import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { Home, BarChart3, FolderKanban, Shield, LogOut, Settings, Sparkles, LayoutTemplate, Ticket, Library, Building2, BookOpen } from "lucide-react";
+ import { Home, BarChart3, FolderKanban, Shield, LogOut, Settings, Sparkles, LayoutTemplate, Ticket, Library, Building2, BookOpen, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
 import { GuidedTour } from "@/components/GuidedTour";
@@ -366,6 +366,10 @@ export default function DashboardLayout({
                     <Building2 className="mr-2 h-4 w-4" />
                     My Brand
                   </DropdownMenuItem>
+                   <DropdownMenuItem onClick={() => navigate("/meta-settings")}>
+                     <Link2 className="mr-2 h-4 w-4" />
+                     Meta Connection
+                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/content-library")}>
                     <Library className="mr-2 h-4 w-4" />
                     Concept Library

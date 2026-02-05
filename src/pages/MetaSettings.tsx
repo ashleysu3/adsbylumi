@@ -258,7 +258,7 @@ export default function MetaSettings() {
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={() => navigate('/settings')}
+             onClick={() => navigate('/dashboard')}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
