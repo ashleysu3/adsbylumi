@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 interface AdMetrics {
@@ -61,10 +61,10 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Fetch workspace with brand
+    // Fetch workspace with brand including meta_access_token
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*, brands!inner(id, meta_account_id, user_id)')
+      .select('*, brands!inner(id, meta_account_id, meta_access_token, user_id)')
       .eq('id', workspaceId)
       .single();
 
@@ -85,11 +85,8 @@ Deno.serve(async (req) => {
       throw new Error('Campaign not published to Meta');
     }
 
-    // Get token from vault
-    const { data: metaAccessToken, error: tokenError } = await supabase
-      .rpc('get_meta_token', { p_brand_id: brand.id });
-
-    if (tokenError || !metaAccessToken) {
+    const metaAccessToken = brand.meta_access_token;
+    if (!metaAccessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 
