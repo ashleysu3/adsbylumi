@@ -293,8 +293,8 @@ export default function Settings() {
 
             <Card className="border-destructive/30">
               <CardHeader>
-                <CardTitle>Danger Zone</CardTitle>
-                <CardDescription>Irreversible actions for your account</CardDescription>
+                <CardTitle>Account Actions</CardTitle>
+                <CardDescription>Sign out of your account</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button variant="destructive" onClick={handleSignOut} className="gap-2">
