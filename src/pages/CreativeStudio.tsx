@@ -505,7 +505,7 @@ export default function CreativeStudio() {
     { id: "angles" as const, label: "Angles", icon: Target },
     { id: "concepts" as const, label: "Creative Concepts", icon: Lightbulb },
     { id: "copy" as const, label: "Ad Copy", icon: FileText },
-    { id: "build" as const, label: "Build", icon: Rocket },
+    { id: "build" as const, label: "Creation", icon: Rocket },
   ];
 
   if (loading) return <DashboardLayout><div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></DashboardLayout>;
