@@ -1,200 +1,143 @@
 
 
-# Weekly Email Report Scheduling & User Preferences
+# Fix Campaign Data Accuracy: Live Ads & Date Range Filtering
 
-## Overview
-This plan implements automatic scheduling of performance reports with user-configurable frequency (off/daily/weekly) and verifies the email system works end-to-end.
+## Problem Summary
 
-## Technical Architecture
+The user reports that campaigns aren't showing accurate data. There are **two distinct issues**:
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│                    Report Scheduling Flow                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────┐    Daily @ 8am UTC    ┌────────────────────┐ │
-│  │   pg_cron    │ ──────────────────────▶│ send-weekly-reports│ │
-│  │  scheduler   │                        │   edge function    │ │
-│  └──────────────┘                        └─────────┬──────────┘ │
-│                                                    │             │
-│                                    ┌───────────────▼────────────┐│
-│                                    │  For each brand:           ││
-│                                    │  1. Check report_frequency ││
-│                                    │  2. Check last_report_sent ││
-│                                    │  3. Send if due            ││
-│                                    └───────────────┬────────────┘│
-│                                                    │             │
-│                         ┌──────────────────────────▼───────────┐ │
-│                         │           Resend API                 │ │
-│                         │    (sends branded HTML email)        │ │
-│                         └──────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## What You'll Get
-
-1. **User Preference Control**: Users can choose "Off", "Daily", or "Weekly" from Settings → Notifications
-2. **Automatic Scheduling**: Reports send automatically without manual intervention
-3. **Smart Deduplication**: System tracks when last report was sent to avoid duplicates
-4. **Verification Test**: Ability to manually trigger and verify the email flow
+1. **Live Ads Only**: The system should only display data for campaigns/ads that are currently **ACTIVE** in Meta, not paused or archived campaigns
+2. **Date Range Accuracy**: Results must strictly correspond to the selected time period
 
 ---
 
-## Part 1: Database Changes
+## Root Cause Analysis
 
-### Add report tracking columns to brands table
+### Issue 1: Not Filtering by Live Status at Meta API Level
 
-**Migration SQL:**
-```sql
--- Add report_frequency field to notification_preferences JSON
--- No schema change needed - notification_preferences already supports JSON
--- However, we'll document the expected structure:
--- {
---   "report_frequency": "off" | "daily" | "weekly",
---   "critical_alerts": boolean,
---   "performance_drops": boolean,
---   "last_report_sent_at": ISO timestamp string
--- }
+**Current Behavior:**
+- The `fetch-meta-performance` function fetches insights for any campaign that has a `meta_campaign_ids.campaignId`, regardless of whether that campaign is currently ACTIVE, PAUSED, or ARCHIVED in Meta
+- The account-level `fetch-account-overview` uses `level=account` which aggregates ALL campaigns including paused ones
 
--- Enable required extensions for cron scheduling
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net;
-```
+**Problem:**
+- Paused/archived campaigns may still have metrics from before they were paused, which get displayed
+- No real-time status check is performed against Meta's current campaign status
+
+### Issue 2: Date Range is Correct but Status May Be Stale
+
+The date range filtering is actually working correctly in the edge functions. However:
+- Campaign status (`meta_campaign_status`) is only updated during `sync-meta-campaigns`
+- If a user pauses a campaign in Meta Ads Manager directly, our database still shows it as "active"
 
 ---
 
-## Part 2: Update Settings UI
+## Technical Solution
 
-### File: `src/pages/Settings.tsx`
+### Part 1: Fetch Real-Time Campaign Status from Meta
 
-**Changes:**
-1. Replace `weekly_digest: boolean` with `report_frequency: 'off' | 'daily' | 'weekly'`
-2. Add Select dropdown instead of Switch toggle
-3. Add migration logic for users with old `weekly_digest` boolean
+**File: `supabase/functions/fetch-meta-performance/index.ts`**
 
-**Updated Interface:**
+Before fetching insights, query the campaign's current status from Meta API:
+
 ```typescript
-interface NotificationPrefs {
-  report_frequency: 'off' | 'daily' | 'weekly';  // NEW: Replaces weekly_digest
-  critical_alerts: boolean;
-  performance_drops: boolean;
-  last_report_sent_at?: string;  // NEW: Track last send time
-}
-```
+// NEW: Fetch campaign status first to verify it's active
+const statusUrl = `https://graph.facebook.com/v18.0/${campaignId}?fields=status,effective_status&access_token=${metaAccessToken}`;
+const statusResponse = await fetch(statusUrl);
+const statusData = await statusResponse.json();
 
-**UI Change (Notifications Tab):**
-- Replace the "Weekly Performance Digest" Switch with a Select dropdown:
-  - **Off** - No automated reports
-  - **Daily** - Receive a daily performance summary
-  - **Weekly** - Receive a weekly performance summary (Mondays)
-
----
-
-## Part 3: Update Edge Function
-
-### File: `supabase/functions/send-weekly-reports/index.ts`
-
-**Current Behavior:** Sends to all users with published workspaces
-**New Behavior:** 
-1. Check user's `report_frequency` preference
-2. Skip if "off"
-3. For "weekly": Only send on Mondays, skip if sent within 7 days
-4. For "daily": Skip if already sent today
-5. Update `last_report_sent_at` after successful send
-
-**Key Logic Changes:**
-```typescript
-// Fetch notification_preferences from brands table
-const prefs = brand.notification_preferences || { report_frequency: 'weekly' };
-
-// Skip if reports turned off
-if (prefs.report_frequency === 'off') {
-  continue;
+if (statusData.error) {
+  throw new Error(`Meta API error: ${statusData.error.message}`);
 }
 
-// Check timing based on frequency
-const today = new Date();
-const lastSent = prefs.last_report_sent_at ? new Date(prefs.last_report_sent_at) : null;
-
-if (prefs.report_frequency === 'weekly') {
-  // Only send on Mondays (day 1)
-  if (today.getUTCDay() !== 1) continue;
-  // Skip if sent within last 7 days
-  if (lastSent && (today.getTime() - lastSent.getTime()) < 7 * 24 * 60 * 60 * 1000) continue;
-}
-
-if (prefs.report_frequency === 'daily') {
-  // Skip if already sent today
-  if (lastSent && lastSent.toDateString() === today.toDateString()) continue;
-}
-
-// After successful send, update last_report_sent_at
-```
-
-**Also fix the import:**
-```typescript
-// Change from:
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-// To:
-import { createClient } from 'npm:@supabase/supabase-js@2';
-```
-
----
-
-## Part 4: Schedule the Cron Job
-
-**SQL to execute (via Run SQL tool):**
-```sql
--- Schedule send-weekly-reports to run daily at 8:00 AM UTC
--- The function internally handles daily/weekly logic
-SELECT cron.schedule(
-  'send-performance-reports',
-  '0 8 * * *',  -- Every day at 8:00 AM UTC
-  $$
-  SELECT net.http_post(
-    url := 'https://sqwjbndgighjtifijgws.supabase.co/functions/v1/send-weekly-reports',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)
-    ),
-    body := '{}'::jsonb
+// Only proceed if campaign is active
+const effectiveStatus = statusData.effective_status || statusData.status;
+if (effectiveStatus !== 'ACTIVE') {
+  return new Response(
+    JSON.stringify({
+      success: true,
+      metrics: null,
+      status: effectiveStatus,
+      message: `Campaign is ${effectiveStatus}, not ACTIVE`
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
   );
-  $$
-);
+}
+```
+
+### Part 2: Update Account Overview to Filter Active Only
+
+**File: `supabase/functions/fetch-account-overview/index.ts`**
+
+Add filtering parameter to only include active campaigns:
+
+```typescript
+// Change from level=account (aggregates all) to filtering by status
+const insightsUrl = `https://graph.facebook.com/v18.0/${brand.meta_account_id}/insights?${timeRange}&fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,purchase_roas&level=account&filtering=[{"field":"campaign.delivery_info","operator":"IN","value":["active"]}]&access_token=${metaAccessToken}`;
+```
+
+### Part 3: Handle Inactive Campaigns in Frontend
+
+**File: `src/pages/Data.tsx`**
+
+Update `fetchAllMetrics` to handle campaigns that are no longer active:
+
+```typescript
+const { data, error } = await supabase.functions.invoke('fetch-meta-performance', {
+  body: { ... },
+});
+
+// NEW: Check if campaign is not active
+if (data?.status && data.status !== 'ACTIVE') {
+  // Update local status to match Meta
+  return {
+    ...campaign,
+    metrics: null,
+    status: data.status.toLowerCase(), // e.g., 'paused', 'archived'
+  };
+}
+```
+
+### Part 4: Real-Time Status Sync 
+
+**File: `supabase/functions/fetch-meta-performance/index.ts`**
+
+After fetching status, update the workspace if status changed:
+
+```typescript
+// Update workspace status if it changed
+const newStatus = effectiveStatus.toLowerCase();
+if (workspace.meta_campaign_status !== newStatus) {
+  await supabase
+    .from('campaign_workspaces')
+    .update({ meta_campaign_status: newStatus })
+    .eq('id', workspaceId);
+}
 ```
 
 ---
 
-## Part 5: Verification & Testing
+## Files to Modify
 
-### Test 1: Manual Trigger
-- Call the edge function directly via `supabase--curl_edge_functions`
-- Verify it returns success with sent/skipped counts
-
-### Test 2: Check Email Delivery
-- Confirm Resend API key is configured (already in secrets)
-- Check that the `from` email domain is verified in Resend
-
-### Test 3: End-to-End
-- Set a test user to "daily" frequency
-- Trigger the function
-- Verify email arrives
+| File | Changes |
+|------|---------|
+| `supabase/functions/fetch-meta-performance/index.ts` | Add real-time status check before fetching insights; return null metrics for non-ACTIVE campaigns; sync status back to DB |
+| `supabase/functions/fetch-account-overview/index.ts` | Add filtering parameter to only aggregate ACTIVE campaigns |
+| `src/pages/Data.tsx` | Handle non-active campaign responses; update local campaign status |
 
 ---
 
-## Summary of Files Changed
+## Expected Behavior After Fix
 
-| File | Change Type | Description |
-|------|------------|-------------|
-| `src/pages/Settings.tsx` | Modify | Replace weekly_digest boolean with report_frequency dropdown |
-| `supabase/functions/send-weekly-reports/index.ts` | Modify | Add frequency logic, fix imports, update last_sent tracking |
-| Database | SQL | Enable pg_cron + pg_net, schedule daily job |
+1. **Only ACTIVE campaigns show metrics** - Paused/archived campaigns will show "Paused" or "Archived" status with no metrics displayed
+2. **Account overview only counts active ads** - Spend, impressions, etc. will only include currently-running campaigns
+3. **Real-time status sync** - If user pauses a campaign in Meta Ads Manager, it will reflect immediately when they refresh the Results dashboard
+4. **Date range is accurate** - Already working, but now metrics will only come from campaigns that were actually active during that period
 
-## After Implementation
+---
 
-1. **Users can control frequency** from Settings → Notifications
-2. **Reports send automatically** - no user action required
-3. **Weekly reports** arrive on Monday mornings (8 AM UTC)
-4. **Daily reports** arrive every morning (8 AM UTC)
-5. **Email includes**: Spend, reach, conversions, what's working, what needs attention, AI recommendations
+## Edge Cases Handled
+
+- **Campaign paused mid-period**: If a campaign was active for 3 days of a 7-day period, Meta will return metrics only for those 3 active days
+- **All campaigns paused**: Dashboard will show "No active campaigns" message
+- **Newly paused campaigns**: Status will update on first data fetch, preventing stale "active" status from persisting
 
