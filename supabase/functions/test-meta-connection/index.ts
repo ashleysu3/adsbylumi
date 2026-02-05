@@ -66,11 +66,12 @@ Deno.serve(async (req) => {
 
     const token = brand.meta_access_token;
     if (!token) {
+      console.log('No token found for brand:', brandId);
       return new Response(
         JSON.stringify({
           success: false,
           message: 'No Meta access token found',
-          error: 'Please reconnect your Meta account.',
+          error: 'Your Meta token may have expired or been disconnected. Please reconnect your Meta account.',
           details: { tokenValid: false },
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }

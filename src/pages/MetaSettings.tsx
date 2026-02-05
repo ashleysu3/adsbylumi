@@ -328,7 +328,9 @@ export default function MetaSettings() {
                     {connectionHealth === 'error' && (
                       <div className="flex items-center gap-1.5 text-destructive">
                         <div className="h-2 w-2 rounded-full bg-destructive" />
-                        <span className="text-xs font-medium">Issue</span>
+                        <span className="text-xs font-medium">
+                          {testResult?.error ? 'Connection Issue' : 'Issue'}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -351,6 +353,16 @@ export default function MetaSettings() {
                   : "Connect your Meta account to manage ads and track performance"
                 }
               </CardDescription>
+              {/* Inline error alert when connection test fails */}
+              {connectionHealth === 'error' && testResult?.error && (
+                <Alert variant="destructive" className="mt-3">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    <span className="font-medium">Connection issue: </span>
+                    {testResult.error}
+                  </AlertDescription>
+                </Alert>
+              )}
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Partially Connected State - Needs Reconnection */}
