@@ -177,30 +177,30 @@ export function AngleCopyEditor({
   }
   
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="flex flex-col">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Copy Variations</CardTitle>
+          <CardTitle className="text-lg">Copy Variations</CardTitle>
           <Badge variant="secondary" className="text-xs">
             {productionItemCount} creative{productionItemCount !== 1 ? "s" : ""} use this copy
           </Badge>
         </div>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col space-y-4 overflow-hidden">
+      <CardContent className="flex flex-col space-y-4">
         {/* Angle Tabs */}
         {selectedAngles.length > 1 && (
           <Tabs value={activeAngle} onValueChange={setActiveAngle}>
-            <TabsList className="w-full grid" style={{ gridTemplateColumns: `repeat(${Math.min(selectedAngles.length, 3)}, 1fr)` }}>
-              {selectedAngles.slice(0, 3).map(angle => (
+            <TabsList className="w-full grid" style={{ gridTemplateColumns: `repeat(${Math.min(selectedAngles.length, 4)}, 1fr)` }}>
+              {selectedAngles.slice(0, 4).map(angle => (
                 <TabsTrigger key={angle.id} value={angle.id} className="text-xs truncate">
                   {angle.name}
                 </TabsTrigger>
               ))}
             </TabsList>
-            {selectedAngles.length > 3 && (
+            {selectedAngles.length > 4 && (
               <div className="flex gap-1 mt-2 flex-wrap">
-                {selectedAngles.slice(3).map(angle => (
+                {selectedAngles.slice(4).map(angle => (
                   <Button
                     key={angle.id}
                     variant={activeAngle === angle.id ? "default" : "outline"}
@@ -255,7 +255,7 @@ export function AngleCopyEditor({
         
         {/* Copy Sections */}
         {hasCopy ? (
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+          <div className="space-y-3">
             {/* Headlines */}
             <Collapsible open={expandedSections.headlines} onOpenChange={() => toggleSection("headlines")}>
               <CollapsibleTrigger className="w-full">

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Target, FileText, Rocket, 
+  Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, FolderOpen, Video, Film, Image, Trash2,
   X, HelpCircle
@@ -23,12 +23,13 @@ import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelecto
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { ProductionManager } from "@/components/creative/ProductionManager";
+import { AngleCopyEditor } from "@/components/creative/AngleCopyEditor";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 import { useBrand } from "@/contexts/BrandContext";
 
-type WorkflowTab = "angles" | "copy_creative" | "build";
+type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
 function normalizeScriptLines(input: unknown): string[] | undefined {
   if (!input) return undefined;
@@ -114,7 +115,8 @@ const getIdleHelpMessage = (
   availableAngles: CreativeAngle[],
   selectedAngleIds: string[],
   gridData: CreativeCellData[],
-  productionItems: ProductionItem[]
+  productionItems: ProductionItem[],
+  angleCopy: Record<string, any>
 ) => {
   if (activeTab === "angles") {
     if (availableAngles.length === 0) {
@@ -125,23 +127,33 @@ const getIdleHelpMessage = (
     }
     return "Great picks! Click 'Generate Creative' to create hooks and concepts for your selected angles.";
   }
-  if (activeTab === "copy_creative") {
+  if (activeTab === "concepts") {
     if (gridData.length === 0) {
       return "Head to the Angles tab to generate your creative concepts first.";
     }
     if (productionItems.length === 0) {
       return "Browse the concepts and click 'Add to Checklist' on the ones you want to produce.";
     }
-    return `You have ${productionItems.length} concepts ready. Add more or continue to the Build tab.`;
+    return `You have ${productionItems.length} concepts selected. Continue to Ad Copy to write your headlines and descriptions.`;
+  }
+  if (activeTab === "copy") {
+    if (productionItems.length === 0) {
+      return "Select creative concepts first, then come here to write your ad copy.";
+    }
+    const hasAnyCopy = Object.keys(angleCopy).some(id => {
+      const copy = angleCopy[id];
+      return copy && (copy.headlines?.length > 0 || copy.descriptions?.length > 0 || copy.primary_copy?.length > 0);
+    });
+    if (!hasAnyCopy) {
+      return "Click 'Generate Copy' to create headlines, descriptions, and primary copy for your ads.";
+    }
+    return "Looking good! Review your copy and continue to Build when ready.";
   }
   if (activeTab === "build") {
     if (productionItems.length < 3) {
       return `Add ${3 - productionItems.length} more concepts to unlock campaign building.`;
     }
-    if (productionItems.length >= 6) {
-      return "Use 'Get Lumi's Top 5' to narrow down your best performers, then upload creative files.";
-    }
-    return "Upload your creative files to each concept, then build your campaign!";
+    return "Upload your video or image files to each creative concept, then build your campaign!";
   }
   return "Need help? Let me know what you're trying to accomplish.";
 };
@@ -169,6 +181,10 @@ export default function CreativeStudio() {
   const [gridData, setGridData] = useState<CreativeCellData[]>([]);
   const [productionItems, setProductionItems] = useState<ProductionItem[]>([]);
   
+  // Copy state (lifted from ProductionManager)
+  const [angleCopy, setAngleCopy] = useState<Record<string, any>>({});
+  const [copySaveStatus, setCopySaveStatus] = useState<SaveStatus>("idle");
+
   // Idle help state
   const [showIdleHelp, setShowIdleHelp] = useState(false);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -275,6 +291,11 @@ export default function CreativeStudio() {
         return normalized ? { ...pi, script_lines: normalized } : pi;
       });
       setProductionItems(loadedProductionItems);
+
+      // Load angle copy
+      if (c?.angle_copy) {
+        setAngleCopy(c.angle_copy);
+      }
       
       // If there's a mismatch, clean up the stored data
       if (validSelectedIds.length !== storedSelectedIds.length || validGridData.length !== loadedGridData.length) {
@@ -311,6 +332,33 @@ export default function CreativeStudio() {
       setTimeout(() => setSaveStatus("idle"), 3000);
     }
   }, [workspace]);
+
+  const handleCopyChange = useCallback((angleId: string, copy: any) => {
+    setAngleCopy(prev => ({ ...prev, [angleId]: copy }));
+  }, []);
+
+  const handleSaveCopy = useCallback(async () => {
+    if (!workspace) return;
+    setCopySaveStatus("saving");
+    try {
+      const cur = (workspace.creative_json || {}) as Record<string, any>;
+      await supabase
+        .from("campaign_workspaces")
+        .update({
+          creative_json: { ...cur, angle_copy: angleCopy },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", workspace.id);
+      setCopySaveStatus("saved");
+      setTimeout(() => setCopySaveStatus("idle"), 2000);
+      toast.success("Copy saved!");
+    } catch (e) {
+      console.error("Failed to save copy:", e);
+      setCopySaveStatus("error");
+      setTimeout(() => setCopySaveStatus("idle"), 3000);
+      toast.error("Failed to save copy");
+    }
+  }, [workspace, angleCopy]);
 
   const generateAngles = async () => {
     if (!workspace?.strategy_json) { toast.error("Complete strategy first"); return; }
@@ -379,7 +427,7 @@ export default function CreativeStudio() {
       setActiveAngleId(selectedAngleIds[0]);
       await saveCreativeState({ angles: availableAngles, selectedAngleIds, gridData: data.grid });
       toast.success("Creative ready!");
-      setActiveTab("copy_creative");
+      setActiveTab("concepts");
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
     } catch (e: any) { toast.error(e.message || "Failed"); }
     finally { setGenerating(false); setGeneratingPhase(null); }
@@ -455,7 +503,8 @@ export default function CreativeStudio() {
 
   const workflowTabs = [
     { id: "angles" as const, label: "Angles", icon: Target },
-    { id: "copy_creative" as const, label: "Copy & Creative", icon: FileText },
+    { id: "concepts" as const, label: "Creative Concepts", icon: Lightbulb },
+    { id: "copy" as const, label: "Ad Copy", icon: FileText },
     { id: "build" as const, label: "Build", icon: Rocket },
   ];
 
@@ -506,7 +555,7 @@ export default function CreativeStudio() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             {workflowTabs.map(t => <TabsTrigger key={t.id} value={t.id} className="gap-2"><t.icon className="h-4 w-4" /><span className="hidden sm:inline">{t.label}</span></TabsTrigger>)}
           </TabsList>
 
@@ -528,9 +577,9 @@ export default function CreativeStudio() {
             )}
           </TabsContent>
 
-          <TabsContent value="copy_creative">
+          <TabsContent value="concepts">
             {gridData.length === 0 ? (
-              <Card><CardContent className="pt-6 text-center py-12"><FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold mb-2">Generate Creative First</h3><Button onClick={() => setActiveTab("angles")} variant="outline">Go to Angles</Button></CardContent></Card>
+              <Card><CardContent className="pt-6 text-center py-12"><Lightbulb className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold mb-2">Generate Creative First</h3><p className="text-muted-foreground text-sm mb-4">Head to the Angles tab to generate your creative concepts.</p><Button onClick={() => setActiveTab("angles")} variant="outline">Go to Angles</Button></CardContent></Card>
             ) : (
               <div className="space-y-6">
                 {selectedAngleIds.length > 1 && (
@@ -580,7 +629,59 @@ export default function CreativeStudio() {
                     );
                   })}
                 </div>
-                <div className="flex justify-end"><Button onClick={() => setActiveTab("build")} disabled={productionItems.length === 0} className="gap-2">Continue to Build<ArrowRight className="h-4 w-4" /></Button></div>
+                <div className="flex justify-end"><Button onClick={() => setActiveTab("copy")} disabled={productionItems.length === 0} className="gap-2">Continue to Ad Copy<ArrowRight className="h-4 w-4" /></Button></div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="copy">
+            {productionItems.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6 text-center py-12">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Select Concepts First</h3>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Add creative concepts to your checklist before writing copy.
+                  </p>
+                  <Button onClick={() => setActiveTab("concepts")} variant="outline">
+                    Go to Creative Concepts
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">Ad Copy</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Write headlines, descriptions, and primary copy for your ads
+                    </p>
+                  </div>
+                  <AutoSaveIndicator status={copySaveStatus} />
+                </div>
+                
+                <AngleCopyEditor
+                  angles={availableAngles}
+                  selectedAngleIds={selectedAngleIds}
+                  angleCopy={angleCopy}
+                  brandInfo={workspace?.brands}
+                  offerData={{
+                    name: workspace?.offer_name,
+                    description: workspace?.offer_description,
+                    price_point: workspace?.offer_price,
+                  }}
+                  audiencePsychology={workspace?.brands?.audience_psychology}
+                  onCopyChange={handleCopyChange}
+                  onSave={handleSaveCopy}
+                  productionItemCount={productionItems.length}
+                />
+                
+                <div className="flex justify-end">
+                  <Button onClick={() => setActiveTab("build")} className="gap-2">
+                    Continue to Build
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </TabsContent>
@@ -596,6 +697,7 @@ export default function CreativeStudio() {
               onUpdateWorkspace={(updates) => setWorkspace((prev: any) => ({ ...prev, ...updates }))}
               onSaveToLibrary={saveItemToLibrary}
               brandId={brandId}
+              angleCopy={angleCopy}
             />
           </TabsContent>
         </Tabs>
@@ -628,7 +730,7 @@ export default function CreativeStudio() {
                       <p className="text-sm font-medium">Need help?</p>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      {getIdleHelpMessage(activeTab, availableAngles, selectedAngleIds, gridData, productionItems)}
+                      {getIdleHelpMessage(activeTab, availableAngles, selectedAngleIds, gridData, productionItems, angleCopy)}
                     </p>
                     <Button
                       size="sm"
@@ -639,7 +741,9 @@ export default function CreativeStudio() {
                         // Navigate to the next logical step
                         if (activeTab === "angles" && availableAngles.length > 0 && selectedAngleIds.length > 0) {
                           generateCreativeGrid();
-                        } else if (activeTab === "copy_creative" && productionItems.length > 0) {
+                        } else if (activeTab === "concepts" && productionItems.length > 0) {
+                          setActiveTab("copy");
+                        } else if (activeTab === "copy") {
                           setActiveTab("build");
                         }
                       }}
