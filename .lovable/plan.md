@@ -1,340 +1,362 @@
 
 
-# Smart Resume: Remember User's Last Position in Creative Studio
+# Pre-Generation Creative Context Input
 
 ## Overview
 
-When users return to a campaign workspace that already has angles and/or creative concepts generated, the system should automatically navigate them to the appropriate tab based on their progress instead of always defaulting to the "angles" tab. This prevents unnecessary regeneration and respects the user's previous work.
+When users return to Creative Studio for an existing campaign (e.g., to create fresh angles for a new creative round), give them the option to share additional context that could help Lumi create more relevant angles. This captures insights like:
+- Is the audience coming in at the right stage of awareness?
+- What's been working or not working in previous creative?
+- Any specific direction they want to explore
+
+This information is passed to the AI when generating angles, producing more tailored creative direction.
 
 ---
 
-## Current Behavior
+## User Flow
 
-| State | Current Behavior | Problem |
-|-------|------------------|---------|
-| Has angles, no concepts | Shows "angles" tab | User must manually re-select angles |
-| Has concepts, no copy | Shows "angles" tab | User sees completed work, must click to concepts |
-| Has copy, no builds | Shows "angles" tab | User is 3 tabs away from their actual progress |
-| Has production items | Shows "angles" tab | User has to navigate through entire flow again |
-
----
-
-## Proposed Behavior
-
-The Creative Studio should determine the appropriate starting tab based on existing workspace data:
-
-| Workspace State | Auto-Navigate To |
-|-----------------|------------------|
-| No angles | `angles` tab (generate first) |
-| Has angles, no gridData (concepts) | `angles` tab (select angles & generate) |
-| Has gridData, no production items | `concepts` tab (add to checklist) |
-| Has production items, no copy | `copy` tab (generate/edit copy) |
-| Has production items with copy | `build` tab (upload & finalize) |
-
----
-
-## Part 1: Update loadWorkspace Function
-
-### File: `src/pages/CreativeStudio.tsx`
-
-Modify the `loadWorkspace` function to intelligently set `activeTab` based on the loaded data.
-
-**Current code (lines 266-304):**
-```typescript
-const loadWorkspace = async (id: string) => {
-  // ... loads data ...
-  setAvailableAngles(loadedAngles);
-  setSelectedAngleIds(validSelectedIds);
-  setGridData(validGridData);
-  setActiveAngleId(validSelectedIds[0] || "");
-  // ... loads production items and copy ...
-};
-```
-
-**Updated logic to add after loading all data:**
-```typescript
-const loadWorkspace = async (id: string) => {
-  // ... existing loading logic ...
-  
-  // Smart tab selection based on progress
-  const hasAngles = loadedAngles.length > 0;
-  const hasGridData = validGridData.length > 0;
-  const hasProductionItems = loadedProductionItems.length > 0;
-  const hasCopy = c?.angle_copy && Object.keys(c.angle_copy).length > 0;
-  
-  let targetTab: WorkflowTab = "angles";
-  
-  if (hasProductionItems && hasCopy) {
-    // User has copy written - go to build
-    targetTab = "build";
-  } else if (hasProductionItems) {
-    // User has selected concepts but no copy - go to copy
-    targetTab = "copy";
-  } else if (hasGridData) {
-    // User has concepts generated but none selected - go to concepts
-    targetTab = "concepts";
-  }
-  // else: no concepts yet, stay on angles (default)
-  
-  setActiveTab(targetTab);
-};
+```text
+User opens Creative Studio → Has existing workspace selected
+                          → If creating NEW angles (first time OR regenerating):
+                              → Show optional "Add Context" input before generation
+                              → User can add insights or skip
+                              → Insights passed to generate-creative-angles function
 ```
 
 ---
 
-## Part 2: Save Last Active Tab to Workspace
+## Part 1: New Component - CreativeContextInput
 
-To provide even more precise resumption, save the user's last active tab to the workspace.
+### File: `src/components/creative/CreativeContextInput.tsx`
 
-**Add to creative_json structure:**
+A collapsible card that appears on the Angles tab when:
+1. A workspace is selected
+2. No angles exist yet OR user clicked "Regenerate"
+
+The component includes:
+- An expandable "Help Lumi create better angles" section
+- Pre-written quick-select options for common feedback scenarios
+- A free-text area for additional context
+- "Skip" and "Generate" action buttons
+
+### UI Design
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ ✨ Generate Creative Angles                                         │
+│                                                                     │
+│ Lumi will suggest unique creative angles for your campaign.        │
+│                                                                     │
+│ ┌─────────────────────────────────────────────────────────────────┐ │
+│ │ 💡 Help Lumi create better angles (optional)           [▼]     │ │
+│ └─────────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│ When expanded:                                                      │
+│ ┌─────────────────────────────────────────────────────────────────┐ │
+│ │ Quick select any that apply:                                   │ │
+│ │                                                                 │ │
+│ │ [ ] Audience is too early in their journey (need education)    │ │
+│ │ [ ] Audience is skeptical/has objections to address            │ │
+│ │ [ ] Previous creative felt too generic                         │ │
+│ │ [ ] Need more urgency/scarcity messaging                       │ │
+│ │ [ ] Want to highlight a specific transformation                │ │
+│ │ [ ] Focus on a particular pain point                           │ │
+│ │                                                                 │ │
+│ │ Anything else Lumi should know?                                │ │
+│ │ ┌─────────────────────────────────────────────────────────────┐ │ │
+│ │ │ [Textarea for free-form input]                              │ │ │
+│ │ │                                                             │ │ │
+│ │ └─────────────────────────────────────────────────────────────┘ │ │
+│ └─────────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│                        [Skip] [Generate Angles ✨]                  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Quick Select Options
+
+| Option | What it tells the AI |
+|--------|---------------------|
+| "Audience is too early in their journey" | Create more educational, awareness-stage angles |
+| "Audience is skeptical/has objections" | Focus on trust-building, proof, and objection handling |
+| "Previous creative felt too generic" | Be more specific, use unique angles and real language |
+| "Need more urgency/scarcity messaging" | Include time-sensitive and limited opportunity angles |
+| "Want to highlight a specific transformation" | Emphasize before/after and result-focused angles |
+| "Focus on a particular pain point" | Deep-dive on problem-aware messaging |
+
+---
+
+## Part 2: Component Structure
+
+### Props Interface
+
 ```typescript
-{
-  angles: [...],
-  gridData: [...],
-  selectedAngleIds: [...],
-  angle_copy: {...},
-  lastActiveTab: "concepts" | "copy" | "build"  // NEW
+interface CreativeContextInputProps {
+  onGenerate: (context: CreativeContext) => void;
+  onSkip: () => void;
+  isGenerating: boolean;
+  existingContext?: CreativeContext;
+}
+
+interface CreativeContext {
+  quickSelections: string[];
+  additionalNotes: string;
+  timestamp: string;
 }
 ```
 
-**Update saveCreativeState calls to include tab:**
-```typescript
-// When user changes tabs, save it
-useEffect(() => {
-  if (workspace && activeTab !== "angles") {
-    saveCreativeState({ lastActiveTab: activeTab });
-  }
-}, [activeTab, workspace]);
-```
+### Internal State
 
-**Use saved tab if available:**
 ```typescript
-const loadWorkspace = async (id: string) => {
-  // ... load data ...
-  
-  // Check for explicitly saved last tab first
-  const savedTab = c?.lastActiveTab;
-  if (savedTab && isValidTabForState(savedTab, { hasAngles, hasGridData, hasProductionItems, hasCopy })) {
-    setActiveTab(savedTab);
-  } else {
-    // Fall back to smart detection
-    // ... existing logic ...
-  }
-};
+const [expanded, setExpanded] = useState(false);
+const [quickSelections, setQuickSelections] = useState<string[]>([]);
+const [additionalNotes, setAdditionalNotes] = useState("");
 ```
 
 ---
 
-## Part 3: Tab Validation Helper
+## Part 3: Integrate into CreativeStudio.tsx
 
-Ensure the saved tab is still valid for the current data state.
+### File: `src/pages/CreativeStudio.tsx`
 
+1. Add state for pre-generation context:
 ```typescript
-const isValidTabForState = (
-  tab: WorkflowTab,
-  state: { hasAngles: boolean; hasGridData: boolean; hasProductionItems: boolean; hasCopy: boolean }
-): boolean => {
-  switch (tab) {
-    case "angles":
-      return true; // Always valid
-    case "concepts":
-      return state.hasGridData; // Only valid if concepts exist
-    case "copy":
-      return state.hasProductionItems; // Only valid if items selected
-    case "build":
-      return state.hasProductionItems; // Only valid if items selected
-    default:
-      return false;
-  }
-};
+const [preGenerationContext, setPreGenerationContext] = useState<CreativeContext | null>(null);
+const [showContextInput, setShowContextInput] = useState(false);
 ```
 
----
-
-## Part 4: Regeneration Controls
-
-Keep regeneration accessible but don't force it:
-
-| Tab | Regenerate Button | Behavior |
-|-----|-------------------|----------|
-| Angles | "Regenerate Angles" | Clears concepts, copy, production items; confirms with user |
-| Concepts | "Regenerate Creative" | Clears concepts but keeps angles selected |
-| Copy | "Regenerate Copy" | Regenerates copy for current angle |
-
-**Add confirmation dialog for destructive regeneration:**
+2. Modify the "Generate Angles" empty state to use the new component:
 ```typescript
-const handleRegenerateAngles = async () => {
-  // If user has downstream progress, show confirmation
+// Replace the simple Card with CreativeContextInput when no angles exist
+{availableAngles.length === 0 ? (
+  <CreativeContextInput
+    onGenerate={(context) => {
+      setPreGenerationContext(context);
+      generateAngles(context);
+    }}
+    onSkip={() => generateAngles()}
+    isGenerating={generating}
+  />
+) : (
+  // existing angle selector...
+)}
+```
+
+3. Modify `handleRegenerateClick` to show context input:
+```typescript
+const handleRegenerateClick = () => {
   if (gridData.length > 0 || productionItems.length > 0) {
-    const confirmed = window.confirm(
-      "Regenerating angles will clear your existing concepts and production checklist. Continue?"
-    );
-    if (!confirmed) return;
+    setShowRegenerateConfirm(true);
+    return;
   }
-  await generateAngles();
+  // Show context input before regenerating
+  setShowContextInput(true);
+};
+```
+
+4. Update `generateAngles` to accept and pass context:
+```typescript
+const generateAngles = async (context?: CreativeContext) => {
+  // ... existing code ...
+  
+  const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
+    body: { 
+      brandName: workspace.brands?.name, 
+      strategyData: workspace.strategy_json, 
+      audiencePsychology: workspace.brands?.audience_psychology, 
+      offerData: { ... },
+      // NEW: Pass the pre-generation context
+      preGenerationContext: context || preGenerationContext,
+      conversationInsights: workspace.creative_json?.conversationInsights
+    }
+  });
+  
+  // Save context to workspace for future reference
+  if (context) {
+    saveCreativeState({ preGenerationContext: context });
+  }
 };
 ```
 
 ---
 
-## Part 5: Files to Modify
+## Part 4: Update Edge Function
 
-| File | Changes |
-|------|---------|
-| `src/pages/CreativeStudio.tsx` | Update `loadWorkspace` to set smart `activeTab`; Save `lastActiveTab` on tab change; Add `isValidTabForState` helper; Add confirmation for destructive regeneration |
+### File: `supabase/functions/generate-creative-angles/index.ts`
 
----
-
-## Technical Details
-
-### Updated loadWorkspace Function
-
-**File:** `src/pages/CreativeStudio.tsx`
-
-**Location:** Lines 266-305 (loadWorkspace function)
-
-**Changes:**
-
-1. After loading all state (`loadedAngles`, `validGridData`, `loadedProductionItems`, `angleCopy`), determine the appropriate tab:
-
+1. Accept `preGenerationContext` in the request body:
 ```typescript
-const loadWorkspace = async (id: string) => {
-  setSelectedWorkspaceId(id);
-  setSearchParams(p => { p.set("workspace", id); return p; }, { replace: true });
-  try {
-    const { data } = await supabase.from("campaign_workspaces").select("*, brands(*)").eq("id", id).single();
-    setWorkspace(data);
-    const c = data?.creative_json as Record<string, any> | null;
-    const loadedAngles = c?.angles || [];
-    const loadedAngleIds = new Set(loadedAngles.map((a: any) => a.id));
-    
-    const storedSelectedIds = c?.selectedAngleIds || [];
-    const validSelectedIds = storedSelectedIds.filter((id: string) => loadedAngleIds.has(id));
-    
-    const loadedGridData = c?.gridData || [];
-    const validGridData = loadedGridData.filter((cell: any) => loadedAngleIds.has(cell.angleId));
-    
-    setAvailableAngles(loadedAngles);
-    setSelectedAngleIds(validSelectedIds);
-    setGridData(validGridData);
-    setActiveAngleId(validSelectedIds[0] || "");
+const { ..., preGenerationContext } = await req.json();
+```
 
-    const loadedProductionItems = ((data?.production_items as any[]) || []).map((pi: any) => {
-      const normalized = normalizeScriptLines(pi?.script_lines);
-      return normalized ? { ...pi, script_lines: normalized } : pi;
+2. Build context string from quick selections and notes:
+```typescript
+let preGenContext = "";
+if (preGenerationContext) {
+  preGenContext = "\n\n=== USER DIRECTION FOR THIS CREATIVE ROUND ===\n";
+  
+  if (preGenerationContext.quickSelections?.length > 0) {
+    preGenContext += "The user indicated the following about their audience/needs:\n";
+    
+    const selectionMappings: Record<string, string> = {
+      "audience_early_journey": "- Audience is early in their awareness journey and needs more education before they'll buy",
+      "audience_skeptical": "- Audience is skeptical and has objections that need to be addressed (trust is key)",
+      "previous_generic": "- Previous creative felt too generic - need more specific, authentic angles",
+      "need_urgency": "- Need more urgency and scarcity messaging to drive action",
+      "highlight_transformation": "- Want to emphasize the transformation and end results",
+      "focus_pain_point": "- Focus deeply on the core pain point"
+    };
+    
+    preGenerationContext.quickSelections.forEach((sel: string) => {
+      if (selectionMappings[sel]) {
+        preGenContext += selectionMappings[sel] + "\n";
+      }
     });
-    setProductionItems(loadedProductionItems);
-
-    if (c?.angle_copy) {
-      setAngleCopy(c.angle_copy);
-    }
-    
-    // ========== NEW: Smart tab selection ==========
-    const hasAngles = loadedAngles.length > 0;
-    const hasGridData = validGridData.length > 0;
-    const hasProductionItems = loadedProductionItems.length > 0;
-    const hasCopy = c?.angle_copy && Object.keys(c.angle_copy).some(
-      id => c.angle_copy[id]?.headlines?.length > 0 || 
-            c.angle_copy[id]?.descriptions?.length > 0 ||
-            c.angle_copy[id]?.primary_copy?.length > 0
-    );
-    
-    // Check for saved tab first
-    const savedTab = c?.lastActiveTab as WorkflowTab | undefined;
-    let targetTab: WorkflowTab = "angles";
-    
-    if (savedTab) {
-      // Validate saved tab is still appropriate
-      const tabIsValid = 
-        savedTab === "angles" ||
-        (savedTab === "concepts" && hasGridData) ||
-        (savedTab === "copy" && hasProductionItems) ||
-        (savedTab === "build" && hasProductionItems);
-      
-      if (tabIsValid) {
-        targetTab = savedTab;
-      }
-    }
-    
-    // If no valid saved tab, use smart detection
-    if (targetTab === "angles" && !savedTab) {
-      if (hasProductionItems && hasCopy) {
-        targetTab = "build";
-      } else if (hasProductionItems) {
-        targetTab = "copy";
-      } else if (hasGridData) {
-        targetTab = "concepts";
-      }
-    }
-    
-    setActiveTab(targetTab);
-    // ========== END NEW ==========
-    
-    if (validSelectedIds.length !== storedSelectedIds.length || validGridData.length !== loadedGridData.length) {
-      console.warn('Cleaned up stale angle references from workspace');
-    }
-  } catch (e) { console.error(e); }
-};
-```
-
-2. Add useEffect to save last active tab when it changes:
-
-```typescript
-// Save last active tab to workspace
-useEffect(() => {
-  if (workspace && activeTab && activeTab !== "angles") {
-    const cur = (workspace.creative_json || {}) as Record<string, any>;
-    // Only save if different from current stored value
-    if (cur.lastActiveTab !== activeTab) {
-      supabase
-        .from("campaign_workspaces")
-        .update({ 
-          creative_json: { ...cur, lastActiveTab: activeTab },
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", workspace.id)
-        .then(() => {
-          // Update local workspace state
-          setWorkspace((prev: any) => ({
-            ...prev,
-            creative_json: { ...prev?.creative_json, lastActiveTab: activeTab }
-          }));
-        });
-    }
-  }
-}, [activeTab, workspace?.id]);
-```
-
-3. Add confirmation before regenerating angles if downstream work exists:
-
-```typescript
-const generateAngles = async () => {
-  if (!workspace?.strategy_json) { toast.error("Complete strategy first"); return; }
-  
-  // Confirmation if downstream work exists
-  if (gridData.length > 0 || productionItems.length > 0) {
-    const confirmed = window.confirm(
-      "Regenerating angles will clear your existing concepts and production checklist. Continue?"
-    );
-    if (!confirmed) return;
   }
   
-  setGenerating(true); 
-  setGeneratingPhase("angles");
-  // ... rest of existing logic
-};
+  if (preGenerationContext.additionalNotes?.trim()) {
+    preGenContext += `\nAdditional direction from user: "${preGenerationContext.additionalNotes}"\n`;
+  }
+  
+  preGenContext += "\nIMPORTANT: Prioritize angles that address the user's specific direction above. This is fresh input for THIS creative round.\n";
+}
+```
+
+3. Add to the system prompt context (after conversationInsights):
+```typescript
+const systemPrompt = `You are Lumi's Creative Engine...
+
+KNOWLEDGE BASE:
+${kbContext}
+${contentAssetsContext}
+${insightsContext}
+${offerAudienceContext}
+${preGenContext}  // <-- NEW
+
+RULES:
+...
+${preGenerationContext ? "- PRIORITIZE the user's specific direction for this creative round" : ""}
+`;
+```
+
+---
+
+## Part 5: Store Context in Workspace
+
+Save the pre-generation context to `creative_json` so it can be:
+1. Displayed when user returns to the workspace
+2. Referenced in future generations
+3. Used to understand the creative direction history
+
+```typescript
+// In saveCreativeState or after generating
+await supabase
+  .from("campaign_workspaces")
+  .update({
+    creative_json: {
+      ...currentCreativeJson,
+      preGenerationContext: context,
+      preGenerationHistory: [
+        ...(currentCreativeJson.preGenerationHistory || []),
+        { ...context, anglesGeneratedAt: new Date().toISOString() }
+      ]
+    }
+  })
+  .eq("id", workspace.id);
+```
+
+---
+
+## Part 6: Regeneration Flow with Context
+
+When user clicks "Regenerate" and confirms (if needed), show the context input modal:
+
+```typescript
+// After confirmation dialog is confirmed
+<Dialog open={showContextInput} onOpenChange={setShowContextInput}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Any direction for this round?</DialogTitle>
+      <DialogDescription>
+        Help Lumi create angles that better fit your needs.
+      </DialogDescription>
+    </DialogHeader>
+    <CreativeContextInput
+      compact // renders in modal style
+      onGenerate={(context) => {
+        setShowContextInput(false);
+        generateAngles(context);
+      }}
+      onSkip={() => {
+        setShowContextInput(false);
+        generateAngles();
+      }}
+      existingContext={workspace?.creative_json?.preGenerationContext}
+    />
+  </DialogContent>
+</Dialog>
+```
+
+---
+
+## Part 7: Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/components/creative/CreativeContextInput.tsx` | **Create** | New component for capturing pre-generation context |
+| `src/pages/CreativeStudio.tsx` | **Modify** | Integrate context input, update generateAngles to pass context |
+| `supabase/functions/generate-creative-angles/index.ts` | **Modify** | Accept and process preGenerationContext in AI prompt |
+
+---
+
+## Part 8: Quick Select Options Details
+
+```typescript
+const QUICK_SELECT_OPTIONS = [
+  {
+    id: "audience_early_journey",
+    label: "Audience needs more education first",
+    description: "They're not ready to buy yet"
+  },
+  {
+    id: "audience_skeptical",
+    label: "Audience is skeptical",
+    description: "Need to build trust and handle objections"
+  },
+  {
+    id: "previous_generic",
+    label: "Previous creative felt generic",
+    description: "Need more specific, authentic messaging"
+  },
+  {
+    id: "need_urgency",
+    label: "Need more urgency",
+    description: "Drive action with scarcity/time pressure"
+  },
+  {
+    id: "highlight_transformation",
+    label: "Emphasize the transformation",
+    description: "Focus on before/after results"
+  },
+  {
+    id: "focus_pain_point",
+    label: "Focus on a specific pain point",
+    description: "Deep-dive on the core problem"
+  }
+];
 ```
 
 ---
 
 ## Summary
 
-This update ensures users are automatically taken to the most relevant point in their creative workflow when returning to a workspace:
+This feature adds an optional but valuable pre-generation input step that:
 
-1. **Smart detection** - Analyzes existing data to determine the furthest progress point
-2. **Tab persistence** - Saves and restores the user's last active tab
-3. **Validation** - Ensures the restored tab is still valid for the current data state
-4. **Confirmation guards** - Warns before destructive regeneration that would clear downstream work
+1. **Captures user direction** - Quick-select options and free-text for context
+2. **Informs AI generation** - Passes context to the angle generation prompt
+3. **Persists for reference** - Saves context history to the workspace
+4. **Stays non-blocking** - Users can skip if they don't have specific direction
+5. **Works for both first-time and regeneration** - Context input appears in both flows
 
-Users returning to a workspace with existing work will see their progress immediately instead of having to navigate through tabs manually.
+Users get more relevant creative angles because Lumi understands their specific situation and needs for this creative round.
 
