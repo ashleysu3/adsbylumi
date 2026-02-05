@@ -7,6 +7,7 @@ import { MobileCampaignBuilder } from "@/components/MobileCampaignBuilder";
 import { CampaignSummary } from "@/components/CampaignSummary";
 import { CampaignReview } from "@/components/CampaignReview";
 import { CampaignSuccess } from "@/components/CampaignSuccess";
+import { QACheckScreen } from "@/components/QACheckScreen";
 import { Button } from "@/components/ui/button";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 import {
@@ -32,7 +33,7 @@ export default function CampaignBuilder() {
 
   const [workspace, setWorkspace] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [stage, setStage] = useState<"chat" | "review" | "publishing" | "success">("chat");
+  const [stage, setStage] = useState<"chat" | "review" | "qa-check" | "publishing" | "success">("chat");
   const [answers, setAnswers] = useState<any>({});
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [publishing, setPublishing] = useState(false);
@@ -150,6 +151,19 @@ export default function CampaignBuilder() {
 
   const handleBackToChat = () => {
     setStage('chat');
+  };
+
+  const handleStartQACheck = () => {
+    setStage('qa-check');
+  };
+
+  const handleBackToReview = () => {
+    setStage('review');
+  };
+
+  const handleQAComplete = () => {
+    // Proceed to publishing after QA check passes
+    handlePublish(answers.launchActive ? 'active' : 'paused');
   };
 
   const handleSaveAsDraft = async () => {
@@ -355,7 +369,16 @@ export default function CampaignBuilder() {
               workspace={workspace}
               answers={answers}
               onBack={handleBackToChat}
-              onPublish={handlePublish}
+              onPublish={handleStartQACheck}
+            />
+          )}
+
+          {stage === 'qa-check' && (
+            <QACheckScreen
+              workspace={workspace}
+              answers={answers}
+              onBack={handleBackToReview}
+              onProceed={handleQAComplete}
             />
           )}
 
@@ -448,23 +471,30 @@ export default function CampaignBuilder() {
               <span>Questions</span>
             </div>
             <div className="w-12 h-px bg-border" />
-            <div className={`flex items-center gap-2 ${stage === 'review' ? 'text-primary font-medium' : stage === 'publishing' || stage === 'success' ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${stage === 'review' ? 'bg-primary text-primary-foreground' : stage === 'publishing' || stage === 'success' ? 'bg-muted' : 'bg-muted/50'}`}>
+            <div className={`flex items-center gap-2 ${stage === 'review' ? 'text-primary font-medium' : stage === 'qa-check' || stage === 'publishing' || stage === 'success' ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${stage === 'review' ? 'bg-primary text-primary-foreground' : stage === 'qa-check' || stage === 'publishing' || stage === 'success' ? 'bg-muted' : 'bg-muted/50'}`}>
                 2
               </div>
               <span>Review</span>
             </div>
             <div className="w-12 h-px bg-border" />
+            <div className={`flex items-center gap-2 ${stage === 'qa-check' ? 'text-primary font-medium' : stage === 'publishing' || stage === 'success' ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${stage === 'qa-check' ? 'bg-primary text-primary-foreground' : stage === 'publishing' || stage === 'success' ? 'bg-muted' : 'bg-muted/50'}`}>
+                3
+              </div>
+              <span>QA Check</span>
+            </div>
+            <div className="w-12 h-px bg-border" />
             <div className={`flex items-center gap-2 ${stage === 'publishing' ? 'text-primary font-medium' : stage === 'success' ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${stage === 'publishing' ? 'bg-primary text-primary-foreground' : stage === 'success' ? 'bg-muted' : 'bg-muted/50'}`}>
-                3
+                4
               </div>
               <span>Publishing</span>
             </div>
             <div className="w-12 h-px bg-border" />
             <div className={`flex items-center gap-2 ${stage === 'success' ? 'text-primary font-medium' : 'text-muted-foreground/50'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center ${stage === 'success' ? 'bg-primary text-primary-foreground' : 'bg-muted/50'}`}>
-                4
+                5
               </div>
               <span>Live</span>
             </div>
@@ -491,7 +521,16 @@ export default function CampaignBuilder() {
                 workspace={workspace}
                 answers={answers}
                 onBack={handleBackToChat}
-                onPublish={handlePublish}
+                onPublish={handleStartQACheck}
+              />
+            )}
+
+            {stage === 'qa-check' && (
+              <QACheckScreen
+                workspace={workspace}
+                answers={answers}
+                onBack={handleBackToReview}
+                onProceed={handleQAComplete}
               />
             )}
 
