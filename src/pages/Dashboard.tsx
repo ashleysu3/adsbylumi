@@ -22,6 +22,8 @@ import { PageShimmer } from "@/components/GradientShimmer";
 import { AlertsBanner } from "@/components/AlertsBanner";
 import { useLumiRecommend } from "@/components/LumiAssistant";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
+ import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
+ import { BrandOnboardingWizard } from "@/components/BrandOnboardingWizard";
 import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link, AlertTriangle, Smile, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -57,6 +59,8 @@ export default function Dashboard() {
     bullet_emoji: '✅',
   });
   const [newEmoji, setNewEmoji] = useState('');
+   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
+   const [activeTab, setActiveTab] = useState('overview');
   const hasShownConfetti = useRef(false);
   const hasHandledCheckout = useRef(false);
   const hasCheckedBrand = useRef(false);
@@ -324,6 +328,40 @@ export default function Dashboard() {
     }));
   };
 
+   // Show onboarding wizard for incomplete profiles (only once per session)
+   useEffect(() => {
+     if (!loading && brand) {
+       const wizardDismissedKey = `brand-wizard-dismissed-${brand.id}`;
+       const wasRecentlyDismissed = localStorage.getItem(wizardDismissedKey);
+       
+       // Show wizard if profile is incomplete and not recently dismissed
+       const progress = calculateBrandProgress();
+       if (progress.percentage < 100 && !wasRecentlyDismissed) {
+         // Delay slightly to let the page render
+         const timer = setTimeout(() => setShowOnboardingWizard(true), 500);
+         return () => clearTimeout(timer);
+       }
+     }
+   }, [loading, brand?.id]);
+ 
+   const handleWizardDismiss = () => {
+     setShowOnboardingWizard(false);
+     if (brand) {
+       localStorage.setItem(`brand-wizard-dismissed-${brand.id}`, 'true');
+     }
+   };
+ 
+   const handleWizardNavigateToTab = (tab: string) => {
+     setActiveTab(tab);
+   };
+ 
+   const handleWizardComplete = () => {
+     setShowOnboardingWizard(false);
+     if (brand) {
+       localStorage.setItem(`brand-wizard-dismissed-${brand.id}`, 'true');
+     }
+   };
+ 
   // Show contextual recommendation based on incomplete items
   useEffect(() => {
     if (!loading && brand && !hasShownRecommendation.current) {
@@ -426,7 +464,7 @@ export default function Dashboard() {
         )}
 
         {/* Tabs Navigation */}
-        <Tabs defaultValue="overview" className="space-y-6">
+         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="gap-2">
               <Building2 className="h-4 w-4" />
@@ -543,6 +581,13 @@ export default function Dashboard() {
 
           {/* Brand Copy Tab */}
           <TabsContent value="brand-copy" className="space-y-6">
+             {/* Content Assets Editor - at the top */}
+             <ContentAssetsEditor 
+               brandId={brand.id} 
+               offers={offers.map(o => ({ id: o.id, name: o.name }))} 
+             />
+             
+             {/* Emoji Settings */}
             <Card variant="glow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -742,6 +787,18 @@ export default function Dashboard() {
         brand={brand}
         onUpdate={fetchBrandData}
       />
+ 
+       {/* Onboarding Wizard Overlay */}
+       {showOnboardingWizard && (
+         <BrandOnboardingWizard
+           brand={brand}
+           offers={offers}
+           onDismiss={handleWizardDismiss}
+           onNavigateToTab={handleWizardNavigateToTab}
+           onEditBrand={() => setEditDialogOpen(true)}
+           onComplete={handleWizardComplete}
+         />
+       )}
     </DashboardLayout>
   );
 }

@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -31,6 +31,40 @@ serve(async (req) => {
 
     const kbContext = kbDocs?.map(doc => `## ${doc.title}\n${doc.content}`).join("\n\n") || "";
 
+     // Fetch content assets for this brand
+     let contentAssetsContext = "";
+     if (brandId) {
+       const { data: contentAssets } = await supabase
+         .from("brand_content_assets")
+         .select("*")
+         .eq("brand_id", brandId);
+       
+       if (contentAssets?.length) {
+         contentAssetsContext = "\n\nUSER-PROVIDED CONTENT ASSETS:\n";
+         contentAssetsContext += "The user has provided the following real content. Use this authentic language, testimonials, and insights to create more specific and genuine angles:\n\n";
+         
+         contentAssets.forEach((asset: any) => {
+           // Filter by offer if specified
+           if (offerId && asset.offer_ids?.length > 0 && !asset.offer_ids.includes(offerId)) {
+             return; // Skip if not linked to this offer
+           }
+           
+           const typeLabels: Record<string, string> = {
+             testimonials: 'CLIENT TESTIMONIALS',
+             webinar_scripts: 'WEBINAR/CHALLENGE SCRIPTS',
+             survey_answers: 'SURVEY RESPONSES',
+             client_objections: 'CLIENT OBJECTIONS & QUESTIONS',
+             client_questions: 'CLIENT QUESTIONS',
+             other: 'OTHER CONTENT'
+           };
+           
+           contentAssetsContext += `## ${typeLabels[asset.asset_type] || asset.asset_type.toUpperCase()}:\n${asset.content}\n\n`;
+         });
+         
+         contentAssetsContext += "IMPORTANT: Incorporate specific phrases, pain points, and language from the above content to create authentic, resonant angles that sound like the user's actual clients.\n";
+       }
+     }
+ 
     // Build conversation insights context if available
     let insightsContext = "";
     if (conversationInsights && conversationInsights.length > 0) {
@@ -56,6 +90,7 @@ serve(async (req) => {
 
 KNOWLEDGE BASE:
 ${kbContext}
+ ${contentAssetsContext}
 ${insightsContext}
 
 RULES:
