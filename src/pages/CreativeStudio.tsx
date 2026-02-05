@@ -24,6 +24,7 @@ import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { ProductionManager } from "@/components/creative/ProductionManager";
 import { AngleCopyEditor } from "@/components/creative/AngleCopyEditor";
+ import { CreativeContextInput, CreativeContext } from "@/components/creative/CreativeContextInput";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
@@ -38,6 +39,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+ import {
+   Dialog,
+   DialogContent,
+   DialogDescription,
+   DialogHeader,
+   DialogTitle,
+ } from "@/components/ui/dialog";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
@@ -202,6 +210,9 @@ export default function CreativeStudio() {
 
   // Regeneration confirmation state
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+ 
+   // Pre-generation context state
+   const [showContextInput, setShowContextInput] = useState(false);
 
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -447,13 +458,20 @@ export default function CreativeStudio() {
     generateAngles();
   };
 
-  const generateAngles = async (skipConfirmation = false) => {
+   const generateAngles = async (context?: CreativeContext | null) => {
     if (!workspace?.strategy_json) { toast.error("Complete strategy first"); return; }
     
     setGenerating(true); setGeneratingPhase("angles");
     try {
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
-        body: { brandName: workspace.brands?.name, strategyData: workspace.strategy_json, audiencePsychology: workspace.brands?.audience_psychology, offerData: { name: workspace.offer_name, description: workspace.offer_description, price: workspace.offer_price } }
+         body: { 
+           brandName: workspace.brands?.name, 
+           strategyData: workspace.strategy_json, 
+           audiencePsychology: workspace.brands?.audience_psychology, 
+           offerData: { name: workspace.offer_name, description: workspace.offer_description, price: workspace.offer_price },
+           preGenerationContext: context,
+           conversationInsights: (workspace.creative_json as Record<string, any>)?.conversationInsights
+         }
       });
       if (error) throw error;
       setAvailableAngles(data.angles);
@@ -461,7 +479,12 @@ export default function CreativeStudio() {
       setSelectedAngleIds([]);
       setGridData([]);
       setActiveAngleId("");
-      await saveCreativeState({ angles: data.angles, selectedAngleIds: [], gridData: [] });
+       await saveCreativeState({ 
+         angles: data.angles, 
+         selectedAngleIds: [], 
+         gridData: [],
+         preGenerationContext: context || null
+       });
       toast.success("Angles ready!");
       setActiveTab("angles");
     } catch (e: any) { toast.error(e.message || "Failed"); }
@@ -651,12 +674,12 @@ export default function CreativeStudio() {
             {!workspace ? (
               <Card><CardContent className="pt-6 text-center py-12"><Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold">Select a campaign above</h3></CardContent></Card>
             ) : availableAngles.length === 0 ? (
-              <Card><CardContent className="pt-6 text-center py-12">
-                <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Generate Creative Angles</h3>
-                <p className="text-muted-foreground text-sm mb-6">Lumi will suggest unique creative angles</p>
-                <Button onClick={() => generateAngles()} disabled={generating} className="gap-2">{generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Generate Angles</Button>
-              </CardContent></Card>
+               <CreativeContextInput
+                 onGenerate={(context) => generateAngles(context)}
+                 onSkip={() => generateAngles()}
+                 isGenerating={generating}
+                 existingContext={(workspace?.creative_json as Record<string, any>)?.preGenerationContext}
+               />
             ) : (
               <div className="space-y-6">
                 <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} />
@@ -862,13 +885,38 @@ export default function CreativeStudio() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => {
               setShowRegenerateConfirm(false);
-              generateAngles(true);
+               setShowContextInput(true);
             }}>
               Regenerate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+ 
+       {/* Context Input Dialog for Regeneration */}
+       <Dialog open={showContextInput} onOpenChange={setShowContextInput}>
+         <DialogContent className="sm:max-w-lg">
+           <DialogHeader>
+             <DialogTitle>Any direction for this round?</DialogTitle>
+             <DialogDescription>
+               Help Lumi create angles that better fit your needs.
+             </DialogDescription>
+           </DialogHeader>
+           <CreativeContextInput
+             compact
+             onGenerate={(context) => {
+               setShowContextInput(false);
+               generateAngles(context);
+             }}
+             onSkip={() => {
+               setShowContextInput(false);
+               generateAngles();
+             }}
+             isGenerating={generating}
+             existingContext={(workspace?.creative_json as Record<string, any>)?.preGenerationContext}
+           />
+         </DialogContent>
+       </Dialog>
     </DashboardLayout>
   );
 }
