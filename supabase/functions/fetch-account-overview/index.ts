@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
@@ -45,10 +45,10 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Fetch brand to verify ownership and get Meta account
+    // Fetch brand to verify ownership and get Meta account + token
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('id, meta_account_id, user_id')
+      .select('id, meta_account_id, meta_access_token, user_id')
       .eq('id', brandId)
       .single();
 
@@ -67,11 +67,8 @@ Deno.serve(async (req) => {
       throw new Error('Meta account not connected');
     }
 
-    // Get token from vault
-    const { data: metaAccessToken, error: tokenError } = await supabase
-      .rpc('get_meta_token', { p_brand_id: brandId });
-
-    if (tokenError || !metaAccessToken) {
+    const metaAccessToken = brand.meta_access_token;
+    if (!metaAccessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 
