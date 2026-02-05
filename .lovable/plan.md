@@ -1,246 +1,238 @@
 
-# Agency Mode + Production Checklist Export
+# My Brand Onboarding Wizard + Content Assets System
 
 ## Overview
 
-This plan implements two major features:
+This plan implements two interconnected features:
 
-1. **Agency Mode Toggle** - Admin-enabled multi-brand management for agencies
-2. **Google Sheets Export** - Share production checklists with clients for approvals
+1. **Guided Onboarding Wizard** - A step-by-step wizard on the My Brand page that guides new users through all four sections (Overview, Brand Copy, Audience Psychology, Offers) with clear navigation and progress tracking
 
----
-
-## Feature 1: Agency Mode
-
-### Current State
-
-- Users currently have a 1:1 relationship with brands (Dashboard fetches first brand only)
-- Subscription tiers exist (`starter`, `growth`, `agency_pro`) with `agency` having unlimited brands
-- `LumiContext` already has `brandId`/`setBrandId` infrastructure
-- No admin toggle exists to enable agency mode for specific users
-- No brand switcher dropdown exists
-
-### Solution Architecture
-
-```text
-+-------------------+     Admin toggles     +-------------------+
-|   Admin Users     | ------------------->  |   profiles table  |
-|   Dashboard       |                       |   is_agency_user  |
-+-------------------+                       +-------------------+
-                                                     |
-                                                     v
-+-------------------+     Brand Selector    +-------------------+
-|   Agency User     | <-------------------  |   DashboardLayout |
-|   (any page)      |                       |   header dropdown |
-+-------------------+                       +-------------------+
-```
-
-### Database Changes
-
-Add new column to `profiles` table:
-
-| Column | Type | Default | Description |
-|--------|------|---------|-------------|
-| `is_agency_user` | boolean | false | Enables multi-brand mode |
-
-### Files to Create/Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/admin/Users.tsx` | Add "Agency Mode" toggle in user details panel |
-| `supabase/functions/admin-user-management/index.ts` | Add `toggle_agency_mode` action |
-| `src/components/DashboardLayout.tsx` | Add brand selector dropdown for agency users |
-| `src/components/BrandSelector.tsx` (new) | Dropdown component for switching brands |
-| `src/contexts/BrandContext.tsx` (new) | Manage active brand state across app |
-| `src/pages/Dashboard.tsx` | Fetch all brands for agency users, support switching |
-| `src/pages/Onboarding.tsx` | Allow agency users to add additional brands |
-
-### UI/UX Flow
-
-**Admin Dashboard (User Management)**
-- New toggle switch in user details: "Enable Agency Mode"
-- Badge shows "Agency" next to user name when enabled
-
-**Agency User Experience**
-- Brand selector dropdown in top header (next to user avatar)
-- Shows current brand name + chevron
-- Dropdown lists all brands with "Add New Brand" button
-- Switching brands reloads dashboard context
-- All campaign workspaces, offers, insights filtered by selected brand
-
-**Brand Isolation Rules**
-- Each brand maintains separate:
-  - Offers
-  - Audience psychology
-  - Campaign workspaces
-  - Meta ad account connection
-  - Creative assets
-- AI context is scoped to active brand only
+2. **Content Assets Library** - A new feature in the Brand Copy tab where users can paste valuable content (testimonials, webinar scripts, survey responses, client objections/questions) that feeds into AI creative generation
 
 ---
 
-## Feature 2: Google Sheets Export for Production Checklist
+## Technical Implementation
 
-### Current State
+### Part 1: Database Schema
 
-- Production checklist exists in `CreativeChecklistCard.tsx` and `ProductionManager.tsx`
-- Contains: hooks, scripts, text overlays, creative direction, psychology notes
-- Only "Copy Script" button exists for individual items
-- No bulk export or shareable format
-
-### Solution Architecture
-
-```text
-+-------------------+     Generate CSV     +-------------------+
-|   Build Tab       | ------------------->  |   Download as     |
-|   Export Button   |                       |   .csv file       |
-+-------------------+                       +-------------------+
-         |
-         |         Alternative
-         v
-+-------------------+     Create Sheet     +-------------------+
-|   Google Sheets   | ------------------->  |   Returns public  |
-|   API (optional)  |                       |   share link      |
-+-------------------+                       +-------------------+
-```
-
-### Implementation Approach
-
-**Option A: CSV Export (Recommended - No API Key Required)**
-- Generate CSV/Excel-compatible file from production items
-- Download directly to user's device
-- User can upload to Google Sheets, share with client
-
-**Option B: Google Sheets API (Future Enhancement)**
-- Requires user to connect Google account
-- Creates sheet directly in their Drive
-- More seamless but adds OAuth complexity
-
-### Export Data Structure
-
-```text
-| Format | Hook | Script | Text Overlays | Visual Direction | Why It Works |
-|--------|------|--------|---------------|------------------|--------------|
-| Talking Head | "—and that's when..." | Line 1\nLine 2... | "Hook: 0-3s"... | At desk, coffee | Pattern interrupt... |
-| B-Roll | "Show the before..." | N/A | "Transition: 3-5s" | Wide shot, close-up | Contrast builds... |
-```
-
-### Files to Create/Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/creative/ProductionManager.tsx` | Add "Export Checklist" button |
-| `src/lib/export-production-checklist.ts` (new) | CSV generation logic |
-| `src/components/creative/ExportChecklistModal.tsx` (new) | Preview + download dialog |
-
-### Export Features
-
-**Client-Friendly Format**
-- Removes technical jargon
-- Includes recording instructions for talking heads
-- Separate sections for:
-  - Talking Head Scripts (with line-by-line breakdown)
-  - B-Roll Shot List
-  - Graphic Briefs
-  - Ad Copy for Review
-
-**Export Options Modal**
-- Checkboxes to include/exclude:
-  - Scripts
-  - Psychology notes
-  - Creative direction
-  - Ad copy
-- "Download CSV" button
-- "Copy Link" for shareable preview (future)
-
----
-
-## Technical Implementation Details
-
-### Database Migration
+Create a new `brand_content_assets` table to store the pasted content:
 
 ```sql
--- Add agency mode to profiles
-ALTER TABLE public.profiles 
-ADD COLUMN is_agency_user boolean DEFAULT false;
+CREATE TABLE brand_content_assets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id UUID REFERENCES brands(id) ON DELETE CASCADE NOT NULL,
+  asset_type TEXT NOT NULL CHECK (asset_type IN (
+    'testimonials',
+    'webinar_scripts', 
+    'survey_answers',
+    'client_objections',
+    'client_questions',
+    'other'
+  )),
+  content TEXT NOT NULL,
+  label TEXT, -- optional user-provided label
+  offer_ids UUID[] DEFAULT '{}', -- link to specific offers (empty = brand-wide)
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Index for efficient filtering
-CREATE INDEX idx_profiles_agency ON public.profiles(is_agency_user) WHERE is_agency_user = true;
+-- Enable RLS
+ALTER TABLE brand_content_assets ENABLE ROW LEVEL SECURITY;
+
+-- RLS policy: users can only access their own brand's assets
+CREATE POLICY "Users can manage their brand's content assets"
+  ON brand_content_assets FOR ALL
+  USING (
+    brand_id IN (SELECT id FROM brands WHERE user_id = auth.uid())
+  );
 ```
 
-### Brand Context Provider
+---
+
+### Part 2: New Components
+
+#### 1. `BrandOnboardingWizard.tsx`
+
+A wizard overlay that appears for users who haven't completed their brand profile. Uses the existing `MobileStepWizard` component pattern but adapted for desktop+mobile.
+
+```text
++------------------------------------------+
+|  Step 1 of 4: Brand Basics               |
+|  [●] [○] [○] [○]                         |
+|                                          |
+|  Complete your brand profile to unlock   |
+|  powerful AI-driven campaigns.           |
+|                                          |
+|  +------------------------------------+  |
+|  | Brand Name: [input]                |  |
+|  | Website: [input]                   |  |
+|  | Industry: [input]                  |  |
+|  +------------------------------------+  |
+|                                          |
+|       [Skip for now]    [Continue →]     |
++------------------------------------------+
+```
+
+**Steps:**
+- Step 1: Overview (Brand basics + positioning)
+- Step 2: Brand Copy (Emoji settings + Content Assets)
+- Step 3: Audience Psychology (Generate/review/approve)
+- Step 4: Offers (Add first offer)
+
+**Logic:**
+- Shows automatically if brand profile is incomplete (< 100%)
+- Can be dismissed with "Skip for now" 
+- Each step auto-advances when requirements are met
+- Confetti celebration on completion
+
+#### 2. `ContentAssetsEditor.tsx`
+
+A collapsible card in the Brand Copy tab for managing content assets.
+
+```text
++------------------------------------------+
+| 📚 Your Content Library (optional)       |
+| Paste existing content to supercharge    |
+| your AI-generated ads.                   |
++------------------------------------------+
+| ▼ Testimonials                           |
+|   +------------------------------------+ |
+|   | [Paste testimonials here...]       | |
+|   +------------------------------------+ |
+|   Link to: ○ All Offers  ○ Specific... | |
++------------------------------------------+
+| ▼ Webinar/Challenge Scripts              |
+| ▼ Survey Responses                       |
+| ▼ Client Objections & Questions          |
+| ▼ Other Useful Content                   |
++------------------------------------------+
+|                     [Save Content]       |
++------------------------------------------+
+```
+
+**Features:**
+- Collapsible sections for each content type
+- Multi-line textarea for each category
+- Toggle: "Apply to all offers" or select specific offer(s)
+- Auto-save on blur
+- Visual indicator showing content is available
+
+---
+
+### Part 3: AI Integration
+
+Modify these edge functions to include content assets:
+
+#### `generate-creative-angles/index.ts`
+Add fetching of `brand_content_assets` and include in the prompt:
 
 ```typescript
-interface BrandContextType {
-  brands: Brand[];
-  activeBrand: Brand | null;
-  setActiveBrand: (brand: Brand) => void;
-  isAgencyUser: boolean;
-  loading: boolean;
+// Fetch content assets for this brand
+const { data: contentAssets } = await supabase
+  .from("brand_content_assets")
+  .select("*")
+  .eq("brand_id", brandId);
+
+// Build content context
+let contentContext = "";
+if (contentAssets?.length) {
+  contentContext = "\n\nUSER-PROVIDED CONTENT ASSETS:\n";
+  contentAssets.forEach(asset => {
+    contentContext += `\n## ${asset.asset_type.toUpperCase()}:\n${asset.content}\n`;
+  });
+  contentContext += "\nUse these real testimonials, objections, and language patterns to create more authentic, specific angles.\n";
 }
 ```
 
-### CSV Export Function
+#### `generate-angle-copy/index.ts`
+Same pattern - fetch and inject content assets.
+
+#### `generate-creative-grid/index.ts` 
+Same pattern - content assets provide real language for hooks and scripts.
+
+---
+
+### Part 4: Component Updates
+
+#### `Dashboard.tsx` (My Brand page)
+
+**Changes:**
+1. Add state to track wizard visibility: `showOnboardingWizard`
+2. Show wizard overlay when profile is incomplete and user hasn't dismissed it
+3. Add `ContentAssetsEditor` component to Brand Copy tab
+4. Update tab switching to work with wizard navigation
+
+#### New wizard flow logic:
 
 ```typescript
-function exportProductionChecklist(items: ProductionItem[], options: ExportOptions): string {
-  // Headers
-  const headers = ['Format', 'Hook', 'Script', 'Text Overlays', 'Visual Direction'];
-  if (options.includePsychology) headers.push('Why It Works');
+// Show wizard if:
+// 1. Brand profile < 100% complete
+// 2. User hasn't dismissed the wizard for this brand
+// 3. It's within the first 7 days of brand creation
+const shouldShowWizard = useMemo(() => {
+  if (!brand) return false;
+  const dismissedKey = `brand-wizard-dismissed-${brand.id}`;
+  if (localStorage.getItem(dismissedKey)) return false;
   
-  // Rows
-  const rows = items.map(item => [
-    formatLabels[item.format],
-    item.hook,
-    item.script_lines?.join('\n') || '',
-    item.text_overlays?.map(t => `${t.type}: ${t.text} (${t.timing})`).join('\n') || '',
-    item.visual_hook || item.guidance,
-    options.includePsychology ? item.why_this_works : ''
-  ]);
-  
-  return [headers, ...rows].map(row => row.map(escapeCSV).join(',')).join('\n');
-}
+  const progress = calculateBrandProgress();
+  return progress.percentage < 100;
+}, [brand]);
 ```
 
 ---
 
-## Implementation Order
+### Part 5: Files to Create/Modify
 
-### Phase 1: Agency Mode (Higher Complexity)
-1. Database migration for `is_agency_user`
-2. Admin user management toggle
-3. Brand context provider
-4. Brand selector component
-5. Update DashboardLayout with brand switcher
-6. Update Dashboard to fetch multiple brands
-7. Add "Add New Brand" flow for agency users
+**New Files:**
+- `src/components/BrandOnboardingWizard.tsx` - Main wizard component
+- `src/components/ContentAssetsEditor.tsx` - Content library UI
+- `supabase/migrations/xxx_add_content_assets.sql` - Database migration
 
-### Phase 2: Export Functionality (Lower Complexity)
-1. Create export utility function
-2. Create ExportChecklistModal component
-3. Add export button to ProductionManager
-4. Test CSV downloads
+**Modified Files:**
+- `src/pages/Dashboard.tsx` - Add wizard trigger + ContentAssetsEditor
+- `supabase/functions/generate-creative-angles/index.ts` - Fetch + use assets
+- `supabase/functions/generate-angle-copy/index.ts` - Fetch + use assets  
+- `supabase/functions/generate-creative-grid/index.ts` - Fetch + use assets
 
 ---
 
-## Security Considerations
+### Part 6: UX Details
 
-- Agency mode toggle is admin-only (audit logged)
-- Brand data remains isolated by RLS policies
-- Export contains no sensitive data (Meta tokens, etc.)
-- CSV generation happens client-side (no server storage)
+#### Wizard Step Navigation
+
+Each step has:
+- Clear title and description
+- Progress dots (clickable if previous steps complete)
+- "Back" button (except step 1)
+- "Continue" / "Skip for now" buttons
+- Auto-advance when step requirements are met
+
+#### Content Assets UX
+
+- Optional - never blocks the wizard
+- Clear labels explaining what each field is for
+- Examples placeholder text:
+  - Testimonials: "Paste client testimonials, reviews, or success stories..."
+  - Webinar Scripts: "Paste your webinar intro, key points, or challenge day scripts..."
+  - Survey Answers: "Paste responses from surveys about pain points, goals, etc..."
+  - Objections: "What questions or objections do clients commonly raise?"
+- Badge showing "3 assets saved" when content exists
+- Linked offers show as chips
+
+#### Mobile Considerations
+
+- Wizard uses same swipe navigation as MobilePlanningWizard
+- Textarea height adapts to content
+- Offer selector uses a bottom sheet on mobile
 
 ---
 
-## Benefits
+### Implementation Order
 
-**For Agency Users**
-- Manage multiple clients from one Lumi account
-- Keep AI context separated per brand
-- Simplified billing (one subscription)
-
-**For Client Collaboration**
-- Share production checklists without Lumi access
-- Get script approvals before recording
-- Hand off graphic briefs to creative teams
-- Professional, branded export format
+1. Create database migration for `brand_content_assets` table
+2. Create `ContentAssetsEditor.tsx` component
+3. Add ContentAssetsEditor to Dashboard Brand Copy tab
+4. Create `BrandOnboardingWizard.tsx` component
+5. Integrate wizard into Dashboard.tsx
+6. Update edge functions to fetch and use content assets
+7. Test full flow: onboarding → content input → creative generation
