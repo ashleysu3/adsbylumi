@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology } = await req.json();
+     const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -86,6 +86,37 @@ serve(async (req) => {
       insightsContext += "\nIMPORTANT: Incorporate these user insights to create angles that directly address their specific pain points, desires, objections, and unique value propositions mentioned in the conversations above.\n";
     }
 
+     // Build pre-generation context from user direction
+     let preGenContext = "";
+     if (preGenerationContext) {
+       preGenContext = "\n\n=== USER DIRECTION FOR THIS CREATIVE ROUND ===\n";
+       
+       if (preGenerationContext.quickSelections?.length > 0) {
+         preGenContext += "The user indicated the following about their audience/needs:\n";
+         
+         const selectionMappings: Record<string, string> = {
+           "audience_early_journey": "- Audience is early in their awareness journey and needs more education before they'll buy",
+           "audience_skeptical": "- Audience is skeptical and has objections that need to be addressed (trust is key)",
+           "previous_generic": "- Previous creative felt too generic - need more specific, authentic angles",
+           "need_urgency": "- Need more urgency and scarcity messaging to drive action",
+           "highlight_transformation": "- Want to emphasize the transformation and end results",
+           "focus_pain_point": "- Focus deeply on the core pain point"
+         };
+         
+         preGenerationContext.quickSelections.forEach((sel: string) => {
+           if (selectionMappings[sel]) {
+             preGenContext += selectionMappings[sel] + "\n";
+           }
+         });
+       }
+       
+       if (preGenerationContext.additionalNotes?.trim()) {
+         preGenContext += `\nAdditional direction from user: "${preGenerationContext.additionalNotes}"\n`;
+       }
+       
+       preGenContext += "\nIMPORTANT: Prioritize angles that address the user's specific direction above. This is fresh input for THIS creative round.\n";
+     }
+ 
     // Build offer-audience psychology context
     let offerAudienceContext = "";
     if (offerAudiencePsychology) {
@@ -118,6 +149,7 @@ ${kbContext}
  ${contentAssetsContext}
 ${insightsContext}
 ${offerAudienceContext}
+ ${preGenContext}
 
 RULES:
 - Generate exactly 10-12 creative angles
@@ -127,6 +159,7 @@ RULES:
 - Write as if explaining to a friend who has never run ads
 - Focus on what resonates emotionally, not why it works strategically
 ${conversationInsights?.length > 0 ? "- PRIORITIZE angles that address the specific insights shared by the user in previous conversations" : ""}
+ ${preGenerationContext ? "- PRIORITIZE the user's specific direction for this creative round" : ""}
 
 ANGLE TYPES TO CONSIDER (but don't expose these labels):
 - Relatable Struggle (showing the problem they face)
