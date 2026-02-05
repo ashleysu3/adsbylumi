@@ -1,316 +1,176 @@
 
 
-# Pre-Launch QA Check System
+# Remove Admin from Dropdown and Add Dedicated Admin Access Button
 
 ## Overview
 
-This plan adds a dedicated QA check stage between the "Review" step and "Publishing" step in the Campaign Builder. When the user clicks "Publish", they'll first see a full-page QA loading screen that runs through multiple checks with animated progress, building confidence that their campaign is thoroughly validated. Any issues found will be displayed with actionable fixes before proceeding.
+This plan removes all admin-related items from the user dropdown menus (both desktop and mobile) and replaces them with a dedicated, prominent admin access button that appears at the top of the main dashboard header. This button will only be visible to admin users and provides a clear, separate entry point to the admin dashboard.
 
 ---
 
-## User Flow
+## Current State
 
-```text
-Review Step → Click "Publish to Meta" → QA Check Screen (Loading) → Results Screen → Fix Issues OR Proceed to Publish
-```
+**Desktop Dropdown (`DashboardLayout.tsx`):**
+- Lines 344-363 contain admin section with separator, label, and 4 menu items (Knowledge Base, Campaign Templates, Invite Codes, Analytics)
 
----
-
-## Part 1: New QA Check Component
-
-### File: `src/components/QACheckScreen.tsx`
-
-A dedicated full-page component that:
-1. Shows animated progress through each check
-2. Displays check status (pending, running, passed, failed, warning)
-3. Shows final results with fix options
-4. Allows user to proceed or go back to fix issues
-
-### Check Categories
-
-| Check | What It Does | Icon |
-|-------|--------------|------|
-| **Spelling & Grammar** | AI-powered scan of all headlines, descriptions, and primary copy | `SpellCheck` |
-| **Creative Text** | Scan uploaded images for text overlay issues (future: OCR) | `Image` |
-| **Landing Page** | HEAD request to verify URL is reachable | `Link` |
-| **Budget** | Validate budget is set and within reasonable range | `DollarSign` |
-| **Schedule** | Confirm start date is in the future, end date (if set) is after start | `Calendar` |
-| **Meta Connection** | Verify ad account and page are connected | `Link2` |
-
-### Visual Design
-
-- Full-page overlay (similar to LumiThinking but with checklist)
-- Each check shows as a row with:
-  - Icon
-  - Check name
-  - Status indicator (spinner → checkmark/warning/X)
-  - Details (collapsed, expandable on click)
-- Overall progress bar at top
-- When complete: summary card with pass/fail/warning counts
+**Mobile Dropdown (`MobileHeader.tsx`):**
+- Lines 45-73 contain admin section with 6 menu items (User Management, Subscriptions, Knowledge Base, Campaign Templates, Invite Codes, Analytics)
 
 ---
 
-## Part 2: Edge Function for QA Checks
+## Part 1: Remove Admin Items from Dropdowns
 
-### File: `supabase/functions/qa-preflight-check/index.ts`
+### Desktop - DashboardLayout.tsx
 
-Performs server-side validation:
-
-1. **Spelling/Grammar Check**: Use AI to scan all copy variations for issues
-2. **URL Reachability**: HEAD request with timeout
-3. **Date Validation**: Verify dates are logical
-4. **Budget Validation**: Confirm amount is set and reasonable
-
-Returns structured response:
+Remove the entire admin block (lines 344-363):
 ```typescript
-{
-  success: true,
-  checks: [
-    {
-      id: 'spelling',
-      name: 'Spelling & Grammar',
-      status: 'passed' | 'warning' | 'failed',
-      issues: [
-        { field: 'headline_1', text: 'Orignal', suggestion: 'Original', location: 'Angle: Authority' }
-      ]
-    },
-    // ... more checks
-  ],
-  summary: {
-    passed: 4,
-    warnings: 1,
-    failed: 0
-  }
-}
+// REMOVE THIS ENTIRE BLOCK:
+{isAdmin && <>
+  <DropdownMenuSeparator />
+  <DropdownMenuLabel>Admin</DropdownMenuLabel>
+  <DropdownMenuItem onClick={() => navigate("/admin/knowledge")}>
+    <Shield className="mr-2 h-4 w-4" />
+    Knowledge Base
+  </DropdownMenuItem>
+  ...
+</>}
+```
+
+### Mobile - MobileHeader.tsx
+
+Remove the entire admin block (lines 45-73):
+```typescript
+// REMOVE THIS ENTIRE BLOCK:
+{isAdmin && (
+  <>
+    <DropdownMenuLabel className="text-xs text-muted-foreground">Admin</DropdownMenuLabel>
+    <DropdownMenuItem onClick={() => navigate("/admin/users")} className="min-h-[44px]">
+      ...
+    </DropdownMenuItem>
+    ...
+    <DropdownMenuSeparator />
+  </>
+)}
 ```
 
 ---
 
-## Part 3: QA Screen UI States
+## Part 2: Add Admin Access Button to Header
 
-### State 1: Running Checks (Animated Loading)
+### Desktop - DashboardLayout.tsx
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 67%                   │
-│                                                             │
-│   ✓ Meta Connection          Connected                     │
-│   ✓ Budget                   $25/day verified              │
-│   ◐ Landing Page             Checking...                   │
-│   ○ Schedule                 Pending                       │
-│   ○ Spelling & Grammar       Pending                       │
-│                                                             │
-│   "Running pre-flight checks..."                           │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### State 2: Results - All Passed
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   ✅ All Checks Passed                                      │
-│                                                             │
-│   Your campaign is ready to go live.                       │
-│                                                             │
-│   ✓ Meta Connection                                        │
-│   ✓ Budget ($25/day)                                       │
-│   ✓ Landing Page (200 OK)                                  │
-│   ✓ Schedule (Jan 15 - Continuous)                         │
-│   ✓ Spelling & Grammar (12 items checked)                  │
-│                                                             │
-│   [Back to Review]              [Publish Now →]            │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### State 3: Results - Issues Found
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   ⚠️ 2 Issues Found                                         │
-│                                                             │
-│   Review and fix these before publishing:                  │
-│                                                             │
-│   ⚠ Spelling & Grammar                                     │
-│     └─ "Orignal" → "Original" in headline                  │
-│       [Fix Now]                                            │
-│                                                             │
-│   ✗ Landing Page                                           │
-│     └─ Page returned 404 error                             │
-│       [Check URL]                                          │
-│                                                             │
-│   ✓ Meta Connection                                        │
-│   ✓ Budget                                                 │
-│   ✓ Schedule                                               │
-│                                                             │
-│   [Back to Review]      [Publish Anyway (not recommended)] │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Part 4: Integration into Campaign Builder
-
-### File: `src/pages/CampaignBuilder.tsx`
-
-1. Add new stage: `"qa-check"` between `"review"` and `"publishing"`
-2. Update `handlePublish` to first transition to QA check
-3. QA check component calls edge function
-4. On completion, either show issues or proceed to publish
-
-### Stage Flow Update
+Add an admin button in the header, positioned before the Library button (around line 304). This creates a clear visual distinction:
 
 ```typescript
-type Stage = "chat" | "review" | "qa-check" | "publishing" | "success";
+{/* Admin Dashboard Button - Only visible to admins */}
+{isAdmin && (
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={() => navigate("/admin/users")}
+    className="gap-2 border-amber-500/50 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+  >
+    <Shield className="h-4 w-4" />
+    <span className="hidden sm:inline">Admin</span>
+  </Button>
+)}
 ```
 
-### Progress Steps Update
-
-Add "QA Check" between Review and Publishing:
+Visual placement in header:
 ```
-Questions → Review → QA Check → Publishing → Live
-    1          2         3           4         5
+[Lumi Logo] [Brand Selector]           [Admin] [Library] [New Ad] [Avatar]
 ```
 
----
+### Mobile - MobileHeader.tsx
 
-## Part 5: QA Check Component Structure
-
-### Props Interface
+Add the admin button in the mobile header, positioned to the left of the avatar:
 
 ```typescript
-interface QACheckScreenProps {
-  workspace: any;
-  answers: any;
-  onBack: () => void;
-  onProceed: () => void;
-  onFixIssue: (issueType: string, issueData: any) => void;
-}
+{/* Admin Button - Only visible to admins */}
+{isAdmin && (
+  <Button
+    variant="outline"
+    size="icon"
+    onClick={() => navigate("/admin/users")}
+    className="h-10 w-10 rounded-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+  >
+    <Shield className="h-5 w-5" />
+  </Button>
+)}
 ```
 
-### Internal State
-
-```typescript
-const [checkPhase, setCheckPhase] = useState<'running' | 'complete'>('running');
-const [checks, setChecks] = useState<Check[]>([
-  { id: 'meta', name: 'Meta Connection', status: 'pending' },
-  { id: 'budget', name: 'Budget', status: 'pending' },
-  { id: 'schedule', name: 'Schedule', status: 'pending' },
-  { id: 'landing_page', name: 'Landing Page', status: 'pending' },
-  { id: 'spelling', name: 'Spelling & Grammar', status: 'pending' },
-]);
-const [currentCheck, setCurrentCheck] = useState(0);
+Visual placement on mobile:
+```
+[Lumi Logo]                             [Admin 🛡️] [Avatar]
 ```
 
 ---
 
-## Part 6: Edge Function Implementation
+## Part 3: Design Specifications
 
-### Check Functions
+### Admin Button Styling
 
-1. **checkSpellingGrammar**: 
-   - Collect all copy (headlines, descriptions, primary_copy)
-   - Send to AI with prompt asking for spelling/grammar issues
-   - Return list of issues with suggestions
+The admin button will have a distinctive amber/gold color scheme to differentiate it from regular actions:
 
-2. **checkLandingPage**:
-   - Use existing `checkUrlReachability` pattern
-   - HEAD request with 10s timeout
-   - Return status code and any errors
+- **Border**: `border-amber-500/50` - subtle amber border
+- **Text**: `text-amber-600` (light mode) / `text-amber-400` (dark mode)
+- **Hover**: `hover:bg-amber-500/10` - subtle amber background on hover
+- **Icon**: Shield icon to indicate admin/protected area
 
-3. **checkBudget**:
-   - Verify budget is set and > 0
-   - Warn if unusually low (< $5/day) or high (> $1000/day)
-
-4. **checkSchedule**:
-   - Start date must be today or future
-   - End date (if set) must be after start date
-   - Warn if start date is > 30 days in future
-
-5. **checkMetaConnection**:
-   - Verify brand has meta_account_id and page_id
-   - Already done client-side but double-check
+This color choice:
+1. Distinguishes from the pink/purple brand palette
+2. Conveys "caution/special access" semantically
+3. Remains visible but not distracting
 
 ---
 
-## Part 7: Copy Checking Details
+## Part 4: Files to Modify
 
-### What Gets Checked
+| File | Changes |
+|------|---------|
+| `src/components/DashboardLayout.tsx` | Remove admin dropdown items; Add admin button in header section |
+| `src/components/MobileHeader.tsx` | Remove admin dropdown items; Add admin button next to avatar |
 
-- All headlines from all angles
-- All descriptions from all angles
-- All primary copy from all angles
-- Item-level final copy (if exists)
+---
 
-### AI Prompt for Spelling/Grammar
+## Visual Mockups
 
-```text
-You are a copy editor. Review the following ad copy for spelling and grammar errors.
-Return a JSON array of issues found. Each issue should have:
-- field: which field (headline_1, description_2, etc.)
-- original: the problematic text
-- suggestion: the corrected text
-- reason: brief explanation (e.g., "typo", "grammar", "punctuation")
+### Desktop Header (Admin View)
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ [Lumi Logo]  [Brand ▼]                  [Admin] [Library] [+ New Ad] [👤] │
+└──────────────────────────────────────────────────────────────────────┘
+                                            ↑
+                                      Amber button
+                                      Only for admins
+```
 
-If no issues found, return an empty array.
+### Desktop Header (Regular User View)
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ [Lumi Logo]  [Brand ▼]                          [Library] [+ New Ad] [👤] │
+└──────────────────────────────────────────────────────────────────────┘
+                                                   No admin button
+```
 
-COPY TO CHECK:
-[copy content]
+### Mobile Header (Admin View)
+```
+┌────────────────────────────────────┐
+│ [Lumi Logo]              [🛡️] [👤] │
+└────────────────────────────────────┘
+                            ↑
+                      Amber shield icon
 ```
 
 ---
 
-## Part 8: Mobile Considerations
+## Implementation Summary
 
-The QA Check screen will be fully responsive:
-- Stack check items vertically
-- Expandable issue details
-- Full-width action buttons
-- Safe area handling for bottom actions
-
----
-
-## Part 9: Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/components/QACheckScreen.tsx` | Create | Main QA check component |
-| `supabase/functions/qa-preflight-check/index.ts` | Create | Server-side validation |
-| `src/pages/CampaignBuilder.tsx` | Modify | Add qa-check stage, update flow |
-| `src/components/MobileCampaignBuilder.tsx` | Modify | Add QA check for mobile flow |
-| `src/components/CampaignReview.tsx` | Modify | Update publish button to trigger QA |
-
----
-
-## Part 10: Check Animations
-
-Each check will animate through states:
-
-1. **Pending**: Gray circle icon, faded text
-2. **Running**: Animated spinner, "Checking..." text
-3. **Passed**: Green checkmark with scale-in animation
-4. **Warning**: Amber warning icon, expandable details
-5. **Failed**: Red X icon, expandable details with fix button
-
-Stagger the check animations to create a sequential feel even though some checks may complete instantly.
-
----
-
-## Summary
-
-This QA check system provides:
-- Visual confidence through animated progress
-- AI-powered spelling/grammar checking
-- URL reachability verification
-- Budget and schedule validation
-- Clear actionable feedback for issues
-- Seamless integration into existing flow
-- Mobile-responsive design
-
-Users will feel confident their ads are thoroughly checked before going live, reducing errors and improving campaign quality.
+1. **Remove** all admin menu items from the desktop dropdown menu (DashboardLayout.tsx)
+2. **Remove** all admin menu items from the mobile dropdown menu (MobileHeader.tsx)
+3. **Add** a dedicated admin button with Shield icon in the desktop header (before Library button)
+4. **Add** a dedicated admin button with Shield icon in the mobile header (before avatar)
+5. Button navigates to `/admin/users` as the default admin landing page
+6. Button uses amber color scheme for visual distinction
+7. Button only renders when `isAdmin` is true
 
