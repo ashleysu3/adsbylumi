@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
- import { Shield, LogOut, LayoutTemplate, Ticket, BarChart3, Sparkles, CreditCard, Library, Settings, Building2, Users, BookOpen, Link2 } from "lucide-react";
+ import { Shield, LogOut, Sparkles, Library, Settings, Building2, BookOpen, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -34,8 +34,21 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
           onClick={() => navigate("/start")}
         />
 
-        {/* User Menu */}
-        <DropdownMenu>
+        <div className="flex items-center gap-2">
+          {/* Admin Button - Only visible to admins */}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate("/admin/users")}
+              className="h-10 w-10 rounded-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+            >
+              <Shield className="h-5 w-5" />
+            </Button>
+          )}
+
+          {/* User Menu */}
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 touch-target">
               <Avatar className="h-9 w-9">
@@ -53,38 +66,6 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            
-            {isAdmin && (
-              <>
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Admin</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => navigate("/admin/users")} className="min-h-[44px]">
-                  <Users className="mr-3 h-4 w-4" />
-                  User Management
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/admin/subscriptions")} className="min-h-[44px]">
-                  <CreditCard className="mr-3 h-4 w-4" />
-                  Subscriptions
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/admin/knowledge")} className="min-h-[44px]">
-                  <Shield className="mr-3 h-4 w-4" />
-                  Knowledge Base
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/admin/templates")} className="min-h-[44px]">
-                  <LayoutTemplate className="mr-3 h-4 w-4" />
-                  Campaign Templates
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/admin/invite-codes")} className="min-h-[44px]">
-                  <Ticket className="mr-3 h-4 w-4" />
-                  Invite Codes
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/admin/analytics")} className="min-h-[44px]">
-                  <BarChart3 className="mr-3 h-4 w-4" />
-                  Analytics
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
-            )}
-            
             <DropdownMenuItem onClick={() => navigate("/dashboard")} className="min-h-[44px]">
               <Building2 className="mr-3 h-4 w-4" />
               My Brand
@@ -119,7 +100,8 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
               Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );

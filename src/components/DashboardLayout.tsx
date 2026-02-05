@@ -301,6 +301,18 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center space-x-2 md:space-x-3">
+              {/* Admin Dashboard Button - Only visible to admins */}
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/admin/users")}
+                  className="gap-2 border-amber-500/50 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                >
+                  <Shield className="h-4 w-4" />
+                  <span className="hidden sm:inline">Admin</span>
+                </Button>
+              )}
               <Link to="/content-library">
                 <button className="relative group p-[2px] md:p-[3px] rounded-lg bg-muted hover:bg-muted/80 border border-border/50 transition-all overflow-hidden">
                   <span className="relative flex items-center py-1.5 md:py-2 rounded-md bg-card group-hover:bg-card/95 transition-colors font-medium px-2 md:px-3 text-foreground text-xs md:text-sm">
@@ -341,26 +353,6 @@ export default function DashboardLayout({
                     <Home className="mr-2 h-4 w-4" />
                     Home
                   </DropdownMenuItem>
-                  {isAdmin && <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Admin</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => navigate("/admin/knowledge")}>
-                        <Shield className="mr-2 h-4 w-4" />
-                        Knowledge Base
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/admin/templates")}>
-                        <LayoutTemplate className="mr-2 h-4 w-4" />
-                        Campaign Templates
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/admin/invite-codes")}>
-                        <Ticket className="mr-2 h-4 w-4" />
-                        Invite Codes
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/admin/analytics")}>
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        Analytics
-                      </DropdownMenuItem>
-                    </>}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate("/dashboard")}>
                     <Building2 className="mr-2 h-4 w-4" />
