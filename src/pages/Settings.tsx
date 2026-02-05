@@ -15,15 +15,17 @@ import {
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
   Link2, Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GlossaryTooltip } from '@/components/GlossaryTooltip';
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 
 interface NotificationPrefs {
-  weekly_digest: boolean;
+  report_frequency: 'off' | 'daily' | 'weekly';
   critical_alerts: boolean;
   performance_drops: boolean;
+  last_report_sent_at?: string;
 }
 
 interface AlertThresholds {
@@ -45,7 +47,7 @@ export default function Settings() {
   const [portalLoading, setPortalLoading] = useState(false);
   
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs>({
-    weekly_digest: true,
+    report_frequency: 'weekly',
     critical_alerts: true,
     performance_drops: true,
   });
@@ -87,7 +89,16 @@ export default function Settings() {
       if (brandRes.data) {
         setBrand(brandRes.data);
         if (brandRes.data.notification_preferences) {
-          setNotificationPrefs(brandRes.data.notification_preferences as unknown as NotificationPrefs);
+          const prefs = brandRes.data.notification_preferences as any;
+          // Migrate old weekly_digest boolean to new report_frequency
+          const reportFrequency = prefs.report_frequency || 
+            (prefs.weekly_digest === false ? 'off' : 'weekly');
+          setNotificationPrefs({
+            report_frequency: reportFrequency,
+            critical_alerts: prefs.critical_alerts ?? true,
+            performance_drops: prefs.performance_drops ?? true,
+            last_report_sent_at: prefs.last_report_sent_at,
+          });
         }
         if (brandRes.data.alert_thresholds) {
           setAlertThresholds(brandRes.data.alert_thresholds as unknown as AlertThresholds);
@@ -344,13 +355,24 @@ export default function Settings() {
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-base">Weekly Performance Digest</Label>
-                    <p className="text-sm text-muted-foreground">Get a summary of your campaign performance every week</p>
+                    <Label className="text-base">Performance Report Frequency</Label>
+                    <p className="text-sm text-muted-foreground">How often do you want Lumi to email you a performance summary?</p>
                   </div>
-                  <Switch
-                    checked={notificationPrefs.weekly_digest}
-                    onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, weekly_digest: checked }))}
-                  />
+                  <Select
+                    value={notificationPrefs.report_frequency}
+                    onValueChange={(value: 'off' | 'daily' | 'weekly') => 
+                      setNotificationPrefs(prev => ({ ...prev, report_frequency: value }))
+                    }
+                  >
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off">Off</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
