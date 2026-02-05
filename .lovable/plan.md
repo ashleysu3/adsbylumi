@@ -1,250 +1,209 @@
 
 
-# Combine Brand Copy + Audience Psychology into "Brand Brain" Tab
+# UI Refinements: Replace "AI" with "Smart", Reposition Notifications & Lumi Chat
 
 ## Overview
 
-This plan merges the separate "Brand Copy" and "Audience Psychology" tabs into a unified "Brand Brain" tab that represents all the strategic intelligence about your brand and audience. Additionally, we'll enhance loading states to provide clear, reassuring feedback during longer AI operations.
+This plan implements three user-requested changes:
+1. Replace all user-facing "AI" text with "smart" (or contextually appropriate variants)
+2. Move toast notifications to top-center of the screen
+3. Reposition the Lumi chat bubble to sit in the navigation row on desktop (far right, same level as tabs)
 
 ---
 
-## Part 1: Merge Tabs into "Brand Brain"
+## Part 1: Replace "AI" with "Smart"
 
-### Current State
-- **Brand Copy Tab**: Contains ContentAssetsEditor (content library) + Emoji Settings + Meta Best Practices card
-- **Audience Psychology Tab**: Contains AudiencePsychology component (generate/edit/approve psychology profile)
-- Both tabs are accessed separately via the TabsList
+### Files to Update
 
-### New Structure: Single "Brand Brain" Tab
+The search identified ~30 locations where "AI" appears in user-facing UI text. Each will be updated with contextually appropriate replacements:
 
-The combined tab will have a logical flow with clear sections:
+| Original Text | Replacement |
+|---------------|-------------|
+| "AI-powered" | "Smart" |
+| "AI-generated" | "Smart-generated" |
+| "AI will" | "Lumi will" or "Smart" |
+| "AI copy" | "Smart copy" |
+| "AI insights" | "Smart insights" |
+| "AI credits" | "Credits" |
+| "AI Copywriting" | "Smart Copywriting" |
+| "Your AI Assistant" | "Your Ad Assistant" |
+| "AI-driven" | "Smart" |
+
+### Files to Modify
+
+1. **index.html** - Meta descriptions
+2. **src/components/BrandOnboardingWizard.tsx** - "AI-driven campaigns"
+3. **src/components/CopyEditor.tsx** - "AI copy generated", "AI Insights"
+4. **src/pages/Start.tsx** - "Our AI will help you", "with AI insights"
+5. **src/components/DashboardLayout.tsx** - Multiple walkthrough descriptions
+6. **src/components/AdsEmptyState.tsx** - "AI-powered wizard", "AI Copywriting"
+7. **src/pages/Dashboard.tsx** - "AI-generated ad copy", "AI-powered creative"
+8. **src/pages/Settings.tsx** - "AI-powered ad creation"
+9. **src/pages/Data.tsx** - "AI-powered optimization", "AI recommendations"
+10. **src/pages/CreativeStudio.tsx** - "AI-powered creative angle"
+11. **src/components/creative/ProductionManager.tsx** - "AI will rank"
+12. **src/pages/Planning.tsx** - "AI-generated ad scripts"
+13. **src/pages/Index.tsx** - "AI-powered strategy"
+14. **src/pages/Pricing.tsx** - "AI-powered strategy"
+15. **src/pages/Onboarding.tsx** - "AI-powered Meta Ads"
+16. **src/components/MobileOnboardingTour.tsx** - "AI-powered scripts"
+17. **src/components/LumiAssistant.tsx** - "Your AI Assistant" → "Your Ad Assistant"
+18. **supabase/functions/finalize-ad-copy/index.ts** - Error message
+19. **supabase/functions/generate-copy-variations/index.ts** - Error message
+
+---
+
+## Part 2: Move Notifications to Top-Center
+
+### Current Behavior
+The Sonner toast component (via `src/components/ui/sonner.tsx`) defaults to bottom-right positioning.
+
+### Solution
+Add the `position` prop to the Sonner Toaster component to move notifications to the top-center of the screen.
+
+### File to Modify: `src/components/ui/sonner.tsx`
+
+```typescript
+return (
+  <Sonner
+    theme={theme as ToasterProps["theme"]}
+    position="top-center"  // ADD THIS
+    className="toaster group"
+    // ...rest
+  />
+);
+```
+
+This single change moves all toast notifications to the top-center, avoiding overlap with the bottom navigation on mobile and the Lumi chat button.
+
+---
+
+## Part 3: Reposition Lumi Chat to Navigation Row
+
+### Current Behavior
+- The Lumi chat button is a floating element positioned at the bottom-right corner
+- On mobile: `bottom-24 right-4` (above bottom nav)
+- On desktop: `bottom-6 right-6`
+
+### New Behavior
+- **Desktop**: Lumi chat bubble sits in the header navigation row, far right, on the same visual level as the tabs (Home, My Ads, Creative Studio, Results)
+- **Mobile**: Keep current floating behavior (bottom-right above nav) since there's no horizontal space in mobile nav
+
+### Implementation Approach
+
+The Lumi chat button is rendered via `LumiAssistantUI` inside `LumiAssistantProvider` which wraps the entire app. To position it within the desktop header navigation, we need to:
+
+1. **Create a portal target** in `DashboardLayout.tsx` for the desktop Lumi button
+2. **Conditionally render** the Lumi button:
+   - Desktop: Render inline in the navigation header (far right of tabs row)
+   - Mobile: Keep floating behavior (current position)
+3. **Update `LumiAssistantUI`** to detect desktop layout and render via portal
+
+### Alternative (Simpler) Approach
+
+Instead of complex portal logic, we can:
+1. Add the Lumi chat trigger button directly into `DashboardLayout.tsx` desktop nav
+2. The `LumiAssistantUI` component continues to handle the chat popup/modal
+3. Expose a method to open the chat from outside
+
+### Files to Modify
+
+**`src/components/DashboardLayout.tsx`**:
+- Add a Lumi button in the desktop navigation row (far right after tabs)
+- Style it as a floating bubble aesthetic but inline with nav
+
+**`src/components/LumiAssistant.tsx`**:
+- Export a way to control chat open state from context
+- Conditionally hide the floating button on desktop (when inside DashboardLayout)
+- On mobile, keep the floating button as-is
+
+**`src/components/MobileBottomNav.tsx`**:
+- No changes needed (mobile keeps current behavior)
+
+### Desktop Nav Layout Change
 
 ```text
-+--------------------------------------------------+
-| 🧠 Brand Brain                                   |
-| Your brand's strategic intelligence center       |
-+--------------------------------------------------+
-
-┌──────────────────────────────────────────────────┐
-│ 📚 Content Library                     [Expand]  │
-│ Paste testimonials, scripts, objections...       │
-│ ┌────────────────────────────────────────────┐  │
-│ │ [Content assets editor - numbered cards]   │  │
-│ └────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────┐
-│ 🧠 Audience Psychology            [Approved ✓]   │
-│ Deep psychological profile based on your content │
-│ ┌────────────────────────────────────────────┐  │
-│ │ Demographics, Pain Points, Desires, etc.   │  │
-│ └────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────┐
-│ 😊 Copy Preferences                              │
-│ Emoji and formatting settings for AI copy        │
-│ ┌────────────────────────────────────────────┐  │
-│ │ Emoji toggle, brand emojis, bullet style   │  │
-│ └────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│ [LOGO]  [Brand Selector]                    [Library] [New Ad] [Avatar] │
+├─────────────────────────────────────────────────────────────────┤
+│ [HOME] [MY ADS] [CREATIVE STUDIO] [RESULTS]          [🔮 Lumi] │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Why This Order?
-1. **Content Library first** - Users add their raw material (testimonials, scripts)
-2. **Audience Psychology second** - AI uses that content to generate insights
-3. **Copy Preferences last** - Fine-tune how AI outputs copy (emojis, formatting)
+The Lumi button will be:
+- A gradient-styled bubble matching the brand
+- Positioned at the far right of the tabs row
+- Always visible and clickable to open chat
+- Shows unread indicator if there are recommendations
 
 ---
 
-## Part 2: Enhanced Loading States
+## Implementation Details
 
-### Problem
-When generating audience psychology, the `generating` state only shows a spinner button. Users may think it's stuck or cancel prematurely during longer AI operations (10-30+ seconds).
+### DashboardLayout.tsx Changes
 
-### Solution: Use LumiThinking Modal
-
-Replace the simple toast + spinner with the `LumiThinking` modal that provides:
-- Progress bar animation
-- Rotating reassuring microcopy
-- Clear indication that work is happening
-
-### Implementation
-
-**In `AudiencePsychology.tsx`:**
+Add Lumi button to the navigation tabs row:
 
 ```typescript
-import { LumiThinking } from "@/components/LumiThinking";
+// Import the chat open hook
+import { useLumiAssistant } from "@/components/LumiAssistant";
 
-// Custom copy for psychology generation context
-const PSYCHOLOGY_LOADING_COPY = [
-  "Analyzing your brand's positioning...",
-  "Understanding your ideal client...",
-  "Mapping psychological pain points...",
-  "Identifying what motivates your audience...",
-  "Building your psychology profile...",
-  "This takes a moment — worth it.",
-];
-
-// In the component
-<LumiThinking 
-  isOpen={generating} 
-  customCopy={PSYCHOLOGY_LOADING_COPY}
-/>
-```
-
-### Other Components to Enhance
-
-Apply the same pattern to other long-running operations:
-
-| Component | Current State | Enhancement |
-|-----------|---------------|-------------|
-| `AudiencePsychology` | Toast + spinner | LumiThinking modal with custom copy |
-| `OfferManager` (product psychology) | Inline loader | LumiThinking modal |
-| `ContentAssetsEditor` (save) | Toast | Keep toast (fast operation) |
-
----
-
-## Part 3: Files to Modify
-
-### `src/pages/Dashboard.tsx`
-
-1. **Remove** the separate "Brand Copy" and "Audience Psychology" tabs
-2. **Add** a single "Brand Brain" tab with Brain icon
-3. **Combine** all content into the new tab in logical order:
-   - ContentAssetsEditor (Content Library)
-   - AudiencePsychology component
-   - Emoji Settings card
-   - Meta Best Practices card (optional - could remove as less critical)
-
-4. **Update** TabsList to show 3 tabs:
-   ```typescript
-   <TabsTrigger value="overview">Overview</TabsTrigger>
-   <TabsTrigger value="brand-brain">Brand Brain</TabsTrigger>  // NEW
-   <TabsTrigger value="offers">Offers</TabsTrigger>
-   ```
-
-### `src/components/BrandOnboardingWizard.tsx`
-
-1. **Update** step 2 from "Brand Copy" to "Brand Brain"
-2. **Merge** steps 2 and 3 into a single "Brand Brain" step, or keep as separate wizard steps that both navigate to the same tab
-
-### `src/components/InlineProgressChecklist.tsx`
-
-1. **Update** the "Audience" step to point to the new "brand-brain" section
-2. Ensure scroll-to-section works correctly
-
-### `src/components/AudiencePsychology.tsx`
-
-1. **Import** LumiThinking component
-2. **Add** custom loading copy for psychology generation
-3. **Show** LumiThinking modal when `generating` is true
-4. **Remove** or keep the toast as a fallback notification
-
----
-
-## Part 4: Tab Content Structure
-
-```typescript
-{/* Brand Brain Tab */}
-<TabsContent value="brand-brain" className="space-y-6">
-  {/* Section 1: Content Library */}
-  <ContentAssetsEditor 
-    brandId={brand.id} 
-    offers={offers.map(o => ({ id: o.id, name: o.name }))} 
-  />
-
-  {/* Section 2: Audience Psychology */}
-  <div data-section="audience-psychology">
-    <AudiencePsychology
-      brandId={brand.id}
-      psychology={brand.audience_psychology}
-      status={brand.psychology_status}
-      psychologyContentHash={brand.psychology_content_hash}
-      psychologyGeneratedAt={brand.psychology_generated_at}
-      onUpdate={fetchBrandData}
-    />
+// Inside the desktop layout, in the nav section:
+<nav className="flex items-end justify-between mt-4 md:mt-6 -mb-3 md:-mb-4">
+  <div className="flex space-x-1 pb-px">
+    {/* Existing tab items */}
   </div>
-
-  {/* Section 3: Copy Preferences (Emoji Settings) */}
-  <Card variant="glow">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2">
-        <Smile className="h-5 w-5" />
-        Copy Preferences
-      </CardTitle>
-      <CardDescription>
-        Control how Lumi formats your AI-generated ad copy
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      {/* Emoji toggle, brand emojis, bullet style */}
-    </CardContent>
-  </Card>
-
-  {/* Section 4: Meta Best Practices (info card) */}
-  <Card>
-    <CardHeader>
-      <CardTitle>Meta Best Practices for Copy</CardTitle>
-    </CardHeader>
-    {/* ... */}
-  </Card>
-</TabsContent>
+  
+  {/* Lumi Chat Button - Desktop Only */}
+  <button
+    onClick={() => openChat()}
+    className="flex items-center gap-2 px-4 py-2 rounded-full 
+               bg-gradient-lumi text-white font-medium text-sm
+               shadow-lg shadow-lumi-pink-1/20 hover:shadow-xl
+               transition-all mb-1"
+  >
+    <SparkleIcon size="xs" state="idle" />
+    <span>Ask Lumi</span>
+  </button>
+</nav>
 ```
 
----
+### LumiAssistant.tsx Changes
 
-## Part 5: Loading State Enhancement Details
-
-### Custom Loading Copy Pools
+1. **Add context value** for opening chat programmatically:
 
 ```typescript
-// For Audience Psychology generation
-const PSYCHOLOGY_COPY = [
-  "Analyzing your brand positioning...",
-  "Understanding your ideal client...", 
-  "Mapping psychological triggers...",
-  "Identifying what motivates action...",
-  "Building a psychology profile...",
-  "This takes a moment — worth it.",
-];
-
-// For Offer/Product Psychology  
-const PRODUCT_PSYCHOLOGY_COPY = [
-  "Connecting offer to audience needs...",
-  "Identifying why they need this...",
-  "Finding the moment of realization...",
-  "Mapping purchase hesitations...",
-  "Building offer-specific insights...",
-];
+interface LumiAssistantContextValue {
+  // ...existing
+  openChat: () => void;
+  isDesktopLayout: boolean;
+}
 ```
 
-### Modal Behavior
-- Modal prevents dismissal (no click-outside or escape)
-- Progress bar animates slowly to indicate ongoing work
-- Copy rotates every 4.5 seconds for a calm pace
-- After 30 seconds, switches to "long load" reassurance copy
+2. **Conditionally render floating button** only on mobile/non-dashboard pages
+
+3. **Export the open method** for use in DashboardLayout
 
 ---
 
 ## Summary of Changes
 
-| File | Change |
-|------|--------|
-| `Dashboard.tsx` | Merge Brand Copy + Psychology tabs → Brand Brain |
-| `BrandOnboardingWizard.tsx` | Update step references to new tab structure |
-| `InlineProgressChecklist.tsx` | Update section references |
-| `AudiencePsychology.tsx` | Add LumiThinking modal for generation |
-| `OfferManager.tsx` | Add LumiThinking for product psychology generation |
+| File | Changes |
+|------|---------|
+| `src/components/ui/sonner.tsx` | Add `position="top-center"` |
+| `src/components/DashboardLayout.tsx` | Add inline Lumi button in desktop nav row |
+| `src/components/LumiAssistant.tsx` | Add `openChat` to context, conditionally hide floating button on desktop |
+| ~18 component/page files | Replace "AI" text with "smart" variants |
+| `index.html` | Update meta descriptions |
+| 2 edge function files | Update error messages |
 
 ---
 
 ## Implementation Order
 
-1. Update `Dashboard.tsx` to combine tabs into "Brand Brain"
-2. Update `AudiencePsychology.tsx` with LumiThinking modal
-3. Update `BrandOnboardingWizard.tsx` with new tab references
-4. Update `InlineProgressChecklist.tsx` section references
-5. Update `OfferManager.tsx` with LumiThinking (if needed)
-6. Test the full flow
+1. Update `sonner.tsx` to position notifications at top-center
+2. Update `LumiAssistant.tsx` to expose `openChat` method and add layout detection
+3. Update `DashboardLayout.tsx` to include inline Lumi button in desktop nav
+4. Replace all "AI" text occurrences across the codebase
+5. Test on both mobile and desktop layouts
 
