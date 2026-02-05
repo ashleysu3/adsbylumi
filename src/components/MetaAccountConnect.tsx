@@ -148,6 +148,19 @@ export function MetaAccountConnect({
           toast.error(msg);
           setOauthLoading(false);
           window.removeEventListener('message', handleCallback);
+        } else if (event.data?.type === 'META_OAUTH_FALLBACK_TO_SAME_TAB') {
+          // Popup lost session (Safari/Incognito) - redirect main window to callback URL (same-tab flow)
+          popup?.close();
+          window.removeEventListener('message', handleCallback);
+          setOauthLoading(false);
+          
+          // Navigate main window to the callback URL - this triggers same-tab flow
+          // which has proper "Sign in to continue" UI with session recovery
+          if (event.data.callbackUrl) {
+            window.location.href = event.data.callbackUrl;
+          } else {
+            toast.error('Session lost. Please try again.');
+          }
         }
       };
 

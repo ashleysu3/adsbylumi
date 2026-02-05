@@ -72,8 +72,15 @@ export default function MetaOAuthCallback() {
           // Ensure the popup has a session (same-site cookies sometimes fail depending on browser settings)
           const { data: sessionData } = await supabase.auth.getSession();
           if (!sessionData.session) {
+            // Session lost in popup (common with strict cookie policies like Safari/Incognito)
+            // Tell the opener to navigate to the callback URL directly (same-tab flow)
+            // which has proper session recovery UI
+            const callbackUrl = window.location.href;
             window.opener.postMessage(
-              { type: 'META_OAUTH_ERROR', error: 'Please sign in to finish connecting your Meta account.' },
+              { 
+                type: 'META_OAUTH_FALLBACK_TO_SAME_TAB', 
+                callbackUrl 
+              },
               window.location.origin
             );
             window.close();
@@ -215,7 +222,10 @@ export default function MetaOAuthCallback() {
         <p className="text-sm text-muted-foreground">{message}</p>
 
         {mode === "needs-auth" && (
-          <div className="pt-2 space-y-2">
+          <div className="pt-2 space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Your session expired during the connection. Sign in to complete the setup—your Meta authorization is saved.
+            </p>
             <Button
               variant="lumi"
               className="w-full"
@@ -223,9 +233,8 @@ export default function MetaOAuthCallback() {
             >
               Sign in to continue
             </Button>
-            <Button variant="ghost" className="w-full" onClick={() => navigate("/settings/meta")}
-            >
-              Back to Meta settings
+            <Button variant="ghost" className="w-full" onClick={() => navigate("/meta-settings")}>
+              Cancel
             </Button>
           </div>
         )}
