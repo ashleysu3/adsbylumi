@@ -1,127 +1,71 @@
 
-# Add Meta Connection as a Dedicated Page in User Dropdown
+
+# Adjust Description Character Limit to 27 Characters
 
 ## Overview
 
-This plan moves Meta Connection from being hidden inside Settings → Connections tab to being a standalone, easily accessible page directly under "My Brand" in the user dropdown menu.
+Meta only displays approximately 26-30 characters for the description field in most ad placements. The current system generates 125-character descriptions that get truncated. This plan aligns all description fields to a 27-character limit and reframes descriptions as short, complimentary phrases rather than standalone content.
 
 ---
 
-## Current Navigation Structure
+## Current State
 
-```
-User Dropdown:
-├── My Brand (/dashboard)
-├── Concept Library (/content-library)
-├── Settings (/settings)
-│   └── [Connections tab] → Manage → /settings/meta
-└── Ads Glossary (/glossary)
-```
-
-## Proposed Navigation Structure
-
-```
-User Dropdown:
-├── My Brand (/dashboard)
-├── Meta Connection (/meta-settings)  ← NEW direct link
-├── Concept Library (/content-library)
-├── Settings (/settings)
-└── Ads Glossary (/glossary)
-```
+| Component | Current Limit | Issue |
+|-----------|---------------|-------|
+| `generate-angle-copy` | 125 chars | Way too long, gets truncated |
+| `AngleCopyEditor.tsx` | 125 chars | Inconsistent with actual display |
+| `CopyEditor.tsx` | 30 chars | Close but could be tighter |
+| `finalize-ad-copy` | 30 chars | Already correct |
+| `generate-copy-variations` | 30 chars | Already correct |
 
 ---
 
-## Part 1: Update User Dropdown Menus
+## Changes
 
-### Desktop Dropdown (DashboardLayout.tsx)
+### 1. Edge Function: `generate-angle-copy/index.ts`
 
-Add "Meta Connection" menu item directly below "My Brand":
-
-```typescript
-<DropdownMenuItem onClick={() => navigate("/dashboard")}>
-  <Building2 className="mr-2 h-4 w-4" />
-  My Brand
-</DropdownMenuItem>
-<DropdownMenuItem onClick={() => navigate("/meta-settings")}>
-  <Link2 className="mr-2 h-4 w-4" />
-  Meta Connection
-</DropdownMenuItem>
+**Before (line 204):**
+```
+- Descriptions: Max 125 characters, expand on the headline
 ```
 
-### Mobile Dropdown (MobileHeader.tsx)
-
-Same addition for mobile users:
-
-```typescript
-<DropdownMenuItem onClick={() => navigate("/dashboard")} className="min-h-[44px]">
-  <Building2 className="mr-3 h-4 w-4" />
-  My Brand
-</DropdownMenuItem>
-<DropdownMenuItem onClick={() => navigate("/meta-settings")} className="min-h-[44px]">
-  <Link2 className="mr-3 h-4 w-4" />
-  Meta Connection
-</DropdownMenuItem>
+**After:**
 ```
+- Descriptions: Max 27 characters, short complement to the headline (e.g., "Start your free trial", "See how it works")
+```
+
+Also update the output format example to show shorter descriptions with correct character counts.
 
 ---
 
-## Part 2: Update Route and Back Navigation
+### 2. Frontend: `AngleCopyEditor.tsx`
 
-### Update App.tsx Route
-
-Change the route from `/settings/meta` to `/meta-settings` for easier discovery:
-
+**Before (lines 317-321):**
 ```typescript
-// OLD
-<Route path="/settings/meta" element={<MetaSettings />} />
-
-// NEW - Keep both for backward compatibility
-<Route path="/meta-settings" element={<MetaSettings />} />
-<Route path="/settings/meta" element={<Navigate to="/meta-settings" replace />} />
-```
-
-### Update MetaSettings.tsx Back Navigation
-
-Change the back button to navigate to `/dashboard` (My Brand) instead of `/settings`:
-
-```typescript
-<Button 
-  variant="ghost" 
-  size="icon" 
-  onClick={() => navigate('/dashboard')}  // Changed from '/settings'
->
-  <ArrowLeft className="h-5 w-5" />
-</Button>
-```
-
----
-
-## Part 3: Update Settings Page Reference
-
-### Update Settings.tsx Connections Tab
-
-Update the button in the Connections tab to use the new route:
-
-```typescript
-<Button onClick={() => navigate('/meta-settings')} variant="outline" className="gap-2">
-  {metaConnected ? 'Manage' : 'Connect'}
-  <ExternalLink className="h-4 w-4" />
-</Button>
-```
-
----
-
-## Part 4: Update Lumi Navigation Helper
-
-### Update lumi-chat Edge Function
-
-Add the new Meta Connection page to Lumi's app structure knowledge:
-
-```typescript
-APP STRUCTURE:
+maxLength={125}
+className="pr-14"
 ...
-• Meta Connection (/meta-settings) - Connect and manage your Meta (Facebook/Instagram) ad account
+{d.text?.length || 0}/125
+```
+
+**After:**
+```typescript
+maxLength={27}
+className="pr-12"
 ...
+{d.text?.length || 0}/27
+```
+
+---
+
+### 3. Update Purpose Explanation
+
+In the AI prompt, change the framing from "expand on the headline" to emphasize that descriptions are supplementary micro-text:
+
+```
+- Descriptions: Max 27 characters. These appear below headlines in some placements. 
+  Keep them punchy and action-oriented (e.g., "Try it free", "Learn how", "Get started now").
+  They complement the headline — don't repeat it.
 ```
 
 ---
@@ -130,52 +74,91 @@ APP STRUCTURE:
 
 | File | Changes |
 |------|---------|
-| `src/components/DashboardLayout.tsx` | Add "Meta Connection" dropdown item with Link2 icon |
-| `src/components/MobileHeader.tsx` | Add "Meta Connection" dropdown item with Link2 icon |
-| `src/App.tsx` | Add new route `/meta-settings`, redirect old route |
-| `src/pages/MetaSettings.tsx` | Update back button to go to `/dashboard` |
-| `src/pages/Settings.tsx` | Update Connections tab button to use `/meta-settings` |
-| `supabase/functions/lumi-chat/index.ts` | Add Meta Connection to app structure in system prompt |
+| `supabase/functions/generate-angle-copy/index.ts` | Update character limit from 125 to 27, change purpose description |
+| `src/components/creative/AngleCopyEditor.tsx` | Update `maxLength` from 125 to 27, update counter display |
 
 ---
 
-## Menu Ordering
+## Technical Details
 
-The final dropdown order will be:
+### Edge Function Update
 
-**Desktop:**
-1. Home
-2. (Admin items if admin)
-3. My Brand
-4. **Meta Connection** ← New
-5. Concept Library
-6. Settings
-7. Ads Glossary
-8. Show Walkthrough
-9. Sign Out
+**File:** `supabase/functions/generate-angle-copy/index.ts`
 
-**Mobile:**
-1. (Admin items if admin)
-2. My Brand
-3. **Meta Connection** ← New
-4. Concept Library
-5. Settings
-6. Ads Glossary
-7. Show Walkthrough (if available)
-8. Sign Out
+**Line 204 - Change copy requirements:**
+```typescript
+// BEFORE
+- Descriptions: Max 125 characters, expand on the headline
+
+// AFTER  
+- Descriptions: Max 27 characters, short action phrase that complements the headline (e.g., "Start free today", "See the results")
+```
+
+**Lines 189-191 - Update output format example:**
+```typescript
+// BEFORE
+"descriptions": [
+  { "text": "...", "framework": "PAS", "character_count": 85 },
+  { "text": "...", "framework": "Before/After", "character_count": 90 }
+],
+
+// AFTER
+"descriptions": [
+  { "text": "Start your free trial", "framework": "Direct", "character_count": 21 },
+  { "text": "See real results now", "framework": "Action", "character_count": 20 }
+],
+```
 
 ---
 
-## Visual Design
+### Frontend Update
 
-The new menu item will use the `Link2` icon (chain link) which is already associated with connections throughout the app. It will appear in the same style as other menu items, maintaining visual consistency.
+**File:** `src/components/creative/AngleCopyEditor.tsx`
+
+**Lines 313-321:**
+```typescript
+// Change from:
+<Input
+  value={d.text}
+  onChange={(e) => updateVariation("descriptions", i, e.target.value)}
+  placeholder="Enter description..."
+  maxLength={125}
+  className="pr-14"
+/>
+<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+  {d.text?.length || 0}/125
+</span>
+
+// Change to:
+<Input
+  value={d.text}
+  onChange={(e) => updateVariation("descriptions", i, e.target.value)}
+  placeholder="Try it free today"
+  maxLength={27}
+  className="pr-12"
+/>
+<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+  {d.text?.length || 0}/27
+</span>
+```
 
 ---
 
-## Implementation Summary
+## Example Descriptions (27 chars or less)
 
-1. **Add dropdown menu item** in both desktop and mobile headers
-2. **Create new primary route** at `/meta-settings`
-3. **Add redirect** from old `/settings/meta` path
-4. **Update back navigation** in MetaSettings to go to My Brand dashboard
-5. **Update Lumi** so it knows about the new page location
+Good descriptions that fit:
+- "Start your free trial" (21 chars)
+- "See how it works" (16 chars)  
+- "Get started today" (17 chars)
+- "Try it risk-free" (16 chars)
+- "Learn the method" (15 chars)
+- "Join 10k+ coaches" (17 chars)
+- "Limited time offer" (18 chars)
+- "Watch the free class" (20 chars)
+
+---
+
+## Summary
+
+This change ensures generated descriptions actually fit in Meta's display area instead of being truncated. The AI will now generate short, punchy phrases that complement the headline rather than trying to expand on it.
+
