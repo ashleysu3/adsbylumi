@@ -387,7 +387,7 @@ export function ProductionManager({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>AI will rank your {productionItems.length} concepts and pick the top 5</p>
+                          <p>Lumi will rank your {productionItems.length} concepts and pick the top 5</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

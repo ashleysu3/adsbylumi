@@ -16,6 +16,8 @@ import { MobileHeader } from "@/components/MobileHeader";
 import { MobileOnboardingTour, useMobileOnboardingTour } from "@/components/MobileOnboardingTour";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { BrandSelector } from "@/components/BrandSelector";
+import { useLumiAssistant } from "@/components/LumiAssistant";
+import { SparkleIcon } from "@/components/SparkleIcon";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 interface DashboardLayoutProps {
@@ -28,6 +30,7 @@ export default function DashboardLayout({
   const location = useLocation();
   const isMobile = useIsMobile();
   const { getEffectiveUserId } = useImpersonation();
+  const { openChat, setDesktopNavLayout, unreadCount } = useLumiAssistant();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [brand, setBrand] = useState<any>(null);
@@ -225,6 +228,15 @@ export default function DashboardLayout({
     lightColor: "tab-blue-light",
     darkColor: "tab-blue-dark"
   }];
+
+  // Register desktop layout with LumiAssistant context
+  useEffect(() => {
+    if (!isMobile) {
+      setDesktopNavLayout(true);
+    }
+    return () => setDesktopNavLayout(false);
+  }, [isMobile, setDesktopNavLayout]);
+
   if (!user) return null;
 
   // Mobile layout
@@ -381,8 +393,8 @@ export default function DashboardLayout({
           </div>
 
           {/* Desktop navigation tabs */}
-          <nav className="flex items-end justify-start mt-4 md:mt-6 -mb-3 md:-mb-4 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-            <div className="flex space-x-1 pb-px">
+          <nav className="flex items-end justify-between mt-4 md:mt-6 -mb-3 md:-mb-4 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex space-x-1 pb-px flex-1">
               {tabItems.map(item => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
@@ -402,6 +414,24 @@ export default function DashboardLayout({
                 );
               })}
             </div>
+            
+            {/* Lumi Chat Button - Desktop Only */}
+            <button
+              onClick={openChat}
+              className="flex items-center gap-2 px-4 py-2 rounded-full 
+                         bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 
+                         text-white font-medium text-sm
+                         shadow-lg shadow-lumi-pink-1/20 hover:shadow-xl hover:shadow-lumi-pink-1/30
+                         transition-all mb-1 ml-4 relative group"
+            >
+              <SparkleIcon size="xs" state="idle" className="group-hover:animate-pulse" />
+              <span>Ask Lumi</span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-white text-lumi-pink-1 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
           </nav>
         </div>
       </header>

@@ -635,7 +635,7 @@ const Index = () => {
                       </li>
                       <li className="flex items-start gap-2">
                         <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span>AI-powered strategy & creative</span>
+                        <span>Smart strategy & creative</span>
                       </li>
                       <li className="flex items-start gap-2">
                         <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />

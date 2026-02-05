@@ -182,7 +182,7 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Enable Advantage+ Creative?</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Meta's AI will automatically optimize your creative elements for better performance
+                    Meta will automatically optimize your creative elements for better performance
                   </p>
                 </div>
 

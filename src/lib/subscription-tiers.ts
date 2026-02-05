@@ -15,7 +15,7 @@ export const SUBSCRIPTION_TIERS = {
     },
     features: [
       "Up to $3,000/mo in managed ad spend",
-      "AI-powered campaign strategy",
+      "Smart campaign strategy",
       "Psychology-driven ad copy",
       "Smart audience targeting",
       "Performance tracking & insights",

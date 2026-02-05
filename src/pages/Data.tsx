@@ -645,7 +645,7 @@ export default function Data() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-xl sm:text-2xl font-display tracking-tight">Results</h1>
-            <p className="text-muted-foreground text-xs sm:text-sm">Track performance and get AI recommendations</p>
+            <p className="text-muted-foreground text-xs sm:text-sm">Track performance and get smart recommendations</p>
           </div>
           
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">

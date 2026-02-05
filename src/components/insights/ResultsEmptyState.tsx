@@ -44,7 +44,7 @@ export function ResultsEmptyState({ onShowDemo }: ResultsEmptyStateProps) {
         See How Your Ads Perform
       </h2>
       <p className="text-muted-foreground text-center max-w-md mb-8">
-        Connect your Meta ad account to unlock real-time insights, AI recommendations, and optimization suggestions.
+        Connect your Meta ad account to unlock real-time insights, smart recommendations, and optimization suggestions.
       </p>
 
       {/* Feature Cards */}

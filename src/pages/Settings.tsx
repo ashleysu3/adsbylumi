@@ -760,7 +760,7 @@ export default function Settings() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Choose a plan to get started with AI-powered ad creation, psychology-driven copy, and automated campaign management.
+                    Choose a plan to get started with smart ad creation, psychology-driven copy, and automated campaign management.
                   </p>
                   <Button onClick={() => navigate('/pricing')} variant="lumi" className="gap-2">
                     <Crown className="h-4 w-4" />

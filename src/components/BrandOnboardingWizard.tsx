@@ -138,7 +138,7 @@
              
              <CardTitle className="text-xl">Complete your brand profile</CardTitle>
              <CardDescription>
-               Walk through each section to unlock powerful AI-driven campaigns
+               Walk through each section to unlock powerful smart campaigns
              </CardDescription>
  
              {/* Progress */}

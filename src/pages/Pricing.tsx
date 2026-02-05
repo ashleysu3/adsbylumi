@@ -335,7 +335,7 @@ export default function Pricing() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-primary flex-shrink-0" />
-                      AI-powered strategy
+                      Smart strategy
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-primary flex-shrink-0" />

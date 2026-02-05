@@ -40,14 +40,14 @@ export function AdsEmptyState() {
         Ready to Create Your First Ad?
       </h2>
       <p className="text-muted-foreground text-center max-w-md mb-8">
-        Our AI-powered wizard will guide you through creating scroll-stopping ads in minutes — no design skills required.
+        Our smart wizard will guide you through creating scroll-stopping ads in minutes — no design skills required.
       </p>
 
       {/* Feature Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full mb-8">
         <Card className="p-4 text-center bg-muted/30 border-dashed">
           <PenTool className="w-8 h-8 mx-auto mb-2 text-primary/70" />
-          <p className="text-sm font-medium">AI Copywriting</p>
+          <p className="text-sm font-medium">Smart Copywriting</p>
           <p className="text-xs text-muted-foreground">Headlines & scripts</p>
         </Card>
         <Card className="p-4 text-center bg-muted/30 border-dashed">
