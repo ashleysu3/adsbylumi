@@ -230,6 +230,7 @@ export default function MetaSettings() {
 
   // Connection is valid if we have an account ID AND a valid token in vault
   const hasAccountId = !!brand?.meta_account_id;
+  const isAwaitingSelection = !hasAccountId && hasValidToken;
   const isConnected = hasAccountId && hasValidToken;
   const isPartiallyConnected = hasAccountId && !hasValidToken; // Has account but token missing/expired
   const tokenExpiresAt = brand?.meta_token_expires_at ? new Date(brand.meta_token_expires_at) : null;
@@ -287,6 +288,11 @@ export default function MetaSettings() {
                     <AlertTriangle className="h-5 w-5 text-amber-500" />
                     Reconnection Required
                   </>
+                ) : isAwaitingSelection ? (
+                  <>
+                    <AlertTriangle className="h-5 w-5 text-amber-500" />
+                    Almost Connected
+                  </>
                 ) : (
                   <>
                     <XCircle className="h-5 w-5 text-muted-foreground" />
@@ -332,14 +338,16 @@ export default function MetaSettings() {
                 </Badge>
               </div>
             </div>
-            <CardDescription>
-              {isConnected 
-                ? "Your Meta ad account is connected and syncing"
-                : isPartiallyConnected
-                ? "Your Meta account needs to be reconnected to restore access"
-                : "Connect your Meta account to manage ads and track performance"
-              }
-            </CardDescription>
+              <CardDescription>
+                {isConnected 
+                  ? "Your Meta ad account is connected and syncing"
+                  : isPartiallyConnected
+                  ? "Your Meta account needs to be reconnected to restore access"
+                  : isAwaitingSelection
+                  ? "Meta access granted — now choose the ad account and Facebook Page for this brand"
+                  : "Connect your Meta account to manage ads and track performance"
+                }
+              </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Partially Connected State - Needs Reconnection */}
@@ -577,8 +585,38 @@ export default function MetaSettings() {
               </>
             )}
 
+            {/* Awaiting Selection State (token stored, but no ad account chosen yet) */}
+            {isAwaitingSelection && (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-lumi/10 flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle className="h-8 w-8 text-lumi-orange-1" />
+                </div>
+                <h3 className="font-semibold mb-2">Finish Your Meta Connection</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+                  We’re connected to Meta—now select the ad account and Facebook Page you want to use for this brand.
+                </p>
+                {brand?.id ? (
+                  <MetaAccountConnect
+                    brandId={brand.id}
+                    currentAccountId={brand.meta_account_id}
+                    currentPageId={brand.page_id}
+                    currentPageName={brand.page_name}
+                    currentInstagramId={brand.instagram_account_id}
+                    currentInstagramName={brand.instagram_account_name}
+                    triggerSize="lg"
+                    autoOpen
+                    onUpdate={fetchBrand}
+                  />
+                ) : (
+                  <Button variant="lumi" size="lg" onClick={() => navigate('/dashboard')}>
+                    Go to Dashboard
+                  </Button>
+                )}
+              </div>
+            )}
+
             {/* Not Connected State */}
-            {!isConnected && !isPartiallyConnected && (
+            {!isConnected && !isPartiallyConnected && !isAwaitingSelection && (
               <div className="text-center py-6">
                 <div className="w-16 h-16 rounded-full bg-gradient-lumi/10 flex items-center justify-center mx-auto mb-4">
                   <Link2 className="h-8 w-8 text-lumi-orange-1" />

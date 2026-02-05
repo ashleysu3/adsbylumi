@@ -18,6 +18,11 @@ interface MetaAccountConnectProps {
   currentInstagramName?: string | null;
   tokenExpired?: boolean;
   triggerSize?: "sm" | "default" | "lg";
+  /**
+   * When true, the dialog will auto-open if the user just completed OAuth in same-tab flow
+   * and still needs to select an ad account + Page.
+   */
+  autoOpen?: boolean;
   onUpdate: () => void;
 }
 
@@ -51,6 +56,7 @@ export function MetaAccountConnect({
   currentInstagramName,
   tokenExpired = false,
   triggerSize = "sm",
+  autoOpen = false,
   onUpdate 
 }: MetaAccountConnectProps) {
   const [open, setOpen] = useState(false);
@@ -76,6 +82,64 @@ export function MetaAccountConnect({
       setSelectedInstagram(currentInstagramId);
     }
   }, [currentAccountId, currentPageId, currentInstagramId]);
+
+  const getPendingSelectionPayload = () => {
+    try {
+      const flagRaw = sessionStorage.getItem("meta_oauth_needs_selection");
+      if (!flagRaw) return null;
+
+      const flag = JSON.parse(flagRaw);
+      if (flag?.brandId && flag.brandId !== brandId) return null;
+
+      const raw = sessionStorage.getItem("meta_oauth_last_result");
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw);
+      const payload = parsed?.accounts ? parsed : (parsed?.data ?? parsed);
+
+      const pendingAccounts = Array.isArray(payload?.accounts) ? payload.accounts : [];
+      const pendingPages = Array.isArray(payload?.pages) ? payload.pages : [];
+      const pendingInstagram = Array.isArray(payload?.instagramAccounts)
+        ? payload.instagramAccounts
+        : [];
+
+      if (!pendingAccounts.length && !pendingPages.length && !pendingInstagram.length) return null;
+
+      return {
+        accounts: pendingAccounts as AdAccount[],
+        pages: pendingPages as FacebookPage[],
+        instagramAccounts: pendingInstagram as InstagramAccount[],
+      };
+    } catch {
+      return null;
+    }
+  };
+
+  const bootstrapSelectionFromOauth = () => {
+    const payload = getPendingSelectionPayload();
+    if (!payload) return false;
+
+    setAccounts(payload.accounts);
+    setPages(payload.pages);
+    setInstagramAccounts(payload.instagramAccounts);
+    setStep('select-account');
+    return true;
+  };
+
+  // If we just returned from same-tab OAuth, auto-open + resume selection.
+  useEffect(() => {
+    if (!autoOpen) return;
+    const payload = getPendingSelectionPayload();
+    if (payload) setOpen(true);
+  }, [autoOpen, brandId]);
+
+  // When the dialog opens, try to resume selection from stored OAuth result.
+  useEffect(() => {
+    if (!open) return;
+    if (step !== 'connect') return;
+    if (accounts.length || pages.length || instagramAccounts.length) return;
+    bootstrapSelectionFromOauth();
+  }, [open, brandId, step, accounts.length, pages.length, instagramAccounts.length]);
 
   const handleOAuthFlow = async () => {
     setOauthLoading(true);
@@ -308,6 +372,12 @@ export function MetaAccountConnect({
             description: "Create campaigns to sync them here"
           });
         }
+      }
+
+      try {
+        sessionStorage.removeItem("meta_oauth_needs_selection");
+      } catch {
+        // ignore
       }
 
       onUpdate();

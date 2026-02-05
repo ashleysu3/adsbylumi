@@ -182,6 +182,12 @@ export default function MetaOAuthCallback() {
         // Keep response available for debugging/follow-up UI if needed.
         try {
           sessionStorage.setItem("meta_oauth_last_result", JSON.stringify(data));
+          // If the token exchange succeeded but the user still needs to pick an ad account + Page,
+          // mark that we should auto-open the selection flow on Meta Settings.
+          sessionStorage.setItem(
+            "meta_oauth_needs_selection",
+            JSON.stringify({ brandId, at: new Date().toISOString() })
+          );
         } catch {
           // ignore
         }
