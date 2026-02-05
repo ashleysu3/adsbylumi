@@ -95,7 +95,8 @@ const App = () => {
                   <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
                   <Route path="/meta-callback" element={<MetaOAuthCallback />} />
                   <Route path="/settings" element={<Settings />} />
-                  <Route path="/settings/meta" element={<MetaSettings />} />
+   <Route path="/meta-settings" element={<MetaSettings />} />
+   <Route path="/settings/meta" element={<Navigate to="/meta-settings" replace />} />
                   <Route path="/settings/digest-preview" element={<WeeklyDigestPreview />} />
                   <Route path="/content-library" element={<ContentLibrary />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
