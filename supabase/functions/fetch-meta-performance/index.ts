@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 Deno.serve(async (req) => {
@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
     // Fetch workspace with brand to verify ownership
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*, brands!inner(id, meta_account_id, user_id)')
+      .select('*, brands!inner(id, meta_account_id, meta_access_token, user_id)')
       .eq('id', workspaceId)
       .single();
 
@@ -96,11 +96,8 @@ Deno.serve(async (req) => {
       throw new Error('Meta account not connected. Please connect your Meta ad account in the Dashboard first.');
     }
 
-    // Get token securely from vault
-    const { data: metaAccessToken, error: tokenError } = await supabase
-      .rpc('get_meta_token', { p_brand_id: brand.id });
-
-    if (tokenError || !metaAccessToken) {
+    const metaAccessToken = brand.meta_access_token;
+    if (!metaAccessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 
