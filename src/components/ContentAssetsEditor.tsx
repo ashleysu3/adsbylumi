@@ -10,6 +10,7 @@
  import { ChevronDown, FileText, MessageSquare, ClipboardList, HelpCircle, Sparkles, Loader2, Check, BookOpen } from 'lucide-react';
  import { toast } from 'sonner';
  import { cn } from '@/lib/utils';
+import { PsychologyUpdatePrompt } from './PsychologyUpdatePrompt';
  
  interface ContentAsset {
    id?: string;
@@ -25,9 +26,16 @@
    name: string;
  }
  
+interface Brand {
+  audience_psychology?: any;
+  psychology_content_hash?: string | null;
+}
+
  interface ContentAssetsEditorProps {
    brandId: string;
    offers?: Offer[];
+  brand?: Brand | null;
+  onBrandUpdate?: () => void;
  }
  
  const ASSET_TYPES = [
@@ -68,12 +76,13 @@
    },
  ];
  
- export function ContentAssetsEditor({ brandId, offers = [] }: ContentAssetsEditorProps) {
+export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate }: ContentAssetsEditorProps) {
    const [assets, setAssets] = useState<ContentAsset[]>([]);
    const [loading, setLoading] = useState(true);
    const [saving, setSaving] = useState<string | null>(null);
    const [expandedTypes, setExpandedTypes] = useState<string[]>(['testimonials']);
    const [hasUnsavedChanges, setHasUnsavedChanges] = useState<Record<string, boolean>>({});
+  const [showPsychologyPrompt, setShowPsychologyPrompt] = useState(false);
  
    // Fetch existing assets
    useEffect(() => {
@@ -99,6 +108,19 @@
      fetchAssets();
    }, [brandId]);
  
+  // Check if psychology needs updating when assets change
+  const checkPsychologyUpdate = useCallback(() => {
+    if (!brand?.audience_psychology) return; // No psychology yet
+    
+    const savedAssets = assets.filter(a => a.id && a.content?.trim());
+    if (savedAssets.length === 0) return;
+    
+    const currentHash = savedAssets.map(a => a.id).sort().join(',');
+    if (brand.psychology_content_hash !== currentHash) {
+      setShowPsychologyPrompt(true);
+    }
+  }, [assets, brand?.audience_psychology, brand?.psychology_content_hash]);
+
    const getAssetForType = (type: string): ContentAsset => {
      const existing = assets.find(a => a.asset_type === type);
      return existing || {
@@ -197,6 +219,9 @@
  
        toast.success('Content saved');
        setHasUnsavedChanges(prev => ({ ...prev, [type]: false }));
+        
+        // Check if we should prompt for psychology update
+        setTimeout(checkPsychologyUpdate, 500);
      } catch (error) {
        console.error('Error saving asset:', error);
        toast.error('Failed to save content');
@@ -244,6 +269,17 @@
          </CardDescription>
        </CardHeader>
        <CardContent className="space-y-4">
+        {showPsychologyPrompt && (
+          <PsychologyUpdatePrompt
+            brandId={brandId}
+            type="brand"
+            onDismiss={() => setShowPsychologyPrompt(false)}
+            onUpdate={() => {
+              onBrandUpdate?.();
+            }}
+          />
+        )}
+        
          {ASSET_TYPES.map((assetType) => {
            const asset = getAssetForType(assetType.type);
            const isExpanded = expandedTypes.includes(assetType.type);

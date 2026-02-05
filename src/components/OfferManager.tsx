@@ -18,6 +18,7 @@ interface Offer {
   description?: string | null;
   price_point?: string | null;
   product_psychology?: any;
+  offer_audience_psychology?: any;
   recommended_template_id?: string | null;
   recommendation_reason?: string | null;
   recommendation_confidence?: string | null;
@@ -330,6 +331,61 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
                               </div>
                             )}
                           </>
+                        )}
+
+                        {/* Offer-Audience Psychology Section */}
+                        {offer.offer_audience_psychology && (
+                          <div className="pt-4 border-t space-y-3">
+                            <h5 className="font-semibold text-sm flex items-center gap-2">
+                              <Sparkles className="h-4 w-4 text-primary" />
+                              How Your Audience Relates to This Offer
+                            </h5>
+                            
+                            {offer.offer_audience_psychology.why_they_need_this && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">Why They Need This</p>
+                                <p className="text-sm">{offer.offer_audience_psychology.why_they_need_this}</p>
+                              </div>
+                            )}
+                            
+                            {offer.offer_audience_psychology.moment_they_realize && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">The Moment They Realize</p>
+                                <p className="text-sm italic">"{offer.offer_audience_psychology.moment_they_realize}"</p>
+                              </div>
+                            )}
+                            
+                            {offer.offer_audience_psychology.specific_hesitations?.length > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">Specific Hesitations</p>
+                                <ul className="list-disc list-inside space-y-1">
+                                  {offer.offer_audience_psychology.specific_hesitations.map((h: string, i: number) => (
+                                    <li key={i} className="text-sm text-muted-foreground">{h}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {offer.offer_audience_psychology.what_finally_convinces && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground">What Finally Convinces Them</p>
+                                <p className="text-sm">{offer.offer_audience_psychology.what_finally_convinces}</p>
+                              </div>
+                            )}
+                            
+                            {offer.offer_audience_psychology.emotional_before_after && (
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="p-2 rounded bg-destructive/5 border border-destructive/10">
+                                  <p className="text-xs font-medium text-destructive">Before</p>
+                                  <p className="text-xs text-muted-foreground">{offer.offer_audience_psychology.emotional_before_after.before}</p>
+                                </div>
+                                <div className="p-2 rounded bg-green-500/5 border border-green-500/10">
+                                  <p className="text-xs font-medium text-green-600">After</p>
+                                  <p className="text-xs text-muted-foreground">{offer.offer_audience_psychology.emotional_before_after.after}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
 
                         {offer.recommended_template_id && getRecommendedTemplate(offer.recommended_template_id) && (

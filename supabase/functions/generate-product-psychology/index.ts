@@ -27,6 +27,48 @@ async function authenticateUser(req: Request, supabase: any): Promise<{ userId: 
   return { userId: user.id, error: null };
 }
 
+// Build content assets context for AI prompt
+function buildContentAssetsContext(contentAssets: any[] | null, offerId?: string): string {
+  if (!contentAssets?.length) return "";
+  
+  // Filter assets relevant to this offer
+  const relevantAssets = contentAssets.filter((asset: any) => {
+    if (!asset.offer_ids?.length) return true; // Brand-wide assets
+    return asset.offer_ids.includes(offerId); // Offer-specific assets
+  });
+  
+  if (!relevantAssets.length) return "";
+  
+  let context = "\n\nREAL USER-PROVIDED CONTENT:\n";
+  
+  const typeLabels: Record<string, string> = {
+    testimonials: "CLIENT TESTIMONIALS",
+    survey_answers: "SURVEY RESPONSES",
+    client_objections: "CLIENT OBJECTIONS & QUESTIONS",
+    webinar_scripts: "WEBINAR/CHALLENGE SCRIPTS",
+    other: "OTHER CONTENT"
+  };
+  
+  relevantAssets.forEach((asset: any) => {
+    context += `## ${typeLabels[asset.asset_type] || asset.asset_type.toUpperCase()}\n${asset.content}\n\n`;
+  });
+  
+  context += "IMPORTANT: Use specific language, quotes, and pain points from the above content to make the psychology profile authentic.\n";
+  
+  return context;
+}
+
+// Generate hash of content asset IDs for tracking
+function generateContentHash(contentAssets: any[] | null, offerId?: string): string | null {
+  if (!contentAssets?.length) return null;
+  const relevantAssets = contentAssets.filter((asset: any) => {
+    if (!asset.offer_ids?.length) return true;
+    return asset.offer_ids.includes(offerId);
+  });
+  if (!relevantAssets.length) return null;
+  return relevantAssets.map(a => a.id).sort().join(',');
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -125,23 +167,59 @@ serve(async (req) => {
       );
     }
 
+    // Fetch content assets for this brand
+    const { data: contentAssets } = await supabase
+      .from('brand_content_assets')
+      .select('id, asset_type, content, offer_ids')
+      .eq('brand_id', actualBrandId);
+
+    const contentAssetsContext = buildContentAssetsContext(contentAssets, offerId);
+    const contentHash = generateContentHash(contentAssets, offerId);
+
     const systemPrompt = `You are an expert in product positioning and buyer psychology.
-Your task is to create a product-specific psychological profile that combines the general audience psychology with this specific offer.
+Your task is to create TWO related psychological profiles:
+
+1. **PRODUCT PSYCHOLOGY** - How this product is positioned and what it specifically solves
+2. **OFFER-AUDIENCE PSYCHOLOGY** - How YOUR specific audience relates to THIS specific offer
 
 Analyze the offer details and the brand's audience psychology to generate:
-1. Product Positioning - How this specific product fits the audience's needs
-2. Specific Pain Points - Problems this exact product solves (array of 4-6 items)
-3. Specific Desires - Outcomes this exact product delivers (array of 4-6 items)
-4. Product Objections - Specific hesitations about THIS product (array of 4-6 items)
-5. Buying Triggers - What would make them buy THIS product specifically
 
-Return ONLY a valid JSON object with these exact fields:
+### PRODUCT PSYCHOLOGY (how this product is positioned):
+- positioning: How this specific product fits the audience's needs
+- product_pain_points: Problems this exact product solves (array of 4-6 items)
+- product_desires: Outcomes this exact product delivers (array of 4-6 items)
+- product_objections: Specific hesitations about THIS product (array of 4-6 items)
+- buying_triggers: What would make them buy THIS product specifically
+
+### OFFER-AUDIENCE PSYCHOLOGY (how the ideal client relates to THIS specific offer):
+- why_they_need_this: Why someone with their psychology needs THIS specific offer (not just any solution)
+- moment_they_realize: The specific moment/scenario when they realize they need this (paint a vivid picture)
+- specific_hesitations: Array of 3-5 objections specific to THIS offer/price point
+- what_finally_convinces: What makes them say yes to THIS specific offer
+- alternative_they_tried: What they've tried before that didn't work (and why this is different)
+- emotional_before_after: Object with "before" and "after" states specific to this offer
+${contentAssetsContext}
+
+Return ONLY a valid JSON object with this structure:
 {
-  "positioning": "string",
-  "product_pain_points": ["string"],
-  "product_desires": ["string"],
-  "product_objections": ["string"],
-  "buying_triggers": "string"
+  "product_psychology": {
+    "positioning": "string",
+    "product_pain_points": ["string"],
+    "product_desires": ["string"],
+    "product_objections": ["string"],
+    "buying_triggers": "string"
+  },
+  "offer_audience_psychology": {
+    "why_they_need_this": "string",
+    "moment_they_realize": "string",
+    "specific_hesitations": ["string"],
+    "what_finally_convinces": "string",
+    "alternative_they_tried": "string",
+    "emotional_before_after": {
+      "before": "string",
+      "after": "string"
+    }
+  }
 }
 
 Be specific to this exact product and price point. Consider how it fits the broader audience psychology.`;
@@ -161,8 +239,10 @@ AUDIENCE PSYCHOLOGY:
 - General Desires: ${JSON.stringify(audiencePsych.desires || [])}
 - General Objections: ${JSON.stringify(audiencePsych.objections || [])}
 - Demographics: ${audiencePsych.demographics || 'Not specified'}
+- Psychographics: ${audiencePsych.psychographics || 'Not specified'}
+- Motivations: ${audiencePsych.motivations || 'Not specified'}
 
-Generate a product-specific psychological profile.`;
+Generate both product psychology AND offer-audience psychology profiles.`;
 
     console.log('Calling Lovable AI for product psychology...');
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -207,17 +287,25 @@ Generate a product-specific psychological profile.`;
       return JSON.parse(first !== -1 && last !== -1 ? raw.slice(first, last + 1) : raw);
     };
 
-    const productPsychology = extractJson(rawContent);
+    const parsedResponse = extractJson(rawContent);
+    
+    // Handle both old format (flat) and new format (nested)
+    const productPsychology = parsedResponse.product_psychology || parsedResponse;
+    const offerAudiencePsychology = parsedResponse.offer_audience_psychology || null;
 
-    // Update offer with product psychology
+    // Update offer with both product psychology and offer-audience psychology
     const { error: updateError } = await supabase
       .from('offers')
-      .update({ product_psychology: productPsychology })
+      .update({ 
+        product_psychology: productPsychology,
+        offer_audience_psychology: offerAudiencePsychology,
+        psychology_content_hash: contentHash
+      })
       .eq('id', offerId);
 
     if (updateError) throw updateError;
 
-    console.log('Product psychology generated and saved successfully');
+    console.log('Product and offer-audience psychology generated and saved successfully');
 
     // Trigger campaign template recommendation (internal call with service role)
     console.log('Triggering campaign template recommendation...');
@@ -243,7 +331,11 @@ Generate a product-specific psychological profile.`;
       // Don't fail the main request if recommendation fails
     }
 
-    return new Response(JSON.stringify({ success: true, productPsychology }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      productPsychology,
+      offerAudiencePsychology 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

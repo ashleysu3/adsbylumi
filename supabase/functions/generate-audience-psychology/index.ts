@@ -27,6 +27,34 @@ async function authenticateUser(req: Request, supabase: any): Promise<{ userId: 
   return { userId: user.id, error: null };
 }
 
+// Build content assets context for AI prompt
+function buildContentAssetsContext(contentAssets: any[] | null): string {
+  if (!contentAssets?.length) return "";
+  
+  let context = "\n\nREAL USER-PROVIDED CONTENT:\n";
+  context += "IMPORTANT: Use the EXACT language, phrases, and specific pain points from the content below. These are REAL words from REAL clients.\n\n";
+  
+  const typeLabels: Record<string, string> = {
+    testimonials: "CLIENT TESTIMONIALS (real words from clients)",
+    survey_answers: "SURVEY RESPONSES (actual pain points in client language)",
+    client_objections: "COMMON OBJECTIONS & QUESTIONS",
+    webinar_scripts: "WEBINAR/CHALLENGE SCRIPTS",
+    other: "OTHER CONTENT"
+  };
+  
+  contentAssets.forEach((asset: any) => {
+    context += `## ${typeLabels[asset.asset_type] || asset.asset_type.toUpperCase()}\n${asset.content}\n\n`;
+  });
+  
+  return context;
+}
+
+// Generate hash of content asset IDs for tracking
+function generateContentHash(contentAssets: any[] | null): string | null {
+  if (!contentAssets?.length) return null;
+  return contentAssets.map(a => a.id).sort().join(',');
+}
+
 serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -112,8 +140,18 @@ serve(async (req) => {
       .update({ psychology_status: 'generating' })
       .eq('id', brandId);
 
+    // Fetch content assets for this brand
+    const { data: contentAssets } = await supabase
+      .from('brand_content_assets')
+      .select('id, asset_type, content')
+      .eq('brand_id', brandId);
+
+    const contentAssetsContext = buildContentAssetsContext(contentAssets);
+    const contentHash = generateContentHash(contentAssets);
+
     const systemPrompt = `You are an expert in audience psychology and advertising strategy, trained in the "After Organic" methodology.
 Your task is to create a comprehensive psychological profile of the target audience based on brand information.
+${contentAssetsContext ? `\n${contentAssetsContext}` : ''}
 
 CRITICAL FORMATTING REQUIREMENTS:
 All text must be formatted for easy reading and scanning:
@@ -186,7 +224,7 @@ What they offer: ${brand.value_proposition || 'Not specified'}
 Who they serve: ${brand.target_audience || 'Not specified'}
 Industry: ${brand.industry || 'Not specified'}
 
-Generate a deep, actionable psychological profile.`;
+Generate a deep, actionable psychological profile.${contentAssets?.length ? ` Use the specific language and insights from the ${contentAssets.length} content asset(s) provided above.` : ''}`;
 
     console.log('Calling Lovable AI for psychology generation...');
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -248,13 +286,15 @@ Generate a deep, actionable psychological profile.`;
       .from('brands')
       .update({
         audience_psychology: psychology,
-        psychology_status: 'completed'
+        psychology_status: 'completed',
+        psychology_content_hash: contentHash,
+        psychology_generated_at: new Date().toISOString()
       })
       .eq('id', brandId);
 
     if (updateError) throw updateError;
 
-    console.log('Audience psychology generated and saved successfully');
+    console.log('Audience psychology generated and saved successfully with content hash:', contentHash);
 
     return new Response(JSON.stringify({ success: true, psychology }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

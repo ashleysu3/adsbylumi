@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,21 +9,55 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatInvokeError } from "@/lib/formatInvokeError";
-import { Brain, ChevronDown, RefreshCw, Loader2, Users, Heart, AlertCircle, Zap, CheckCircle2, Pencil } from "lucide-react";
+import { Brain, ChevronDown, RefreshCw, Loader2, Users, Heart, AlertCircle, Zap, CheckCircle2, Pencil, Sparkles, FileText } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface AudiencePsychologyProps {
   brandId: string;
   psychology: any;
   status: string;
   onUpdate: () => void;
+  psychologyContentHash?: string | null;
+  psychologyGeneratedAt?: string | null;
 }
 
-export function AudiencePsychology({ brandId, psychology, status, onUpdate }: AudiencePsychologyProps) {
+export function AudiencePsychology({ 
+  brandId, 
+  psychology, 
+  status, 
+  onUpdate,
+  psychologyContentHash,
+  psychologyGeneratedAt 
+}: AudiencePsychologyProps) {
   const [open, setOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editedPsychology, setEditedPsychology] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [contentAssets, setContentAssets] = useState<any[]>([]);
+  const [hasNewContent, setHasNewContent] = useState(false);
+
+  // Fetch content assets to check for updates
+  useEffect(() => {
+    const fetchContentAssets = async () => {
+      const { data } = await supabase
+        .from('brand_content_assets')
+        .select('id')
+        .eq('brand_id', brandId);
+      
+      if (data) {
+        setContentAssets(data);
+        
+        // Check if there's new content since last psychology generation
+        if (data.length > 0 && psychology) {
+          const currentHash = data.map(a => a.id).sort().join(',');
+          setHasNewContent(currentHash !== psychologyContentHash);
+        }
+      }
+    };
+    
+    fetchContentAssets();
+  }, [brandId, psychology, psychologyContentHash]);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -291,6 +325,43 @@ export function AudiencePsychology({ brandId, psychology, status, onUpdate }: Au
                     Audience psychology approved and ready to use
                   </p>
                 </div>
+              )}
+
+              {/* Content Assets Available Alert */}
+              {hasNewContent && (
+                <Alert className="mt-4 border-primary/20 bg-primary/5">
+                  <FileText className="h-4 w-4" />
+                  <AlertDescription className="flex items-center justify-between">
+                    <span className="text-sm">
+                      <Sparkles className="inline h-3 w-3 mr-1" />
+                      {contentAssets.length} content asset{contentAssets.length !== 1 ? 's' : ''} available – regenerate to include them
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleGenerate}
+                      disabled={generating}
+                      className="h-7 text-xs"
+                    >
+                      {generating ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Regenerate
+                        </>
+                      )}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Show when psychology was generated */}
+              {psychologyGeneratedAt && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Last generated: {new Date(psychologyGeneratedAt).toLocaleDateString()}
+                  {psychologyContentHash && ` • Using ${psychologyContentHash.split(',').length} content asset(s)`}
+                </p>
               )}
             </CardContent>
           </CollapsibleContent>

@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -86,12 +86,38 @@ serve(async (req) => {
       insightsContext += "\nIMPORTANT: Incorporate these user insights to create angles that directly address their specific pain points, desires, objections, and unique value propositions mentioned in the conversations above.\n";
     }
 
+    // Build offer-audience psychology context
+    let offerAudienceContext = "";
+    if (offerAudiencePsychology) {
+      offerAudienceContext = "\n\n=== OFFER-SPECIFIC AUDIENCE PSYCHOLOGY ===\n";
+      offerAudienceContext += "How your ideal client relates to THIS specific offer:\n\n";
+      
+      if (offerAudiencePsychology.why_they_need_this) {
+        offerAudienceContext += `Why They Need This: ${offerAudiencePsychology.why_they_need_this}\n\n`;
+      }
+      if (offerAudiencePsychology.moment_they_realize) {
+        offerAudienceContext += `The Moment They Realize: ${offerAudiencePsychology.moment_they_realize}\n\n`;
+      }
+      if (offerAudiencePsychology.specific_hesitations?.length) {
+        offerAudienceContext += `Specific Hesitations:\n${offerAudiencePsychology.specific_hesitations.map((h: string) => `- ${h}`).join('\n')}\n\n`;
+      }
+      if (offerAudiencePsychology.what_finally_convinces) {
+        offerAudienceContext += `What Convinces Them: ${offerAudiencePsychology.what_finally_convinces}\n\n`;
+      }
+      if (offerAudiencePsychology.emotional_before_after) {
+        offerAudienceContext += `Emotional Journey:\n  Before: ${offerAudiencePsychology.emotional_before_after.before}\n  After: ${offerAudiencePsychology.emotional_before_after.after}\n\n`;
+      }
+      
+      offerAudienceContext += "IMPORTANT: Create angles that address the specific hesitations and highlight the transformation described above.\n";
+    }
+
     const systemPrompt = `You are Lumi's Creative Engine. Your job is to generate creative angle recommendations for Meta ads campaigns.
 
 KNOWLEDGE BASE:
 ${kbContext}
  ${contentAssetsContext}
 ${insightsContext}
+${offerAudienceContext}
 
 RULES:
 - Generate exactly 10-12 creative angles
@@ -132,9 +158,11 @@ ${offerData?.price ? `Price: ${offerData.price}` : ""}
 STRATEGY CONTEXT:
 ${JSON.stringify(strategyData, null, 2)}
 
-${audiencePsychology ? `AUDIENCE INSIGHTS:\n${JSON.stringify(audiencePsychology, null, 2)}` : ""}
+${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audiencePsychology, null, 2)}` : ""}
 
-Generate 10-12 creative angles that would resonate with this audience and offer.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}`;
+${productPsychology ? `PRODUCT PSYCHOLOGY:\n${JSON.stringify(productPsychology, null, 2)}` : ""}
+
+Generate 10-12 creative angles that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
