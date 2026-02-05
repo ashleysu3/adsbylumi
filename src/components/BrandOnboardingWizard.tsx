@@ -47,18 +47,11 @@
        isComplete: !!(brand?.name && brand?.website_url && brand?.industry && brand?.value_proposition),
      },
      {
-       id: 'brand-copy',
-       title: 'Brand Copy',
-       description: 'Configure emoji preferences and add content assets',
-       icon: Smile,
-       isComplete: brand?.use_emojis !== undefined,
-     },
-     {
-       id: 'psychology',
-       title: 'Audience Psychology',
-       description: 'Generate and approve your audience insights',
+      id: 'brand-brain',
+      title: 'Brand Brain',
+      description: 'Add content assets and generate audience psychology',
        icon: Brain,
-       isComplete: brand?.psychology_status === 'approved',
+      isComplete: brand?.psychology_status === 'approved' && brand?.use_emojis !== undefined,
      },
      {
        id: 'offers',

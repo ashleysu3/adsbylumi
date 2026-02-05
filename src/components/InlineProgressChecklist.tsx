@@ -33,10 +33,10 @@ export function InlineProgressChecklist({ brand, offers, onScrollToSection }: In
       icon: Target,
     },
     {
-      id: "psychology",
-      label: "Audience",
-      completed: brand?.psychology_status === "approved",
-      section: "audience-psychology",
+      id: "brand-brain",
+      label: "Brain",
+      completed: brand?.psychology_status === "approved" && brand?.use_emojis !== undefined,
+      section: "brand-brain",
       icon: Brain,
     },
     {
