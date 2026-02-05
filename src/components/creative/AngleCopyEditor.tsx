@@ -313,12 +313,12 @@ export function AngleCopyEditor({
                       <Input
                         value={d.text}
                         onChange={(e) => updateVariation("descriptions", i, e.target.value)}
-                        placeholder="Enter description..."
-                        maxLength={125}
-                        className="pr-14"
+                        placeholder="Try it free today"
+                        maxLength={27}
+                        className="pr-12"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        {d.text?.length || 0}/125
+                        {d.text?.length || 0}/27
                       </span>
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => removeVariation("descriptions", i)}>

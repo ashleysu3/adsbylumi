@@ -187,8 +187,8 @@ Return valid JSON with this structure:
         { "text": "...", "framework": "Curiosity", "character_count": 23 }
       ],
       "descriptions": [
-        { "text": "...", "framework": "PAS", "character_count": 85 },
-        { "text": "...", "framework": "Before/After", "character_count": 90 }
+        { "text": "Start your free trial", "framework": "Direct", "character_count": 21 },
+        { "text": "See real results now", "framework": "Action", "character_count": 20 }
       ],
       "primary_copy": [
         { "text": "...", "framework": "Story Opening", "length": "short" },
@@ -201,7 +201,7 @@ Return valid JSON with this structure:
 
 ## COPY REQUIREMENTS
 - Headlines: Max 40 characters, punchy, scroll-stopping
-- Descriptions: Max 125 characters, expand on the headline
+- Descriptions: Max 27 characters. Short action phrase that complements the headline (e.g., "Try it free", "See the results"). Don't repeat the headline.
 - Primary Copy: 
   - Short: 50-100 words
   - Medium: 100-150 words
