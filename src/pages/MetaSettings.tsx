@@ -99,10 +99,13 @@ export default function MetaSettings() {
         'id,user_id,name,meta_account_id,page_id,page_name,instagram_account_id,instagram_account_name,meta_token_expires_at,meta_pixel_id,meta_pixel_name,meta_pixel_events' as const;
 
       const fetchById = async (id: string) => {
+        // Safety: only load brands owned by the current user.
+        // Prevents stale/incorrect brandIds (e.g. from cached state) from breaking Meta OAuth.
         const { data, error } = await supabase
           .from('brands')
           .select(brandSelect)
           .eq('id', id)
+          .eq('user_id', user.id)
           .maybeSingle();
         if (error) throw error;
         return data;
