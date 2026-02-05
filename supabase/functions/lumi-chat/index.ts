@@ -1,120 +1,48 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
 
-const LUMI_SYSTEM_PROMPT = `You are Lumi, a sharp and strategic AI ad assistant. Your tone is warm but efficient — like a brilliant friend who respects your time.
+const LUMI_NAVIGATOR_PROMPT = `You are Lumi, a friendly app navigation assistant for Your Ad Assistant - an app that helps people create Meta ads.
 
-CORE BEHAVIOR:
-- **Ask first, advise second.** Before giving advice, ask 1-2 clarifying questions to understand what the user actually needs.
-- **Short and punchy.** Keep responses to 2-4 sentences max unless the user asks for detail.
-- **One thing at a time.** Don't overwhelm. Focus on the single most impactful insight or next step.
-- **Be direct.** Skip the preamble. Get to the point.
+YOUR ROLE: Help users navigate the app and accomplish their goals. You are NOT a creative generator - you guide users to the right place in the app.
 
-BUG REPORT DETECTION (CRITICAL):
-If a user describes any of these, treat it as a BUG REPORT:
-• Something not loading, showing blank, or not working
-• Buttons not responding or actions failing
-• Error messages appearing
-• Features that "worked before" but don't anymore
-• Being unable to select, save, or proceed in the app
-• Meta connection or OAuth issues
-• Data not syncing or appearing incorrectly
+APP STRUCTURE:
+• Home (/start) - Overview, quick actions, see what to do next
+• My Brand (/dashboard) - Brand info, offers, audience psychology, Meta connection
+• My Ads (/campaigns) - View/manage ad campaigns and workspaces
+• New Ad (/create) - 3-step wizard to create a new campaign
+• Creative Studio (/creative-studio) - Generate angles, concepts, and ad copy
+• Results (/data) - Performance metrics and optimization insights
+• Concept Library (/content-library) - Saved creative concepts
+• Settings (/settings) - Account and preferences
+• Glossary (/glossary) - Ads terminology definitions
 
-When you detect a BUG REPORT, respond with empathy and provide SPECIFIC guidance:
+RESPONSE RULES:
+1. Keep responses SHORT (2-3 sentences max)
+2. ALWAYS provide at least one action button for navigation
+3. Give simple directions on what to do when they arrive
+4. If user describes a bug/problem, direct them to the bug report button
 
-1. **Acknowledge the frustration** - "I'm sorry you're running into this!"
+DETECTING BUGS:
+If user mentions: not loading, broken, error, doesn't work, can't click, stuck, frozen, blank, glitch
+→ Acknowledge frustration briefly
+→ Say you can't fix bugs but the team can
+→ Provide a "Report Bug" action button (type: bug_report)
 
-2. **Explain your limitation** - "I can help with ads strategy and creative, but I can't fix technical bugs in the app."
+COMMON USER INTENTS (map to actions):
+• "create an ad" / "new campaign" / "start advertising" → /create
+• "connect Meta" / "link Facebook" / "ad account" → /dashboard (scroll to Meta section)
+• "add my offer" / "add product" / "my service" → /dashboard (offers section)
+• "see results" / "performance" / "metrics" / "how am I doing" → /data
+• "edit my brand" / "update brand" → /dashboard
+• "my campaigns" / "existing ads" / "manage ads" → /campaigns
+• "creative ideas" / "angles" / "hooks" / "copy" → /creative-studio
+• "settings" / "account" / "billing" → /settings
+• "what is [term]" / "define [term]" → /glossary
+• "what should I do" / "next step" / "help" → Analyze their context and suggest
 
-3. **Ask them to capture details** for the support team:
-   • What page/screen they were on
-   • What they were trying to do
-   • What happened (or didn't happen)
-   • Any error messages they saw
-   • Approximately when it started
+TONE: Warm, helpful, concise. Like a friendly concierge. Use emojis sparingly (1-2 max).`;
 
-4. **Direct them to support** - "Please email **support@adsbylumi.com** with these details and a screenshot if possible. The team will prioritize fixing this for you!"
-
-5. **Offer to help with non-bug topics** in the meantime
-
-Example BUG response:
-"I'm sorry you're hitting a wall here! 😔
-
-This sounds like a technical bug that our dev team needs to fix — I can help with ads strategy, but I can't troubleshoot app issues.
-
-**To get this resolved quickly, please email support@adsbylumi.com with:**
-• What you were trying to do
-• What happened instead
-• Any error messages you saw
-• A screenshot if you have one
-
-They'll get back to you ASAP. In the meantime, is there anything else I can help you with?"
-
-FORMATTING REQUIREMENTS (CRITICAL):
-When providing information, explanations, or lists, format for easy scanning:
-
-- Use **line breaks** between distinct ideas
-- Use **bullet points** (•) for any list of 2+ items
-- Use **bold** for key terms or important takeaways
-- Keep paragraphs SHORT (1-2 sentences max)
-- Add breathing room — don't create walls of text
-
-Example of GOOD formatting:
-"Here's what's working:
-
-• Your hook is strong — it creates instant curiosity
-• The price point is positioned well for impulse buys
-
-**Next step:** Test a shorter version of your primary copy."
-
-Example of BAD formatting:
-"Your hook is strong and creates curiosity, the price point works well for impulse buys, you should test shorter primary copy."
-
-RESPONSE STYLE:
-- Lead with the sharpest insight or the most important question
-- Use bold for key takeaways
-- When listing things, ALWAYS use bullet points
-- If you need more info, ask. Don't guess.
-
-EXAMPLE PATTERNS:
-- User asks vague question → Ask: "What's the specific outcome you're going for here?"
-- User shares a problem → Give ONE actionable suggestion, then ask if they want to go deeper
-- User shares performance data → Identify the single biggest lever, explain why
-- User reports something broken → Acknowledge, explain you can't fix bugs, direct to support@adsbylumi.com
-
-You help with Meta Ads strategy, creative, copy, and optimization. Stay in your lane.`;
-
-const ANGLE_FEEDBACK_SYSTEM_PROMPT = `You are Lumi, a sharp and strategic AI ad creative assistant. The user has just received their first set of creative angles for their ad campaign.
-
-FORMATTING REQUIREMENTS (CRITICAL):
-Always format responses for easy reading:
-- Use **line breaks** between ideas
-- Use **bullet points** (•) for lists
-- Use **bold** for emphasis
-- Keep it scannable — no walls of text
-
-Your job is to:
-
-1. **Engage them in conversation** about their offer, audience, and goals to gather insights that will make the angles even more powerful.
-
-2. **Ask thoughtful questions** about:
-   • Their ideal customer's biggest pain points and desires
-   • What makes their offer unique or different
-   • Any objections their audience typically has
-   • Success stories or testimonials they could leverage
-
-3. **Listen actively** and acknowledge their inputs before asking follow-up questions.
-
-4. **After gathering 2-3 key insights**, offer to refine the angles with this new information.
-
-CONVERSATION FLOW:
-- Start by understanding their initial reaction to the angles
-- Ask ONE question at a time — don't overwhelm
-- After 2-3 exchanges, summarize what you've learned
-- If they're happy with the angles, celebrate and guide them forward
-
-TONE: Warm, curious, collaborative — like a creative director who genuinely wants to understand their brand.
-
-IMPORTANT: Keep responses SHORT (2-4 sentences). Ask one question at a time. Format with line breaks for readability.`;
+const ANGLE_FEEDBACK_PROMPT = `You are Lumi, helping the user refine their creative angles. Keep responses SHORT (2-3 sentences). Ask one question at a time about their offer, audience, or goals to improve the angles. When they're satisfied, guide them to continue in the Creative Studio.`;
 
 
 Deno.serve(async (req) => {
@@ -135,13 +63,16 @@ Deno.serve(async (req) => {
 
     // Choose system prompt based on context
     const isAngleFeedback = context?.context === 'angle-feedback';
-    let contextPrompt = isAngleFeedback ? ANGLE_FEEDBACK_SYSTEM_PROMPT : LUMI_SYSTEM_PROMPT;
+    let contextPrompt = isAngleFeedback ? ANGLE_FEEDBACK_PROMPT : LUMI_NAVIGATOR_PROMPT;
     
     if (context) {
       contextPrompt += '\n\n--- Current Context ---\n';
       
       if (context.context) {
-        contextPrompt += `User is currently in: ${context.context} mode\n`;
+        contextPrompt += `User is currently on: ${context.context} page\n`;
+        if (context.currentPath) {
+          contextPrompt += `Current route: ${context.currentPath}\n`;
+        }
       }
       
       if (context.workspace) {
@@ -189,7 +120,7 @@ Deno.serve(async (req) => {
       hasAngles: !!context?.generatedAngles?.length
     });
 
-    // Use tool calling to get structured response with follow-ups
+    // Use tool calling to get structured response with navigation actions
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -206,14 +137,38 @@ Deno.serve(async (req) => {
           {
             type: 'function',
             function: {
-              name: 'respond_with_followups',
-              description: 'Respond to the user and suggest 2-3 follow-up questions they might want to ask next.',
+              name: 'navigate_and_guide',
+              description: 'Help the user navigate the app by providing a brief response and action buttons.',
               parameters: {
                 type: 'object',
                 properties: {
                   response: {
                     type: 'string',
-                    description: 'Your response to the user. Keep it short and actionable (2-4 sentences max).'
+                    description: 'Brief explanation of what to do (1-3 sentences max). Be helpful and concise.'
+                  },
+                  actions: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        type: {
+                          type: 'string',
+                          enum: ['navigate', 'bug_report'],
+                          description: 'navigate = go to a page, bug_report = open bug report form'
+                        },
+                        label: {
+                          type: 'string',
+                          description: 'Button label (2-4 words, action-oriented)'
+                        },
+                        route: {
+                          type: 'string',
+                          description: 'App route to navigate to (e.g., /create, /dashboard). Required for navigate type.'
+                        }
+                      },
+                      required: ['type', 'label'],
+                      additionalProperties: false
+                    },
+                    description: 'Action buttons for the user. Always include at least one. Max 3.'
                   },
                   followups: {
                     type: 'array',
@@ -222,26 +177,26 @@ Deno.serve(async (req) => {
                       properties: {
                         label: {
                           type: 'string',
-                          description: 'Short button label (2-4 words)'
+                          description: 'Short question label (2-4 words)'
                         },
                         message: {
                           type: 'string',
-                          description: 'The full question or request to send'
+                          description: 'The follow-up question to ask'
                         }
                       },
                       required: ['label', 'message'],
                       additionalProperties: false
                     },
-                    description: 'Suggest 2-3 natural follow-up questions based on the conversation. Make them specific to what was just discussed.'
+                    description: 'Optional follow-up questions (max 2)'
                   }
                 },
-                required: ['response', 'followups'],
+                required: ['response', 'actions'],
                 additionalProperties: false
               }
             }
           }
         ],
-        tool_choice: { type: 'function', function: { name: 'respond_with_followups' } },
+        tool_choice: { type: 'function', function: { name: 'navigate_and_guide' } },
       }),
     });
 
@@ -270,6 +225,7 @@ Deno.serve(async (req) => {
     
     // Parse the tool call response
     let aiResponse = "I'm sorry, I couldn't process that. Please try again.";
+    let actions: { type: string; label: string; route?: string }[] = [];
     let followups: { label: string; message: string }[] = [];
     
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
@@ -277,6 +233,7 @@ Deno.serve(async (req) => {
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
         aiResponse = parsed.response || aiResponse;
+        actions = parsed.actions || [];
         followups = parsed.followups || [];
       } catch (e) {
         console.error('Failed to parse tool call arguments:', e);
@@ -291,7 +248,7 @@ Deno.serve(async (req) => {
     console.log('Lumi response generated successfully');
 
     return new Response(
-      JSON.stringify({ response: aiResponse, followups }),
+      JSON.stringify({ response: aiResponse, actions, followups }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {

@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 import { SparkleIcon } from "./SparkleIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useLumi } from "@/contexts/LumiContext";
-import { useLocation } from "react-router-dom";
+import { useLumi, Message, NavigationAction } from "@/contexts/LumiContext";
+import { useLocation, useNavigate } from "react-router-dom";
 import { BugReportModal } from "./BugReportModal";
 
 export interface LumiRecommendation {
@@ -30,65 +30,43 @@ export interface LumiHistoryItem {
   dismissed: boolean;
 }
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
+// Navigation-focused context starters
 const contextStarters: Record<string, { label: string; message: string }[]> = {
-  creative: [
-    { label: "Improve my hooks", message: "Help me make my hooks more attention-grabbing and scroll-stopping." },
-    { label: "Strengthen copy", message: "Review my primary copy and suggest ways to make it more persuasive." },
-    { label: "More variety", message: "I need more variety in my creative concepts. What angles am I missing?" },
-    { label: "Script feedback", message: "Can you review my scripts and suggest improvements for better engagement?" },
-  ],
-  planning: [
-    { label: "Refine strategy", message: "Help me refine my campaign strategy based on my offer and audience." },
-    { label: "Budget advice", message: "What budget would you recommend for my campaign goals?" },
-    { label: "Audience insights", message: "Tell me more about my target audience's psychology and pain points." },
-    { label: "KPI guidance", message: "What KPIs should I focus on for this type of campaign?" },
-  ],
-  data: [
-    { label: "Analyze performance", message: "Help me understand what's working and what's not in my campaign data." },
-    { label: "Optimization tips", message: "What optimizations would you suggest based on my current metrics?" },
-    { label: "Creative fatigue", message: "How do I know if my creative is experiencing fatigue?" },
-    { label: "Scaling strategy", message: "My campaign is performing well. How should I scale it?" },
-  ],
-  campaign: [
-    { label: "Review settings", message: "Can you review my campaign settings before I publish?" },
-    { label: "Audience selection", message: "Help me decide on the best audience targeting for this campaign." },
-    { label: "Budget allocation", message: "How should I allocate my budget between ad sets?" },
-    { label: "Missing anything?", message: "Am I missing anything important before launching this campaign?" },
+  start: [
+    { label: "Get started", message: "I'm new here. Where should I start?" },
+    { label: "Create an ad", message: "How do I create my first ad?" },
+    { label: "What can I do?", message: "What can this app help me with?" },
+    { label: "Need help", message: "I need help finding something." },
   ],
   dashboard: [
-    { label: "What's next?", message: "What should I focus on next to grow my ad results?" },
-    { label: "Campaign ideas", message: "Suggest some campaign ideas based on my brand and offers." },
-    { label: "Best practices", message: "What are the top Meta Ads best practices I should follow?" },
-    { label: "Creative tips", message: "Give me some quick tips to improve my ad creative." },
-  ],
-  settings: [
-    { label: "Account setup", message: "What do I need to set up to get started with Meta Ads?" },
-    { label: "Billing questions", message: "Help me understand the billing and subscription options." },
-    { label: "Best practices", message: "What are some best practices for managing my ad account?" },
-    { label: "Getting started", message: "I'm new here. Where should I start?" },
+    { label: "Create an ad", message: "How do I create a new ad?" },
+    { label: "Add my offer", message: "Where do I add my product or offer?" },
+    { label: "Connect Meta", message: "How do I connect my Meta account?" },
+    { label: "What's next?", message: "What should I do next?" },
   ],
   campaigns: [
-    { label: "Campaign review", message: "Help me review my active campaigns and see what's working." },
-    { label: "Create new campaign", message: "I want to create a new campaign. Where do I start?" },
-    { label: "Archive advice", message: "How do I know when to archive or pause a campaign?" },
-    { label: "Campaign strategy", message: "How should I organize my campaigns for best results?" },
+    { label: "New campaign", message: "How do I create a new campaign?" },
+    { label: "Continue work", message: "How do I continue a campaign I started?" },
+    { label: "Archive", message: "How do I archive old campaigns?" },
+    { label: "Need help", message: "I need help understanding this page." },
   ],
-  production: [
-    { label: "Recording tips", message: "Give me tips for recording my ad videos at home." },
-    { label: "Equipment advice", message: "What basic equipment do I need for good video ads?" },
-    { label: "Editing help", message: "How should I edit my videos for maximum engagement?" },
-    { label: "B-roll ideas", message: "What kind of b-roll footage should I capture?" },
+  creative: [
+    { label: "Get started", message: "How do I get started here?" },
+    { label: "Generate angles", message: "How do I create creative angles?" },
+    { label: "Write copy", message: "Where do I write my ad copy?" },
+    { label: "I'm stuck", message: "I'm stuck. What should I do?" },
   ],
-  'add-creative': [
-    { label: "Upload my creative", message: "I have new creative ready. Walk me through the upload process." },
-    { label: "Brainstorm angles", message: "Help me come up with fresh creative angles for my campaign." },
-    { label: "What performs best?", message: "What types of creative are performing best right now?" },
-    { label: "Refresh strategy", message: "How do I know when my creative needs refreshing?" },
+  data: [
+    { label: "See performance", message: "How do I see my ad performance?" },
+    { label: "Import campaigns", message: "How do I import my Meta campaigns?" },
+    { label: "Optimize ads", message: "How do I know which ads to optimize?" },
+    { label: "Something wrong", message: "Something doesn't look right here." },
+  ],
+  settings: [
+    { label: "Billing", message: "Where do I manage my subscription?" },
+    { label: "Meta settings", message: "How do I change my Meta connection?" },
+    { label: "Email reports", message: "How do I set up weekly email reports?" },
+    { label: "Need help", message: "What can I do on this page?" },
   ],
 };
 
@@ -131,6 +109,7 @@ function LumiAssistantUI({
   onClose,
 }: LumiAssistantUIProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { messages, addMessage, setBrandId } = useLumi();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -169,18 +148,27 @@ function LumiAssistantUI({
 
   // Determine context from route
   const getContextFromRoute = (): string => {
-    if (location.pathname.includes('/creative')) return 'creative';
-    if (location.pathname.includes('/planning')) return 'planning';
+    if (location.pathname.includes('/creative-studio')) return 'creative';
     if (location.pathname.includes('/data')) return 'data';
-    if (location.pathname.includes('/production')) return 'production';
     if (location.pathname.includes('/campaigns')) return 'campaigns';
     if (location.pathname.includes('/settings')) return 'settings';
-    if (location.pathname.includes('/workspace')) return 'campaign';
+    if (location.pathname.includes('/dashboard')) return 'dashboard';
+    if (location.pathname.includes('/start')) return 'start';
     return 'dashboard';
   };
 
   const context = getContextFromRoute();
-  const starters = contextStarters[context] || contextStarters.dashboard;
+  const starters = contextStarters[context] || contextStarters.start;
+
+  // Handle navigation action click
+  const handleActionClick = (action: NavigationAction) => {
+    if (action.type === 'navigate' && action.route) {
+      navigate(action.route);
+      handleCloseChat();
+    } else if (action.type === 'bug_report') {
+      setBugReportOpen(true);
+    }
+  };
 
   // Reset dismissed state when recommendation changes
   useEffect(() => {
@@ -243,16 +231,18 @@ function LumiAssistantUI({
             role: m.role,
             content: m.content
           })),
-          context: { context },
+          context: { context, currentPath: location.pathname },
         }
       });
 
       if (error) throw error;
 
-      const assistantMessage: Message = {
+      const assistantMessage = {
         role: 'assistant',
-        content: data.response || "I'm sorry, I couldn't process that. Please try again."
-      };
+        content: data.response || "I'm sorry, I couldn't process that. Please try again.",
+        actions: data.actions || [],
+        followups: data.followups || [],
+      } as Message;
       addMessage(assistantMessage);
     } catch (error) {
       console.error('Error sending message:', error);
@@ -374,16 +364,16 @@ function LumiAssistantUI({
                     <div className="space-y-4">
                       <div className="text-center py-4">
                         <SparkleIcon size="md" state="idle" glow className="mx-auto mb-2" />
-                        <h3 className="font-semibold text-sm mb-1">Hey there! 👋</h3>
+                        <h3 className="font-semibold text-sm mb-1">How can I help? 👋</h3>
                         <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                          I'm Lumi — here to make Meta Ads simple.
+                          I'll guide you to the right place in the app.
                         </p>
                       </div>
 
                       <div className="space-y-2">
                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground px-1">
                           <Sparkle className="h-3 w-3 animate-sparkle-pulse" />
-                          <span>Quick questions</span>
+                          <span>Common questions</span>
                         </div>
                         <div className="grid grid-cols-2 gap-1.5">
                           {starters.slice(0, 4).map((starter, idx) => (
@@ -404,22 +394,63 @@ function LumiAssistantUI({
                       {messages.map((message, idx) => (
                         <div
                           key={idx}
-                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          className="space-y-2"
                         >
-                          {message.role === 'assistant' && (
-                            <SparkleIcon size="xs" state="idle" className="mr-1.5 flex-shrink-0 mt-0.5" />
-                          )}
-                          <div
-                            className={cn(
-                              "max-w-[85%] rounded-xl px-3 py-2",
-                              message.role === 'user'
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted'
+                          <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            {message.role === 'assistant' && (
+                              <SparkleIcon size="xs" state="idle" className="mr-1.5 flex-shrink-0 mt-0.5" />
                             )}
-                          >
-                            <p className="text-xs whitespace-pre-wrap">{message.content}</p>
+                            <div
+                              className={cn(
+                                "max-w-[85%] rounded-xl px-3 py-2",
+                                message.role === 'user'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted'
+                              )}
+                            >
+                              <p className="text-xs whitespace-pre-wrap">{message.content}</p>
+                            </div>
                           </div>
-                        </div>
+                          {/* Navigation Action Buttons */}
+                          {message.role === 'assistant' && message.actions && message.actions.length > 0 && (
+                            <div className="flex flex-col gap-1.5 ml-6">
+                              {message.actions.map((action, actionIdx) => (
+                                <Button
+                                  key={actionIdx}
+                                  size="sm"
+                                  onClick={() => handleActionClick(action)}
+                                  className={cn(
+                                    "justify-start gap-2 h-auto py-1.5 px-3 text-xs",
+                                    action.type === 'navigate' 
+                                      ? "bg-gradient-lumi text-white hover:opacity-90" 
+                                      : ""
+                                  )}
+                                  variant={action.type === 'bug_report' ? 'outline' : 'default'}
+                                >
+                                  {action.type === 'navigate' && <ArrowRight className="h-3 w-3" />}
+                                  {action.type === 'bug_report' && <Bug className="h-3 w-3" />}
+                                  {action.label}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+                          {/* Follow-up questions */}
+                          {message.role === 'assistant' && message.followups && message.followups.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 ml-6">
+                              {message.followups.map((followup, fIdx) => (
+                                <Button
+                                  key={fIdx}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-auto py-1 px-2 text-[10px] text-muted-foreground hover:text-foreground"
+                                  onClick={() => sendMessage(followup.message)}
+                                >
+                                  {followup.label}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+                          </div>
                       ))}
                       {isLoading && (
                         <div className="flex justify-start">
@@ -754,16 +785,16 @@ function LumiAssistantUI({
                       <div className="space-y-4">
                         <div className="text-center py-4">
                           <SparkleIcon size="md" state="idle" glow className="mx-auto mb-2" />
-                          <h3 className="font-semibold text-sm mb-1">Hey there! 👋</h3>
+                          <h3 className="font-semibold text-sm mb-1">How can I help? 👋</h3>
                           <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                            I'm Lumi — here to make Meta Ads simple.
+                            I'll guide you to the right place in the app.
                           </p>
                         </div>
 
                         <div className="space-y-2">
                           <div className="flex items-center gap-1 text-[10px] text-muted-foreground px-1">
                             <Sparkle className="h-3 w-3 animate-sparkle-pulse" />
-                            <span>Quick questions</span>
+                            <span>Common questions</span>
                           </div>
                           <div className="grid grid-cols-2 gap-1.5">
                             {starters.slice(0, 4).map((starter, idx) => (
@@ -784,22 +815,63 @@ function LumiAssistantUI({
                         {messages.map((message, idx) => (
                           <div
                             key={idx}
-                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            className="space-y-2"
                           >
-                            {message.role === 'assistant' && (
-                              <SparkleIcon size="xs" state="idle" className="mr-1.5 flex-shrink-0 mt-0.5" />
-                            )}
-                            <div
-                              className={cn(
-                                "max-w-[85%] rounded-xl px-3 py-2",
-                                message.role === 'user'
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-muted'
+                            <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                              {message.role === 'assistant' && (
+                                <SparkleIcon size="xs" state="idle" className="mr-1.5 flex-shrink-0 mt-0.5" />
                               )}
-                            >
-                              <p className="text-xs whitespace-pre-wrap">{message.content}</p>
+                              <div
+                                className={cn(
+                                  "max-w-[85%] rounded-xl px-3 py-2",
+                                  message.role === 'user'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted'
+                                )}
+                              >
+                                <p className="text-xs whitespace-pre-wrap">{message.content}</p>
+                              </div>
                             </div>
-                          </div>
+                            {/* Navigation Action Buttons */}
+                            {message.role === 'assistant' && message.actions && message.actions.length > 0 && (
+                              <div className="flex flex-col gap-1.5 ml-6">
+                                {message.actions.map((action, actionIdx) => (
+                                  <Button
+                                    key={actionIdx}
+                                    size="sm"
+                                    onClick={() => handleActionClick(action)}
+                                    className={cn(
+                                      "justify-start gap-2 h-auto py-1.5 px-3 text-xs",
+                                      action.type === 'navigate' 
+                                        ? "bg-gradient-lumi text-white hover:opacity-90" 
+                                        : ""
+                                    )}
+                                    variant={action.type === 'bug_report' ? 'outline' : 'default'}
+                                  >
+                                    {action.type === 'navigate' && <ArrowRight className="h-3 w-3" />}
+                                    {action.type === 'bug_report' && <Bug className="h-3 w-3" />}
+                                    {action.label}
+                                  </Button>
+                                ))}
+                              </div>
+                            )}
+                            {/* Follow-up questions */}
+                            {message.role === 'assistant' && message.followups && message.followups.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 ml-6">
+                                {message.followups.map((followup, fIdx) => (
+                                  <Button
+                                    key={fIdx}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto py-1 px-2 text-[10px] text-muted-foreground hover:text-foreground"
+                                    onClick={() => sendMessage(followup.message)}
+                                  >
+                                    {followup.label}
+                                  </Button>
+                                ))}
+                              </div>
+                            )}
+                            </div>
                         ))}
                         {isLoading && (
                           <div className="flex justify-start">
