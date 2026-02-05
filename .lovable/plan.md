@@ -1,209 +1,293 @@
 
 
-# UI Refinements: Replace "AI" with "Smart", Reposition Notifications & Lumi Chat
+# Restructure Creative Studio: Add Dedicated "Ad Copy" Tab
 
 ## Overview
 
-This plan implements three user-requested changes:
-1. Replace all user-facing "AI" text with "smart" (or contextually appropriate variants)
-2. Move toast notifications to top-center of the screen
-3. Reposition the Lumi chat bubble to sit in the navigation row on desktop (far right, same level as tabs)
+This plan restructures the Creative Studio from a 3-tab flow to a 4-tab linear progression that separates copy editing from the build/upload phase:
+
+**Current Flow (3 tabs):**
+1. Angles → Select angles, generate creative
+2. Copy & Creative → View concepts, add to checklist, copy editing is in Build
+3. Build → Upload assets + edit copy (combined)
+
+**New Flow (4 tabs):**
+1. Angles → Select angles, generate creative
+2. Creative Concepts → View concepts, add to checklist
+3. Ad Copy → Generate/edit headlines, descriptions, primary copy per angle
+4. Build → Upload creative files, final publish
 
 ---
 
-## Part 1: Replace "AI" with "Smart"
+## Part 1: Tab Structure Changes
 
-### Files to Update
+### Update `CreativeStudio.tsx`
 
-The search identified ~30 locations where "AI" appears in user-facing UI text. Each will be updated with contextually appropriate replacements:
-
-| Original Text | Replacement |
-|---------------|-------------|
-| "AI-powered" | "Smart" |
-| "AI-generated" | "Smart-generated" |
-| "AI will" | "Lumi will" or "Smart" |
-| "AI copy" | "Smart copy" |
-| "AI insights" | "Smart insights" |
-| "AI credits" | "Credits" |
-| "AI Copywriting" | "Smart Copywriting" |
-| "Your AI Assistant" | "Your Ad Assistant" |
-| "AI-driven" | "Smart" |
-
-### Files to Modify
-
-1. **index.html** - Meta descriptions
-2. **src/components/BrandOnboardingWizard.tsx** - "AI-driven campaigns"
-3. **src/components/CopyEditor.tsx** - "AI copy generated", "AI Insights"
-4. **src/pages/Start.tsx** - "Our AI will help you", "with AI insights"
-5. **src/components/DashboardLayout.tsx** - Multiple walkthrough descriptions
-6. **src/components/AdsEmptyState.tsx** - "AI-powered wizard", "AI Copywriting"
-7. **src/pages/Dashboard.tsx** - "AI-generated ad copy", "AI-powered creative"
-8. **src/pages/Settings.tsx** - "AI-powered ad creation"
-9. **src/pages/Data.tsx** - "AI-powered optimization", "AI recommendations"
-10. **src/pages/CreativeStudio.tsx** - "AI-powered creative angle"
-11. **src/components/creative/ProductionManager.tsx** - "AI will rank"
-12. **src/pages/Planning.tsx** - "AI-generated ad scripts"
-13. **src/pages/Index.tsx** - "AI-powered strategy"
-14. **src/pages/Pricing.tsx** - "AI-powered strategy"
-15. **src/pages/Onboarding.tsx** - "AI-powered Meta Ads"
-16. **src/components/MobileOnboardingTour.tsx** - "AI-powered scripts"
-17. **src/components/LumiAssistant.tsx** - "Your AI Assistant" → "Your Ad Assistant"
-18. **supabase/functions/finalize-ad-copy/index.ts** - Error message
-19. **supabase/functions/generate-copy-variations/index.ts** - Error message
-
----
-
-## Part 2: Move Notifications to Top-Center
-
-### Current Behavior
-The Sonner toast component (via `src/components/ui/sonner.tsx`) defaults to bottom-right positioning.
-
-### Solution
-Add the `position` prop to the Sonner Toaster component to move notifications to the top-center of the screen.
-
-### File to Modify: `src/components/ui/sonner.tsx`
-
+**New tab configuration:**
 ```typescript
-return (
-  <Sonner
-    theme={theme as ToasterProps["theme"]}
-    position="top-center"  // ADD THIS
-    className="toaster group"
-    // ...rest
-  />
-);
+type WorkflowTab = "angles" | "concepts" | "copy" | "build";
+
+const workflowTabs = [
+  { id: "angles" as const, label: "Angles", icon: Target },
+  { id: "concepts" as const, label: "Creative Concepts", icon: Lightbulb },  // Rename from copy_creative
+  { id: "copy" as const, label: "Ad Copy", icon: FileText },                 // NEW TAB
+  { id: "build" as const, label: "Build", icon: Rocket },
+];
 ```
 
-This single change moves all toast notifications to the top-center, avoiding overlap with the bottom navigation on mobile and the Lumi chat button.
+### Tab Content Changes
+
+| Tab | Button at Bottom | Next Action |
+|-----|------------------|-------------|
+| Angles | "Generate Creative" | Goes to Concepts tab |
+| Concepts | "Continue to Ad Copy" | Goes to Copy tab |
+| Copy | "Continue to Build" | Goes to Build tab |
+| Build | "Build Campaign" | Navigates to Campaign Builder |
 
 ---
 
-## Part 3: Reposition Lumi Chat to Navigation Row
+## Part 2: Creative Concepts Tab (Renamed from `copy_creative`)
 
-### Current Behavior
-- The Lumi chat button is a floating element positioned at the bottom-right corner
-- On mobile: `bottom-24 right-4` (above bottom nav)
-- On desktop: `bottom-6 right-6`
-
-### New Behavior
-- **Desktop**: Lumi chat bubble sits in the header navigation row, far right, on the same visual level as the tabs (Home, My Ads, Creative Studio, Results)
-- **Mobile**: Keep current floating behavior (bottom-right above nav) since there's no horizontal space in mobile nav
-
-### Implementation Approach
-
-The Lumi chat button is rendered via `LumiAssistantUI` inside `LumiAssistantProvider` which wraps the entire app. To position it within the desktop header navigation, we need to:
-
-1. **Create a portal target** in `DashboardLayout.tsx` for the desktop Lumi button
-2. **Conditionally render** the Lumi button:
-   - Desktop: Render inline in the navigation header (far right of tabs row)
-   - Mobile: Keep floating behavior (current position)
-3. **Update `LumiAssistantUI`** to detect desktop layout and render via portal
-
-### Alternative (Simpler) Approach
-
-Instead of complex portal logic, we can:
-1. Add the Lumi chat trigger button directly into `DashboardLayout.tsx` desktop nav
-2. The `LumiAssistantUI` component continues to handle the chat popup/modal
-3. Expose a method to open the chat from outside
-
-### Files to Modify
-
-**`src/components/DashboardLayout.tsx`**:
-- Add a Lumi button in the desktop navigation row (far right after tabs)
-- Style it as a floating bubble aesthetic but inline with nav
-
-**`src/components/LumiAssistant.tsx`**:
-- Export a way to control chat open state from context
-- Conditionally hide the floating button on desktop (when inside DashboardLayout)
-- On mobile, keep the floating button as-is
-
-**`src/components/MobileBottomNav.tsx`**:
-- No changes needed (mobile keeps current behavior)
-
-### Desktop Nav Layout Change
-
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│ [LOGO]  [Brand Selector]                    [Library] [New Ad] [Avatar] │
-├─────────────────────────────────────────────────────────────────┤
-│ [HOME] [MY ADS] [CREATIVE STUDIO] [RESULTS]          [🔮 Lumi] │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-The Lumi button will be:
-- A gradient-styled bubble matching the brand
-- Positioned at the far right of the tabs row
-- Always visible and clickable to open chat
-- Shows unread indicator if there are recommendations
-
----
-
-## Implementation Details
-
-### DashboardLayout.tsx Changes
-
-Add Lumi button to the navigation tabs row:
+**Changes:**
+- Rename from "Copy & Creative" to "Creative Concepts"
+- Focus purely on browsing and selecting concepts
+- Remove copy-related UI
+- Change CTA button from "Continue to Build" to "Continue to Ad Copy"
 
 ```typescript
-// Import the chat open hook
-import { useLumiAssistant } from "@/components/LumiAssistant";
-
-// Inside the desktop layout, in the nav section:
-<nav className="flex items-end justify-between mt-4 md:mt-6 -mb-3 md:-mb-4">
-  <div className="flex space-x-1 pb-px">
-    {/* Existing tab items */}
-  </div>
+<TabsContent value="concepts">
+  {/* Angle selector pills */}
+  {/* Grid of creative concept cards */}
+  {/* Add to Checklist buttons */}
   
-  {/* Lumi Chat Button - Desktop Only */}
-  <button
-    onClick={() => openChat()}
-    className="flex items-center gap-2 px-4 py-2 rounded-full 
-               bg-gradient-lumi text-white font-medium text-sm
-               shadow-lg shadow-lumi-pink-1/20 hover:shadow-xl
-               transition-all mb-1"
-  >
-    <SparkleIcon size="xs" state="idle" />
-    <span>Ask Lumi</span>
-  </button>
-</nav>
+  <div className="flex justify-end">
+    <Button 
+      onClick={() => setActiveTab("copy")} 
+      disabled={productionItems.length === 0}
+      className="gap-2"
+    >
+      Continue to Ad Copy
+      <ArrowRight className="h-4 w-4" />
+    </Button>
+  </div>
+</TabsContent>
 ```
-
-### LumiAssistant.tsx Changes
-
-1. **Add context value** for opening chat programmatically:
-
-```typescript
-interface LumiAssistantContextValue {
-  // ...existing
-  openChat: () => void;
-  isDesktopLayout: boolean;
-}
-```
-
-2. **Conditionally render floating button** only on mobile/non-dashboard pages
-
-3. **Export the open method** for use in DashboardLayout
 
 ---
 
-## Summary of Changes
+## Part 3: New Ad Copy Tab
+
+**Purpose:** Dedicated space for generating and editing the ad copy (headlines, descriptions, primary copy) that will be used across all selected creatives.
+
+**Layout:**
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ 📝 Ad Copy                                                  │
+│ "Write compelling copy for your ads"                        │
+├─────────────────────────────────────────────────────────────┤
+│ [Angle 1] [Angle 2] [Angle 3]   ← Angle tabs                │
+├─────────────────────────────────────────────────────────────┤
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ [Generate Copy] [Generate All]                          │  │
+│ └────────────────────────────────────────────────────────┘  │
+│                                                             │
+│ ▾ Headlines (3)                                             │
+│   ┌─────────────────────────────────────┐                   │
+│   │ "Unlock Your Brand's Full Potential" │ [x]              │
+│   └─────────────────────────────────────┘                   │
+│   [+ Add Headline]                                          │
+│                                                             │
+│ ▸ Descriptions (3)                                          │
+│ ▸ Primary Copy (3)                                          │
+│                                                             │
+│ ℹ️ Why the same copy for each angle? Meta's algorithm...    │
+├─────────────────────────────────────────────────────────────┤
+│                               [Save Copy] [Continue to Build]│
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Implementation:**
+Lift the `AngleCopyEditor` component out of `ProductionManager.tsx` and render it as a full-width component in the new Copy tab.
+
+```typescript
+<TabsContent value="copy">
+  {productionItems.length === 0 ? (
+    <Card>
+      <CardContent className="pt-6 text-center py-12">
+        <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Select Concepts First</h3>
+        <p className="text-muted-foreground text-sm mb-4">
+          Add creative concepts to your checklist before writing copy.
+        </p>
+        <Button onClick={() => setActiveTab("concepts")} variant="outline">
+          Go to Creative Concepts
+        </Button>
+      </CardContent>
+    </Card>
+  ) : (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Ad Copy</h2>
+          <p className="text-sm text-muted-foreground">
+            Write headlines, descriptions, and primary copy for your ads
+          </p>
+        </div>
+        <AutoSaveIndicator status={copySaveStatus} />
+      </div>
+      
+      <AngleCopyEditor
+        angles={availableAngles}
+        selectedAngleIds={selectedAngleIds}
+        angleCopy={angleCopy}
+        brandInfo={workspace?.brands}
+        offerData={{ name: workspace?.offer_name, ... }}
+        audiencePsychology={workspace?.brands?.audience_psychology}
+        onCopyChange={handleCopyChange}
+        onSave={handleSaveCopy}
+        productionItemCount={productionItems.length}
+      />
+      
+      <div className="flex justify-end">
+        <Button 
+          onClick={() => setActiveTab("build")} 
+          className="gap-2"
+        >
+          Continue to Build
+          <ArrowRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )}
+</TabsContent>
+```
+
+---
+
+## Part 4: Update Build Tab
+
+**Changes:**
+- Remove the `AngleCopyEditor` from the right column
+- Make the Production Checklist full-width
+- Focus purely on asset upload and campaign building
+
+**Before (current layout):**
+```text
+┌─────────────────────┬─────────────────┐
+│ Production Checklist│ Copy Editor     │
+│ (3/5 width)         │ (2/5 width)     │
+└─────────────────────┴─────────────────┘
+```
+
+**After (new layout):**
+```text
+┌─────────────────────────────────────────┐
+│ Production Checklist (full width)       │
+│ - Upload creative files for each concept│
+│ - Preview ads                           │
+│ - Build Campaign button                 │
+└─────────────────────────────────────────┘
+```
+
+**Update `ProductionManager.tsx`:**
+1. Remove the 5-column grid layout
+2. Remove the `AngleCopyEditor` component and related props
+3. Make the Production Checklist full-width
+4. Keep all upload, preview, ranking, and export functionality
+
+---
+
+## Part 5: State Management Updates
+
+### Move Copy State Up to CreativeStudio
+
+Copy-related state will be managed at the CreativeStudio level and passed to both the Copy tab and the Build tab (for ad previews):
+
+```typescript
+// In CreativeStudio.tsx
+const [angleCopy, setAngleCopy] = useState<Record<string, AngleCopyData>>({});
+const [copySaveStatus, setCopySaveStatus] = useState<SaveStatus>("idle");
+
+const handleCopyChange = (angleId: string, copy: AngleCopyData) => {
+  setAngleCopy(prev => ({ ...prev, [angleId]: copy }));
+};
+
+const handleSaveCopy = async () => {
+  // Save to workspace.creative_json.angle_copy
+};
+
+// Load from workspace on mount
+useEffect(() => {
+  if (workspace?.creative_json?.angle_copy) {
+    setAngleCopy(workspace.creative_json.angle_copy);
+  }
+}, [workspace]);
+```
+
+---
+
+## Part 6: Update Idle Help Messages
+
+Update `getIdleHelpMessage()` for the new tab structure:
+
+```typescript
+const getIdleHelpMessage = (
+  activeTab: WorkflowTab,
+  ...
+) => {
+  if (activeTab === "angles") { ... }
+  
+  if (activeTab === "concepts") {
+    if (gridData.length === 0) {
+      return "Head to the Angles tab to generate your creative concepts first.";
+    }
+    if (productionItems.length === 0) {
+      return "Browse the concepts and click 'Add to Checklist' on the ones you want to produce.";
+    }
+    return `You have ${productionItems.length} concepts selected. Continue to Ad Copy to write your headlines and descriptions.`;
+  }
+  
+  if (activeTab === "copy") {
+    if (productionItems.length === 0) {
+      return "Select creative concepts first, then come here to write your ad copy.";
+    }
+    if (!hasAnyCopy) {
+      return "Click 'Generate Copy' to create headlines, descriptions, and primary copy for your ads.";
+    }
+    return "Looking good! Review your copy and continue to Build when ready.";
+  }
+  
+  if (activeTab === "build") {
+    if (productionItems.length < 3) {
+      return `Add ${3 - productionItems.length} more concepts to unlock campaign building.`;
+    }
+    if (!hasAtLeastOneUpload) {
+      return "Upload your video or image files to each creative concept.";
+    }
+    return "Your creatives are ready! Click 'Build Campaign' to publish.";
+  }
+};
+```
+
+---
+
+## Part 7: Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/ui/sonner.tsx` | Add `position="top-center"` |
-| `src/components/DashboardLayout.tsx` | Add inline Lumi button in desktop nav row |
-| `src/components/LumiAssistant.tsx` | Add `openChat` to context, conditionally hide floating button on desktop |
-| ~18 component/page files | Replace "AI" text with "smart" variants |
-| `index.html` | Update meta descriptions |
-| 2 edge function files | Update error messages |
+| `src/pages/CreativeStudio.tsx` | Add "copy" tab, rename "copy_creative" to "concepts", move copy state up, update navigation buttons |
+| `src/components/creative/ProductionManager.tsx` | Remove `AngleCopyEditor`, remove copy-related props, make checklist full-width |
+| `src/components/creative/AngleCopyEditor.tsx` | Minor styling updates for full-width usage (currently designed for sidebar) |
 
 ---
 
-## Implementation Order
+## Part 8: Implementation Summary
 
-1. Update `sonner.tsx` to position notifications at top-center
-2. Update `LumiAssistant.tsx` to expose `openChat` method and add layout detection
-3. Update `DashboardLayout.tsx` to include inline Lumi button in desktop nav
-4. Replace all "AI" text occurrences across the codebase
-5. Test on both mobile and desktop layouts
+1. **Update tab definition** - Change from 3 tabs to 4 tabs with new type
+2. **Rename "Copy & Creative"** - Now "Creative Concepts", focused on concept selection only
+3. **Add new "Ad Copy" tab** - Contains `AngleCopyEditor` as main content
+4. **Update "Build" tab** - Remove copy editor, make checklist full-width
+5. **Update navigation flow** - Concepts → "Continue to Ad Copy" → Copy → "Continue to Build"
+6. **Lift state** - Move `angleCopy` state to `CreativeStudio.tsx`
+7. **Update help messages** - Context-aware messages for 4-tab flow
 
