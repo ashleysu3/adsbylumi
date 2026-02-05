@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Plus, Edit, Trash2, Save, X, Upload } from "lucide-react";
+import { BookOpen, Plus, Edit, Trash2, Save, X, Upload, Search, Star, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface KnowledgeDoc {
   id: string;
@@ -24,16 +25,26 @@ interface KnowledgeDoc {
   active: boolean;
   created_at: string;
   updated_at: string;
+  priority?: number;
+  subcategory?: string;
+  source_url?: string;
+  usage_count?: number;
 }
 
 const categories = [
-  { value: "ad_planner", label: "Ad Planner" },
-  { value: "creative_department", label: "Creative Department" },
-  { value: "hooks", label: "Hooks Library" },
+  { value: "best_practices", label: "Best Practices" },
+  { value: "hook_ideas", label: "Hook Ideas" },
+  { value: "strategies", label: "Strategies" },
+  { value: "trends", label: "Trends" },
+  { value: "examples", label: "Examples & Swipes" },
+  { value: "creative_templates", label: "Creative Templates" },
+  { value: "psychology", label: "Psychology Triggers" },
   { value: "copy_formulas", label: "Copy Formulas" },
   { value: "visual_guidelines", label: "Visual Guidelines" },
-  { value: "psychology", label: "Psychology Triggers" },
   { value: "meta_best_practices", label: "Meta Best Practices" },
+  { value: "hooks", label: "Hooks Library" },
+  { value: "ad_planner", label: "Ad Planner" },
+  { value: "creative_department", label: "Creative Department" },
 ];
 
 export default function Knowledge() {
@@ -45,12 +56,17 @@ export default function Knowledge() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   
   // Form state
   const [formCategory, setFormCategory] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formContent, setFormContent] = useState("");
   const [formTags, setFormTags] = useState("");
+  const [formPriority, setFormPriority] = useState(0);
+  const [formSubcategory, setFormSubcategory] = useState("");
+  const [formSourceUrl, setFormSourceUrl] = useState("");
 
   useEffect(() => {
     fetchDocuments();
@@ -61,6 +77,7 @@ export default function Knowledge() {
       const { data, error } = await supabase
         .from("knowledge_documents")
         .select("*")
+        .order("priority", { ascending: false })
         .order("category", { ascending: true })
         .order("created_at", { ascending: false });
 
@@ -92,6 +109,9 @@ export default function Knowledge() {
             content: formContent,
             tags,
             version: editingDoc.version + 1,
+            priority: formPriority,
+            subcategory: formSubcategory || null,
+            source_url: formSourceUrl || null,
           })
           .eq("id", editingDoc.id);
 
@@ -105,6 +125,9 @@ export default function Knowledge() {
             title: formTitle,
             content: formContent,
             tags,
+            priority: formPriority,
+            subcategory: formSubcategory || null,
+            source_url: formSourceUrl || null,
           });
 
         if (error) throw error;
@@ -126,6 +149,9 @@ export default function Knowledge() {
     setFormTitle(doc.title);
     setFormContent(doc.content);
     setFormTags(doc.tags.join(", "));
+    setFormPriority(doc.priority || 0);
+    setFormSubcategory(doc.subcategory || "");
+    setFormSourceUrl(doc.source_url || "");
     setDialogOpen(true);
   };
 
@@ -163,12 +189,31 @@ export default function Knowledge() {
     }
   };
 
+  const updatePriority = async (doc: KnowledgeDoc, newPriority: number) => {
+    try {
+      const { error } = await supabase
+        .from("knowledge_documents")
+        .update({ priority: newPriority })
+        .eq("id", doc.id);
+
+      if (error) throw error;
+      toast.success("Priority updated");
+      fetchDocuments();
+    } catch (error: any) {
+      toast.error("Failed to update priority");
+      console.error(error);
+    }
+  };
+
   const resetForm = () => {
     setEditingDoc(null);
     setFormCategory("");
     setFormTitle("");
     setFormContent("");
     setFormTags("");
+    setFormPriority(0);
+    setFormSubcategory("");
+    setFormSourceUrl("");
   };
 
   const handleBulkUpload = async (files: FileList) => {
@@ -202,7 +247,7 @@ export default function Knowledge() {
         }
 
         // Auto-detect category from filename or use default
-        let category = "ad_planner";
+        let category = "best_practices";
         const lowerName = file.name.toLowerCase();
         if (lowerName.includes("hook")) category = "hooks";
         else if (lowerName.includes("copy")) category = "copy_formulas";
@@ -210,6 +255,11 @@ export default function Knowledge() {
         else if (lowerName.includes("psychology") || lowerName.includes("psych")) category = "psychology";
         else if (lowerName.includes("creative")) category = "creative_department";
         else if (lowerName.includes("meta")) category = "meta_best_practices";
+        else if (lowerName.includes("strategy") || lowerName.includes("strategies")) category = "strategies";
+        else if (lowerName.includes("trend")) category = "trends";
+        else if (lowerName.includes("example") || lowerName.includes("swipe")) category = "examples";
+        else if (lowerName.includes("template")) category = "creative_templates";
+        else if (lowerName.includes("planner") || lowerName.includes("plan")) category = "ad_planner";
 
         // Insert into database
         const { error } = await supabase
@@ -248,9 +298,28 @@ export default function Knowledge() {
     }
   };
 
-  const filteredDocs = selectedCategory === "all" 
-    ? documents 
-    : documents.filter(d => d.category === selectedCategory);
+  const toggleCardExpanded = (id: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Filter by category and search query
+  const filteredDocs = documents.filter(doc => {
+    const matchesCategory = selectedCategory === "all" || doc.category === selectedCategory;
+    const matchesSearch = searchQuery === "" || 
+      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (doc.subcategory && doc.subcategory.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesCategory && matchesSearch;
+  });
 
   if (loading) {
     return (
@@ -266,11 +335,16 @@ export default function Knowledge() {
     <DashboardLayout>
       <div className="space-y-6">
         <AdminTabs />
+        
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold">Knowledge Base</h1>
+            <h1 className="text-3xl font-display font-bold flex items-center gap-2">
+              <BookOpen className="h-8 w-8 text-primary" />
+              Knowledge Base
+            </h1>
             <p className="text-muted-foreground mt-2">
-              Manage AI knowledge for creative generation
+              Lumi's brain for generating ads — {documents.length} documents
             </p>
           </div>
           <div className="flex gap-2">
@@ -304,7 +378,7 @@ export default function Knowledge() {
                       disabled={uploading}
                     />
                     <p className="text-xs text-muted-foreground mt-2">
-                      Tip: Include keywords in filenames (e.g., "hooks_library.txt", "psychology_triggers.md")
+                      Tip: Include keywords in filenames (e.g., "hooks_library.txt", "strategies_funnel.md", "trends_2024.txt")
                     </p>
                   </div>
                   {uploading && (
@@ -333,28 +407,51 @@ export default function Knowledge() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <Label>Category *</Label>
-                  <Select value={formCategory} onValueChange={setFormCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(cat => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Category *</Label>
+                    <Select value={formCategory} onValueChange={setFormCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map(cat => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Priority (higher = more important)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={formPriority}
+                      onChange={(e) => setFormPriority(parseInt(e.target.value) || 0)}
+                      placeholder="0-100"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>Title *</Label>
-                  <Input
-                    value={formTitle}
-                    onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder="e.g., PAS Copywriting Formula"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Title *</Label>
+                    <Input
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                      placeholder="e.g., PAS Copywriting Formula"
+                    />
+                  </div>
+                  <div>
+                    <Label>Subcategory</Label>
+                    <Input
+                      value={formSubcategory}
+                      onChange={(e) => setFormSubcategory(e.target.value)}
+                      placeholder="e.g., video_hooks, dm_hooks"
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label>Content *</Label>
@@ -365,13 +462,23 @@ export default function Knowledge() {
                     rows={8}
                   />
                 </div>
-                <div>
-                  <Label>Tags (comma-separated)</Label>
-                  <Input
-                    value={formTags}
-                    onChange={(e) => setFormTags(e.target.value)}
-                    placeholder="e.g., copywriting, conversion, psychology"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Tags (comma-separated)</Label>
+                    <Input
+                      value={formTags}
+                      onChange={(e) => setFormTags(e.target.value)}
+                      placeholder="e.g., copywriting, conversion"
+                    />
+                  </div>
+                  <div>
+                    <Label>Source URL</Label>
+                    <Input
+                      value={formSourceUrl}
+                      onChange={(e) => setFormSourceUrl(e.target.value)}
+                      placeholder="https://..."
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setDialogOpen(false)}>
@@ -389,85 +496,179 @@ export default function Knowledge() {
         </div>
         </div>
 
-        <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="all">All ({documents.length})</TabsTrigger>
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by title, content, or tags..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Category Filter */}
+        <ScrollArea className="w-full whitespace-nowrap">
+          <div className="flex gap-2 pb-2">
+            <Button
+              variant={selectedCategory === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory("all")}
+            >
+              All ({documents.length})
+            </Button>
             {categories.map(cat => {
               const count = documents.filter(d => d.category === cat.value).length;
+              if (count === 0) return null;
               return (
-                <TabsTrigger key={cat.value} value={cat.value}>
+                <Button
+                  key={cat.value}
+                  variant={selectedCategory === cat.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(cat.value)}
+                >
                   {cat.label} ({count})
-                </TabsTrigger>
+                </Button>
               );
             })}
-          </TabsList>
+          </div>
+        </ScrollArea>
 
-          <TabsContent value={selectedCategory} className="space-y-4 mt-6">
-            {filteredDocs.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No knowledge documents yet</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {filteredDocs.map(doc => (
-                  <Card key={doc.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1 flex-1">
-                          <div className="flex items-center gap-2">
-                            <CardTitle className="text-lg">{doc.title}</CardTitle>
-                            {!doc.active && <Badge variant="outline">Inactive</Badge>}
-                            <Badge variant="secondary">v{doc.version}</Badge>
-                          </div>
-                          <CardDescription>
-                            {categories.find(c => c.value === doc.category)?.label}
-                          </CardDescription>
+        {/* Documents List */}
+        <div className="space-y-4">
+          {filteredDocs.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {searchQuery ? "No documents match your search" : "No knowledge documents yet"}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {filteredDocs.map(doc => (
+                <Card key={doc.id} className={!doc.active ? "opacity-60" : ""}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {(doc.priority || 0) > 0 && (
+                            <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                          )}
+                          <CardTitle className="text-lg truncate">{doc.title}</CardTitle>
+                          {!doc.active && <Badge variant="outline">Inactive</Badge>}
+                          <Badge variant="secondary">v{doc.version}</Badge>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(doc)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(doc.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span>{categories.find(c => c.value === doc.category)?.label}</span>
+                          {doc.subcategory && (
+                            <>
+                              <span>•</span>
+                              <span>{doc.subcategory}</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {doc.content}
-                      </p>
-                      {doc.tags.length > 0 && (
-                        <div className="flex gap-2 flex-wrap">
-                          {doc.tags.map(tag => (
-                            <Badge key={tag} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="text-xs text-muted-foreground">
-                          Updated {new Date(doc.updated_at).toLocaleDateString()}
-                        </span>
-                        <Button
-                          variant={doc.active ? "outline" : "default"}
-                          size="sm"
-                          onClick={() => toggleActive(doc)}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Select
+                          value={String(doc.priority || 0)}
+                          onValueChange={(v) => updatePriority(doc, parseInt(v))}
                         >
-                          {doc.active ? "Deactivate" : "Activate"}
+                          <SelectTrigger className="w-20 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[0, 1, 2, 3, 5, 10].map(p => (
+                              <SelectItem key={p} value={String(p)}>
+                                P{p}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(doc)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(doc.id)}>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Collapsible
+                      open={expandedCards.has(doc.id)}
+                      onOpenChange={() => toggleCardExpanded(doc.id)}
+                    >
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap line-clamp-3">
+                        {doc.content}
+                      </div>
+                      <CollapsibleContent>
+                        <div className="text-sm text-muted-foreground whitespace-pre-wrap mt-2 pt-2 border-t">
+                          {doc.content.split('\n').slice(3).join('\n')}
+                        </div>
+                      </CollapsibleContent>
+                      {doc.content.split('\n').length > 3 && (
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="mt-2 h-6 text-xs">
+                            {expandedCards.has(doc.id) ? (
+                              <>
+                                <ChevronUp className="h-3 w-3 mr-1" />
+                                Show less
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-3 w-3 mr-1" />
+                                Show more
+                              </>
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                      )}
+                    </Collapsible>
+                    
+                    {doc.tags.length > 0 && (
+                      <div className="flex gap-2 flex-wrap">
+                        {doc.tags.map(tag => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>Updated {new Date(doc.updated_at).toLocaleDateString()}</span>
+                        {(doc.usage_count || 0) > 0 && (
+                          <span>Used {doc.usage_count} times</span>
+                        )}
+                        {doc.source_url && (
+                          <a
+                            href={doc.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Source
+                          </a>
+                        )}
+                      </div>
+                      <Button
+                        variant={doc.active ? "outline" : "default"}
+                        size="sm"
+                        onClick={() => toggleActive(doc)}
+                      >
+                        {doc.active ? "Deactivate" : "Activate"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

@@ -10,6 +10,7 @@ import { BrandProvider } from "@/contexts/BrandContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { LumiAssistantProvider } from "@/components/LumiAssistant";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
+import { GlobalAnnouncementBanner } from "@/components/GlobalAnnouncementBanner";
 import SplashScreen from "@/components/SplashScreen";
 import { FloatingBugButton } from "@/components/FloatingBugButton";
 import Index from "./pages/Index";
@@ -36,6 +37,7 @@ import AdminInviteCodes from "./pages/admin/InviteCodes";
 import AdminSubscriptions from "./pages/admin/Subscriptions";
 import AdminBugReports from "./pages/admin/BugReports";
 import AdminUsers from "./pages/admin/Users";
+import AdminSettings from "./pages/admin/Settings";
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
@@ -71,6 +73,7 @@ const App = () => {
               <Sonner />
               <BrowserRouter>
                 <LumiAssistantProvider>
+                  <GlobalAnnouncementBanner />
                   <ImpersonationBanner />
                   <FloatingBugButton />
                 <Routes>
@@ -104,6 +107,7 @@ const App = () => {
                   <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
                   <Route path="/admin/bug-reports" element={<AdminBugReports />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/settings" element={<AdminSettings />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

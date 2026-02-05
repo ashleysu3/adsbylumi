@@ -675,9 +675,13 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           id: string
+          priority: number | null
+          source_url: string | null
+          subcategory: string | null
           tags: string[] | null
           title: string
           updated_at: string | null
+          usage_count: number | null
           version: number | null
         }
         Insert: {
@@ -687,9 +691,13 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          priority?: number | null
+          source_url?: string | null
+          subcategory?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string | null
+          usage_count?: number | null
           version?: number | null
         }
         Update: {
@@ -699,9 +707,13 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          priority?: number | null
+          source_url?: string | null
+          subcategory?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string | null
+          usage_count?: number | null
           version?: number | null
         }
         Relationships: []
@@ -814,6 +826,33 @@ export type Database = {
           id?: string
           is_agency_user?: boolean | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
         }
         Relationships: []
       }
