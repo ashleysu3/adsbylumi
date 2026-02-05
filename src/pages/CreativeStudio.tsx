@@ -118,7 +118,7 @@ const getIdleHelpMessage = (
 ) => {
   if (activeTab === "angles") {
     if (availableAngles.length === 0) {
-      return "Click 'Generate Angles' to get AI-powered creative angle suggestions for your campaign.";
+      return "Click 'Generate Angles' to get smart creative angle suggestions for your campaign.";
     }
     if (selectedAngleIds.length === 0) {
       return "Select 1-3 angles that resonate with your offer, then click 'Generate Creative' to continue.";
@@ -517,7 +517,7 @@ export default function CreativeStudio() {
               <Card><CardContent className="pt-6 text-center py-12">
                 <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Generate Creative Angles</h3>
-                <p className="text-muted-foreground text-sm mb-6">AI will suggest unique creative angles</p>
+                <p className="text-muted-foreground text-sm mb-6">Lumi will suggest unique creative angles</p>
                 <Button onClick={generateAngles} disabled={generating} className="gap-2">{generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Generate Angles</Button>
               </CardContent></Card>
             ) : (

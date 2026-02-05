@@ -147,7 +147,7 @@ export default function Start() {
       steps.push({
         id: "create-ad",
         title: "Create your first ad",
-        description: "Our AI will help you craft scroll-stopping creative",
+        description: "Lumi will help you craft scroll-stopping creative",
         icon: <Megaphone className="h-6 w-6" />,
         action: () => navigate("/create"),
         priority: "high",
@@ -183,7 +183,7 @@ export default function Start() {
       steps.push({
         id: "check-results",
         title: "Check your results",
-        description: "See how your ads are performing with AI insights",
+        description: "See how your ads are performing with smart insights",
         icon: <TrendingUp className="h-6 w-6" />,
         action: () => navigate("/data"),
         priority: "medium",

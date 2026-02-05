@@ -603,7 +603,7 @@ export default function Dashboard() {
                   Emoji Preferences
                 </CardTitle>
                 <CardDescription>
-                  Control how emojis are used in your AI-generated ad copy. Meta recommends strategic emoji use for higher engagement.
+                  Control how emojis are used in your smart-generated ad copy. Meta recommends strategic emoji use for higher engagement.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -715,7 +715,7 @@ export default function Dashboard() {
                         <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Preview</p>
                         <div className="space-y-1 text-sm">
                           <p>{emojiSettings.bullet_emoji} Stop wasting time on ads that don't convert</p>
-                          <p>{emojiSettings.bullet_emoji} Get AI-powered creative that actually works</p>
+                          <p>{emojiSettings.bullet_emoji} Get smart creative that actually works</p>
                           <p>{emojiSettings.bullet_emoji} Launch campaigns in minutes, not days</p>
                         </div>
                       </div>

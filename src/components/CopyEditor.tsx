@@ -273,7 +273,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
       
       setAiResponse(data);
       setGenerationSource('ai');
-      toast({ title: 'AI copy generated from your Knowledge Base!' });
+      toast({ title: 'Smart copy generated from your Knowledge Base!' });
     } catch (error) {
       console.error('Copy generation error:', error);
       toast({ 
@@ -380,7 +380,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
           <FileText className="h-8 w-8 text-primary" />
           <div>
             <h2 className="text-2xl font-bold">Finalize Your Ad Copy</h2>
-            <p className="text-muted-foreground">AI-powered copy from your Knowledge Base</p>
+            <p className="text-muted-foreground">Smart copy from your Knowledge Base</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -414,7 +414,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
       {generationSource === 'ai' && (
         <Badge variant="secondary" className="gap-1">
           <Sparkles className="h-3 w-3" />
-          AI Generated
+          Smart Generated
         </Badge>
       )}
 
@@ -423,7 +423,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
         <Alert className="border-primary/20 bg-primary/5">
           <Sparkles className="h-4 w-4 text-primary" />
           <AlertDescription className="text-sm">
-            <span className="font-medium">No copy found for this concept.</span> Click "Generate Copy with AI" above to create AI-powered copy tailored to your brand and audience.
+            <span className="font-medium">No copy found for this concept.</span> Click "Generate Copy with AI" above to create smart copy tailored to your brand and audience.
           </AlertDescription>
         </Alert>
       )}
@@ -654,7 +654,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
                 <Sparkle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm space-y-1">
                   <p className="font-semibold text-blue-900 dark:text-blue-100">
-                    AI Recommends: {ctaOptions.find(o => o.value === copy.call_to_action)?.label}
+                    Lumi Recommends: {ctaOptions.find(o => o.value === copy.call_to_action)?.label}
                   </p>
                   <p className="text-blue-800 dark:text-blue-200">{aiResponse.cta_reasoning}</p>
                 </div>
@@ -696,7 +696,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
         </div>
       </Card>
 
-      {/* AI Insights */}
+      {/* Smart Insights */}
       <Card className="p-4 bg-primary/5 border-primary/20">
         <div className="flex items-start gap-2">
           <Sparkle className="h-5 w-5 text-primary mt-0.5 animate-sparkle-pulse" />

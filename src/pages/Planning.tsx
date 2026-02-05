@@ -717,7 +717,7 @@ export default function Planning() {
                   <ul className="text-sm text-muted-foreground space-y-1">
                     <li>• Pre-configured campaign strategy</li>
                     <li>• Psychology-driven messaging framework</li>
-                    <li>• AI-generated ad scripts and copy</li>
+                    <li>• Smart-generated ad scripts and copy</li>
                     <li>• Creative direction and shot lists</li>
                     <li>• KPI benchmarks and optimization goals</li>
                   </ul>

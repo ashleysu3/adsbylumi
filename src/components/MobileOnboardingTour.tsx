@@ -41,7 +41,7 @@ const defaultTourSteps: TourStep[] = [
   {
     id: "creative",
     title: "Create Your Ads",
-    description: "Get AI-powered scripts, copy, and creative direction tailored to your audience.",
+    description: "Get smart scripts, copy, and creative direction tailored to your audience.",
     icon: <Palette className="h-6 w-6" />,
     targetSelector: "[data-tour='creative']",
     highlight: "bottom-nav",

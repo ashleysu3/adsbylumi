@@ -115,6 +115,8 @@ interface LumiAssistantUIProps {
   unreadCount?: number;
   onMarkHistoryRead?: () => void;
   onMarkActionTaken?: (recId: string) => void;
+  forceOpen?: boolean;
+  onClose?: () => void;
 }
 
 function LumiAssistantUI({ 
@@ -125,13 +127,15 @@ function LumiAssistantUI({
   unreadCount = 0,
   onMarkHistoryRead,
   onMarkActionTaken,
+  forceOpen,
+  onClose,
 }: LumiAssistantUIProps) {
   const location = useLocation();
   const { messages, addMessage, setBrandId } = useLumi();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [currentRecommendationId, setCurrentRecommendationId] = useState<string | null>(null);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(forceOpen || false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat" | "history">("chat");
   const [input, setInput] = useState("");
@@ -139,6 +143,18 @@ function LumiAssistantUI({
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Sync forceOpen with internal state
+  useEffect(() => {
+    if (forceOpen !== undefined) {
+      setChatOpen(forceOpen);
+    }
+  }, [forceOpen]);
+
+  const handleCloseChat = () => {
+    setChatOpen(false);
+    onClose?.();
+  };
 
   // Fetch user email for bug reports
   useEffect(() => {
@@ -253,6 +269,276 @@ function LumiAssistantUI({
   // Don't render on onboarding or auth pages
   if (location.pathname === '/onboarding' || location.pathname === '/auth') {
     return null;
+  }
+
+  // If forceOpen is defined, we're being controlled externally - only render the chat popup
+  if (forceOpen !== undefined) {
+    if (!chatOpen) return null;
+    
+    return (
+      <>
+        <div className={cn("fixed z-50", "bottom-24 right-4 md:bottom-6 md:right-6", className)}>
+          <motion.div
+            key="chat-popup"
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className={cn(
+              "flex flex-col rounded-2xl shadow-2xl overflow-hidden",
+              "bg-gradient-to-b from-card to-card/95 backdrop-blur-xl",
+              "border border-lumi-orange-1/10",
+              isMaximized ? "w-96 h-[520px]" : "w-80 h-[420px]"
+            )}
+            style={{
+              boxShadow: '0 25px 50px -12px rgba(249, 115, 22, 0.15), 0 0 40px -10px rgba(236, 72, 153, 0.1)'
+            }}
+          >
+            {/* Branded Chat Header with Gradient */}
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-lumi opacity-95" />
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-lumi-orange-1/20 via-transparent to-lumi-purple-1/20"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              />
+              
+              <div className="relative flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <SparkleIcon size="sm" state={isLoading ? "thinking" : "idle"} />
+                    <motion.div
+                      className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white"
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-white drop-shadow-sm">Lumi</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-white/80">Your Ad Assistant</span>
+                      <Sparkle className="h-2.5 w-2.5 text-white/60 animate-sparkle-pulse" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setBugReportOpen(true)}
+                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                    title="Report a bug"
+                  >
+                    <Bug className="h-4 w-4 text-white" />
+                  </button>
+                  <button
+                    onClick={() => setIsMaximized(!isMaximized)}
+                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    {isMaximized ? <Minimize2 className="h-4 w-4 text-white" /> : <Maximize2 className="h-4 w-4 text-white" />}
+                  </button>
+                  <button
+                    onClick={handleCloseChat}
+                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="h-4 w-4 text-white" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <Tabs value={activeTab} onValueChange={(v) => {
+              setActiveTab(v as "chat" | "history");
+              if (v === "history" && onMarkHistoryRead) {
+                onMarkHistoryRead();
+              }
+            }} className="flex flex-col flex-1 overflow-hidden">
+              <TabsList className="mx-2 mt-2 h-8 grid grid-cols-2 bg-muted/50">
+                <TabsTrigger value="chat" className="text-xs gap-1 h-7">
+                  <MessageCircle className="h-3 w-3" />
+                  Chat
+                </TabsTrigger>
+                <TabsTrigger value="history" className="text-xs gap-1 h-7 relative">
+                  <History className="h-3 w-3" />
+                  Insights
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-3.5 h-3.5 px-0.5 bg-lumi-orange-1 rounded-full flex items-center justify-center">
+                      <span className="text-[8px] font-bold text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>
+                    </span>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="chat" className="flex-1 flex flex-col mt-0 overflow-hidden data-[state=inactive]:hidden">
+                <ScrollArea className="flex-1 p-3" ref={scrollRef}>
+                  {messages.length === 0 ? (
+                    <div className="space-y-4">
+                      <div className="text-center py-4">
+                        <SparkleIcon size="md" state="idle" glow className="mx-auto mb-2" />
+                        <h3 className="font-semibold text-sm mb-1">Hey there! 👋</h3>
+                        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                          I'm Lumi — here to make Meta Ads simple.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground px-1">
+                          <Sparkle className="h-3 w-3 animate-sparkle-pulse" />
+                          <span>Quick questions</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {starters.slice(0, 4).map((starter, idx) => (
+                            <Button
+                              key={idx}
+                              variant="outline"
+                              className="h-auto py-2 px-2.5 text-left justify-start whitespace-normal text-[11px]"
+                              onClick={() => handleStarterClick(starter.message)}
+                            >
+                              {starter.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {messages.map((message, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          {message.role === 'assistant' && (
+                            <SparkleIcon size="xs" state="idle" className="mr-1.5 flex-shrink-0 mt-0.5" />
+                          )}
+                          <div
+                            className={cn(
+                              "max-w-[85%] rounded-xl px-3 py-2",
+                              message.role === 'user'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted'
+                            )}
+                          >
+                            <p className="text-xs whitespace-pre-wrap">{message.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {isLoading && (
+                        <div className="flex justify-start">
+                          <SparkleIcon size="xs" state="thinking" className="mr-1.5" />
+                          <div className="bg-muted rounded-xl px-3 py-2">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </ScrollArea>
+
+                <div className="border-t p-2">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      sendMessage(input);
+                    }}
+                    className="flex gap-1.5"
+                  >
+                    <Input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="Ask Lumi..."
+                      className="flex-1 h-8 text-xs"
+                      disabled={isLoading}
+                    />
+                    <Button type="submit" size="sm" className="h-8 w-8 p-0" disabled={isLoading || !input.trim()}>
+                      <Send className="h-3.5 w-3.5" />
+                    </Button>
+                  </form>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="history" className="flex-1 mt-0 overflow-hidden data-[state=inactive]:hidden">
+                <ScrollArea className="h-full p-3">
+                  {history.length === 0 ? (
+                    <div className="text-center py-8">
+                      <History className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                      <h3 className="font-semibold text-sm text-muted-foreground mb-1">No insights yet</h3>
+                      <p className="text-xs text-muted-foreground/70">
+                        Lumi's recommendations will appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {history.map((item) => (
+                        <Card 
+                          key={item.id} 
+                          className={cn(
+                            "p-2.5 transition-all",
+                            item.actionTaken && "border-green-500/30 bg-green-500/5",
+                            item.dismissed && !item.actionTaken && "opacity-60"
+                          )}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className={cn(
+                              "p-1.5 rounded-full shrink-0",
+                              item.actionTaken ? "bg-green-500/10" : item.dismissed ? "bg-muted" : "bg-gradient-lumi/10"
+                            )}>
+                              {item.actionTaken ? (
+                                <CheckCircle className="h-3 w-3 text-green-500" />
+                              ) : item.dismissed ? (
+                                <XCircle className="h-3 w-3 text-muted-foreground" />
+                              ) : (
+                                <Sparkles className="h-3 w-3 text-lumi-orange-1" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-1 mb-0.5">
+                                <h4 className="font-medium text-xs truncate">{item.recommendation.title}</h4>
+                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                  {formatTimeAgo(item.timestamp)}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground line-clamp-2">
+                                {item.recommendation.message}
+                              </p>
+                              {item.recommendation.actionLabel && item.recommendation.onAction && !item.actionTaken && !item.dismissed && (
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="mt-1.5 h-6 text-[10px] px-2"
+                                  onClick={() => {
+                                    item.recommendation.onAction?.();
+                                    onMarkActionTaken?.(item.recommendation.id);
+                                  }}
+                                >
+                                  {item.recommendation.actionLabel}
+                                </Button>
+                              )}
+                              {item.actionTaken && (
+                                <span className="inline-flex items-center gap-0.5 mt-1 text-[10px] text-green-600">
+                                  <CheckCircle className="h-2.5 w-2.5" /> Done
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+        </div>
+
+        {/* Bug Report Modal */}
+        <BugReportModal 
+          open={bugReportOpen} 
+          onOpenChange={setBugReportOpen}
+          context={context}
+          recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
+          userEmail={userEmail}
+        />
+      </>
+    );
   }
 
   // Check if mobile for positioning
@@ -683,6 +969,9 @@ interface LumiAssistantContextType {
   history: LumiHistoryItem[];
   unreadCount: number;
   markHistoryRead: () => void;
+  openChat: () => void;
+  isDesktopNavLayout: boolean;
+  setDesktopNavLayout: (val: boolean) => void;
 }
 
 const LumiAssistantContext = createContext<LumiAssistantContextType | undefined>(undefined);
@@ -693,6 +982,8 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
   const [isPausedForSession, setIsPausedForSession] = useState(false);
   const [history, setHistory] = useState<LumiHistoryItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [isDesktopNavLayout, setDesktopNavLayout] = useState(false);
 
   const setRecommendation = (rec: LumiRecommendation | null) => {
     // Don't show if paused or already dismissed this session
@@ -749,6 +1040,10 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
     ));
   };
 
+  const openChat = () => {
+    setChatOpen(true);
+  };
+
   return (
     <LumiAssistantContext.Provider value={{ 
       recommendation, 
@@ -759,16 +1054,35 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
       history,
       unreadCount,
       markHistoryRead,
+      openChat,
+      isDesktopNavLayout,
+      setDesktopNavLayout,
     }}>
       {children}
-      <LumiAssistantUI 
-        recommendation={recommendation} 
-        onDismissForSession={dismissForSession}
-        history={history}
-        unreadCount={unreadCount}
-        onMarkHistoryRead={markHistoryRead}
-        onMarkActionTaken={markActionTaken}
-      />
+      {/* Only show floating button if NOT in desktop nav layout */}
+      {!isDesktopNavLayout && (
+        <LumiAssistantUI 
+          recommendation={recommendation} 
+          onDismissForSession={dismissForSession}
+          history={history}
+          unreadCount={unreadCount}
+          onMarkHistoryRead={markHistoryRead}
+          onMarkActionTaken={markActionTaken}
+        />
+      )}
+      {/* Render just the chat popup controlled externally for desktop nav layout */}
+      {isDesktopNavLayout && chatOpen && (
+        <LumiAssistantUI 
+          recommendation={null} 
+          onDismissForSession={dismissForSession}
+          history={history}
+          unreadCount={unreadCount}
+          onMarkHistoryRead={markHistoryRead}
+          onMarkActionTaken={markActionTaken}
+          forceOpen={chatOpen}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </LumiAssistantContext.Provider>
   );
 }
