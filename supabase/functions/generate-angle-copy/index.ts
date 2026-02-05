@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId } = await req.json();
+    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -144,6 +144,19 @@ ${audiencePsychology?.objections?.length ? `Objections:\n${audiencePsychology.ob
 ${kbContext}
  ${contentAssetsContext}
 
+## OFFER-AUDIENCE PSYCHOLOGY
+${offerAudiencePsychology ? `
+This is how YOUR ideal client relates to THIS specific offer:
+
+${offerAudiencePsychology.why_they_need_this ? `Why They Need This: ${offerAudiencePsychology.why_they_need_this}` : ''}
+${offerAudiencePsychology.moment_they_realize ? `The Moment They Realize: ${offerAudiencePsychology.moment_they_realize}` : ''}
+${offerAudiencePsychology.specific_hesitations?.length ? `\nSpecific Hesitations:\n${offerAudiencePsychology.specific_hesitations.map((h: string) => `- ${h}`).join('\n')}` : ''}
+${offerAudiencePsychology.what_finally_convinces ? `\nWhat Convinces Them: ${offerAudiencePsychology.what_finally_convinces}` : ''}
+${offerAudiencePsychology.emotional_before_after ? `\nEmotional Journey:\n  Before: ${offerAudiencePsychology.emotional_before_after.before}\n  After: ${offerAudiencePsychology.emotional_before_after.after}` : ''}
+
+IMPORTANT: Address the specific hesitations in your copy. Paint the before→after transformation. Use the "moment they realize" insight for powerful hooks.
+` : 'Not available - use general audience psychology.'}
+
 ## EMOJI & FORMATTING GUIDELINES
 ${useEmojis ? `
 - USE emojis strategically (max 2-3 per primary copy)
@@ -211,7 +224,7 @@ For each angle, create:
 - 3-5 description variations (different frameworks)
 - 3-5 primary copy variations (mix of short/medium/long, different frameworks)
 
-Make sure each angle's copy reflects its UNIQUE positioning and psychological approach.`;
+Make sure each angle's copy reflects its UNIQUE positioning and psychological approach. Use the offer-audience psychology to address specific hesitations and highlight the emotional transformation.`;
 
     console.log(`Generating copy for ${angles.length} angles...`);
 

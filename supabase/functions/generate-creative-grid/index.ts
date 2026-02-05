@@ -22,7 +22,8 @@ serve(async (req) => {
       productPsychology,
        nicheContext,
        brandId,
-       offerId
+       offerId,
+       offerAudiencePsychology
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -105,6 +106,9 @@ serve(async (req) => {
     const desires = ensureArray(audiencePsychology?.desires);
     const objections = ensureArray(audiencePsychology?.objections);
     const buyingTriggers = ensureArray(productPsychology?.buying_triggers || productPsychology?.buyingTriggers);
+    
+    // Also extract offer-audience psychology insights
+    const offerHesitations = ensureArray(offerAudiencePsychology?.specific_hesitations);
 
     const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts. Your creative MUST be specific, emotionally resonant, and impossible to ignore.
 
@@ -293,6 +297,17 @@ BUYING TRIGGERS TO ACTIVATE:
 ${buyingTriggers.map((t: string, i: number) => `${i + 1}. "${t}"`).join('\n')}
 ` : ''}
 
+${offerAudiencePsychology ? `
+=== OFFER-SPECIFIC AUDIENCE INSIGHTS ===
+Use these to make creative hyper-targeted to THIS specific offer:
+
+${offerAudiencePsychology.why_they_need_this ? `Why They Need THIS Offer: "${offerAudiencePsychology.why_they_need_this}"` : ''}
+${offerAudiencePsychology.moment_they_realize ? `The Moment They Realize: "${offerAudiencePsychology.moment_they_realize}"` : ''}
+${offerHesitations.length > 0 ? `\nHesitations About THIS Offer:\n${offerHesitations.map((h: string, i: number) => `${i + 1}. "${h}"`).join('\n')}` : ''}
+${offerAudiencePsychology.what_finally_convinces ? `\nWhat Convinces Them: "${offerAudiencePsychology.what_finally_convinces}"` : ''}
+${offerAudiencePsychology.emotional_before_after ? `\nEmotional Journey:\n  BEFORE: "${offerAudiencePsychology.emotional_before_after.before}"\n  AFTER: "${offerAudiencePsychology.emotional_before_after.after}"` : ''}
+` : ''}
+
 === OUTPUT REQUIREMENTS ===
 Each cell MUST include:
 - id: unique string (e.g., "angle_attention_talking_head")
@@ -349,6 +364,9 @@ ${JSON.stringify(strategyData, null, 2)}
 ${audiencePsychology ? `=== FULL AUDIENCE PSYCHOLOGY ===
 ${JSON.stringify(audiencePsychology, null, 2)}` : ""}
 
+${offerAudiencePsychology ? `=== OFFER-AUDIENCE PSYCHOLOGY ===
+${JSON.stringify(offerAudiencePsychology, null, 2)}` : ""}
+
 === YOUR TASK ===
 Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length} angles = ${angles.length * 9} total cells).
 
@@ -357,7 +375,8 @@ Remember:
 2. Each guidance must include production details (camera, timing, overlays)
 3. Draw directly from the pain points and desires listed above
 4. NO GENERIC HOOKS - if it could apply to any business, rewrite it
-5. Make it feel like you've read their journal`;
+5. Make it feel like you've read their journal
+6. Use the offer-audience psychology to make creative that addresses THIS specific offer's hesitations and transformation`;
 
     console.log("Generating creative grid with enriched context for", angles.length, "angles");
 

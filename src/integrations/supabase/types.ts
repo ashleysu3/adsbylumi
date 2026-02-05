@@ -221,6 +221,8 @@ export type Database = {
           notification_preferences: Json | null
           page_id: string | null
           page_name: string | null
+          psychology_content_hash: string | null
+          psychology_generated_at: string | null
           psychology_status: string | null
           site_links_enabled: boolean | null
           target_audience: string | null
@@ -253,6 +255,8 @@ export type Database = {
           notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null
+          psychology_content_hash?: string | null
+          psychology_generated_at?: string | null
           psychology_status?: string | null
           site_links_enabled?: boolean | null
           target_audience?: string | null
@@ -285,6 +289,8 @@ export type Database = {
           notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null
+          psychology_content_hash?: string | null
+          psychology_generated_at?: string | null
           psychology_status?: string | null
           site_links_enabled?: boolean | null
           target_audience?: string | null
@@ -712,9 +718,11 @@ export type Database = {
           id: string
           messaging_guidelines: Json | null
           name: string
+          offer_audience_psychology: Json | null
           page_goal: string | null
           price_point: string | null
           product_psychology: Json | null
+          psychology_content_hash: string | null
           recommendation_confidence: string | null
           recommendation_reason: string | null
           recommended_template_id: string | null
@@ -732,9 +740,11 @@ export type Database = {
           id?: string
           messaging_guidelines?: Json | null
           name: string
+          offer_audience_psychology?: Json | null
           page_goal?: string | null
           price_point?: string | null
           product_psychology?: Json | null
+          psychology_content_hash?: string | null
           recommendation_confidence?: string | null
           recommendation_reason?: string | null
           recommended_template_id?: string | null
@@ -752,9 +762,11 @@ export type Database = {
           id?: string
           messaging_guidelines?: Json | null
           name?: string
+          offer_audience_psychology?: Json | null
           page_goal?: string | null
           price_point?: string | null
           product_psychology?: Json | null
+          psychology_content_hash?: string | null
           recommendation_confidence?: string | null
           recommendation_reason?: string | null
           recommended_template_id?: string | null
