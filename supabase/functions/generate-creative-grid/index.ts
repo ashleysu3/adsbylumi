@@ -20,7 +20,9 @@ serve(async (req) => {
       brandVoice,
       messagingGuidelines,
       productPsychology,
-      nicheContext
+       nicheContext,
+       brandId,
+       offerId
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -56,6 +58,40 @@ serve(async (req) => {
 
     const kbContext = kbDocs?.map(doc => `## ${doc.title}\n${doc.content}`).join("\n\n") || "";
 
+     // Fetch content assets for this brand
+     let contentAssetsContext = "";
+     if (brandId) {
+       const { data: contentAssets } = await supabase
+         .from("brand_content_assets")
+         .select("*")
+         .eq("brand_id", brandId);
+       
+       if (contentAssets?.length) {
+         contentAssetsContext = "\n\n=== USER-PROVIDED CONTENT ASSETS ===\n";
+         contentAssetsContext += "REAL content from the user. Use these testimonials, scripts, and pain points to make hooks and scripts authentic:\n\n";
+         
+         contentAssets.forEach((asset: any) => {
+           // Filter by offer if specified
+           if (offerId && asset.offer_ids?.length > 0 && !asset.offer_ids.includes(offerId)) {
+             return;
+           }
+           
+           const typeLabels: Record<string, string> = {
+             testimonials: 'CLIENT TESTIMONIALS (use these exact quotes/phrases)',
+             webinar_scripts: 'WEBINAR/CHALLENGE SCRIPTS (borrow delivery style)',
+             survey_answers: 'SURVEY RESPONSES (real pain points in client words)',
+             client_objections: 'CLIENT OBJECTIONS (address these directly)',
+             client_questions: 'CLIENT QUESTIONS (answer these in hooks)',
+             other: 'OTHER CONTENT'
+           };
+           
+           contentAssetsContext += `## ${typeLabels[asset.asset_type] || asset.asset_type.toUpperCase()}\n${asset.content}\n\n`;
+         });
+         
+         contentAssetsContext += "CRITICAL: Pull specific phrases, numbers, and pain points from the above content. These are REAL words from REAL clients - use them to make hooks irresistible.\n";
+       }
+     }
+ 
     // Extract specific pain points and desires for targeted prompting
     // Ensure all are arrays - data might be stored in various formats
     const ensureArray = (val: unknown): string[] => {
@@ -74,6 +110,7 @@ serve(async (req) => {
 
 KNOWLEDGE BASE:
 ${kbContext}
+ ${contentAssetsContext}
 
 === CRITICAL RULES: SPECIFICITY IS EVERYTHING ===
 

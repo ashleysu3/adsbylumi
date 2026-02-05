@@ -124,6 +124,47 @@ export type Database = {
           },
         ]
       }
+      brand_content_assets: {
+        Row: {
+          asset_type: string
+          brand_id: string
+          content: string
+          created_at: string | null
+          id: string
+          label: string | null
+          offer_ids: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          asset_type: string
+          brand_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          label?: string | null
+          offer_ids?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          asset_type?: string
+          brand_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          label?: string | null
+          offer_ids?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_content_assets_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_vault_secrets: {
         Row: {
           brand_id: string

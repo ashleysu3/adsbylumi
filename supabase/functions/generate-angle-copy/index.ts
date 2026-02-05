@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { angles, brandInfo, offerData, audiencePsychology } = await req.json();
+    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -40,6 +40,40 @@ serve(async (req) => {
       .map(([cat, docs]) => `### ${cat.toUpperCase()}\n${docs.join('\n\n')}`)
       .join('\n\n---\n\n');
 
+     // Fetch content assets for this brand
+     let contentAssetsContext = "";
+     if (brandId) {
+       const { data: contentAssets } = await supabase
+         .from("brand_content_assets")
+         .select("*")
+         .eq("brand_id", brandId);
+       
+       if (contentAssets?.length) {
+         contentAssetsContext = "\n\n## USER-PROVIDED CONTENT ASSETS\n";
+         contentAssetsContext += "Use these real testimonials, scripts, and language patterns to write more authentic copy:\n\n";
+         
+         contentAssets.forEach((asset: any) => {
+           // Filter by offer if specified
+           if (offerId && asset.offer_ids?.length > 0 && !asset.offer_ids.includes(offerId)) {
+             return;
+           }
+           
+           const typeLabels: Record<string, string> = {
+             testimonials: 'CLIENT TESTIMONIALS',
+             webinar_scripts: 'WEBINAR/CHALLENGE SCRIPTS',
+             survey_answers: 'SURVEY RESPONSES',
+             client_objections: 'CLIENT OBJECTIONS & QUESTIONS',
+             client_questions: 'CLIENT QUESTIONS',
+             other: 'OTHER CONTENT'
+           };
+           
+           contentAssetsContext += `### ${typeLabels[asset.asset_type] || asset.asset_type.toUpperCase()}\n${asset.content}\n\n`;
+         });
+         
+         contentAssetsContext += "IMPORTANT: Pull specific quotes, phrases, and pain points from the above to make copy sound authentic.\n";
+       }
+     }
+ 
     // Helper to safely handle array-like fields
     const toArray = (val: any): string[] => {
       if (!val) return [];
@@ -108,6 +142,7 @@ ${audiencePsychology?.pain_points?.length ? `Pain Points:\n${audiencePsychology.
 ${audiencePsychology?.objections?.length ? `Objections:\n${audiencePsychology.objections.map((o: string) => `- ${o}`).join('\n')}` : ''}
 
 ${kbContext}
+ ${contentAssetsContext}
 
 ## EMOJI & FORMATTING GUIDELINES
 ${useEmojis ? `
