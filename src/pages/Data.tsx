@@ -443,7 +443,20 @@ export default function Data() {
               return campaign;
             }
 
-            // Fetch previous period metrics for trend comparison
+            // NEW: Check if campaign is not ACTIVE in Meta
+            // Update local status to match Meta's real-time status
+            if (data?.status && data.status !== 'ACTIVE') {
+              const newStatus = data.status.toLowerCase();
+              return {
+                ...campaign,
+                metrics: null, // No metrics for inactive campaigns
+                previousMetrics: null,
+                status: newStatus,
+                userGoal: userGoals[campaign.id] || null,
+              };
+            }
+
+            // Fetch previous period metrics for trend comparison (only for active campaigns)
             let previousMetrics = null;
             try {
               const { data: prevData } = await supabase.functions.invoke('fetch-meta-performance', {
@@ -453,7 +466,10 @@ export default function Data() {
                   dateRangeEnd: format(prevDateRange.to, 'yyyy-MM-dd'),
                 },
               });
-              previousMetrics = prevData?.metrics || null;
+              // Only use previous metrics if campaign was also active then
+              if (prevData?.status === 'ACTIVE' || !prevData?.status) {
+                previousMetrics = prevData?.metrics || null;
+              }
             } catch (prevErr) {
               // Silently fail for previous period - not critical
               console.log('Could not fetch previous period metrics');
@@ -463,6 +479,7 @@ export default function Data() {
               ...campaign,
               metrics: data?.metrics || null,
               previousMetrics,
+              status: 'active', // Confirmed active from Meta
               userGoal: userGoals[campaign.id] || null,
             };
           } catch (err: any) {

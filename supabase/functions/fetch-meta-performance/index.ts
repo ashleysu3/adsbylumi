@@ -135,10 +135,53 @@ Deno.serve(async (req) => {
     if (!campaignId || !/^\d+$/.test(campaignId)) {
       throw new Error('Invalid Meta campaign ID format. This campaign may not have been properly published to Meta.');
     }
-    const adSetIds = metaCampaignIds.adSetIds || [];
-    const adIds = metaCampaignIds.adIds || [];
 
     console.log('Fetching Meta performance for campaign:', campaignId);
+
+    // ============================================
+    // STEP 1: Fetch real-time campaign status from Meta
+    // ============================================
+    const statusUrl = `https://graph.facebook.com/v18.0/${campaignId}?fields=status,effective_status&access_token=${metaAccessToken}`;
+    const statusResponse = await fetch(statusUrl);
+    const statusData = await statusResponse.json();
+
+    if (statusData.error) {
+      console.error('Meta API status error:', statusData.error);
+      throw new Error(`Meta API error: ${statusData.error.message}`);
+    }
+
+    const effectiveStatus = statusData.effective_status || statusData.status || 'UNKNOWN';
+    console.log(`Campaign ${campaignId} effective_status: ${effectiveStatus}`);
+
+    // Update workspace status if it changed
+    const newStatus = effectiveStatus.toLowerCase();
+    if (workspace.meta_campaign_status !== newStatus) {
+      console.log(`Updating workspace status from ${workspace.meta_campaign_status} to ${newStatus}`);
+      await supabase
+        .from('campaign_workspaces')
+        .update({ meta_campaign_status: newStatus })
+        .eq('id', workspaceId);
+    }
+
+    // If campaign is not ACTIVE, return early with status info
+    if (effectiveStatus !== 'ACTIVE') {
+      console.log(`Campaign ${campaignId} is ${effectiveStatus}, not ACTIVE - skipping metrics fetch`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          metrics: null,
+          status: effectiveStatus,
+          message: `Campaign is ${effectiveStatus}, not ACTIVE`,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    // ============================================
+    // STEP 2: Fetch insights for ACTIVE campaigns
+    // ============================================
+    const adSetIds = metaCampaignIds.adSetIds || [];
+    const adIds = metaCampaignIds.adIds || [];
 
     // Build date range params
     const timeRange = dateRangeStart && dateRangeEnd
@@ -282,6 +325,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         metrics: processedMetrics,
+        status: effectiveStatus,
         snapshot: performanceSnapshot,
       }),
       {

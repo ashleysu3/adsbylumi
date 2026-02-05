@@ -75,12 +75,17 @@ Deno.serve(async (req) => {
     console.log(`Fetching account overview for brand ${brandId}, date range: ${dateRangeStart} to ${dateRangeEnd}`);
 
     // Fetch account-level insights from Meta
+    // IMPORTANT: Add filtering to only include ACTIVE campaigns
     const timeRange = dateRangeStart && dateRangeEnd 
       ? `time_range={"since":"${dateRangeStart}","until":"${dateRangeEnd}"}`
       : 'date_preset=last_7d';
 
-    const insightsUrl = `https://graph.facebook.com/v18.0/${brand.meta_account_id}/insights?${timeRange}&fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,purchase_roas&level=account&access_token=${metaAccessToken}`;
+    // URL-encode the filtering parameter to only include active campaigns
+    const filtering = encodeURIComponent('[{"field":"campaign.delivery_info","operator":"IN","value":["active"]}]');
+    
+    const insightsUrl = `https://graph.facebook.com/v18.0/${brand.meta_account_id}/insights?${timeRange}&fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,purchase_roas&level=account&filtering=${filtering}&access_token=${metaAccessToken}`;
 
+    console.log('Fetching insights with active-only filter');
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
 
@@ -125,7 +130,7 @@ Deno.serve(async (req) => {
       roas: metrics.purchase_roas?.[0]?.value ? parseFloat(metrics.purchase_roas[0].value) : null,
     };
 
-    console.log('Account metrics fetched:', accountMetrics);
+    console.log('Account metrics fetched (active campaigns only):', accountMetrics);
 
     return new Response(
       JSON.stringify({
