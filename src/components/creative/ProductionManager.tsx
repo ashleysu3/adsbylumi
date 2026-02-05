@@ -14,11 +14,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { ProductionItem } from "./ProductionChecklistPanel";
 import { CreativeChecklistCard } from "./CreativeChecklistCard";
-import { AngleCopyEditor } from "./AngleCopyEditor";
 import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
 import { ExportChecklistModal } from "./ExportChecklistModal";
-import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 
 interface RankedItem extends ProductionItem {
   rank: number;
@@ -35,6 +33,7 @@ interface ProductionManagerProps {
   onUpdateWorkspace: (updates: any) => void;
   onSaveToLibrary?: (item: ProductionItem) => void;
   brandId?: string;
+  angleCopy?: Record<string, any>;
 }
 
 export function ProductionManager({
@@ -47,6 +46,7 @@ export function ProductionManager({
   onUpdateWorkspace,
   onSaveToLibrary,
   brandId,
+  angleCopy: angleCopyProp,
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [previewAsset, setPreviewAsset] = useState<any>(null);
@@ -61,8 +61,7 @@ export function ProductionManager({
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
-  const creativeJson = workspace?.creative_json || {};
-  const angleCopy = creativeJson.angle_copy || {};
+  const angleCopy = angleCopyProp || workspace?.creative_json?.angle_copy || {};
   
   const canRank = productionItems.length >= 6;
   const hasRankedItems = rankedItems.length > 0;
@@ -231,41 +230,6 @@ export function ProductionManager({
     fileInputRef.current?.click();
   };
   
-  // Auto-save state for copy changes
-  const [copySaveStatus, setCopySaveStatus] = useState<SaveStatus>("idle");
-  
-  const handleCopyChange = (angleId: string, copy: any) => {
-    const updatedAngleCopy = { ...angleCopy, [angleId]: copy };
-    onUpdateWorkspace({ creative_json: { ...creativeJson, angle_copy: updatedAngleCopy } });
-  };
-  
-  const handleSaveCopy = async () => {
-    setCopySaveStatus("saving");
-    try {
-      await supabase
-        .from('campaign_workspaces')
-        .update({
-          creative_json: { ...creativeJson, angle_copy: angleCopy },
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', workspace.id);
-      setCopySaveStatus("saved");
-      setTimeout(() => setCopySaveStatus("idle"), 2000);
-      toast.success("Copy saved!");
-    } catch (e) {
-      setCopySaveStatus("error");
-      setTimeout(() => setCopySaveStatus("idle"), 3000);
-      toast.error("Failed to save copy");
-    }
-  };
-  
-  // Count creatives per angle for the copy editor
-  const getCreativeCountForAngle = (angleId: string) => {
-    const angle = angles.find(a => a.id === angleId);
-    if (!angle) return 0;
-    return productionItems.filter(item => item.angleName === angle.name).length;
-  };
-  
   // Get copy for item's angle
   const getCopyForItem = (item: ProductionItem) => {
     const angle = angles.find(a => a.name === item.angleName);
@@ -280,7 +244,7 @@ export function ProductionManager({
           <FolderOpen className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
           <h3 className="text-lg font-semibold mb-2">No Creatives Selected</h3>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            Add concepts from the Copy & Creative tab to build your production checklist.
+            Add concepts from the Creative Concepts tab to build your production checklist.
           </p>
         </CardContent>
       </Card>
@@ -297,9 +261,9 @@ export function ProductionManager({
         onChange={(e) => uploadingItemId && handleFileSelect(e, uploadingItemId)}
       />
       
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* Left: Creative Checklist (3/5) */}
-        <div className="lg:col-span-3 space-y-4">
+      <div className="space-y-4">
+        {/* Creative Checklist - Full Width */}
+        <div className="space-y-4">
           {/* Recommendation Banner */}
           <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
             <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
@@ -526,31 +490,6 @@ export function ProductionManager({
               </div>
             </CardContent>
           </Card>
-        </div>
-        
-        {/* Right: Copy Editor (2/5) */}
-        <div className="lg:col-span-2">
-          <div className="sticky top-4 space-y-2">
-            {/* Copy Editor Save Status */}
-            <div className="flex items-center justify-end px-1">
-              <AutoSaveIndicator status={copySaveStatus} size="sm" />
-            </div>
-            <AngleCopyEditor
-              angles={angles}
-              selectedAngleIds={selectedAngleIds}
-              angleCopy={angleCopy}
-              brandInfo={workspace?.brands}
-              offerData={{
-                name: workspace?.offer_name,
-                description: workspace?.offer_description,
-                price_point: workspace?.offer_price,
-              }}
-              audiencePsychology={workspace?.brands?.audience_psychology}
-              onCopyChange={handleCopyChange}
-              onSave={handleSaveCopy}
-              productionItemCount={productionItems.length}
-            />
-          </div>
         </div>
       </div>
       
