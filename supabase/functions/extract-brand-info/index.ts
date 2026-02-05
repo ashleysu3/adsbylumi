@@ -1,6 +1,4 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeadersWildcard } from '../_shared/cors.ts';
+import { getCorsHeaders } from '../_shared/cors.ts';
 
 // URL validation to prevent SSRF attacks
 function isValidPublicUrl(urlString: string): { valid: boolean; error?: string } {
@@ -48,8 +46,9 @@ function isValidPublicUrl(urlString: string): { valid: boolean; error?: string }
   }
 }
 
-serve(async (req) => {
-  const corsHeaders = corsHeadersWildcard;
+Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -94,6 +93,7 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY is not configured');
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
@@ -103,13 +103,13 @@ serve(async (req) => {
     let metaDescription = '';
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
       const websiteResponse = await fetch(websiteUrl, {
         signal: controller.signal,
         redirect: 'follow',
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; YourAdAssistant/1.0; +https://youradassistant.com)',
+          'User-Agent': 'Mozilla/5.0 (compatible; Lumi/1.0; +https://adsbylumi.com)',
           'Accept': 'text/html,application/xhtml+xml',
         }
       });
