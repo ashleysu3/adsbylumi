@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { Send, Loader2, X, Sparkle, Copy, Check, Lightbulb, Rocket, Bug } from "lucide-react";
+import { Send, Loader2, X, Sparkle, Copy, Check, Bug, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SparkleIcon } from "./SparkleIcon";
-import { useLumi, Message } from "@/contexts/LumiContext";
+import { useLumi, Message, NavigationAction } from "@/contexts/LumiContext";
 import { BugReportModal } from "./BugReportModal";
+import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 interface ConversationInsight {
   timestamp: string;
@@ -29,67 +31,67 @@ interface LumiChatProps {
   onSaveInsights?: (insights: ConversationInsight) => void;
 }
 
-
+// Navigation-focused context starters
 const contextStarters: Record<string, { label: string; message: string }[]> = {
-  creative: [
-    { label: "Improve my hooks", message: "Help me make my hooks more attention-grabbing and scroll-stopping." },
-    { label: "Strengthen copy", message: "Review my primary copy and suggest ways to make it more persuasive." },
-    { label: "More variety", message: "I need more variety in my creative concepts. What angles am I missing?" },
-    { label: "Script feedback", message: "Can you review my scripts and suggest improvements for better engagement?" },
-  ],
-  planning: [
-    { label: "Refine strategy", message: "Help me refine my campaign strategy based on my offer and audience." },
-    { label: "Budget advice", message: "What budget would you recommend for my campaign goals?" },
-    { label: "Audience insights", message: "Tell me more about my target audience's psychology and pain points." },
-    { label: "KPI guidance", message: "What KPIs should I focus on for this type of campaign?" },
-  ],
-  data: [
-    { label: "Analyze performance", message: "Help me understand what's working and what's not in my campaign data." },
-    { label: "Optimization tips", message: "What optimizations would you suggest based on my current metrics?" },
-    { label: "Creative fatigue", message: "How do I know if my creative is experiencing fatigue?" },
-    { label: "Scaling strategy", message: "My campaign is performing well. How should I scale it?" },
-  ],
-  campaign: [
-    { label: "Review settings", message: "Can you review my campaign settings before I publish?" },
-    { label: "Audience selection", message: "Help me decide on the best audience targeting for this campaign." },
-    { label: "Budget allocation", message: "How should I allocate my budget between ad sets?" },
-    { label: "Missing anything?", message: "Am I missing anything important before launching this campaign?" },
+  start: [
+    { label: "Get started", message: "I'm new here. Where should I start?" },
+    { label: "Create an ad", message: "How do I create my first ad?" },
+    { label: "What can I do?", message: "What can this app help me with?" },
+    { label: "Need help", message: "I need help finding something." },
   ],
   dashboard: [
-    { label: "What's next?", message: "What should I focus on next to grow my ad results?" },
-    { label: "Campaign ideas", message: "Suggest some campaign ideas based on my brand and offers." },
-    { label: "Best practices", message: "What are the top Meta Ads best practices I should follow?" },
-    { label: "Creative tips", message: "Give me some quick tips to improve my ad creative." },
-  ],
-  settings: [
-    { label: "Account setup", message: "What do I need to set up to get started with Meta Ads?" },
-    { label: "Billing questions", message: "Help me understand the billing and subscription options." },
-    { label: "Best practices", message: "What are some best practices for managing my ad account?" },
-    { label: "Getting started", message: "I'm new here. Where should I start?" },
+    { label: "Create an ad", message: "How do I create a new ad?" },
+    { label: "Add my offer", message: "Where do I add my product or offer?" },
+    { label: "Connect Meta", message: "How do I connect my Meta account?" },
+    { label: "What's next?", message: "What should I do next?" },
   ],
   campaigns: [
-    { label: "Campaign review", message: "Help me review my active campaigns and see what's working." },
-    { label: "Create new campaign", message: "I want to create a new campaign. Where do I start?" },
-    { label: "Archive advice", message: "How do I know when to archive or pause a campaign?" },
-    { label: "Campaign strategy", message: "How should I organize my campaigns for best results?" },
+    { label: "New campaign", message: "How do I create a new campaign?" },
+    { label: "Continue work", message: "How do I continue a campaign I started?" },
+    { label: "Archive", message: "How do I archive old campaigns?" },
+    { label: "Need help", message: "I need help understanding this page." },
   ],
-  production: [
-    { label: "Recording tips", message: "Give me tips for recording my ad videos at home." },
-    { label: "Equipment advice", message: "What basic equipment do I need for good video ads?" },
-    { label: "Editing help", message: "How should I edit my videos for maximum engagement?" },
-    { label: "B-roll ideas", message: "What kind of b-roll footage should I capture?" },
+  creative: [
+    { label: "Get started", message: "How do I get started here?" },
+    { label: "Generate angles", message: "How do I create creative angles?" },
+    { label: "Write copy", message: "Where do I write my ad copy?" },
+    { label: "I'm stuck", message: "I'm stuck. What should I do?" },
   ],
-  'add-creative': [
-    { label: "New creative idea", message: "Help me brainstorm a new creative angle for my campaign." },
-    { label: "Upload guidance", message: "Walk me through uploading my new ad creative." },
-    { label: "Creative best practices", message: "What makes a high-performing ad creative?" },
-    { label: "Refresh existing", message: "How do I know when my creative needs refreshing?" },
+  data: [
+    { label: "See performance", message: "How do I see my ad performance?" },
+    { label: "Import campaigns", message: "How do I import my Meta campaigns?" },
+    { label: "Optimize ads", message: "How do I know which ads to optimize?" },
+    { label: "Something wrong", message: "Something doesn't look right here." },
+  ],
+  settings: [
+    { label: "Billing", message: "Where do I manage my subscription?" },
+    { label: "Meta settings", message: "How do I change my Meta connection?" },
+    { label: "Email reports", message: "How do I set up weekly email reports?" },
+    { label: "Need help", message: "What can I do on this page?" },
   ],
   'angle-feedback': [
     { label: "I love these!", message: "These angles are great! Let's build on them and create the hooks and concepts." },
     { label: "Let's refine them", message: "I'd like to chat about my offer and audience to make these angles even more powerful." },
     { label: "Different direction", message: "I want to explore a different creative direction. Let me tell you more about what I'm looking for." },
     { label: "Tell me more", message: "Can you explain why you chose these specific angles for my offer?" },
+  ],
+  campaign: [
+    { label: "Review settings", message: "Can you help me understand these campaign settings?" },
+    { label: "What's next?", message: "What should I do next with this campaign?" },
+    { label: "Need help", message: "I need help with this step." },
+    { label: "Something wrong", message: "Something doesn't look right here." },
+  ],
+  production: [
+    { label: "Get started", message: "How do I get started with production?" },
+    { label: "Upload assets", message: "How do I upload my creative assets?" },
+    { label: "Need help", message: "I need help understanding this page." },
+    { label: "Something wrong", message: "Something doesn't look right here." },
+  ],
+  'add-creative': [
+    { label: "Upload guidance", message: "How do I upload my creative assets?" },
+    { label: "Get started", message: "How do I get started here?" },
+    { label: "Need help", message: "I need help with this step." },
+    { label: "Something wrong", message: "Something doesn't look right here." },
   ],
 };
 
@@ -103,6 +105,7 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
   const [bugReportOpen, setBugReportOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const starters = customStarters || contextStarters[context] || contextStarters.dashboard;
 
   // Fetch user email for bug reports
@@ -137,6 +140,16 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
       setInternalOpen(true);
     }
   }, [autoOpen]);
+
+  // Handle navigation action click
+  const handleActionClick = (action: NavigationAction) => {
+    if (action.type === 'navigate' && action.route) {
+      navigate(action.route);
+      setOpen(false);
+    } else if (action.type === 'bug_report') {
+      setBugReportOpen(true);
+    }
+  };
   
   // Show initial message from Lumi when chat opens (proactive conversation)
   useEffect(() => {
@@ -216,7 +229,8 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.response || "I'm sorry, I couldn't process that. Please try again.",
-        followups: data.followups || []
+        actions: data.actions || [],
+        followups: data.followups || [],
       };
       addMessage(assistantMessage);
     } catch (error) {
@@ -289,16 +303,16 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
               <div className="space-y-6">
                 <div className="text-center py-8">
                   <SparkleIcon size="lg" state="idle" glow className="mx-auto mb-4" />
-                  <h3 className="font-display font-semibold mb-2">Hey there! 👋</h3>
+                  <h3 className="font-display font-semibold mb-2">How can I help? 👋</h3>
                   <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                    I'm Lumi — here to make Meta Ads simple. Ask me anything about strategy, creative, or performance.
+                    I'll guide you to the right place in the app.
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground px-2">
                     <Sparkle className="h-4 w-4 animate-sparkle-pulse" />
-                    <span>Suggested questions</span>
+                    <span>Common questions</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     {starters.map((starter, idx) => (
@@ -334,6 +348,28 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
                         >
                           <p className="text-sm whitespace-pre-wrap select-text">{message.content}</p>
                         </div>
+                        {/* Navigation Action Buttons */}
+                        {message.actions && message.actions.length > 0 && (
+                          <div className="flex flex-col gap-2 mt-2">
+                            {message.actions.map((action, actionIdx) => (
+                              <Button
+                                key={actionIdx}
+                                size="sm"
+                                onClick={() => handleActionClick(action)}
+                                className={cn(
+                                  "justify-start gap-2 h-auto py-2 px-3 text-sm",
+                                  action.type === 'navigate' 
+                                    ? "bg-gradient-lumi text-white hover:opacity-90" 
+                                    : "variant-outline"
+                                )}
+                              >
+                                {action.type === 'navigate' && <ArrowRight className="h-4 w-4" />}
+                                {action.type === 'bug_report' && <Bug className="h-4 w-4" />}
+                                {action.label}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
                         {/* Copy button */}
                         <Button
                           variant="ghost"
@@ -358,37 +394,14 @@ export function LumiChat({ context, workspace, brand, trigger, autoOpen = false,
                             {message.followups.map((followup, fIdx) => (
                               <Button
                                 key={fIdx}
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                className="h-auto py-1.5 px-3 text-xs"
+                                className="h-auto py-1.5 px-3 text-xs text-muted-foreground hover:text-foreground"
                                 onClick={() => sendMessage(followup.message)}
                               >
                                 {followup.label}
                               </Button>
                             ))}
-                          </div>
-                        )}
-                        {/* Action buttons for creative/production/data contexts */}
-                        {(context === 'creative' || context === 'production' || context === 'data') && (
-                          <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50 mt-2">
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="h-auto py-1.5 px-3 text-xs gap-1.5"
-                              onClick={() => sendMessage("Add these creative suggestions to my concepts. Generate new angles or hooks based on what we discussed.")}
-                            >
-                              <Lightbulb className="h-3 w-3" />
-                              Add to Concepts
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="h-auto py-1.5 px-3 text-xs gap-1.5"
-                              onClick={() => sendMessage("I'm ready to move forward. Help me prepare these concepts for publishing to Meta.")}
-                            >
-                              <Rocket className="h-3 w-3" />
-                              Ready to Publish
-                            </Button>
                           </div>
                         )}
                       </div>
