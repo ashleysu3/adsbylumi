@@ -28,6 +28,16 @@ import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/component
 import { Json } from "@/integrations/supabase/types";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 import { useBrand } from "@/contexts/BrandContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
@@ -190,6 +200,9 @@ export default function CreativeStudio() {
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const IDLE_TIMEOUT = 45000; // 45 seconds
 
+  // Regeneration confirmation state
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
@@ -297,12 +310,77 @@ export default function CreativeStudio() {
         setAngleCopy(c.angle_copy);
       }
       
+    // ========== Smart tab selection based on progress ==========
+    const hasAngles = loadedAngles.length > 0;
+    const hasGridData = validGridData.length > 0;
+    const hasProductionItems = loadedProductionItems.length > 0;
+    const hasCopy = c?.angle_copy && Object.keys(c.angle_copy).some(
+      (id: string) => c.angle_copy[id]?.headlines?.length > 0 || 
+            c.angle_copy[id]?.descriptions?.length > 0 ||
+            c.angle_copy[id]?.primary_copy?.length > 0
+    );
+    
+    // Check for saved tab first
+    const savedTab = c?.lastActiveTab as WorkflowTab | undefined;
+    let targetTab: WorkflowTab = "angles";
+    
+    if (savedTab) {
+      // Validate saved tab is still appropriate
+      const tabIsValid = 
+        savedTab === "angles" ||
+        (savedTab === "concepts" && hasGridData) ||
+        (savedTab === "copy" && hasProductionItems) ||
+        (savedTab === "build" && hasProductionItems);
+      
+      if (tabIsValid) {
+        targetTab = savedTab;
+      }
+    }
+    
+    // If no valid saved tab, use smart detection
+    if (targetTab === "angles" && !savedTab) {
+      if (hasProductionItems && hasCopy) {
+        targetTab = "build";
+      } else if (hasProductionItems) {
+        targetTab = "copy";
+      } else if (hasGridData) {
+        targetTab = "concepts";
+      }
+    }
+    
+    setActiveTab(targetTab);
+    // ========== End smart tab selection ==========
+    
       // If there's a mismatch, clean up the stored data
       if (validSelectedIds.length !== storedSelectedIds.length || validGridData.length !== loadedGridData.length) {
         console.warn('Cleaned up stale angle references from workspace');
       }
     } catch (e) { console.error(e); }
   };
+
+  // Save last active tab to workspace when it changes
+  useEffect(() => {
+    if (workspace && activeTab && activeTab !== "angles") {
+      const cur = (workspace.creative_json || {}) as Record<string, any>;
+      // Only save if different from current stored value
+      if (cur.lastActiveTab !== activeTab) {
+        supabase
+          .from("campaign_workspaces")
+          .update({ 
+            creative_json: { ...cur, lastActiveTab: activeTab },
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", workspace.id)
+          .then(() => {
+            // Update local workspace state
+            setWorkspace((prev: any) => ({
+              ...prev,
+              creative_json: { ...prev?.creative_json, lastActiveTab: activeTab }
+            }));
+          });
+      }
+    }
+  }, [activeTab, workspace?.id]);
 
   const saveCreativeState = useCallback(async (updates: any) => {
     if (!workspace) return;
@@ -360,8 +438,18 @@ export default function CreativeStudio() {
     }
   }, [workspace, angleCopy]);
 
-  const generateAngles = async () => {
+  const handleRegenerateClick = () => {
+    // If user has downstream progress, show confirmation dialog
+    if (gridData.length > 0 || productionItems.length > 0) {
+      setShowRegenerateConfirm(true);
+      return;
+    }
+    generateAngles();
+  };
+
+  const generateAngles = async (skipConfirmation = false) => {
     if (!workspace?.strategy_json) { toast.error("Complete strategy first"); return; }
+    
     setGenerating(true); setGeneratingPhase("angles");
     try {
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
@@ -567,12 +655,12 @@ export default function CreativeStudio() {
                 <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4" />
                 <h3 className="text-lg font-semibold mb-2">Generate Creative Angles</h3>
                 <p className="text-muted-foreground text-sm mb-6">Lumi will suggest unique creative angles</p>
-                <Button onClick={generateAngles} disabled={generating} className="gap-2">{generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Generate Angles</Button>
+                <Button onClick={() => generateAngles()} disabled={generating} className="gap-2">{generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Generate Angles</Button>
               </CardContent></Card>
             ) : (
               <div className="space-y-6">
                 <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} />
-                <div className="flex justify-end"><Button variant="outline" onClick={generateAngles} disabled={generating}><Sparkles className="h-4 w-4 mr-2" />Regenerate</Button></div>
+                <div className="flex justify-end"><Button variant="outline" onClick={handleRegenerateClick} disabled={generating}><Sparkles className="h-4 w-4 mr-2" />Regenerate</Button></div>
               </div>
             )}
           </TabsContent>
@@ -760,6 +848,27 @@ export default function CreativeStudio() {
       
       <LumiThinking isOpen={generating} customCopy={creativeGenerationCopy} />
       <CreativeStudioExplainer open={showExplainer} onClose={closeExplainer} />
+      
+      {/* Regeneration Confirmation Dialog */}
+      <AlertDialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerate Angles?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Regenerating angles will clear your existing creative concepts and production checklist. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              setShowRegenerateConfirm(false);
+              generateAngles(true);
+            }}>
+              Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
