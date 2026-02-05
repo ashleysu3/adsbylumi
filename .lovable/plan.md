@@ -1,164 +1,316 @@
 
 
-# Adjust Description Character Limit to 27 Characters
+# Pre-Launch QA Check System
 
 ## Overview
 
-Meta only displays approximately 26-30 characters for the description field in most ad placements. The current system generates 125-character descriptions that get truncated. This plan aligns all description fields to a 27-character limit and reframes descriptions as short, complimentary phrases rather than standalone content.
+This plan adds a dedicated QA check stage between the "Review" step and "Publishing" step in the Campaign Builder. When the user clicks "Publish", they'll first see a full-page QA loading screen that runs through multiple checks with animated progress, building confidence that their campaign is thoroughly validated. Any issues found will be displayed with actionable fixes before proceeding.
 
 ---
 
-## Current State
+## User Flow
 
-| Component | Current Limit | Issue |
-|-----------|---------------|-------|
-| `generate-angle-copy` | 125 chars | Way too long, gets truncated |
-| `AngleCopyEditor.tsx` | 125 chars | Inconsistent with actual display |
-| `CopyEditor.tsx` | 30 chars | Close but could be tighter |
-| `finalize-ad-copy` | 30 chars | Already correct |
-| `generate-copy-variations` | 30 chars | Already correct |
+```text
+Review Step → Click "Publish to Meta" → QA Check Screen (Loading) → Results Screen → Fix Issues OR Proceed to Publish
+```
 
 ---
 
-## Changes
+## Part 1: New QA Check Component
 
-### 1. Edge Function: `generate-angle-copy/index.ts`
+### File: `src/components/QACheckScreen.tsx`
 
-**Before (line 204):**
-```
-- Descriptions: Max 125 characters, expand on the headline
-```
+A dedicated full-page component that:
+1. Shows animated progress through each check
+2. Displays check status (pending, running, passed, failed, warning)
+3. Shows final results with fix options
+4. Allows user to proceed or go back to fix issues
 
-**After:**
-```
-- Descriptions: Max 27 characters, short complement to the headline (e.g., "Start your free trial", "See how it works")
-```
+### Check Categories
 
-Also update the output format example to show shorter descriptions with correct character counts.
+| Check | What It Does | Icon |
+|-------|--------------|------|
+| **Spelling & Grammar** | AI-powered scan of all headlines, descriptions, and primary copy | `SpellCheck` |
+| **Creative Text** | Scan uploaded images for text overlay issues (future: OCR) | `Image` |
+| **Landing Page** | HEAD request to verify URL is reachable | `Link` |
+| **Budget** | Validate budget is set and within reasonable range | `DollarSign` |
+| **Schedule** | Confirm start date is in the future, end date (if set) is after start | `Calendar` |
+| **Meta Connection** | Verify ad account and page are connected | `Link2` |
+
+### Visual Design
+
+- Full-page overlay (similar to LumiThinking but with checklist)
+- Each check shows as a row with:
+  - Icon
+  - Check name
+  - Status indicator (spinner → checkmark/warning/X)
+  - Details (collapsed, expandable on click)
+- Overall progress bar at top
+- When complete: summary card with pass/fail/warning counts
 
 ---
 
-### 2. Frontend: `AngleCopyEditor.tsx`
+## Part 2: Edge Function for QA Checks
 
-**Before (lines 317-321):**
+### File: `supabase/functions/qa-preflight-check/index.ts`
+
+Performs server-side validation:
+
+1. **Spelling/Grammar Check**: Use AI to scan all copy variations for issues
+2. **URL Reachability**: HEAD request with timeout
+3. **Date Validation**: Verify dates are logical
+4. **Budget Validation**: Confirm amount is set and reasonable
+
+Returns structured response:
 ```typescript
-maxLength={125}
-className="pr-14"
-...
-{d.text?.length || 0}/125
+{
+  success: true,
+  checks: [
+    {
+      id: 'spelling',
+      name: 'Spelling & Grammar',
+      status: 'passed' | 'warning' | 'failed',
+      issues: [
+        { field: 'headline_1', text: 'Orignal', suggestion: 'Original', location: 'Angle: Authority' }
+      ]
+    },
+    // ... more checks
+  ],
+  summary: {
+    passed: 4,
+    warnings: 1,
+    failed: 0
+  }
+}
 ```
 
-**After:**
+---
+
+## Part 3: QA Screen UI States
+
+### State 1: Running Checks (Animated Loading)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 67%                   │
+│                                                             │
+│   ✓ Meta Connection          Connected                     │
+│   ✓ Budget                   $25/day verified              │
+│   ◐ Landing Page             Checking...                   │
+│   ○ Schedule                 Pending                       │
+│   ○ Spelling & Grammar       Pending                       │
+│                                                             │
+│   "Running pre-flight checks..."                           │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### State 2: Results - All Passed
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   ✅ All Checks Passed                                      │
+│                                                             │
+│   Your campaign is ready to go live.                       │
+│                                                             │
+│   ✓ Meta Connection                                        │
+│   ✓ Budget ($25/day)                                       │
+│   ✓ Landing Page (200 OK)                                  │
+│   ✓ Schedule (Jan 15 - Continuous)                         │
+│   ✓ Spelling & Grammar (12 items checked)                  │
+│                                                             │
+│   [Back to Review]              [Publish Now →]            │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### State 3: Results - Issues Found
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   ⚠️ 2 Issues Found                                         │
+│                                                             │
+│   Review and fix these before publishing:                  │
+│                                                             │
+│   ⚠ Spelling & Grammar                                     │
+│     └─ "Orignal" → "Original" in headline                  │
+│       [Fix Now]                                            │
+│                                                             │
+│   ✗ Landing Page                                           │
+│     └─ Page returned 404 error                             │
+│       [Check URL]                                          │
+│                                                             │
+│   ✓ Meta Connection                                        │
+│   ✓ Budget                                                 │
+│   ✓ Schedule                                               │
+│                                                             │
+│   [Back to Review]      [Publish Anyway (not recommended)] │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Part 4: Integration into Campaign Builder
+
+### File: `src/pages/CampaignBuilder.tsx`
+
+1. Add new stage: `"qa-check"` between `"review"` and `"publishing"`
+2. Update `handlePublish` to first transition to QA check
+3. QA check component calls edge function
+4. On completion, either show issues or proceed to publish
+
+### Stage Flow Update
+
 ```typescript
-maxLength={27}
-className="pr-12"
-...
-{d.text?.length || 0}/27
+type Stage = "chat" | "review" | "qa-check" | "publishing" | "success";
+```
+
+### Progress Steps Update
+
+Add "QA Check" between Review and Publishing:
+```
+Questions → Review → QA Check → Publishing → Live
+    1          2         3           4         5
 ```
 
 ---
 
-### 3. Update Purpose Explanation
+## Part 5: QA Check Component Structure
 
-In the AI prompt, change the framing from "expand on the headline" to emphasize that descriptions are supplementary micro-text:
+### Props Interface
 
-```
-- Descriptions: Max 27 characters. These appear below headlines in some placements. 
-  Keep them punchy and action-oriented (e.g., "Try it free", "Learn how", "Get started now").
-  They complement the headline — don't repeat it.
-```
-
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `supabase/functions/generate-angle-copy/index.ts` | Update character limit from 125 to 27, change purpose description |
-| `src/components/creative/AngleCopyEditor.tsx` | Update `maxLength` from 125 to 27, update counter display |
-
----
-
-## Technical Details
-
-### Edge Function Update
-
-**File:** `supabase/functions/generate-angle-copy/index.ts`
-
-**Line 204 - Change copy requirements:**
 ```typescript
-// BEFORE
-- Descriptions: Max 125 characters, expand on the headline
-
-// AFTER  
-- Descriptions: Max 27 characters, short action phrase that complements the headline (e.g., "Start free today", "See the results")
+interface QACheckScreenProps {
+  workspace: any;
+  answers: any;
+  onBack: () => void;
+  onProceed: () => void;
+  onFixIssue: (issueType: string, issueData: any) => void;
+}
 ```
 
-**Lines 189-191 - Update output format example:**
-```typescript
-// BEFORE
-"descriptions": [
-  { "text": "...", "framework": "PAS", "character_count": 85 },
-  { "text": "...", "framework": "Before/After", "character_count": 90 }
-],
+### Internal State
 
-// AFTER
-"descriptions": [
-  { "text": "Start your free trial", "framework": "Direct", "character_count": 21 },
-  { "text": "See real results now", "framework": "Action", "character_count": 20 }
-],
+```typescript
+const [checkPhase, setCheckPhase] = useState<'running' | 'complete'>('running');
+const [checks, setChecks] = useState<Check[]>([
+  { id: 'meta', name: 'Meta Connection', status: 'pending' },
+  { id: 'budget', name: 'Budget', status: 'pending' },
+  { id: 'schedule', name: 'Schedule', status: 'pending' },
+  { id: 'landing_page', name: 'Landing Page', status: 'pending' },
+  { id: 'spelling', name: 'Spelling & Grammar', status: 'pending' },
+]);
+const [currentCheck, setCurrentCheck] = useState(0);
 ```
 
 ---
 
-### Frontend Update
+## Part 6: Edge Function Implementation
 
-**File:** `src/components/creative/AngleCopyEditor.tsx`
+### Check Functions
 
-**Lines 313-321:**
-```typescript
-// Change from:
-<Input
-  value={d.text}
-  onChange={(e) => updateVariation("descriptions", i, e.target.value)}
-  placeholder="Enter description..."
-  maxLength={125}
-  className="pr-14"
-/>
-<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-  {d.text?.length || 0}/125
-</span>
+1. **checkSpellingGrammar**: 
+   - Collect all copy (headlines, descriptions, primary_copy)
+   - Send to AI with prompt asking for spelling/grammar issues
+   - Return list of issues with suggestions
 
-// Change to:
-<Input
-  value={d.text}
-  onChange={(e) => updateVariation("descriptions", i, e.target.value)}
-  placeholder="Try it free today"
-  maxLength={27}
-  className="pr-12"
-/>
-<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-  {d.text?.length || 0}/27
-</span>
+2. **checkLandingPage**:
+   - Use existing `checkUrlReachability` pattern
+   - HEAD request with 10s timeout
+   - Return status code and any errors
+
+3. **checkBudget**:
+   - Verify budget is set and > 0
+   - Warn if unusually low (< $5/day) or high (> $1000/day)
+
+4. **checkSchedule**:
+   - Start date must be today or future
+   - End date (if set) must be after start date
+   - Warn if start date is > 30 days in future
+
+5. **checkMetaConnection**:
+   - Verify brand has meta_account_id and page_id
+   - Already done client-side but double-check
+
+---
+
+## Part 7: Copy Checking Details
+
+### What Gets Checked
+
+- All headlines from all angles
+- All descriptions from all angles
+- All primary copy from all angles
+- Item-level final copy (if exists)
+
+### AI Prompt for Spelling/Grammar
+
+```text
+You are a copy editor. Review the following ad copy for spelling and grammar errors.
+Return a JSON array of issues found. Each issue should have:
+- field: which field (headline_1, description_2, etc.)
+- original: the problematic text
+- suggestion: the corrected text
+- reason: brief explanation (e.g., "typo", "grammar", "punctuation")
+
+If no issues found, return an empty array.
+
+COPY TO CHECK:
+[copy content]
 ```
 
 ---
 
-## Example Descriptions (27 chars or less)
+## Part 8: Mobile Considerations
 
-Good descriptions that fit:
-- "Start your free trial" (21 chars)
-- "See how it works" (16 chars)  
-- "Get started today" (17 chars)
-- "Try it risk-free" (16 chars)
-- "Learn the method" (15 chars)
-- "Join 10k+ coaches" (17 chars)
-- "Limited time offer" (18 chars)
-- "Watch the free class" (20 chars)
+The QA Check screen will be fully responsive:
+- Stack check items vertically
+- Expandable issue details
+- Full-width action buttons
+- Safe area handling for bottom actions
+
+---
+
+## Part 9: Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/components/QACheckScreen.tsx` | Create | Main QA check component |
+| `supabase/functions/qa-preflight-check/index.ts` | Create | Server-side validation |
+| `src/pages/CampaignBuilder.tsx` | Modify | Add qa-check stage, update flow |
+| `src/components/MobileCampaignBuilder.tsx` | Modify | Add QA check for mobile flow |
+| `src/components/CampaignReview.tsx` | Modify | Update publish button to trigger QA |
+
+---
+
+## Part 10: Check Animations
+
+Each check will animate through states:
+
+1. **Pending**: Gray circle icon, faded text
+2. **Running**: Animated spinner, "Checking..." text
+3. **Passed**: Green checkmark with scale-in animation
+4. **Warning**: Amber warning icon, expandable details
+5. **Failed**: Red X icon, expandable details with fix button
+
+Stagger the check animations to create a sequential feel even though some checks may complete instantly.
 
 ---
 
 ## Summary
 
-This change ensures generated descriptions actually fit in Meta's display area instead of being truncated. The AI will now generate short, punchy phrases that complement the headline rather than trying to expand on it.
+This QA check system provides:
+- Visual confidence through animated progress
+- AI-powered spelling/grammar checking
+- URL reachability verification
+- Budget and schedule validation
+- Clear actionable feedback for issues
+- Seamless integration into existing flow
+- Mobile-responsive design
+
+Users will feel confident their ads are thoroughly checked before going live, reducing errors and improving campaign quality.
 
