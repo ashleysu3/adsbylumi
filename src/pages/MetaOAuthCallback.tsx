@@ -191,7 +191,7 @@ export default function MetaOAuthCallback() {
 
         // Give the UI a moment to render the success state before redirecting.
         setTimeout(() => {
-          navigate("/settings/meta", { replace: true });
+          navigate("/meta-settings", { replace: true });
         }, 600);
       } catch (e: any) {
         const msg = formatInvokeError(e);
@@ -241,8 +241,7 @@ export default function MetaOAuthCallback() {
 
         {mode === "error" && (
           <div className="pt-2">
-            <Button variant="ghost" className="w-full" onClick={() => navigate("/settings/meta")}
-            >
+            <Button variant="ghost" className="w-full" onClick={() => navigate("/meta-settings")}>
               Back to Meta settings
             </Button>
           </div>
