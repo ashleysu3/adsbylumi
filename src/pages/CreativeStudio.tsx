@@ -211,8 +211,11 @@ export default function CreativeStudio() {
   // Regeneration confirmation state
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
  
-   // Pre-generation context state
-   const [showContextInput, setShowContextInput] = useState(false);
+  // Pre-generation context state
+  const [showContextInput, setShowContextInput] = useState(false);
+
+  // Auto-generate copy state
+  const [shouldAutoGenerateCopy, setShouldAutoGenerateCopy] = useState(false);
 
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -390,6 +393,10 @@ export default function CreativeStudio() {
             }));
           });
       }
+    }
+    // Reset auto-generate flag when leaving copy tab
+    if (activeTab !== "copy") {
+      setShouldAutoGenerateCopy(false);
     }
   }, [activeTab, workspace?.id]);
 
@@ -740,7 +747,7 @@ export default function CreativeStudio() {
                     );
                   })}
                 </div>
-                <div className="flex justify-end"><Button onClick={() => setActiveTab("copy")} disabled={productionItems.length === 0} className="gap-2">Continue to Ad Copy<ArrowRight className="h-4 w-4" /></Button></div>
+                <div className="flex justify-end"><Button onClick={() => { setShouldAutoGenerateCopy(true); setActiveTab("copy"); }} disabled={productionItems.length === 0} className="gap-2">Continue to Ad Copy<ArrowRight className="h-4 w-4" /></Button></div>
               </div>
             )}
           </TabsContent>
@@ -785,6 +792,7 @@ export default function CreativeStudio() {
                   onCopyChange={handleCopyChange}
                   onSave={handleSaveCopy}
                   productionItemCount={productionItems.length}
+                  autoGenerate={shouldAutoGenerateCopy}
                 />
                 
                 <div className="flex justify-end">
