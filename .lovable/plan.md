@@ -1,362 +1,272 @@
 
 
-# Pre-Generation Creative Context Input
+# Auto-Generate Copy When Entering the Copy Tab
 
 ## Overview
 
-When users return to Creative Studio for an existing campaign (e.g., to create fresh angles for a new creative round), give them the option to share additional context that could help Lumi create more relevant angles. This captures insights like:
-- Is the audience coming in at the right stage of awareness?
-- What's been working or not working in previous creative?
-- Any specific direction they want to explore
-
-This information is passed to the AI when generating angles, producing more tailored creative direction.
+When users navigate from the Creative Concepts tab to the Ad Copy tab, the system should automatically trigger copy generation for all selected angles that don't already have copy. This removes friction from the workflow while keeping a "Regenerate" button for users who want to refresh their copy.
 
 ---
 
-## User Flow
+## Current Behavior
 
-```text
-User opens Creative Studio → Has existing workspace selected
-                          → If creating NEW angles (first time OR regenerating):
-                              → Show optional "Add Context" input before generation
-                              → User can add insights or skip
-                              → Insights passed to generate-creative-angles function
-```
+| Scenario | Current UX |
+|----------|-----------|
+| User clicks "Continue to Ad Copy" | Lands on Copy tab, sees empty state with "Generate Copy" button |
+| User must click | "Generate Copy" to trigger generation |
+| Multiple angles | User must click "Generate All" or generate one by one |
 
 ---
 
-## Part 1: New Component - CreativeContextInput
+## Proposed Behavior
 
-### File: `src/components/creative/CreativeContextInput.tsx`
-
-A collapsible card that appears on the Angles tab when:
-1. A workspace is selected
-2. No angles exist yet OR user clicked "Regenerate"
-
-The component includes:
-- An expandable "Help Lumi create better angles" section
-- Pre-written quick-select options for common feedback scenarios
-- A free-text area for additional context
-- "Skip" and "Generate" action buttons
-
-### UI Design
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ ✨ Generate Creative Angles                                         │
-│                                                                     │
-│ Lumi will suggest unique creative angles for your campaign.        │
-│                                                                     │
-│ ┌─────────────────────────────────────────────────────────────────┐ │
-│ │ 💡 Help Lumi create better angles (optional)           [▼]     │ │
-│ └─────────────────────────────────────────────────────────────────┘ │
-│                                                                     │
-│ When expanded:                                                      │
-│ ┌─────────────────────────────────────────────────────────────────┐ │
-│ │ Quick select any that apply:                                   │ │
-│ │                                                                 │ │
-│ │ [ ] Audience is too early in their journey (need education)    │ │
-│ │ [ ] Audience is skeptical/has objections to address            │ │
-│ │ [ ] Previous creative felt too generic                         │ │
-│ │ [ ] Need more urgency/scarcity messaging                       │ │
-│ │ [ ] Want to highlight a specific transformation                │ │
-│ │ [ ] Focus on a particular pain point                           │ │
-│ │                                                                 │ │
-│ │ Anything else Lumi should know?                                │ │
-│ │ ┌─────────────────────────────────────────────────────────────┐ │ │
-│ │ │ [Textarea for free-form input]                              │ │ │
-│ │ │                                                             │ │ │
-│ │ └─────────────────────────────────────────────────────────────┘ │ │
-│ └─────────────────────────────────────────────────────────────────┘ │
-│                                                                     │
-│                        [Skip] [Generate Angles ✨]                  │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### Quick Select Options
-
-| Option | What it tells the AI |
-|--------|---------------------|
-| "Audience is too early in their journey" | Create more educational, awareness-stage angles |
-| "Audience is skeptical/has objections" | Focus on trust-building, proof, and objection handling |
-| "Previous creative felt too generic" | Be more specific, use unique angles and real language |
-| "Need more urgency/scarcity messaging" | Include time-sensitive and limited opportunity angles |
-| "Want to highlight a specific transformation" | Emphasize before/after and result-focused angles |
-| "Focus on a particular pain point" | Deep-dive on problem-aware messaging |
+| Scenario | New UX |
+|----------|--------|
+| User clicks "Continue to Ad Copy" | Copy generation starts automatically with loading state |
+| Generation in progress | Show Lumi thinking animation + progress indicator |
+| Generation complete | Copy appears, "Regenerate" button available |
+| Returning with existing copy | No auto-generation, just shows existing copy |
 
 ---
 
-## Part 2: Component Structure
+## Part 1: Add Auto-Generation Logic to AngleCopyEditor
 
-### Props Interface
+### File: `src/components/creative/AngleCopyEditor.tsx`
 
+Add a new prop to signal that the component should auto-generate on mount, and a `useEffect` to trigger generation:
+
+**New prop:**
 ```typescript
-interface CreativeContextInputProps {
-  onGenerate: (context: CreativeContext) => void;
-  onSkip: () => void;
-  isGenerating: boolean;
-  existingContext?: CreativeContext;
-}
-
-interface CreativeContext {
-  quickSelections: string[];
-  additionalNotes: string;
-  timestamp: string;
+interface AngleCopyEditorProps {
+  // ... existing props ...
+  autoGenerate?: boolean;  // NEW: Trigger auto-generation on mount
 }
 ```
 
-### Internal State
-
+**Auto-generation useEffect:**
 ```typescript
-const [expanded, setExpanded] = useState(false);
-const [quickSelections, setQuickSelections] = useState<string[]>([]);
-const [additionalNotes, setAdditionalNotes] = useState("");
+// Track if we've already attempted auto-generation this session
+const hasAutoGeneratedRef = useRef(false);
+
+useEffect(() => {
+  // Auto-generate copy on first render if:
+  // 1. autoGenerate prop is true
+  // 2. No copy exists for any angle
+  // 3. We haven't already attempted generation
+  // 4. Not currently generating
+  if (
+    autoGenerate && 
+    !allAnglesHaveCopy && 
+    !hasAutoGeneratedRef.current && 
+    !generating &&
+    selectedAngleIds.length > 0
+  ) {
+    hasAutoGeneratedRef.current = true;
+    generateAllCopy();
+  }
+}, [autoGenerate, allAnglesHaveCopy, generating, selectedAngleIds.length]);
+
+// Reset the ref when angles change significantly
+useEffect(() => {
+  hasAutoGeneratedRef.current = false;
+}, [selectedAngleIds.join(",")]);
 ```
 
 ---
 
-## Part 3: Integrate into CreativeStudio.tsx
+## Part 2: Track When User Navigates to Copy Tab
 
 ### File: `src/pages/CreativeStudio.tsx`
 
-1. Add state for pre-generation context:
+Add state to track when the copy tab becomes active from the concepts tab:
+
 ```typescript
-const [preGenerationContext, setPreGenerationContext] = useState<CreativeContext | null>(null);
-const [showContextInput, setShowContextInput] = useState(false);
+// Track if we should auto-generate copy
+const [shouldAutoGenerateCopy, setShouldAutoGenerateCopy] = useState(false);
 ```
 
-2. Modify the "Generate Angles" empty state to use the new component:
+**Update the "Continue to Ad Copy" button:**
 ```typescript
-// Replace the simple Card with CreativeContextInput when no angles exist
-{availableAngles.length === 0 ? (
-  <CreativeContextInput
-    onGenerate={(context) => {
-      setPreGenerationContext(context);
-      generateAngles(context);
-    }}
-    onSkip={() => generateAngles()}
-    isGenerating={generating}
-  />
-) : (
-  // existing angle selector...
-)}
+<Button 
+  onClick={() => {
+    setShouldAutoGenerateCopy(true);
+    setActiveTab("copy");
+  }} 
+  disabled={productionItems.length === 0} 
+  className="gap-2"
+>
+  Continue to Ad Copy
+  <ArrowRight className="h-4 w-4" />
+</Button>
 ```
 
-3. Modify `handleRegenerateClick` to show context input:
+**Pass to AngleCopyEditor:**
 ```typescript
-const handleRegenerateClick = () => {
-  if (gridData.length > 0 || productionItems.length > 0) {
-    setShowRegenerateConfirm(true);
-    return;
+<AngleCopyEditor
+  angles={availableAngles}
+  selectedAngleIds={selectedAngleIds}
+  angleCopy={angleCopy}
+  brandInfo={workspace?.brands}
+  offerData={{
+    name: workspace?.offer_name,
+    description: workspace?.offer_description,
+    price_point: workspace?.offer_price,
+  }}
+  audiencePsychology={workspace?.brands?.audience_psychology}
+  onCopyChange={handleCopyChange}
+  onSave={handleSaveCopy}
+  productionItemCount={productionItems.length}
+  autoGenerate={shouldAutoGenerateCopy}  // NEW
+/>
+```
+
+**Reset auto-generate flag when tab changes away:**
+```typescript
+useEffect(() => {
+  if (activeTab !== "copy") {
+    setShouldAutoGenerateCopy(false);
   }
-  // Show context input before regenerating
-  setShowContextInput(true);
-};
-```
-
-4. Update `generateAngles` to accept and pass context:
-```typescript
-const generateAngles = async (context?: CreativeContext) => {
-  // ... existing code ...
-  
-  const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
-    body: { 
-      brandName: workspace.brands?.name, 
-      strategyData: workspace.strategy_json, 
-      audiencePsychology: workspace.brands?.audience_psychology, 
-      offerData: { ... },
-      // NEW: Pass the pre-generation context
-      preGenerationContext: context || preGenerationContext,
-      conversationInsights: workspace.creative_json?.conversationInsights
-    }
-  });
-  
-  // Save context to workspace for future reference
-  if (context) {
-    saveCreativeState({ preGenerationContext: context });
-  }
-};
+}, [activeTab]);
 ```
 
 ---
 
-## Part 4: Update Edge Function
+## Part 3: Update Button UI During/After Generation
 
-### File: `supabase/functions/generate-creative-angles/index.ts`
+### File: `src/components/creative/AngleCopyEditor.tsx`
 
-1. Accept `preGenerationContext` in the request body:
+The existing UI already handles the generating state well. Update the button section to:
+1. Show loading state during auto-generation
+2. Only show "Regenerate" button after copy exists
+3. Keep "Generate All" for regenerating multiple angles at once
+
+**Updated button section (lines 219-252):**
 ```typescript
-const { ..., preGenerationContext } = await req.json();
+{/* Generate Buttons */}
+<div className="flex gap-2">
+  {hasCopy ? (
+    // Copy exists - show regenerate options
+    <>
+      <Button 
+        onClick={generateCopy} 
+        disabled={generating} 
+        variant="outline" 
+        size="sm"
+        className="gap-2"
+      >
+        {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+        Regenerate
+      </Button>
+      {selectedAngles.length > 1 && (
+        <Button 
+          onClick={generateAllCopy} 
+          disabled={generating} 
+          variant="outline" 
+          size="sm"
+          className="gap-2"
+        >
+          {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Regenerate All
+        </Button>
+      )}
+    </>
+  ) : generating ? (
+    // Currently generating - show loading state
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <Loader2 className="h-4 w-4 animate-spin" />
+      <span>Generating copy...</span>
+    </div>
+  ) : (
+    // No copy and not generating - show generate buttons (fallback)
+    <>
+      <Button 
+        onClick={generateCopy} 
+        disabled={generating} 
+        className="flex-1 gap-2"
+      >
+        <Sparkles className="h-4 w-4" />
+        Generate Copy
+      </Button>
+      {selectedAngles.length > 1 && (
+        <Button 
+          onClick={generateAllCopy} 
+          disabled={generating} 
+          variant="outline" 
+          size="sm"
+          className="gap-2"
+        >
+          <Sparkles className="h-4 w-4" />
+          Generate All
+        </Button>
+      )}
+    </>
+  )}
+</div>
 ```
 
-2. Build context string from quick selections and notes:
+---
+
+## Part 4: Enhanced Loading State
+
+Add a more prominent loading indicator when auto-generating:
+
 ```typescript
-let preGenContext = "";
-if (preGenerationContext) {
-  preGenContext = "\n\n=== USER DIRECTION FOR THIS CREATIVE ROUND ===\n";
-  
-  if (preGenerationContext.quickSelections?.length > 0) {
-    preGenContext += "The user indicated the following about their audience/needs:\n";
-    
-    const selectionMappings: Record<string, string> = {
-      "audience_early_journey": "- Audience is early in their awareness journey and needs more education before they'll buy",
-      "audience_skeptical": "- Audience is skeptical and has objections that need to be addressed (trust is key)",
-      "previous_generic": "- Previous creative felt too generic - need more specific, authentic angles",
-      "need_urgency": "- Need more urgency and scarcity messaging to drive action",
-      "highlight_transformation": "- Want to emphasize the transformation and end results",
-      "focus_pain_point": "- Focus deeply on the core pain point"
-    };
-    
-    preGenerationContext.quickSelections.forEach((sel: string) => {
-      if (selectionMappings[sel]) {
-        preGenContext += selectionMappings[sel] + "\n";
-      }
-    });
-  }
-  
-  if (preGenerationContext.additionalNotes?.trim()) {
-    preGenContext += `\nAdditional direction from user: "${preGenerationContext.additionalNotes}"\n`;
-  }
-  
-  preGenContext += "\nIMPORTANT: Prioritize angles that address the user's specific direction above. This is fresh input for THIS creative round.\n";
+// At the top of the component render, before the Card
+if (generating && !hasCopy) {
+  return (
+    <Card>
+      <CardContent className="pt-6 py-12">
+        <div className="flex flex-col items-center justify-center gap-4">
+          <div className="relative">
+            <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+          </div>
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold">Generating Ad Copy</h3>
+            <p className="text-sm text-muted-foreground">
+              Lumi is writing headlines, descriptions, and primary copy for your {selectedAngles.length} angle{selectedAngles.length !== 1 ? 's' : ''}...
+            </p>
+          </div>
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 ```
 
-3. Add to the system prompt context (after conversationInsights):
-```typescript
-const systemPrompt = `You are Lumi's Creative Engine...
+---
 
-KNOWLEDGE BASE:
-${kbContext}
-${contentAssetsContext}
-${insightsContext}
-${offerAudienceContext}
-${preGenContext}  // <-- NEW
+## Part 5: Files to Modify
 
-RULES:
-...
-${preGenerationContext ? "- PRIORITIZE the user's specific direction for this creative round" : ""}
-`;
-```
+| File | Changes |
+|------|---------|
+| `src/components/creative/AngleCopyEditor.tsx` | Add `autoGenerate` prop, add useEffect for auto-generation, add enhanced loading state, update button UI |
+| `src/pages/CreativeStudio.tsx` | Add `shouldAutoGenerateCopy` state, set it when navigating to copy tab, pass to AngleCopyEditor, reset when leaving tab |
 
 ---
 
-## Part 5: Store Context in Workspace
+## Edge Cases Handled
 
-Save the pre-generation context to `creative_json` so it can be:
-1. Displayed when user returns to the workspace
-2. Referenced in future generations
-3. Used to understand the creative direction history
-
-```typescript
-// In saveCreativeState or after generating
-await supabase
-  .from("campaign_workspaces")
-  .update({
-    creative_json: {
-      ...currentCreativeJson,
-      preGenerationContext: context,
-      preGenerationHistory: [
-        ...(currentCreativeJson.preGenerationHistory || []),
-        { ...context, anglesGeneratedAt: new Date().toISOString() }
-      ]
-    }
-  })
-  .eq("id", workspace.id);
-```
-
----
-
-## Part 6: Regeneration Flow with Context
-
-When user clicks "Regenerate" and confirms (if needed), show the context input modal:
-
-```typescript
-// After confirmation dialog is confirmed
-<Dialog open={showContextInput} onOpenChange={setShowContextInput}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Any direction for this round?</DialogTitle>
-      <DialogDescription>
-        Help Lumi create angles that better fit your needs.
-      </DialogDescription>
-    </DialogHeader>
-    <CreativeContextInput
-      compact // renders in modal style
-      onGenerate={(context) => {
-        setShowContextInput(false);
-        generateAngles(context);
-      }}
-      onSkip={() => {
-        setShowContextInput(false);
-        generateAngles();
-      }}
-      existingContext={workspace?.creative_json?.preGenerationContext}
-    />
-  </DialogContent>
-</Dialog>
-```
-
----
-
-## Part 7: Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/components/creative/CreativeContextInput.tsx` | **Create** | New component for capturing pre-generation context |
-| `src/pages/CreativeStudio.tsx` | **Modify** | Integrate context input, update generateAngles to pass context |
-| `supabase/functions/generate-creative-angles/index.ts` | **Modify** | Accept and process preGenerationContext in AI prompt |
-
----
-
-## Part 8: Quick Select Options Details
-
-```typescript
-const QUICK_SELECT_OPTIONS = [
-  {
-    id: "audience_early_journey",
-    label: "Audience needs more education first",
-    description: "They're not ready to buy yet"
-  },
-  {
-    id: "audience_skeptical",
-    label: "Audience is skeptical",
-    description: "Need to build trust and handle objections"
-  },
-  {
-    id: "previous_generic",
-    label: "Previous creative felt generic",
-    description: "Need more specific, authentic messaging"
-  },
-  {
-    id: "need_urgency",
-    label: "Need more urgency",
-    description: "Drive action with scarcity/time pressure"
-  },
-  {
-    id: "highlight_transformation",
-    label: "Emphasize the transformation",
-    description: "Focus on before/after results"
-  },
-  {
-    id: "focus_pain_point",
-    label: "Focus on a specific pain point",
-    description: "Deep-dive on the core problem"
-  }
-];
-```
+| Scenario | Behavior |
+|----------|----------|
+| Copy already exists for all angles | No auto-generation, show existing copy immediately |
+| Copy exists for some angles | Auto-generate only for angles missing copy (use existing `generateAllCopy` which handles this) |
+| User returns to copy tab later | No auto-generation (flag resets when tab changes) |
+| User clicks Regenerate | Manual regeneration, replaces existing copy |
+| Generation fails | Error toast shown, manual retry available |
+| No angles selected | Show empty state (existing behavior) |
 
 ---
 
 ## Summary
 
-This feature adds an optional but valuable pre-generation input step that:
+This update provides a smoother workflow by:
 
-1. **Captures user direction** - Quick-select options and free-text for context
-2. **Informs AI generation** - Passes context to the angle generation prompt
-3. **Persists for reference** - Saves context history to the workspace
-4. **Stays non-blocking** - Users can skip if they don't have specific direction
-5. **Works for both first-time and regeneration** - Context input appears in both flows
+1. **Auto-generating** copy when users navigate to the Copy tab for the first time
+2. **Showing a clear loading state** during generation with Lumi branding
+3. **Keeping regeneration accessible** via explicit buttons for users who want fresh copy
+4. **Preserving existing copy** when users return to the tab
+5. **Handling edge cases** like partial copy or failed generation gracefully
 
-Users get more relevant creative angles because Lumi understands their specific situation and needs for this creative round.
+Users move from concepts to copy without needing to click an extra button, making the workflow feel more guided and intelligent.
 
