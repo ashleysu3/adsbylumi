@@ -465,18 +465,14 @@ export default function Dashboard() {
 
         {/* Tabs Navigation */}
          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="flex-wrap h-auto gap-1">
+           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="gap-2">
               <Building2 className="h-4 w-4" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="brand-copy" className="gap-2">
-              <Smile className="h-4 w-4" />
-              Brand Copy
-            </TabsTrigger>
-            <TabsTrigger value="psychology" className="gap-2">
+            <TabsTrigger value="brand-brain" className="gap-2">
               <Brain className="h-4 w-4" />
-              Audience Psychology
+              Brand Brain
             </TabsTrigger>
             <TabsTrigger value="offers" className="gap-2">
               <Package className="h-4 w-4" />
@@ -579,13 +575,25 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* Brand Copy Tab */}
-          <TabsContent value="brand-copy" className="space-y-6">
+          {/* Brand Brain Tab - Combined Content Library, Psychology, Copy Preferences */}
+          <TabsContent value="brand-brain" className="space-y-6">
              {/* Content Assets Editor - at the top */}
              <ContentAssetsEditor 
                brandId={brand.id} 
                offers={offers.map(o => ({ id: o.id, name: o.name }))} 
              />
+             
+            {/* Audience Psychology */}
+            <div data-section="audience-psychology">
+              <AudiencePsychology
+                brandId={brand.id}
+                psychology={brand.audience_psychology}
+                status={brand.psychology_status}
+                psychologyContentHash={brand.psychology_content_hash}
+                psychologyGeneratedAt={brand.psychology_generated_at}
+                onUpdate={fetchBrandData}
+              />
+            </div>
              
              {/* Emoji Settings */}
             <Card variant="glow">
@@ -754,18 +762,6 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Audience Psychology Tab */}
-          <TabsContent value="psychology" className="space-y-6">
-            <div data-section="audience-psychology">
-              <AudiencePsychology
-                brandId={brand.id}
-                psychology={brand.audience_psychology}
-                status={brand.psychology_status}
-                onUpdate={fetchBrandData}
-              />
-            </div>
           </TabsContent>
 
           {/* Offers Tab */}

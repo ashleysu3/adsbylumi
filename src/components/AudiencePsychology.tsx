@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { LumiThinking } from "@/components/LumiThinking";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,18 @@ import { toast } from "sonner";
 import { formatInvokeError } from "@/lib/formatInvokeError";
 import { Brain, ChevronDown, RefreshCw, Loader2, Users, Heart, AlertCircle, Zap, CheckCircle2, Pencil, Sparkles, FileText } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// Custom loading copy for psychology generation
+const PSYCHOLOGY_LOADING_COPY = [
+  "Analyzing your brand's positioning...",
+  "Understanding your ideal client...",
+  "Mapping psychological pain points...",
+  "Identifying what motivates your audience...",
+  "Building your psychology profile...",
+  "This takes a moment — worth it.",
+  "Extracting insights from your content...",
+  "Defining desires and objections...",
+];
 
 interface AudiencePsychologyProps {
   brandId: string;
@@ -61,7 +74,6 @@ export function AudiencePsychology({
 
   const handleGenerate = async () => {
     setGenerating(true);
-    toast.info("Generating audience psychology profile...");
 
     try {
       const { error } = await supabase.functions.invoke('generate-audience-psychology', {
@@ -192,6 +204,12 @@ export function AudiencePsychology({
 
   return (
     <>
+      {/* LumiThinking Modal for loading state */}
+      <LumiThinking 
+        isOpen={generating} 
+        customCopy={PSYCHOLOGY_LOADING_COPY}
+      />
+      
       <Collapsible open={open} onOpenChange={setOpen}>
         <Card data-section="audience-psychology">
           <CardHeader>
