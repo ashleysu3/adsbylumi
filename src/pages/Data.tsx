@@ -14,6 +14,7 @@ import { ResultsEmptyState } from '@/components/insights/ResultsEmptyState';
 import { useLumiAssistant } from '@/components/LumiAssistant';
 import { MetaConnectionAlert, MetaConnectionBanner } from '@/components/MetaConnectionAlert';
 import { ImportCampaignsModal } from '@/components/insights/ImportCampaignsModal';
+import { useBrand } from '@/contexts/BrandContext';
 
 interface PerformanceAnalysis {
   kpi_evaluation?: Record<string, {
@@ -74,6 +75,7 @@ export default function Data() {
   const navigate = useNavigate();
   const workspaceIdFromUrl = searchParams.get('workspace');
   const { setRecommendation } = useLumiAssistant();
+  const { activeBrand, loading: brandLoading } = useBrand();
 
   // View state: 'home' or 'detail'
   const [view, setView] = useState<'home' | 'detail'>(workspaceIdFromUrl ? 'detail' : 'home');
@@ -85,11 +87,11 @@ export default function Data() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
 
-  // Meta connection state
-  const [metaConnected, setMetaConnected] = useState(false);
+  // Meta connection state - derived from activeBrand
+  const metaConnected = !!activeBrand?.meta_account_id;
   const [metaTokenExpired, setMetaTokenExpired] = useState(false);
-  const [brandId, setBrandId] = useState<string | null>(null);
-  const [metaAccountId, setMetaAccountId] = useState<string | null>(null);
+  const brandId = activeBrand?.id || null;
+  const metaAccountId = activeBrand?.meta_account_id || null;
   const [tokenExpirationChecked, setTokenExpirationChecked] = useState(false);
 
   // Import modal state
@@ -224,10 +226,34 @@ export default function Data() {
     }
   };
 
-  // Fetch campaigns on mount
+  // Fetch campaigns when brand is available
   useEffect(() => {
-    fetchCampaigns();
-  }, []);
+    if (!brandLoading && activeBrand) {
+      fetchCampaigns();
+    }
+  }, [brandLoading, activeBrand?.id]);
+
+  // Check token expiration when brand loads - uses type assertion since meta_token_expires_at may exist
+  useEffect(() => {
+    const brandData = activeBrand as any;
+    if (brandData && metaConnected && brandData.meta_token_expires_at && !tokenExpirationChecked) {
+      const expiresAt = new Date(brandData.meta_token_expires_at);
+      const now = new Date();
+      
+      if (expiresAt < now) {
+        setMetaTokenExpired(true);
+        toast.error("Meta connection expired", {
+          description: "Reconnect to continue syncing your campaigns.",
+          action: {
+            label: "Reconnect",
+            onClick: () => navigate("/meta-settings"),
+          },
+          duration: 10000,
+        });
+      }
+      setTokenExpirationChecked(true);
+    }
+  }, [activeBrand, metaConnected, tokenExpirationChecked, navigate]);
 
   // Refetch when global date range changes (home view)
   useEffect(() => {
@@ -247,44 +273,12 @@ export default function Data() {
   }, [view, selectedCampaignId]);
 
   const fetchCampaigns = async () => {
+    if (!activeBrand) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: brand } = await supabase
-        .from('brands')
-        .select('id, meta_account_id, meta_token_expires_at')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!brand) return;
-
-      setBrandId(brand.id);
-
-      // Meta is connected if we have an account ID (token is now stored in Vault server-side)
-      const isMetaConnected = !!brand.meta_account_id;
-      setMetaConnected(isMetaConnected);
-      setMetaAccountId(brand.meta_account_id);
-
-      // Check token expiration on page load
-      if (isMetaConnected && brand.meta_token_expires_at && !tokenExpirationChecked) {
-        const expiresAt = new Date(brand.meta_token_expires_at);
-        const now = new Date();
-        
-        if (expiresAt < now) {
-          setMetaTokenExpired(true);
-          toast.error("Meta connection expired", {
-            description: "Reconnect to continue syncing your campaigns.",
-            action: {
-              label: "Reconnect",
-              onClick: () => navigate("/dashboard"),
-            },
-            duration: 10000,
-          });
-        }
-        setTokenExpirationChecked(true);
-      }
-
       const { data, error } = await supabase
         .from('campaign_workspaces')
         .select(`
@@ -303,7 +297,7 @@ export default function Data() {
             objective
           )
         `)
-        .eq('brand_id', brand.id)
+        .eq('brand_id', activeBrand.id)
         .not('meta_campaign_ids', 'is', null)
         .order('created_at', { ascending: false });
 
@@ -352,13 +346,13 @@ export default function Data() {
       setCampaigns(campaignData);
 
       // Fetch metrics for all campaigns and account overview
-      if (isMetaConnected && campaignData.length > 0) {
+      if (metaConnected && campaignData.length > 0) {
         await Promise.all([
           fetchAllMetrics(campaignData),
-          fetchAccountOverview(brand.id),
+          fetchAccountOverview(activeBrand.id),
         ]);
-      } else if (isMetaConnected) {
-        await fetchAccountOverview(brand.id);
+      } else if (metaConnected) {
+        await fetchAccountOverview(activeBrand.id);
       }
     } catch (error: any) {
       console.error('Error fetching campaigns:', error);
