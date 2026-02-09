@@ -1,11 +1,6 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import Stripe from "npm:stripe@14.21.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 interface RequestBody {
   action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity" | "delete_user" | "toggle_agency_mode";
@@ -30,7 +25,10 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[ADMIN-USER-MGMT] ${step}`, details ? JSON.stringify(details) : "");
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
