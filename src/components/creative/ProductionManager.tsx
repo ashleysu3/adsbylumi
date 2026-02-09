@@ -99,7 +99,7 @@ export function ProductionManager({
   const hasAtLeastOneUpload = productionItems.some(item => getAssetForItem(item.id));
   
   // Updated readiness check - needs 3+ concepts AND at least one upload
-  const isReadyToBuild = productionItems.length >= 3 && hasAtLeastOneUpload;
+  const isReadyToBuild = productionItems.length >= 1 && hasAtLeastOneUpload;
   const hasAnyCopy = Object.keys(angleCopy).length > 0;
   
   const handleRankConcepts = async () => {
@@ -466,11 +466,9 @@ export function ProductionManager({
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {productionItems.length < 3 
-                        ? `Need ${3 - productionItems.length} more concepts`
-                        : !hasAtLeastOneUpload
-                          ? "Upload at least 1 creative file to continue"
-                          : `${itemsWithAssets}/${productionItems.length} creatives uploaded`
+                      {!hasAtLeastOneUpload
+                        ? "Upload at least 1 creative file to continue"
+                        : `${itemsWithAssets}/${productionItems.length} creatives uploaded`
                       }
                     </p>
                   </div>
