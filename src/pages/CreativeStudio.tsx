@@ -247,7 +247,7 @@ export default function CreativeStudio() {
   }, []);
 
   useEffect(() => { 
-    if (!brandLoading) {
+    if (!brandLoading && activeBrand) {
       // Clear all stale state when brand changes
       setWorkspaces([]);
       setSelectedWorkspaceId("");
