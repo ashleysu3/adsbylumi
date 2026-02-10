@@ -756,7 +756,7 @@ export default function Create() {
 
                         clearSavedProgress();
                         toast.success("Posts selected! Let's build your campaign.");
-                        navigate(`/campaign-builder?workspace=${workspace.id}`);
+                        navigate(`/campaigns/build?workspace=${workspace.id}`);
                       } catch (error: any) {
                         console.error("Error creating social growth workspace:", error);
                         toast.error(error.message || "Failed to create campaign");
