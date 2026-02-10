@@ -42,6 +42,10 @@ export function MobileCampaignReview({
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
 
+  // Detect social growth campaign
+  const isSocialGrowth = !!(workspace?.creative_json as any)?.socialGrowth;
+  const selectedPosts = isSocialGrowth ? ((workspace?.creative_json as any)?.selectedPosts || []) : [];
+
   // Get approved concepts
   const approvedConcepts = workspace.production_items?.filter((item: any) => item.status === 'approved') || [];
   const readyConcepts = approvedConcepts.filter((item: any) => {
@@ -55,7 +59,9 @@ export function MobileCampaignReview({
   const hasMetaAccount = !!brand?.meta_account_id;
   const hasFacebookPage = !!brand?.page_id;
   const isMetaReady = hasMetaAccount && hasFacebookPage;
-  const canPublish = readyConcepts.length >= 1 && answers.budget && answers.startDate && isMetaReady;
+  const canPublish = isSocialGrowth
+    ? (selectedPosts.length >= 1 && answers.budget && answers.startDate && isMetaReady)
+    : (readyConcepts.length >= 1 && answers.budget && answers.startDate && isMetaReady);
 
   const handleEditStart = (field: string, currentValue: any) => {
     setEditingField(field);
@@ -187,27 +193,46 @@ export function MobileCampaignReview({
         </ReviewCard>
 
         {/* Creative Card */}
-        <ReviewCard
-          icon={<ImageIcon className="h-4 w-4" />}
-          title={`Creative (${readyConcepts.length} ready)`}
-          onEdit={() => onEditSection?.("creative")}
-        >
-          {readyConcepts.length > 0 ? (
+        {isSocialGrowth ? (
+          <ReviewCard
+            icon={<ImageIcon className="h-4 w-4" />}
+            title={`Instagram Posts (${selectedPosts.length})`}
+          >
             <div className="space-y-2">
-              {readyConcepts.slice(0, 3).map((item: any, index: number) => (
+              {selectedPosts.slice(0, 3).map((post: any, index: number) => (
                 <div key={index} className="flex items-center gap-2 text-sm">
                   <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="truncate">{item.concept?.title || `Creative ${index + 1}`}</span>
+                  <span className="truncate">{post.caption?.slice(0, 40) || `Post ${index + 1}`}</span>
                 </div>
               ))}
-              {readyConcepts.length > 3 && (
-                <p className="text-xs text-muted-foreground">+{readyConcepts.length - 3} more</p>
+              {selectedPosts.length > 3 && (
+                <p className="text-xs text-muted-foreground">+{selectedPosts.length - 3} more</p>
               )}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No creative ready</p>
-          )}
-        </ReviewCard>
+          </ReviewCard>
+        ) : (
+          <ReviewCard
+            icon={<ImageIcon className="h-4 w-4" />}
+            title={`Creative (${readyConcepts.length} ready)`}
+            onEdit={() => onEditSection?.("creative")}
+          >
+            {readyConcepts.length > 0 ? (
+              <div className="space-y-2">
+                {readyConcepts.slice(0, 3).map((item: any, index: number) => (
+                  <div key={index} className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="truncate">{item.concept?.title || `Creative ${index + 1}`}</span>
+                  </div>
+                ))}
+                {readyConcepts.length > 3 && (
+                  <p className="text-xs text-muted-foreground">+{readyConcepts.length - 3} more</p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No creative ready</p>
+            )}
+          </ReviewCard>
+        )}
 
         {/* Launch Status */}
         <Card className="border-2 border-primary/20">
@@ -256,6 +281,7 @@ export function MobileCampaignReview({
         {!canPublish && (
           <p className="text-xs text-center text-muted-foreground mt-2">
             {!isMetaReady ? "Connect Meta first" : 
+             isSocialGrowth ? (selectedPosts.length < 1 ? "Need at least 1 post" : !answers.budget ? "Set a budget" : "Set a start date") :
              readyConcepts.length < 1 ? "Need at least 1 creative" :
              !answers.budget ? "Set a budget" : 
              !answers.startDate ? "Set a start date" : ""}
