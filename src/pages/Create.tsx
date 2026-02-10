@@ -750,7 +750,7 @@ export default function Create() {
                         setIsCreatingCampaign(false);
                       }
                     }}
-                    onConnectInstagram={() => navigate("/settings/meta")}
+                    onConnectInstagram={() => navigate("/settings/meta?returnTo=/create&socialGrowth=true")}
                     onBack={() => {
                       setShowSocialGrowthFlow(false);
                       setSelectedOfferId("");
