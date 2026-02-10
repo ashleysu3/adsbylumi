@@ -155,7 +155,16 @@ Generate headline, primary_text, description, and call_to_action that:
 3. Defaults to LEARN_MORE for Grow stage unless there's strong reason otherwise
 4. Passes Meta compliance checks
 5. Applies proven copy formulas from the KB
-6. STRICTLY FOLLOWS the messaging guidelines (especially "don't say" and "always include")`;
+6. STRICTLY FOLLOWS the messaging guidelines (especially "don't say" and "always include")
+
+PRIMARY TEXT FORMATTING RULES (CRITICAL):
+- The FIRST LINE must be a powerful, scroll-stopping hook — standalone, punchy, emotionally charged
+- Add a BLANK LINE after the hook
+- Use SPACING to break up ideas — one thought per short paragraph (1-2 sentences max)
+- Add blank lines between paragraphs so the copy is easy to skim
+- End with a clear CTA on its own line, separated by a blank line
+- NEVER write walls of text. Every 1-2 sentences should have a line break.
+- Think of it like texting a friend — short bursts, not long paragraphs.`;
 
     console.log('Calling Lovable AI for copy generation...');
 

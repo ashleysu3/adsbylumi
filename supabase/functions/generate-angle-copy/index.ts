@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology } = await req.json();
+    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology, feedback } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -117,6 +117,30 @@ testimonial quote from the content assets above.
     const dontSay = toArray(messagingGuidelines.dont_say);
     const alwaysInclude = toArray(messagingGuidelines.always_include);
 
+    // Build feedback context if user provided regeneration feedback
+    let feedbackContext = "";
+    if (feedback) {
+      feedbackContext = "\n\n## USER FEEDBACK — HIGH PRIORITY DIRECTION\n";
+      feedbackContext += "The user reviewed previous copy and wants these improvements:\n";
+      if (feedback.quickSelections?.length) {
+        const labels: Record<string, string> = {
+          too_generic: "Copy feels too generic — make it more specific and unique to this brand/offer",
+          wrong_tone: "Tone doesn't match the brand — adjust voice to feel more authentic",
+          more_urgency: "Need more urgency and scarcity — create FOMO",
+          focus_benefits: "Focus more on benefits and outcomes over features",
+          shorter_copy: "Make it shorter and punchier — cut the fluff",
+          more_emotional: "Make it more emotional — connect deeply with pain points and desires",
+        };
+        feedback.quickSelections.forEach((id: string) => {
+          feedbackContext += `- ${labels[id] || id}\n`;
+        });
+      }
+      if (feedback.additionalNotes) {
+        feedbackContext += `\nUser's additional notes: "${feedback.additionalNotes}"\n`;
+      }
+      feedbackContext += "\nYou MUST apply this feedback. Generate noticeably different and improved copy.\n";
+    }
+
     const systemPrompt = `You are an expert Meta Ads copywriter specializing in creating multiple high-converting copy variations for ${brandInfo?.name || 'this brand'}.
 
 ## YOUR TASK
@@ -188,13 +212,16 @@ ${useEmojis ? `
 `}
 
 ## META BEST PRACTICES FOR PRIMARY COPY FORMATTING
-1. Start with a HOOK (first line must stop the scroll)
-2. Add a line break after the hook
-3. Use short paragraphs (2-3 sentences max)
-4. For bullet lists, use consistent formatting:
+1. The FIRST LINE must be a powerful, scroll-stopping hook — standalone, punchy, emotionally charged. This is the most important line. It should make someone stop scrolling.
+2. Add a BLANK LINE (line break) after the hook
+3. Use SPACING to break up ideas — one thought per short paragraph (1-2 sentences max)
+4. Add blank lines between paragraphs so the copy is easy to skim
+5. For bullet lists, use consistent formatting:
    ${useEmojis ? `${bulletEmoji} Benefit one\n   ${bulletEmoji} Benefit two\n   ${bulletEmoji} Benefit three` : `• Benefit one\n   • Benefit two\n   • Benefit three`}
-5. End with a clear CTA on its own line
-6. Total structure: Hook → Problem → Solution → Benefits → CTA
+6. End with a clear CTA on its own line, separated by a blank line
+7. Total structure: Hook (line break) → Problem (line break) → Solution (line break) → Benefits (line break) → CTA
+8. NEVER write walls of text. Every 1-2 sentences should have a line break.
+9. Think of it like texting a friend — short bursts, not long paragraphs.
 
 ## OUTPUT FORMAT
 Return valid JSON with this structure:
@@ -251,7 +278,7 @@ For the angle with ID "direct_from_page", generate SIMPLE, DIRECT copy that mirr
 
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-    const userPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate and relevant to this time period. Do NOT reference holidays, seasons, or events that are not upcoming or current.
+    const userPrompt = `${feedbackContext}Today's date is ${currentDate}. Ensure all content is seasonally appropriate and relevant to this time period. Do NOT reference holidays, seasons, or events that are not upcoming or current.
 
 Generate 3-5 copy variations for each of these creative angles:
 
