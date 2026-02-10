@@ -54,6 +54,7 @@ interface Offer {
 interface CampaignTemplate {
   id: string;
   name: string;
+  slug: string;
   description: string;
   long_description: string;
   objective: string;
@@ -688,13 +689,66 @@ export default function Create() {
                     instagramAccountId={brand.instagram_account_id}
                     instagramAccountName={brand.instagram_account_name}
                     audiencePsychology={brand.audience_psychology}
-                    onComplete={(data) => {
-                      // Store social growth data and continue to next step
-                      console.log("Social growth data:", data);
-                      setShowSocialGrowthFlow(false);
-                      toast.success("Social growth campaign configured!");
-                      // Navigate to a dedicated social growth creative flow
-                      navigate(`/creative-studio?type=social-growth&objective=${data.objective}`);
+                    onComplete={async (data) => {
+                      try {
+                        setIsCreatingCampaign(true);
+                        
+                        // Find the matching social growth template
+                        const templateSlug = data.objective === "video_views" ? "video-views" : "social-traffic";
+                        const matchedTemplate = templates.find(t => t.slug === templateSlug) || templates[0];
+                        
+                        // Create strategy
+                        const { data: strategy, error: strategyError } = await supabase
+                          .from("strategies")
+                          .insert({
+                            brand_id: brand.id,
+                            template_id: matchedTemplate?.id,
+                            name: `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic to Instagram"}`,
+                            campaign_type: "social_growth",
+                            status: "active",
+                          })
+                          .select()
+                          .single();
+
+                        if (strategyError) throw strategyError;
+
+                        // Create workspace with selected posts directly
+                        const { data: workspace, error: workspaceError } = await supabase
+                          .from("campaign_workspaces")
+                          .insert({
+                            brand_id: brand.id,
+                            strategy_id: strategy.id,
+                            template_id: matchedTemplate?.id,
+                            name: `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic"}`,
+                            strategy_json: matchedTemplate?.strategy_template as any,
+                            progress_status: "ready_to_build",
+                            creative_json: {
+                              socialGrowth: true,
+                              objective: data.objective,
+                              selectedPosts: data.selectedPosts.map(p => ({
+                                id: p.id,
+                                media_url: p.media_url,
+                                thumbnail_url: p.thumbnail_url,
+                                media_type: p.media_type,
+                                permalink: p.permalink,
+                                caption: p.caption,
+                              })),
+                            } as any,
+                          })
+                          .select()
+                          .single();
+
+                        if (workspaceError) throw workspaceError;
+
+                        clearSavedProgress();
+                        toast.success("Posts selected! Let's build your campaign.");
+                        navigate(`/campaign-builder?workspace=${workspace.id}`);
+                      } catch (error: any) {
+                        console.error("Error creating social growth workspace:", error);
+                        toast.error(error.message || "Failed to create campaign");
+                      } finally {
+                        setIsCreatingCampaign(false);
+                      }
                     }}
                     onConnectInstagram={() => navigate("/settings/meta")}
                     onBack={() => {
