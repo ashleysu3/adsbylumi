@@ -438,9 +438,9 @@ export default function ContentLibrary() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Content Library</h1>
+            <h1 className="text-2xl font-semibold">Saved for Later</h1>
             <p className="text-muted-foreground text-sm">
-              Save hooks, scripts, and content ideas to use later
+              Creative concepts you've saved to revisit or use in future campaigns
             </p>
           </div>
           <div className="flex gap-2">

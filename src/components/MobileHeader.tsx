@@ -76,7 +76,7 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/content-library")} className="min-h-[44px]">
               <Library className="mr-3 h-4 w-4" />
-              Concept Library
+              Saved for Later
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/settings")} className="min-h-[44px]">

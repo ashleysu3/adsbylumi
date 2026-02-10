@@ -162,7 +162,7 @@ ${offerAudienceContext}
 ${preGenContext}
 
 RULES:
-- Generate exactly 10-12 creative angles
+- Generate exactly 11 creative angles
 - Each angle must have a short, plain-language name (2-4 words)
 - Each angle must have a one-sentence description written for non-marketers
 - Do NOT use marketing jargon, funnel language, or technical terms
@@ -210,7 +210,7 @@ ${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audie
 
 ${productPsychology ? `PRODUCT PSYCHOLOGY:\n${JSON.stringify(productPsychology, null, 2)}` : ""}
 
-Generate 10-12 creative angles that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}`;
+Generate exactly 11 creative angles that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}`;
 
     console.log("[generate-creative-angles] Calling AI API...");
 
