@@ -504,7 +504,7 @@ export default function CampaignBuilder() {
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Chat or Review/Success */}
-          <div className="lg:col-span-2">
+          <div className={stage === 'chat' ? "lg:col-span-2" : "lg:col-span-3"}>
             {stage === 'chat' && (
               <CampaignChat
                 workspace={workspace}
@@ -553,14 +553,16 @@ export default function CampaignBuilder() {
             )}
           </div>
 
-          {/* Summary Sidebar */}
-          <div className="lg:col-span-1">
-            <CampaignSummary
-              workspace={workspace}
-              answers={answers}
-              stage={stage}
-            />
-          </div>
+          {/* Summary Sidebar — only show during questions stage */}
+          {stage === 'chat' && (
+            <div className="lg:col-span-1">
+              <CampaignSummary
+                workspace={workspace}
+                answers={answers}
+                stage={stage}
+              />
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

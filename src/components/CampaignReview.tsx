@@ -357,7 +357,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                       <img src={post.thumbnail_url} alt="" className="w-12 h-12 rounded object-cover" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{post.caption?.slice(0, 60) || `Post ${index + 1}`}</p>
+                      <p className="text-sm font-medium line-clamp-2">{post.caption || `Post ${index + 1}`}</p>
                       <Badge variant="default" className="text-xs bg-green-500/10 text-green-600 mt-1">
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         Selected
