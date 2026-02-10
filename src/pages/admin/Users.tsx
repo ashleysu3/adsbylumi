@@ -20,7 +20,7 @@ import {
   MessageSquare, Send, DollarSign, XCircle, Gift, Mail, 
   Building2, Calendar as CalendarIcon, Globe, Loader2, Plus, Trash2,
   Filter, History, X, Activity, Rocket, Package, UserPlus, AlertCircle,
-  Eye, AlertTriangle, UserX
+  Eye, AlertTriangle, UserX, Shield, ShieldCheck, Archive, ArchiveRestore
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
@@ -34,6 +34,9 @@ interface Profile {
   full_name: string | null;
   created_at: string;
   is_agency_user?: boolean;
+  archived?: boolean;
+  archived_at?: string | null;
+  roles?: string[];
   subscription?: {
     tier: string;
     status: string;
@@ -55,6 +58,7 @@ interface UserDetails {
     payments: any[];
     invoices: any[];
   } | null;
+  roles?: string[];
 }
 
 interface UserActivity {
@@ -83,6 +87,7 @@ interface Filters {
   planTier: string;
   dateFrom: Date | undefined;
   dateTo: Date | undefined;
+  showArchived: boolean;
 }
 
 const tierDisplayNames: Record<string, string> = {
@@ -141,6 +146,7 @@ export default function AdminUsers() {
     planTier: "",
     dateFrom: undefined,
     dateTo: undefined,
+    showArchived: false,
   });
   
   // Form states
@@ -182,40 +188,23 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     setLoading(true);
     
-    // Build filter object
-    const filterObj: Record<string, string> = {};
+    // Always use edge function to get roles + archive status
+    const filterObj: Record<string, any> = {};
     if (filters.subscriptionStatus) filterObj.subscriptionStatus = filters.subscriptionStatus;
     if (filters.planTier) filterObj.planTier = filters.planTier;
     if (filters.dateFrom) filterObj.dateFrom = filters.dateFrom.toISOString();
     if (filters.dateTo) filterObj.dateTo = filters.dateTo.toISOString();
+    if (filters.showArchived) filterObj.showArchived = true;
     
-    const hasFilters = Object.keys(filterObj).length > 0;
-    
-    if (hasFilters) {
-      // Use edge function for filtered queries
-      try {
-        const { data, error } = await supabase.functions.invoke("admin-user-management", {
-          body: { action: "list_users", filters: filterObj },
-        });
-        if (error) throw error;
-        setUsers(data.users || []);
-      } catch (error) {
-        toast.error("Failed to load users");
-        console.error(error);
-      }
-    } else {
-      // Simple query for unfiltered
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        toast.error("Failed to load users");
-        console.error(error);
-      } else {
-        setUsers(data || []);
-      }
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: { action: "list_users", filters: filterObj },
+      });
+      if (error) throw error;
+      setUsers(data.users || []);
+    } catch (error) {
+      toast.error("Failed to load users");
+      console.error(error);
     }
     setLoading(false);
   };
@@ -253,6 +242,7 @@ export default function AdminUsers() {
       planTier: "",
       dateFrom: undefined,
       dateTo: undefined,
+      showArchived: false,
     });
   };
   
@@ -456,12 +446,58 @@ export default function AdminUsers() {
     setActionLoading(null);
   };
 
+  const handleArchiveUser = async (userId: string, email: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: { action: "archive_user", userId, userEmail: email },
+      });
+      if (error) throw error;
+      toast.success(data.message);
+      fetchUsers();
+      if (selectedUser?.id === userId) fetchUserDetails(selectedUser);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to archive user");
+    }
+  };
+
+  const handleUnarchiveUser = async (userId: string, email: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: { action: "unarchive_user", userId, userEmail: email },
+      });
+      if (error) throw error;
+      toast.success(data.message);
+      fetchUsers();
+      if (selectedUser?.id === userId) fetchUserDetails(selectedUser);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to unarchive user");
+    }
+  };
+
+  const handleManageRole = async (userId: string, email: string, role: string, roleAction: "add" | "remove") => {
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: { action: "manage_role", userId, userEmail: email, role, roleAction },
+      });
+      if (error) throw error;
+      toast.success(data.message);
+      fetchUsers();
+      if (selectedUser?.id === userId) fetchUserDetails(selectedUser);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to manage role");
+    }
+  };
+
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (!isAdmin) return null;
+  // Stat calculations
+  const totalUsers = users.length;
+  const activeSubscribers = users.filter(u => u.subscription?.status === "active").length;
+  const trialUsers = users.filter(u => u.subscription?.status === "trial").length;
+  const archivedCount = users.filter(u => u.archived).length;
 
   return (
     <DashboardLayout>
@@ -491,6 +527,45 @@ export default function AdminUsers() {
 
         {activeTab === "users" ? (
           <>
+            {/* Stat Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-4 pb-3 px-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Users className="w-4 h-4" />
+                    <span className="text-xs font-medium">Total Users</span>
+                  </div>
+                  <p className="text-2xl font-bold">{totalUsers}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3 px-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <CreditCard className="w-4 h-4" />
+                    <span className="text-xs font-medium">Active Subscribers</span>
+                  </div>
+                  <p className="text-2xl font-bold">{activeSubscribers}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3 px-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Activity className="w-4 h-4" />
+                    <span className="text-xs font-medium">Trial Users</span>
+                  </div>
+                  <p className="text-2xl font-bold">{trialUsers}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-3 px-4">
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Archive className="w-4 h-4" />
+                    <span className="text-xs font-medium">Archived</span>
+                  </div>
+                  <p className="text-2xl font-bold">{archivedCount}</p>
+                </CardContent>
+              </Card>
+            </div>
             {/* Filters */}
             <Card className="border-border">
               <CardHeader className="pb-3">
@@ -617,6 +692,18 @@ export default function AdminUsers() {
               )}
             </Card>
 
+            {/* Show Archived Toggle */}
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={filters.showArchived}
+                onCheckedChange={(checked) => setFilters(f => ({ ...f, showArchived: checked }))}
+                id="show-archived"
+              />
+              <label htmlFor="show-archived" className="text-sm text-muted-foreground cursor-pointer">
+                Show Archived Users
+              </label>
+            </div>
+
             {/* Users Table */}
             <Card className="border-border">
               <CardHeader>
@@ -658,6 +745,7 @@ export default function AdminUsers() {
                         <TableRow>
                           <TableHead>Email</TableHead>
                           <TableHead>Name</TableHead>
+                          <TableHead>Role</TableHead>
                           <TableHead>Plan</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Joined</TableHead>
@@ -666,9 +754,26 @@ export default function AdminUsers() {
                       </TableHeader>
                       <TableBody>
                         {filteredUsers.map((user) => (
-                          <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => fetchUserDetails(user)}>
-                            <TableCell className="font-medium">{user.email}</TableCell>
+                          <TableRow key={user.id} className={cn("cursor-pointer hover:bg-muted/50 group", user.archived && "opacity-60")} onClick={() => fetchUserDetails(user)}>
+                            <TableCell className="font-medium">
+                              {user.email}
+                              {user.archived && <Badge variant="outline" className="ml-2 text-xs">Archived</Badge>}
+                            </TableCell>
                             <TableCell>{user.full_name || "—"}</TableCell>
+                            <TableCell>
+                              {user.roles && user.roles.length > 0 ? (
+                                <div className="flex gap-1">
+                                  {user.roles.filter(r => r !== "user").map(r => (
+                                    <Badge key={r} variant={r === "admin" ? "default" : "secondary"} className="gap-1 text-xs">
+                                      {r === "admin" ? <ShieldCheck className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                                      {r}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">—</span>
+                              )}
+                            </TableCell>
                             <TableCell>
                               {user.subscription ? (
                                 <Badge variant="outline">
@@ -691,10 +796,27 @@ export default function AdminUsers() {
                               {format(new Date(user.created_at), "MMM d, yyyy")}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fetchUserDetails(user); }}>
-                                <User className="w-4 h-4 mr-2" />
-                                View
-                              </Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Send Email" onClick={(e) => { e.stopPropagation(); fetchUserDetails(user); }}>
+                                  <Mail className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Impersonate" onClick={(e) => { e.stopPropagation(); startImpersonation({ id: user.id, email: user.email, fullName: user.full_name }); navigate("/dashboard"); toast.success(`Now viewing as ${user.email}`); }}>
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                {!user.archived ? (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Archive" onClick={(e) => { e.stopPropagation(); handleArchiveUser(user.id, user.email); }}>
+                                    <Archive className="w-4 h-4" />
+                                  </Button>
+                                ) : (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Unarchive" onClick={(e) => { e.stopPropagation(); handleUnarchiveUser(user.id, user.email); }}>
+                                    <ArchiveRestore className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fetchUserDetails(user); }}>
+                                  <User className="w-4 h-4 mr-2" />
+                                  View
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1256,6 +1378,76 @@ export default function AdminUsers() {
 
                 {/* Actions Tab */}
                 <TabsContent value="actions" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
+                  {/* Role Management */}
+                  <Card className="border-primary/30 bg-primary/5">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Shield className="w-4 h-4" /> Role Management
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {userDetails.roles?.filter((r: string) => r !== "user").map((r: string) => (
+                            <Badge key={r} variant={r === "admin" ? "default" : "secondary"} className="gap-1">
+                              {r === "admin" ? <ShieldCheck className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                              {r}
+                            </Badge>
+                          ))}
+                          {(!userDetails.roles || userDetails.roles.filter((r: string) => r !== "user").length === 0) && (
+                            <span className="text-xs text-muted-foreground">Standard user (no elevated roles)</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {!userDetails.roles?.includes("admin") && (
+                            <Button size="sm" variant="outline" onClick={() => selectedUser && handleManageRole(selectedUser.id, userDetails.profile?.email || "", "admin", "add")}>
+                              <ShieldCheck className="w-3 h-3 mr-1" /> Grant Admin
+                            </Button>
+                          )}
+                          {!userDetails.roles?.includes("moderator") && (
+                            <Button size="sm" variant="outline" onClick={() => selectedUser && handleManageRole(selectedUser.id, userDetails.profile?.email || "", "moderator", "add")}>
+                              <Shield className="w-3 h-3 mr-1" /> Grant Moderator
+                            </Button>
+                          )}
+                          {userDetails.roles?.includes("admin") && (
+                            <Button size="sm" variant="destructive" onClick={() => selectedUser && handleManageRole(selectedUser.id, userDetails.profile?.email || "", "admin", "remove")}>
+                              Revoke Admin
+                            </Button>
+                          )}
+                          {userDetails.roles?.includes("moderator") && (
+                            <Button size="sm" variant="destructive" onClick={() => selectedUser && handleManageRole(selectedUser.id, userDetails.profile?.email || "", "moderator", "remove")}>
+                              Revoke Moderator
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Archive / Unarchive */}
+                  <Card className="border-border">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Archive className="w-4 h-4" /> Archive User
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+                        {userDetails.profile?.archived
+                          ? "This user is archived. Unarchive to restore them to the active list."
+                          : "Archive this user to hide them from the default list. No data is deleted."}
+                      </p>
+                      {userDetails.profile?.archived ? (
+                        <Button variant="outline" className="w-full" onClick={() => selectedUser && handleUnarchiveUser(selectedUser.id, userDetails.profile?.email || "")}>
+                          <ArchiveRestore className="w-4 h-4 mr-2" /> Unarchive User
+                        </Button>
+                      ) : (
+                        <Button variant="outline" className="w-full" onClick={() => selectedUser && handleArchiveUser(selectedUser.id, userDetails.profile?.email || "")}>
+                          <Archive className="w-4 h-4 mr-2" /> Archive User
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
                   {/* Impersonation */}
                   <Card className="border-amber-500/30 bg-amber-500/5">
                     <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">

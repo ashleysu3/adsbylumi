@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
 interface RequestBody {
-  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity" | "delete_user" | "toggle_agency_mode";
+  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity" | "delete_user" | "toggle_agency_mode" | "manage_role" | "archive_user" | "unarchive_user";
   userId?: string;
   userEmail?: string;
   refundAmount?: number;
@@ -12,18 +12,30 @@ interface RequestBody {
   emailTemplate?: string;
   customMessage?: string;
   isAgencyUser?: boolean;
-  // Filters for list_users
+  role?: string;
+  roleAction?: "add" | "remove";
   filters?: {
     subscriptionStatus?: string;
     planTier?: string;
     dateFrom?: string;
     dateTo?: string;
+    showArchived?: boolean;
   };
 }
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[ADMIN-USER-MGMT] ${step}`, details ? JSON.stringify(details) : "");
 };
+
+// Actions that moderators are allowed to perform
+const MODERATOR_ALLOWED_ACTIONS = new Set([
+  "list_users",
+  "get_user_details",
+  "get_stripe_info",
+  "get_audit_logs",
+  "get_user_activity",
+  "send_email",
+]);
 
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin");
@@ -40,7 +52,7 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Verify admin access
+    // Verify admin/moderator access
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
     
@@ -48,19 +60,28 @@ Deno.serve(async (req) => {
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError || !userData.user) throw new Error("Unauthorized");
 
-    const { data: roleData } = await supabaseAdmin
+    // Check for admin or moderator role
+    const { data: roles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", userData.user.id)
-      .eq("role", "admin")
-      .single();
+      .in("role", ["admin", "moderator"]);
 
-    if (!roleData) throw new Error("Admin access required");
+    const userRoles = roles?.map((r: any) => r.role) || [];
+    const isAdmin = userRoles.includes("admin");
+    const isModerator = userRoles.includes("moderator");
+
+    if (!isAdmin && !isModerator) throw new Error("Admin or moderator access required");
 
     const body: RequestBody = await req.json();
     const { action, userId, userEmail, filters } = body;
 
-    logStep("Processing action", { action, userId, userEmail, filters });
+    // Moderator permission check
+    if (!isAdmin && !MODERATOR_ALLOWED_ACTIONS.has(action)) {
+      throw new Error("This action requires admin access");
+    }
+
+    logStep("Processing action", { action, userId, userEmail, filters, callerRole: isAdmin ? "admin" : "moderator" });
 
     // Helper to log admin actions
     const logAdminAction = async (
@@ -157,14 +178,18 @@ Deno.serve(async (req) => {
     if (action === "get_user_details") {
       if (!userId) throw new Error("userId required");
 
-      // Get profile including is_agency_user
       const { data: profile } = await supabaseAdmin
         .from("profiles")
-        .select("*, is_agency_user")
+        .select("*, is_agency_user, archived, archived_at")
         .eq("id", userId)
         .single();
 
-      // Get brand
+      // Get user roles
+      const { data: userRolesData } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+
       const { data: brand } = await supabaseAdmin
         .from("brands")
         .select("*")
@@ -173,7 +198,6 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      // Get subscription
       const { data: subscription } = await supabaseAdmin
         .from("subscriptions")
         .select("*")
@@ -182,21 +206,18 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      // Get bug reports
       const { data: bugReports } = await supabaseAdmin
         .from("bug_reports")
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
-      // Get admin notes
       const { data: adminNotes } = await supabaseAdmin
         .from("admin_notes")
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
-      // Get campaigns
       const { data: campaigns } = await supabaseAdmin
         .from("campaign_workspaces")
         .select("id, name, progress_status, created_at, meta_campaign_status")
@@ -204,7 +225,6 @@ Deno.serve(async (req) => {
         .order("created_at", { ascending: false })
         .limit(10);
 
-      // Get Stripe info if email available
       let stripeInfo = null;
       if (profile?.email) {
         stripeInfo = await getStripeInfo(profile.email);
@@ -218,6 +238,7 @@ Deno.serve(async (req) => {
         adminNotes: adminNotes || [],
         campaigns: campaigns || [],
         stripeInfo,
+        roles: userRolesData?.map((r: any) => r.role) || [],
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -255,7 +276,6 @@ Deno.serve(async (req) => {
 
       logStep("Refund created", { refundId: refund.id, amount: refund.amount });
       
-      // Log audit action
       await logAdminAction(userId || null, userEmail, "Refund processed", "billing", {
         refund_id: refund.id,
         amount: refund.amount / 100,
@@ -288,7 +308,6 @@ Deno.serve(async (req) => {
 
       const cancelled = await stripe.subscriptions.cancel(subscriptions.data[0].id);
 
-      // Update local subscription record
       if (userId) {
         await supabaseAdmin
           .from("subscriptions")
@@ -298,7 +317,6 @@ Deno.serve(async (req) => {
 
       logStep("Subscription cancelled", { subscriptionId: cancelled.id });
       
-      // Log audit action
       await logAdminAction(userId || null, userEmail, "Subscription cancelled", "subscription", {
         subscription_id: cancelled.id,
       });
@@ -330,7 +348,6 @@ Deno.serve(async (req) => {
       
       if (!price?.unit_amount) throw new Error("Could not determine subscription price");
 
-      // Create a credit for the subscription amount * months
       const creditAmount = price.unit_amount * body.creditMonths;
       
       await stripe.customers.update(customers.data[0].id, {
@@ -339,7 +356,6 @@ Deno.serve(async (req) => {
 
       logStep("Credit applied", { amount: creditAmount, months: body.creditMonths });
       
-      // Log audit action
       await logAdminAction(userId || null, userEmail, "Credit applied", "billing", {
         credit_amount: creditAmount / 100,
         months: body.creditMonths,
@@ -356,7 +372,6 @@ Deno.serve(async (req) => {
     if (action === "update_subscription") {
       if (!userEmail || !body.newTier) throw new Error("userEmail and newTier required");
 
-      // Update local subscription
       if (userId) {
         await supabaseAdmin
           .from("subscriptions")
@@ -364,7 +379,6 @@ Deno.serve(async (req) => {
           .eq("user_id", userId);
       }
       
-      // Log audit action
       await logAdminAction(userId || null, userEmail, "Subscription tier updated", "subscription", {
         new_tier: body.newTier,
       });
@@ -434,7 +448,6 @@ Deno.serve(async (req) => {
 
       logStep("Email sent", { template: body.emailTemplate, to: userEmail });
       
-      // Log audit action
       await logAdminAction(userId || null, userEmail, "Email sent", "communication", {
         template: body.emailTemplate,
         subject: template.subject,
@@ -452,12 +465,14 @@ Deno.serve(async (req) => {
     if (action === "list_users") {
       let query = supabaseAdmin
         .from("profiles")
-        .select(`
-          id, email, full_name, created_at
-        `)
+        .select(`id, email, full_name, created_at, archived, archived_at`)
         .order("created_at", { ascending: false });
 
-      // Date filters
+      // Archive filter - default to hiding archived
+      if (!filters?.showArchived) {
+        query = query.or("archived.is.null,archived.eq.false");
+      }
+
       if (filters?.dateFrom) {
         query = query.gte("created_at", filters.dateFrom);
       }
@@ -478,10 +493,23 @@ Deno.serve(async (req) => {
         subscriptionMap.set(sub.user_id, sub);
       });
 
-      // Apply subscription filters and combine data
+      // Get roles for all users with elevated roles
+      const { data: allRoles } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id, role")
+        .in("role", ["admin", "moderator"]);
+
+      const rolesMap = new Map<string, string[]>();
+      allRoles?.forEach((r: any) => {
+        const existing = rolesMap.get(r.user_id) || [];
+        existing.push(r.role);
+        rolesMap.set(r.user_id, existing);
+      });
+
       let combinedUsers = profiles?.map((profile: any) => ({
         ...profile,
         subscription: subscriptionMap.get(profile.id) || null,
+        roles: rolesMap.get(profile.id) || [],
       })) || [];
 
       // Filter by subscription status
@@ -526,7 +554,6 @@ Deno.serve(async (req) => {
     if (action === "get_user_activity") {
       if (!userId) throw new Error("userId required");
 
-      // Get brand for this user
       const { data: brand } = await supabaseAdmin
         .from("brands")
         .select("id, name, created_at")
@@ -537,7 +564,6 @@ Deno.serve(async (req) => {
 
       const brandId = brand?.id;
 
-      // Fetch all activity data in parallel
       const [
         campaignsResult,
         offersResult,
@@ -545,7 +571,6 @@ Deno.serve(async (req) => {
         bugReportsResult,
         profileResult,
       ] = await Promise.all([
-        // Campaigns created
         brandId
           ? supabaseAdmin
               .from("campaign_workspaces")
@@ -554,7 +579,6 @@ Deno.serve(async (req) => {
               .order("created_at", { ascending: false })
               .limit(50)
           : Promise.resolve({ data: [] }),
-        // Offers created
         brandId
           ? supabaseAdmin
               .from("offers")
@@ -563,20 +587,17 @@ Deno.serve(async (req) => {
               .order("created_at", { ascending: false })
               .limit(50)
           : Promise.resolve({ data: [] }),
-        // Subscription history
         supabaseAdmin
           .from("subscriptions")
           .select("*")
           .eq("user_id", userId)
           .order("created_at", { ascending: false }),
-        // Bug reports
         supabaseAdmin
           .from("bug_reports")
           .select("id, created_at, status, priority")
           .eq("user_id", userId)
           .order("created_at", { ascending: false })
           .limit(20),
-        // Profile for signup date
         supabaseAdmin
           .from("profiles")
           .select("created_at, email")
@@ -584,7 +605,6 @@ Deno.serve(async (req) => {
           .single(),
       ]);
 
-      // Build activity timeline
       const activities: Array<{
         id: string;
         type: string;
@@ -594,7 +614,6 @@ Deno.serve(async (req) => {
         metadata?: Record<string, unknown>;
       }> = [];
 
-      // Add signup event
       if (profileResult.data) {
         activities.push({
           id: `signup-${userId}`,
@@ -605,7 +624,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Add brand creation
       if (brand) {
         activities.push({
           id: `brand-${brand.id}`,
@@ -616,7 +634,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Add campaigns
       if (campaignsResult.data) {
         for (const campaign of campaignsResult.data) {
           activities.push({
@@ -631,7 +648,6 @@ Deno.serve(async (req) => {
             },
           });
 
-          // Add published event if applicable
           if (campaign.published_at) {
             activities.push({
               id: `campaign-published-${campaign.id}`,
@@ -644,7 +660,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Add offers
       if (offersResult.data) {
         for (const offer of offersResult.data) {
           activities.push({
@@ -657,7 +672,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Add subscription events
       if (subscriptionResult.data) {
         for (const sub of subscriptionResult.data) {
           activities.push({
@@ -671,7 +685,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Add bug reports
       if (bugReportsResult.data) {
         for (const bug of bugReportsResult.data) {
           activities.push({
@@ -685,7 +698,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Sort by timestamp descending
       activities.sort((a, b) => 
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
@@ -701,7 +713,6 @@ Deno.serve(async (req) => {
 
       logStep("Starting user deletion", { userId });
 
-      // Get user info before deletion for audit log
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("email, full_name")
@@ -711,7 +722,6 @@ Deno.serve(async (req) => {
       const targetEmail = profile?.email || userEmail || "unknown";
       const targetName = profile?.full_name || "Unknown User";
 
-      // Cancel any active Stripe subscriptions first
       if (targetEmail && targetEmail !== "unknown") {
         try {
           const customers = await stripe.customers.list({ email: targetEmail, limit: 1 });
@@ -729,11 +739,9 @@ Deno.serve(async (req) => {
           }
         } catch (stripeError) {
           logStep("Error cancelling Stripe subscriptions", { error: stripeError });
-          // Continue with deletion even if Stripe fails
         }
       }
 
-      // Delete the user from Supabase Auth (this will cascade to related tables via foreign keys)
       const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
       if (deleteError) {
@@ -743,7 +751,6 @@ Deno.serve(async (req) => {
 
       logStep("User deleted successfully", { userId, email: targetEmail });
 
-      // Log audit action
       await logAdminAction(userId, targetEmail, "User account deleted", "subscription", {
         user_name: targetName,
         user_email: targetEmail,
@@ -772,7 +779,6 @@ Deno.serve(async (req) => {
 
       logStep("Agency mode toggled", { userId, isAgencyUser: isAgency });
 
-      // Log audit action
       await logAdminAction(userId, userEmail || null, isAgency ? "Agency mode enabled" : "Agency mode disabled", "subscription", {
         is_agency_user: isAgency,
       });
@@ -785,6 +791,123 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Manage roles (admin only)
+    if (action === "manage_role") {
+      if (!isAdmin) throw new Error("Only admins can manage roles");
+      if (!userId || !body.role || !body.roleAction) throw new Error("userId, role, and roleAction required");
+
+      const validRoles = ["admin", "moderator"];
+      if (!validRoles.includes(body.role)) throw new Error("Invalid role. Must be 'admin' or 'moderator'");
+
+      // Prevent removing your own admin role
+      if (body.roleAction === "remove" && userId === userData.user.id && body.role === "admin") {
+        throw new Error("You cannot remove your own admin role");
+      }
+
+      if (body.roleAction === "add") {
+        // Check if already has this role
+        const { data: existingRole } = await supabaseAdmin
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("role", body.role)
+          .maybeSingle();
+
+        if (existingRole) {
+          return new Response(JSON.stringify({
+            success: true,
+            message: `User already has the ${body.role} role`,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { error: insertError } = await supabaseAdmin
+          .from("user_roles")
+          .insert({ user_id: userId, role: body.role });
+
+        if (insertError) throw insertError;
+
+        logStep("Role added", { userId, role: body.role });
+        await logAdminAction(userId, userEmail || null, `Role added: ${body.role}`, "role_management", {
+          role: body.role,
+          action: "add",
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: `${body.role} role granted`,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } else {
+        // Remove role
+        const { error: deleteError } = await supabaseAdmin
+          .from("user_roles")
+          .delete()
+          .eq("user_id", userId)
+          .eq("role", body.role);
+
+        if (deleteError) throw deleteError;
+
+        logStep("Role removed", { userId, role: body.role });
+        await logAdminAction(userId, userEmail || null, `Role removed: ${body.role}`, "role_management", {
+          role: body.role,
+          action: "remove",
+        });
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: `${body.role} role revoked`,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Archive user
+    if (action === "archive_user") {
+      if (!userId) throw new Error("userId required");
+
+      const { error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ archived: true, archived_at: new Date().toISOString() })
+        .eq("id", userId);
+
+      if (updateError) throw updateError;
+
+      logStep("User archived", { userId });
+      await logAdminAction(userId, userEmail || null, "User archived", "user_management", {});
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: "User archived",
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Unarchive user
+    if (action === "unarchive_user") {
+      if (!userId) throw new Error("userId required");
+
+      const { error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({ archived: false, archived_at: null })
+        .eq("id", userId);
+
+      if (updateError) throw updateError;
+
+      logStep("User unarchived", { userId });
+      await logAdminAction(userId, userEmail || null, "User unarchived", "user_management", {});
+
+      return new Response(JSON.stringify({
+        success: true,
+        message: "User unarchived",
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     throw new Error(`Unknown action: ${action}`);
   } catch (error: any) {
