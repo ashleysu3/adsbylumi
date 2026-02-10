@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useBrand } from "@/contexts/BrandContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,7 @@ const STATUS_OPTIONS = [{
 }];
 export default function ContentLibrary() {
   const navigate = useNavigate();
-  const { getEffectiveUserId } = useImpersonation();
+  const { activeBrand, loading: brandContextLoading } = useBrand();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
@@ -108,8 +108,10 @@ export default function ContentLibrary() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [campaignSelectOpen, setCampaignSelectOpen] = useState(false);
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (!brandContextLoading && activeBrand) {
+      fetchData();
+    }
+  }, [brandContextLoading, activeBrand?.id]);
   const fetchData = async () => {
     try {
       const {
@@ -117,18 +119,15 @@ export default function ContentLibrary() {
           user
         }
       } = await supabase.auth.getUser();
-      if (!user) {
+      if (!user || !activeBrand) {
         navigate("/auth");
         return;
       }
 
-      // Use effective user ID for impersonation support
-      const effectiveUserId = await getEffectiveUserId();
-      if (!effectiveUserId) return;
-
+      // Fetch full brand data using active brand from context
       const {
         data: brandData
-      } = await supabase.from("brands").select("*").eq("user_id", effectiveUserId).single();
+      } = await supabase.from("brands").select("*").eq("id", activeBrand.id).single();
       if (!brandData) {
         navigate("/dashboard");
         return;

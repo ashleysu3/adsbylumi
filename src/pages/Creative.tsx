@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useBrand } from "@/contexts/BrandContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const creativeLoadingCopy = [
 export default function Creative() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { activeBrand, loading: brandContextLoading } = useBrand();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [generatingPhase, setGeneratingPhase] = useState<GeneratingPhase>(null);
@@ -129,8 +131,10 @@ export default function Creative() {
   }, [copySelections, productionItems, selectedAngleIds, availableAngles]);
 
   useEffect(() => {
-    fetchInitialData();
-  }, []);
+    if (!brandContextLoading && activeBrand) {
+      fetchInitialData();
+    }
+  }, [brandContextLoading, activeBrand?.id]);
   
   // Show Lumi chat when in add-creative mode
   useEffect(() => {
@@ -180,10 +184,17 @@ export default function Creative() {
         return;
       }
 
+      if (!activeBrand) {
+        toast.error("Please complete your brand setup first");
+        navigate("/dashboard");
+        return;
+      }
+
+      // Fetch full brand data using active brand from context
       const { data: brandData } = await supabase
         .from("brands")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("id", activeBrand.id)
         .single();
 
       if (!brandData) {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useBrand } from "@/contexts/BrandContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignsList } from "@/components/CampaignsList";
 import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
@@ -12,57 +12,23 @@ import { LumiChat } from "@/components/LumiChat";
 export default function Campaigns() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { getEffectiveUserId } = useImpersonation();
-  const [loading, setLoading] = useState(true);
-  const [brandId, setBrandId] = useState<string | null>(null);
-  const [brand, setBrand] = useState<any>(null);
+  const { activeBrand, loading: brandLoading } = useBrand();
   const [showLumiGuidance, setShowLumiGuidance] = useState(false);
 
   const isAddCreativeMode = searchParams.get("addCreative") === "true";
 
   useEffect(() => {
-    fetchBrand();
-  }, []);
+    if (!brandLoading && !activeBrand) {
+      navigate("/onboarding");
+    }
+  }, [brandLoading, activeBrand]);
 
   useEffect(() => {
     // Show Lumi guidance when in add creative mode
-    if (isAddCreativeMode && brandId) {
+    if (isAddCreativeMode && activeBrand) {
       setShowLumiGuidance(true);
     }
-  }, [isAddCreativeMode, brandId]);
-
-  const fetchBrand = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-
-      // Use effective user ID for impersonation support
-      const effectiveUserId = await getEffectiveUserId();
-      if (!effectiveUserId) return;
-
-      const { data: brandData, error } = await supabase
-        .from("brands")
-        .select("*")
-        .eq("user_id", effectiveUserId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (brandData) {
-        setBrandId(brandData.id);
-        setBrand(brandData);
-      }
-    } catch (error: any) {
-      toast.error("Failed to load brand data");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isAddCreativeMode, activeBrand?.id]);
 
   const handleClearAddCreativeMode = () => {
     searchParams.delete("addCreative");
@@ -70,7 +36,7 @@ export default function Campaigns() {
     setShowLumiGuidance(false);
   };
 
-  if (loading) {
+  if (brandLoading) {
     return (
       <DashboardLayout>
         <div className="space-y-6">
@@ -88,7 +54,7 @@ export default function Campaigns() {
     );
   }
 
-  if (!brandId) {
+  if (!activeBrand) {
     return (
       <DashboardLayout>
         <div className="text-center py-12">
@@ -124,11 +90,11 @@ export default function Campaigns() {
 
         {/* Resume incomplete workspace banner */}
         {!isAddCreativeMode && (
-          <ResumeWorkspaceBanner brandId={brandId} />
+          <ResumeWorkspaceBanner brandId={activeBrand.id} />
         )}
 
         <CampaignsList 
-          brandId={brandId} 
+          brandId={activeBrand.id} 
           addCreativeMode={isAddCreativeMode}
           onCampaignSelectForCreative={(campaignId) => {
             // Navigate to creative page for this campaign
@@ -137,10 +103,10 @@ export default function Campaigns() {
         />
 
         {/* Lumi Chat guidance for add creative mode */}
-        {showLumiGuidance && brand && (
+        {showLumiGuidance && activeBrand && (
           <LumiChat 
             context="add-creative" 
-            brand={brand}
+            brand={activeBrand}
             trigger={null}
             autoOpen={true}
             onOpenChange={(open) => {
