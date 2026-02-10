@@ -20,6 +20,7 @@ interface MobileStepWizardProps {
   showBackOnFirstStep?: boolean;
   enableSwipe?: boolean;
   saveStatus?: SaveStatus;
+  hideFooter?: boolean;
 }
 
 export function MobileStepWizard({
@@ -38,6 +39,7 @@ export function MobileStepWizard({
   showBackOnFirstStep = false,
   enableSwipe = true,
   saveStatus,
+  hideFooter = false,
 }: MobileStepWizardProps) {
   const isLastStep = currentStep === totalSteps;
   const showBack = currentStep > 1 || showBackOnFirstStep;
@@ -144,6 +146,7 @@ export function MobileStepWizard({
       </div>
 
       {/* Footer - sticky */}
+      {!hideFooter && (
       <div className="flex-shrink-0 pt-4 pb-2 bg-background border-t border-border -mx-4 px-4 sticky bottom-0">
         <div className="flex gap-3">
           {showBack && onBack && (
@@ -176,6 +179,7 @@ export function MobileStepWizard({
           </Button>
         </div>
       </div>
+      )}
     </div>
   );
 }
