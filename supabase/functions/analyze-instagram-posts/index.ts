@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandId, instagramAccountId, objective, audiencePsychology } = await req.json();
+    const { brandId, instagramAccountId, objective, audiencePsychology, simple } = await req.json();
 
     if (!brandId || !instagramAccountId) {
       throw new Error('brandId and instagramAccountId are required');
@@ -59,8 +59,17 @@ Deno.serve(async (req) => {
     const posts: InstagramPost[] = postsData.data || [];
     console.log('Fetched posts:', posts.length);
 
+    // Simple mode: return raw posts without AI analysis
+    if (simple) {
+      return new Response(
+        JSON.stringify({ posts }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // --- Full AI analysis mode below (kept for future use) ---
+
     if (posts.length === 0) {
-      // No posts found - return empty with content suggestions
       const suggestions = await generateContentSuggestions(
         objective,
         audiencePsychology,
@@ -77,7 +86,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Calculate engagement scores and analyze posts
     const analyzedPosts = await analyzePostsWithAI(
       posts,
       objective,
@@ -85,13 +93,11 @@ Deno.serve(async (req) => {
       supabaseUrl
     );
 
-    // Filter for video posts if objective is video_views
     let filteredPosts = analyzedPosts;
     if (objective === 'video_views') {
       filteredPosts = analyzedPosts.filter(p => p.media_type === 'VIDEO');
       
       if (filteredPosts.length === 0) {
-        // No videos - return content suggestions for video content
         const suggestions = await generateContentSuggestions(
           objective,
           audiencePsychology,
@@ -100,7 +106,7 @@ Deno.serve(async (req) => {
         
         return new Response(
           JSON.stringify({ 
-            posts: analyzedPosts, // Return all posts but no recommendations
+            posts: analyzedPosts,
             contentSuggestions: suggestions,
             message: 'No video posts found. Here are some video content ideas.'
           }),
@@ -109,19 +115,16 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Sort by engagement and recommendation
     filteredPosts.sort((a, b) => {
       if (a.is_recommended && !b.is_recommended) return -1;
       if (!a.is_recommended && b.is_recommended) return 1;
       return (b.engagement_score || 0) - (a.engagement_score || 0);
     });
 
-    // Check if we have enough good content
     const recommendedCount = filteredPosts.filter(p => p.is_recommended).length;
     let contentSuggestions: any[] = [];
     
     if (recommendedCount < 2) {
-      // Not enough good content - include suggestions
       contentSuggestions = await generateContentSuggestions(
         objective,
         audiencePsychology,
