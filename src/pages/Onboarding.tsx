@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { motion } from "framer-motion";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { formatInvokeError } from "@/lib/formatInvokeError";
+import { useBrand } from "@/contexts/BrandContext";
 
 const STEP_LABELS = ["Brand Basics", "Positioning", "Copy Style", "Meet Lumi", "Connect Meta"];
 const DEFAULT_EMOJIS = ['✨', '🎯', '💡', '🚀', '💪', '⭐'];
@@ -24,6 +25,9 @@ const BULLET_OPTIONS = ['✅', '→', '•', '✓', '▸', '★', '💫', '🔥'
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isAddBrandMode = searchParams.get('mode') === 'add-brand';
+  const { refreshBrands, setActiveBrand } = useBrand();
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [extracting, setExtracting] = useState(false);
@@ -244,9 +248,25 @@ export default function Onboarding() {
     }
   };
 
-  const handleFinishOnboarding = () => {
+  const handleFinishOnboarding = async () => {
+    // Refresh brand list so the new brand appears in the selector
+    await refreshBrands();
+    
+    // If we have a created brand ID, set it as active
+    if (createdBrandId) {
+      const { data: newBrand } = await supabase
+        .from('brands')
+        .select('id, name, website_url, industry, meta_account_id, created_at')
+        .eq('id', createdBrandId)
+        .single();
+      
+      if (newBrand) {
+        setActiveBrand(newBrand);
+      }
+    }
+    
     toast.success("Welcome to Lumi! ✨");
-    navigate("/start");
+    navigate(isAddBrandMode ? "/campaigns" : "/start");
   };
 
   const addEmoji = () => {
