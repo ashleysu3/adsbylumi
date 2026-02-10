@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useBrand } from "@/contexts/BrandContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { MobileStepWizard, StepOption } from "@/components/MobileStepWizard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,6 +123,7 @@ interface WizardProgress {
 
 export default function Create() {
   const navigate = useNavigate();
+  const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 3;
@@ -199,9 +201,21 @@ export default function Create() {
     }
   };
 
+  // Re-fetch when active brand changes
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeBrand?.id]);
+
+  // Reset state when brand changes
+  useEffect(() => {
+    setSelectedOfferId("");
+    setSelectedTemplateId("");
+    setSelectedAngle(null);
+    setGeneratedAngles([]);
+    setSelectedCreativeTemplates([]);
+    setShowSocialGrowthFlow(false);
+    setCurrentStep(1);
+  }, [activeBrand?.id]);
 
   const fetchData = async () => {
     try {
@@ -211,14 +225,16 @@ export default function Create() {
         return;
       }
 
-      // Fetch brand
-      const { data: brandData } = await supabase
-        .from("brands")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Use active brand from context, or fall back to most recent
+      let brandQuery = supabase.from("brands").select("*");
+      
+      if (activeBrand?.id) {
+        brandQuery = brandQuery.eq("id", activeBrand.id);
+      } else {
+        brandQuery = brandQuery.eq("user_id", user.id).order("created_at", { ascending: false }).limit(1);
+      }
+
+      const { data: brandData } = await brandQuery.maybeSingle();
 
       if (!brandData) {
         navigate("/onboarding");
@@ -226,7 +242,7 @@ export default function Create() {
       }
       setBrand(brandData);
 
-      // Fetch offers
+      // Fetch offers for the correct brand
       const { data: offersData } = await supabase
         .from("offers")
         .select("*")
@@ -250,12 +266,10 @@ export default function Create() {
       if (saved) {
         try {
           const progress: WizardProgress = JSON.parse(saved);
-          // Only show resume if progress is less than 24 hours old and has meaningful state
           const isRecent = Date.now() - progress.savedAt < 24 * 60 * 60 * 1000;
           const hasMeaningfulProgress = progress.currentStep > 1 || progress.selectedOfferId;
           
           if (isRecent && hasMeaningfulProgress) {
-            // Validate that the saved offer still exists
             const offerStillExists = !progress.selectedOfferId || 
               (offersData || []).some(o => o.id === progress.selectedOfferId);
             
@@ -263,11 +277,9 @@ export default function Create() {
               setSavedProgress(progress);
               setShowResumePrompt(true);
             } else {
-              // Clear invalid progress
               localStorage.removeItem(STORAGE_KEY);
             }
           } else {
-            // Clear stale progress
             localStorage.removeItem(STORAGE_KEY);
           }
         } catch {
@@ -683,6 +695,7 @@ export default function Create() {
               >
                 {/* Social Growth Flow */}
                 {showSocialGrowthFlow ? (
+                  (() => { console.log('[SocialGrowthFlow] brand:', brand?.name, 'instagram_account_id:', brand?.instagram_account_id); return null; })() ||
                   <SocialGrowthFlow
                     brandId={brand.id}
                     brandName={brand.name}
