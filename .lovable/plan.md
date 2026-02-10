@@ -1,115 +1,110 @@
 
 
-# Simplify Campaign Builder + Results Dashboard Overhaul
+# Admin Power-Up: Role Management, User Archiving, and Streamlined Actions
 
-## Overview
-This plan addresses four major areas: (1) auto-applying best practices in the campaign builder instead of asking users to choose, (2) adding ad-level pause/resume controls with smart recommendations, (3) simplifying the results dashboard to a high-level "traffic light" view with detailed info tucked away, and (4) letting users choose their preferred detail level.
+## What We're Building
 
----
+Three major improvements to your admin experience:
 
-## 1. Campaign Builder: Auto-Apply Best Practices
-
-**Current state:** The MobileCampaignBuilder presents 6 steps (Objective, Budget, Creative Type, Audience, Schedule, Review) requiring the user to make choices like audience type, creative type, etc.
-
-**New behavior:**
-- Remove the Audience and Creative Type selection steps entirely
-- Auto-apply best practices: Broad audience, Advantage+ placements, AEC ON
-- Reduce wizard to 3 steps: **Objective, Budget, Review**
-- On the Review step, show a card explaining: "We've applied Meta's best practices for you" with a brief list (Broad audience, Advantage+ creative, Advantage+ placements)
-- Add a collapsible "Advanced Options" section on the Review step that lets power users see and override: audience type, creative type, warm retargeting, auto-naming
-- Social growth campaigns stay at their current reduced step count (skip creative type)
-
-**Files to edit:**
-- `src/components/MobileCampaignBuilder.tsx` -- restructure steps, add advanced collapsible
+1. **Role Management** -- Grant/revoke admin access and add a new "moderator" role with limited permissions
+2. **User Archiving** -- Soft-archive users to declutter the admin view without destroying data, plus keep the existing hard-delete option
+3. **Streamlined Admin Actions** -- Quick actions directly from the user list (no need to open the detail drawer for common tasks), plus bulk operations
 
 ---
 
-## 2. Ad-Level Pause/Resume in Results
+## 1. Role Management System
 
-**Current state:** The `AdBreakdown` component shows ad-level metrics in a collapsible section but has no controls to pause or resume individual ads.
+### How It Works
+- A new **"Team" tab** in the admin panel (next to Users, Subscriptions, etc.)
+- From there, admins can:
+  - **Add a new admin or moderator by email** (the user must already have an account)
+  - **See all users with elevated roles** in one list
+  - **Revoke roles** with one click
+- Inside each user's detail drawer, a new **"Role" card** shows their current role and lets you change it
 
-**New behavior:**
-- Add a pause/resume toggle (Switch or button) on each ad row in `AdBreakdown`
-- Show a recommendation badge when Lumi has enough data to suggest action:
-  - "Enough data" threshold: reach >= 1,000 AND running >= 3 days
-  - If CTR < 0.8% after threshold: recommend pausing with a label like "Consider pausing -- low engagement"
-  - If performing well (above benchmark): show "Keep running" or "Consider scaling"
-  - Before threshold: show "Still learning" with no toggle recommendation
-- Toggling calls the existing `build-meta-campaign` or a new lightweight edge function to update ad status via Meta API
+### Role Levels
+| Role | What They Can Do |
+|------|-----------------|
+| **Admin** | Everything: manage users, billing, roles, delete accounts, knowledge base, settings |
+| **Moderator** | View users, add notes, send emails, view billing (no refunds, no deletions, no role changes) |
+| **User** | Standard app access (no admin panel) |
 
-**Files to edit:**
-- `src/components/insights/AdBreakdown.tsx` -- add toggle + recommendation logic
-- May need a new or updated edge function for toggling ad status (can reuse `check-campaign-status` pattern)
-
----
-
-## 3. Simplify Results Dashboard (InsightsHome + CampaignInsightDetail)
-
-### 3A. InsightsHome (Campaign List View)
-**Current state:** Each campaign card shows primary KPI, benchmark, user goal, status badge, progress bars, trend indicators -- quite dense.
-
-**New behavior:**
-- Simplify each campaign card to show only:
-  - Campaign name + status dot
-  - One-line verdict: "Above benchmark", "Right at benchmark", or "Below benchmark"
-  - One action recommendation in plain language: "Increase budget", "Refresh creative", or "Consider pausing"
-  - A simple on/off toggle to pause/resume the campaign directly from the list
-- Remove: benchmark range display, user goal editing, progress bars, trend indicators from the main view
-- These details move into the detail view
-
-### 3B. CampaignInsightDetail (Detail View)
-**Current state:** Shows 7+ sections: Primary KPI, What's Working, What Needs Attention, Customer Journey, Creative Fatigue, Budget Adjustment, Ad Breakdown, Lumi Recommends.
-
-**New behavior -- High-Level (default):**
-- Show 3 simple cards at the top:
-  1. **What's Working** -- 1-2 bullet points max
-  2. **What's Not Working** -- 1-2 bullet points max  
-  3. **What To Do Next** -- one clear action: budget (more/less/same), creative (refresh/keep), or turn off
-- Budget recommendation as a simple label: "Increase spend", "Keep spend the same", or "Reduce spend"
-- Ad-level pause/resume toggles with recommendations (from section 2)
-
-**New behavior -- Detailed (expandable):**
-- Wrap the existing detailed sections (Customer Journey, Creative Fatigue, Budget Adjustment slider, full KPI breakdown) inside a collapsible "Advanced Analysis" accordion
-- Users who want depth can expand it; everyone else sees the clean summary
-
-**Files to edit:**
-- `src/components/insights/InsightsHome.tsx` -- simplify campaign cards, add pause toggle
-- `src/components/insights/CampaignInsightDetail.tsx` -- restructure into high-level summary + collapsible advanced section
+### Database Change
+- Add `'moderator'` to the existing `app_role` enum
+- No new tables needed -- uses the existing `user_roles` table
 
 ---
 
-## 4. User Preference: High-Level vs. Detailed
+## 2. User Archiving
 
-**New behavior:**
-- On first visit to the Results tab, show a small prompt/toggle: "How much detail do you want?" with two options:
-  - **"Keep it simple"** -- shows the streamlined high-level view (default)
-  - **"Show me everything"** -- auto-expands the advanced sections
-- Save this preference to `localStorage` (or `final_answers` on the brand)
-- A toggle in the Results header lets users switch between modes anytime
+### How It Works
+- Add an **"Archive"** button in each user's detail drawer (Actions tab)
+- Archived users disappear from the default user list but can be viewed via an **"Archived" filter toggle**
+- Archived users retain all their data -- nothing is deleted
+- Users can be **unarchived** at any time
+- Hard delete remains available for permanent removal
 
-**Files to edit:**
-- `src/pages/Data.tsx` -- add preference state + toggle in header
-- `src/components/insights/CampaignInsightDetail.tsx` -- respect the preference to auto-expand advanced sections
+### Database Change
+- Add `archived` (boolean, default false) and `archived_at` (timestamp, nullable) columns to `profiles`
+
+### UI Change
+- New toggle in the filter bar: "Show Archived" -- off by default
+- Archived users show with a muted/dimmed row and an "Archived" badge
+- Archive/Unarchive button in the user detail Actions tab
+
+---
+
+## 3. Streamlined Quick Actions
+
+### What Changes
+- **Inline quick-action buttons** on each user row in the table: Email, Impersonate, Archive (icon buttons that appear on hover)
+- **User count summary cards** at the top of the Users page showing: Total Users, Active Subscribers, Trial Users, Archived
+- **Role badge** visible in the user table for admins/moderators so you can spot team members at a glance
 
 ---
 
 ## Technical Details
 
-### Step reduction in MobileCampaignBuilder
-- `totalSteps` changes from 6 to 3 (or 2 for social growth since objective is pre-set)
-- Default values auto-applied: `audience: "broad"`, `creativeType: "video"`, `warmRetargeting: true`, `metaAdvantage: true`, `placements: "Advantage+"`
-- Advanced section uses `Collapsible` from Radix
+### Database Migration
+```sql
+-- Add moderator to app_role enum
+ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'moderator';
 
-### Ad toggle edge function
-- Create or extend an edge function to call Meta API's `POST /{ad-id}` with `status: "PAUSED"` or `status: "ACTIVE"`
-- Requires the brand's `meta_access_token` from the `brands` table
+-- Add archive columns to profiles
+ALTER TABLE public.profiles 
+  ADD COLUMN IF NOT EXISTS archived boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+```
 
-### Recommendation logic thresholds
-- "Enough data": impressions >= 1,000 AND campaign age >= 3 days
-- Below benchmark: suggest "Refresh creative" or "Consider pausing"
-- At benchmark: suggest "Keep spend the same"
-- Above benchmark: suggest "Increase spend" or "Scale budget +20%"
+### Edge Function Updates (`admin-user-management`)
+- New actions: `manage_role` (add/remove role for a user), `archive_user`, `unarchive_user`
+- `manage_role` validates that only admins (not moderators) can change roles
+- `list_users` updated to respect the `archived` filter
+- Moderator access check added: moderators can call read-only actions + send_email + add notes, but not billing/delete/role actions
 
-### Preference storage
-- `localStorage` key: `lumi-insights-detail-level` with values `"simple"` or `"detailed"`
+### Frontend Changes
+
+**New file: `src/pages/admin/Team.tsx`**
+- Lists all users with admin or moderator roles
+- "Add team member" form: enter email, pick role, submit
+- Remove role button per row
+
+**Updated: `src/components/AdminTabs.tsx`**
+- Add "Team" tab with Shield icon
+
+**Updated: `src/pages/admin/Users.tsx`**
+- Add summary stat cards at top (Total, Active, Trial, Archived)
+- Add "Show Archived" toggle to filters
+- Add role badge column to user table
+- Add inline quick-action icons (email, impersonate, archive) on hover
+- Add Archive/Unarchive card in user detail Actions tab
+- Show role management card in user detail Actions tab
+
+**Updated: `supabase/functions/admin-user-management/index.ts`**
+- Add `manage_role`, `archive_user`, `unarchive_user` actions
+- Add moderator permission checks to existing actions
+- Update `list_users` to filter by `archived` status
+
+### App Routing
+- Add `/admin/team` route in `App.tsx`
 
