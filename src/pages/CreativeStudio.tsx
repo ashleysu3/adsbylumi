@@ -767,7 +767,7 @@ export default function CreativeStudio() {
         <motion.div
           initial={{ clipPath: "circle(0% at 50% 40%)" }}
           animate={{ clipPath: "circle(150% at 50% 40%)" }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
           className="min-h-[60vh]"
         >
           <div className="max-w-6xl mx-auto py-12">
@@ -795,7 +795,7 @@ export default function CreativeStudio() {
       <motion.div
         initial={{ clipPath: "circle(0% at 50% 40%)" }}
         animate={{ clipPath: "circle(150% at 50% 40%)" }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
         className="min-h-[calc(100vh-120px)] flex flex-col"
       >
         {/* Slim toolbar (replaces old sticky header) */}
