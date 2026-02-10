@@ -13,7 +13,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { toast } from 'sonner';
 import { 
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
-  Link2, Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen
+  Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GlossaryTooltip } from '@/components/GlossaryTooltip';
@@ -261,10 +261,6 @@ export default function Settings() {
               <User className="h-4 w-4" />
               Account
             </TabsTrigger>
-            <TabsTrigger value="connections" className="gap-2">
-              <Link2 className="h-4 w-4" />
-              Connections
-            </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" />
               Notifications
@@ -316,31 +312,8 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="connections" className="space-y-6">
-            <Card variant="glow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link2 className="h-5 w-5" />
-                  Meta (Facebook/Instagram)
-                </CardTitle>
-                <CardDescription>Connect your Meta ad account to manage campaigns</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${metaConnected ? 'bg-green-500' : 'bg-muted-foreground'}`} />
-                    <span className="text-sm">
-                      {metaConnected ? `Connected (${brand?.meta_account_id})` : 'Not connected'}
-                    </span>
-                  </div>
-                   <Button onClick={() => navigate('/meta-settings')} variant="outline" className="gap-2">
-                    {metaConnected ? 'Manage' : 'Connect'}
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+
+
 
           {/* Notifications Tab */}
           <TabsContent value="notifications" className="space-y-6">

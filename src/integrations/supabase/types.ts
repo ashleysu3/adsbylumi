@@ -204,6 +204,7 @@ export type Database = {
           brand_emojis: string[] | null
           brand_voice: string | null
           bullet_emoji: string | null
+          copy_perspective: string
           created_at: string | null
           id: string
           industry: string | null
@@ -238,6 +239,7 @@ export type Database = {
           brand_emojis?: string[] | null
           brand_voice?: string | null
           bullet_emoji?: string | null
+          copy_perspective?: string
           created_at?: string | null
           id?: string
           industry?: string | null
@@ -272,6 +274,7 @@ export type Database = {
           brand_emojis?: string[] | null
           brand_voice?: string | null
           bullet_emoji?: string | null
+          copy_perspective?: string
           created_at?: string | null
           id?: string
           industry?: string | null

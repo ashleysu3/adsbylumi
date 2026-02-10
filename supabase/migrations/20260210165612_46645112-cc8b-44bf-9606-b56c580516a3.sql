@@ -1,0 +1,1 @@
+ALTER TABLE public.brands ADD COLUMN copy_perspective text NOT NULL DEFAULT 'I';
