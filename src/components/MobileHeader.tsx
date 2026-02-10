@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
- import { Shield, LogOut, Sparkles, Library, Settings, Building2, BookOpen, Link2 } from "lucide-react";
+ import { Shield, LogOut, Library, Settings, Building2, BookOpen, Home } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -66,18 +66,19 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate("/start")} className="min-h-[44px]">
+              <Home className="mr-3 h-4 w-4" />
+              Home
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/dashboard")} className="min-h-[44px]">
               <Building2 className="mr-3 h-4 w-4" />
               My Brand
             </DropdownMenuItem>
-             <DropdownMenuItem onClick={() => navigate("/meta-settings")} className="min-h-[44px]">
-               <Link2 className="mr-3 h-4 w-4" />
-               Meta Connection
-             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/content-library")} className="min-h-[44px]">
               <Library className="mr-3 h-4 w-4" />
               Concept Library
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/settings")} className="min-h-[44px]">
               <Settings className="mr-3 h-4 w-4" />
               Settings
@@ -86,14 +87,6 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
               <BookOpen className="mr-3 h-4 w-4" />
               Ads Glossary
             </DropdownMenuItem>
-            
-            {onShowWalkthrough && (
-              <DropdownMenuItem onClick={onShowWalkthrough} className="min-h-[44px]">
-                <Sparkles className="mr-3 h-4 w-4" />
-                Show Walkthrough
-              </DropdownMenuItem>
-            )}
-            
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="min-h-[44px] text-destructive">
               <LogOut className="mr-3 h-4 w-4" />

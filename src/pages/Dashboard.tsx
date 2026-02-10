@@ -280,6 +280,25 @@ export default function Dashboard() {
     }
   };
 
+  const handleSaveCopyPerspective = async (perspective: 'I' | 'We') => {
+    if (!brand) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('brands')
+        .update({ copy_perspective: perspective })
+        .eq('id', brand.id);
+      if (error) throw error;
+      setBrand((prev: any) => ({ ...prev, copy_perspective: perspective }));
+      toast.success(`Copy voice set to "${perspective}"`);
+    } catch (error) {
+      console.error('Error saving copy perspective:', error);
+      toast.error('Failed to save copy voice');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSaveEmojiSettings = async () => {
     if (!brand) return;
     
@@ -478,6 +497,10 @@ export default function Dashboard() {
               <Package className="h-4 w-4" />
               Offers
             </TabsTrigger>
+            <TabsTrigger value="brand-settings" className="gap-2">
+              <Smile className="h-4 w-4" />
+              Brand Settings
+            </TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
@@ -524,66 +547,17 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div className="pt-4 border-t" data-section="meta-account">
-                  <p className="text-sm font-medium mb-2">Meta Ad Account</p>
-                  {brand.meta_account_id ? (
-                    <div className="space-y-3">
-                      {brand.meta_token_expires_at && new Date(brand.meta_token_expires_at) < new Date() && (
-                        <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm">
-                          <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium text-destructive">Connection Expired</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Your Meta access has expired. Reconnect to continue syncing campaigns.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <code className="text-xs bg-muted px-2 py-1 rounded">{brand.meta_account_id}</code>
-                          {brand.page_name && (
-                            <p className="text-xs text-muted-foreground">Page: {brand.page_name}</p>
-                          )}
-                        </div>
-                        <MetaAccountConnect 
-                          brandId={brand.id} 
-                          currentAccountId={brand.meta_account_id}
-                          currentPageId={brand.page_id}
-                          currentPageName={brand.page_name}
-                          tokenExpired={brand.meta_token_expires_at ? new Date(brand.meta_token_expires_at) < new Date() : false}
-                          onUpdate={fetchBrandData}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Connect your Meta Ad Account to enable campaign creation
-                      </p>
-                      <MetaAccountConnect 
-                        brandId={brand.id} 
-                        currentAccountId={brand.meta_account_id}
-                        currentPageId={brand.page_id}
-                        currentPageName={brand.page_name}
-                        onUpdate={fetchBrandData}
-                      />
-                    </div>
-                  )}
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Brand Brain Tab - Combined Content Library, Psychology, Copy Preferences */}
+          {/* Brand Brain Tab - Content Library + Psychology only */}
           <TabsContent value="brand-brain" className="space-y-6">
-             {/* Content Assets Editor - at the top */}
              <ContentAssetsEditor 
                brandId={brand.id} 
                offers={offers.map(o => ({ id: o.id, name: o.name }))} 
              />
              
-            {/* Audience Psychology */}
             <div data-section="audience-psychology">
               <AudiencePsychology
                 brandId={brand.id}
@@ -594,8 +568,98 @@ export default function Dashboard() {
                 onUpdate={fetchBrandData}
               />
             </div>
-             
-             {/* Emoji Settings */}
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>Meta Best Practices for Copy</CardTitle>
+                <CardDescription>How Lumi formats your primary copy based on Meta's recommendations</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">✓ What Lumi Does</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Uses line breaks for readability</li>
+                      <li>• Adds strategic emoji placement</li>
+                      <li>• Creates scannable bullet lists</li>
+                      <li>• Varies copy lengths (short/medium/long)</li>
+                      <li>• Puts the hook first, CTA last</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">✗ What Lumi Avoids</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Emoji overload (max 2-3 per section)</li>
+                      <li>• Wall-of-text paragraphs</li>
+                      <li>• ALL CAPS abuse</li>
+                      <li>• Clickbait or misleading claims</li>
+                      <li>• Generic, non-specific language</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Offers Tab */}
+          <TabsContent value="offers" className="space-y-6">
+            <div data-section="offers">
+              <OfferManager
+                brandId={brand.id}
+                offers={offers}
+                onUpdate={fetchBrandData}
+              />
+            </div>
+          </TabsContent>
+
+          {/* Brand Settings Tab - Emoji, Copy Voice, Meta Connection */}
+          <TabsContent value="brand-settings" className="space-y-6">
+            {/* Copy Perspective Toggle */}
+            <Card variant="glow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Ad Copy Voice
+                </CardTitle>
+                <CardDescription>
+                  Should your ads say "I" or "We"? This applies to all generated ad copy for this brand.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => handleSaveCopyPerspective('I')}
+                    className={cn(
+                      'rounded-xl border-2 p-4 text-left transition-all',
+                      brand.copy_perspective !== 'We'
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-border hover:border-muted-foreground/50'
+                    )}
+                  >
+                    <span className="font-semibold text-sm">Personal "I"</span>
+                    <p className="text-xs text-muted-foreground mt-1 italic">
+                      "I help entrepreneurs scale..."
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => handleSaveCopyPerspective('We')}
+                    className={cn(
+                      'rounded-xl border-2 p-4 text-left transition-all',
+                      brand.copy_perspective === 'We'
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-border hover:border-muted-foreground/50'
+                    )}
+                  >
+                    <span className="font-semibold text-sm">Team "We"</span>
+                    <p className="text-xs text-muted-foreground mt-1 italic">
+                      "We help entrepreneurs scale..."
+                    </p>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Emoji Settings */}
             <Card variant="glow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -603,7 +667,7 @@ export default function Dashboard() {
                   Emoji Preferences
                 </CardTitle>
                 <CardDescription>
-                  Control how emojis are used in your smart-generated ad copy. Meta recommends strategic emoji use for higher engagement.
+                  Control how emojis are used in your smart-generated ad copy.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -731,48 +795,65 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
-            
-            <Card>
+
+            {/* Meta Connection */}
+            <Card variant="glow" data-section="meta-account">
               <CardHeader>
-                <CardTitle>Meta Best Practices for Copy</CardTitle>
-                <CardDescription>How Lumi formats your primary copy based on Meta's recommendations</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Link className="h-5 w-5" />
+                  Meta Ad Account
+                </CardTitle>
+                <CardDescription>
+                  Connect your Meta (Facebook/Instagram) ad account to launch campaigns.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">✓ What Lumi Does</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Uses line breaks for readability</li>
-                      <li>• Adds strategic emoji placement</li>
-                      <li>• Creates scannable bullet lists</li>
-                      <li>• Varies copy lengths (short/medium/long)</li>
-                      <li>• Puts the hook first, CTA last</li>
-                    </ul>
+              <CardContent>
+                {brand.meta_account_id ? (
+                  <div className="space-y-3">
+                    {brand.meta_token_expires_at && new Date(brand.meta_token_expires_at) < new Date() && (
+                      <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm">
+                        <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-destructive">Connection Expired</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Your Meta access has expired. Reconnect to continue syncing campaigns.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <code className="text-xs bg-muted px-2 py-1 rounded">{brand.meta_account_id}</code>
+                        {brand.page_name && (
+                          <p className="text-xs text-muted-foreground">Page: {brand.page_name}</p>
+                        )}
+                      </div>
+                      <MetaAccountConnect 
+                        brandId={brand.id} 
+                        currentAccountId={brand.meta_account_id}
+                        currentPageId={brand.page_id}
+                        currentPageName={brand.page_name}
+                        tokenExpired={brand.meta_token_expires_at ? new Date(brand.meta_token_expires_at) < new Date() : false}
+                        onUpdate={fetchBrandData}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">✗ What Lumi Avoids</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Emoji overload (max 2-3 per section)</li>
-                      <li>• Wall-of-text paragraphs</li>
-                      <li>• ALL CAPS abuse</li>
-                      <li>• Clickbait or misleading claims</li>
-                      <li>• Generic, non-specific language</li>
-                    </ul>
+                ) : (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Connect your Meta Ad Account to enable campaign creation
+                    </p>
+                    <MetaAccountConnect 
+                      brandId={brand.id} 
+                      currentAccountId={brand.meta_account_id}
+                      currentPageId={brand.page_id}
+                      currentPageName={brand.page_name}
+                      onUpdate={fetchBrandData}
+                    />
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Offers Tab */}
-          <TabsContent value="offers" className="space-y-6">
-            <div data-section="offers">
-              <OfferManager
-                brandId={brand.id}
-                offers={offers}
-                onUpdate={fetchBrandData}
-              />
-            </div>
           </TabsContent>
         </Tabs>
       </div>
