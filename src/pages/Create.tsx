@@ -682,6 +682,7 @@ export default function Create() {
           saveStatus={saveStatus}
           completeLabel="Create My Ad"
           showBackOnFirstStep={true}
+          hideFooter={showSocialGrowthFlow && currentStep === 1}
         >
           <AnimatePresence mode="wait">
             {/* Step 1: Offer Selection */}
