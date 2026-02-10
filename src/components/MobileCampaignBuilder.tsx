@@ -1,24 +1,23 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { MobileStepWizard, StepOption, StepSlider } from "@/components/MobileStepWizard";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Target, 
   Users, 
   DollarSign, 
-  Calendar,
   Zap,
   Video,
   Image as ImageIcon,
   Layers,
   Play,
   Pause,
-  Instagram
+  Instagram,
+  ShieldCheck,
+  ChevronDown,
+  Settings2
 } from "lucide-react";
-import { toast } from "sonner";
 
 interface MobileCampaignBuilderProps {
   workspace: any;
@@ -58,36 +57,26 @@ export function MobileCampaignBuilder({
   onAnswerUpdate,
   onComplete,
 }: MobileCampaignBuilderProps) {
-  // Detect social growth campaign (posts already selected, no creative step needed)
   const isSocialGrowth = !!(workspace?.creative_json as any)?.socialGrowth;
   const selectedPosts = isSocialGrowth ? ((workspace?.creative_json as any)?.selectedPosts || []) : [];
 
-  // Steps: for social growth, skip creative type (step 3 in normal flow)
-  // Normal: 1-Objective, 2-Budget, 3-Creative, 4-Audience, 5-Schedule, 6-Review
-  // Social: 1-Objective, 2-Budget, 3-Audience, 4-Schedule, 5-Review
-  const totalSteps = isSocialGrowth ? 5 : 6;
+  // Simplified: 3 steps (Objective, Budget, Review) — or 2 for social growth (Budget, Review)
+  const totalSteps = isSocialGrowth ? 2 : 3;
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  // Local state for step values
   const socialObjective = (workspace?.creative_json as any)?.objective;
   const [objective, setObjective] = useState(
     answers.objective || (isSocialGrowth ? (socialObjective === "video_views" ? "awareness" : "traffic") : "leads")
   );
   const [budget, setBudget] = useState(answers.budget || 30);
+  // Auto-applied defaults
   const [creativeType, setCreativeType] = useState(answers.creativeType || (isSocialGrowth ? "existing_posts" : "video"));
   const [audience, setAudience] = useState(answers.audience || "broad");
-  const [startDate, setStartDate] = useState(answers.startDate || getTomorrowDate());
   const [launchActive, setLaunchActive] = useState(answers.launchActive ?? false);
 
-  function getTomorrowDate() {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
-  }
-
-  // Update parent on local changes
   useEffect(() => {
     const newAnswers = {
       ...answers,
@@ -95,7 +84,7 @@ export function MobileCampaignBuilder({
       budget,
       creativeType,
       audience,
-      startDate,
+      startDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
       launchActive,
       budgetType: "daily",
       metaAdvantage: true,
@@ -104,42 +93,27 @@ export function MobileCampaignBuilder({
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
     };
     onAnswerUpdate(newAnswers);
-  }, [objective, budget, creativeType, audience, startDate, launchActive]);
+  }, [objective, budget, creativeType, audience, launchActive]);
 
-  // Map logical step to content for social growth (skip creative type)
+  // Map logical step to content
   const getContentStep = (logicalStep: number): number => {
-    if (!isSocialGrowth) return logicalStep;
-    // Social: 1→1, 2→2, 3→4(audience), 4→5(schedule), 5→6(review)
-    if (logicalStep <= 2) return logicalStep;
-    return logicalStep + 1; // skip 3 (creative)
+    if (isSocialGrowth) {
+      // Social: 1→Budget(2), 2→Review(3)
+      return logicalStep + 1;
+    }
+    return logicalStep; // Normal: 1→Objective, 2→Budget, 3→Review
   };
 
   const contentStep = getContentStep(step);
 
-  const handleNext = () => {
-    if (step < totalSteps) {
-      setStep(step + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    }
-  };
-
-  const handleComplete = () => {
-    onComplete();
-  };
+  const handleNext = () => { if (step < totalSteps) setStep(step + 1); };
+  const handleBack = () => { if (step > 1) setStep(step - 1); };
 
   const canProceed = () => {
     switch (contentStep) {
       case 1: return !!objective;
       case 2: return budget >= 5;
-      case 3: return !!creativeType;
-      case 4: return !!audience;
-      case 5: return !!startDate;
-      case 6: return true;
+      case 3: return true;
       default: return true;
     }
   };
@@ -148,10 +122,7 @@ export function MobileCampaignBuilder({
     switch (contentStep) {
       case 1: return "What's your goal?";
       case 2: return "Set your budget";
-      case 3: return "Choose creative type";
-      case 4: return "Select audience";
-      case 5: return "When should it start?";
-      case 6: return "Ready to launch?";
+      case 3: return "Ready to launch?";
       default: return "";
     }
   };
@@ -160,10 +131,7 @@ export function MobileCampaignBuilder({
     switch (contentStep) {
       case 1: return "Pick the main objective for this campaign";
       case 2: return "How much do you want to spend per day?";
-      case 3: return "What type of content will you use?";
-      case 4: return "Who should see your ads?";
-      case 5: return "Pick your launch date";
-      case 6: return "Review and confirm your choices";
+      case 3: return "We've set everything up using best practices";
       default: return "";
     }
   };
@@ -176,13 +144,13 @@ export function MobileCampaignBuilder({
       subtitle={getStepSubtitle()}
       onBack={handleBack}
       onNext={handleNext}
-      onComplete={handleComplete}
+      onComplete={onComplete}
       canProceed={canProceed()}
       isLoading={loading}
       nextLabel="Continue"
       completeLabel="Review Campaign"
     >
-      {/* Step 1: Objective */}
+      {/* Step 1: Objective (skipped for social growth) */}
       {contentStep === 1 && (
         <div className="space-y-3">
           {OBJECTIVES.map((obj) => (
@@ -211,100 +179,14 @@ export function MobileCampaignBuilder({
             formatValue={(v) => `$${v}/day`}
             presets={BUDGET_PRESETS}
           />
-          
           <div className="text-center text-sm text-muted-foreground">
             <p>Estimated monthly spend: <span className="font-semibold">${budget * 30}</span></p>
           </div>
         </div>
       )}
 
-      {/* Step 3: Creative Type (skipped for social growth) */}
+      {/* Step 3: Review */}
       {contentStep === 3 && (
-        <div className="space-y-3">
-          {CREATIVE_TYPES.map((type) => (
-            <StepOption
-              key={type.id}
-              selected={creativeType === type.id}
-              onSelect={() => setCreativeType(type.id)}
-              icon={type.icon}
-              title={type.title}
-              description={type.description}
-              recommended={type.recommended}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Step 4: Audience */}
-      {contentStep === 4 && (
-        <div className="space-y-3">
-          {AUDIENCES.map((aud) => (
-            <StepOption
-              key={aud.id}
-              selected={audience === aud.id}
-              onSelect={() => setAudience(aud.id)}
-              title={aud.title}
-              description={aud.description}
-              recommended={aud.recommended}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Step 5: Schedule */}
-      {contentStep === 5 && (
-        <div className="space-y-6 pt-4">
-          <div className="space-y-3">
-            <Label htmlFor="start-date" className="text-base font-medium">
-              Start Date
-            </Label>
-            <Input
-              id="start-date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              min={getTomorrowDate()}
-              className="h-14 text-lg text-center"
-            />
-          </div>
-          
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => {
-                const d = new Date();
-                d.setDate(d.getDate() + 1);
-                setStartDate(d.toISOString().split('T')[0]);
-              }}
-              className="py-3 px-4 rounded-lg bg-muted text-sm font-medium touch-target"
-            >
-              Tomorrow
-            </button>
-            <button
-              onClick={() => {
-                const d = new Date();
-                d.setDate(d.getDate() + 3);
-                setStartDate(d.toISOString().split('T')[0]);
-              }}
-              className="py-3 px-4 rounded-lg bg-muted text-sm font-medium touch-target"
-            >
-              In 3 days
-            </button>
-            <button
-              onClick={() => {
-                const d = new Date();
-                d.setDate(d.getDate() + 7);
-                setStartDate(d.toISOString().split('T')[0]);
-              }}
-              className="py-3 px-4 rounded-lg bg-muted text-sm font-medium touch-target"
-            >
-              Next week
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 6 (or 5 for social growth): Review Summary */}
-      {contentStep === 6 && (
         <div className="space-y-4">
           {/* Summary Cards */}
           <div className="space-y-3">
@@ -331,24 +213,81 @@ export function MobileCampaignBuilder({
                 value={CREATIVE_TYPES.find(t => t.id === creativeType)?.title || creativeType}
               />
             )}
-            <SummaryCard
-              icon={<Users className="h-4 w-4" />}
-              label="Audience"
-              value={AUDIENCES.find(a => a.id === audience)?.title.replace(" (Recommended)", "") || audience}
-            />
-            <SummaryCard
-              icon={<Calendar className="h-4 w-4" />}
-              label="Start Date"
-              value={new Date(startDate).toLocaleDateString('en-US', { 
-                weekday: 'short', 
-                month: 'short', 
-                day: 'numeric' 
-              })}
-            />
           </div>
 
+          {/* Best Practices Card */}
+          <div className="p-4 rounded-xl border bg-green-50/50 border-green-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-green-100">
+                <ShieldCheck className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm text-green-800">Best practices applied</p>
+                <p className="text-xs text-green-700">Meta's recommended settings for best results</p>
+              </div>
+            </div>
+            <div className="space-y-2 text-xs text-green-700">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                Broad audience targeting
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                Advantage+ creative optimization
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                Advantage+ placements
+              </div>
+            </div>
+          </div>
+
+          {/* Advanced Options Collapsible */}
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="flex items-center gap-2 w-full p-3 rounded-xl border bg-card text-sm text-muted-foreground hover:bg-muted/50 transition-colors">
+                <Settings2 className="h-4 w-4" />
+                <span>Advanced Options</span>
+                <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3 space-y-3">
+              {/* Audience Override */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Audience</p>
+                {AUDIENCES.map((aud) => (
+                  <StepOption
+                    key={aud.id}
+                    selected={audience === aud.id}
+                    onSelect={() => setAudience(aud.id)}
+                    title={aud.title}
+                    description={aud.description}
+                    recommended={aud.recommended}
+                  />
+                ))}
+              </div>
+              {/* Creative Type Override (non-social only) */}
+              {!isSocialGrowth && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Creative Type</p>
+                  {CREATIVE_TYPES.map((type) => (
+                    <StepOption
+                      key={type.id}
+                      selected={creativeType === type.id}
+                      onSelect={() => setCreativeType(type.id)}
+                      icon={type.icon}
+                      title={type.title}
+                      description={type.description}
+                      recommended={type.recommended}
+                    />
+                  ))}
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
+
           {/* Launch Status Toggle */}
-          <div className="p-4 rounded-xl border bg-card mt-4">
+          <div className="p-4 rounded-xl border bg-card">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {launchActive ? (
@@ -383,7 +322,6 @@ export function MobileCampaignBuilder({
   );
 }
 
-// Summary Card Component
 function SummaryCard({ 
   icon, 
   label, 
