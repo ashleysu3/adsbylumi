@@ -405,20 +405,11 @@
                  <XCircle className="h-4 w-4" />
                  Fix Issues to Continue
                </Button>
-             ) : hasIssues ? (
-               <div className="flex gap-2">
-                 <Button
-                   variant="outline"
-                   onClick={onProceed}
-                   className="gap-2 text-amber-600 border-amber-500/50 hover:bg-amber-500/10"
-                 >
-                   Publish Anyway
-                 </Button>
-                 <Button onClick={onProceed} className="gap-2">
-                   <Rocket className="h-4 w-4" />
-                   Publish to Meta
-                 </Button>
-               </div>
+              ) : hasIssues ? (
+                <Button onClick={onProceed} className="gap-2">
+                  <Rocket className="h-4 w-4" />
+                  Publish Anyway
+                </Button>
              ) : (
                <Button onClick={onProceed} className="gap-2" size="lg">
                  <Rocket className="h-4 w-4" />
