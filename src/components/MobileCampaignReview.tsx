@@ -202,7 +202,7 @@ export function MobileCampaignReview({
               {selectedPosts.slice(0, 3).map((post: any, index: number) => (
                 <div key={index} className="flex items-center gap-2 text-sm">
                   <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="truncate">{post.caption?.slice(0, 40) || `Post ${index + 1}`}</span>
+                  <span className="line-clamp-2">{post.caption || `Post ${index + 1}`}</span>
                 </div>
               ))}
               {selectedPosts.length > 3 && (
