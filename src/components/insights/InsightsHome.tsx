@@ -3,35 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { 
   Eye, 
   Sparkles, 
   Calendar,
-  Pencil,
-  Check,
-  X,
-  PlusCircle,
   Package,
-  DollarSign
+  Loader2
 } from 'lucide-react';
 import { 
   getLumiKPIConfig, 
-  formatLumiKPIValue, 
   getLumiKPIStatus,
   getLumiStatusDot,
-  getLumiStatusLabel,
-  formatBenchmarkRange
 } from '@/lib/lumi-kpi-config';
-import { KPIProgressBar } from './KPIProgressBar';
-import { KPITrendIndicator } from './KPITrendIndicator';
 import { DateRangePicker } from './DateRangePicker';
 import { StatusFilter } from './StatusFilter';
 import { AccountOverview } from './AccountOverview';
 import { LinkOfferModal } from './LinkOfferModal';
-import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
-import { MobileKPICarousel } from './MobileKPICarousel';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -91,21 +81,33 @@ interface InsightsHomeProps {
   accountMetricsLoading?: boolean;
 }
 
-// Helper to extract the primary KPI value from metrics
 function getPrimaryKPIValue(metrics: CampaignMetrics | null, primaryKey: string): number | null {
   if (!metrics) return null;
-  
-  // Direct match
   if (primaryKey in metrics && metrics[primaryKey] !== undefined) {
     return metrics[primaryKey] as number;
   }
-  
-  // Calculate costPerThruPlay if not present
   if (primaryKey === 'costPerThruPlay' && metrics.spend && metrics.videoThruPlays) {
     return metrics.videoThruPlays > 0 ? metrics.spend / metrics.videoThruPlays : null;
   }
-  
   return null;
+}
+
+function getVerdict(status: string): { label: string; colorClass: string } {
+  switch (status) {
+    case 'healthy': return { label: 'Above benchmark', colorClass: 'text-green-700' };
+    case 'attention': return { label: 'Right at benchmark', colorClass: 'text-amber-700' };
+    case 'critical': return { label: 'Below benchmark', colorClass: 'text-red-700' };
+    default: return { label: 'Gathering data', colorClass: 'text-muted-foreground' };
+  }
+}
+
+function getActionRecommendation(status: string): string {
+  switch (status) {
+    case 'healthy': return 'Increase budget';
+    case 'attention': return 'Keep spend the same';
+    case 'critical': return 'Refresh creative or pause';
+    default: return 'Wait for more data';
+  }
 }
 
 export function InsightsHome({ 
@@ -121,21 +123,14 @@ export function InsightsHome({
   accountMetricsLoading,
 }: InsightsHomeProps) {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  const [editingGoal, setEditingGoal] = useState<string | null>(null);
-  const [goalValue, setGoalValue] = useState<string>('');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live', 'paused', 'imported']);
+  const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   
-  // Budget adjustment panel state
-  const [budgetPanelOpen, setBudgetPanelOpen] = useState<string | null>(null);
-  
-  // Link offer modal state
   const [linkOfferModal, setLinkOfferModal] = useState<{
     open: boolean;
     campaign: Campaign | null;
   }>({ open: false, campaign: null });
 
-  // Calculate status counts
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     campaigns.forEach((c) => {
@@ -145,7 +140,6 @@ export function InsightsHome({
     return counts;
   }, [campaigns]);
 
-  // Filter campaigns by selected statuses
   const filteredCampaigns = useMemo(() => {
     if (selectedStatuses.length === 0) return campaigns;
     return campaigns.filter((c) => {
@@ -153,44 +147,34 @@ export function InsightsHome({
       return selectedStatuses.includes(status);
     });
   }, [campaigns, selectedStatuses]);
-  
-  const handleStartEditGoal = (campaignId: string, currentGoal: number | null | undefined) => {
-    setEditingGoal(campaignId);
-    setGoalValue(currentGoal?.toString() || '');
-  };
 
-  const handleSaveGoal = (campaignId: string) => {
-    const numValue = parseFloat(goalValue);
-    if (!isNaN(numValue) && numValue > 0) {
-      onUpdateGoal(campaignId, numValue);
-    }
-    setEditingGoal(null);
-    setGoalValue('');
-  };
-
-  const handleCancelEdit = () => {
-    setEditingGoal(null);
-    setGoalValue('');
-  };
-  
-  const handleAddCreative = (campaign: Campaign) => {
-    if (campaign.offerId) {
-      // Offer already linked, go straight to creative
-      navigate(`/creative?workspace=${campaign.id}&addCreative=true`);
-    } else {
-      // Need to link offer first
-      setLinkOfferModal({ open: true, campaign });
+  const toggleCampaignStatus = async (campaign: Campaign) => {
+    const isActive = campaign.status === 'active' || campaign.status === 'live';
+    const action = isActive ? 'pause' : 'unpause';
+    setTogglingCampaign(campaign.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('check-campaign-status', {
+        body: { workspaceId: campaign.id, action },
+      });
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || `Failed to ${action} campaign`);
+      }
+      toast.success(`Campaign ${action === 'pause' ? 'paused' : 'resumed'}`);
+      // Parent will refetch
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setTogglingCampaign(null);
     }
   };
-  
+
   const handleOfferLinked = (campaign: Campaign) => {
-    // After linking, navigate to creative dashboard
     navigate(`/creative?workspace=${campaign.id}&addCreative=true`);
   };
 
   return (
     <div className="space-y-8">
-      {/* Lumi Welcome Header */}
+      {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-lumi-orange-1/10 via-lumi-pink-1/10 to-lumi-purple-1/10 border border-primary/20">
           <Sparkles className="h-4 w-4 text-primary animate-sparkle-pulse" />
@@ -200,7 +184,7 @@ export function InsightsHome({
           Let's keep this <span className="text-gradient-lumi">simple</span>.
         </h1>
         <p className="text-muted-foreground max-w-md mx-auto">
-          Here's the clearest signal for each of your campaigns. Lumi monitors these automatically.
+          Here's the clearest signal for each of your campaigns.
         </p>
       </div>
 
@@ -209,7 +193,7 @@ export function InsightsHome({
         <AccountOverview metrics={accountMetrics || null} isLoading={accountMetricsLoading || false} />
       )}
 
-      {/* Global Date Selector */}
+      {/* Date Selector */}
       <Card variant="glow" className="rounded-2xl">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -242,7 +226,7 @@ export function InsightsHome({
           {[1, 2, 3].map(i => (
             <Card key={i} className="rounded-2xl animate-pulse">
               <CardContent className="p-6">
-                <div className="h-24 bg-muted rounded-xl" />
+                <div className="h-20 bg-muted rounded-xl" />
               </CardContent>
             </Card>
           ))}
@@ -263,233 +247,76 @@ export function InsightsHome({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {filteredCampaigns.map(campaign => {
-            // Get KPI config using objective, template name, and campaign name
             const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
             const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
             const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
             const statusDot = getLumiStatusDot(status);
-            const statusLabel = getLumiStatusLabel(status);
+            const verdict = getVerdict(status);
+            const actionRec = getActionRecommendation(status);
+            const isActive = campaign.status === 'active' || campaign.status === 'live';
+            const isToggling = togglingCampaign === campaign.id;
 
             return (
               <Card 
                 key={campaign.id} 
                 variant="glow"
-                className="rounded-2xl transition-all duration-300 hover:scale-[1.01]"
+                className="rounded-2xl transition-all duration-300 hover:scale-[1.005]"
               >
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col gap-4">
-                    {/* Campaign Info Row */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`w-3 h-3 rounded-full flex-shrink-0 ${statusDot}`} />
-                          <h3 className="font-display font-semibold text-base sm:text-lg truncate">{campaign.name}</h3>
-                          {/* Offer Link Status Indicator */}
-                          {campaign.offerId ? (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 flex-shrink-0">
-                              <Package className="h-3 w-3 mr-1" />
-                              <span className="hidden sm:inline">{campaign.offerName || 'Offer Linked'}</span>
-                              <span className="sm:hidden">Lumi</span>
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200 flex-shrink-0">
-                              <Package className="h-3 w-3 mr-1" />
-                              Needs Offer
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs sm:text-sm text-muted-foreground pl-5">
-                          {kpiConfig.friendlyName} Campaign
-                        </p>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-col gap-3">
+                    {/* Row 1: Name + status dot + toggle */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusDot}`} />
+                        <h3 className="font-display font-semibold text-sm sm:text-base truncate">{campaign.name}</h3>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isToggling ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        ) : (
+                          <Switch
+                            checked={isActive}
+                            onCheckedChange={() => toggleCampaignStatus(campaign)}
+                            aria-label={`Toggle ${campaign.name}`}
+                          />
+                        )}
                       </div>
                     </div>
 
-                    {/* Metrics - Desktop vs Mobile */}
-                    {isMobile ? (
-                      /* Mobile: Swipeable KPI Carousel */
-                      <MobileKPICarousel
-                        slides={[
-                          {
-                            label: kpiConfig.primaryLabel,
-                            value: primaryValue,
-                            kpiKey: kpiConfig.primary,
-                            benchmark: kpiConfig.benchmark,
-                            userGoal: campaign.userGoal,
-                            previousValue: getPrimaryKPIValue(campaign.previousMetrics || null, kpiConfig.primary),
-                          },
-                          // Add secondary KPIs based on campaign type
-                          ...(campaign.metrics?.spend !== undefined ? [{
-                            label: 'Spend',
-                            value: campaign.metrics.spend,
-                            kpiKey: 'spend',
-                            benchmark: { min: 0, max: 1000, unit: '$' },
-                            previousValue: campaign.previousMetrics?.spend || null,
-                          }] : []),
-                          ...(campaign.metrics?.impressions !== undefined ? [{
-                            label: 'Impressions',
-                            value: campaign.metrics.impressions,
-                            kpiKey: 'impressions',
-                            benchmark: { min: 1000, max: 10000, unit: '' },
-                            previousValue: campaign.previousMetrics?.impressions || null,
-                          }] : []),
-                          ...(campaign.metrics?.clicks !== undefined ? [{
-                            label: 'Clicks',
-                            value: campaign.metrics.clicks,
-                            kpiKey: 'clicks',
-                            benchmark: { min: 50, max: 500, unit: '' },
-                            previousValue: campaign.previousMetrics?.clicks || null,
-                          }] : []),
-                        ]}
-                        statusLabel={statusLabel}
-                        statusColor={`
-                          ${status === 'healthy' ? 'bg-green-50 text-green-700' : ''}
-                          ${status === 'attention' ? 'bg-amber-50 text-amber-700' : ''}
-                          ${status === 'critical' ? 'bg-red-50 text-red-700' : ''}
-                          ${status === 'no-data' ? 'bg-gray-50 text-gray-600' : ''}
-                        `}
-                      />
-                    ) : (
-                      /* Desktop: Horizontal metrics row */
-                      <div className="flex flex-wrap items-center gap-4 sm:gap-6 lg:gap-8">
-                        {/* KPI Value with Progress */}
-                        <div className="space-y-1.5 min-w-[100px] sm:min-w-[140px]">
-                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                            {kpiConfig.primaryLabel}
-                          </p>
-                          <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                            {formatLumiKPIValue(primaryValue, kpiConfig.primary)}
-                          </p>
-                          {/* Trend Indicator */}
-                          <KPITrendIndicator
-                            currentValue={primaryValue}
-                            previousValue={getPrimaryKPIValue(campaign.previousMetrics || null, kpiConfig.primary)}
-                            kpiKey={kpiConfig.primary}
-                          />
-                          {/* Progress Bar */}
-                          <KPIProgressBar
-                            value={primaryValue}
-                            benchmark={kpiConfig.benchmark}
-                            userGoal={campaign.userGoal}
-                            kpiKey={kpiConfig.primary}
-                            className="w-24 sm:w-32"
-                          />
-                        </div>
+                    {/* Row 2: Verdict + Action */}
+                    <div className="flex items-center justify-between gap-2 pl-5">
+                      <span className={`text-sm font-medium ${verdict.colorClass}`}>
+                        {verdict.label}
+                      </span>
+                      <Badge variant="outline" className="text-xs rounded-full">
+                        {actionRec}
+                      </Badge>
+                    </div>
 
-                        {/* Benchmark */}
-                        <div className="space-y-1">
-                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                            Benchmark
-                          </p>
-                          <p className="text-base sm:text-lg text-muted-foreground">
-                            {formatBenchmarkRange(kpiConfig.benchmark)}
-                          </p>
-                        </div>
-
-                        {/* User Goal (Editable) */}
-                        <div className="space-y-1">
-                          <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                            Your Goal
-                          </p>
-                          {editingGoal === campaign.id ? (
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="number"
-                                value={goalValue}
-                                onChange={(e) => setGoalValue(e.target.value)}
-                                className="w-20 sm:w-24 h-8 rounded-lg text-base sm:text-lg"
-                                placeholder="$0.00"
-                                autoFocus
-                              />
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-8 w-8 text-green-600"
-                                onClick={() => handleSaveGoal(campaign.id)}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-8 w-8 text-muted-foreground"
-                                onClick={handleCancelEdit}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => handleStartEditGoal(campaign.id, campaign.userGoal)}
-                              className="flex items-center gap-2 text-base sm:text-lg text-muted-foreground hover:text-foreground transition-colors group"
-                            >
-                              {campaign.userGoal ? (
-                                <span>
-                                  {kpiConfig.benchmark.unit === 'x' 
-                                    ? `${campaign.userGoal.toFixed(2)}x` 
-                                    : `${kpiConfig.benchmark.unit}${campaign.userGoal.toFixed(2)}`
-                                  }
-                                </span>
-                              ) : (
-                                <span className="text-muted-foreground/50">Set goal</span>
-                              )}
-                              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Status Badge */}
-                        <Badge 
-                          variant="outline"
-                          className={`
-                            rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium border flex-shrink-0
-                            ${status === 'healthy' ? 'bg-green-50 text-green-700 border-green-200' : ''}
-                            ${status === 'attention' ? 'bg-amber-50 text-amber-700 border-amber-200' : ''}
-                            ${status === 'critical' ? 'bg-red-50 text-red-700 border-red-200' : ''}
-                            ${status === 'no-data' ? 'bg-gray-50 text-gray-600 border-gray-200' : ''}
-                          `}
-                        >
-                          {statusLabel}
-                        </Badge>
-                      </div>
-                    )}
-
-                    {/* Actions Row */}
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-2 border-t border-border/50">
-                      {/* Add Creative Button - for imported/live campaigns */}
-                      <Button
-                        onClick={() => handleAddCreative(campaign)}
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl text-xs sm:text-sm"
-                      >
-                        {campaign.offerId ? (
-                          <>
-                            <PlusCircle className="h-4 w-4 mr-1 sm:mr-2" />
-                            <span className="hidden sm:inline">Add Creative</span>
-                            <span className="sm:hidden">Add</span>
-                          </>
-                        ) : (
-                          <>
-                            <Package className="h-4 w-4 mr-1 sm:mr-2" />
-                            <span className="hidden sm:inline">Link Offer</span>
-                            <span className="sm:hidden">Link</span>
-                          </>
-                        )}
-                      </Button>
-
-                      {/* View Button */}
+                    {/* Row 3: View button */}
+                    <div className="flex items-center gap-2 pt-1 pl-5">
                       <Button
                         onClick={() => onViewInsights(campaign.id)}
                         variant="lumi"
                         size="sm"
-                        className="rounded-xl text-xs sm:text-sm"
+                        className="rounded-xl text-xs"
                       >
-                        <Eye className="h-4 w-4 mr-1 sm:mr-2" />
-                        <span className="hidden sm:inline">View Insights</span>
-                        <span className="sm:hidden">View</span>
+                        <Eye className="h-3.5 w-3.5 mr-1" />
+                        View Details
                       </Button>
+                      {!campaign.offerId && (
+                        <Button
+                          onClick={() => setLinkOfferModal({ open: true, campaign })}
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl text-xs"
+                        >
+                          <Package className="h-3.5 w-3.5 mr-1" />
+                          Link Offer
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -499,14 +326,13 @@ export function InsightsHome({
         </div>
       )}
 
-      {/* Lumi Footer Message */}
+      {/* Footer */}
       {campaigns.length > 0 && (
         <p className="text-center text-sm text-muted-foreground">
           <span className="text-gradient-lumi font-medium">✨ Lumi's got you</span> — focus on the green signals, and we'll alert you when something needs attention.
         </p>
       )}
       
-      {/* Link Offer Modal */}
       {linkOfferModal.campaign && (
         <LinkOfferModal
           open={linkOfferModal.open}

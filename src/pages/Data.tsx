@@ -81,6 +81,11 @@ export default function Data() {
   const [view, setView] = useState<'home' | 'detail'>(workspaceIdFromUrl ? 'detail' : 'home');
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(workspaceIdFromUrl);
 
+  // Detail level preference
+  const [detailLevel, setDetailLevel] = useState<'simple' | 'detailed'>(() => {
+    return (localStorage.getItem('lumi-insights-detail-level') as 'simple' | 'detailed') || 'simple';
+  });
+
   // Data state
   const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
   const [analysis, setAnalysis] = useState<PerformanceAnalysis | null>(null);
@@ -660,6 +665,21 @@ export default function Data() {
           </div>
           
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            {/* Detail Level Toggle */}
+            <div className="flex items-center rounded-lg border bg-card p-0.5 text-xs">
+              <button
+                onClick={() => { setDetailLevel('simple'); localStorage.setItem('lumi-insights-detail-level', 'simple'); }}
+                className={`px-3 py-1.5 rounded-md transition-colors ${detailLevel === 'simple' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Simple
+              </button>
+              <button
+                onClick={() => { setDetailLevel('detailed'); localStorage.setItem('lumi-insights-detail-level', 'detailed'); }}
+                className={`px-3 py-1.5 rounded-md transition-colors ${detailLevel === 'detailed' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Detailed
+              </button>
+            </div>
             {/* Import from Ads Manager Button */}
             {metaConnected && !metaTokenExpired && brandId && metaAccountId && (
               <Button 
@@ -740,12 +760,12 @@ export default function Data() {
             onUpdateGoal={(goal) => handleUpdateGoal(selectedCampaign.id, goal)}
             onDateRangeChange={handleDetailDateRangeChange}
             onOfferLinked={() => {
-              // Refresh the campaign data after offer is linked
               fetchCampaigns();
             }}
             isLoading={syncing}
             dateRangeStart={format(getDateRange(detailDateRange, customDateRange).from, 'yyyy-MM-dd')}
             dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
+            detailLevel={detailLevel}
           />
         ) : (
           <div className="text-center py-12">
