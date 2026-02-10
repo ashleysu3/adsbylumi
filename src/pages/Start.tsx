@@ -63,8 +63,14 @@ export default function Start() {
   useEffect(() => {
     if (brandLoading) return;
     if (!activeBrand) {
-      // No brand means user needs onboarding
-      navigate("/onboarding");
+      // Check if user is actually logged in before redirecting to onboarding
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          navigate("/onboarding");
+        } else {
+          navigate("/auth");
+        }
+      });
       return;
     }
     setBrand(activeBrand);
