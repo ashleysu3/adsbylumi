@@ -32,6 +32,8 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   const { getEffectiveUserId } = useImpersonation();
   const { setBrandId } = useLumi();
 
+  const [authReady, setAuthReady] = useState(false);
+
   const fetchBrands = useCallback(async () => {
     try {
       const effectiveUserId = await getEffectiveUserId();
@@ -80,8 +82,24 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     }
   }, [getEffectiveUserId, setBrandId]);
 
+  // Listen for auth state changes to re-fetch brands when user logs in
   useEffect(() => {
-    fetchBrands();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setAuthReady(true);
+        fetchBrands();
+      } else if (event === 'SIGNED_OUT') {
+        setBrands([]);
+        setActiveBrandState(null);
+        setLoading(false);
+        setAuthReady(true);
+      }
+    });
+
+    // Also try initial fetch
+    fetchBrands().then(() => setAuthReady(true));
+
+    return () => subscription.unsubscribe();
   }, [fetchBrands]);
 
   const setActiveBrand = useCallback((brand: Brand) => {
