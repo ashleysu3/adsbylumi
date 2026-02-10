@@ -10,7 +10,7 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, FolderOpen, Video, Film, Image, Trash2,
-  X, HelpCircle, ArrowLeft
+  X, HelpCircle, ArrowLeft, Check
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -803,7 +803,9 @@ export default function CreativeStudio() {
                   <span className="hidden sm:inline">{t.label}</span>
                 </span>
                 {tabProgress[t.id] && (
-                  <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 border-2 border-background shadow-sm" />
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-background flex items-center justify-center shadow-sm">
+                    <Check className="h-2.5 w-2.5 text-white" />
+                  </span>
                 )}
               </TabsTrigger>
             ))}
@@ -874,8 +876,8 @@ export default function CreativeStudio() {
                     const isAdded = productionItems.some(p => p.hook === cell.hook);
                     return (
                       <Card key={cell.id} className={cn(
-                        "transition-all border-l-4",
-                        isAdded ? "border-l-green-500 ring-2 ring-green-500/30 bg-green-50/30 dark:bg-green-950/10" : "border-l-primary/40 hover:shadow-md hover:border-l-primary"
+                        "transition-all",
+                        isAdded ? "ring-1 ring-green-200 bg-green-50/50 dark:ring-green-800 dark:bg-green-950/20" : "hover:shadow-md border"
                       )}>
                         <CardContent className="pt-4 space-y-3">
                           <div className="flex items-center justify-between">
@@ -930,7 +932,7 @@ export default function CreativeStudio() {
                 
                 <AngleCopyEditor
                   angles={availableAngles}
-                  selectedAngleIds={selectedAngleIds}
+                  selectedAngleIds={selectedAngleIds.length > 0 ? selectedAngleIds : [...new Set(productionItems.map(p => availableAngles.find(a => a.name === p.angleName)?.id).filter(Boolean))] as string[]}
                   angleCopy={angleCopy}
                   brandInfo={workspace?.brands}
                   offerData={{
