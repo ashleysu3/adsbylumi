@@ -807,6 +807,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          archived: boolean | null
+          archived_at: string | null
           created_at: string | null
           email: string
           full_name: string | null
@@ -815,6 +817,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived?: boolean | null
+          archived_at?: string | null
           created_at?: string | null
           email: string
           full_name?: string | null
@@ -823,6 +827,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived?: boolean | null
+          archived_at?: string | null
           created_at?: string | null
           email?: string
           full_name?: string | null
@@ -1095,7 +1101,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "moderator"
       subscription_tier: "starter" | "growth" | "agency_pro"
     }
     CompositeTypes: {
@@ -1224,7 +1230,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "moderator"],
       subscription_tier: ["starter", "growth", "agency_pro"],
     },
   },

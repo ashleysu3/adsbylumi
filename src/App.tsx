@@ -38,6 +38,7 @@ import AdminSubscriptions from "./pages/admin/Subscriptions";
 import AdminBugReports from "./pages/admin/BugReports";
 import AdminUsers from "./pages/admin/Users";
 import AdminSettings from "./pages/admin/Settings";
+import AdminTeam from "./pages/admin/Team";
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
@@ -109,6 +110,7 @@ const App = () => {
                   <Route path="/admin/bug-reports" element={<AdminBugReports />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
                   <Route path="/admin/settings" element={<AdminSettings />} />
+                  <Route path="/admin/team" element={<AdminTeam />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

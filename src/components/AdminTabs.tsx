@@ -1,9 +1,10 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, LayoutTemplate, Ticket, BarChart3, CreditCard, Bug, Users, Settings } from "lucide-react";
+import { BookOpen, LayoutTemplate, Ticket, BarChart3, CreditCard, Bug, Users, Settings, Shield } from "lucide-react";
 
 const adminTabs = [
   { path: "/admin/users", label: "Users", icon: Users },
+  { path: "/admin/team", label: "Team", icon: Shield },
   { path: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
   { path: "/admin/bug-reports", label: "Bug Reports", icon: Bug },
   { path: "/admin/knowledge", label: "Knowledge", icon: BookOpen },
