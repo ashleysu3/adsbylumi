@@ -328,13 +328,13 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
             <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
-                  {extractedData.extraction_success ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  ) : (
+              {extractedData.needs_clarification ? (
                     <AlertCircle className="h-5 w-5 text-amber-500" />
+                  ) : (
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
                   )}
                   <span className="font-medium text-sm">
-                    {extractedData.extraction_success ? "Page analyzed successfully" : "Limited extraction"}
+                    {extractedData.needs_clarification ? "Almost there — a few fields below need your input" : "Page analyzed successfully"}
                   </span>
                 </div>
                 {extractedData.key_benefits?.length || extractedData.pain_points_addressed?.length ? (
@@ -348,25 +348,6 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                 <p className="text-sm text-muted-foreground">{extractedData.content_summary}</p>
               )}
 
-              {/* Clarification Questions - User can answer these in the form fields below */}
-              {extractedData.needs_clarification && extractedData.clarification_questions?.length ? (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-md p-3">
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400 mb-2">
-                    We couldn't find some details — please fill them in below:
-                  </p>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    {extractedData.clarification_questions.map((q, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-amber-500">•</span>
-                        {q}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium">
-                    ↓ Edit the fields below to add missing info
-                  </p>
-                </div>
-              ) : null}
 
               {/* Expandable Details */}
               <Collapsible open={showExtractedDetails} onOpenChange={setShowExtractedDetails}>
@@ -436,16 +417,6 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                     </div>
                   )}
 
-                  {extractedData.missing_info?.length ? (
-                    <div>
-                      <p className="text-xs font-medium mb-1 text-amber-600">Missing Info</p>
-                      <ul className="text-xs text-muted-foreground space-y-0.5">
-                        {extractedData.missing_info.map((m, i) => (
-                          <li key={i}>• {m}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
                 </CollapsibleContent>
               </Collapsible>
             </div>
@@ -485,11 +456,15 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="description">Description</Label>
-              {extractedData && formData.description && (
+              {extractedData && formData.description ? (
                 <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                   ✨ Auto-filled • Click to edit
                 </span>
-              )}
+              ) : extractedData && !formData.description && extractedData.needs_clarification ? (
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-700">
+                  Needs info
+                </Badge>
+              ) : null}
             </div>
             <Textarea
               id="description"
@@ -503,19 +478,20 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                   : ''
               }`}
             />
-            {!formData.description && extractedData?.needs_clarification && (
-              <p className="text-xs text-destructive">← This info is missing, please fill it in</p>
-            )}
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="price_point">Price</Label>
-              {extractedData && formData.price_point && (
+              {extractedData && formData.price_point ? (
                 <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                   ✨ Auto-filled • Click to edit
                 </span>
-              )}
+              ) : extractedData && !formData.price_point && extractedData.needs_clarification ? (
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-700">
+                  Needs info
+                </Badge>
+              ) : null}
             </div>
             <Input
               id="price_point"
@@ -528,19 +504,20 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                   : ''
               }`}
             />
-            {!formData.price_point && extractedData?.needs_clarification && (
-              <p className="text-xs text-destructive">← This info is missing, please fill it in</p>
-            )}
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="target_outcome">Target Outcome</Label>
-              {extractedData && formData.target_outcome && (
+              {extractedData && formData.target_outcome ? (
                 <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                   ✨ Auto-filled • Click to edit
                 </span>
-              )}
+              ) : extractedData && !formData.target_outcome && extractedData.needs_clarification ? (
+                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-700">
+                  Needs info
+                </Badge>
+              ) : null}
             </div>
             <Input
               id="target_outcome"
@@ -553,9 +530,6 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                   : ''
               }`}
             />
-            {!formData.target_outcome && extractedData?.needs_clarification && (
-              <p className="text-xs text-destructive">← This info is missing, please fill it in</p>
-            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
