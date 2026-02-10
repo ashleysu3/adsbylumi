@@ -896,7 +896,7 @@ export default function AdminUsers() {
 
       {/* User Details Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 h-[90vh]">
           <DialogHeader className="pb-2">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <User className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
@@ -923,7 +923,7 @@ export default function AdminUsers() {
                 <TabsTrigger value="actions" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Actions</TabsTrigger>
               </TabsList>
 
-              <ScrollArea className="flex-1 mt-3 sm:mt-4">
+              <ScrollArea className="flex-1 min-h-0 mt-3 sm:mt-4">
                 {/* Overview Tab */}
                 <TabsContent value="overview" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
