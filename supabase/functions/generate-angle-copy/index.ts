@@ -211,9 +211,24 @@ Return valid JSON with this structure:
 - Never use hype words, guarantees, or income claims
 - Sound human and conversational, not salesy`;
 
+    const hasDirectAngle = angles.some((a: any) => a.id === "direct_from_page");
+    
     const anglesDescription = angles.map((a: any) => 
       `- ID: ${a.id}\n  Name: ${a.name}\n  Description: ${a.description}`
     ).join('\n\n');
+
+    let directCopyInstructions = "";
+    if (hasDirectAngle) {
+      directCopyInstructions = `
+
+=== SPECIAL INSTRUCTIONS FOR "direct_from_page" ANGLE ===
+For the angle with ID "direct_from_page", generate SIMPLE, DIRECT copy that mirrors the sales page:
+- Headlines: Use the offer name verbatim or with minimal formatting (e.g., "${offerData?.name || 'Offer Name'}", "Free: ${offerData?.name || 'Resource'}", "${offerData?.name || 'Course'} — Now Open")
+- Descriptions: Simple action phrases ("Sign up free", "Download now", "Enroll today", "Learn more")
+- Primary copy: Mirror the offer description. No psychology hooks — just clearly state what the offer is, who it's for, and how to get it. Include the price if available.
+- DO NOT use creative copywriting frameworks for this angle. Keep it factual and direct.
+`;
+    }
 
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
@@ -222,6 +237,7 @@ Return valid JSON with this structure:
 Generate 3-5 copy variations for each of these creative angles:
 
 ${anglesDescription}
+${directCopyInstructions}
 
 For each angle, create:
 - 3-5 headline variations (different frameworks)

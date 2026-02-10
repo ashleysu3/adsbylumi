@@ -2,13 +2,15 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, ArrowRight, Lock, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface CreativeAngle {
   id: string;
   name: string;
   description: string;
+  isDefault?: boolean;
 }
 
 interface AngleSelectorProps {
@@ -27,6 +29,10 @@ export function AngleSelector({
   isGenerating
 }: AngleSelectorProps) {
   const toggleAngle = (angleId: string) => {
+    // Prevent deselecting the default angle
+    const angle = angles.find(a => a.id === angleId);
+    if (angle?.isDefault) return;
+    
     if (selectedAngles.includes(angleId)) {
       onSelectionChange(selectedAngles.filter(id => id !== angleId));
     } else if (selectedAngles.length < 5) {
@@ -34,6 +40,8 @@ export function AngleSelector({
     }
   };
 
+  // Default angles don't count toward the user's selection limit display
+  const userSelectedCount = selectedAngles.filter(id => !angles.find(a => a.id === id)?.isDefault).length;
   const canContinue = selectedAngles.length >= 1 && selectedAngles.length <= 5;
 
   return (
@@ -80,30 +88,46 @@ export function AngleSelector({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {angles.map((angle) => {
           const isSelected = selectedAngles.includes(angle.id);
-          const isDisabled = !isSelected && selectedAngles.length >= 5;
+          const isDefault = angle.isDefault === true;
+          const isDisabled = isDefault || (!isSelected && selectedAngles.length >= 5);
 
           return (
             <Card
               key={angle.id}
               className={cn(
                 "cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] border-l-4",
-                isSelected && "border-l-primary ring-2 ring-primary bg-primary/5 shadow-md",
-                !isSelected && !isDisabled && "border-l-muted hover:border-l-primary/60",
-                isDisabled && "opacity-50 cursor-not-allowed border-l-muted"
+                isDefault && "border-l-primary/80 bg-primary/5 border-dashed ring-1 ring-primary/20 cursor-default",
+                !isDefault && isSelected && "border-l-primary ring-2 ring-primary bg-primary/5 shadow-md",
+                !isDefault && !isSelected && !isDisabled && "border-l-muted hover:border-l-primary/60",
+                !isDefault && isDisabled && "opacity-50 cursor-not-allowed border-l-muted"
               )}
-              onClick={() => !isDisabled && toggleAngle(angle.id)}
+              onClick={() => !isDefault && !isDisabled && toggleAngle(angle.id)}
             >
               <CardHeader className="pb-2 p-3 sm:p-4 sm:pb-2">
                 <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-sm sm:text-base font-bold leading-tight">
-                    {angle.name}
-                  </CardTitle>
-                  <Checkbox
-                    checked={isSelected}
-                    onCheckedChange={() => !isDisabled && toggleAngle(angle.id)}
-                    disabled={isDisabled}
-                    className="mt-0.5 h-5 w-5"
-                  />
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {isDefault && <Pin className="h-3.5 w-3.5 text-primary shrink-0" />}
+                    <CardTitle className="text-sm sm:text-base font-bold leading-tight">
+                      {angle.name}
+                    </CardTitle>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isDefault && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
+                        Always included
+                      </Badge>
+                    )}
+                    {isDefault ? (
+                      <Lock className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => !isDisabled && toggleAngle(angle.id)}
+                        disabled={isDisabled}
+                        className="mt-0.5 h-5 w-5"
+                      />
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">

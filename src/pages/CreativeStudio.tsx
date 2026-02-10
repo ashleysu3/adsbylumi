@@ -308,12 +308,26 @@ export default function CreativeStudio() {
       const { data } = await supabase.from("campaign_workspaces").select("*, brands(*)").eq("id", id).single();
       setWorkspace(data);
       const c = data?.creative_json as Record<string, any> | null;
-      const loadedAngles = c?.angles || [];
+      // Inject default angle if angles exist but it's missing
+      const DEFAULT_ANGLE = {
+        id: "direct_from_page",
+        name: "Straight from Your Page",
+        description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
+        isDefault: true
+      };
+      let loadedAngles = c?.angles || [];
+      if (loadedAngles.length > 0 && !loadedAngles.some((a: any) => a.id === "direct_from_page")) {
+        loadedAngles = [DEFAULT_ANGLE, ...loadedAngles];
+      }
       const loadedAngleIds = new Set(loadedAngles.map((a: any) => a.id));
       
       // Validate selectedAngleIds - only keep IDs that exist in available angles
       const storedSelectedIds = c?.selectedAngleIds || [];
-      const validSelectedIds = storedSelectedIds.filter((id: string) => loadedAngleIds.has(id));
+      let validSelectedIds = storedSelectedIds.filter((id: string) => loadedAngleIds.has(id));
+      // Ensure default angle is always selected if angles exist
+      if (loadedAngles.length > 0 && !validSelectedIds.includes("direct_from_page")) {
+        validSelectedIds = ["direct_from_page", ...validSelectedIds];
+      }
       
       // Validate gridData - only keep cells whose angleId exists
       const loadedGridData = c?.gridData || [];
@@ -492,14 +506,24 @@ export default function CreativeStudio() {
          }
       });
       if (error) throw error;
-      setAvailableAngles(data.angles);
-      // Clear previous selections when regenerating angles (they're now invalid)
-      setSelectedAngleIds([]);
+      
+      // Prepend the default "Straight from Your Page" angle
+      const DEFAULT_ANGLE = {
+        id: "direct_from_page",
+        name: "Straight from Your Page",
+        description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
+        isDefault: true
+      };
+      const allAngles = [DEFAULT_ANGLE, ...(data.angles || []).filter((a: any) => a.id !== "direct_from_page")];
+      
+      setAvailableAngles(allAngles);
+      // Pre-select the default angle, clear user selections
+      setSelectedAngleIds(["direct_from_page"]);
       setGridData([]);
       setActiveAngleId("");
        await saveCreativeState({ 
-         angles: data.angles, 
-         selectedAngleIds: [], 
+         angles: allAngles, 
+         selectedAngleIds: ["direct_from_page"], 
          gridData: [],
          preGenerationContext: context || null
        });
