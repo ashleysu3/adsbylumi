@@ -249,6 +249,18 @@ export default function CreativeStudio() {
 
   useEffect(() => { 
     if (!brandLoading) {
+      // Clear all stale state when brand changes
+      setWorkspaces([]);
+      setSelectedWorkspaceId("");
+      setWorkspace(null);
+      setAvailableAngles([]);
+      setSelectedAngleIds([]);
+      setGridData([]);
+      setProductionItems([]);
+      setAngleCopy({});
+      setActiveAngleId("");
+      setActiveTab("angles");
+      setLoading(true);
       fetchInitialData(); 
     }
   }, [brandLoading, activeBrand?.id]);
