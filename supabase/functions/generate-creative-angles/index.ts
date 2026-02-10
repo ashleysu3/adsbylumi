@@ -42,6 +42,10 @@ Deno.serve(async (req) => {
         .select("*")
         .eq("brand_id", brandId);
       
+      const hasTestimonials = contentAssets?.some(
+        (a: any) => a.asset_type === 'testimonials' && a.content?.trim()
+      );
+
       if (contentAssets?.length) {
         contentAssetsContext = "\n\nUSER-PROVIDED CONTENT ASSETS:\n";
         contentAssetsContext += "The user has provided the following real content. Use this authentic language, testimonials, and insights to create more specific and genuine angles:\n\n";
@@ -64,6 +68,10 @@ Deno.serve(async (req) => {
         });
         
         contentAssetsContext += "IMPORTANT: Incorporate specific phrases, pain points, and language from the above content to create authentic, resonant angles that sound like the user's actual clients.\n";
+        
+        if (hasTestimonials) {
+          contentAssetsContext += "\nTESTIMONIAL DIRECTIVE: You MUST include at least 1 angle focused on Testimonial Proof — using real client words and screenshot-style social proof. Pull the strongest quotes from the testimonials provided. This angle should leverage the client's EXACT words as the foundation.\n";
+        }
       }
     }
 
@@ -171,6 +179,7 @@ ANGLE TYPES TO CONSIDER (but don't expose these labels):
 - Myth Bust (correcting misconceptions)
 - Simple System (easy process to follow)
 - Social Proof (others' success)
+- Testimonial Proof (real client words, screenshot-style social proof)
 - "If This Is You" Callout (direct identification)
 - Behind the Scenes (authenticity)
 - Urgency/Scarcity (limited opportunity)
