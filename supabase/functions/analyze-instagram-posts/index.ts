@@ -35,13 +35,18 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get Meta access token from vault
-    const { data: accessToken, error: tokenError } = await supabase
-      .rpc('get_meta_token', { p_brand_id: brandId });
+    // Get Meta access token from brand record (vault RPC has crypto permission issues)
+    const { data: brand, error: brandError } = await supabase
+      .from('brands')
+      .select('meta_access_token, instagram_account_id')
+      .eq('id', brandId)
+      .single();
 
-    if (tokenError || !accessToken) {
+    if (brandError || !brand?.meta_access_token) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
+
+    const accessToken = brand.meta_access_token;
 
     console.log('Fetching Instagram posts for account:', instagramAccountId);
 
