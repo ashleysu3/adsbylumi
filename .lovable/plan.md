@@ -1,58 +1,95 @@
 
 
-# Fix Creative Studio — 3 Issues
+# Add "Direct from Sales Page" Default Angle
 
-## 1. Restore Concept Cards to Previous Clean Style
+## What This Does
 
-The concept cards in the "Concepts" tab got restyled with `border-l-4` and heavy color treatments that look off. The fix is to revert them to a cleaner card style while keeping the improvements (bold hooks, "Why This Works", added-to-checklist state).
+Every time angles are generated, a special first angle called **"Straight from Your Page"** is automatically added and pre-selected. This angle pulls copy and creative concepts directly from the offer's sales page content (name, description, URL, price) instead of generating psychology-driven angles. It produces basic, straightforward creative like:
 
-**Changes in `src/pages/CreativeStudio.tsx` (lines ~876-897)**:
-- Remove `border-l-4` from concept cards
-- Use a subtle `ring-2 ring-green-500/20 bg-green-50/30` for added items instead of a thick green left border
-- Use standard card hover (`hover:shadow-md`) for non-added items
-- Keep the bold hook text and "Why This Works" notes
+- "Free Webinar: [Title]"  
+- "[Course Name] — Enroll Now"  
+- "[Lead Magnet Name] — Download Free"
 
-## 2. Fix "No Angles Selected" Message on Ad Copy Tab
+This ensures there's always one simple, direct option alongside the more creative AI-generated angles.
 
-The Ad Copy tab renders `AngleCopyEditor`, which checks `selectedAngles.length === 0` at line 220 of `AngleCopyEditor.tsx`. The `selectedAngles` are derived from `angles.filter(a => selectedAngleIds.includes(a.id))`.
+## How It Works
 
-The issue: when the user has production items (concepts added to checklist) but the `selectedAngleIds` array doesn't match the angles passed in, the copy editor shows "No Angles Selected."
+### 1. Frontend — Inject the default angle (`src/pages/CreativeStudio.tsx`)
 
-**Root cause**: The `selectedAngleIds` state might not persist correctly, or when concepts were added from only one angle but the user didn't "select" angles in the traditional checkbox sense.
+After the `generate-creative-angles` edge function returns its 10-12 AI angles, prepend a hardcoded angle:
 
-**Fix in `src/pages/CreativeStudio.tsx`**: When rendering the copy tab, derive `selectedAngleIds` from the production items' `angleId` fields as a fallback. If `selectedAngleIds` is empty but production items exist, extract the unique angle IDs from those items and use those instead. This ensures the copy tab always has angles to work with when concepts have been selected.
+```
+{
+  id: "direct_from_page",
+  name: "Straight from Your Page",
+  description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
+  isDefault: true
+}
+```
 
-## 3. Replace Progress Dots with Checkmarks
+- This angle is **always pre-selected** in `selectedAngleIds`
+- It appears first in the angle list with a distinct visual treatment (e.g., a pin/star icon and "Always included" label)
+- It **cannot be deselected** — the checkbox is disabled/locked
+- When loading a workspace, if angles exist but `direct_from_page` is missing, inject it
 
-Currently the tab progress indicators are gradient-colored dots. Replace them with small checkmark icons to clearly indicate completion.
+### 2. Frontend — Visual treatment (`src/components/creative/AngleSelector.tsx`)
 
-**Changes in `src/pages/CreativeStudio.tsx` (lines ~805-807)**:
-- Replace the `<span>` dot with a `CheckCircle2` icon (already imported) or a small `Check` icon inside a circle
-- Use the brand gradient as background with a white checkmark for clear visibility
-- Keep the `absolute -top-1 -right-1` positioning
+- Show the default angle card with a subtle "Always included" badge and a lock/pin icon
+- Its checkbox is checked and disabled
+- Slightly different card style (e.g., dashed border or muted brand gradient background) to distinguish it from AI-generated angles
 
----
+### 3. Backend — Handle in grid generation (`supabase/functions/generate-creative-grid/index.ts`)
+
+When the `direct_from_page` angle is included in the angles array sent to the grid generator:
+
+- Add special instructions to the AI prompt telling it to generate **basic, direct creative concepts** for this angle:
+  - Use the offer name as the headline verbatim
+  - Use the offer description as primary copy
+  - Generate simple CTAs: "Sign Up Now," "Download Free," "Register Today," "Learn More"
+  - Suggest basic visual concepts: offer name as text overlay, simple branded graphic, screenshot of the sales page
+  - No psychology tricks, no hooks — just clear, direct messaging from the existing page
+- The offer's name, description, price, and URL are already passed to this function, so no new data fetching is needed
+
+### 4. Backend — Handle in copy generation (`supabase/functions/generate-angle-copy/index.ts`)
+
+When generating ad copy for the `direct_from_page` angle:
+
+- Pull headlines and descriptions directly from the offer name and description
+- Generate straightforward primary copy that mirrors sales page language
+- CTAs should be simple and direct
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/pages/CreativeStudio.tsx` | Inject default angle after generation and on workspace load; pre-select it; prevent deselection |
+| `src/components/creative/AngleSelector.tsx` | Visual treatment for default angle (badge, lock icon, distinct card style) |
+| `supabase/functions/generate-creative-grid/index.ts` | Special prompt instructions for `direct_from_page` angle |
+| `supabase/functions/generate-angle-copy/index.ts` | Direct copy generation for `direct_from_page` angle |
 
 ## Technical Details
 
-### Concept Card Fix (before/after)
-- **Before (current broken)**: `border-l-4 border-l-green-500 ring-2 ring-green-500/30` -- heavy, cluttered
-- **After (fix)**: Clean card with subtle `ring-1 ring-green-200 bg-green-50/50` for added state, standard `hover:shadow-md border` for unselected
-
-### Ad Copy Angle Fallback Logic
+### Default Angle Object
 ```typescript
-// Derive effective angle IDs for copy tab
-const effectiveAngleIds = selectedAngleIds.length > 0
-  ? selectedAngleIds
-  : [...new Set(productionItems.map(p => p.angleId).filter(Boolean))];
+const DEFAULT_ANGLE = {
+  id: "direct_from_page",
+  name: "Straight from Your Page",
+  description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
+  isDefault: true
+};
 ```
-Pass `effectiveAngleIds` to `AngleCopyEditor` instead of `selectedAngleIds`.
 
-### Checkmark Indicator
-Replace the dot span with:
-```tsx
-<span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-background flex items-center justify-center">
-  <Check className="h-2.5 w-2.5 text-white" />
-</span>
+### Injection Points in CreativeStudio.tsx
+
+1. **After `generateAngles`** (line ~495): Prepend default angle to `data.angles`, pre-select its ID
+2. **In `loadWorkspace`** (line ~311): If loaded angles don't include `direct_from_page`, prepend it
+3. **In angle selection toggle**: Skip deselection if `angle.id === "direct_from_page"`
+
+### Grid Generation Prompt Addition
 ```
-This requires importing `Check` from lucide-react (or reusing `CheckCircle2`).
+For the angle "Straight from Your Page": Generate 3-4 simple, direct creative concepts 
+that use the offer's actual name, description, and CTA verbatim. No psychological hooks 
+or creative angles — just clear, straightforward ads. Think: offer name as headline, 
+sales page description as body copy, "Sign Up Now" or "Download Free" as CTA, 
+simple branded visual with offer name.
+```
