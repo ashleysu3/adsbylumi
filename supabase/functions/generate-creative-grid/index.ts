@@ -335,7 +335,11 @@ Return a JSON object with a "grid" array containing all cells.`;
 
     const anglesDescription = angles.map((a: any) => `- ID: "${a.id}" | Name: ${a.name}: ${a.description}`).join("\n");
 
-    const userPrompt = `Generate a 3×3 creative grid for each of these angles:
+    const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const userPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate and relevant to this time period. Do NOT reference holidays, seasons, or events that are not upcoming or current.
+
+Generate a 3×3 creative grid for each of these angles:
 
 ${anglesDescription}
 

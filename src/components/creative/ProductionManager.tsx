@@ -34,6 +34,7 @@ interface ProductionManagerProps {
   onSaveToLibrary?: (item: ProductionItem) => void;
   brandId?: string;
   angleCopy?: Record<string, any>;
+  onRefineScript?: (itemId: string, feedback: string) => Promise<void>;
 }
 
 export function ProductionManager({
@@ -47,6 +48,7 @@ export function ProductionManager({
   onSaveToLibrary,
   brandId,
   angleCopy: angleCopyProp,
+  onRefineScript,
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [previewAsset, setPreviewAsset] = useState<any>(null);
@@ -390,6 +392,7 @@ export function ProductionManager({
                           rank={rankedItem.rank}
                           rationale={rankedItem.rationale}
                           showAngleBadge
+                          onRefineScript={onRefineScript}
                         />
                       );
                     })}
@@ -421,6 +424,7 @@ export function ProductionManager({
                               savingToLibrary={savingToLibrary === item.id}
                               rank={rank}
                               rationale={rationale}
+                              onRefineScript={onRefineScript}
                             />
                           );
                         })}

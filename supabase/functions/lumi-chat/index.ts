@@ -64,7 +64,9 @@ Deno.serve(async (req) => {
 
     // Choose system prompt based on context
     const isAngleFeedback = context?.context === 'angle-feedback';
+    const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     let contextPrompt = isAngleFeedback ? ANGLE_FEEDBACK_PROMPT : LUMI_NAVIGATOR_PROMPT;
+    contextPrompt += `\n\nToday's date is ${currentDate}. Ensure any content suggestions are seasonally appropriate.`;
     
     if (context) {
       contextPrompt += '\n\n--- Current Context ---\n';
