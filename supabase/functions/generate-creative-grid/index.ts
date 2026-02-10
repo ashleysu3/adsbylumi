@@ -333,15 +333,47 @@ ADDITIONAL FIELDS FOR talking_head FORMAT ONLY:
 
 Return a JSON object with a "grid" array containing all cells.`;
 
-    const anglesDescription = angles.map((a: any) => `- ID: "${a.id}" | Name: ${a.name}: ${a.description}`).join("\n");
+    // Separate default angle from AI-generated angles
+    const hasDirectAngle = angles.some((a: any) => a.id === "direct_from_page");
+    const aiAngles = angles.filter((a: any) => a.id !== "direct_from_page");
+    
+    const anglesDescription = aiAngles.map((a: any) => `- ID: "${a.id}" | Name: ${a.name}: ${a.description}`).join("\n");
+
+    // Build special instructions for the direct_from_page angle
+    let directAngleInstructions = "";
+    if (hasDirectAngle) {
+      directAngleInstructions = `
+
+=== SPECIAL ANGLE: "direct_from_page" (Straight from Your Page) ===
+For the angle with ID "direct_from_page", generate 3-4 simple, DIRECT creative concepts that use the offer's actual content verbatim. This is NOT a psychology-driven angle — it's a straightforward representation of the offer.
+
+Rules for this angle:
+- Use the offer name as the headline VERBATIM (e.g., "Free Webinar: ${offerData?.name || '[Offer Name]'}")
+- Use the offer description as primary copy — mirror the sales page language
+- Generate simple CTAs: "Sign Up Now," "Download Free," "Register Today," "Learn More," "Enroll Now"
+- Suggest basic visual concepts: offer name as text overlay, simple branded graphic, screenshot of the sales page
+- NO psychology tricks, NO creative hooks — just clear, direct messaging
+- For talking_head: script should be a simple, direct pitch of the offer as described on the page
+- For broll: suggest showing the product/offer page/landing page
+- For graphic: simple branded graphic with offer name, price (if applicable), and CTA
+
+Example hooks for this angle:
+- "${offerData?.name || 'Course Name'} — Enroll Now"
+- "Free ${offerData?.name || 'Resource'}: Download Today"
+- "${offerData?.name || 'Offer'} | ${offerData?.price || 'Limited Time'}"
+`;
+    }
 
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const allAnglesDescription = angles.map((a: any) => `- ID: "${a.id}" | Name: ${a.name}: ${a.description}`).join("\n");
 
     const userPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate and relevant to this time period. Do NOT reference holidays, seasons, or events that are not upcoming or current.
 
 Generate a 3×3 creative grid for each of these angles:
 
-${anglesDescription}
+${allAnglesDescription}
+${directAngleInstructions}
 
 IMPORTANT: Use the exact angle ID (not the name) for the angleId field.
 
@@ -380,7 +412,8 @@ Remember:
 3. Draw directly from the pain points and desires listed above
 4. NO GENERIC HOOKS - if it could apply to any business, rewrite it
 5. Make it feel like you've read their journal
-6. Use the offer-audience psychology to make creative that addresses THIS specific offer's hesitations and transformation`;
+6. Use the offer-audience psychology to make creative that addresses THIS specific offer's hesitations and transformation
+7. For the "direct_from_page" angle (if present), follow the SPECIAL ANGLE instructions above — keep it simple and direct`;
 
     console.log("Generating creative grid with enriched context for", angles.length, "angles");
 
