@@ -774,6 +774,7 @@ export default function CreativeStudio() {
             </Select>
             {primaryAction && (
               <Button 
+                variant="lumi"
                 onClick={primaryAction.action} 
                 disabled={primaryAction.disabled}
                 className="gap-2 hidden sm:flex"
@@ -969,6 +970,7 @@ export default function CreativeStudio() {
       {primaryAction && (
         <div className="sm:hidden fixed bottom-6 left-4 right-4 z-30">
           <Button 
+            variant="lumi"
             onClick={primaryAction.action} 
             disabled={primaryAction.disabled}
             className="w-full gap-2 shadow-lg"
