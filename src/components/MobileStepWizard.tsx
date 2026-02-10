@@ -97,7 +97,7 @@ export function MobileStepWizard({
     touchEndX.current = 0;
   };
 
-  return (
+    return (
     <div className="flex flex-col min-h-[calc(100vh-8rem)]">
       {/* Header */}
       <div className="flex-shrink-0 pb-4">
@@ -133,6 +133,42 @@ export function MobileStepWizard({
             <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
           )}
         </div>
+
+        {/* Action buttons - positioned right under header */}
+        {!hideFooter && (
+          <div className="mt-4">
+            <div className="flex gap-3">
+              {showBack && onBack && (
+                <Button
+                  variant="outline"
+                  onClick={onBack}
+                  disabled={isLoading}
+                  className="flex-shrink-0 h-12 w-12 p-0 touch-target"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+              )}
+              
+              <Button
+                onClick={isLastStep ? onComplete : onNext}
+                disabled={!canProceed || isLoading}
+                className={cn(
+                  "flex-1 h-12 font-semibold text-base touch-target",
+                  "bg-gradient-to-r from-lumi-pink-1 to-lumi-purple-1 text-white hover:opacity-90"
+                )}
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Processing...</span>
+                  </div>
+                ) : (
+                  isLastStep ? completeLabel : nextLabel
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Content - scrollable with swipe */}
@@ -144,42 +180,6 @@ export function MobileStepWizard({
       >
         {children}
       </div>
-
-      {/* Footer - sticky */}
-      {!hideFooter && (
-      <div className="flex-shrink-0 pt-4 pb-2 bg-background border-t border-border -mx-4 px-4 sticky bottom-0">
-        <div className="flex gap-3">
-          {showBack && onBack && (
-            <Button
-              variant="outline"
-              onClick={onBack}
-              disabled={isLoading}
-              className="flex-shrink-0 h-12 w-12 p-0 touch-target"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          )}
-          
-          <Button
-            onClick={isLastStep ? onComplete : onNext}
-            disabled={!canProceed || isLoading}
-            className={cn(
-              "flex-1 h-12 font-semibold text-base touch-target",
-              isLastStep && "bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:opacity-90"
-            )}
-          >
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <span>Processing...</span>
-              </div>
-            ) : (
-              isLastStep ? completeLabel : nextLabel
-            )}
-          </Button>
-        </div>
-      </div>
-      )}
     </div>
   );
 }
