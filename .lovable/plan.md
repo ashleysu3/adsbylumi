@@ -1,78 +1,80 @@
 
 
-# Stronger Primary Copy Formatting + Copy Feedback Loop
+# Fix Social Growth Flow: Use Existing Posts Only (No Creative Studio)
 
-## Overview
+## What's Changing
 
-Three improvements:
-1. **Primary copy spacing/formatting**: Update the AI prompt to enforce line breaks between thoughts, short paragraphs, and a strong opening hook line
-2. **Stronger first line**: Add explicit instruction that the first line must be a powerful, scroll-stopping hook — standalone, punchy, and emotionally charged
-3. **Wire up the feedback loop**: The `CopyRegenerateDialog` UI already exists and sends feedback, but the `generate-angle-copy` edge function completely ignores it. We need to accept the `feedback` parameter and inject it into the AI prompt so Lumi actually learns from user direction.
+The "Grow Social Following" flow currently analyzes posts with AI, shows recommendations, offers content suggestions, and then sends the user to Creative Studio. This is overengineered for what is essentially an "existing post" campaign.
+
+The new flow will mirror how Meta Ads Manager works: pull up the user's Instagram posts, let them pick which ones to promote, and go straight to campaign building. No Creative Studio, no AI analysis, no content suggestions.
+
+## New Flow
+
+```text
+1. Pick objective (Traffic to IG / Video Views)
+2. Fetch Instagram posts (simple grid -- no AI scoring)
+3. User selects posts (up to 6)
+4. Create workspace with selected posts + go to campaign build
+```
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-angle-copy/index.ts` | (1) Accept `feedback` from request body. (2) Build a feedback context block from `quickSelections` and `additionalNotes` and inject it as high-priority direction in the user prompt. (3) Strengthen the primary copy formatting rules to emphasize spacing, line breaks between ideas, and a powerful opening hook. |
+| `src/components/SocialGrowthFlow.tsx` | Major simplification: Remove "analyzing" spinner step, remove AI analysis call, remove "content_suggestions" step entirely. Fetch posts directly from Instagram Graph API (simple fetch, no AI scoring). Show all posts in a clean grid. Remove `is_recommended` / `ai_recommendation` / `engagement_score` filtering. Increase max selection from 3 to 6. Remove "Get content ideas instead" fallback. |
+| `src/pages/Create.tsx` | Change `onComplete` handler: instead of navigating to `/creative-studio?type=social-growth`, create a strategy + workspace record with the selected post IDs/URLs stored in `creative_json`, then navigate directly to campaign review/build. |
+| `supabase/functions/analyze-instagram-posts/index.ts` | Add a `simple` mode that just fetches posts from the Instagram Graph API without calling the AI for scoring/analysis. This keeps the edge function reusable for the future AI recommendation feature. |
 
 ## Technical Details
 
-### 1. Accept feedback parameter (line 15)
+### SocialGrowthFlow.tsx -- Simplified Component
 
-Add `feedback` to the destructured request body:
+Remove these flow steps entirely:
+- `"analyzing"` (the Lumi spinner)
+- `"content_suggestions"` (the fallback ideas)
+
+New step flow: `"objective"` -> `"post_selection"` only.
+
+When user picks objective and clicks Continue:
+- Call the edge function with a `simple: true` flag
+- Edge function returns raw posts (no AI analysis)
+- Go straight to post_selection grid
+
+Post selection grid changes:
+- Remove "Recommended" vs "Other" separation -- just show all posts in a flat grid
+- Increase max from 3 to 6 posts
+- Remove the "None of these? Get content ideas" button
+- Keep the PostCard component but remove `is_recommended` badge logic
+
+### Create.tsx -- Direct to Campaign Build
+
+Replace the `onComplete` callback:
+
 ```ts
-const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology, feedback } = await req.json();
+onComplete={(data) => {
+  // Create workspace directly with selected posts
+  // Store selected post IDs + media URLs in creative_json
+  // Navigate to campaign build/review (not creative studio)
+}}
 ```
 
-### 2. Build feedback context block
-
-After line 118, build a feedback injection string:
-```ts
-let feedbackContext = "";
-if (feedback) {
-  feedbackContext = "\n\n## USER FEEDBACK — HIGH PRIORITY DIRECTION\n";
-  feedbackContext += "The user reviewed previous copy and wants these improvements:\n";
-  if (feedback.quickSelections?.length) {
-    const labels: Record<string, string> = {
-      too_generic: "Copy feels too generic — make it more specific and unique",
-      wrong_tone: "Tone doesn't match the brand — adjust voice",
-      more_urgency: "Need more urgency and scarcity",
-      focus_benefits: "Focus more on benefits and outcomes over features",
-      shorter_copy: "Make it shorter and punchier",
-      more_emotional: "Make it more emotional — connect with pain points and desires",
-    };
-    feedback.quickSelections.forEach((id: string) => {
-      feedbackContext += `- ${labels[id] || id}\n`;
-    });
-  }
-  if (feedback.additionalNotes) {
-    feedbackContext += `\nUser's additional notes: "${feedback.additionalNotes}"\n`;
-  }
-  feedbackContext += "\nYou MUST apply this feedback. Generate noticeably different and improved copy.\n";
+The workspace `creative_json` will store:
+```json
+{
+  "socialGrowth": true,
+  "objective": "traffic",
+  "selectedPosts": [
+    { "id": "...", "media_url": "...", "media_type": "VIDEO", "permalink": "..." }
+  ]
 }
 ```
 
-### 3. Inject feedback into user prompt
+Set `progress_status` to `"ready_to_build"` instead of `"creative_in_progress"` since no creative generation is needed.
 
-Prepend the `feedbackContext` to the `userPrompt` string so the AI sees it as priority direction.
+### Edge Function -- Simple Mode
 
-### 4. Strengthen primary copy formatting rules
-
-Update the `META BEST PRACTICES FOR PRIMARY COPY FORMATTING` section (around line 190) to be more explicit:
-
-```
-## META BEST PRACTICES FOR PRIMARY COPY FORMATTING
-1. The FIRST LINE must be a powerful, scroll-stopping hook — standalone, punchy, emotionally charged. This is the most important line. It should make someone stop scrolling.
-2. Add a BLANK LINE after the hook (line break)
-3. Use SPACING to break up ideas — one thought per short paragraph (1-2 sentences max)
-4. Add blank lines between paragraphs so the copy is easy to skim
-5. For bullet lists, use consistent formatting:
-   [emoji bullets or plain bullets]
-6. End with a clear CTA on its own line, separated by a blank line
-7. Total structure: Hook (line break) → Problem (line break) → Solution (line break) → Benefits (line break) → CTA
-8. NEVER write walls of text. Every 1-2 sentences should have a line break.
-9. Think of it like texting a friend — short bursts, not long paragraphs.
-```
-
-Also update the finalize-ad-copy edge function's formatting section to match these same rules for consistency.
+Add a `simple` boolean parameter. When `true`:
+- Fetch posts from `/{instagram_account_id}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&limit=25`
+- Return them directly without calling the AI model
+- This keeps the function ready for when you want Lumi to suggest posts in the future (just pass `simple: false`)
 
