@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
+import DashboardLayout from "@/components/DashboardLayout";
 import { LumiThinking } from "@/components/LumiThinking";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
@@ -757,42 +758,48 @@ export default function CreativeStudio() {
 
   const primaryAction = getPrimaryAction();
 
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+  if (loading) return <DashboardLayout><div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></DashboardLayout>;
 
   // No workspaces with strategy - show helpful empty state
   if (workspaces.length === 0) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="border-b bg-background/95 backdrop-blur-sm sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/campaigns")} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
-            <h1 className="text-lg font-bold"><span className="text-gradient-lumi">Creative Studio</span></h1>
+      <DashboardLayout>
+        <motion.div
+          initial={{ clipPath: "circle(0% at 50% 40%)" }}
+          animate={{ clipPath: "circle(150% at 50% 40%)" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="min-h-[60vh]"
+        >
+          <div className="max-w-6xl mx-auto py-12">
+            <Card className="rounded-2xl">
+              <CardContent className="pt-6 text-center py-16">
+                <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No campaigns ready for creative</h3>
+                <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
+                  Create a new ad campaign first, then come back here to generate creative angles, hooks, and copy.
+                </p>
+                <Button onClick={() => navigate("/create")} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Create New Ad
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-          <Card>
-            <CardContent className="pt-6 text-center py-12">
-              <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No campaigns ready for creative</h3>
-              <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
-                Create a new ad campaign first, then come back here to generate creative angles, hooks, and copy.
-              </p>
-              <Button onClick={() => navigate("/create")} className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Create New Ad
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        </motion.div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Sticky Top Bar */}
-      <div className="border-b bg-background/95 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+    <DashboardLayout>
+      <motion.div
+        initial={{ clipPath: "circle(0% at 50% 40%)" }}
+        animate={{ clipPath: "circle(150% at 50% 40%)" }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="min-h-[calc(100vh-120px)] flex flex-col"
+      >
+        {/* Slim toolbar (replaces old sticky header) */}
+        <div className="flex items-center justify-between gap-3 mb-8">
           <div className="flex items-center gap-3 min-w-0">
             <Button variant="ghost" size="icon" onClick={() => navigate("/campaigns")} className="shrink-0">
               <ArrowLeft className="h-5 w-5" />
@@ -821,12 +828,11 @@ export default function CreativeStudio() {
             )}
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-          <TabsList className="grid w-full grid-cols-4 mb-6 h-12 bg-muted/60 p-1 rounded-2xl">
+        {/* Main Content */}
+        <div className="flex-1 max-w-6xl mx-auto w-full">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
+            <TabsList className="grid w-full grid-cols-4 mb-8 h-12 bg-muted/60 p-1 rounded-2xl">
             {workflowTabs.map((t, index) => (
               <TabsTrigger 
                 key={t.id} 
@@ -849,7 +855,7 @@ export default function CreativeStudio() {
 
           <TabsContent value="angles">
             {!workspace ? (
-              <Card><CardContent className="pt-6 text-center py-12"><Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold">Select a campaign above</h3></CardContent></Card>
+              <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold">Select a campaign above</h3></CardContent></Card>
             ) : availableAngles.length === 0 ? (
                <CreativeContextInput
                  onGenerate={(context) => generateAngles(context)}
@@ -858,7 +864,7 @@ export default function CreativeStudio() {
                  existingContext={(workspace?.creative_json as Record<string, any>)?.preGenerationContext}
                />
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} />
                 <div className="flex justify-end"><Button variant="outline" onClick={handleRegenerateClick} disabled={generating}><Sparkles className="h-4 w-4 mr-2" />Regenerate</Button></div>
               </div>
@@ -867,9 +873,9 @@ export default function CreativeStudio() {
 
           <TabsContent value="concepts">
             {gridData.length === 0 ? (
-              <Card><CardContent className="pt-6 text-center py-12"><Lightbulb className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold mb-2">Generate Creative First</h3><p className="text-muted-foreground text-sm mb-4">Head to the Angles tab to generate your creative concepts.</p><Button onClick={() => setActiveTab("angles")} variant="outline">Go to Angles</Button></CardContent></Card>
+              <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Lightbulb className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold mb-2">Generate Creative First</h3><p className="text-muted-foreground text-sm mb-4">Head to the Angles tab to generate your creative concepts.</p><Button onClick={() => setActiveTab("angles")} variant="outline">Go to Angles</Button></CardContent></Card>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {selectedAngleIds.length > 1 && (
                   <div className="space-y-3">
                     <div className="flex gap-2 overflow-x-auto pb-2">
@@ -912,10 +918,10 @@ export default function CreativeStudio() {
                     const isAdded = productionItems.some(p => p.hook === cell.hook);
                     return (
                       <Card key={cell.id} className={cn(
-                        "transition-all",
+                        "transition-all rounded-2xl",
                         isAdded ? "ring-1 ring-green-200 bg-green-50/50 dark:ring-green-800 dark:bg-green-950/20" : "hover:shadow-md border"
                       )}>
-                        <CardContent className="pt-4 space-y-3">
+                        <CardContent className="pt-4 p-6 space-y-3">
                           <div className="flex items-center justify-between">
                             <Badge variant="secondary" className="gap-1"><Icon className="h-3 w-3" />{formatLabels[cell.format]}</Badge>
                             {isAdded && <CheckCircle2 className="h-5 w-5 text-green-500" />}
@@ -942,8 +948,8 @@ export default function CreativeStudio() {
 
           <TabsContent value="copy">
             {productionItems.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6 text-center py-12">
+              <Card className="rounded-2xl">
+                <CardContent className="pt-6 text-center py-16">
                   <FileText className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Select Concepts First</h3>
                   <p className="text-muted-foreground text-sm mb-4">
@@ -1130,6 +1136,7 @@ export default function CreativeStudio() {
            />
          </DialogContent>
        </Dialog>
-    </div>
+      </motion.div>
+    </DashboardLayout>
   );
 }
