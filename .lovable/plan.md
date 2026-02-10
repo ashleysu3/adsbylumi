@@ -1,117 +1,70 @@
 
+# Fix Angle Grid, Card Borders, Angle Persistence, and Library Naming
 
-# Leverage Content Library for Testimonial-Driven Ads
+## 1. Fix Angle Count for Perfect 3x4 Grid
 
-## What Changes
+Currently the edge function generates 10-12 angles, plus 1 default = 11-13 total. For a perfect 3x4 grid (12 cards), we need exactly 11 AI-generated angles + 1 default = 12 total.
 
-All three creative generation edge functions already fetch content assets (testimonials, survey responses, etc.) and inject them into the AI prompt. However, they don't explicitly instruct the AI to:
+**File**: `supabase/functions/generate-creative-angles/index.ts`
+- Change the prompt from "Generate 10-12 creative angles" to "Generate exactly 11 creative angles"
+- This ensures 11 AI angles + 1 "Straight from Your Page" default = 12 = perfect 3x4 grid
 
-1. Generate **testimonial screenshot ad concepts** as a specific creative format
-2. Use testimonial quotes **verbatim as ad copy** (not just inspiration)
-3. Suggest the "screenshot-style" testimonial creative treatment (DM/text message aesthetic over a brand color or texture)
+## 2. Fix Card Borders (Full Border on Hover Instead of Left-Only)
 
-This plan adds explicit instructions for testimonial-driven creative and copy across all three generation functions.
+The angle selector cards currently use `border-l-4` which creates a left-only colored border that looks like a "half shadow." This will be replaced with a full border that highlights all sides on hover/selection.
 
-## Changes
+**File**: `src/components/creative/AngleSelector.tsx`
+- Remove all `border-l-4` and `border-l-*` classes from the Card
+- Replace with full `border-2` styling:
+  - Default angle: `border-2 border-primary/30 border-dashed` (dashed all around)
+  - Selected: `border-2 border-primary ring-2 ring-primary/20` (solid primary border all around)
+  - Unselected hover: `border-2 border-transparent hover:border-primary/40` (full border appears on hover)
+  - Disabled: `border-2 border-muted opacity-50`
 
-### 1. `generate-creative-angles/index.ts` — Add "Testimonial Proof" angle type
+## 3. Fix Angle Selection Not Persisting ("Angles Aren't Sticking")
 
-In the "ANGLE TYPES TO CONSIDER" list (line ~167), add a dedicated testimonial angle type so the AI knows to generate a testimonial-focused angle when testimonials exist:
+The angle selection state is saved to `creative_json.selectedAngleIds` but may not persist correctly on reload. The issue is in `loadWorkspace` where the default angle injection and validation logic runs -- if the workspace reloads and angles get re-validated, selections can be lost.
 
-```
-- Testimonial Proof (real client words, screenshot-style social proof)
-```
+**File**: `src/pages/CreativeStudio.tsx`
+- Ensure `saveCreativeState` is called whenever `selectedAngleIds` changes (not just on generation)
+- Add a `useEffect` that saves `selectedAngleIds` to the workspace whenever the user toggles an angle, with a short debounce to avoid excessive writes
 
-Add conditional logic: when testimonials exist in the content assets, include a directive telling the AI to **always include at least one testimonial-driven angle** that uses the client's exact words.
+## 4. Fix Content Library vs Concept Library Naming Confusion
 
-### 2. `generate-creative-grid/index.ts` — Add testimonial screenshot creative format
+The **Content Library** is the Brand Brain tab where users paste raw content (testimonials, scripts, etc.). The **Concept Library** (`/content-library` page) is where saved creative concepts go. Currently the page at `/content-library` is titled "Content Library" which creates confusion.
 
-In the system prompt (around the grid structure and format rules), add instructions for a **testimonial screenshot** creative concept under the "graphic" format column:
+### Rename the Concept Library page
+**File**: `src/pages/ContentLibrary.tsx`
+- Change page title from "Content Library" to "Saved for Later"
+- Update subtitle to "Creative concepts you've saved to revisit or use in future campaigns"
 
-```
-TESTIMONIAL SCREENSHOT CREATIVE (use when testimonials are available):
-- Format: "graphic"
-- Present the testimonial as a screenshot of a text/DM conversation
-- Overlay on a solid brand color, subtle texture, or lifestyle image
-- The testimonial text should be the EXACT client quote (do not rewrite)
-- Add a small caption: "Real message from a client" or similar
-- Text overlay: just the most powerful 1-2 lines from the testimonial
-- This is one of the highest-converting ad formats — real proof in their own words
-```
+### Rename navigation items
+**File**: `src/components/DashboardLayout.tsx`
+- Change dropdown menu item from "Concept Library" to "Saved for Later"
 
-When testimonials exist in content assets, add a directive requiring at least 1-2 grid cells per angle to be testimonial screenshot concepts (in the "trust" row, "graphic" column).
+**File**: `src/components/MobileHeader.tsx`
+- Change dropdown menu item from "Concept Library" to "Saved for Later"
 
-### 3. `generate-angle-copy/index.ts` — Testimonial-as-copy instructions
+### Rename save buttons
+**File**: `src/components/creative/CreativeChecklistCard.tsx`
+- Change "Save to Concept Library" to "Save for Later"
 
-Add instructions telling the AI to generate at least one primary copy variation per angle that uses a testimonial quote as the **lead hook**, followed by the offer pitch. Example framework:
+**File**: `src/components/creative/ProductionManager.tsx`
+- Change "Move Others to Concept Library" to "Save Others for Later"
+- Change toast message from "Moved X concepts to Concept Library" to "Saved X concepts for later"
 
-```
-- Testimonial Lead: Open with the exact client quote, then transition to "Here's what [client name] is talking about..." or "This is what happens when..."
-```
+**File**: `src/pages/CreativeStudio.tsx`
+- Change toast message from "Saved to Concept Library" to "Saved for later"
 
-Also add this to the copy formulas list:
-```
-- Testimonial Lead: Open with a real client quote verbatim, then build the pitch around their words
-```
-
-### 4. Conditional enhancement — only when testimonials exist
-
-All additions are wrapped in a check: `if testimonials content asset exists and has content`. If the user hasn't uploaded testimonials, the prompts remain unchanged. This ensures no empty or forced testimonial concepts when there's nothing to pull from.
-
-## Files Changed
+## Summary of Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-creative-angles/index.ts` | Add testimonial angle type, conditional directive to always include 1 testimonial angle when testimonials exist |
-| `supabase/functions/generate-creative-grid/index.ts` | Add testimonial screenshot creative format instructions, require 1-2 testimonial cells per angle in "trust" row when testimonials available |
-| `supabase/functions/generate-angle-copy/index.ts` | Add "Testimonial Lead" copy framework, instruct at least 1 primary copy per angle to lead with a real quote |
-
-## Technical Details
-
-### Testimonial Detection Logic (all 3 functions)
-```typescript
-const hasTestimonials = contentAssets?.some(
-  (a: any) => a.asset_type === 'testimonials' && a.content?.trim()
-);
-```
-
-### Grid Prompt Addition (generate-creative-grid)
-When `hasTestimonials` is true, append to the system prompt:
-```
-=== TESTIMONIAL SCREENSHOT ADS (HIGH-CONVERTING FORMAT) ===
-The user has uploaded real client testimonials. For EACH angle, include at least ONE 
-"graphic" format cell in the "trust" row that uses a TESTIMONIAL SCREENSHOT concept:
-
-- Use the EXACT client quote from the testimonials above — do NOT rewrite or paraphrase
-- Present it as a screenshot of a text message, DM, or comment
-- Overlay on a solid brand color background, subtle linen/paper texture, or lifestyle photo
-- Add a small label: "Real DM from a client" or "Actual text from [first name]"
-- The hook for this cell should be the most impactful line from the testimonial
-- guidance should describe the screenshot aesthetic: rounded message bubbles, 
-  phone-screen crop, or clean quote card layout
-- This format converts extremely well because it looks organic and trustworthy
-
-Also for the "action" row, consider a concept where multiple short testimonial 
-snippets are shown in quick succession (carousel or montage style).
-```
-
-### Copy Prompt Addition (generate-angle-copy)
-When `hasTestimonials` is true, append to copy formulas:
-```
-- Testimonial Lead: Start with the EXACT client quote as the hook 
-  (e.g., "[Quote]" — that's what [Name] said after [X]). 
-  Then build the pitch around their experience. This uses the 
-  ideal customer's exact words, which is one of the most powerful 
-  copywriting techniques because prospects see themselves in the quote.
-
-For at least 1 primary copy variation per angle, lead with a real 
-testimonial quote from the content assets above.
-```
-
-### Angles Prompt Addition (generate-creative-angles)
-When `hasTestimonials` is true, add to the rules:
-```
-- MUST include at least 1 angle focused on Testimonial Proof — 
-  using real client words and screenshot-style social proof. 
-  Pull the strongest quotes from the testimonials provided.
-```
+| `supabase/functions/generate-creative-angles/index.ts` | Generate exactly 11 angles (for 12 total with default) |
+| `src/components/creative/AngleSelector.tsx` | Replace `border-l-4` with full `border-2` on all sides |
+| `src/pages/CreativeStudio.tsx` | Add debounced save for selectedAngleIds; rename toast |
+| `src/pages/ContentLibrary.tsx` | Rename to "Saved for Later" |
+| `src/components/DashboardLayout.tsx` | Rename nav item to "Saved for Later" |
+| `src/components/MobileHeader.tsx` | Rename nav item to "Saved for Later" |
+| `src/components/creative/CreativeChecklistCard.tsx` | Rename button to "Save for Later" |
+| `src/components/creative/ProductionManager.tsx` | Rename button and toast |
