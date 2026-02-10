@@ -1,109 +1,58 @@
 
 
-# Creative Studio Improvements — 5 Changes
+# Fix Creative Studio — 3 Issues
 
-## 1. Fix Time-Based Content (December Content in February)
+## 1. Restore Concept Cards to Previous Clean Style
 
-**Problem**: The AI generation functions (`generate-creative-angles`, `generate-creative-grid`, `generate-content-ideas`, `generate-angle-copy`) never pass the current date to the AI model. Without knowing what month it is, the LLM may generate seasonally irrelevant content.
+The concept cards in the "Concepts" tab got restyled with `border-l-4` and heavy color treatments that look off. The fix is to revert them to a cleaner card style while keeping the improvements (bold hooks, "Why This Works", added-to-checklist state).
 
-**Fix**: Inject the current date into the system/user prompts of these edge functions:
-- `supabase/functions/generate-creative-angles/index.ts` — Add `Current date: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` to the user prompt, plus a rule: "All creative must be relevant to the current time of year. Do NOT reference holidays, seasons, or events that are not upcoming."
-- `supabase/functions/generate-creative-grid/index.ts` — Same date injection in the user prompt
-- `supabase/functions/generate-content-ideas/index.ts` — Same
-- `supabase/functions/generate-angle-copy/index.ts` — Same
-- `supabase/functions/lumi-chat/index.ts` — Add current date to context prompt
+**Changes in `src/pages/CreativeStudio.tsx` (lines ~876-897)**:
+- Remove `border-l-4` from concept cards
+- Use a subtle `ring-2 ring-green-500/20 bg-green-50/30` for added items instead of a thick green left border
+- Use standard card hover (`hover:shadow-md`) for non-added items
+- Keep the bold hook text and "Why This Works" notes
 
-## 2. Script Feedback on Talking Head Scripts
+## 2. Fix "No Angles Selected" Message on Ad Copy Tab
 
-**Problem**: Users cannot provide feedback or request changes to individual talking head scripts in the production checklist.
+The Ad Copy tab renders `AngleCopyEditor`, which checks `selectedAngles.length === 0` at line 220 of `AngleCopyEditor.tsx`. The `selectedAngles` are derived from `angles.filter(a => selectedAngleIds.includes(a.id))`.
 
-**Fix**: Add a "Give Feedback" button to `CreativeChecklistCard.tsx` that opens a small textarea + regenerate flow:
-- Add a "Refine Script" button next to the existing "Copy Script" button
-- Clicking opens an inline feedback input (textarea + "Regenerate" button)
-- On submit, call a new or existing edge function (reuse `regenerate-creative-cell` or `expand-creative`) with the feedback as context
-- Update the production item's `script_lines`, `verbal_hook`, `written_hook`, and `visual_hook` with the regenerated output
-- Wire this through `ProductionManager` up to `CreativeStudio` so the parent state and database are updated
+The issue: when the user has production items (concepts added to checklist) but the `selectedAngleIds` array doesn't match the angles passed in, the copy editor shows "No Angles Selected."
 
-**Files changed**:
-- `src/components/creative/CreativeChecklistCard.tsx` — Add feedback UI + callback prop
-- `src/components/creative/ProductionManager.tsx` — Add `onUpdateItem` handler, pass to card
-- `src/pages/CreativeStudio.tsx` — Add `updateProductionItem` function that calls edge function and saves
+**Root cause**: The `selectedAngleIds` state might not persist correctly, or when concepts were added from only one angle but the user didn't "select" angles in the traditional checkbox sense.
 
-## 3. Move Action Buttons to Top Right
+**Fix in `src/pages/CreativeStudio.tsx`**: When rendering the copy tab, derive `selectedAngleIds` from the production items' `angleId` fields as a fallback. If `selectedAngleIds` is empty but production items exist, extract the unique angle IDs from those items and use those instead. This ensures the copy tab always has angles to work with when concepts have been selected.
 
-**Problem**: Action buttons (Continue to Ad Copy, Continue to Build, Generate Creative, etc.) are at the bottom of the page and hard to find.
+## 3. Replace Progress Dots with Checkmarks
 
-**Fix**: In `CreativeStudio.tsx`, move the primary action buttons from the bottom of each tab content to the top-right header area, next to the workspace selector:
-- Create a "sticky action bar" below the tabs header that shows the contextual primary action for each tab
-- Angles tab: "Generate Creative" button (when angles are selected)
-- Concepts tab: "Continue to Ad Copy" button (when items added)
-- Copy tab: "Continue to Build" button
-- Build tab: "Build Campaign" button
-- Keep existing bottom buttons as secondary fallback on mobile
+Currently the tab progress indicators are gradient-colored dots. Replace them with small checkmark icons to clearly indicate completion.
 
-**Files changed**:
-- `src/pages/CreativeStudio.tsx` — Add action button row between tabs header and tab content
-
-## 4. Full-Page Creative Studio Layout
-
-**Problem**: The Creative Studio feels cramped inside the standard dashboard layout, making it hard to see the workflow progression.
-
-**Fix**: Make the Creative Studio render as a full-page overlay/expanded view:
-- Replace `DashboardLayout` wrapper with a custom full-page layout for CreativeStudio
-- Add a sticky top bar with: back arrow to return to dashboard, brand name, workspace selector, and the primary action button
-- Use the full viewport height and width (no sidebar nav, no dashboard header)
-- Keep the 4-step workflow tabs prominent at the top
-- Add a "Back to Dashboard" button in the top-left
-
-**Files changed**:
-- `src/pages/CreativeStudio.tsx` — Replace `DashboardLayout` with a custom full-screen layout, add back button + streamlined header
-
-## 5. Make Angles/Concepts More Visible
-
-**Problem**: Angle pills and concept cards blend into the background and are easy to miss, especially with multiple angles.
-
-**Fix**: Improve visual prominence of angles, concepts, and workflow steps:
-- **Angle pills**: Make them larger with a colored left border or gradient background when active, add the angle description as a subtitle below the pill row
-- **Concept cards**: Increase card contrast with a subtle left-border color per angle, make hooks bold and larger (text-base instead of text-sm)
-- **Selected state**: Add a stronger visual indicator (filled background, checkmark overlay) for selected angles and added-to-checklist concepts
-- **Tab progress indicators**: Add completion dots/badges on the workflow tabs showing which steps have content (e.g., a green dot on "Angles" when angles exist)
-
-**Files changed**:
-- `src/pages/CreativeStudio.tsx` — Enhanced angle pill styling, tab badges, concept card styling
-- `src/components/creative/AngleSelector.tsx` — Larger, more prominent angle cards
+**Changes in `src/pages/CreativeStudio.tsx` (lines ~805-807)**:
+- Replace the `<span>` dot with a `CheckCircle2` icon (already imported) or a small `Check` icon inside a circle
+- Use the brand gradient as background with a white checkmark for clear visibility
+- Keep the `absolute -top-1 -right-1` positioning
 
 ---
 
 ## Technical Details
 
-### Edge Function Changes (Date Injection)
-Each AI edge function gets a single line added to its prompt:
+### Concept Card Fix (before/after)
+- **Before (current broken)**: `border-l-4 border-l-green-500 ring-2 ring-green-500/30` -- heavy, cluttered
+- **After (fix)**: Clean card with subtle `ring-1 ring-green-200 bg-green-50/50` for added state, standard `hover:shadow-md border` for unselected
 
+### Ad Copy Angle Fallback Logic
+```typescript
+// Derive effective angle IDs for copy tab
+const effectiveAngleIds = selectedAngleIds.length > 0
+  ? selectedAngleIds
+  : [...new Set(productionItems.map(p => p.angleId).filter(Boolean))];
 ```
-Today's date is [Month Day, Year]. Ensure all content is seasonally appropriate and relevant to this time period.
-```
+Pass `effectiveAngleIds` to `AngleCopyEditor` instead of `selectedAngleIds`.
 
-### Script Feedback Flow
-```text
-User clicks "Refine Script"
-  -> Inline textarea appears
-  -> User types feedback
-  -> Calls regenerate-creative-cell edge function with:
-     { cellId, feedback, existingScript, brandContext }
-  -> Returns updated script_lines + hooks
-  -> Updates production item in state + Supabase
+### Checkmark Indicator
+Replace the dot span with:
+```tsx
+<span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-background flex items-center justify-center">
+  <Check className="h-2.5 w-2.5 text-white" />
+</span>
 ```
-
-### Full-Page Layout Structure
-```text
-+--------------------------------------------------+
-| <- Back    [Brand Name]    [Workspace v]   [CTA]  |
-+--------------------------------------------------+
-| [Angles] [Concepts] [Ad Copy] [Build]            |
-+--------------------------------------------------+
-|                                                    |
-|              Full-width tab content                |
-|                                                    |
-+--------------------------------------------------+
-```
-
+This requires importing `Check` from lucide-react (or reusing `CheckCircle2`).
