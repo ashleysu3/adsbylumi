@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { Megaphone, Sparkles, PenTool, Rocket, Layout } from 'lucide-react';
+import { Megaphone, Sparkles, PenTool, Rocket, Brain } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function AdsEmptyState() {
@@ -40,7 +40,7 @@ export function AdsEmptyState() {
         Ready to Create Your First Ad?
       </h2>
       <p className="text-muted-foreground text-center max-w-md mb-8">
-        Our smart wizard will guide you through creating scroll-stopping ads in minutes — no design skills required.
+        Lumi builds your ads using audience psychology, proven creative angles, and Meta best practices — no design skills required.
       </p>
 
       {/* Feature Cards */}
@@ -51,9 +51,9 @@ export function AdsEmptyState() {
           <p className="text-xs text-muted-foreground">Headlines & scripts</p>
         </Card>
         <Card className="p-4 text-center bg-muted/30 border-dashed">
-          <Layout className="w-8 h-8 mx-auto mb-2 text-primary/70" />
-          <p className="text-sm font-medium">Smart Templates</p>
-          <p className="text-xs text-muted-foreground">Proven formats</p>
+          <Brain className="w-8 h-8 mx-auto mb-2 text-primary/70" />
+          <p className="text-sm font-medium">Psychology-Backed Creative</p>
+          <p className="text-xs text-muted-foreground">Angles that convert</p>
         </Card>
         <Card className="p-4 text-center bg-muted/30 border-dashed">
           <Rocket className="w-8 h-8 mx-auto mb-2 text-primary/70" />
@@ -74,7 +74,7 @@ export function AdsEmptyState() {
 
       {/* Helper text */}
       <p className="text-xs text-muted-foreground mt-6 text-center max-w-sm">
-        Takes about 5 minutes. You'll have ad copy, creative direction, and a launch-ready campaign.
+        Takes about 5 minutes. You'll have psychology-driven ad copy, creative direction with proven angles, and a launch-ready campaign.
       </p>
     </motion.div>
   );
