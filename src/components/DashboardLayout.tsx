@@ -359,7 +359,7 @@ export default function DashboardLayout({
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/content-library")}>
                     <Library className="mr-2 h-4 w-4" />
-                    Concept Library
+                    Saved for Later
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate("/settings")}>

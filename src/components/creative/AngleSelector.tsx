@@ -95,11 +95,11 @@ export function AngleSelector({
             <Card
               key={angle.id}
               className={cn(
-                "cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] border-l-4",
-                isDefault && "border-l-primary/80 bg-primary/5 border-dashed ring-1 ring-primary/20 cursor-default",
-                !isDefault && isSelected && "border-l-primary ring-2 ring-primary bg-primary/5 shadow-md",
-                !isDefault && !isSelected && !isDisabled && "border-l-muted hover:border-l-primary/60",
-                !isDefault && isDisabled && "opacity-50 cursor-not-allowed border-l-muted"
+                "cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] border-2",
+                isDefault && "border-primary/30 border-dashed bg-primary/5 cursor-default",
+                !isDefault && isSelected && "border-primary ring-2 ring-primary/20 bg-primary/5 shadow-md",
+                !isDefault && !isSelected && !isDisabled && "border-transparent hover:border-primary/40",
+                !isDefault && isDisabled && "opacity-50 cursor-not-allowed border-muted"
               )}
               onClick={() => !isDefault && !isDisabled && toggleAngle(angle.id)}
             >

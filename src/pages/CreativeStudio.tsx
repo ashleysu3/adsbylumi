@@ -425,6 +425,18 @@ export default function CreativeStudio() {
     }
   }, [activeTab, workspace?.id]);
 
+  // Debounced save for selectedAngleIds to ensure persistence
+  const selectedAngleIdsRef = useRef(selectedAngleIds);
+  selectedAngleIdsRef.current = selectedAngleIds;
+  
+  useEffect(() => {
+    if (!workspace || availableAngles.length === 0) return;
+    const timer = setTimeout(() => {
+      saveCreativeState({ selectedAngleIds: selectedAngleIdsRef.current });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [selectedAngleIds, workspace?.id, availableAngles.length]);
+
   const saveCreativeState = useCallback(async (updates: any) => {
     if (!workspace) return;
     setSaveStatus("saving");
@@ -648,7 +660,7 @@ export default function CreativeStudio() {
       setProductionItems(updated);
       saveProductionItems(updated);
 
-      toast.success("Saved to Concept Library");
+      toast.success("Saved for later");
     } catch (error: any) {
       toast.error("Failed to save: " + error.message);
     }

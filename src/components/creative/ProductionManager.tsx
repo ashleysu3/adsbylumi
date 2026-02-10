@@ -143,7 +143,7 @@ export function ProductionManager({
       for (const item of nonRankedItems) {
         await onSaveToLibrary(item);
       }
-      toast.success(`Moved ${nonRankedItems.length} concepts to Concept Library`);
+      toast.success(`Saved ${nonRankedItems.length} concepts for later`);
     } catch (error: any) {
       toast.error("Failed to move some items: " + error.message);
     } finally {
@@ -329,7 +329,7 @@ export function ProductionManager({
                         ) : (
                           <Library className="h-3 w-3" />
                         )}
-                        Move Others to Concept Library
+                        Save Others for Later
                       </Button>
                     </>
                   )}
