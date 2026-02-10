@@ -260,6 +260,8 @@ export default function CreativeStudio() {
       setAngleCopy({});
       setActiveAngleId("");
       setActiveTab("angles");
+      // Clear workspace URL param on brand switch to prevent cross-brand loading
+      setSearchParams(p => { p.delete("workspace"); return p; }, { replace: true });
       setLoading(true);
       fetchInitialData(); 
     }
@@ -292,7 +294,11 @@ export default function CreativeStudio() {
       });
       setWorkspaces(options);
 
-      const targetId = urlWorkspaceId || options[0]?.id;
+      // Only use URL workspace ID if it belongs to the active brand's workspaces
+      const validWorkspaceIds = new Set(options.map(o => o.id));
+      const targetId = (urlWorkspaceId && validWorkspaceIds.has(urlWorkspaceId)) 
+        ? urlWorkspaceId 
+        : options[0]?.id;
       if (targetId) await loadWorkspace(targetId);
 
       const { data: ideasData } = await supabase
@@ -307,6 +313,14 @@ export default function CreativeStudio() {
     setSearchParams(p => { p.set("workspace", id); return p; }, { replace: true });
     try {
       const { data } = await supabase.from("campaign_workspaces").select("*, brands(*)").eq("id", id).single();
+      
+      // Guard: ensure workspace belongs to the active brand
+      if (data && activeBrand && data.brand_id !== activeBrand.id) {
+        console.warn(`Workspace ${id} belongs to brand ${data.brand_id}, not active brand ${activeBrand.id}. Skipping.`);
+        setSearchParams(p => { p.delete("workspace"); return p; }, { replace: true });
+        return;
+      }
+      
       setWorkspace(data);
       const c = data?.creative_json as Record<string, any> | null;
       // Inject default angle if angles exist but it's missing
