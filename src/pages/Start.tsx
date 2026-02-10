@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useBrand } from "@/contexts/BrandContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ interface NextStep {
 
 export default function Start() {
   const navigate = useNavigate();
+  const { activeBrand, loading: brandLoading } = useBrand();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [userState, setUserState] = useState<UserState>({
@@ -59,44 +61,30 @@ export default function Start() {
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
 
   useEffect(() => {
-    checkUserState();
-  }, []);
+    if (brandLoading) return;
+    if (!activeBrand) {
+      // No brand means user needs onboarding
+      navigate("/onboarding");
+      return;
+    }
+    setBrand(activeBrand);
+    checkUserState(activeBrand);
+  }, [brandLoading, activeBrand?.id]);
 
-  const checkUserState = async () => {
+  const checkUserState = async (currentBrand: any) => {
+    setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-
-      // Check for brand
-      const { data: brandData } = await supabase
-        .from("brands")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!brandData) {
-        navigate("/onboarding");
-        return;
-      }
-
-      setBrand(brandData);
-
       // Fetch all state in parallel
       const [offersResult, campaignsResult] = await Promise.all([
         supabase
           .from("offers")
           .select("id")
-          .eq("brand_id", brandData.id)
+          .eq("brand_id", currentBrand.id)
           .eq("archived", false),
         supabase
           .from("campaign_workspaces")
           .select("id, progress_status")
-          .eq("brand_id", brandData.id)
+          .eq("brand_id", currentBrand.id)
           .eq("archived", false),
       ]);
 
@@ -114,7 +102,7 @@ export default function Start() {
         hasCampaigns: campaigns.length > 0,
         hasLiveCampaigns: liveCampaigns.length > 0,
         hasDraftCampaigns: draftCampaigns.length > 0,
-        isMetaConnected: !!brandData.meta_account_id,
+        isMetaConnected: !!currentBrand.meta_account_id,
         offerCount: offers.length,
         campaignCount: campaigns.length,
         draftCount: draftCampaigns.length,
