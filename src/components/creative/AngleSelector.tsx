@@ -86,15 +86,16 @@ export function AngleSelector({
             <Card
               key={angle.id}
               className={cn(
-                "cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]",
-                isSelected && "ring-2 ring-primary bg-primary/5",
-                isDisabled && "opacity-50 cursor-not-allowed"
+                "cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] border-l-4",
+                isSelected && "border-l-primary ring-2 ring-primary bg-primary/5 shadow-md",
+                !isSelected && !isDisabled && "border-l-muted hover:border-l-primary/60",
+                isDisabled && "opacity-50 cursor-not-allowed border-l-muted"
               )}
               onClick={() => !isDisabled && toggleAngle(angle.id)}
             >
               <CardHeader className="pb-2 p-3 sm:p-4 sm:pb-2">
                 <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-sm sm:text-base font-semibold leading-tight">
+                  <CardTitle className="text-sm sm:text-base font-bold leading-tight">
                     {angle.name}
                   </CardTitle>
                   <Checkbox
@@ -106,7 +107,7 @@ export function AngleSelector({
                 </div>
               </CardHeader>
               <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
-                <CardDescription className="text-xs sm:text-sm line-clamp-3">
+                <CardDescription className="text-xs sm:text-sm">
                   {angle.description}
                 </CardDescription>
               </CardContent>

@@ -215,7 +215,11 @@ Return valid JSON with this structure:
       `- ID: ${a.id}\n  Name: ${a.name}\n  Description: ${a.description}`
     ).join('\n\n');
 
-    const userPrompt = `Generate 3-5 copy variations for each of these creative angles:
+    const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const userPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate and relevant to this time period. Do NOT reference holidays, seasons, or events that are not upcoming or current.
+
+Generate 3-5 copy variations for each of these creative angles:
 
 ${anglesDescription}
 

@@ -20,7 +20,8 @@ serve(async (req) => {
       offerData,
       brandVoice,
       messagingGuidelines,
-      productPsychology
+      productPsychology,
+      userFeedback
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -174,7 +175,11 @@ Output ONLY valid JSON with this exact structure:
   ]` : ''}
 }`;
 
-    const userPrompt = `Generate a FRESH, COMPLETELY DIFFERENT creative idea for this slot:
+    const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const userPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate. Do NOT reference holidays, seasons, or events that are not upcoming or current.
+
+Generate a FRESH, COMPLETELY DIFFERENT creative idea for this slot:
 
 Angle: ${angle.name} - ${angle.description}
 Format: ${formatLabels[cell.format]}
@@ -195,6 +200,12 @@ ${productPsychology ? `Product Psychology: ${JSON.stringify(productPsychology)}`
 
 Full Audience Psychology: ${JSON.stringify(audiencePsychology || {})}
 Strategy: ${JSON.stringify(strategyData?.messaging_levers || strategyData?.objectives || {})}
+
+${userFeedback ? `=== USER FEEDBACK (HIGHEST PRIORITY) ===
+The user wants these specific changes to the script/hook:
+"${userFeedback}"
+IMPORTANT: Apply this feedback precisely. This is the primary reason for regeneration.
+` : ''}
 
 REQUIREMENTS:
 1. Create something COMPLETELY DIFFERENT from the original

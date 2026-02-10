@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +10,7 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, FolderOpen, Video, Film, Image, Trash2,
-  X, HelpCircle
+  X, HelpCircle, ArrowLeft
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -168,8 +167,8 @@ const getIdleHelpMessage = (
     return "Looking good! Review your copy and continue to Build when ready.";
   }
   if (activeTab === "build") {
-    if (productionItems.length < 3) {
-      return `Add ${3 - productionItems.length} more concepts to unlock campaign building.`;
+    if (productionItems.length === 0) {
+      return "Add concepts from the Concepts tab to start building your campaign.";
     }
     return "Upload your video or image files to each creative concept, then build your campaign!";
   }
@@ -631,6 +630,54 @@ export default function CreativeStudio() {
     }
   };
 
+  const refineScript = useCallback(async (itemId: string, feedback: string) => {
+    const item = productionItems.find(i => i.id === itemId);
+    if (!item || !workspace) throw new Error("Item not found");
+    
+    const angle = availableAngles.find(a => a.name === item.angleName);
+    
+    const { data, error } = await supabase.functions.invoke('regenerate-creative-cell', {
+      body: {
+        cell: {
+          id: item.id,
+          format: item.format,
+          hook: item.hook,
+          guidance: item.guidance,
+          row: "attention",
+        },
+        angle: angle || { name: item.angleName, description: "" },
+        brandName: workspace.brands?.name,
+        strategyData: workspace.strategy_json,
+        audiencePsychology: workspace.brands?.audience_psychology,
+        offerData: { name: workspace.offer_name, description: workspace.offer_description, price: workspace.offer_price },
+        brandVoice: workspace.brands?.brand_voice,
+        userFeedback: feedback,
+      }
+    });
+    if (error) throw error;
+    
+    const updatedCell = data.cell;
+    const updatedItems = productionItems.map(pi => {
+      if (pi.id !== itemId) return pi;
+      return {
+        ...pi,
+        hook: updatedCell.hook,
+        guidance: updatedCell.guidance,
+        verbal_hook: updatedCell.verbal_hook || pi.verbal_hook,
+        written_hook: updatedCell.written_hook || pi.written_hook,
+        visual_hook: updatedCell.visual_hook || pi.visual_hook,
+        visual_hook_options: updatedCell.visual_hook_options || pi.visual_hook_options,
+        script_lines: updatedCell.script_lines || pi.script_lines,
+        text_overlays: updatedCell.text_overlays || pi.text_overlays,
+        delivery_style: updatedCell.delivery_style || pi.delivery_style,
+        psychology_trigger: updatedCell.psychology_trigger || pi.psychology_trigger,
+        why_this_works: updatedCell.why_this_works || pi.why_this_works,
+      };
+    });
+    setProductionItems(updatedItems);
+    saveProductionItems(updatedItems);
+  }, [productionItems, workspace, availableAngles, saveProductionItems]);
+
   const workflowTabs = [
     { id: "angles" as const, label: "Angles", icon: Target },
     { id: "concepts" as const, label: "Creative Concepts", icon: Lightbulb },
@@ -638,17 +685,55 @@ export default function CreativeStudio() {
     { id: "build" as const, label: "Creation", icon: Rocket },
   ];
 
-  if (loading) return <DashboardLayout><div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div></DashboardLayout>;
+  // Tab progress indicators
+  const tabProgress = {
+    angles: availableAngles.length > 0,
+    concepts: gridData.length > 0,
+    copy: Object.keys(angleCopy).some(id => {
+      const c = angleCopy[id];
+      return c && (c.headlines?.length > 0 || c.descriptions?.length > 0 || c.primary_copy?.length > 0);
+    }),
+    build: productionItems.some(item => {
+      const assets = workspace?.user_uploaded_assets || [];
+      return assets.some((a: any) => a.linked_concept_id === item.id);
+    }),
+  };
+
+  // Context-aware primary action for top-right
+  const getPrimaryAction = () => {
+    if (activeTab === "angles") {
+      if (availableAngles.length === 0) return null;
+      if (selectedAngleIds.length > 0) return { label: "Generate Creative", icon: Sparkles, action: generateCreativeGrid, disabled: generating };
+      return null;
+    }
+    if (activeTab === "concepts") {
+      if (productionItems.length > 0) return { label: "Continue to Ad Copy", icon: ArrowRight, action: () => { setShouldAutoGenerateCopy(true); setActiveTab("copy"); }, disabled: false };
+      return null;
+    }
+    if (activeTab === "copy") {
+      return { label: "Continue to Build", icon: ArrowRight, action: () => setActiveTab("build"), disabled: false };
+    }
+    if (activeTab === "build") {
+      return { label: "Build Campaign", icon: Rocket, action: handleBuildCampaign, disabled: productionItems.length < 1 };
+    }
+    return null;
+  };
+
+  const primaryAction = getPrimaryAction();
+
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
 
   // No workspaces with strategy - show helpful empty state
   if (workspaces.length === 0) {
     return (
-      <DashboardLayout>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold"><span className="text-gradient-lumi">Creative Studio</span></h1>
-            <p className="text-muted-foreground text-sm">Build ad creative from ideation to launch</p>
+      <div className="min-h-screen bg-background">
+        <div className="border-b bg-background/95 backdrop-blur-sm sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/campaigns")} className="shrink-0"><ArrowLeft className="h-5 w-5" /></Button>
+            <h1 className="text-lg font-bold"><span className="text-gradient-lumi">Creative Studio</span></h1>
           </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
           <Card>
             <CardContent className="pt-6 text-center py-12">
               <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4" />
@@ -663,30 +748,57 @@ export default function CreativeStudio() {
             </CardContent>
           </Card>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-2xl font-bold"><span className="text-gradient-lumi">Creative Studio</span></h1>
-              <p className="text-muted-foreground text-sm">Build ad creative from ideation to launch</p>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Sticky Top Bar */}
+      <div className="border-b bg-background/95 backdrop-blur-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/campaigns")} className="shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold truncate"><span className="text-gradient-lumi">Creative Studio</span></h1>
+              {activeBrand && <p className="text-xs text-muted-foreground truncate">{activeBrand.name}</p>}
             </div>
             {workspace && <AutoSaveIndicator status={saveStatus} />}
           </div>
-          <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
-            <SelectTrigger className="w-full sm:w-[280px]"><FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Select campaign" /></SelectTrigger>
-            <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
+              <SelectTrigger className="w-[180px] sm:w-[240px]"><FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Select campaign" /></SelectTrigger>
+              <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
+            </Select>
+            {primaryAction && (
+              <Button 
+                onClick={primaryAction.action} 
+                disabled={primaryAction.disabled}
+                className="gap-2 hidden sm:flex"
+              >
+                <primaryAction.icon className="h-4 w-4" />
+                {primaryAction.label}
+              </Button>
+            )}
+          </div>
         </div>
+      </div>
 
+      {/* Main Content */}
+      <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
           <TabsList className="grid w-full grid-cols-4 mb-6">
-            {workflowTabs.map(t => <TabsTrigger key={t.id} value={t.id} className="gap-2"><t.icon className="h-4 w-4" /><span className="hidden sm:inline">{t.label}</span></TabsTrigger>)}
+            {workflowTabs.map(t => (
+              <TabsTrigger key={t.id} value={t.id} className="gap-2 relative">
+                <t.icon className="h-4 w-4" />
+                <span className="hidden sm:inline">{t.label}</span>
+                {tabProgress[t.id] && (
+                  <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
+                )}
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="angles">
@@ -713,27 +825,39 @@ export default function CreativeStudio() {
             ) : (
               <div className="space-y-6">
                 {selectedAngleIds.length > 1 && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex gap-2 overflow-x-auto pb-2">
-                      {availableAngles.filter(a => selectedAngleIds.includes(a.id)).map(a => (
-                        <Button key={a.id} variant={activeAngleId === a.id ? "default" : "outline"} size="sm" onClick={() => setActiveAngleId(a.id)}>{a.name}</Button>
-                      ))}
+                      {availableAngles.filter(a => selectedAngleIds.includes(a.id)).map(a => {
+                        const isActive = activeAngleId === a.id;
+                        const cellCount = gridData.filter(c => c.angleId === a.id).length;
+                        const addedCount = gridData.filter(c => c.angleId === a.id && productionItems.some(p => p.hook === c.hook)).length;
+                        return (
+                          <Button 
+                            key={a.id} 
+                            variant={isActive ? "default" : "outline"} 
+                            size="sm" 
+                            onClick={() => setActiveAngleId(a.id)}
+                            className={cn(
+                              "gap-2 min-w-fit transition-all",
+                              isActive && "shadow-md ring-2 ring-primary/30"
+                            )}
+                          >
+                            {a.name}
+                            {addedCount > 0 && (
+                              <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                                {addedCount}/{cellCount}
+                              </Badge>
+                            )}
+                          </Button>
+                        );
+                      })}
                     </div>
-                    <motion.div 
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5, duration: 0.4 }}
-                      className="flex items-center gap-2 text-xs text-muted-foreground"
-                    >
-                      <motion.span 
-                        animate={{ y: [0, -3, 0] }}
-                        transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                        className="text-primary"
-                      >
-                        ↑
-                      </motion.span>
-                      <span>Click each angle to see all your concepts</span>
-                    </motion.div>
+                    {/* Active angle description */}
+                    {activeAngleId && (
+                      <p className="text-sm text-muted-foreground px-1">
+                        {availableAngles.find(a => a.id === activeAngleId)?.description}
+                      </p>
+                    )}
                   </div>
                 )}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -741,14 +865,20 @@ export default function CreativeStudio() {
                     const Icon = formatIcons[cell.format];
                     const isAdded = productionItems.some(p => p.hook === cell.hook);
                     return (
-                      <Card key={cell.id} className={cn("transition-all", isAdded && "ring-2 ring-green-500/50")}>
+                      <Card key={cell.id} className={cn(
+                        "transition-all border-l-4",
+                        isAdded ? "border-l-green-500 ring-2 ring-green-500/30 bg-green-50/30 dark:bg-green-950/10" : "border-l-primary/40 hover:shadow-md hover:border-l-primary"
+                      )}>
                         <CardContent className="pt-4 space-y-3">
                           <div className="flex items-center justify-between">
                             <Badge variant="secondary" className="gap-1"><Icon className="h-3 w-3" />{formatLabels[cell.format]}</Badge>
-                            {isAdded && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                            {isAdded && <CheckCircle2 className="h-5 w-5 text-green-500" />}
                           </div>
-                          <p className="font-medium text-sm">{cell.hook}</p>
-                          <p className="text-xs text-muted-foreground">{cell.guidance}</p>
+                          <p className="font-semibold text-base leading-snug">{cell.hook}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-3">{cell.guidance}</p>
+                          {cell.why_this_works && (
+                            <p className="text-xs text-primary/80 italic">💡 {cell.why_this_works}</p>
+                          )}
                           {!isAdded && (
                             <Button size="sm" variant="outline" className="w-full" onClick={() => addToChecklist(cell)}>
                               Add to Checklist
@@ -829,10 +959,26 @@ export default function CreativeStudio() {
               onSaveToLibrary={saveItemToLibrary}
               brandId={brandId}
               angleCopy={angleCopy}
+              onRefineScript={refineScript}
             />
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Mobile floating primary action */}
+      {primaryAction && (
+        <div className="sm:hidden fixed bottom-6 left-4 right-4 z-30">
+          <Button 
+            onClick={primaryAction.action} 
+            disabled={primaryAction.disabled}
+            className="w-full gap-2 shadow-lg"
+            size="lg"
+          >
+            <primaryAction.icon className="h-4 w-4" />
+            {primaryAction.label}
+          </Button>
+        </div>
+      )}
       
       {/* Idle Help Popup - max 20% screen width */}
       <AnimatePresence>
@@ -937,6 +1083,6 @@ export default function CreativeStudio() {
            />
          </DialogContent>
        </Dialog>
-    </DashboardLayout>
+    </div>
   );
 }

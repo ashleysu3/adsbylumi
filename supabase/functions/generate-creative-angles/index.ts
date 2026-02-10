@@ -182,7 +182,11 @@ Return a JSON object with an "angles" array. Each angle object must have:
 - description: one sentence for non-marketers
 - psychologyTrigger: (optional) if based on user insights, briefly note what insight it addresses`;
 
-    const userPrompt = `Generate creative angles for this campaign:
+    const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const userPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate and relevant to this time period. Do NOT reference holidays, seasons, or events that are not upcoming or current.
+
+Generate creative angles for this campaign:
 
 BRAND: ${brandName}
 

@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Video, Film, Image, ChevronDown, ChevronUp, 
   Upload, Eye, CheckCircle2, Trash2, Maximize2,
-  Library, Loader2, Info, Trophy, Mic, Type, Brain, Sparkles, Copy, Volume2
+  Library, Loader2, Info, Trophy, Mic, Type, Brain, Sparkles, Copy, Volume2,
+  MessageSquare, RefreshCw
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -51,6 +53,7 @@ interface CreativeChecklistCardProps {
   rank?: number;
   rationale?: string;
   showAngleBadge?: boolean;
+  onRefineScript?: (itemId: string, feedback: string) => Promise<void>;
 }
 
 export function CreativeChecklistCard({ 
@@ -64,10 +67,14 @@ export function CreativeChecklistCard({
   savingToLibrary,
   rank,
   rationale,
-  showAngleBadge = false
+  showAngleBadge = false,
+  onRefineScript
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [isRefining, setIsRefining] = useState(false);
   const Icon = formatIcons[item.format as keyof typeof formatIcons] || Image;
   const formatLabel = formatLabels[item.format as keyof typeof formatLabels] || item.format;
   
@@ -84,6 +91,21 @@ export function CreativeChecklistCard({
     const scriptText = item.script_lines.join("\n");
     navigator.clipboard.writeText(scriptText);
     toast.success("Script copied to clipboard!");
+  };
+
+  const handleRefineScript = async () => {
+    if (!feedbackText.trim() || !onRefineScript) return;
+    setIsRefining(true);
+    try {
+      await onRefineScript(item.id, feedbackText.trim());
+      setFeedbackText("");
+      setShowFeedback(false);
+      toast.success("Script refined!");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to refine script");
+    } finally {
+      setIsRefining(false);
+    }
   };
   
   return (
@@ -273,16 +295,50 @@ export function CreativeChecklistCard({
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <h5 className="text-xs font-semibold text-muted-foreground uppercase">📜 Your Script</h5>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs gap-1"
-                          onClick={copyScriptToClipboard}
-                        >
-                          <Copy className="h-3 w-3" />
-                          Copy Script
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          {onRefineScript && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs gap-1"
+                              onClick={() => setShowFeedback(!showFeedback)}
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                              Refine Script
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            onClick={copyScriptToClipboard}
+                          >
+                            <Copy className="h-3 w-3" />
+                            Copy Script
+                          </Button>
+                        </div>
                       </div>
+                      
+                      {/* Feedback Input */}
+                      {showFeedback && (
+                        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                          <p className="text-xs text-muted-foreground">Tell Lumi what to change — tone, length, specific phrases, or a new direction.</p>
+                          <Textarea
+                            placeholder="e.g. Make it shorter and more casual, focus on the transformation..."
+                            value={feedbackText}
+                            onChange={(e) => setFeedbackText(e.target.value)}
+                            className="min-h-[60px] text-sm"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => setShowFeedback(false)} className="text-xs">Cancel</Button>
+                            <Button size="sm" onClick={handleRefineScript} disabled={!feedbackText.trim() || isRefining} className="gap-1 text-xs">
+                              {isRefining ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                              Regenerate
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="bg-muted/50 rounded-lg p-3 space-y-1">
                         {item.script_lines.map((line, idx) => (
                           <div key={idx} className="flex gap-2 text-sm">

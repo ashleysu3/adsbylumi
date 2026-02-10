@@ -37,7 +37,11 @@ Always explain the psychology behind each idea briefly.`;
       ? `\n\nExisting ideas to avoid duplicating:\n${existingIdeas.map((i: any) => `- ${i.title}`).join('\n')}`
       : '';
 
-    const userPrompt = `Generate ${count} ${ideaType || 'creative'} content idea${count > 1 ? 's' : ''} for this brand and offer:
+    const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    const userPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate and relevant to this time period. Do NOT reference holidays, seasons, or events that are not upcoming or current.
+
+Generate ${count} ${ideaType || 'creative'} content idea${count > 1 ? 's' : ''} for this brand and offer:
 
 BRAND:
 - Name: ${brand?.name || 'Unknown'}
