@@ -1,95 +1,134 @@
 
 
-# Add "Direct from Sales Page" Default Angle
+# Revamp Onboarding, Navigation Dropdown, and Page Organization
 
-## What This Does
+## Overview
 
-Every time angles are generated, a special first angle called **"Straight from Your Page"** is automatically added and pre-selected. This angle pulls copy and creative concepts directly from the offer's sales page content (name, description, URL, price) instead of generating psychology-driven angles. It produces basic, straightforward creative like:
+This plan addresses four interconnected issues: expanding the onboarding wizard, adding a "we/I" copy voice toggle, reorganizing brand-related pages for clarity (especially for agency users), and cleaning up the user dropdown menu.
 
-- "Free Webinar: [Title]"  
-- "[Course Name] — Enroll Now"  
-- "[Lead Magnet Name] — Download Free"
+## 1. Expand Onboarding Flow (`src/pages/Onboarding.tsx`)
 
-This ensures there's always one simple, direct option alongside the more creative AI-generated angles.
+The current onboarding is 3 steps: Brand Basics, Positioning Review, Meet Lumi. The new flow will be a guided, one-screen-per-step wizard with Meta connection last:
 
-## How It Works
+| Step | Content |
+|------|---------|
+| 1. Brand Basics | Name, Website URL (auto-extract), Industry |
+| 2. Positioning | Value proposition, Target audience (pre-filled from extract) |
+| 3. Copy Voice | "We/I" toggle + Emoji preferences (use emojis toggle, brand emoji picker, bullet style) |
+| 4. Meet Lumi | Quick intro to Lumi (existing step 3) |
+| 5. Connect Meta | Meta account connection (moved to last, skippable) |
 
-### 1. Frontend — Inject the default angle (`src/pages/CreativeStudio.tsx`)
+- Step progress bar at top showing all 5 steps
+- "Skip for now" option on step 5 (Meta) so users aren't blocked
+- Copy voice toggle: simple card selection -- "We" (team/company voice) vs "I" (personal/solo voice) with preview text for each
 
-After the `generate-creative-angles` edge function returns its 10-12 AI angles, prepend a hardcoded angle:
+## 2. Add `copy_perspective` Column to Brands Table
+
+New database migration to add:
+
+```sql
+ALTER TABLE public.brands 
+ADD COLUMN copy_perspective text NOT NULL DEFAULT 'I';
+```
+
+Values: `'I'` or `'We'`. Defaults to `'I'` since most users are solo coaches/creators.
+
+## 3. Reorganize Dashboard Tabs and Pages
+
+### Current confusion points:
+- "My Brand" in dropdown goes to `/dashboard` which has Overview, Brand Brain, Offers tabs
+- "Settings" has Account, Connections, Notifications, Alerts, Billing
+- "Meta Connection" is a separate dropdown item going to `/meta-settings`
+- Brand-specific settings (emojis, copy voice) live inside Dashboard > Brand Brain tab
+- For agency users, it's unclear what's brand-specific vs account-level
+
+### New organization:
+
+**Dashboard page (`/dashboard`) -- rename to "My Brand"**
+Tabs: Overview | Brand Brain | Offers | Brand Settings
+
+- **Overview**: Brand details card (name, website, industry, positioning) -- same as now but WITHOUT the Meta account section (moved to Brand Settings)
+- **Brand Brain**: Content assets, Audience psychology (same as now, but emoji/copy preferences REMOVED from here)
+- **Offers**: Same as now
+- **Brand Settings** (NEW tab): Emoji preferences, Copy voice (we/I), Meta connection -- all brand-specific config in one place
+
+**Settings page (`/settings`) -- stays as account-level only**
+Tabs: Account | Notifications | Alert Thresholds | Billing
+
+- REMOVE "Connections" tab from Settings (Meta connection moves to Dashboard > Brand Settings)
+- This page is purely account-level, not brand-specific
+
+### Agency user clarity:
+- Brand-specific settings (emojis, copy voice, Meta connection) live under `/dashboard` which switches per brand via BrandSelector
+- Account settings (profile, notifications, billing) are global at `/settings`
+
+## 4. Clean Up the Dropdown Menu
+
+### Current dropdown (both desktop and mobile):
+- Home
+- My Brand
+- Meta Connection
+- Concept Library
+- Settings
+- Ads Glossary
+- Show Walkthrough
+- Sign Out
+
+### New dropdown structure:
 
 ```
-{
-  id: "direct_from_page",
-  name: "Straight from Your Page",
-  description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
-  isDefault: true
-}
+[User name + email]
+---
+Home
+My Brand           (goes to /dashboard)
+Concept Library    (goes to /content-library)
+---
+Settings           (goes to /settings -- account-level)
+Ads Glossary       (goes to /glossary)
+---
+Sign Out
 ```
 
-- This angle is **always pre-selected** in `selectedAngleIds`
-- It appears first in the angle list with a distinct visual treatment (e.g., a pin/star icon and "Always included" label)
-- It **cannot be deselected** — the checkbox is disabled/locked
-- When loading a workspace, if angles exist but `direct_from_page` is missing, inject it
-
-### 2. Frontend — Visual treatment (`src/components/creative/AngleSelector.tsx`)
-
-- Show the default angle card with a subtle "Always included" badge and a lock/pin icon
-- Its checkbox is checked and disabled
-- Slightly different card style (e.g., dashed border or muted brand gradient background) to distinguish it from AI-generated angles
-
-### 3. Backend — Handle in grid generation (`supabase/functions/generate-creative-grid/index.ts`)
-
-When the `direct_from_page` angle is included in the angles array sent to the grid generator:
-
-- Add special instructions to the AI prompt telling it to generate **basic, direct creative concepts** for this angle:
-  - Use the offer name as the headline verbatim
-  - Use the offer description as primary copy
-  - Generate simple CTAs: "Sign Up Now," "Download Free," "Register Today," "Learn More"
-  - Suggest basic visual concepts: offer name as text overlay, simple branded graphic, screenshot of the sales page
-  - No psychology tricks, no hooks — just clear, direct messaging from the existing page
-- The offer's name, description, price, and URL are already passed to this function, so no new data fetching is needed
-
-### 4. Backend — Handle in copy generation (`supabase/functions/generate-angle-copy/index.ts`)
-
-When generating ad copy for the `direct_from_page` angle:
-
-- Pull headlines and descriptions directly from the offer name and description
-- Generate straightforward primary copy that mirrors sales page language
-- CTAs should be simple and direct
+Changes:
+- REMOVE "Meta Connection" as a standalone item (now accessible via My Brand > Brand Settings tab)
+- REMOVE "Show Walkthrough" (rarely used, clutters menu)
+- Group items with separators: primary nav, then secondary, then sign out
+- Cleaner, fewer items, less cognitive load
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/CreativeStudio.tsx` | Inject default angle after generation and on workspace load; pre-select it; prevent deselection |
-| `src/components/creative/AngleSelector.tsx` | Visual treatment for default angle (badge, lock icon, distinct card style) |
-| `supabase/functions/generate-creative-grid/index.ts` | Special prompt instructions for `direct_from_page` angle |
-| `supabase/functions/generate-angle-copy/index.ts` | Direct copy generation for `direct_from_page` angle |
+| **Database migration** | Add `copy_perspective` column to brands table |
+| `src/pages/Onboarding.tsx` | Expand to 5-step wizard: add copy voice step + emoji step + Meta connection as final step |
+| `src/pages/Dashboard.tsx` | Add "Brand Settings" tab with emoji prefs, copy voice toggle, Meta connection. Remove emojis from Brand Brain tab. Remove Meta from Overview tab. |
+| `src/pages/Settings.tsx` | Remove "Connections" tab |
+| `src/components/DashboardLayout.tsx` | Clean up desktop dropdown menu |
+| `src/components/MobileHeader.tsx` | Clean up mobile dropdown menu |
 
 ## Technical Details
 
-### Default Angle Object
-```typescript
-const DEFAULT_ANGLE = {
-  id: "direct_from_page",
-  name: "Straight from Your Page",
-  description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
-  isDefault: true
-};
+### Copy Voice Toggle Component
+A simple two-card selector with preview text:
+
+```tsx
+// "I" option
+"I help entrepreneurs scale their business..."
+"My program teaches you..."
+
+// "We" option  
+"We help entrepreneurs scale their business..."
+"Our program teaches you..."
 ```
 
-### Injection Points in CreativeStudio.tsx
+Stored as `copy_perspective: 'I' | 'We'` on the brands table. Used by edge functions (generate-angle-copy, generate-creative-grid, etc.) when generating ad copy.
 
-1. **After `generateAngles`** (line ~495): Prepend default angle to `data.angles`, pre-select its ID
-2. **In `loadWorkspace`** (line ~311): If loaded angles don't include `direct_from_page`, prepend it
-3. **In angle selection toggle**: Skip deselection if `angle.id === "direct_from_page"`
+### Onboarding Step 3 (Copy Voice + Emojis)
+Combines the copy perspective selector and emoji preferences into a single "Your Copy Style" step. This consolidation means users set their preferences upfront rather than discovering these settings later in the Brand Brain tab.
 
-### Grid Generation Prompt Addition
-```
-For the angle "Straight from Your Page": Generate 3-4 simple, direct creative concepts 
-that use the offer's actual name, description, and CTA verbatim. No psychological hooks 
-or creative angles — just clear, straightforward ads. Think: offer name as headline, 
-sales page description as body copy, "Sign Up Now" or "Download Free" as CTA, 
-simple branded visual with offer name.
-```
+### Onboarding Step 5 (Meta Connection)
+Reuses the existing `MetaAccountConnect` component. Includes a prominent "Skip for now" button and a note: "You can always connect later from your Brand Settings."
+
+### Edge Function Updates
+The `copy_perspective` value needs to be passed to copy-generating edge functions. The existing `brand_voice` field already flows through -- `copy_perspective` will be added alongside it in the same data payloads in `CreativeStudio.tsx`, `Creative.tsx`, and `AdCopyLibrary.tsx`.
+
