@@ -67,6 +67,10 @@ serve(async (req) => {
          .select("*")
          .eq("brand_id", brandId);
        
+       const hasTestimonials = contentAssets?.some(
+         (a: any) => a.asset_type === 'testimonials' && a.content?.trim()
+       );
+
        if (contentAssets?.length) {
          contentAssetsContext = "\n\n=== USER-PROVIDED CONTENT ASSETS ===\n";
          contentAssetsContext += "REAL content from the user. Use these testimonials, scripts, and pain points to make hooks and scripts authentic:\n\n";
@@ -90,6 +94,26 @@ serve(async (req) => {
          });
          
          contentAssetsContext += "CRITICAL: Pull specific phrases, numbers, and pain points from the above content. These are REAL words from REAL clients - use them to make hooks irresistible.\n";
+         
+         if (hasTestimonials) {
+           contentAssetsContext += `
+=== TESTIMONIAL SCREENSHOT ADS (HIGH-CONVERTING FORMAT) ===
+The user has uploaded real client testimonials. For EACH angle, include at least ONE 
+"graphic" format cell in the "trust" row that uses a TESTIMONIAL SCREENSHOT concept:
+
+- Use the EXACT client quote from the testimonials above — do NOT rewrite or paraphrase
+- Present it as a screenshot of a text message, DM, or comment
+- Overlay on a solid brand color background, subtle linen/paper texture, or lifestyle photo
+- Add a small label: "Real DM from a client" or "Actual text from [first name]"
+- The hook for this cell should be the most impactful line from the testimonial
+- guidance should describe the screenshot aesthetic: rounded message bubbles, 
+  phone-screen crop, or clean quote card layout
+- This format converts extremely well because it looks organic and trustworthy
+
+Also for the "action" row, consider a concept where multiple short testimonial 
+snippets are shown in quick succession (carousel or montage style).
+`;
+         }
        }
      }
  

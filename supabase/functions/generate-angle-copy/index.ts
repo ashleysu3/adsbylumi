@@ -48,6 +48,10 @@ serve(async (req) => {
          .select("*")
          .eq("brand_id", brandId);
        
+       const hasTestimonials = contentAssets?.some(
+         (a: any) => a.asset_type === 'testimonials' && a.content?.trim()
+       );
+
        if (contentAssets?.length) {
          contentAssetsContext = "\n\n## USER-PROVIDED CONTENT ASSETS\n";
          contentAssetsContext += "Use these real testimonials, scripts, and language patterns to write more authentic copy:\n\n";
@@ -71,6 +75,20 @@ serve(async (req) => {
          });
          
          contentAssetsContext += "IMPORTANT: Pull specific quotes, phrases, and pain points from the above to make copy sound authentic.\n";
+         
+         if (hasTestimonials) {
+           contentAssetsContext += `
+=== TESTIMONIAL-AS-COPY DIRECTIVE ===
+- Testimonial Lead: Start with the EXACT client quote as the hook 
+  (e.g., "[Quote]" — that's what [Name] said after [X]). 
+  Then build the pitch around their experience. This uses the 
+  ideal customer's exact words, which is one of the most powerful 
+  copywriting techniques because prospects see themselves in the quote.
+
+For at least 1 primary copy variation per angle, lead with a real 
+testimonial quote from the content assets above.
+`;
+         }
        }
      }
  
@@ -112,6 +130,7 @@ Generate 3-5 variations of ad copy for EACH creative angle. Each variation shoul
 - Direct Benefit: Lead with the #1 outcome they want
 - Social Proof: Lead with credibility/results
 - Curiosity Gap: Create intrigue that demands a click
+- Testimonial Lead: Open with a real client quote verbatim, then build the pitch around their words
 
 ## BRAND CONTEXT
 ${brandInfo?.brand_voice ? `Brand Voice: ${brandInfo.brand_voice}` : ''}
