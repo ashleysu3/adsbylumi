@@ -790,13 +790,20 @@ export default function CreativeStudio() {
       {/* Main Content */}
       <div className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 py-6 w-full">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            {workflowTabs.map(t => (
-              <TabsTrigger key={t.id} value={t.id} className="gap-2 relative">
-                <t.icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{t.label}</span>
+          <TabsList className="grid w-full grid-cols-4 mb-6 h-12 bg-muted/60 p-1 rounded-2xl">
+            {workflowTabs.map((t, index) => (
+              <TabsTrigger 
+                key={t.id} 
+                value={t.id} 
+                className="gap-2 relative rounded-xl h-10 text-sm font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-lumi-orange-1 data-[state=active]:to-lumi-pink-1 data-[state=active]:text-white data-[state=active]:shadow-glow"
+              >
+                <span className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="flex items-center justify-center h-5 w-5 rounded-full bg-current/10 text-[10px] font-bold">{index + 1}</span>
+                  <t.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t.label}</span>
+                </span>
                 {tabProgress[t.id] && (
-                  <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-green-500 border-2 border-background" />
+                  <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 border-2 border-background shadow-sm" />
                 )}
               </TabsTrigger>
             ))}
