@@ -15,7 +15,8 @@ import {
   Image as ImageIcon,
   Layers,
   Play,
-  Pause
+  Pause,
+  Instagram
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,14 +58,25 @@ export function MobileCampaignBuilder({
   onAnswerUpdate,
   onComplete,
 }: MobileCampaignBuilderProps) {
+  // Detect social growth campaign (posts already selected, no creative step needed)
+  const isSocialGrowth = !!(workspace?.creative_json as any)?.socialGrowth;
+  const selectedPosts = isSocialGrowth ? ((workspace?.creative_json as any)?.selectedPosts || []) : [];
+
+  // Steps: for social growth, skip creative type (step 3 in normal flow)
+  // Normal: 1-Objective, 2-Budget, 3-Creative, 4-Audience, 5-Schedule, 6-Review
+  // Social: 1-Objective, 2-Budget, 3-Audience, 4-Schedule, 5-Review
+  const totalSteps = isSocialGrowth ? 5 : 6;
+
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const totalSteps = 6;
 
   // Local state for step values
-  const [objective, setObjective] = useState(answers.objective || "leads");
+  const socialObjective = (workspace?.creative_json as any)?.objective;
+  const [objective, setObjective] = useState(
+    answers.objective || (isSocialGrowth ? (socialObjective === "video_views" ? "awareness" : "traffic") : "leads")
+  );
   const [budget, setBudget] = useState(answers.budget || 30);
-  const [creativeType, setCreativeType] = useState(answers.creativeType || "video");
+  const [creativeType, setCreativeType] = useState(answers.creativeType || (isSocialGrowth ? "existing_posts" : "video"));
   const [audience, setAudience] = useState(answers.audience || "broad");
   const [startDate, setStartDate] = useState(answers.startDate || getTomorrowDate());
   const [launchActive, setLaunchActive] = useState(answers.launchActive ?? false);
@@ -89,9 +101,20 @@ export function MobileCampaignBuilder({
       metaAdvantage: true,
       placements: "Advantage+",
       warmRetargeting: audience === "retargeting",
+      ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
     };
     onAnswerUpdate(newAnswers);
   }, [objective, budget, creativeType, audience, startDate, launchActive]);
+
+  // Map logical step to content for social growth (skip creative type)
+  const getContentStep = (logicalStep: number): number => {
+    if (!isSocialGrowth) return logicalStep;
+    // Social: 1→1, 2→2, 3→4(audience), 4→5(schedule), 5→6(review)
+    if (logicalStep <= 2) return logicalStep;
+    return logicalStep + 1; // skip 3 (creative)
+  };
+
+  const contentStep = getContentStep(step);
 
   const handleNext = () => {
     if (step < totalSteps) {
@@ -110,7 +133,7 @@ export function MobileCampaignBuilder({
   };
 
   const canProceed = () => {
-    switch (step) {
+    switch (contentStep) {
       case 1: return !!objective;
       case 2: return budget >= 5;
       case 3: return !!creativeType;
@@ -122,7 +145,7 @@ export function MobileCampaignBuilder({
   };
 
   const getStepTitle = () => {
-    switch (step) {
+    switch (contentStep) {
       case 1: return "What's your goal?";
       case 2: return "Set your budget";
       case 3: return "Choose creative type";
@@ -134,7 +157,7 @@ export function MobileCampaignBuilder({
   };
 
   const getStepSubtitle = () => {
-    switch (step) {
+    switch (contentStep) {
       case 1: return "Pick the main objective for this campaign";
       case 2: return "How much do you want to spend per day?";
       case 3: return "What type of content will you use?";
@@ -160,7 +183,7 @@ export function MobileCampaignBuilder({
       completeLabel="Review Campaign"
     >
       {/* Step 1: Objective */}
-      {step === 1 && (
+      {contentStep === 1 && (
         <div className="space-y-3">
           {OBJECTIVES.map((obj) => (
             <StepOption
@@ -177,7 +200,7 @@ export function MobileCampaignBuilder({
       )}
 
       {/* Step 2: Budget */}
-      {step === 2 && (
+      {contentStep === 2 && (
         <div className="space-y-6 pt-4">
           <StepSlider
             value={budget}
@@ -195,8 +218,8 @@ export function MobileCampaignBuilder({
         </div>
       )}
 
-      {/* Step 3: Creative Type */}
-      {step === 3 && (
+      {/* Step 3: Creative Type (skipped for social growth) */}
+      {contentStep === 3 && (
         <div className="space-y-3">
           {CREATIVE_TYPES.map((type) => (
             <StepOption
@@ -213,7 +236,7 @@ export function MobileCampaignBuilder({
       )}
 
       {/* Step 4: Audience */}
-      {step === 4 && (
+      {contentStep === 4 && (
         <div className="space-y-3">
           {AUDIENCES.map((aud) => (
             <StepOption
@@ -229,7 +252,7 @@ export function MobileCampaignBuilder({
       )}
 
       {/* Step 5: Schedule */}
-      {step === 5 && (
+      {contentStep === 5 && (
         <div className="space-y-6 pt-4">
           <div className="space-y-3">
             <Label htmlFor="start-date" className="text-base font-medium">
@@ -280,8 +303,8 @@ export function MobileCampaignBuilder({
         </div>
       )}
 
-      {/* Step 6: Review Summary */}
-      {step === 6 && (
+      {/* Step 6 (or 5 for social growth): Review Summary */}
+      {contentStep === 6 && (
         <div className="space-y-4">
           {/* Summary Cards */}
           <div className="space-y-3">
@@ -295,11 +318,19 @@ export function MobileCampaignBuilder({
               label="Daily Budget"
               value={`$${budget}/day`}
             />
-            <SummaryCard
-              icon={<ImageIcon className="h-4 w-4" />}
-              label="Creative Type"
-              value={CREATIVE_TYPES.find(t => t.id === creativeType)?.title || creativeType}
-            />
+            {isSocialGrowth ? (
+              <SummaryCard
+                icon={<Instagram className="h-4 w-4" />}
+                label="Creative"
+                value={`${selectedPosts.length} Instagram post${selectedPosts.length !== 1 ? 's' : ''}`}
+              />
+            ) : (
+              <SummaryCard
+                icon={<ImageIcon className="h-4 w-4" />}
+                label="Creative Type"
+                value={CREATIVE_TYPES.find(t => t.id === creativeType)?.title || creativeType}
+              />
+            )}
             <SummaryCard
               icon={<Users className="h-4 w-4" />}
               label="Audience"
