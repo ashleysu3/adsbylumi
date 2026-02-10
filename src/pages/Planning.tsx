@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useBrand } from "@/contexts/BrandContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ const iconMap: Record<string, any> = {
 export default function Planning() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { getEffectiveUserId } = useImpersonation();
+  const { activeBrand, loading: brandContextLoading } = useBrand();
   const { setRecommendation } = useLumiAssistant();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -59,8 +59,10 @@ export default function Planning() {
   };
   
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (!brandContextLoading && activeBrand) {
+      fetchData();
+    }
+  }, [brandContextLoading, activeBrand?.id]);
   const fetchData = async () => {
     try {
       const {
@@ -68,15 +70,12 @@ export default function Planning() {
           user
         }
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !activeBrand) return;
 
-      // Use effective user ID for impersonation support
-      const effectiveUserId = await getEffectiveUserId();
-      if (!effectiveUserId) return;
-
+      // Fetch full brand data using active brand from context
       const {
         data: brandData
-      } = await supabase.from("brands").select("*").eq("user_id", effectiveUserId).single();
+      } = await supabase.from("brands").select("*").eq("id", activeBrand.id).single();
       setBrand(brandData);
       const {
         data: templatesData

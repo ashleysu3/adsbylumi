@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useBrand } from "@/contexts/BrandContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import confetti from "canvas-confetti";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { setRecommendation } = useLumiRecommend();
   const { getEffectiveUserId, isImpersonating } = useImpersonation();
+  const { activeBrand: contextBrand, loading: brandContextLoading } = useBrand();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [brand, setBrand] = useState<any>(null);
@@ -110,7 +112,7 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [brand?.id]);
+  }, [brand?.id, contextBrand?.id]);
 
   // Trigger confetti when profile reaches 100% completion
   useEffect(() => {
@@ -224,14 +226,30 @@ export default function Dashboard() {
       const effectiveUserId = await getEffectiveUserId();
       if (!effectiveUserId) return;
 
-      // Fetch user's first brand (use effective ID for admins impersonating)
-      const { data: brandData, error: brandError } = await supabase
-        .from("brands")
-        .select("*")
-        .eq("user_id", effectiveUserId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Use active brand from context if available, otherwise fall back to query
+      let brandData: any = null;
+      
+      if (contextBrand) {
+        // Fetch full brand data using context brand ID
+        const { data, error } = await supabase
+          .from("brands")
+          .select("*")
+          .eq("id", contextBrand.id)
+          .single();
+        if (error) throw error;
+        brandData = data;
+      } else {
+        // Fallback: fetch first brand for user
+        const { data, error } = await supabase
+          .from("brands")
+          .select("*")
+          .eq("user_id", effectiveUserId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw error;
+        brandData = data;
+      }
 
       // If no brand exists and we haven't redirected yet, send to onboarding
       // Don't redirect when impersonating - the impersonated user may not have a brand
@@ -241,7 +259,6 @@ export default function Dashboard() {
         return;
       }
 
-      if (brandError) throw brandError;
       setBrand(brandData);
       
       // Load emoji settings from brand
