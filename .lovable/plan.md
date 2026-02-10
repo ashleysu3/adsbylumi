@@ -1,70 +1,89 @@
 
-# Fix Angle Grid, Card Borders, Angle Persistence, and Library Naming
 
-## 1. Fix Angle Count for Perfect 3x4 Grid
+# Creative Studio "TV Open" Overlay with Calming Layout
 
-Currently the edge function generates 10-12 angles, plus 1 default = 11-13 total. For a perfect 3x4 grid (12 cards), we need exactly 11 AI-generated angles + 1 default = 12 total.
+## Overview
 
-**File**: `supabase/functions/generate-creative-angles/index.ts`
-- Change the prompt from "Generate 10-12 creative angles" to "Generate exactly 11 creative angles"
-- This ensures 11 AI angles + 1 "Straight from Your Page" default = 12 = perfect 3x4 grid
+Instead of navigating to a separate full-page route, the Creative Studio will open as an animated overlay panel that expands from the center (like an old CRT TV powering on) while keeping the top header bar (logo, brand selector, New Ad button, avatar) visible. The tab navigation disappears behind the overlay, creating a focused creative workspace that still feels connected to the main app.
 
-## 2. Fix Card Borders (Full Border on Hover Instead of Left-Only)
+## The Animation Concept
 
-The angle selector cards currently use `border-l-4` which creates a left-only colored border that looks like a "half shadow." This will be replaced with a full border that highlights all sides on hover/selection.
+When the user clicks "CREATIVE STUDIO" in the tab bar:
+1. A small circle appears at the center of the content area
+2. It rapidly expands outward (clip-path circle animation) revealing the Creative Studio content
+3. The tab bar slides away or gets covered by the overlay
+4. The top header (logo, monogram, New Ad) stays visible and functional
+5. A close/back button lets users collapse the studio back down
 
-**File**: `src/components/creative/AngleSelector.tsx`
-- Remove all `border-l-4` and `border-l-*` classes from the Card
-- Replace with full `border-2` styling:
-  - Default angle: `border-2 border-primary/30 border-dashed` (dashed all around)
-  - Selected: `border-2 border-primary ring-2 ring-primary/20` (solid primary border all around)
-  - Unselected hover: `border-2 border-transparent hover:border-primary/40` (full border appears on hover)
-  - Disabled: `border-2 border-muted opacity-50`
+This uses CSS `clip-path: circle()` animated via framer-motion for the iris/TV effect.
 
-## 3. Fix Angle Selection Not Persisting ("Angles Aren't Sticking")
+## Architecture Change
 
-The angle selection state is saved to `creative_json.selectedAngleIds` but may not persist correctly on reload. The issue is in `loadWorkspace` where the default angle injection and validation logic runs -- if the workspace reloads and angles get re-validated, selections can be lost.
+Currently, `/creative-studio` is a standalone route with its own layout. The new approach:
 
-**File**: `src/pages/CreativeStudio.tsx`
-- Ensure `saveCreativeState` is called whenever `selectedAngleIds` changes (not just on generation)
-- Add a `useEffect` that saves `selectedAngleIds` to the workspace whenever the user toggles an angle, with a short debounce to avoid excessive writes
+- **Keep the route** (`/creative-studio`) so direct links still work
+- **Wrap CreativeStudio in DashboardLayout** so the header stays visible
+- **Add an iris-open animation** that plays when the page mounts
+- **Hide the tab nav bar** when on the `/creative-studio` route (the overlay covers it)
+- **Replace the Creative Studio's own sticky header** with a slimmer toolbar since the main header is already showing
 
-## 4. Fix Content Library vs Concept Library Naming Confusion
+## Visual and Spacing Improvements
 
-The **Content Library** is the Brand Brain tab where users paste raw content (testimonials, scripts, etc.). The **Concept Library** (`/content-library` page) is where saved creative concepts go. Currently the page at `/content-library` is titled "Content Library" which creates confusion.
+The Creative Studio interior will be refined for a calming, spacious feel:
 
-### Rename the Concept Library page
-**File**: `src/pages/ContentLibrary.tsx`
-- Change page title from "Content Library" to "Saved for Later"
-- Update subtitle to "Creative concepts you've saved to revisit or use in future campaigns"
+- Increase vertical padding between sections (py-8 instead of py-6)
+- Add more horizontal margin on the content area (max-w-6xl instead of max-w-7xl for breathing room)
+- Soften card backgrounds with subtle gradients
+- Increase spacing between workflow tabs and content (mb-8 instead of mb-6)
+- Use softer borders and rounded-2xl on cards
+- Add a gentle background gradient to the overlay panel
 
-### Rename navigation items
-**File**: `src/components/DashboardLayout.tsx`
-- Change dropdown menu item from "Concept Library" to "Saved for Later"
-
-**File**: `src/components/MobileHeader.tsx`
-- Change dropdown menu item from "Concept Library" to "Saved for Later"
-
-### Rename save buttons
-**File**: `src/components/creative/CreativeChecklistCard.tsx`
-- Change "Save to Concept Library" to "Save for Later"
-
-**File**: `src/components/creative/ProductionManager.tsx`
-- Change "Move Others to Concept Library" to "Save Others for Later"
-- Change toast message from "Moved X concepts to Concept Library" to "Saved X concepts for later"
-
-**File**: `src/pages/CreativeStudio.tsx`
-- Change toast message from "Saved to Concept Library" to "Saved for later"
-
-## Summary of Files Changed
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-creative-angles/index.ts` | Generate exactly 11 angles (for 12 total with default) |
-| `src/components/creative/AngleSelector.tsx` | Replace `border-l-4` with full `border-2` on all sides |
-| `src/pages/CreativeStudio.tsx` | Add debounced save for selectedAngleIds; rename toast |
-| `src/pages/ContentLibrary.tsx` | Rename to "Saved for Later" |
-| `src/components/DashboardLayout.tsx` | Rename nav item to "Saved for Later" |
-| `src/components/MobileHeader.tsx` | Rename nav item to "Saved for Later" |
-| `src/components/creative/CreativeChecklistCard.tsx` | Rename button to "Save for Later" |
-| `src/components/creative/ProductionManager.tsx` | Rename button and toast |
+| `src/components/DashboardLayout.tsx` | Hide tab nav bar when on `/creative-studio` route; render children normally so header stays |
+| `src/pages/CreativeStudio.tsx` | Wrap in DashboardLayout; remove the duplicate sticky header (back button, title, brand name); add iris-open animation wrapper; improve spacing and whitespace throughout |
+| `src/index.css` | Add `@keyframes iris-open` clip-path animation |
+
+## Technical Details
+
+### DashboardLayout Changes
+
+When `location.pathname === '/creative-studio'`, the tab navigation section (`<nav>` with the tab items) will be hidden. The header row (logo, brand selector, New Ad, avatar, Lumi button) stays visible. This is a simple conditional render.
+
+### Iris Animation (CreativeStudio.tsx)
+
+The Creative Studio content will be wrapped in a framer-motion `div` with a clip-path animation:
+
+```tsx
+<motion.div
+  initial={{ clipPath: "circle(0% at 50% 50%)" }}
+  animate={{ clipPath: "circle(150% at 50% 50%)" }}
+  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+  className="min-h-[calc(100vh-80px)] bg-background"
+>
+  {/* Creative Studio content */}
+</motion.div>
+```
+
+This creates the old-TV iris effect -- content reveals from a tiny circle in the center expanding outward.
+
+### CreativeStudio Layout Cleanup
+
+Since the main header is now provided by DashboardLayout:
+
+- Remove the duplicate sticky top bar (the one with ArrowLeft, "Creative Studio" title, brand name, workspace selector)
+- Move the workspace selector and primary action button into a slimmer inline toolbar at the top of the content area
+- Add a close/back button that navigates to `/campaigns`
+
+### Spacing and Calming Design Updates
+
+- Content max-width: `max-w-6xl` (narrower than current 7xl for more side breathing room)
+- Section spacing: `space-y-8` (up from space-y-6)
+- Tab list bottom margin: `mb-8` (up from mb-6)
+- Card padding: `p-6` consistently
+- Card border radius: `rounded-2xl`
+- Subtle background: light gradient or very faint warm tint behind the content area
+- Workflow tab pills: slightly larger with more padding for easier clicking
+- Empty state cards: more generous padding (py-16 instead of py-12)
