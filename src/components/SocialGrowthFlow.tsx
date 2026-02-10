@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Instagram, Play, Users, CheckCircle2, AlertCircle, ArrowRight, Image } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Instagram, Play, Users, CheckCircle2, AlertCircle, ArrowRight, Image, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -301,6 +302,16 @@ function ObjectiveOption({
   );
 }
 
+function getPostIssue(post: InstagramPost): string | null {
+  if (post.media_type === "CAROUSEL_ALBUM") {
+    return "Carousel albums can't be used directly as ads. Consider using individual images or videos instead.";
+  }
+  if (!post.media_url && !post.thumbnail_url) {
+    return "This post's media is unavailable or expired and can't be used in ads.";
+  }
+  return null;
+}
+
 function PostCard({
   post,
   selected,
@@ -310,44 +321,85 @@ function PostCard({
   selected: boolean;
   onToggle: () => void;
 }) {
+  const issue = getPostIssue(post);
+  const caption = post.caption || "No caption";
+  const truncatedCaption = caption.length > 120 ? caption.substring(0, 120) + "…" : caption;
+
   return (
-    <button
-      onClick={onToggle}
-      className={cn(
-        "relative rounded-xl overflow-hidden border-2 transition-all aspect-square",
-        selected
-          ? "border-primary ring-2 ring-primary/30"
-          : "border-border hover:border-primary/50"
-      )}
-    >
-      <img
-        src={post.thumbnail_url || post.media_url}
-        alt=""
-        className="w-full h-full object-cover"
-      />
-      
-      <div className="absolute top-2 left-2">
-        <Badge variant="secondary" className="bg-black/60 text-white text-xs">
-          {post.media_type === "VIDEO" ? <Play className="h-3 w-3" /> : <Image className="h-3 w-3" />}
-        </Badge>
-      </div>
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => !issue && onToggle()}
+            className={cn(
+              "relative rounded-xl overflow-hidden border-2 transition-all aspect-square group",
+              issue
+                ? "border-amber-500/50 opacity-75 cursor-not-allowed"
+                : selected
+                  ? "border-primary ring-2 ring-primary/30"
+                  : "border-border hover:border-primary/50"
+            )}
+          >
+            <img
+              src={post.thumbnail_url || post.media_url}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Media type badge */}
+            <div className="absolute top-2 left-2">
+              <Badge variant="secondary" className="bg-black/60 text-white text-xs">
+                {post.media_type === "VIDEO" ? <Play className="h-3 w-3" /> : <Image className="h-3 w-3" />}
+              </Badge>
+            </div>
 
-      {selected && (
-        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-          <div className="bg-primary text-primary-foreground rounded-full p-2">
-            <CheckCircle2 className="h-6 w-6" />
-          </div>
-        </div>
-      )}
+            {/* Caution badge for unusable posts */}
+            {issue && (
+              <div className="absolute top-2 right-2">
+                <div className="bg-amber-500 text-white rounded-full p-1">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                </div>
+              </div>
+            )}
 
-      {(post.like_count || post.comments_count) && (
-        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-          <div className="flex items-center gap-2 text-white text-xs">
-            {post.like_count && <span>❤️ {post.like_count}</span>}
-            {post.comments_count && <span>💬 {post.comments_count}</span>}
-          </div>
-        </div>
-      )}
-    </button>
+            {/* Selected overlay */}
+            {selected && !issue && (
+              <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                <div className="bg-primary text-primary-foreground rounded-full p-2">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+              </div>
+            )}
+
+            {/* Hover caption overlay */}
+            <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2.5 pointer-events-none">
+              <p className="text-white text-[11px] leading-tight line-clamp-4">
+                {truncatedCaption}
+              </p>
+            </div>
+
+            {/* Engagement stats (visible when not hovered) */}
+            {(post.like_count || post.comments_count) && (
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2 group-hover:opacity-0 transition-opacity">
+                <div className="flex items-center gap-2 text-white text-xs">
+                  {post.like_count != null && post.like_count > 0 && <span>❤️ {post.like_count}</span>}
+                  {post.comments_count != null && post.comments_count > 0 && <span>💬 {post.comments_count}</span>}
+                </div>
+              </div>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[220px]">
+          {issue ? (
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs">{issue}</p>
+            </div>
+          ) : (
+            <p className="text-xs">{truncatedCaption}</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
