@@ -380,47 +380,49 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* Desktop navigation tabs */}
-          <nav className="flex items-end justify-between mt-4 md:mt-6 -mb-3 md:-mb-4 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-            <div className="flex space-x-1 pb-px flex-1">
-              {tabItems.map(item => {
-                const Icon = item.icon;
-                const isActive = location.pathname === item.path;
-                return (
-                  <Link key={item.path} to={item.path}>
-                    <div className={`
-                        h-10 md:h-12 px-3 md:px-6 rounded-t-xl rounded-b-none relative
-                        flex items-center justify-center
-                        transition-all duration-300 font-semibold text-xs md:text-sm whitespace-nowrap
-                        ${isActive ? 'bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-lg shadow-lumi-pink-1/30' : 'bg-card/80 text-muted-foreground hover:text-foreground hover:bg-card border border-border/50'}
-                      `}>
-                      <Icon className={`mr-1 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4 ${isActive ? 'animate-sparkle-pulse' : ''}`} />
-                      <span className="hidden sm:inline">{item.label}</span>
-                      <span className="sm:hidden">{item.label.split(' ')[0]}</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-            
-            {/* Lumi Chat Button - Desktop Only */}
-            <button
-              onClick={openChat}
-              className="flex items-center gap-2 px-4 py-2 rounded-full 
-                         bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 
-                         text-white font-medium text-sm
-                         shadow-lg shadow-lumi-pink-1/20 hover:shadow-xl hover:shadow-lumi-pink-1/30
-                         transition-all mb-1 ml-4 relative group"
-            >
-              <SparkleIcon size="xs" state="idle" className="group-hover:animate-pulse" />
-              <span>Ask Lumi</span>
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-white text-lumi-pink-1 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
-          </nav>
+          {/* Desktop navigation tabs - hidden on creative studio */}
+          {location.pathname !== '/creative-studio' && (
+            <nav className="flex items-end justify-between mt-4 md:mt-6 -mb-3 md:-mb-4 overflow-x-auto scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+              <div className="flex space-x-1 pb-px flex-1">
+                {tabItems.map(item => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link key={item.path} to={item.path}>
+                      <div className={`
+                          h-10 md:h-12 px-3 md:px-6 rounded-t-xl rounded-b-none relative
+                          flex items-center justify-center
+                          transition-all duration-300 font-semibold text-xs md:text-sm whitespace-nowrap
+                          ${isActive ? 'bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-lg shadow-lumi-pink-1/30' : 'bg-card/80 text-muted-foreground hover:text-foreground hover:bg-card border border-border/50'}
+                        `}>
+                        <Icon className={`mr-1 md:mr-2 h-3.5 w-3.5 md:h-4 md:w-4 ${isActive ? 'animate-sparkle-pulse' : ''}`} />
+                        <span className="hidden sm:inline">{item.label}</span>
+                        <span className="sm:hidden">{item.label.split(' ')[0]}</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+              
+              {/* Lumi Chat Button - Desktop Only */}
+              <button
+                onClick={openChat}
+                className="flex items-center gap-2 px-4 py-2 rounded-full 
+                           bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 
+                           text-white font-medium text-sm
+                           shadow-lg shadow-lumi-pink-1/20 hover:shadow-xl hover:shadow-lumi-pink-1/30
+                           transition-all mb-1 ml-4 relative group"
+              >
+                <SparkleIcon size="xs" state="idle" className="group-hover:animate-pulse" />
+                <span>Ask Lumi</span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-white text-lumi-pink-1 rounded-full flex items-center justify-center text-[10px] font-bold shadow">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+            </nav>
+          )}
         </div>
       </header>
 
