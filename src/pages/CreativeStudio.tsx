@@ -872,7 +872,7 @@ export default function CreativeStudio() {
           <div className="flex items-center gap-3">
             <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
               <SelectTrigger className="w-[180px] sm:w-[240px]"><FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Select campaign" /></SelectTrigger>
-              <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
+              <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
             </Select>
             {primaryAction && (
               <Button 
