@@ -23,7 +23,8 @@ serve(async (req) => {
        nicheContext,
        brandId,
        offerId,
-       offerAudiencePsychology
+       offerAudiencePsychology,
+       creativeIntelligence
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -135,6 +136,19 @@ snippets are shown in quick succession (carousel or montage style).
     const offerHesitations = ensureArray(offerAudiencePsychology?.specific_hesitations);
 
     const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts. Your creative MUST be specific, emotionally resonant, and impossible to ignore.
+${creativeIntelligence?.hasData ? `
+=== DATA-INFORMED STRATEGY ===
+Based on the user's ad account performance over the last 90 days:
+${creativeIntelligence.summary}
+${creativeIntelligence.topFormats?.length ? `Top performing formats: ${creativeIntelligence.topFormats.join(', ')}` : ''}
+${creativeIntelligence.keyPatterns?.length ? `Patterns: ${creativeIntelligence.keyPatterns.join('; ')}` : ''}
+${creativeIntelligence.recommendations?.length ? `Recommendations: ${creativeIntelligence.recommendations.join('; ')}` : ''}
+
+IMPORTANT: Weight format distribution toward proven formats. Generate MORE concepts in the top-performing format while still including other formats for testing.
+` : `
+=== FIRST CAMPAIGN TEST MODE ===
+No historical performance data available. Generate a balanced mix across all formats (talking head, b-roll, graphic) to test what works best for this audience.
+`}
 
 KNOWLEDGE BASE:
 ${kbContext}

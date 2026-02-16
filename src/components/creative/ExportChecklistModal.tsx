@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileSpreadsheet, Check, Loader2 } from 'lucide-react';
-import { generateProductionCSV, downloadCSV, generateFilename, ExportOptions, ProductionItem } from '@/lib/export-production-checklist';
+import { Download, FileSpreadsheet, Check, Loader2, Users, ClipboardList } from 'lucide-react';
+import { generateProductionCSV, generateCreativeBriefCSV, downloadCSV, generateFilename, ExportOptions, ProductionItem } from '@/lib/export-production-checklist';
 import { toast } from 'sonner';
 
 
@@ -36,17 +36,19 @@ export function ExportChecklistModal({
   });
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
+  const [mode, setMode] = useState<'full' | 'brief'>('brief');
 
   const handleExport = async () => {
     setExporting(true);
     try {
-      const csv = generateProductionCSV(productionItems, angleCopy, options);
-      const filename = generateFilename(brandName, offerName);
+      const csv = mode === 'brief'
+        ? generateCreativeBriefCSV(productionItems, angleCopy, options)
+        : generateProductionCSV(productionItems, angleCopy, options);
+      const filename = generateFilename(brandName, offerName, mode === 'brief');
       downloadCSV(csv, filename);
       setExported(true);
       toast.success('Checklist exported successfully!');
       
-      // Reset after a moment
       setTimeout(() => {
         setExported(false);
       }, 2000);
@@ -76,66 +78,102 @@ export function ExportChecklistModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Mode toggle */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setMode('brief')}
+              className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
+                mode === 'brief' 
+                  ? 'border-primary bg-primary/5 ring-1 ring-primary/30' 
+                  : 'border-border hover:border-primary/30'
+              }`}
+            >
+              <Users className="h-4 w-4 text-primary shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Creative Brief</p>
+                <p className="text-[11px] text-muted-foreground">For your team</p>
+              </div>
+            </button>
+            <button
+              onClick={() => setMode('full')}
+              className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
+                mode === 'full' 
+                  ? 'border-primary bg-primary/5 ring-1 ring-primary/30' 
+                  : 'border-border hover:border-primary/30'
+              }`}
+            >
+              <ClipboardList className="h-4 w-4 text-primary shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Full Checklist</p>
+                <p className="text-[11px] text-muted-foreground">All details</p>
+              </div>
+            </button>
+          </div>
+
           {/* Item count */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <span className="text-sm font-medium">Creatives to export</span>
             <Badge variant="secondary">{productionItems.length} items</Badge>
           </div>
 
-          {/* Export options */}
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-muted-foreground">Include in export:</p>
-            
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="scripts"
-                  checked={options.includeScripts}
-                  onCheckedChange={() => toggleOption('includeScripts')}
-                />
-                <Label htmlFor="scripts" className="text-sm cursor-pointer">
-                  Scripts & talking points
-                </Label>
-              </div>
+          {/* Export options (only for full mode) */}
+          {mode === 'full' && (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">Include in export:</p>
+              
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="scripts"
+                    checked={options.includeScripts}
+                    onCheckedChange={() => toggleOption('includeScripts')}
+                  />
+                  <Label htmlFor="scripts" className="text-sm cursor-pointer">
+                    Scripts & talking points
+                  </Label>
+                </div>
 
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="creative"
-                  checked={options.includeCreativeDirection}
-                  onCheckedChange={() => toggleOption('includeCreativeDirection')}
-                />
-                <Label htmlFor="creative" className="text-sm cursor-pointer">
-                  Visual direction & text overlays
-                </Label>
-              </div>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="creative"
+                    checked={options.includeCreativeDirection}
+                    onCheckedChange={() => toggleOption('includeCreativeDirection')}
+                  />
+                  <Label htmlFor="creative" className="text-sm cursor-pointer">
+                    Visual direction & text overlays
+                  </Label>
+                </div>
 
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="psychology"
-                  checked={options.includePsychology}
-                  onCheckedChange={() => toggleOption('includePsychology')}
-                />
-                <Label htmlFor="psychology" className="text-sm cursor-pointer">
-                  Psychology notes (why it works)
-                </Label>
-              </div>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="psychology"
+                    checked={options.includePsychology}
+                    onCheckedChange={() => toggleOption('includePsychology')}
+                  />
+                  <Label htmlFor="psychology" className="text-sm cursor-pointer">
+                    Psychology notes (why it works)
+                  </Label>
+                </div>
 
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="adcopy"
-                  checked={options.includeAdCopy}
-                  onCheckedChange={() => toggleOption('includeAdCopy')}
-                />
-                <Label htmlFor="adcopy" className="text-sm cursor-pointer">
-                  Ad copy (headlines, primary text, CTAs)
-                </Label>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="adcopy"
+                    checked={options.includeAdCopy}
+                    onCheckedChange={() => toggleOption('includeAdCopy')}
+                  />
+                  <Label htmlFor="adcopy" className="text-sm cursor-pointer">
+                    Ad copy (headlines, primary text, CTAs)
+                  </Label>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Tip */}
           <div className="text-xs text-muted-foreground bg-primary/5 p-3 rounded-lg">
-            <strong>Tip:</strong> Open the CSV in Google Sheets or Excel. Share with your client for approvals, or send to your creative team for recording and graphic production.
+            <strong>Tip:</strong> {mode === 'brief' 
+              ? 'The Creative Brief includes everything your team needs: graphic copy, scripts, visual direction, and ad copy in a clean format.' 
+              : 'Open the CSV in Google Sheets or Excel. Share with your client for approvals, or send to your creative team for recording and graphic production.'}
           </div>
         </div>
 

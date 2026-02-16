@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -152,6 +152,27 @@ Deno.serve(async (req) => {
       offerAudienceContext += "IMPORTANT: Create angles that address the specific hesitations and highlight the transformation described above.\n";
     }
 
+    // Build creative intelligence context if available
+    let intelligenceContext = "";
+    if (creativeIntelligence?.hasData) {
+      intelligenceContext = "\n\n=== DATA-INFORMED CREATIVE INTELLIGENCE ===\n";
+      intelligenceContext += `The user's top-performing ads in the last 90 days show these patterns:\n`;
+      intelligenceContext += `Summary: ${creativeIntelligence.summary}\n`;
+      if (creativeIntelligence.topFormats?.length) {
+        intelligenceContext += `Top formats: ${creativeIntelligence.topFormats.join(', ')}\n`;
+      }
+      if (creativeIntelligence.keyPatterns?.length) {
+        intelligenceContext += `Key patterns:\n${creativeIntelligence.keyPatterns.map((p: string) => `- ${p}`).join('\n')}\n`;
+      }
+      if (creativeIntelligence.recommendations?.length) {
+        intelligenceContext += `Recommendations:\n${creativeIntelligence.recommendations.map((r: string) => `- ${r}`).join('\n')}\n`;
+      }
+      intelligenceContext += "\nIMPORTANT: Weight your angle suggestions toward what has proven to work based on the data above, while still including 1-2 fresh test angles that explore new directions.\n";
+    } else {
+      intelligenceContext = "\n\n=== FIRST CAMPAIGN / NO HISTORICAL DATA ===\n";
+      intelligenceContext += "This is the user's first campaign or they have no historical data. Generate a balanced mix of formats and angles to TEST what resonates with their audience. Include a diversity of talking head, b-roll, and graphic concepts.\n";
+    }
+
     const systemPrompt = `You are Lumi's Creative Engine. Your job is to generate creative angle recommendations for Meta ads campaigns.
 
 KNOWLEDGE BASE:
@@ -160,6 +181,7 @@ ${contentAssetsContext}
 ${insightsContext}
 ${offerAudienceContext}
 ${preGenContext}
+${intelligenceContext}
 
 RULES:
 - Generate exactly 11 creative angles
@@ -170,6 +192,7 @@ RULES:
 - Focus on what resonates emotionally, not why it works strategically
 ${conversationInsights?.length > 0 ? "- PRIORITIZE angles that address the specific insights shared by the user in previous conversations" : ""}
 ${preGenerationContext ? "- PRIORITIZE the user's specific direction for this creative round" : ""}
+${creativeIntelligence?.hasData ? "- PRIORITIZE angles aligned with the user's proven top-performing creative patterns, while including 1-2 fresh test angles" : "- Generate a balanced TEST MIX of diverse angle types since there's no historical data"}
 
 ANGLE TYPES TO CONSIDER (but don't expose these labels):
 - Relatable Struggle (showing the problem they face)
