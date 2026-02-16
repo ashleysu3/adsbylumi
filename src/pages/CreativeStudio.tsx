@@ -20,6 +20,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { LumiThinking } from "@/components/LumiThinking";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
+import { CreativeIntelligenceCard, CreativeIntelligence } from "@/components/creative/CreativeIntelligenceCard";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { ProductionManager } from "@/components/creative/ProductionManager";
@@ -202,6 +203,10 @@ export default function CreativeStudio() {
   // Copy state (lifted from ProductionManager)
   const [angleCopy, setAngleCopy] = useState<Record<string, any>>({});
   const [copySaveStatus, setCopySaveStatus] = useState<SaveStatus>("idle");
+  
+  // Creative intelligence state
+  const [creativeIntelligence, setCreativeIntelligence] = useState<CreativeIntelligence | null>(null);
+  const [fetchingIntelligence, setFetchingIntelligence] = useState(false);
 
   // Idle help state
   const [showIdleHelp, setShowIdleHelp] = useState(false);
@@ -364,6 +369,11 @@ export default function CreativeStudio() {
         setAngleCopy(c.angle_copy);
       }
       
+      // Load cached creative intelligence
+      if (c?.creativeIntelligence) {
+        setCreativeIntelligence(c.creativeIntelligence);
+      }
+      
     // ========== Smart tab selection based on progress ==========
     const hasAngles = loadedAngles.length > 0;
     const hasGridData = validGridData.length > 0;
@@ -517,11 +527,46 @@ export default function CreativeStudio() {
     generateAngles();
   };
 
+   // Fetch creative intelligence from past ad performance
+   const fetchCreativeIntelligence = async (): Promise<CreativeIntelligence | null> => {
+     if (!workspace?.brands?.meta_account_id || !brandId) return null;
+     
+     // Check if we already have cached intelligence for this workspace
+     const cached = (workspace.creative_json as Record<string, any>)?.creativeIntelligence;
+     if (cached) {
+       setCreativeIntelligence(cached);
+       return cached;
+     }
+     
+     setFetchingIntelligence(true);
+     try {
+       const objective = (workspace.strategy_json as any)?.objective || 'sales';
+       const { data, error } = await supabase.functions.invoke('analyze-past-creatives', {
+         body: { brandId, campaignObjective: objective }
+       });
+       if (error) throw error;
+       setCreativeIntelligence(data);
+       // Cache in workspace
+       await saveCreativeState({ creativeIntelligence: data });
+       return data;
+     } catch (e) {
+       console.error("Failed to fetch creative intelligence:", e);
+       const fallback: CreativeIntelligence = { hasData: false, summary: "Could not analyze past ads." };
+       setCreativeIntelligence(fallback);
+       return fallback;
+     } finally {
+       setFetchingIntelligence(false);
+     }
+   };
+
    const generateAngles = async (context?: CreativeContext | null) => {
     if (!workspace?.strategy_json) { toast.error("Complete strategy first"); return; }
     
     setGenerating(true); setGeneratingPhase("angles");
     try {
+      // Fetch intelligence in parallel with setting up
+      const intelligence = await fetchCreativeIntelligence();
+      
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
          body: { 
            brandName: workspace.brands?.name, 
@@ -529,7 +574,8 @@ export default function CreativeStudio() {
            audiencePsychology: workspace.brands?.audience_psychology, 
            offerData: { name: workspace.offer_name, description: workspace.offer_description, price: workspace.offer_price },
            preGenerationContext: context,
-           conversationInsights: (workspace.creative_json as Record<string, any>)?.conversationInsights
+           conversationInsights: (workspace.creative_json as Record<string, any>)?.conversationInsights,
+           creativeIntelligence: intelligence,
          }
       });
       if (error) throw error;
@@ -544,7 +590,6 @@ export default function CreativeStudio() {
       const allAngles = [DEFAULT_ANGLE, ...(data.angles || []).filter((a: any) => a.id !== "direct_from_page")];
       
       setAvailableAngles(allAngles);
-      // Pre-select the default angle, clear user selections
       setSelectedAngleIds(["direct_from_page"]);
       setGridData([]);
       setActiveAngleId("");
@@ -595,11 +640,11 @@ export default function CreativeStudio() {
             price: workspace.offer_price,
             url: workspace.offer_url
           },
-          // New enriched context
           brandVoice: workspace.brands?.brand_voice,
           messagingGuidelines,
           productPsychology,
-          nicheContext: workspace.brands?.industry
+          nicheContext: workspace.brands?.industry,
+          creativeIntelligence,
         }
       });
       if (error) throw error;
@@ -879,6 +924,10 @@ export default function CreativeStudio() {
                />
             ) : (
               <div className="space-y-8">
+                {/* Creative Intelligence Card */}
+                {creativeIntelligence && (
+                  <CreativeIntelligenceCard intelligence={creativeIntelligence} />
+                )}
                 <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} />
                 <div className="flex justify-end"><Button variant="outline" onClick={handleRegenerateClick} disabled={generating}><Sparkles className="h-4 w-4 mr-2" />Regenerate</Button></div>
               </div>

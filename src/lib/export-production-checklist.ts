@@ -138,8 +138,69 @@ export function downloadCSV(csvContent: string, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function generateFilename(brandName?: string, offerName?: string): string {
-  const parts = ['production-checklist'];
+export function generateCreativeBriefCSV(
+  items: ProductionItem[],
+  angleCopyMap: Record<string, AngleCopy>,
+  options: ExportOptions
+): string {
+  const rows: string[][] = [];
+
+  // Header with brand/offer info
+  if (options.brandName || options.offerName) {
+    rows.push([`Creative Brief — ${[options.brandName, options.offerName].filter(Boolean).join(' | ')} — ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`]);
+    rows.push([]); // blank row
+  }
+
+  // Column headers
+  const headers = ['Asset #', 'Angle', 'Format', 'Hook', 'Graphic Copy', 'Script', 'Visual Direction', 'Headline', 'Primary Text', 'CTA', 'Notes'];
+  rows.push(headers);
+
+  items.forEach((item, index) => {
+    // Consolidate text overlays into "Graphic Copy"
+    const graphicCopy = item.text_overlays
+      ?.map(t => {
+        const label = t.type ? `[${t.type.toUpperCase()}]` : '';
+        const timing = t.timing ? ` (${t.timing})` : '';
+        return `${label} ${t.text}${timing}`.trim();
+      })
+      .join('\n') || '';
+
+    const script = item.script_lines?.join('\n') || '';
+    const visualDirection = item.visual_hook || item.guidance || '';
+
+    // Simplified psychology note
+    const notes = item.why_this_works
+      ? `Why this works: ${item.why_this_works}`
+      : '';
+
+    // Find matching angle copy
+    const angleKey = Object.keys(angleCopyMap).find(key => {
+      return items.some(i => i.angleName === item.angleName && key);
+    });
+    const copy = angleKey ? angleCopyMap[angleKey] : undefined;
+
+    const row: string[] = [
+      String(index + 1),
+      item.angleName || 'Unassigned',
+      FORMAT_LABELS[item.format] || item.format,
+      item.hook || '',
+      graphicCopy,
+      script,
+      visualDirection,
+      copy?.headline || '',
+      copy?.primary_text || '',
+      copy?.cta || 'Learn More',
+      notes,
+    ];
+
+    rows.push(row);
+  });
+
+  return rows.map(row => row.map(escapeCSV).join(',')).join('\n');
+}
+
+export function generateFilename(brandName?: string, offerName?: string, isBrief?: boolean): string {
+  const parts = [isBrief ? 'creative-brief' : 'production-checklist'];
   if (brandName) parts.push(brandName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
   if (offerName) parts.push(offerName.toLowerCase().replace(/[^a-z0-9]/g, '-'));
   parts.push(new Date().toISOString().split('T')[0]);
