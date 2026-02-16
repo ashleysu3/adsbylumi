@@ -54,6 +54,8 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
   const [autoExtractPending, setAutoExtractPending] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [showExtractedDetails, setShowExtractedDetails] = useState(false);
+  const [extractionFailed, setExtractionFailed] = useState(false);
+  const [pastedContent, setPastedContent] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     url: "",
@@ -90,6 +92,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
       setExtracting(true);
       setAutoExtractPending(false);
       setExtractedData(null);
+      setExtractionFailed(false);
       
       try {
         const { data, error } = await supabase.functions.invoke('extract-offer-info', {
@@ -102,24 +105,26 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
         if (error) throw error;
 
         lastExtractedUrl.current = url;
-        setExtractedData(data);
 
-        // Update form with core fields
-        setFormData(prev => ({
-          ...prev,
-          description: data.description || prev.description,
-          price_point: data.price_point || prev.price_point,
-          target_outcome: data.target_outcome || prev.target_outcome,
-        }));
-
-        if (data.needs_clarification) {
-          toast.info("Some info couldn't be found - please review and fill in the gaps");
+        // Check if extraction actually got content
+        if (!data.extraction_success || data.needs_clarification) {
+          setExtractionFailed(true);
+          setExtractedData(data);
+          toast.info("Couldn't read the page — you can paste the content below");
         } else {
+          setExtractedData(data);
+          setFormData(prev => ({
+            ...prev,
+            description: data.description || prev.description,
+            price_point: data.price_point || prev.price_point,
+            target_outcome: data.target_outcome || prev.target_outcome,
+          }));
           toast.success("✨ Page analyzed! Review the extracted info.");
         }
       } catch (error: any) {
         console.error('Auto-extract error:', error);
-        // Silent fail for auto-extract
+        setExtractionFailed(true);
+        toast.info("Couldn't read the page — you can paste the content below");
       } finally {
         setExtracting(false);
       }
@@ -137,7 +142,51 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
 
   const handleUrlChange = (value: string) => {
     setFormData(prev => ({ ...prev, url: value }));
+    setExtractionFailed(false);
+    setPastedContent("");
     triggerAutoExtract(value);
+  };
+
+  const handlePasteExtract = async () => {
+    if (!pastedContent.trim() || pastedContent.trim().length < 50) {
+      toast.error("Please paste more content from the page");
+      return;
+    }
+
+    setExtracting(true);
+    setExtractedData(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('extract-offer-info', {
+        body: { 
+          offerUrl: formData.url || null,
+          offerName: formData.name,
+          pastedContent: pastedContent.trim()
+        }
+      });
+
+      if (error) throw error;
+
+      setExtractedData(data);
+      setExtractionFailed(false);
+
+      setFormData(prev => ({
+        ...prev,
+        description: data.description || prev.description,
+        price_point: data.price_point || prev.price_point,
+        target_outcome: data.target_outcome || prev.target_outcome,
+      }));
+
+      if (data.needs_clarification) {
+        toast.info("Some info couldn't be found — please review and fill in the gaps");
+      } else {
+        toast.success("✨ Content analyzed! Review the extracted info.");
+      }
+    } catch (error: any) {
+      console.error('Error extracting from pasted content:', error);
+      toast.error("Failed to analyze pasted content");
+    } finally {
+      setExtracting(false);
+    }
   };
 
   const handleExtractInfo = async () => {
@@ -241,6 +290,8 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
       onOpenChange(false);
       setFormData({ name: "", url: "", description: "", price_point: "", target_outcome: "", page_goal: "" });
       setExtractedData(null);
+      setExtractionFailed(false);
+      setPastedContent("");
     } catch (error: any) {
       console.error('Error creating offer:', error);
       toast.error("Failed to create offer");
@@ -253,6 +304,8 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     if (!open) {
       setExtractedData(null);
       setShowExtractedDetails(false);
+      setExtractionFailed(false);
+      setPastedContent("");
       lastExtractedUrl.current = "";
       setAutoExtractPending(false);
     }
@@ -310,10 +363,15 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                   <Sparkles className="h-3 w-3 animate-pulse" />
                   Analyzing your offer page...
                 </>
-              ) : extractedData ? (
+              ) : extractedData && !extractionFailed ? (
                 <>
                   <CheckCircle2 className="h-3 w-3 text-green-500" />
                   Page analyzed — info extracted below
+                </>
+              ) : extractionFailed ? (
+                <>
+                  <AlertCircle className="h-3 w-3 text-amber-500" />
+                  Couldn't read the page — paste the content below
                 </>
               ) : autoExtractPending ? (
                 "Will analyze when you stop typing..."
@@ -322,6 +380,48 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
               )}
             </p>
           </div>
+
+          {/* Paste fallback when extraction fails */}
+          {extractionFailed && (
+            <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">We couldn't read that page</p>
+                  <p className="text-xs text-muted-foreground">
+                    The page may be behind a login, have bot protection, or block automated access. 
+                    Copy all the text from the page and paste it below — we'll use that instead.
+                  </p>
+                </div>
+              </div>
+              <Textarea
+                value={pastedContent}
+                onChange={(e) => setPastedContent(e.target.value)}
+                rows={5}
+                placeholder="Go to your offer page, select all the text (Ctrl+A / Cmd+A), copy it, and paste it here..."
+                className="text-sm"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handlePasteExtract}
+                disabled={extracting || pastedContent.trim().length < 50}
+                className="w-full"
+              >
+                {extracting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing pasted content...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Analyze Pasted Content
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
 
           {/* Extraction Status & Summary */}
           {extractedData && (

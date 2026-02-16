@@ -55,12 +55,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { offerUrl, offerName } = await req.json();
+    const { offerUrl, offerName, pastedContent } = await req.json();
     
-    // Input validation
-    if (!offerUrl) {
+    // Input validation - require either URL or pasted content
+    if (!offerUrl && !pastedContent) {
       return new Response(
-        JSON.stringify({ error: 'Offer URL is required' }),
+        JSON.stringify({ error: 'Offer URL or pasted content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -79,72 +79,70 @@ Deno.serve(async (req) => {
       );
     }
 
-    // SSRF protection - validate URL
-    const urlValidation = isValidPublicUrl(offerUrl);
-    if (!urlValidation.valid) {
-      return new Response(
-        JSON.stringify({ error: urlValidation.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Extracting offer info from:', offerUrl);
-
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
-    }
-
-    // Fetch offer page content with timeout and size limits
+    // If user pasted content directly, skip URL fetching entirely
     let offerContent = '';
     let fetchSuccess = false;
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      const offerResponse = await fetch(offerUrl, {
-        signal: controller.signal,
-        redirect: 'follow',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (YourAdAssistant/1.0)'
+    if (pastedContent && typeof pastedContent === 'string' && pastedContent.trim().length > 50) {
+      console.log('Using user-pasted content, length:', pastedContent.length);
+      offerContent = pastedContent.trim().substring(0, 50000);
+      fetchSuccess = true;
+    } else if (offerUrl) {
+      // SSRF protection - validate URL
+      const urlValidation = isValidPublicUrl(offerUrl);
+      if (!urlValidation.valid) {
+        return new Response(
+          JSON.stringify({ error: urlValidation.error }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Extracting offer info from:', offerUrl);
+
+      // Fetch offer page content with timeout and size limits
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10000);
+
+        const offerResponse = await fetch(offerUrl, {
+          signal: controller.signal,
+          redirect: 'follow',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (YourAdAssistant/1.0)'
+          }
+        });
+        
+        clearTimeout(timeout);
+
+        const contentLength = offerResponse.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) > 2000000) {
+          console.log('Content too large, limiting extraction');
         }
-      });
-      
-      clearTimeout(timeout);
 
-      // Check content length before reading
-      const contentLength = offerResponse.headers.get('content-length');
-      if (contentLength && parseInt(contentLength) > 2000000) {
-        console.log('Content too large, limiting extraction');
+        const html = await offerResponse.text();
+        
+        offerContent = html
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, ' ')
+          .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, ' ')
+          .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, ' ')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .substring(0, 25000);
+        
+        fetchSuccess = offerContent.length > 200;
+        console.log(`Extracted ${offerContent.length} characters from page`);
+      } catch (error: any) {
+        console.error('Error fetching offer page:', error.message);
+        offerContent = '';
       }
-
-      const html = await offerResponse.text();
-      
-      // Extract text content more thoroughly - remove scripts, styles, but keep structure hints
-      offerContent = html
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-        .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, ' ')
-        .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, ' ')
-        .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, ' ')
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .substring(0, 25000); // Limit to 25k chars
-      
-      fetchSuccess = offerContent.length > 200;
-      console.log(`Extracted ${offerContent.length} characters from page`);
-    } catch (error: any) {
-      console.error('Error fetching offer page:', error.message);
-      if (error.name === 'AbortError') {
-        console.log('Request timed out');
-      }
-      offerContent = '';
     }
 
     const systemPrompt = `You are a product analyst extracting comprehensive information from sales pages and offer pages for ad creative generation.
@@ -226,7 +224,7 @@ Return ONLY valid JSON with these exact fields. If you can't find information fo
     const userPrompt = `Analyze this offer page and extract ALL available copy and information for ad creative generation.
 
 Offer Name: ${offerName || 'Not specified'}
-URL: ${offerUrl}
+${offerUrl ? `URL: ${offerUrl}` : 'URL: Not provided (user pasted content directly)'}
 
 Page Content:
 ${fetchSuccess ? offerContent : 'Unable to fetch page content - the page may be behind a login, have bot protection, or the URL may be incorrect.'}
