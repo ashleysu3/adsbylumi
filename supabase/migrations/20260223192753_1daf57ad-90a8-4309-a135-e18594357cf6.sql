@@ -1,0 +1,1 @@
+ALTER TABLE public.campaign_workspaces ADD COLUMN IF NOT EXISTS tracking_verified boolean DEFAULT false;

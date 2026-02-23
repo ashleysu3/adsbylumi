@@ -3,22 +3,23 @@
  import { Button } from "@/components/ui/button";
  import { Card, CardContent } from "@/components/ui/card";
  import { Badge } from "@/components/ui/badge";
- import {
-   CheckCircle2,
-   XCircle,
-   AlertTriangle,
-   Loader2,
-   Circle,
-   Link2,
-   DollarSign,
-   Calendar,
-   SpellCheck,
-   ArrowLeft,
-   Rocket,
-   ChevronDown,
-   ChevronUp,
-   ExternalLink,
- } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  Circle,
+  Link2,
+  DollarSign,
+  Calendar,
+  SpellCheck,
+  ArrowLeft,
+  Rocket,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Zap,
+} from "lucide-react";
  import { cn } from "@/lib/utils";
  import { supabase } from "@/integrations/supabase/client";
  import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -48,21 +49,23 @@
    onFixIssue?: (issueType: string, issueData: any) => void;
  }
  
- const CHECK_ICONS: Record<string, React.ReactNode> = {
-   meta: <Link2 className="h-4 w-4" />,
-   budget: <DollarSign className="h-4 w-4" />,
-   schedule: <Calendar className="h-4 w-4" />,
-   landing_page: <ExternalLink className="h-4 w-4" />,
-   spelling: <SpellCheck className="h-4 w-4" />,
- };
+const CHECK_ICONS: Record<string, React.ReactNode> = {
+  meta: <Link2 className="h-4 w-4" />,
+  budget: <DollarSign className="h-4 w-4" />,
+  schedule: <Calendar className="h-4 w-4" />,
+  landing_page: <ExternalLink className="h-4 w-4" />,
+  tracking: <Zap className="h-4 w-4" />,
+  spelling: <SpellCheck className="h-4 w-4" />,
+};
  
- const INITIAL_CHECKS: CheckResult[] = [
-   { id: "meta", name: "Meta Connection", status: "pending" },
-   { id: "budget", name: "Budget", status: "pending" },
-   { id: "schedule", name: "Schedule", status: "pending" },
-   { id: "landing_page", name: "Landing Page", status: "pending" },
-   { id: "spelling", name: "Spelling & Grammar", status: "pending" },
- ];
+const INITIAL_CHECKS: CheckResult[] = [
+  { id: "meta", name: "Meta Connection", status: "pending" },
+  { id: "budget", name: "Budget", status: "pending" },
+  { id: "schedule", name: "Schedule", status: "pending" },
+  { id: "landing_page", name: "Landing Page", status: "pending" },
+  { id: "tracking", name: "Event Tracking", status: "pending" },
+  { id: "spelling", name: "Spelling & Grammar", status: "pending" },
+];
  
  export function QACheckScreen({
    workspace,

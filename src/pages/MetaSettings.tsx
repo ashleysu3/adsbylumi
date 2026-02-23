@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { PixelVerificationCard } from '@/components/PixelVerificationCard';
+import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
 
 export default function MetaSettings() {
   const navigate = useNavigate();
@@ -660,6 +661,18 @@ export default function MetaSettings() {
             )}
           </CardContent>
         </Card>
+
+        {/* Meta Readiness Checklist */}
+        {brand?.id && (
+          <MetaReadinessChecklist
+            brandId={brand.id}
+            onConnectMeta={() => {
+              if (!isConnected) {
+                // Trigger the connect flow - same button already exists in connect card
+              }
+            }}
+          />
+        )}
 
         {/* Permissions & Info Card */}
         <Card variant="glow">

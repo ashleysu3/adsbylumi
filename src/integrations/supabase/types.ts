@@ -476,6 +476,7 @@ export type Database = {
           strategy_id: string | null
           strategy_json: Json | null
           template_id: string | null
+          tracking_verified: boolean | null
           updated_at: string | null
           user_uploaded_assets: Json | null
           weekly_report_draft: string | null
@@ -515,6 +516,7 @@ export type Database = {
           strategy_id?: string | null
           strategy_json?: Json | null
           template_id?: string | null
+          tracking_verified?: boolean | null
           updated_at?: string | null
           user_uploaded_assets?: Json | null
           weekly_report_draft?: string | null
@@ -554,6 +556,7 @@ export type Database = {
           strategy_id?: string | null
           strategy_json?: Json | null
           template_id?: string | null
+          tracking_verified?: boolean | null
           updated_at?: string | null
           user_uploaded_assets?: Json | null
           weekly_report_draft?: string | null
