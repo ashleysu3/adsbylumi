@@ -1,134 +1,136 @@
 
 
-# Simplified Meta Setup & Event Tracking for Non-Tech Users
+# "Lumi Sets It Up For You" — Automatic Event Tracking via Meta Custom Conversions
 
-## The Problem
-Users who aren't tech-savvy face two friction points:
-1. **During onboarding**: They don't know if they have all the Meta pieces connected (Facebook Page, Instagram Business, Ad Account, Pixel)
-2. **For each new campaign**: They need the right conversion event (Lead or Purchase) firing on their landing page, and currently the tools to verify this are buried in settings
+## The Insight
 
-## Solution Overview
+Meta's Custom Conversions API lets you create URL-based conversion rules directly — no code, no pixel events, no snippets. The user just provides their thank-you or confirmation page URL (e.g., `example.com/thank-you`), and we call the Meta API to create a Custom Conversion rule that says: "When someone visits this URL, count it as a Lead (or Purchase)."
 
-### 1. Meta Readiness Checklist (Onboarding + Settings)
-A visual checklist component that shows green/red status for each required piece, with plain-language "Fix this" guidance:
+**Zero code for the user. Zero pixel knowledge required. Lumi handles it.**
 
-```text
-+----------------------------------------------+
-|  Getting Your Ads Ready                      |
-|                                              |
-|  [x] Facebook Page connected                |
-|  [x] Instagram account linked               |
-|  [x] Ad account selected                    |
-|  [ ] Pixel installed on your website         |
-|      "Your pixel tracks who visits your      |
-|       site so Meta knows your ads work"      |
-|      [Show me how ->]                        |
-|                                              |
-|  [x] = green checkmark, [ ] = red circle    |
-+----------------------------------------------+
-```
+## How It Works for the User
 
-- Displayed after Meta OAuth completes in the onboarding wizard (Step 5)
-- Also shown on the Meta Settings page as a summary card
-- Each incomplete item has a one-sentence explanation (no jargon) and an action button
-
-### 2. Event Setup Assistant (Campaign Builder)
-When a user creates a Lead or Sales campaign, a friendly wizard checks if the right event is firing on their offer URL:
+When Lumi detects that the required event isn't firing on their page (the current "fail" state), instead of showing code snippets and platform guides, the primary option becomes:
 
 ```text
 +----------------------------------------------+
-|  Let's make sure Meta can track results      |
-|                                              |
-|  Your campaign goal: Leads                   |
-|  Your landing page: example.com/webinar      |
-|                                              |
-|  Checking your page...                       |
-|                                              |
-|  Result:                                     |
-|  [!] We couldn't detect a "Lead" event       |
-|      on this page.                           |
-|                                              |
-|  What does this mean?                        |
-|  "When someone fills out your form, Meta     |
-|   needs a small signal to know it worked.    |
-|   Without it, Meta can't optimize your ads." |
-|                                              |
-|  How to fix it:                              |
-|  [Shopify] [WordPress] [Kajabi] [Other]      |
-|                                              |
-|  Or: [Copy this code snippet]               |
-|  Or: [Skip for now - I'll set it up later]  |
+|  We couldn't detect a "Lead" event            |
+|  on this page — but Lumi can fix that.        |
+|                                               |
+|  Just tell us: what's the page people see     |
+|  AFTER they sign up?                          |
+|                                               |
+|  [https://example.com/thank-you         ]     |
+|                                               |
+|  [Set up tracking for me]                     |
+|                                               |
+|  "We'll tell Meta to count anyone who         |
+|   lands on this page as a Lead."              |
+|                                               |
+|  ── or ──                                     |
+|  [I want to do it myself v]  (collapses to    |
+|   show existing platform guides + code)       |
 +----------------------------------------------+
 ```
 
-- Integrated into the Campaign Builder review step, before the QA check
-- Auto-detects the offer URL from the workspace and checks for the relevant event
-- Platform-specific guides shown inline (reuses existing platform data from PixelVerificationCard)
-- Users can skip but see a warning badge on the campaign
+One button click. Done.
 
-### 3. Quick Event Verifier (Reusable)
-A lightweight "Verify my tracking" button that can appear:
-- On each campaign card in the Results dashboard
-- In the Campaign Builder review step
-- In the Offer detail view
+## What Happens Behind the Scenes
 
-One tap: enters the URL, checks for the right event, shows pass/fail with guidance.
+1. User enters their confirmation/thank-you page URL
+2. Frontend calls a new edge function `create-custom-conversion`
+3. The edge function calls Meta's API:
+   ```
+   POST /act_{ad_account_id}/customconversions
+   ```
+   With parameters:
+   - `name`: "LUMI - Lead - example.com/thank-you"
+   - `event_type`: "LEAD" or "PURCHASE"
+   - `rule`: URL contains the thank-you page path
+4. Meta returns a Custom Conversion ID
+5. We store this ID on the `campaign_workspaces` row and mark `tracking_verified = true`
+6. The campaign builder uses this Custom Conversion ID when building the campaign (as `custom_conversion_id` in the promoted_object)
 
----
+## What Changes
+
+### 1. New Edge Function: `create-custom-conversion`
+- Accepts: `brandId`, `confirmationUrl`, `eventType` ("LEAD" or "PURCHASE"), `workspaceId`
+- Authenticates user, verifies brand ownership
+- Fetches Meta access token from vault
+- Calls `POST /act_{ad_account_id}/customconversions` with a URL-contains rule
+- Saves the custom conversion ID to `campaign_workspaces.custom_conversion_id`
+- Sets `tracking_verified = true`
+- Returns success with the custom conversion name
+
+### 2. Database: Add column to `campaign_workspaces`
+- `custom_conversion_id` (text, nullable) — stores the Meta Custom Conversion ID created by Lumi
+
+### 3. Updated `EventSetupAssistant.tsx`
+- **Primary path (new)**: "Let Lumi set it up" — input for confirmation URL + one-click button
+- **Secondary path (existing)**: "I want to do it myself" — collapsible section with the platform guides and code snippets (moved to a less prominent position)
+- After successful creation, shows green success state with the custom conversion name
+- Loading state while creating: "Setting up your tracking..."
+
+### 4. Updated `build-meta-campaign` Edge Function
+- When building the campaign, check if `workspace.custom_conversion_id` exists
+- If it does, use it in the `promoted_object` of the ad set instead of relying on pixel events:
+  ```json
+  { "custom_conversion_id": "123456", "pixel_id": "789" }
+  ```
+- This ensures the campaign optimizes for the URL-based conversion rule Lumi created
+
+### 5. Config
+- Add `create-custom-conversion` to `supabase/config.toml` with `verify_jwt = true`
+
+## Flow for Each New Campaign
+
+1. User picks "Leads" or "Sales" as objective
+2. User adds their offer URL
+3. EventSetupAssistant auto-checks for existing events
+4. If events found: green checkmark, done
+5. If events NOT found: "Lumi can set this up for you" prompt
+6. User enters their thank-you/confirmation URL
+7. One click: Lumi creates the Custom Conversion via Meta API
+8. Green checkmark, `tracking_verified = true`, campaign is ready to build
 
 ## Technical Details
 
-### New Components
+### Edge Function: `create-custom-conversion`
 
-**`src/components/MetaReadinessChecklist.tsx`**
-- Props: `brandId`, `onAllReady?: () => void`
-- Fetches brand data (meta_account_id, page_id, instagram_account_id, meta_pixel_id)
-- Calls `check-pixel-status` to verify pixel is active
-- Renders 4-item checklist with status icons and plain-language help text
-- Each incomplete item shows a contextual action (e.g., "Connect Meta" button for missing account, link to platform guide for missing pixel)
+```text
+Input:
+  brandId: string
+  workspaceId: string
+  confirmationUrl: string
+  eventType: "LEAD" | "PURCHASE"
 
-**`src/components/EventSetupAssistant.tsx`**
-- Props: `brandId`, `offerUrl`, `campaignGoal: 'leads' | 'sales'`, `onStatusChange`, `onSkip`
-- On mount, calls `verify-landing-page-pixel` with the offer URL
-- Maps goal to required event: leads -> "Lead", sales -> "Purchase"
-- Shows result in friendly language with platform-specific fix guides
-- Includes "Copy code snippet" with the pre-filled pixel ID and correct event code
-- "Skip for now" option that marks the campaign with a `tracking_verified: false` flag
+Steps:
+  1. Auth check (manual JWT validation)
+  2. Fetch brand -> verify ownership
+  3. Get meta_account_id + access token from vault
+  4. Get pixel_id from ad account
+  5. POST to Meta API:
+     /act_{account_id}/customconversions
+     name = "LUMI // {eventType} - {url_path}"
+     event_type = eventType
+     pixel_id = pixel_id
+     rule = {"url":{"i_contains": confirmationUrl path}}
+  6. Save custom_conversion_id to campaign_workspaces
+  7. Set tracking_verified = true
+  8. Return { success, customConversionId, name }
+```
 
-### Modified Files
+### EventSetupAssistant Changes
+- New state: `'creating'` added to status union
+- New state: `confirmationUrl` input field
+- New handler: `createCustomConversion()` that calls the edge function
+- Existing platform guides and code snippet moved into an "I want to do it myself" collapsible section
+- Success state shows: "Lumi set up tracking for you — Meta will count visits to [url] as a [Lead/Purchase]"
 
-**`src/components/BrandOnboardingWizard.tsx`**
-- After the existing 3 steps, if Meta is connected, show the MetaReadinessChecklist as a post-connection summary
-- Non-blocking: users can proceed even with incomplete items, but get a clear picture of what's missing
-
-**`src/pages/MetaSettings.tsx`**
-- Add MetaReadinessChecklist card above the existing Pixel Verification card
-- Replaces the need to mentally piece together connection status from multiple sections
-
-**`src/components/MobileCampaignBuilder.tsx`**
-- After the Budget step and before calling `onComplete`, if objective is "leads" or "sales":
-  - Insert an EventSetupAssistant step using the workspace's offer URL
-  - Step title: "Verify your tracking"
-  - Can be skipped
-
-**`src/components/QACheckScreen.tsx`**
-- Add a tracking verification row to the QA checks that shows pass/warning/fail based on whether the event was verified
-- If not verified, show inline "Check now" button that runs the verification
-
-**`src/components/insights/InsightsHome.tsx`**
-- On campaign cards where `tracking_verified === false` or no pixel events are detected, show a small warning badge: "Tracking not verified" with a link to verify
-
-### Edge Function Changes
-None required -- existing `check-pixel-status` and `verify-landing-page-pixel` functions already provide the data needed. The improvement is entirely on the UX/frontend side.
-
-### Database Changes
-- Add `tracking_verified` boolean column (default `false`) to `campaign_workspaces` table to track whether the user has confirmed event tracking for that campaign
-
-### Key UX Principles
-- One sentence per concept, no jargon
-- "What does this mean?" expandable sections for curious users
-- Platform logos (Shopify, WordPress, Kajabi) as visual selectors instead of text lists
-- Pre-filled code snippets with the user's actual pixel ID
-- Always allow skipping with a clear warning about consequences
-- Green checkmarks provide dopamine hits as items get completed
+### Build Campaign Changes
+- In `build-meta-campaign/index.ts`, after fetching the pixel, also check `workspace.custom_conversion_id`
+- If present, add to the `promoted_object`:
+  ```
+  custom_conversion_id: workspace.custom_conversion_id
+  ```
 
