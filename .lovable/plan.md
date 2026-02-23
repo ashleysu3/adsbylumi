@@ -1,136 +1,48 @@
 
+# Auto-Verify Tracking From Live Performance Data
 
-# "Lumi Sets It Up For You" — Automatic Event Tracking via Meta Custom Conversions
+## The Problem
+The `tracking_verified` flag is only set to `true` when a user explicitly uses the "Let Lumi set it up" flow. But campaigns set up outside of Lumi (e.g., directly in Ads Manager) already have working tracking — you can see conversion values coming in. The app still shows "Tracking not verified" because it doesn't check the actual data.
 
-## The Insight
+## The Fix
+**If conversions are coming in, tracking is verified. Period.**
 
-Meta's Custom Conversions API lets you create URL-based conversion rules directly — no code, no pixel events, no snippets. The user just provides their thank-you or confirmation page URL (e.g., `example.com/thank-you`), and we call the Meta API to create a Custom Conversion rule that says: "When someone visits this URL, count it as a Lead (or Purchase)."
+We add a simple inference layer: when metrics are loaded for each campaign, if the campaign is reporting leads or purchases (depending on objective), we treat tracking as verified — and silently update the database flag so the badge never shows again.
 
-**Zero code for the user. Zero pixel knowledge required. Lumi handles it.**
+### What Changes
 
-## How It Works for the User
+**`src/components/insights/InsightsHome.tsx`**
+- After metrics are loaded for each campaign, check if conversions exist based on objective:
+  - Lead campaigns: if `metrics.leads > 0`, tracking is working
+  - Purchase/Sales campaigns: if `metrics.purchases > 0`, tracking is working
+- If conversions are detected but `trackingVerified` is `false`:
+  - Hide the "Tracking not verified" badge immediately (local state)
+  - Fire a background Supabase update to set `tracking_verified = true` on that workspace so it never shows again
 
-When Lumi detects that the required event isn't firing on their page (the current "fail" state), instead of showing code snippets and platform guides, the primary option becomes:
+**`src/pages/Data.tsx`**
+- After `fetchAllMetrics` completes, run a quick pass over campaigns: for any campaign where metrics show conversions but `trackingVerified` is still `false`, update the database in the background
 
-```text
-+----------------------------------------------+
-|  We couldn't detect a "Lead" event            |
-|  on this page — but Lumi can fix that.        |
-|                                               |
-|  Just tell us: what's the page people see     |
-|  AFTER they sign up?                          |
-|                                               |
-|  [https://example.com/thank-you         ]     |
-|                                               |
-|  [Set up tracking for me]                     |
-|                                               |
-|  "We'll tell Meta to count anyone who         |
-|   lands on this page as a Lead."              |
-|                                               |
-|  ── or ──                                     |
-|  [I want to do it myself v]  (collapses to    |
-|   show existing platform guides + code)       |
-+----------------------------------------------+
-```
-
-One button click. Done.
-
-## What Happens Behind the Scenes
-
-1. User enters their confirmation/thank-you page URL
-2. Frontend calls a new edge function `create-custom-conversion`
-3. The edge function calls Meta's API:
-   ```
-   POST /act_{ad_account_id}/customconversions
-   ```
-   With parameters:
-   - `name`: "LUMI - Lead - example.com/thank-you"
-   - `event_type`: "LEAD" or "PURCHASE"
-   - `rule`: URL contains the thank-you page path
-4. Meta returns a Custom Conversion ID
-5. We store this ID on the `campaign_workspaces` row and mark `tracking_verified = true`
-6. The campaign builder uses this Custom Conversion ID when building the campaign (as `custom_conversion_id` in the promoted_object)
-
-## What Changes
-
-### 1. New Edge Function: `create-custom-conversion`
-- Accepts: `brandId`, `confirmationUrl`, `eventType` ("LEAD" or "PURCHASE"), `workspaceId`
-- Authenticates user, verifies brand ownership
-- Fetches Meta access token from vault
-- Calls `POST /act_{ad_account_id}/customconversions` with a URL-contains rule
-- Saves the custom conversion ID to `campaign_workspaces.custom_conversion_id`
-- Sets `tracking_verified = true`
-- Returns success with the custom conversion name
-
-### 2. Database: Add column to `campaign_workspaces`
-- `custom_conversion_id` (text, nullable) — stores the Meta Custom Conversion ID created by Lumi
-
-### 3. Updated `EventSetupAssistant.tsx`
-- **Primary path (new)**: "Let Lumi set it up" — input for confirmation URL + one-click button
-- **Secondary path (existing)**: "I want to do it myself" — collapsible section with the platform guides and code snippets (moved to a less prominent position)
-- After successful creation, shows green success state with the custom conversion name
-- Loading state while creating: "Setting up your tracking..."
-
-### 4. Updated `build-meta-campaign` Edge Function
-- When building the campaign, check if `workspace.custom_conversion_id` exists
-- If it does, use it in the `promoted_object` of the ad set instead of relying on pixel events:
-  ```json
-  { "custom_conversion_id": "123456", "pixel_id": "789" }
-  ```
-- This ensures the campaign optimizes for the URL-based conversion rule Lumi created
-
-### 5. Config
-- Add `create-custom-conversion` to `supabase/config.toml` with `verify_jwt = true`
-
-## Flow for Each New Campaign
-
-1. User picks "Leads" or "Sales" as objective
-2. User adds their offer URL
-3. EventSetupAssistant auto-checks for existing events
-4. If events found: green checkmark, done
-5. If events NOT found: "Lumi can set this up for you" prompt
-6. User enters their thank-you/confirmation URL
-7. One click: Lumi creates the Custom Conversion via Meta API
-8. Green checkmark, `tracking_verified = true`, campaign is ready to build
-
-## Technical Details
-
-### Edge Function: `create-custom-conversion`
+### Logic (added after metrics load)
 
 ```text
-Input:
-  brandId: string
-  workspaceId: string
-  confirmationUrl: string
-  eventType: "LEAD" | "PURCHASE"
+For each campaign with metrics:
+  objective is "leads" or similar  -> check metrics.leads > 0
+  objective is "sales"/"purchase"  -> check metrics.purchases > 0
 
-Steps:
-  1. Auth check (manual JWT validation)
-  2. Fetch brand -> verify ownership
-  3. Get meta_account_id + access token from vault
-  4. Get pixel_id from ad account
-  5. POST to Meta API:
-     /act_{account_id}/customconversions
-     name = "LUMI // {eventType} - {url_path}"
-     event_type = eventType
-     pixel_id = pixel_id
-     rule = {"url":{"i_contains": confirmationUrl path}}
-  6. Save custom_conversion_id to campaign_workspaces
-  7. Set tracking_verified = true
-  8. Return { success, customConversionId, name }
+  If conversions > 0 AND trackingVerified === false:
+    1. Update local state to trackingVerified = true
+    2. Background: UPDATE campaign_workspaces 
+       SET tracking_verified = true 
+       WHERE id = campaign.id
 ```
 
-### EventSetupAssistant Changes
-- New state: `'creating'` added to status union
-- New state: `confirmationUrl` input field
-- New handler: `createCustomConversion()` that calls the edge function
-- Existing platform guides and code snippet moved into an "I want to do it myself" collapsible section
-- Success state shows: "Lumi set up tracking for you — Meta will count visits to [url] as a [Lead/Purchase]"
+### Why This Works
+- No user action required — it's fully automatic
+- Existing campaigns with working tracking get cleared immediately on next page load
+- New campaigns still go through the Event Setup Assistant during build
+- The database flag gets permanently updated so it's a one-time fix per campaign
+- Zero false positives: if Meta is reporting conversions, the event is firing
 
-### Build Campaign Changes
-- In `build-meta-campaign/index.ts`, after fetching the pixel, also check `workspace.custom_conversion_id`
-- If present, add to the `promoted_object`:
-  ```
-  custom_conversion_id: workspace.custom_conversion_id
-  ```
-
+### Files Modified
+1. **`src/pages/Data.tsx`** — Add a `autoVerifyTracking` function that runs after metrics are fetched, checks for conversion data, and updates both local state and the database
+2. **`src/components/insights/InsightsHome.tsx`** — Update the badge logic to also consider live metrics as proof of tracking (belt-and-suspenders with the Data.tsx fix)
