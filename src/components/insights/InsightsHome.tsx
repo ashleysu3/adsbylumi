@@ -25,6 +25,7 @@ import { DateRangePicker } from './DateRangePicker';
 import { StatusFilter } from './StatusFilter';
 import { AccountOverview } from './AccountOverview';
 import { LinkOfferModal } from './LinkOfferModal';
+import { UnlinkedCampaignsBanner } from './UnlinkedCampaignsBanner';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -215,7 +216,11 @@ export function InsightsHome({
         <AccountOverview metrics={accountMetrics || null} isLoading={accountMetricsLoading || false} />
       )}
 
-      {/* Date Selector */}
+      {/* Unlinked Campaigns Banner */}
+      <UnlinkedCampaignsBanner
+        campaigns={campaigns}
+        onLinkOffer={(campaign) => setLinkOfferModal({ open: true, campaign })}
+      />
       <Card variant="glow" className="rounded-2xl">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
