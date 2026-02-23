@@ -232,6 +232,46 @@ Deno.serve(async (req) => {
 
     console.log('Bug report email sent:', emailResponse);
 
+    // Send Slack notification (fire-and-forget)
+    try {
+      const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
+      const LOVABLE_KEY = Deno.env.get('LOVABLE_API_KEY');
+      const SLACK_KEY = Deno.env.get('SLACK_API_KEY');
+
+      if (LOVABLE_KEY && SLACK_KEY) {
+        const snippet = details ? details.substring(0, 120) + (details.length > 120 ? '...' : '') : 'No details provided';
+        const slackText = `🐛 Bug Report ${reportId} from ${userEmail}`;
+        const slackBlocks = [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `:bug: *New Bug Report ${reportId}*\n\n*From:* ${userEmail}\n*Page:* \`${currentPage || 'unknown'}\`\n*Details:* ${snippet}`,
+            },
+          },
+        ];
+
+        await fetch(`${GATEWAY_URL}/chat.postMessage`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_KEY}`,
+            'X-Connection-Api-Key': SLACK_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            channel: 'lumi-alerts',
+            text: slackText,
+            blocks: slackBlocks,
+            username: 'Lumi',
+            icon_emoji: ':sparkles:',
+          }),
+        });
+        console.log('Bug report Slack notification sent');
+      }
+    } catch (slackError) {
+      console.error('Failed to send Slack notification (non-blocking):', slackError);
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
