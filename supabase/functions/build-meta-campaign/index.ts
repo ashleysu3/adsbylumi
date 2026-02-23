@@ -464,11 +464,24 @@ Deno.serve(async (req) => {
     console.log('Campaign created:', result.campaignId);
 
     // Step 3: Create Ad Sets
-    // Build promoted_object if we have a pixel
-    const promotedObject = pixelId ? {
-      pixel_id: pixelId,
-      custom_event_type: conversionEvent
-    } : null;
+    // Build promoted_object — use custom conversion if Lumi set one up
+    const customConversionId = workspace.custom_conversion_id;
+    let promotedObject: Record<string, string> | null = null;
+    
+    if (customConversionId && pixelId) {
+      // Lumi-created Custom Conversion (URL-based rule)
+      promotedObject = {
+        pixel_id: pixelId,
+        custom_conversion_id: customConversionId,
+      };
+      console.log('Using Lumi custom conversion:', customConversionId);
+    } else if (pixelId) {
+      // Standard pixel event tracking
+      promotedObject = {
+        pixel_id: pixelId,
+        custom_event_type: conversionEvent,
+      };
+    }
 
     // Create Cold Audience Ad Set
     const coldAdSetParams: Record<string, string> = {

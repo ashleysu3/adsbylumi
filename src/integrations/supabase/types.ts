@@ -451,6 +451,7 @@ export type Database = {
           created_at: string | null
           creative_feedback: Json | null
           creative_json: Json | null
+          custom_conversion_id: string | null
           final_answers: Json | null
           id: string
           loved_concepts: Json | null
@@ -491,6 +492,7 @@ export type Database = {
           created_at?: string | null
           creative_feedback?: Json | null
           creative_json?: Json | null
+          custom_conversion_id?: string | null
           final_answers?: Json | null
           id?: string
           loved_concepts?: Json | null
@@ -531,6 +533,7 @@ export type Database = {
           created_at?: string | null
           creative_feedback?: Json | null
           creative_json?: Json | null
+          custom_conversion_id?: string | null
           final_answers?: Json | null
           id?: string
           loved_concepts?: Json | null
