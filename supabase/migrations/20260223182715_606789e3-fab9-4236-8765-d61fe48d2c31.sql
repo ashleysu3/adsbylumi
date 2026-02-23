@@ -1,0 +1,1 @@
+ALTER TABLE public.brands ADD COLUMN IF NOT EXISTS never_use_words text[] DEFAULT '{}'::text[];

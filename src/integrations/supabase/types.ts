@@ -219,6 +219,7 @@ export type Database = {
           meta_token_expires_at: string | null
           multi_advertiser_ads: boolean | null
           name: string
+          never_use_words: string[] | null
           notification_preferences: Json | null
           page_id: string | null
           page_name: string | null
@@ -254,6 +255,7 @@ export type Database = {
           meta_token_expires_at?: string | null
           multi_advertiser_ads?: boolean | null
           name: string
+          never_use_words?: string[] | null
           notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null
@@ -289,6 +291,7 @@ export type Database = {
           meta_token_expires_at?: string | null
           multi_advertiser_ads?: boolean | null
           name?: string
+          never_use_words?: string[] | null
           notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null

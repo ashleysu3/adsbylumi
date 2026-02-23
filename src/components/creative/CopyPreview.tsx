@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { RefreshCw, Copy, Check, CheckCircle2, Sparkles, FileText, MessageSquare, Type, Pencil, Save, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RefreshCw, Copy, Check, CheckCircle2, Sparkles, FileText, MessageSquare, Type, Pencil, Save, X, MessageCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AngleCopyNav } from "./AngleCopyNav";
@@ -43,7 +44,7 @@ interface CopyPreviewProps {
   onAngleChange: (angleId: string) => void;
   angleCopy: Record<string, AngleCopy>;
   onRegenerateAngleCopy: (angleId: string) => Promise<void>;
-  onRegenerateSingle?: (angleId: string, type: keyof AngleCopy, index: number) => Promise<void>;
+  onRegenerateSingle?: (angleId: string, type: keyof AngleCopy, index: number, feedback?: string) => Promise<void>;
   isRegenerating: boolean;
   regeneratingId?: string | null;
   selections?: Record<string, CopySelections>;
@@ -54,7 +55,7 @@ interface CopyPreviewProps {
 
 // Character limit recommendations for Meta ads
 const charLimits = {
-  headline: { ideal: 40, max: 50 },
+  headline: { ideal: 25, max: 25 },
   description: { ideal: 27, max: 40 },
   primary: { ideal: 125, max: 200 },
 };
@@ -69,7 +70,7 @@ const getCharCountColor = (count: number, type: "headline" | "description" | "pr
 const sectionConfig = {
   headlines: {
     label: "Headlines",
-    description: "Short, punchy headlines (ideal: 27-40 chars)",
+    description: "Must be under 26 characters",
     icon: Type,
     type: "headline" as const,
   },
@@ -106,6 +107,9 @@ export function CopyPreview({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState<string>("");
+  const [feedbackId, setFeedbackId] = useState<string | null>(null);
+  const [feedbackText, setFeedbackText] = useState<string>("");
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   const currentAngleCopy = angleCopy[activeAngleId];
   const currentSelections = selections[activeAngleId] || { headlines: [], descriptions: [], primary_copy: [] };
@@ -171,9 +175,22 @@ export function CopyPreview({
     return h + d + p;
   };
 
-  const handleRegenerateSingle = async (type: keyof AngleCopy, index: number) => {
+  const handleRegenerateSingle = async (type: keyof AngleCopy, index: number, feedback?: string) => {
     if (!onRegenerateSingle) return;
-    await onRegenerateSingle(activeAngleId, type, index);
+    await onRegenerateSingle(activeAngleId, type, index, feedback);
+  };
+
+  const handleFeedbackSubmit = async (type: keyof AngleCopy, index: number) => {
+    if (!feedbackText.trim() || !onRegenerateSingle) return;
+    setFeedbackLoading(true);
+    try {
+      await onRegenerateSingle(activeAngleId, type, index, feedbackText.trim());
+      toast.success("Regenerating with your feedback...");
+    } finally {
+      setFeedbackLoading(false);
+      setFeedbackId(null);
+      setFeedbackText("");
+    }
   };
 
   const renderVariationCard = (
@@ -249,20 +266,6 @@ export function CopyPreview({
                   <RefreshCw className="h-3 w-3" />
                 </Button>
               )}
-              {onCopyEdit && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleStartEdit(id, variation.text);
-                  }}
-                  title="Edit this copy"
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -306,21 +309,60 @@ export function CopyPreview({
                   onChange={(e) => setEditText(e.target.value)}
                   className="text-sm"
                   autoFocus
+                  maxLength={type === "headline" ? 25 : undefined}
                 />
               )}
+              <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleSaveEdit(typeKey as keyof AngleCopy, index)}
+                    className="gap-1"
+                  >
+                    <Save className="h-3 w-3" />
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelEdit}
+                    className="gap-1"
+                  >
+                    <X className="h-3 w-3" />
+                    Cancel
+                  </Button>
+                </div>
+                {type === "headline" && (
+                  <span className={cn("text-xs", editText.length > 25 ? "text-destructive" : "text-muted-foreground")}>
+                    {editText.length}/25
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : feedbackId === id ? (
+            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+              <p className="text-xs text-muted-foreground">Tell Lumi what to change:</p>
+              <Textarea
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                placeholder="E.g., 'Make it more conversational' or 'Focus on the time-saving benefit'"
+                className="min-h-[80px] text-sm resize-none"
+                autoFocus
+              />
               <div className="flex gap-2">
                 <Button
                   size="sm"
-                  onClick={() => handleSaveEdit(typeKey as keyof AngleCopy, index)}
+                  onClick={() => handleFeedbackSubmit(typeKey as keyof AngleCopy, index)}
+                  disabled={!feedbackText.trim() || feedbackLoading}
                   className="gap-1"
                 >
-                  <Save className="h-3 w-3" />
-                  Save
+                  {feedbackLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                  Regenerate
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={handleCancelEdit}
+                  onClick={() => { setFeedbackId(null); setFeedbackText(""); }}
                   className="gap-1"
                 >
                   <X className="h-3 w-3" />
@@ -329,13 +371,47 @@ export function CopyPreview({
               </div>
             </div>
           ) : (
-            <p className={cn(
-              "text-xs sm:text-sm leading-relaxed",
-              type === "headline" && "font-medium",
-              type === "primary" && "whitespace-pre-wrap text-muted-foreground line-clamp-4"
-            )}>
-              {variation.text}
-            </p>
+            <div className="relative">
+              <p className={cn(
+                "text-xs sm:text-sm leading-relaxed",
+                type === "headline" && "font-medium",
+                type === "primary" && "whitespace-pre-wrap text-muted-foreground line-clamp-4"
+              )}>
+                {variation.text}
+              </p>
+              {/* Hover overlay with two actions */}
+              <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background/80 backdrop-blur-[2px] rounded-md">
+                {onRegenerateSingle && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-xs h-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFeedbackId(id);
+                      setFeedbackText("");
+                    }}
+                  >
+                    <MessageCircle className="h-3 w-3" />
+                    Give Feedback
+                  </Button>
+                )}
+                {onCopyEdit && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-xs h-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartEdit(id, variation.text);
+                    }}
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

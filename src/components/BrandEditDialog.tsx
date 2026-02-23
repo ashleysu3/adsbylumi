@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, Plus, Ban } from "lucide-react";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { formatInvokeError } from "@/lib/formatInvokeError";
 
@@ -21,12 +22,14 @@ interface BrandEditDialogProps {
 export function BrandEditDialog({ open, onOpenChange, brand, onUpdate }: BrandEditDialogProps) {
   const [loading, setLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [newBannedWord, setNewBannedWord] = useState("");
   const [formData, setFormData] = useState({
     name: brand?.name || "",
     website_url: brand?.website_url || "",
     industry: brand?.industry || "",
     value_proposition: brand?.value_proposition || "",
     target_audience: brand?.target_audience || "",
+    never_use_words: (brand?.never_use_words as string[]) || [],
   });
 
   const handleRegenerate = async () => {
@@ -164,6 +167,71 @@ export function BrandEditDialog({ open, onOpenChange, brand, onUpdate }: BrandEd
               onChange={(e) => setFormData(prev => ({ ...prev, target_audience: e.target.value }))}
               rows={3}
             />
+          </div>
+
+          {/* Never Use Words */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Ban className="h-4 w-4 text-destructive" />
+              Never Use These Words
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Lumi will avoid these words and phrases in all generated copy
+            </p>
+            <div className="flex flex-wrap gap-1.5 min-h-[32px]">
+              {formData.never_use_words.map((word, i) => (
+                <Badge key={i} variant="secondary" className="gap-1 pr-1">
+                  {word}
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      never_use_words: prev.never_use_words.filter((_, idx) => idx !== i)
+                    }))}
+                    className="ml-0.5 rounded-full hover:bg-muted p-0.5"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newBannedWord}
+                onChange={(e) => setNewBannedWord(e.target.value)}
+                placeholder="e.g. unlock, rocket power, predictable"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const words = newBannedWord.split(',').map(w => w.trim()).filter(Boolean);
+                    if (words.length) {
+                      setFormData(prev => ({
+                        ...prev,
+                        never_use_words: [...prev.never_use_words, ...words.filter(w => !prev.never_use_words.includes(w))]
+                      }));
+                      setNewBannedWord("");
+                    }
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const words = newBannedWord.split(',').map(w => w.trim()).filter(Boolean);
+                  if (words.length) {
+                    setFormData(prev => ({
+                      ...prev,
+                      never_use_words: [...prev.never_use_words, ...words.filter(w => !prev.never_use_words.includes(w))]
+                    }));
+                    setNewBannedWord("");
+                  }
+                }}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
