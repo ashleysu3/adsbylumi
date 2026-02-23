@@ -99,6 +99,14 @@ function getPrimaryKPIValue(metrics: CampaignMetrics | null, primaryKey: string)
   return null;
 }
 
+function hasLiveConversions(campaign: Campaign): boolean {
+  if (!campaign.metrics) return false;
+  const obj = (campaign.objective || '').toLowerCase();
+  if (obj.includes('lead') && (campaign.metrics.leads ?? 0) > 0) return true;
+  if ((obj.includes('sale') || obj.includes('purchase')) && (campaign.metrics.purchases ?? 0) > 0) return true;
+  return false;
+}
+
 function getVerdict(status: string): { label: string; colorClass: string } {
   switch (status) {
     case 'healthy': return { label: 'Above benchmark', colorClass: 'text-green-700' };
@@ -384,7 +392,7 @@ export function InsightsHome({
                           Link Offer
                         </Button>
                       )}
-                      {campaign.trackingVerified === false && (
+                      {campaign.trackingVerified === false && !hasLiveConversions(campaign) && (
                         <Badge variant="outline" className="text-xs rounded-full text-amber-600 border-amber-500/30 gap-1">
                           <AlertTriangle className="h-3 w-3" />
                           Tracking not verified
