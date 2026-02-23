@@ -101,9 +101,13 @@ function getPrimaryKPIValue(metrics: CampaignMetrics | null, primaryKey: string)
 
 function hasLiveConversions(campaign: Campaign): boolean {
   if (!campaign.metrics) return false;
+  const name = (campaign.name || '').toLowerCase();
   const obj = (campaign.objective || '').toLowerCase();
-  if (obj.includes('lead') && (campaign.metrics.leads ?? 0) > 0) return true;
-  if ((obj.includes('sale') || obj.includes('purchase')) && (campaign.metrics.purchases ?? 0) > 0) return true;
+  const isLeadCampaign = obj.includes('lead') || name.includes('lead');
+  const isSalesCampaign = obj.includes('sale') || obj.includes('purchase') || name.includes('sale');
+  if (isLeadCampaign && (campaign.metrics.leads ?? 0) > 0) return true;
+  if (isSalesCampaign && (campaign.metrics.purchases ?? 0) > 0) return true;
+  if (!isLeadCampaign && !isSalesCampaign && ((campaign.metrics.leads ?? 0) > 0 || (campaign.metrics.purchases ?? 0) > 0)) return true;
   return false;
 }
 
