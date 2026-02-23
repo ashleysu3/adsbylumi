@@ -425,14 +425,18 @@ export default function Data() {
   const autoVerifyTracking = (campaignList: CampaignData[]) => {
     campaignList.forEach((campaign) => {
       if (campaign.trackingVerified !== false || !campaign.metrics) return;
+      const name = (campaign.name || '').toLowerCase();
       const obj = (campaign.objective || '').toLowerCase();
+      // Check conversions: use objective if available, otherwise infer from campaign name
+      const isLeadCampaign = obj.includes('lead') || name.includes('lead');
+      const isSalesCampaign = obj.includes('sale') || obj.includes('purchase') || name.includes('sale');
       const hasConversions =
-        (obj.includes('lead') && (campaign.metrics.leads ?? 0) > 0) ||
-        (obj.includes('sale') || obj.includes('purchase')) && (campaign.metrics.purchases ?? 0) > 0;
+        (isLeadCampaign && (campaign.metrics.leads ?? 0) > 0) ||
+        (isSalesCampaign && (campaign.metrics.purchases ?? 0) > 0) ||
+        // Fallback: if either leads or purchases exist, tracking works
+        (!isLeadCampaign && !isSalesCampaign && ((campaign.metrics.leads ?? 0) > 0 || (campaign.metrics.purchases ?? 0) > 0));
       if (!hasConversions) return;
-      // Update local state
       campaign.trackingVerified = true;
-      // Background DB update
       supabase
         .from('campaign_workspaces')
         .update({ tracking_verified: true })
