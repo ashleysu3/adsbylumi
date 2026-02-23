@@ -28,6 +28,8 @@ interface BudgetAdjustmentPanelProps {
     spend?: number;
   } | null;
   onBudgetUpdate?: (newBudget: number) => void;
+  /** When true, panel renders open immediately without the toggle button */
+  inline?: boolean;
 }
 
 type Recommendation = {
@@ -43,10 +45,11 @@ export function BudgetAdjustmentPanel({
   currentBudget,
   metrics,
   onBudgetUpdate,
+  inline = false,
 }: BudgetAdjustmentPanelProps) {
   const [newBudget, setNewBudget] = useState(currentBudget);
   const [updating, setUpdating] = useState(false);
-  const [showPanel, setShowPanel] = useState(false);
+  const [showPanel, setShowPanel] = useState(inline);
 
   // Generate Lumi recommendation based on metrics
   const getRecommendation = (): Recommendation => {
