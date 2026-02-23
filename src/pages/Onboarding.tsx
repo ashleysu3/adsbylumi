@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight, CheckCircle2, ChevronLeft, User, Smile, Link2, X } from "lucide-react";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
+import { PostConnectionAnalysisModal } from "@/components/PostConnectionAnalysisModal";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { motion } from "framer-motion";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
@@ -35,7 +36,7 @@ export default function Onboarding() {
   const [hasExtracted, setHasExtracted] = useState(false);
   const [autoExtractPending, setAutoExtractPending] = useState(false);
   const [createdBrandId, setCreatedBrandId] = useState<string | null>(null);
-
+  const [showPostConnectionAnalysis, setShowPostConnectionAnalysis] = useState(false);
   // Step 1
   const [brandName, setBrandName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -741,10 +742,21 @@ export default function Onboarding() {
                     currentPageName={null}
                     onUpdate={() => {
                       toast.success("Meta account connected! 🎉");
-                      handleFinishOnboarding();
+                      setShowPostConnectionAnalysis(true);
                     }}
                   />
                 </div>
+              )}
+
+              {createdBrandId && (
+                <PostConnectionAnalysisModal
+                  brandId={createdBrandId}
+                  open={showPostConnectionAnalysis}
+                  onClose={() => {
+                    setShowPostConnectionAnalysis(false);
+                    handleFinishOnboarding();
+                  }}
+                />
               )}
 
               <div className="flex gap-2 pt-2">
