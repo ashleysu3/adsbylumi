@@ -57,6 +57,7 @@ interface CampaignData {
   offerName?: string | null;
   brandId?: string;
   dailyBudget?: number;
+  trackingVerified?: boolean;
 }
 
 interface AccountMetrics {
@@ -298,6 +299,7 @@ export default function Data() {
           offer_name,
           brand_id,
           campaign_builder_answers,
+          tracking_verified,
           campaign_templates!campaign_workspaces_template_id_fkey (
             id,
             name,
@@ -352,6 +354,7 @@ export default function Data() {
           offerName: w.offer_name || null,
           brandId: w.brand_id,
           dailyBudget,
+          trackingVerified: (w as any).tracking_verified ?? false,
         };
       });
 

@@ -10,7 +10,8 @@ import {
   Calendar,
   Package,
   Loader2,
-  DollarSign
+  DollarSign,
+  AlertTriangle,
 } from 'lucide-react';
 import { 
   getLumiKPIConfig, 
@@ -59,6 +60,7 @@ interface Campaign {
   offerName?: string | null;
   brandId?: string;
   dailyBudget?: number;
+  trackingVerified?: boolean;
 }
 
 interface AccountMetrics {
@@ -381,6 +383,12 @@ export function InsightsHome({
                           <Package className="h-3.5 w-3.5 mr-1" />
                           Link Offer
                         </Button>
+                      )}
+                      {campaign.trackingVerified === false && (
+                        <Badge variant="outline" className="text-xs rounded-full text-amber-600 border-amber-500/30 gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Tracking not verified
+                        </Badge>
                       )}
                     </div>
                   </div>
