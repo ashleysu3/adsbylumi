@@ -138,6 +138,28 @@ Deno.serve(async (req) => {
 
     console.log('[VERIFY-META-TOKENS] Verification complete:', summary);
 
+    // Send Slack alert for expired/invalid tokens
+    if (summary.expired > 0 || summary.invalid > 0) {
+      const problematic = results.filter(r => r.status === 'expired' || r.status === 'invalid');
+      const brandList = problematic.map(r => `• *${r.brandName}*: ${r.status}`).join('\n');
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/slack-error-alert`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+          },
+          body: JSON.stringify({
+            category: 'Meta API',
+            severity: 'security',
+            title: `Meta Token Issues: ${summary.expired} expired, ${summary.invalid} invalid`,
+            message: `Token verification found issues:\n${brandList}`,
+            source: 'verify-meta-tokens',
+          }),
+        });
+      } catch (slackErr) { console.error('Slack alert failed:', slackErr); }
+    }
+
     return new Response(
       JSON.stringify({ success: true, summary, results }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -145,6 +167,23 @@ Deno.serve(async (req) => {
 
   } catch (error: any) {
     console.error('[VERIFY-META-TOKENS] Fatal error:', error);
+    // Fire-and-forget Slack alert for fatal errors
+    try {
+      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-error-alert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+        },
+        body: JSON.stringify({
+          category: 'System',
+          severity: 'critical',
+          title: 'Meta Token Verification Failed',
+          message: `Fatal error in verify-meta-tokens: ${error.message}`,
+          source: 'verify-meta-tokens',
+        }),
+      });
+    } catch { /* ignore */ }
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }

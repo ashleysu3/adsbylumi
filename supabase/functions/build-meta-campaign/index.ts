@@ -753,6 +753,24 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('Error building campaign:', error);
 
+    // Slack alert for campaign build failures
+    try {
+      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-error-alert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+        },
+        body: JSON.stringify({
+          category: 'Meta API',
+          severity: 'error',
+          title: 'Campaign Build Failed',
+          message: `Error building Meta campaign: ${error.message}`,
+          source: 'build-meta-campaign',
+        }),
+      });
+    } catch { /* ignore */ }
+
     return new Response(
       JSON.stringify({
         success: false,
