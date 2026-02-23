@@ -50,13 +50,55 @@ Deno.serve(async (req) => {
     const fields = "ad_name,spend,impressions,clicks,ctr,actions,cost_per_action_type,purchase_roas,reach";
     const metaUrl = `https://graph.facebook.com/v21.0/act_${brand.meta_account_id}/insights?fields=${fields}&time_range={"since":"${sinceStr}","until":"${untilStr}"}&level=ad&limit=100&filtering=[{"field":"spend","operator":"GREATER_THAN","value":"10"}]&access_token=${brand.meta_access_token}`;
 
-    console.log("[analyze-past-creatives] Fetching Meta insights...");
-    const metaRes = await fetch(metaUrl);
+    // Also fetch adcreatives to get destination URLs
+    const adCreativesUrl = `https://graph.facebook.com/v21.0/act_${brand.meta_account_id}/ads?fields=creative{object_story_spec,asset_feed_spec,effective_object_story_spec}&limit=100&access_token=${brand.meta_access_token}`;
+
+    console.log("[analyze-past-creatives] Fetching Meta insights and adcreatives...");
+    const [metaRes, creativesRes] = await Promise.all([
+      fetch(metaUrl),
+      fetch(adCreativesUrl),
+    ]);
+
+    // Extract destination URLs from adcreatives
+    let detectedUrls: string[] = [];
+    if (creativesRes.ok) {
+      try {
+        const creativesData = await creativesRes.json();
+        const creatives = creativesData.data || [];
+        const urlSet = new Set<string>();
+        for (const ad of creatives) {
+          const creative = ad.creative;
+          if (!creative) continue;
+          // Check effective_object_story_spec for link URLs
+          const spec = creative.effective_object_story_spec || creative.object_story_spec;
+          const linkData = spec?.link_data;
+          if (linkData?.link) urlSet.add(linkData.link);
+          if (linkData?.call_to_action?.value?.link) urlSet.add(linkData.call_to_action.value.link);
+          // Check asset_feed_spec for multiple URLs
+          const assetFeed = creative.asset_feed_spec;
+          if (assetFeed?.link_urls) {
+            for (const lu of assetFeed.link_urls) {
+              if (lu?.website_url) urlSet.add(lu.website_url);
+            }
+          }
+        }
+        // Filter out Meta/Facebook URLs
+        detectedUrls = Array.from(urlSet).filter(u => {
+          try {
+            const host = new URL(u).hostname.toLowerCase();
+            return !host.includes("facebook.com") && !host.includes("instagram.com") && !host.includes("fb.com");
+          } catch { return false; }
+        });
+        console.log(`[analyze-past-creatives] Found ${detectedUrls.length} destination URLs`);
+      } catch (e) {
+        console.error("[analyze-past-creatives] Error parsing creatives:", e);
+      }
+    }
 
     if (!metaRes.ok) {
       const errText = await metaRes.text();
       console.error("[analyze-past-creatives] Meta API error:", metaRes.status, errText);
-      return new Response(JSON.stringify({ hasData: false, summary: "Could not fetch ad data from Meta." }), {
+      return new Response(JSON.stringify({ hasData: false, summary: "Could not fetch ad data from Meta.", detectedUrls }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -66,7 +108,7 @@ Deno.serve(async (req) => {
 
     if (ads.length === 0) {
       console.log("[analyze-past-creatives] No ads found with sufficient spend");
-      return new Response(JSON.stringify({ hasData: false, summary: "No ads with sufficient data in the last 90 days." }), {
+      return new Response(JSON.stringify({ hasData: detectedUrls.length > 0, summary: "No ads with sufficient data in the last 90 days.", detectedUrls }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -75,7 +117,7 @@ Deno.serve(async (req) => {
     const significantAds = ads.filter((ad: any) => parseInt(ad.reach || "0") >= 1000);
 
     if (significantAds.length === 0) {
-      return new Response(JSON.stringify({ hasData: false, summary: "No ads with sufficient reach to analyze." }), {
+      return new Response(JSON.stringify({ hasData: detectedUrls.length > 0, summary: "No ads with sufficient reach to analyze.", detectedUrls }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -181,6 +223,7 @@ Return a JSON object:
       return new Response(JSON.stringify({
         hasData: true,
         summary: `Analyzed ${enrichedAds.length} ads from the last 90 days. Top performer: "${topAds[0]?.ad_name}".`,
+        detectedUrls,
         adsAnalyzed: enrichedAds.length,
         dateRange: `${sinceStr} to ${untilStr}`,
       }), {
@@ -209,6 +252,7 @@ Return a JSON object:
       topFormats: analysis.topFormats || [],
       keyPatterns: analysis.keyPatterns || [],
       recommendations: analysis.recommendations || [],
+      detectedUrls,
       adsAnalyzed: enrichedAds.length,
       dateRange: `${sinceStr} to ${untilStr}`,
     };
