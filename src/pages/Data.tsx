@@ -422,6 +422,27 @@ export default function Data() {
     };
   };
 
+  const autoVerifyTracking = (campaignList: CampaignData[]) => {
+    campaignList.forEach((campaign) => {
+      if (campaign.trackingVerified !== false || !campaign.metrics) return;
+      const obj = (campaign.objective || '').toLowerCase();
+      const hasConversions =
+        (obj.includes('lead') && (campaign.metrics.leads ?? 0) > 0) ||
+        (obj.includes('sale') || obj.includes('purchase')) && (campaign.metrics.purchases ?? 0) > 0;
+      if (!hasConversions) return;
+      // Update local state
+      campaign.trackingVerified = true;
+      // Background DB update
+      supabase
+        .from('campaign_workspaces')
+        .update({ tracking_verified: true })
+        .eq('id', campaign.id)
+        .then(({ error }) => {
+          if (error) console.error('Auto-verify tracking update failed:', error);
+        });
+    });
+  };
+
   const fetchAllMetrics = async (campaignList?: CampaignData[]) => {
     const list = campaignList || campaigns;
     if (list.length === 0) return;
@@ -514,6 +535,9 @@ export default function Data() {
       );
 
       setCampaigns(updatedCampaigns);
+
+      // Auto-verify tracking from live conversion data
+      autoVerifyTracking(updatedCampaigns);
     } catch (error: any) {
       console.error('Error fetching metrics:', error);
       const errorMsg = error?.message || error?.toString() || '';
