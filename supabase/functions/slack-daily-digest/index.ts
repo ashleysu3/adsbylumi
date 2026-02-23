@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const since = yesterday.toISOString();
 
     // Parallel queries
-    const [newUsersRes, bugReportsRes, activeUserRes, allProfilesRes, allBrandsRes, allOffersRes, allWorkspacesRes] = await Promise.all([
+    const [newUsersRes, bugReportsRes, activeUserRes, allProfilesRes, allBrandsRes, allOffersRes, allWorkspacesRes, fatigueLogsRes, benchCountRes] = await Promise.all([
       // New users in last 24h
       supabaseAdmin.from('profiles').select('id, email, full_name, created_at').gte('created_at', since).order('created_at', { ascending: false }),
       // Bug reports in last 24h
@@ -44,6 +44,10 @@ Deno.serve(async (req) => {
       supabaseAdmin.from('offers').select('id, brand_id'),
       // All workspaces
       supabaseAdmin.from('campaign_workspaces').select('id, brand_id'),
+      // Creative fatigue logs in last 24h
+      supabaseAdmin.from('creative_rotation_log').select('id, workspace_id, brand_id, action, reason, created_at').gte('created_at', since).order('created_at', { ascending: false }),
+      // Low bench count workspaces
+      supabaseAdmin.from('creative_bench').select('workspace_id, status'),
     ]);
 
     const newUsers = newUsersRes.data || [];
@@ -163,6 +167,45 @@ Deno.serve(async (req) => {
         type: 'section',
         text: { type: 'mrkdwn', text: `:warning: *Potential Friction Points*\n${frictionItems.join('\n')}` },
       });
+    }
+
+    // Creative Fatigue & Rotation Summary
+    const fatigueLogs = fatigueLogsRes.data || [];
+    const benchData = benchCountRes.data || [];
+    
+    if (fatigueLogs.length > 0 || benchData.length > 0) {
+      const creativeItems: string[] = [];
+      
+      // Rotation events
+      const autoRotations = fatigueLogs.filter((l: any) => l.action === 'auto_rotated');
+      const fatigueDetections = fatigueLogs.filter((l: any) => l.action === 'pause_fatigue');
+      
+      if (autoRotations.length > 0) {
+        creativeItems.push(`• ✅ *${autoRotations.length}* auto-rotation${autoRotations.length !== 1 ? 's' : ''} completed`);
+      }
+      if (fatigueDetections.length > 0) {
+        creativeItems.push(`• ⚠️ *${fatigueDetections.length}* ad${fatigueDetections.length !== 1 ? 's' : ''} flagged for fatigue`);
+      }
+      
+      // Low bench count
+      const benchByWorkspace: Record<string, number> = {};
+      benchData.forEach((b: any) => {
+        if (b.status === 'bench') {
+          benchByWorkspace[b.workspace_id] = (benchByWorkspace[b.workspace_id] || 0) + 1;
+        }
+      });
+      const lowBenchWorkspaces = Object.entries(benchByWorkspace).filter(([_, count]) => count <= 1);
+      if (lowBenchWorkspaces.length > 0) {
+        creativeItems.push(`• 🪫 *${lowBenchWorkspaces.length}* workspace${lowBenchWorkspaces.length !== 1 ? 's' : ''} running low on bench creative`);
+      }
+      
+      if (creativeItems.length > 0) {
+        sections.push({ type: 'divider' });
+        sections.push({
+          type: 'section',
+          text: { type: 'mrkdwn', text: `:art: *Creative Lifecycle*\n${creativeItems.join('\n')}` },
+        });
+      }
     }
 
     // Footer

@@ -13,7 +13,7 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { toast } from 'sonner';
 import { 
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
-  Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen
+  Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen, RotateCcw
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GlossaryTooltip } from '@/components/GlossaryTooltip';
@@ -269,6 +269,10 @@ export default function Settings() {
               <Sliders className="h-4 w-4" />
               Alert Thresholds
             </TabsTrigger>
+            <TabsTrigger value="creative" className="gap-2">
+              <RotateCcw className="h-4 w-4" />
+              Creative Automation
+            </TabsTrigger>
             <TabsTrigger value="billing" className="gap-2">
               <CreditCard className="h-4 w-4" />
               Billing
@@ -510,6 +514,80 @@ export default function Settings() {
                   {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Save Thresholds
                 </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Creative Automation Tab */}
+          <TabsContent value="creative" className="space-y-6">
+            <Card variant="glow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RotateCcw className="h-5 w-5" />
+                  Creative Rotation
+                </CardTitle>
+                <CardDescription>
+                  Control how Lumi manages your creative lifecycle — auto-swap fatigued ads and retest paused performers
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Auto-Rotate Creative</Label>
+                    <p className="text-sm text-muted-foreground">
+                      When fatigue is detected (high frequency, dropping CTR), Lumi will automatically swap in bench creative
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationPrefs.critical_alerts}
+                    onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, critical_alerts: checked }))}
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label>Fatigue Frequency Threshold</Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min="2"
+                    max="10"
+                    value={alertThresholds.frequency_warning}
+                    onChange={(e) => setAlertThresholds(prev => ({ ...prev, frequency_warning: parseFloat(e.target.value) || 4 }))}
+                  />
+                  <p className="text-xs text-muted-foreground">Ads with frequency above this will be flagged as fatigued (default: 4)</p>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Auto-Retest Paused Ads</Label>
+                    <p className="text-sm text-muted-foreground">
+                      When the bench is empty, Lumi will re-enable previously paused ads that had good performance
+                    </p>
+                  </div>
+                  <Switch
+                    checked={notificationPrefs.performance_drops}
+                    onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, performance_drops: checked }))}
+                  />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label>Retest Cooldown (days)</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="7"
+                    max="60"
+                    defaultValue={14}
+                  />
+                  <p className="text-xs text-muted-foreground">Minimum days before a paused ad is eligible for retesting (default: 14)</p>
+                </div>
+
+                <div className="pt-4">
+                  <Button onClick={handleSaveAlertThresholds} disabled={saving} variant="lumi">
+                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Save Automation Settings
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
