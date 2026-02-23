@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ import {
 import { AdBreakdown } from './AdBreakdown';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
 import { LinkOfferModal } from './LinkOfferModal';
+import { CreativeBenchPanel } from './CreativeBenchPanel';
+import { WhatsWorkingCard } from './WhatsWorkingCard';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -155,6 +158,20 @@ export function CampaignInsightDetail({
   const [localDateRange, setLocalDateRange] = useState<string>('global');
   const [showLinkOfferModal, setShowLinkOfferModal] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(detailLevel === 'detailed');
+  const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
+
+  // Load auto_rotate_enabled from workspace
+  const handleAutoRotateChange = async (enabled: boolean) => {
+    setAutoRotateEnabled(enabled);
+    try {
+      await supabase
+        .from('campaign_workspaces')
+        .update({ auto_rotate_enabled: enabled })
+        .eq('id', campaign.id);
+    } catch (err) {
+      console.error('Failed to update auto-rotate:', err);
+    }
+  };
 
   const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
   const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
@@ -398,6 +415,21 @@ export function CampaignInsightDetail({
             dateRangeStart={dateRangeStart}
             dateRangeEnd={dateRangeEnd}
           />
+
+          {/* Creative Bench */}
+          {campaign.brandId && (
+            <CreativeBenchPanel
+              workspaceId={campaign.id}
+              brandId={campaign.brandId}
+              autoRotateEnabled={autoRotateEnabled}
+              onAutoRotateChange={handleAutoRotateChange}
+            />
+          )}
+
+          {/* What's Working Card */}
+          {campaign.brandId && (
+            <WhatsWorkingCard brandId={campaign.brandId} />
+          )}
 
           {/* Advanced Analysis (Collapsible) */}
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>

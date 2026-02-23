@@ -444,6 +444,7 @@ export type Database = {
         Row: {
           archived: boolean | null
           archived_at: string | null
+          auto_rotate_enabled: boolean | null
           brand_id: string
           campaign_builder_answers: Json | null
           chat_history: Json | null
@@ -470,6 +471,7 @@ export type Database = {
           production_items: Json | null
           progress_status: string
           published_at: string | null
+          rotation_preferences: Json | null
           selected_copy: Json | null
           strategy_id: string | null
           strategy_json: Json | null
@@ -481,6 +483,7 @@ export type Database = {
         Insert: {
           archived?: boolean | null
           archived_at?: string | null
+          auto_rotate_enabled?: boolean | null
           brand_id: string
           campaign_builder_answers?: Json | null
           chat_history?: Json | null
@@ -507,6 +510,7 @@ export type Database = {
           production_items?: Json | null
           progress_status?: string
           published_at?: string | null
+          rotation_preferences?: Json | null
           selected_copy?: Json | null
           strategy_id?: string | null
           strategy_json?: Json | null
@@ -518,6 +522,7 @@ export type Database = {
         Update: {
           archived?: boolean | null
           archived_at?: string | null
+          auto_rotate_enabled?: boolean | null
           brand_id?: string
           campaign_builder_answers?: Json | null
           chat_history?: Json | null
@@ -544,6 +549,7 @@ export type Database = {
           production_items?: Json | null
           progress_status?: string
           published_at?: string | null
+          rotation_preferences?: Json | null
           selected_copy?: Json | null
           strategy_id?: string | null
           strategy_json?: Json | null
@@ -633,6 +639,114 @@ export type Database = {
             columns: ["offer_id"]
             isOneToOne: false
             referencedRelation: "offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_bench: {
+        Row: {
+          auto_rotate_approved: boolean
+          brand_id: string
+          created_at: string
+          id: string
+          last_live_at: string | null
+          meta_ad_id: string | null
+          paused_at: string | null
+          performance_snapshot: Json | null
+          production_item_id: string | null
+          retest_eligible_at: string | null
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          auto_rotate_approved?: boolean
+          brand_id: string
+          created_at?: string
+          id?: string
+          last_live_at?: string | null
+          meta_ad_id?: string | null
+          paused_at?: string | null
+          performance_snapshot?: Json | null
+          production_item_id?: string | null
+          retest_eligible_at?: string | null
+          status?: string
+          workspace_id: string
+        }
+        Update: {
+          auto_rotate_approved?: boolean
+          brand_id?: string
+          created_at?: string
+          id?: string
+          last_live_at?: string | null
+          meta_ad_id?: string | null
+          paused_at?: string | null
+          performance_snapshot?: Json | null
+          production_item_id?: string | null
+          retest_eligible_at?: string | null
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_bench_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_bench_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creative_rotation_log: {
+        Row: {
+          action: string
+          brand_id: string
+          created_at: string
+          id: string
+          new_ad_id: string | null
+          old_ad_id: string | null
+          reason: string | null
+          workspace_id: string
+        }
+        Insert: {
+          action: string
+          brand_id: string
+          created_at?: string
+          id?: string
+          new_ad_id?: string | null
+          old_ad_id?: string | null
+          reason?: string | null
+          workspace_id: string
+        }
+        Update: {
+          action?: string
+          brand_id?: string
+          created_at?: string
+          id?: string
+          new_ad_id?: string | null
+          old_ad_id?: string | null
+          reason?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "creative_rotation_log_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "creative_rotation_log_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_workspaces"
             referencedColumns: ["id"]
           },
         ]

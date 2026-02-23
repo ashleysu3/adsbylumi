@@ -143,3 +143,12 @@ verify_jwt = false
 
 [functions.slack-daily-digest]
 verify_jwt = false
+
+[functions.rotate-creative]
+verify_jwt = false
+
+[functions.check-creative-fatigue]
+verify_jwt = false
+
+[functions.generate-trend-insights]
+verify_jwt = true
