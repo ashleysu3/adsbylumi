@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology, feedback } = await req.json();
+    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology, feedback, neverUseWords } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -116,7 +116,10 @@ testimonial quote from the content assets above.
     const keyBenefits = toArray(messagingGuidelines.key_benefits);
     const dontSay = toArray(messagingGuidelines.dont_say);
     const alwaysInclude = toArray(messagingGuidelines.always_include);
-
+    
+    // Combine never-use words from brand + offer messaging
+    const brandNeverUse = toArray(neverUseWords);
+    const allBannedWords = [...new Set([...dontSay, ...brandNeverUse])];
     // Build feedback context if user provided regeneration feedback
     let feedbackContext = "";
     if (feedback) {
@@ -169,7 +172,7 @@ ${brandInfo?.brand_voice ? `Brand Voice: ${brandInfo.brand_voice}` : ''}
 ${messagingGuidelines.core_message ? `Core Message: ${messagingGuidelines.core_message}` : ''}
 ${keyBenefits.length ? `Key Benefits:\n${keyBenefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
 ${messagingGuidelines.tone_notes ? `Tone Notes: ${messagingGuidelines.tone_notes}` : ''}
-${dontSay.length ? `\n⚠️ NEVER USE:\n${dontSay.map((d: string) => `- "${d}"`).join('\n')}` : ''}
+${allBannedWords.length ? `\n🚫 NEVER USE THESE WORDS/PHRASES (strictly banned):\n${allBannedWords.map((d: string) => `- "${d}"`).join('\n')}\nDo NOT include any of these words in any generated copy. Find alternative phrasing.` : ''}
 ${alwaysInclude.length ? `\n✅ ALWAYS INCLUDE:\n${alwaysInclude.map((a: string) => `- ${a}`).join('\n')}` : ''}
 
 ## PRODUCT PSYCHOLOGY
@@ -246,7 +249,7 @@ Return valid JSON with this structure:
 }
 
 ## COPY REQUIREMENTS
-- Headlines: Max 40 characters, punchy, scroll-stopping
+- Headlines: STRICT MAX 25 characters. Every headline MUST be under 26 characters total. Count carefully. This is a hard requirement — headlines over 25 characters will be rejected.
 - Descriptions: Max 27 characters. Short action phrase that complements the headline (e.g., "Try it free", "See the results"). Don't repeat the headline.
 - Primary Copy: 
   - Short: 50-100 words

@@ -119,6 +119,7 @@ export function AngleCopyEditor({
           offerData,
           audiencePsychology,
           feedback: feedback || undefined,
+          neverUseWords: brandInfo?.never_use_words || [],
         },
       });
       
@@ -149,6 +150,7 @@ export function AngleCopyEditor({
           offerData,
           audiencePsychology,
           feedback: feedback || undefined,
+          neverUseWords: brandInfo?.never_use_words || [],
         },
       });
       
@@ -374,11 +376,14 @@ export function AngleCopyEditor({
                         value={h.text}
                         onChange={(e) => updateVariation("headlines", i, e.target.value)}
                         placeholder="Enter headline..."
-                        maxLength={40}
+                        maxLength={25}
                         className="pr-12"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        {h.text?.length || 0}/40
+                      <span className={cn(
+                        "absolute right-3 top-1/2 -translate-y-1/2 text-xs",
+                        (h.text?.length || 0) > 25 ? "text-destructive" : "text-muted-foreground"
+                      )}>
+                        {h.text?.length || 0}/25
                       </span>
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => removeVariation("headlines", i)}>
