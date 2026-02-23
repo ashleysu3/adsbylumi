@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Loader2, Sparkles, CheckCircle2, AlertCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { LinkNewOfferToCampaignDialog } from "./LinkNewOfferToCampaignDialog";
 
 type PageGoal = 'purchase' | 'discovery_call' | 'free_resource' | 'other';
 
@@ -56,6 +57,14 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
   const [showExtractedDetails, setShowExtractedDetails] = useState(false);
   const [extractionFailed, setExtractionFailed] = useState(false);
   const [pastedContent, setPastedContent] = useState("");
+  const [linkCampaignDialog, setLinkCampaignDialog] = useState<{
+    open: boolean;
+    offerId: string;
+    offerName: string;
+    offerDescription?: string | null;
+    offerPrice?: string | null;
+    offerUrl?: string | null;
+  } | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     url: "",
@@ -286,6 +295,16 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
         toast.success("Offer created with product psychology");
       }
 
+      // Show link-to-campaign dialog
+      setLinkCampaignDialog({
+        open: true,
+        offerId: offer.id,
+        offerName: formData.name,
+        offerDescription: formData.description,
+        offerPrice: formData.price_point,
+        offerUrl: formData.url,
+      });
+
       onSuccess();
       onOpenChange(false);
       setFormData({ name: "", url: "", description: "", price_point: "", target_outcome: "", page_goal: "" });
@@ -313,6 +332,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -650,5 +670,21 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
         </form>
       </DialogContent>
     </Dialog>
+
+    {linkCampaignDialog && (
+      <LinkNewOfferToCampaignDialog
+        open={linkCampaignDialog.open}
+        onOpenChange={(open) => {
+          if (!open) setLinkCampaignDialog(null);
+        }}
+        brandId={brandId}
+        offerId={linkCampaignDialog.offerId}
+        offerName={linkCampaignDialog.offerName}
+        offerDescription={linkCampaignDialog.offerDescription}
+        offerPrice={linkCampaignDialog.offerPrice}
+        offerUrl={linkCampaignDialog.offerUrl}
+      />
+    )}
+    </>
   );
 }
