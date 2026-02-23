@@ -1,48 +1,112 @@
 
-# Auto-Verify Tracking From Live Performance Data
 
-## The Problem
-The `tracking_verified` flag is only set to `true` when a user explicitly uses the "Let Lumi set it up" flow. But campaigns set up outside of Lumi (e.g., directly in Ads Manager) already have working tracking — you can see conversion values coming in. The app still shows "Tracking not verified" because it doesn't check the actual data.
+# Deep Creative Analysis + Actionable Recommendations in Results Dashboard
 
-## The Fix
-**If conversions are coming in, tracking is verified. Period.**
+## Overview
 
-We add a simple inference layer: when metrics are loaded for each campaign, if the campaign is reporting leads or purchases (depending on objective), we treat tracking as verified — and silently update the database flag so the badge never shows again.
+Three connected improvements to the Results dashboard and Creative Studio:
 
-### What Changes
+1. **Enhanced "What's Working" analysis** — Pull actual ad-level performance data from Meta (via the existing `analyze-past-creatives` edge function) and feed it into the `generate-trend-insights` function so the AI analyzes *real performance data*, not just creative bench snapshots. This includes cross-campaign pattern detection (e.g., "talking head videos outperform graphics across all your campaigns").
 
-**`src/components/insights/InsightsHome.tsx`**
-- After metrics are loaded for each campaign, check if conversions exist based on objective:
-  - Lead campaigns: if `metrics.leads > 0`, tracking is working
-  - Purchase/Sales campaigns: if `metrics.purchases > 0`, tracking is working
-- If conversions are detected but `trackingVerified` is `false`:
-  - Hide the "Tracking not verified" badge immediately (local state)
-  - Fire a background Supabase update to set `tracking_verified = true` on that workspace so it never shows again
+2. **"Add to Production Checklist" buttons** on each creative recommendation — so users can send recommendations directly to their Creative Studio production checklist with one click.
 
-**`src/pages/Data.tsx`**
-- After `fetchAllMetrics` completes, run a quick pass over campaigns: for any campaign where metrics show conversions but `trackingVerified` is still `false`, update the database in the background
+3. **Auto-save verification** — Confirm and strengthen the existing auto-save mechanism in Creative Studio so users can leave and return to the exact same state (angles, grid, copy, production items).
 
-### Logic (added after metrics load)
+---
 
-```text
-For each campaign with metrics:
-  objective is "leads" or similar  -> check metrics.leads > 0
-  objective is "sales"/"purchase"  -> check metrics.purchases > 0
+## What Changes
 
-  If conversions > 0 AND trackingVerified === false:
-    1. Update local state to trackingVerified = true
-    2. Background: UPDATE campaign_workspaces 
-       SET tracking_verified = true 
-       WHERE id = campaign.id
-```
+### 1. Enhanced Edge Function: `generate-trend-insights`
 
-### Why This Works
-- No user action required — it's fully automatic
-- Existing campaigns with working tracking get cleared immediately on next page load
-- New campaigns still go through the Event Setup Assistant during build
-- The database flag gets permanently updated so it's a one-time fix per campaign
-- Zero false positives: if Meta is reporting conversions, the event is firing
+Currently this function only looks at `creative_bench` data (which may be empty). We will enhance it to:
+
+- Call the Meta API directly (like `analyze-past-creatives` already does) to fetch ad-level insights for the last 90 days
+- Include ad names, CTR, CPC, ROAS, spend, reach, and conversion data
+- Also fetch ad creative details (thumbnail URLs, format type inferred from naming conventions)
+- Feed ALL of this into the AI prompt so it can identify:
+  - Which **formats** work best (talking head vs. static vs. carousel vs. UGC)
+  - Which **hooks/messaging patterns** appear in top performers
+  - Which **psychology triggers** resonate with the audience
+  - Cross-campaign patterns (same format winning across different objectives)
+  - What specifically does NOT work and why
+- Return enhanced recommendation objects that include enough detail to be added to a production checklist:
+  ```
+  recommendations: [{
+    idea: string,
+    format: "talking_head" | "static" | "carousel" | "ugc" | "graphic",
+    hook_suggestion: string,
+    psychology_trigger: string,
+    guidance: string,        // NEW: production guidance
+    why_it_works: string,    // NEW: explanation of the psychology
+    based_on: string,        // NEW: which top performer inspired this
+  }]
+  ```
+
+### 2. Updated Component: `WhatsWorkingCard.tsx`
+
+- Add an "Add to Checklist" button on each recommendation card
+- When clicked, save the recommendation to the `content_ideas` table as a `creative_concept` with type `recommendation` and relevant tags
+- Also show a "Add All to Checklist" bulk action button
+- The button navigates to Creative Studio after saving, or shows a success toast with a link
+- Pass `workspaceId` (optional) so recommendations can be tied to a specific campaign workspace
+
+### 3. Updated Component: `InsightsHome.tsx` and `CampaignInsightDetail.tsx`
+
+- Pass `workspaceId` to `WhatsWorkingCard` when viewing from a campaign detail
+- The WhatsWorkingCard already appears in `CampaignInsightDetail` — just needs the workspace ID forwarded
+
+### 4. Auto-Save Verification in Creative Studio
+
+The existing auto-save system already persists:
+- `availableAngles` via `creative_json.angles`
+- `selectedAngleIds` via debounced save (800ms)
+- `gridData` via `creative_json.gridData`
+- `productionItems` via `production_items` column
+- `angleCopy` via `creative_json.angle_copy`
+- `lastActiveTab` via `creative_json.lastActiveTab`
+
+This is already working. The one gap is that `creativeIntelligence` data (the past-performance analysis) is cached in `creative_json.creativeIntelligence` but recommendations from the Results dashboard are separate. We will ensure:
+- Recommendations saved from Results go to `content_ideas` table (already the pattern used by "Save for Later")
+- Creative Studio already loads `content_ideas` on init and displays them
+- No additional auto-save changes needed — the system already persists everything
+
+---
+
+## Technical Details
+
+### Edge Function Changes: `generate-trend-insights/index.ts`
+
+- Add Meta API calls to fetch ad-level insights (similar to `analyze-past-creatives`)
+- Fetch brand's `meta_account_id` and `meta_access_token`
+- Pull last 90 days of ad data with `spend > $10` and `reach >= 500`
+- Also fetch ad creative specs to detect format types from naming patterns
+- Merge this real data with existing `creative_bench` data
+- Expand the AI prompt to analyze real ad performance and produce richer recommendations
+- Add new fields to the `suggest_trends` tool schema: `guidance`, `why_it_works`, `based_on`
+
+### Component Changes: `WhatsWorkingCard.tsx`
+
+- Accept optional `workspaceId` prop
+- Add `brandId` to each recommendation card's action area:
+  - "Add to Checklist" button (Plus icon)
+  - Inserts into `content_ideas` table with:
+    - `brand_id`: from props
+    - `title`: recommendation idea
+    - `content`: JSON with format, hook, guidance, psychology trigger, why_it_works
+    - `type`: "creative_concept"
+    - `status`: "idea"
+    - `tags`: [format, "from-insights", psychology_trigger]
+  - Toast: "Added to your creative ideas — find it in Creative Studio"
+- Add "Add All" button below the recommendations list
+- Update "Create More Like This" button to also pass performance context via URL params
+
+### Component Changes: `CampaignInsightDetail.tsx`
+
+- Pass `campaign.id` as `workspaceId` to `WhatsWorkingCard`
 
 ### Files Modified
-1. **`src/pages/Data.tsx`** — Add a `autoVerifyTracking` function that runs after metrics are fetched, checks for conversion data, and updates both local state and the database
-2. **`src/components/insights/InsightsHome.tsx`** — Update the badge logic to also consider live metrics as proof of tracking (belt-and-suspenders with the Data.tsx fix)
+
+1. `supabase/functions/generate-trend-insights/index.ts` — Add Meta API data fetching and enhanced AI prompt
+2. `src/components/insights/WhatsWorkingCard.tsx` — Add "Add to Checklist" buttons, accept workspaceId prop, enhanced recommendation display
+3. `src/components/insights/CampaignInsightDetail.tsx` — Forward workspaceId to WhatsWorkingCard
+
