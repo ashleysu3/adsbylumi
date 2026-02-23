@@ -56,6 +56,7 @@ interface CampaignData {
   offerId?: string | null;
   offerName?: string | null;
   brandId?: string;
+  dailyBudget?: number;
 }
 
 interface AccountMetrics {
@@ -296,6 +297,7 @@ export default function Data() {
           offer_id,
           offer_name,
           brand_id,
+          campaign_builder_answers,
           campaign_templates!campaign_workspaces_template_id_fkey (
             id,
             name,
@@ -335,18 +337,23 @@ export default function Data() {
       });
       setUserGoals(prev => ({ ...prev, ...loadedGoals }));
 
-      const campaignData: CampaignData[] = publishedWorkspaces.map(w => ({
-        id: w.id,
-        name: w.name,
-        templateName: (w.campaign_templates as any)?.name || null,
-        objective: (w.campaign_templates as any)?.objective || null,
-        metrics: null,
-        userGoal: loadedGoals[w.id] || null,
-        status: w.meta_campaign_status || 'live',
-        offerId: w.offer_id || null,
-        offerName: w.offer_name || null,
-        brandId: w.brand_id,
-      }));
+      const campaignData: CampaignData[] = publishedWorkspaces.map(w => {
+        const builderAnswers = w.campaign_builder_answers as any;
+        const dailyBudget = builderAnswers?.budget ? Number(builderAnswers.budget) : undefined;
+        return {
+          id: w.id,
+          name: w.name,
+          templateName: (w.campaign_templates as any)?.name || null,
+          objective: (w.campaign_templates as any)?.objective || null,
+          metrics: null,
+          userGoal: loadedGoals[w.id] || null,
+          status: w.meta_campaign_status || 'live',
+          offerId: w.offer_id || null,
+          offerName: w.offer_name || null,
+          brandId: w.brand_id,
+          dailyBudget,
+        };
+      });
 
       setCampaigns(campaignData);
 

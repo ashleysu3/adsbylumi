@@ -327,3 +327,40 @@ export function getLumiStatusLabel(status: 'healthy' | 'attention' | 'critical' 
     case 'no-data': return 'No Data';
   }
 }
+
+export interface ObjectiveMetric {
+  label: string;
+  value: string;
+}
+
+export function getObjectiveMetrics(
+  metrics: Record<string, number | null | undefined> | null,
+  kpiConfig: LumiKPIConfig
+): ObjectiveMetric[] {
+  if (!metrics) return [];
+  const result: ObjectiveMetric[] = [];
+  const primary = kpiConfig.primary;
+
+  if (primary === 'cpl') {
+    if (metrics.leads != null) result.push({ label: 'Leads', value: String(Math.round(metrics.leads)) });
+    if (metrics.cpl != null && metrics.cpl !== 0) result.push({ label: 'CPL', value: `$${Number(metrics.cpl).toFixed(2)}` });
+  } else if (primary === 'cpp' || primary === 'roas') {
+    if (metrics.purchases != null) result.push({ label: 'Purchases', value: String(Math.round(metrics.purchases)) });
+    if (metrics.roas != null && metrics.roas !== 0) result.push({ label: 'ROAS', value: `${Number(metrics.roas).toFixed(1)}x` });
+    if (metrics.cpp != null && metrics.cpp !== 0) result.push({ label: 'CPP', value: `$${Number(metrics.cpp).toFixed(2)}` });
+  } else if (primary === 'cpc') {
+    if (metrics.linkClicks != null || metrics.clicks != null) {
+      const clicks = metrics.linkClicks ?? metrics.clicks ?? 0;
+      result.push({ label: 'Clicks', value: String(Math.round(clicks)) });
+    }
+    if (metrics.cpc != null && metrics.cpc !== 0) result.push({ label: 'CPC', value: `$${Number(metrics.cpc).toFixed(2)}` });
+  } else if (primary === 'costPerThruPlay') {
+    if (metrics.videoThruPlays != null) result.push({ label: 'ThruPlays', value: String(Math.round(metrics.videoThruPlays)) });
+    if (metrics.costPerThruPlay != null && metrics.costPerThruPlay !== 0) result.push({ label: 'Cost/ThruPlay', value: `$${Number(metrics.costPerThruPlay).toFixed(3)}` });
+  } else if (primary === 'cpm') {
+    if (metrics.impressions != null) result.push({ label: 'Impressions', value: Number(metrics.impressions).toLocaleString() });
+    if (metrics.cpm != null && metrics.cpm !== 0) result.push({ label: 'CPM', value: `$${Number(metrics.cpm).toFixed(2)}` });
+  }
+
+  return result;
+}

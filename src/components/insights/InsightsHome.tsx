@@ -9,13 +9,17 @@ import {
   Sparkles, 
   Calendar,
   Package,
-  Loader2
+  Loader2,
+  DollarSign
 } from 'lucide-react';
 import { 
   getLumiKPIConfig, 
   getLumiKPIStatus,
   getLumiStatusDot,
+  getObjectiveMetrics,
 } from '@/lib/lumi-kpi-config';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
 import { DateRangePicker } from './DateRangePicker';
 import { StatusFilter } from './StatusFilter';
 import { AccountOverview } from './AccountOverview';
@@ -54,6 +58,7 @@ interface Campaign {
   offerId?: string | null;
   offerName?: string | null;
   brandId?: string;
+  dailyBudget?: number;
 }
 
 interface AccountMetrics {
@@ -110,6 +115,10 @@ function getActionRecommendation(status: string): string {
   }
 }
 
+function isBudgetAction(action: string): boolean {
+  return action === 'Increase budget' || action === 'Keep spend the same';
+}
+
 export function InsightsHome({ 
   campaigns, 
   dateRange, 
@@ -160,7 +169,6 @@ export function InsightsHome({
         throw new Error(data?.error || error?.message || `Failed to ${action} campaign`);
       }
       toast.success(`Campaign ${action === 'pause' ? 'paused' : 'resumed'}`);
-      // Parent will refetch
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -257,6 +265,7 @@ export function InsightsHome({
             const actionRec = getActionRecommendation(status);
             const isActive = campaign.status === 'active' || campaign.status === 'live';
             const isToggling = togglingCampaign === campaign.id;
+            const objMetrics = getObjectiveMetrics(campaign.metrics, kpiConfig);
 
             return (
               <Card 
@@ -266,13 +275,16 @@ export function InsightsHome({
               >
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-col gap-3">
-                    {/* Row 1: Name + status dot + toggle */}
+                    {/* Row 1: Name + status dot + Live/Paused label + toggle */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusDot}`} />
                         <h3 className="font-display font-semibold text-sm sm:text-base truncate">{campaign.name}</h3>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-xs font-medium ${isActive ? 'text-green-600' : 'text-muted-foreground'}`}>
+                          {isActive ? 'Live' : 'Paused'}
+                        </span>
                         {isToggling ? (
                           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                         ) : (
@@ -285,17 +297,70 @@ export function InsightsHome({
                       </div>
                     </div>
 
-                    {/* Row 2: Verdict + Action */}
+                    {/* Row 2: Budget + Spend + Objective KPIs */}
+                    <div className="flex flex-wrap items-center gap-2 pl-5">
+                      {campaign.dailyBudget != null && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                          <DollarSign className="h-3 w-3" />
+                          ${campaign.dailyBudget}/day
+                        </span>
+                      )}
+                      {campaign.metrics?.spend != null && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                          ${Number(campaign.metrics.spend).toFixed(2)} spent
+                        </span>
+                      )}
+                      {objMetrics.map((m, i) => (
+                        <span key={i} className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                          {m.value} {m.label}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Row 3: Verdict + Action */}
                     <div className="flex items-center justify-between gap-2 pl-5">
                       <span className={`text-sm font-medium ${verdict.colorClass}`}>
                         {verdict.label}
                       </span>
-                      <Badge variant="outline" className="text-xs rounded-full">
-                        {actionRec}
-                      </Badge>
+                      {isBudgetAction(actionRec) ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors"
+                            >
+                              {actionRec}
+                            </Badge>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-0" align="end">
+                            <BudgetAdjustmentPanel
+                              workspaceId={campaign.id}
+                              workspaceName={campaign.name}
+                              currentBudget={campaign.dailyBudget || 25}
+                              metrics={{
+                                roas: campaign.metrics?.roas,
+                                cpl: campaign.metrics?.cpl,
+                                cpp: campaign.metrics?.cpp,
+                                ctr: campaign.metrics?.cpc ? undefined : undefined,
+                                frequency: undefined,
+                                spend: campaign.metrics?.spend,
+                              }}
+                              inline
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors"
+                          onClick={() => onViewInsights(campaign.id)}
+                        >
+                          {actionRec}
+                        </Badge>
+                      )}
                     </div>
 
-                    {/* Row 3: View button */}
+                    {/* Row 4: View button */}
                     <div className="flex items-center gap-2 pt-1 pl-5">
                       <Button
                         onClick={() => onViewInsights(campaign.id)}
