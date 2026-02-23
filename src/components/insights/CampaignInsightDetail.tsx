@@ -428,7 +428,7 @@ export function CampaignInsightDetail({
 
           {/* What's Working Card */}
           {campaign.brandId && (
-            <WhatsWorkingCard brandId={campaign.brandId} />
+            <WhatsWorkingCard brandId={campaign.brandId} workspaceId={campaign.id} />
           )}
 
           {/* Advanced Analysis (Collapsible) */}
