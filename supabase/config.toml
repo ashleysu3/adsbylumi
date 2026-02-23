@@ -152,3 +152,9 @@ verify_jwt = false
 
 [functions.generate-trend-insights]
 verify_jwt = true
+
+[functions.slack-lumi-chat]
+verify_jwt = false
+
+[functions.slack-error-alert]
+verify_jwt = false

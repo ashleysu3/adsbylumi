@@ -242,6 +242,27 @@ Deno.serve(async (req) => {
 
     console.log(`Performance reports complete: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
 
+    // Slack alert if emails failed
+    if (errorCount > 0) {
+      try {
+        const failedEmails = results.filter(r => r.status === 'error').map(r => `• ${r.workspaceName}: ${r.error}`).join('\n');
+        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-error-alert`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+          },
+          body: JSON.stringify({
+            category: 'Email',
+            severity: 'warning',
+            title: `${errorCount} Report Email${errorCount !== 1 ? 's' : ''} Failed`,
+            message: `${sentCount} sent, ${errorCount} failed:\n${failedEmails}`,
+            source: 'send-weekly-reports',
+          }),
+        });
+      } catch { /* ignore */ }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -260,6 +281,23 @@ Deno.serve(async (req) => {
     );
   } catch (error: any) {
     console.error('Error in send-weekly-reports:', error);
+    // Slack alert for fatal email system errors
+    try {
+      await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/slack-error-alert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+        },
+        body: JSON.stringify({
+          category: 'Email',
+          severity: 'critical',
+          title: 'Weekly Reports System Failure',
+          message: `Fatal error in send-weekly-reports: ${error.message}`,
+          source: 'send-weekly-reports',
+        }),
+      });
+    } catch { /* ignore */ }
     const origin = req.headers.get('origin');
     const corsHeaders = getCorsHeaders(origin);
     return new Response(
