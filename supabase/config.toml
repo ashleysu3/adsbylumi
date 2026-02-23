@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.slack-error-alert]
 verify_jwt = false
+
+[functions.create-custom-conversion]
+verify_jwt = false
