@@ -40,7 +40,7 @@ export function FloatingBugButton() {
           whileTap={{ scale: 0.95 }}
         >
           {/* Ladybug body */}
-          <div className="relative w-8 h-8">
+          <div className="relative w-4 h-4">
             {/* Shadow */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-1.5 bg-black/10 rounded-full blur-sm" />
             
