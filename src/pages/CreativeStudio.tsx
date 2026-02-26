@@ -153,7 +153,7 @@ const getIdleHelpMessage = (
     if (productionItems.length === 0) {
       return "Browse the concepts and click 'Add to Checklist' on the ones you want to produce.";
     }
-    return `You have ${productionItems.length} concepts selected. Continue to Ad Copy to write your headlines and descriptions.`;
+    return `You have ${productionItems.length} concepts selected. Browse each concept angle, then continue to Ad Copy.`;
   }
   if (activeTab === "copy") {
     if (productionItems.length === 0) {
@@ -803,8 +803,14 @@ export default function CreativeStudio() {
       return null;
     }
     if (activeTab === "concepts") {
-      if (productionItems.length > 0) return { label: "Continue to Ad Copy", icon: ArrowRight, action: () => { setShouldAutoGenerateCopy(true); setActiveTab("copy"); }, disabled: false };
-      return null;
+      if (productionItems.length === 0) return null;
+      const visibleAngles = availableAngles.filter(a => selectedAngleIds.includes(a.id));
+      const currentIndex = visibleAngles.findIndex(a => a.id === activeAngleId);
+      const isLastAngle = currentIndex >= visibleAngles.length - 1;
+      if (isLastAngle) {
+        return { label: "Continue to Ad Copy", icon: ArrowRight, action: () => { setShouldAutoGenerateCopy(true); setActiveTab("copy"); }, disabled: false };
+      }
+      return { label: "Next Concept", icon: ArrowRight, action: () => setActiveAngleId(visibleAngles[currentIndex + 1].id), disabled: false };
     }
     if (activeTab === "copy") {
       return { label: "Continue to Build", icon: ArrowRight, action: () => setActiveTab("build"), disabled: false };
@@ -1004,7 +1010,30 @@ export default function CreativeStudio() {
                     );
                   })}
                 </div>
-                <div className="flex justify-end"><Button onClick={() => { setShouldAutoGenerateCopy(true); setActiveTab("copy"); }} disabled={productionItems.length === 0} className="gap-2">Continue to Ad Copy<ArrowRight className="h-4 w-4" /></Button></div>
+                <div className="flex justify-end">
+                  {(() => {
+                    const visibleAngles = availableAngles.filter(a => selectedAngleIds.includes(a.id));
+                    const currentIndex = visibleAngles.findIndex(a => a.id === activeAngleId);
+                    const isLastAngle = currentIndex >= visibleAngles.length - 1;
+                    return (
+                      <Button
+                        onClick={() => {
+                          if (isLastAngle) {
+                            setShouldAutoGenerateCopy(true);
+                            setActiveTab("copy");
+                          } else {
+                            setActiveAngleId(visibleAngles[currentIndex + 1].id);
+                          }
+                        }}
+                        disabled={productionItems.length === 0}
+                        className="gap-2"
+                      >
+                        {isLastAngle ? "Continue to Ad Copy" : "Next Concept"}
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    );
+                  })()}
+                </div>
               </div>
             )}
           </TabsContent>
