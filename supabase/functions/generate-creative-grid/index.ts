@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
 
     const { data: kbDocs } = await supabase
       .from("knowledge_documents")
-      .select("*")
+      .select("title, content")
       .eq("active", true)
       .in("category", [
         "creative_angles", 
@@ -47,17 +47,15 @@ Deno.serve(async (req) => {
         "copy_frameworks", 
         "scripts",
         "psychology",
-        "buyer_psychology",
-        "niche",
-        "niche_knowledge",
-        "meta_best_practices",
-        "creative_department",
-        "ad_planner",
-        "customer_journey",
-        "offer_mapping"
-      ]);
+      ])
+      .order("priority", { ascending: false })
+      .limit(8);
 
-    const kbContext = kbDocs?.map(doc => `## ${doc.title}\n${doc.content}`).join("\n\n") || "";
+    // Cap KB context to prevent prompt bloat
+    const kbContext = (kbDocs || []).map(doc => {
+      const truncated = doc.content.length > 1500 ? doc.content.slice(0, 1500) + "..." : doc.content;
+      return `## ${doc.title}\n${truncated}`;
+    }).join("\n\n");
 
      // Fetch content assets for this brand
      let contentAssetsContext = "";
@@ -461,7 +459,7 @@ Remember:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-2.5-flash",
         max_tokens: 32000,
         messages: [
           { role: "system", content: systemPrompt },
