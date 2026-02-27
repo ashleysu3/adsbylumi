@@ -10,7 +10,7 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, FolderOpen, Video, Film, Image, Trash2,
-  X, HelpCircle, ArrowLeft, Check
+  X, HelpCircle, ArrowLeft, Check, FileDown, Printer
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { LumiThinking } from "@/components/LumiThinking";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
+import { CreativeBriefDocument } from "@/components/creative/CreativeBriefDocument";
 import { CreativeIntelligenceCard, CreativeIntelligence } from "@/components/creative/CreativeIntelligenceCard";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
@@ -47,6 +48,13 @@ import {
    DialogHeader,
    DialogTitle,
  } from "@/components/ui/dialog";
+ import {
+   Sheet,
+   SheetContent,
+   SheetHeader,
+   SheetTitle,
+ } from "@/components/ui/sheet";
+ import { ScrollArea } from "@/components/ui/scroll-area";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
@@ -224,6 +232,9 @@ export default function CreativeStudio() {
 
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+
+  // Creative Brief state
+  const [showBrief, setShowBrief] = useState(false);
 
   const urlWorkspaceId = searchParams.get("workspace");
 
@@ -517,6 +528,12 @@ export default function CreativeStudio() {
       toast.error("Failed to save copy");
     }
   }, [workspace, angleCopy]);
+
+  const handleAddCustomAngle = useCallback((newAngle: CreativeAngle) => {
+    setAvailableAngles(prev => [...prev, newAngle]);
+    // Persist immediately
+    saveCreativeState({ angles: [...availableAngles, newAngle] });
+  }, [availableAngles, saveCreativeState]);
 
   const handleRegenerateClick = () => {
     // If user has downstream progress, show confirmation dialog
@@ -880,6 +897,12 @@ export default function CreativeStudio() {
               <SelectTrigger className="w-[180px] sm:w-[240px]"><FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Select campaign" /></SelectTrigger>
               <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
             </Select>
+            {gridData.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => setShowBrief(true)} className="gap-2 hidden sm:flex">
+                <FileDown className="h-4 w-4" />
+                Creative Brief
+              </Button>
+            )}
             {primaryAction && (
               <Button 
                 variant="lumi"
@@ -934,7 +957,7 @@ export default function CreativeStudio() {
                 {creativeIntelligence && (
                   <CreativeIntelligenceCard intelligence={creativeIntelligence} />
                 )}
-                <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} />
+                <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} brandName={workspace?.brands?.name} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
                 <div className="flex justify-end"><Button variant="outline" onClick={handleRegenerateClick} disabled={generating}><Sparkles className="h-4 w-4 mr-2" />Regenerate</Button></div>
               </div>
             )}
@@ -1182,6 +1205,38 @@ export default function CreativeStudio() {
       
       <LumiThinking isOpen={generating} customCopy={creativeGenerationCopy} />
       <CreativeStudioExplainer open={showExplainer} onClose={closeExplainer} />
+      
+      {/* Creative Brief Sheet */}
+      <Sheet open={showBrief} onOpenChange={setShowBrief}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl p-0">
+          <SheetHeader className="p-6 pb-0">
+            <SheetTitle className="flex items-center justify-between">
+              <span>Creative Brief</span>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+                <Printer className="h-4 w-4" />
+                Print / PDF
+              </Button>
+            </SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="h-[calc(100vh-80px)] p-6">
+            <CreativeBriefDocument
+              brandName={workspace?.brands?.name || activeBrand?.name || ""}
+              offerData={{
+                name: workspace?.offer_name || undefined,
+                description: workspace?.offer_description || undefined,
+                price: workspace?.offer_price || undefined,
+                url: workspace?.offer_url || undefined,
+              }}
+              productPsychology={null}
+              audiencePsychology={workspace?.brands?.audience_psychology}
+              angles={availableAngles}
+              selectedAngleIds={selectedAngleIds}
+              gridData={gridData}
+              angleCopy={angleCopy}
+            />
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
       
       {/* Regeneration Confirmation Dialog */}
       <AlertDialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
