@@ -3,14 +3,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, ArrowRight, Lock, Pin } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Sparkles, ArrowRight, Lock, Pin, Plus, Loader2, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export interface CreativeAngle {
   id: string;
   name: string;
   description: string;
   isDefault?: boolean;
+  isCustom?: boolean;
 }
 
 interface AngleSelectorProps {
@@ -19,6 +31,9 @@ interface AngleSelectorProps {
   onSelectionChange: (selected: string[]) => void;
   onContinue: () => void;
   isGenerating?: boolean;
+  onAddCustomAngle?: (angle: CreativeAngle) => void;
+  brandName?: string;
+  offerData?: { name?: string; description?: string; price?: string };
 }
 
 export function AngleSelector({
@@ -26,10 +41,19 @@ export function AngleSelector({
   selectedAngles,
   onSelectionChange,
   onContinue,
-  isGenerating
+  isGenerating,
+  onAddCustomAngle,
+  brandName,
+  offerData
 }: AngleSelectorProps) {
+  const [showCustomDialog, setShowCustomDialog] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const [customLoading, setCustomLoading] = useState(false);
+  const [clarificationQuestion, setClarificationQuestion] = useState<string | null>(null);
+  const [clarificationAnswer, setClarificationAnswer] = useState("");
+  const [originalInput, setOriginalInput] = useState("");
+
   const toggleAngle = (angleId: string) => {
-    // Prevent deselecting the default angle
     const angle = angles.find(a => a.id === angleId);
     if (angle?.isDefault) return;
     
@@ -40,8 +64,54 @@ export function AngleSelector({
     }
   };
 
-  // Default angles don't count toward the user's selection limit display
-  const userSelectedCount = selectedAngles.filter(id => !angles.find(a => a.id === id)?.isDefault).length;
+  const handleCustomSubmit = async (inputText: string, clarification?: string) => {
+    setCustomLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-custom-angle", {
+        body: {
+          userInput: inputText,
+          clarificationAnswer: clarification || undefined,
+          brandName,
+          offerData,
+          existingAngles: angles,
+        },
+      });
+      if (error) throw error;
+
+      if (data.needsClarification) {
+        setClarificationQuestion(data.question);
+        setOriginalInput(inputText);
+        setClarificationAnswer("");
+      } else if (data.angle) {
+        const newAngle: CreativeAngle = {
+          id: `custom_${Date.now()}`,
+          name: data.angle.name,
+          description: data.angle.description,
+          isCustom: true,
+        };
+        onAddCustomAngle?.(newAngle);
+        // Auto-select the new angle if under limit
+        if (selectedAngles.length < 5) {
+          onSelectionChange([...selectedAngles, newAngle.id]);
+        }
+        resetCustomDialog();
+        toast.success(`"${newAngle.name}" added!`);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to create angle");
+    } finally {
+      setCustomLoading(false);
+    }
+  };
+
+  const resetCustomDialog = () => {
+    setShowCustomDialog(false);
+    setCustomInput("");
+    setClarificationQuestion(null);
+    setClarificationAnswer("");
+    setOriginalInput("");
+  };
+
   const canContinue = selectedAngles.length >= 1 && selectedAngles.length <= 5;
 
   return (
@@ -51,7 +121,7 @@ export function AngleSelector({
         <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto px-2">
           Select up to 5 angles. Each angle becomes a set of creative ideas.
         </p>
-        {/* Visual progress indicator with animations */}
+        {/* Visual progress indicator */}
         <div className="flex items-center justify-center gap-2">
           {[1, 2, 3, 4, 5].map((slot) => {
             const isFilled = slot <= selectedAngles.length;
@@ -65,9 +135,7 @@ export function AngleSelector({
                   isJustFilled && "animate-[bounce_0.4s_ease-out]",
                   isFilled && "scale-110"
                 )}
-                style={{
-                  transitionDelay: isFilled ? `${(slot - 1) * 50}ms` : '0ms'
-                }}
+                style={{ transitionDelay: isFilled ? `${(slot - 1) * 50}ms` : '0ms' }}
                 title={`Slot ${slot}`}
               />
             );
@@ -76,11 +144,7 @@ export function AngleSelector({
             "ml-2 text-xs sm:text-sm transition-colors duration-200",
             selectedAngles.length >= 1 ? "text-primary font-medium" : "text-muted-foreground"
           )}>
-            {selectedAngles.length === 0 
-              ? "Select at least 1"
-              : selectedAngles.length === 5 
-              ? "Max" 
-              : `${selectedAngles.length}/5`}
+            {selectedAngles.length === 0 ? "Select at least 1" : selectedAngles.length === 5 ? "Max" : `${selectedAngles.length}/5`}
           </span>
         </div>
       </div>
@@ -113,9 +177,10 @@ export function AngleSelector({
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {isDefault && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">
-                        Always included
-                      </Badge>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">Always included</Badge>
+                    )}
+                    {angle.isCustom && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-primary/40 text-primary">Custom</Badge>
                     )}
                     {isDefault ? (
                       <Lock className="h-4 w-4 text-muted-foreground" />
@@ -131,13 +196,28 @@ export function AngleSelector({
                 </div>
               </CardHeader>
               <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
-                <CardDescription className="text-xs sm:text-sm">
-                  {angle.description}
-                </CardDescription>
+                <CardDescription className="text-xs sm:text-sm">{angle.description}</CardDescription>
               </CardContent>
             </Card>
           );
         })}
+
+        {/* Add Your Own card */}
+        <Card
+          className={cn(
+            "cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 bg-muted/20",
+            selectedAngles.length >= 5 && "opacity-50 cursor-not-allowed"
+          )}
+          onClick={() => selectedAngles.length < 5 && setShowCustomDialog(true)}
+        >
+          <CardContent className="flex flex-col items-center justify-center h-full min-h-[120px] p-4 gap-2">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Plus className="h-5 w-5 text-primary" />
+            </div>
+            <p className="text-sm font-semibold text-center">Add Your Own</p>
+            <p className="text-xs text-muted-foreground text-center">Describe your angle idea</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex justify-center pt-2 sm:pt-4 sticky bottom-4 z-10">
@@ -160,6 +240,76 @@ export function AngleSelector({
           )}
         </Button>
       </div>
+
+      {/* Custom Angle Dialog */}
+      <Dialog open={showCustomDialog} onOpenChange={(open) => { if (!open) resetCustomDialog(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5 text-primary" />
+              {clarificationQuestion ? "One more thing..." : "Add Your Own Angle"}
+            </DialogTitle>
+            <DialogDescription>
+              {clarificationQuestion
+                ? "Lumi needs a little more info to craft this angle for you."
+                : "Describe a creative angle you'd like to try. Lumi will shape it into a proper format."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {clarificationQuestion ? (
+            <div className="space-y-4">
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                <p className="text-sm font-medium">{clarificationQuestion}</p>
+              </div>
+              <Input
+                placeholder="Your answer..."
+                value={clarificationAnswer}
+                onChange={(e) => setClarificationAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && clarificationAnswer.trim()) {
+                    handleCustomSubmit(originalInput, clarificationAnswer);
+                  }
+                }}
+                disabled={customLoading}
+                autoFocus
+              />
+            </div>
+          ) : (
+            <Input
+              placeholder={"e.g. \"Focus on the time they'll save\" or \"Use social proof\""}
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && customInput.trim()) {
+                  handleCustomSubmit(customInput);
+                }
+              }}
+              disabled={customLoading}
+              autoFocus
+            />
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={resetCustomDialog} disabled={customLoading}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (clarificationQuestion) {
+                  handleCustomSubmit(originalInput, clarificationAnswer);
+                } else {
+                  handleCustomSubmit(customInput);
+                }
+              }}
+              disabled={customLoading || (clarificationQuestion ? !clarificationAnswer.trim() : !customInput.trim())}
+            >
+              {customLoading ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</>
+              ) : (
+                <><Sparkles className="mr-2 h-4 w-4" />Create Angle</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
