@@ -378,7 +378,7 @@ export default function Start() {
                     className={cn(
                       "h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0",
                       step.done
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-green-100 text-green-600"
                         : "bg-muted text-muted-foreground"
                     )}
                   >
