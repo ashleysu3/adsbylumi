@@ -144,8 +144,14 @@ Deno.serve(async (req) => {
       }
     };
 
-    // Resolve ad set ID — use stored one if still valid, otherwise resolve from Meta campaign
+    // Resolve ad set ID — use stored one if still valid, otherwise resolve from Meta campaign/ad IDs
     let adSetId = metaCampaignIds?.ad_set_id;
+
+    // Guard against bad cache where campaignId was accidentally saved as ad_set_id
+    if (adSetId && campaignId && String(adSetId) === String(campaignId)) {
+      console.warn(`Stored ad_set_id matches campaignId (${adSetId}); treating as stale and re-resolving.`);
+      adSetId = undefined;
+    }
 
     if (adSetId) {
       const stillValid = await isAdSetValidForAccount(adSetId);
@@ -158,20 +164,23 @@ Deno.serve(async (req) => {
     if (!adSetId && campaignId) {
       console.log(`No valid ad_set_id stored, resolving from campaign ${campaignId}...`);
 
-      // First try: get ad set from an existing ad (avoids extra API call)
+      // First try: get ad set from existing ads
       const existingAdIds = metaCampaignIds?.ad_ids || [];
       if (existingAdIds.length > 0) {
-        try {
-          const adInfoRes = await fetch(
-            `https://graph.facebook.com/v18.0/${existingAdIds[0]}?fields=adset_id&access_token=${metaAccessToken}`
-          );
-          const adInfo = await adInfoRes.json();
-          if (adInfo.adset_id && await isAdSetValidForAccount(adInfo.adset_id)) {
-            adSetId = adInfo.adset_id;
-            console.log(`Resolved ad set from existing ad: ${adSetId}`);
+        for (const adId of existingAdIds) {
+          try {
+            const adInfoRes = await fetch(
+              `https://graph.facebook.com/v18.0/${adId}?fields=adset_id&access_token=${metaAccessToken}`
+            );
+            const adInfo = await adInfoRes.json();
+            if (adInfo.adset_id && await isAdSetValidForAccount(adInfo.adset_id)) {
+              adSetId = adInfo.adset_id;
+              console.log(`Resolved ad set from existing ad ${adId}: ${adSetId}`);
+              break;
+            }
+          } catch (e) {
+            console.warn(`Could not resolve ad set from existing ad ${adId}`);
           }
-        } catch (e) {
-          console.warn('Could not resolve ad set from existing ad, falling back to campaign fetch');
         }
       }
 
