@@ -30,7 +30,7 @@ const mainNav = [
 ];
 
 const toolsNav = [
-  { path: "/content-library", icon: Library, label: "Library" },
+  { path: "/content-library", icon: Library, label: "Saved Concepts" },
   { path: "/dashboard", icon: Package, label: "Offers" },
   { path: "/dashboard?tab=brand", icon: Building2, label: "My Brand" },
   { path: "/settings", icon: Link2, label: "Meta Connection" },
