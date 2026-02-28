@@ -100,10 +100,12 @@ Deno.serve(async (req) => {
     for (const pixel of pixelsData.data || []) {
       console.log(`Fetching stats for pixel ${pixel.id}: ${pixel.name}`);
       
-      // Get event stats for the last 7 days
-      const statsUrl = `https://graph.facebook.com/v21.0/${pixel.id}/stats?aggregation=event&fields=data&access_token=${accessToken}`;
+      // Get event stats for the last 7 days using the correct endpoint
+      const statsUrl = `https://graph.facebook.com/v21.0/${pixel.id}/stats?aggregation=event&access_token=${accessToken}`;
       const statsResponse = await fetch(statsUrl);
       const statsData = await statsResponse.json();
+
+      console.log(`Pixel ${pixel.id} stats response:`, JSON.stringify(statsData).slice(0, 500));
 
       const events: Record<string, { active: boolean; count_7d: number }> = {};
       
@@ -112,12 +114,20 @@ Deno.serve(async (req) => {
         events[event] = { active: false, count_7d: 0 };
       }
 
-      // Process the stats data
+      // Process the stats data - Meta returns nested format:
+      // { data: [{ event: "PageView", data: [{ value: 100, timestamp: "..." }] }] }
       if (statsData.data && Array.isArray(statsData.data)) {
         for (const stat of statsData.data) {
-          if (stat.event && targetEvents.includes(stat.event)) {
-            const count = stat.count || stat.value || 0;
-            events[stat.event] = {
+          const eventName = stat.event;
+          if (eventName && targetEvents.includes(eventName)) {
+            // Sum up values from nested data array if present
+            let count = 0;
+            if (stat.data && Array.isArray(stat.data)) {
+              count = stat.data.reduce((sum: number, d: any) => sum + (d.value || d.count || 0), 0);
+            } else {
+              count = stat.count || stat.value || 0;
+            }
+            events[eventName] = {
               active: count > 0,
               count_7d: count
             };
