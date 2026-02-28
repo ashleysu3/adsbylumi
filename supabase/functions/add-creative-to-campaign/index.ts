@@ -10,7 +10,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 1. Authenticate
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -37,7 +36,6 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 2. Parse request
     const { workspaceId, assets, copyVariations } = await req.json();
 
     if (!workspaceId || !assets?.length || !copyVariations?.length) {
@@ -47,7 +45,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Fetch workspace + brand
     const { data: workspace, error: wsError } = await supabase
       .from('campaign_workspaces')
       .select('*, brands!inner(id, name, user_id, meta_account_id, page_id)')
@@ -63,7 +60,6 @@ Deno.serve(async (req) => {
 
     const brand = workspace.brands;
 
-    // 4. Verify ownership
     if (brand.user_id !== user.id) {
       return new Response(
         JSON.stringify({ success: false, error: 'Access denied' }),
@@ -71,7 +67,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. Check existing campaign has ad sets
     const metaCampaignIds = workspace.meta_campaign_ids as any;
     if (!metaCampaignIds?.ad_set_id) {
       return new Response(
@@ -91,7 +86,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 6. Get Meta token
     const { data: metaAccessToken, error: tokenError } = await supabase
       .rpc('get_meta_token', { p_brand_id: brand.id });
 
@@ -103,18 +97,53 @@ Deno.serve(async (req) => {
     }
 
     const accountId = metaAccountId.replace('act_', '');
-    const offerUrl = workspace.offer_url || '';
+
+    // ── Fetch existing ad's creative settings to clone ──
+    let referenceSettings: any = null;
+    try {
+      // Get ads in this ad set
+      const adsRes = await fetch(
+        `https://graph.facebook.com/v18.0/${adSetId}/ads?fields=creative{object_story_spec,url_tags,tracking_specs,asset_feed_spec}&limit=1&access_token=${metaAccessToken}`
+      );
+      const adsData = await adsRes.json();
+      
+      if (adsData.data?.length > 0 && adsData.data[0].creative) {
+        const existingCreative = adsData.data[0].creative;
+        const spec = existingCreative.object_story_spec;
+        
+        if (spec) {
+          // Extract reusable settings from the existing ad
+          const linkData = spec.link_data || {};
+          const videoData = spec.video_data || {};
+          const source = linkData.link ? linkData : videoData;
+          
+          referenceSettings = {
+            link: source.link || linkData.link || workspace.offer_url || '',
+            call_to_action_type: source.call_to_action?.type || linkData.call_to_action?.type || videoData.call_to_action?.type || 'LEARN_MORE',
+            url_tags: existingCreative.url_tags || null,
+            tracking_specs: adsData.data[0].tracking_specs || null,
+          };
+          
+          console.log('Cloned settings from existing ad:', JSON.stringify(referenceSettings));
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch existing ad settings, using defaults:', e);
+    }
+
+    // Fallback defaults
+    const link = referenceSettings?.link || workspace.offer_url || '';
+    const ctaType = referenceSettings?.call_to_action_type || 'LEARN_MORE';
 
     console.log(`Adding ${assets.length} creative(s) with ${copyVariations.length} copy variation(s) to ad set ${adSetId}`);
+    console.log(`Using link: ${link}, CTA: ${ctaType}`);
 
     const createdAdIds: string[] = [];
     const failedAds: Array<{ assetName: string; error: string }> = [];
 
-    // 7. For each asset, upload to Meta then create ads with each copy variation
     for (const asset of assets) {
       console.log(`Processing asset: ${asset.name}`);
 
-      // Upload asset to Meta
       let uploadResult: any;
       try {
         const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
@@ -133,12 +162,10 @@ Deno.serve(async (req) => {
         uploadResult = await uploadResponse.json();
 
         if (!uploadResult.success || !uploadResult.assetId) {
-          console.error(`Upload failed for ${asset.name}:`, uploadResult.error);
           failedAds.push({ assetName: asset.name, error: `Upload failed: ${uploadResult.error || 'Unknown'}` });
           continue;
         }
       } catch (e: any) {
-        console.error(`Upload error for ${asset.name}:`, e);
         failedAds.push({ assetName: asset.name, error: `Upload error: ${e.message}` });
         continue;
       }
@@ -146,13 +173,11 @@ Deno.serve(async (req) => {
       const { assetId, assetType } = uploadResult;
       console.log(`Asset uploaded to Meta: ${assetType} ${assetId}`);
 
-      // Create one ad per copy variation for this asset
       for (let vi = 0; vi < copyVariations.length; vi++) {
         const copy = copyVariations[vi];
         const adName = `Ad - ${asset.name.replace(/\.[^/.]+$/, '')} - V${vi + 1}`;
 
         try {
-          // Build object_story_spec
           let objectStorySpec: any;
 
           if (assetType === 'video') {
@@ -164,8 +189,8 @@ Deno.serve(async (req) => {
                 message: copy.primary_text || '',
                 link_description: copy.description || '',
                 call_to_action: {
-                  type: 'LEARN_MORE',
-                  value: { link: offerUrl }
+                  type: ctaType,
+                  value: { link }
                 }
               }
             };
@@ -174,55 +199,66 @@ Deno.serve(async (req) => {
               page_id: pageId,
               link_data: {
                 image_hash: assetId,
-                link: offerUrl,
+                link,
                 message: copy.primary_text || '',
                 name: copy.headline || '',
                 description: copy.description || '',
-                call_to_action: { type: 'LEARN_MORE' }
+                call_to_action: { type: ctaType }
               }
             };
           }
 
-          // Create ad creative
+          // Build creative params
+          const creativeParams: Record<string, string> = {
+            name: `Creative - ${adName}`,
+            object_story_spec: JSON.stringify(objectStorySpec),
+            access_token: metaAccessToken,
+          };
+
+          // Clone URL tags from existing ad if present
+          if (referenceSettings?.url_tags) {
+            creativeParams.url_tags = referenceSettings.url_tags;
+          }
+
           const creativeResponse = await fetch(
             `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: new URLSearchParams({
-                name: `Creative - ${adName}`,
-                object_story_spec: JSON.stringify(objectStorySpec),
-                access_token: metaAccessToken
-              })
+              body: new URLSearchParams(creativeParams),
             }
           );
 
           const creativeData = await creativeResponse.json();
           if (creativeData.error) {
-            console.error(`Creative failed for ${adName}:`, creativeData.error);
             failedAds.push({ assetName: asset.name, error: `Creative: ${creativeData.error.message}` });
             continue;
           }
 
-          // Create ad in existing ad set
+          // Build ad params — clone tracking_specs from existing ad
+          const adParams: Record<string, string> = {
+            adset_id: adSetId,
+            name: adName,
+            creative: JSON.stringify({ creative_id: creativeData.id }),
+            status: 'PAUSED',
+            access_token: metaAccessToken,
+          };
+
+          if (referenceSettings?.tracking_specs) {
+            adParams.tracking_specs = JSON.stringify(referenceSettings.tracking_specs);
+          }
+
           const adResponse = await fetch(
             `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: new URLSearchParams({
-                adset_id: adSetId,
-                name: adName,
-                creative: JSON.stringify({ creative_id: creativeData.id }),
-                status: 'PAUSED',
-                access_token: metaAccessToken
-              })
+              body: new URLSearchParams(adParams),
             }
           );
 
           const adData = await adResponse.json();
           if (adData.error) {
-            console.error(`Ad creation failed for ${adName}:`, adData.error);
             failedAds.push({ assetName: asset.name, error: `Ad: ${adData.error.message}` });
             continue;
           }
@@ -230,23 +266,19 @@ Deno.serve(async (req) => {
           createdAdIds.push(adData.id);
           console.log(`Ad created: ${adData.id} (${adName})`);
         } catch (adError: any) {
-          console.error(`Error creating ad ${adName}:`, adError);
           failedAds.push({ assetName: asset.name, error: adError.message });
         }
       }
     }
 
-    // 8. Update workspace with new ad IDs
+    // Update workspace with new ad IDs
     const existingAdIds = metaCampaignIds.ad_ids || [];
     const allAdIds = [...existingAdIds, ...createdAdIds];
 
     await supabase
       .from('campaign_workspaces')
       .update({
-        meta_campaign_ids: {
-          ...metaCampaignIds,
-          ad_ids: allAdIds,
-        },
+        meta_campaign_ids: { ...metaCampaignIds, ad_ids: allAdIds },
         updated_at: new Date().toISOString(),
       })
       .eq('id', workspaceId);
@@ -256,21 +288,9 @@ Deno.serve(async (req) => {
       ? `${createdAdIds.length} new ad(s) added to your campaign.${failedAds.length > 0 ? ` ${failedAds.length} failed.` : ''} Ads are paused — activate in Ads Manager when ready.`
       : 'Failed to create any ads. Please check your assets and try again.';
 
-    console.log(message);
-
     return new Response(
-      JSON.stringify({
-        success,
-        adIds: createdAdIds,
-        totalCreated: createdAdIds.length,
-        totalFailed: failedAds.length,
-        failedAds,
-        message,
-      }),
-      {
-        status: success ? 200 : 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ success, adIds: createdAdIds, totalCreated: createdAdIds.length, totalFailed: failedAds.length, failedAds, message }),
+      { status: success ? 200 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
     console.error('add-creative-to-campaign error:', error);
