@@ -208,16 +208,34 @@ export default function Dashboard() {
   };
 
   const scrollToSection = (sectionId: string) => {
-    const element = document.querySelector(`[data-section="${sectionId}"]`);
-    if (element) {
-      setProgressPopoverOpen(false);
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-      
-      // Add pulse animation to highlight the section
+    // Determine which tab contains this section
+    const brandSettingsSections = ['meta-account'];
+    const targetTab = brandSettingsSections.includes(sectionId) ? 'brand-settings' : 'overview';
+    
+    if (activeTab !== targetTab) {
+      setActiveTab(targetTab);
+      // Wait for tab switch to render before scrolling
       setTimeout(() => {
-        element.classList.add('animate-pulse');
-        setTimeout(() => element.classList.remove('animate-pulse'), 1000);
-      }, 500);
+        const element = document.querySelector(`[data-section="${sectionId}"]`);
+        if (element) {
+          setProgressPopoverOpen(false);
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+          setTimeout(() => {
+            element.classList.add('animate-pulse');
+            setTimeout(() => element.classList.remove('animate-pulse'), 1000);
+          }, 500);
+        }
+      }, 150);
+    } else {
+      const element = document.querySelector(`[data-section="${sectionId}"]`);
+      if (element) {
+        setProgressPopoverOpen(false);
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => {
+          element.classList.add('animate-pulse');
+          setTimeout(() => element.classList.remove('animate-pulse'), 1000);
+        }, 500);
+      }
     }
   };
 
@@ -557,20 +575,22 @@ export default function Dashboard() {
             </Card>
 
             {/* Content Library + Psychology */}
-            <ContentAssetsEditor 
-              brandId={brand.id} 
-              offers={offers.map(o => ({ id: o.id, name: o.name }))} 
-            />
-             
-            <div data-section="audience-psychology">
-              <AudiencePsychology
-                brandId={brand.id}
-                psychology={brand.audience_psychology}
-                status={brand.psychology_status}
-                psychologyContentHash={brand.psychology_content_hash}
-                psychologyGeneratedAt={brand.psychology_generated_at}
-                onUpdate={fetchBrandData}
+            <div data-section="brand-brain">
+              <ContentAssetsEditor 
+                brandId={brand.id} 
+                offers={offers.map(o => ({ id: o.id, name: o.name }))} 
               />
+               
+              <div data-section="audience-psychology" className="mt-6">
+                <AudiencePsychology
+                  brandId={brand.id}
+                  psychology={brand.audience_psychology}
+                  status={brand.psychology_status}
+                  psychologyContentHash={brand.psychology_content_hash}
+                  psychologyGeneratedAt={brand.psychology_generated_at}
+                  onUpdate={fetchBrandData}
+                />
+              </div>
             </div>
 
             {/* Offers */}
