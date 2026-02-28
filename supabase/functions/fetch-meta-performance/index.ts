@@ -81,13 +81,24 @@ Deno.serve(async (req) => {
       throw new Error('Workspace not found');
     }
 
-    // Verify user owns this workspace via the brand
+    // Verify user owns this workspace via the brand (or is admin)
     const brand = workspace.brands as any;
     if (brand.user_id !== user.id) {
-      return new Response(
-        JSON.stringify({ error: 'Access denied: You do not own this workspace' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
-      );
+      // Check if user is admin
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (!roleData) {
+        return new Response(
+          JSON.stringify({ error: 'Access denied: You do not own this workspace' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 }
+        );
+      }
+      console.log('Admin bypass granted for user:', user.id);
     }
 
     console.log('Ownership verified for workspace:', workspaceId);
