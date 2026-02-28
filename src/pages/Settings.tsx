@@ -60,6 +60,14 @@ export default function Settings() {
     frequency_warning: 4,
     frequency_critical: 6,
   });
+
+  const [creativeAutomation, setCreativeAutomation] = useState({
+    auto_rotate_enabled: false,
+    auto_retest_enabled: false,
+    fatigue_threshold: 4,
+    retest_cooldown_days: 14,
+    fatigue_action: 'notify_only' as 'auto_rotate' | 'notify_only',
+  });
   
   const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status } = useSubscription();
 
@@ -90,7 +98,6 @@ export default function Settings() {
         setBrand(brandRes.data);
         if (brandRes.data.notification_preferences) {
           const prefs = brandRes.data.notification_preferences as any;
-          // Migrate old weekly_digest boolean to new report_frequency
           const reportFrequency = prefs.report_frequency || 
             (prefs.weekly_digest === false ? 'off' : 'weekly');
           setNotificationPrefs({
@@ -99,6 +106,10 @@ export default function Settings() {
             performance_drops: prefs.performance_drops ?? true,
             last_report_sent_at: prefs.last_report_sent_at,
           });
+          // Load creative automation prefs
+          if (prefs.creative_automation) {
+            setCreativeAutomation(prev => ({ ...prev, ...prefs.creative_automation }));
+          }
         }
         if (brandRes.data.alert_thresholds) {
           setAlertThresholds(brandRes.data.alert_thresholds as unknown as AlertThresholds);
@@ -175,6 +186,32 @@ export default function Settings() {
     } catch (error) {
       console.error('Error saving thresholds:', error);
       toast.error('Failed to save thresholds');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveCreativeAutomation = async () => {
+    if (!brand) return;
+    
+    setSaving(true);
+    try {
+      const currentPrefs = (brand.notification_preferences as any) || {};
+      const { error } = await supabase
+        .from('brands')
+        .update({ 
+          notification_preferences: {
+            ...currentPrefs,
+            creative_automation: creativeAutomation,
+          } as any 
+        })
+        .eq('id', brand.id);
+
+      if (error) throw error;
+      toast.success('Creative automation settings saved');
+    } catch (error) {
+      console.error('Error saving creative automation:', error);
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -531,17 +568,44 @@ export default function Settings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Auto-Rotate Creative</Label>
-                    <p className="text-sm text-muted-foreground">
-                      When fatigue is detected (high frequency, dropping CTR), Lumi will automatically swap in bench creative
-                    </p>
+                {/* Fatigue Action Preference */}
+                <div className="space-y-3">
+                  <Label className="text-base">When Fatigue is Detected</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Choose what happens when Lumi detects creative fatigue (high frequency + dropping CTR)
+                  </p>
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
+                      <input
+                        type="radio"
+                        name="fatigue_action"
+                        checked={creativeAutomation.fatigue_action === 'auto_rotate'}
+                        onChange={() => setCreativeAutomation(prev => ({ ...prev, fatigue_action: 'auto_rotate', auto_rotate_enabled: true }))}
+                        className="mt-1"
+                      />
+                      <div>
+                        <p className="font-medium text-sm">Auto-rotate from bench</p>
+                        <p className="text-xs text-muted-foreground">
+                          Lumi will automatically pause the fatigued ad and swap in approved bench creative
+                        </p>
+                      </div>
+                    </label>
+                    <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
+                      <input
+                        type="radio"
+                        name="fatigue_action"
+                        checked={creativeAutomation.fatigue_action === 'notify_only'}
+                        onChange={() => setCreativeAutomation(prev => ({ ...prev, fatigue_action: 'notify_only', auto_rotate_enabled: false }))}
+                        className="mt-1"
+                      />
+                      <div>
+                        <p className="font-medium text-sm">Just notify me</p>
+                        <p className="text-xs text-muted-foreground">
+                          You'll get an alert + a one-press button to swap bench creative when you're ready
+                        </p>
+                      </div>
+                    </label>
                   </div>
-                  <Switch
-                    checked={notificationPrefs.critical_alerts}
-                    onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, critical_alerts: checked }))}
-                  />
                 </div>
                 <Separator />
                 <div className="space-y-2">
@@ -551,8 +615,8 @@ export default function Settings() {
                     step="0.5"
                     min="2"
                     max="10"
-                    value={alertThresholds.frequency_warning}
-                    onChange={(e) => setAlertThresholds(prev => ({ ...prev, frequency_warning: parseFloat(e.target.value) || 4 }))}
+                    value={creativeAutomation.fatigue_threshold}
+                    onChange={(e) => setCreativeAutomation(prev => ({ ...prev, fatigue_threshold: parseFloat(e.target.value) || 4 }))}
                   />
                   <p className="text-xs text-muted-foreground">Ads with frequency above this will be flagged as fatigued (default: 4)</p>
                 </div>
@@ -565,8 +629,8 @@ export default function Settings() {
                     </p>
                   </div>
                   <Switch
-                    checked={notificationPrefs.performance_drops}
-                    onCheckedChange={(checked) => setNotificationPrefs(prev => ({ ...prev, performance_drops: checked }))}
+                    checked={creativeAutomation.auto_retest_enabled}
+                    onCheckedChange={(checked) => setCreativeAutomation(prev => ({ ...prev, auto_retest_enabled: checked }))}
                   />
                 </div>
                 <Separator />
@@ -577,13 +641,14 @@ export default function Settings() {
                     step="1"
                     min="7"
                     max="60"
-                    defaultValue={14}
+                    value={creativeAutomation.retest_cooldown_days}
+                    onChange={(e) => setCreativeAutomation(prev => ({ ...prev, retest_cooldown_days: parseInt(e.target.value) || 14 }))}
                   />
                   <p className="text-xs text-muted-foreground">Minimum days before a paused ad is eligible for retesting (default: 14)</p>
                 </div>
 
                 <div className="pt-4">
-                  <Button onClick={handleSaveAlertThresholds} disabled={saving} variant="lumi">
+                  <Button onClick={handleSaveCreativeAutomation} disabled={saving} variant="lumi">
                     {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Save Automation Settings
                   </Button>

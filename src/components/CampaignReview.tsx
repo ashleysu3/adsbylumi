@@ -39,6 +39,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   const [showPreviews, setShowPreviews] = useState(true);
   const [confirmRepublish, setConfirmRepublish] = useState(false);
   const [launchAsActive, setLaunchAsActive] = useState(false);
+  const [saveToBench, setSaveToBench] = useState(false);
   const [pixelStatus, setPixelStatus] = useState<'ready' | 'warning' | 'error' | null>(null);
   
   // Detect social growth campaign (uses Instagram posts, no creative concepts needed)
@@ -301,45 +302,87 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
 
           <Separator />
 
-          {/* Launch Status Toggle */}
+          {/* Destination Toggle: Go Live vs Save to Bench */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              {launchAsActive ? (
-                <Play className="h-4 w-4 text-green-500" />
+              {saveToBench ? (
+                <Pause className="h-4 w-4 text-blue-500" />
               ) : (
-                <Pause className="h-4 w-4 text-amber-500" />
+                <Rocket className="h-4 w-4 text-primary" />
               )}
-              <h3 className="text-sm font-semibold">Launch Status</h3>
+              <h3 className="text-sm font-semibold">Destination</h3>
             </div>
             <div className="p-4 rounded-lg border bg-muted/30">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <Label htmlFor="launch-status" className="font-medium">
-                    Launch campaign as Active (Live)
+                  <Label htmlFor="bench-toggle" className="font-medium">
+                    Save to Bench (for later rotation)
                   </Label>
                   <p className="text-xs text-muted-foreground max-w-md">
-                    {launchAsActive 
-                      ? "Your ads will start delivering immediately after Meta approves them (usually 15-30 minutes). You can pause anytime from here."
-                      : "Your campaign will be created in Paused status. You can activate it later from here or in Ads Manager."
+                    {saveToBench 
+                      ? "Creative will be saved to your bench — ready for auto-rotation when fatigue is detected."
+                      : "Creative will be uploaded to Meta and go through the normal campaign build."
                     }
                   </p>
                 </div>
                 <Switch
-                  id="launch-status"
-                  checked={launchAsActive}
-                  onCheckedChange={setLaunchAsActive}
+                  id="bench-toggle"
+                  checked={saveToBench}
+                  onCheckedChange={setSaveToBench}
                 />
               </div>
-              {launchAsActive && (
-                <div className="mt-3 p-2 rounded bg-green-500/10 border border-green-500/20">
-                  <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                    <Play className="h-3 w-3" />
-                    Ads will go live after Meta's review (~15-30 min)
+              {saveToBench && (
+                <div className="mt-3 p-2 rounded bg-blue-500/10 border border-blue-500/20">
+                  <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                    <Pause className="h-3 w-3" />
+                    Creative will be saved to your bench for future use
                   </p>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Launch Status Toggle — only show if NOT saving to bench */}
+          {!saveToBench && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                {launchAsActive ? (
+                  <Play className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Pause className="h-4 w-4 text-amber-500" />
+                )}
+                <h3 className="text-sm font-semibold">Launch Status</h3>
+              </div>
+              <div className="p-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="launch-status" className="font-medium">
+                      Launch campaign as Active (Live)
+                    </Label>
+                    <p className="text-xs text-muted-foreground max-w-md">
+                      {launchAsActive 
+                        ? "Your ads will start delivering immediately after Meta approves them (usually 15-30 minutes)."
+                        : "Your campaign will be created in Paused status. You can activate it later."
+                      }
+                    </p>
+                  </div>
+                  <Switch
+                    id="launch-status"
+                    checked={launchAsActive}
+                    onCheckedChange={setLaunchAsActive}
+                  />
+                </div>
+                {launchAsActive && (
+                  <div className="mt-3 p-2 rounded bg-green-500/10 border border-green-500/20">
+                    <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                      <Play className="h-3 w-3" />
+                      Ads will go live after Meta's review (~15-30 min)
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <Separator />
 

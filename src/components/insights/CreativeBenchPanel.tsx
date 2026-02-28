@@ -148,8 +148,76 @@ export function CreativeBenchPanel({
     );
   }
 
+  // Detect fatigued live ads (frequency >= 4 or low CTR)
+  const fatiguedLive = liveItems.filter(item => {
+    const snap = item.performance_snapshot;
+    if (!snap) return false;
+    return (snap.frequency >= 4) || (snap.ctr !== undefined && snap.ctr < 0.8);
+  });
+  const readyBench = onBench.filter(i => i.auto_rotate_approved && i.meta_ad_id);
+
+  const handleBulkRefresh = async () => {
+    if (fatiguedLive.length === 0 || readyBench.length === 0) return;
+    setRotating(true);
+    try {
+      // Swap each fatigued ad with a bench ad (up to available bench items)
+      const swapCount = Math.min(fatiguedLive.length, readyBench.length);
+      for (let i = 0; i < swapCount; i++) {
+        await supabase.functions.invoke('rotate-creative', {
+          body: {
+            workspaceId,
+            brandId,
+            fatigueAdId: fatiguedLive[i].meta_ad_id,
+            benchAdId: readyBench[i].meta_ad_id,
+            reason: 'Bulk fatigue refresh',
+            isAutoRotation: false,
+          },
+        });
+      }
+      toast.success(`Swapped ${swapCount} fatigued ad${swapCount > 1 ? 's' : ''} with bench creative!`);
+      fetchBenchData();
+    } catch (err: any) {
+      toast.error('Failed to refresh creative');
+      console.error(err);
+    } finally {
+      setRotating(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Fatigue Alert Banner */}
+      {fatiguedLive.length > 0 && readyBench.length > 0 && !autoRotateEnabled && (
+        <Card className="rounded-2xl border-amber-300 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Zap className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    {fatiguedLive.length} ad{fatiguedLive.length > 1 ? 's' : ''} showing fatigue
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    {readyBench.length} bench creative ready to swap in
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleBulkRefresh}
+                disabled={rotating}
+                className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {rotating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                Swap Now
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Auto-Rotate Toggle */}
       <Card className="rounded-2xl">
         <CardContent className="p-4">
