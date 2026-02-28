@@ -236,6 +236,7 @@ export default function CreativeStudio() {
   // Creative Brief state
   const [showBrief, setShowBrief] = useState(false);
   const [offerPsychology, setOfferPsychology] = useState<any>(null);
+  const [offerAudiencePsychology, setOfferAudiencePsychology] = useState<any>(null);
 
   const urlWorkspaceId = searchParams.get("workspace");
 
@@ -348,8 +349,10 @@ export default function CreativeStudio() {
           .eq('id', data.offer_id)
           .single();
         setOfferPsychology(offerData?.product_psychology || null);
+        setOfferAudiencePsychology(offerData?.offer_audience_psychology || null);
       } else {
         setOfferPsychology(null);
+        setOfferAudiencePsychology(null);
       }
       const c = data?.creative_json as Record<string, any> | null;
       // Inject default angle if angles exist but it's missing
@@ -1241,7 +1244,7 @@ export default function CreativeStudio() {
                 url: workspace?.offer_url || undefined,
               }}
               productPsychology={offerPsychology}
-              audiencePsychology={workspace?.brands?.audience_psychology}
+              audiencePsychology={offerAudiencePsychology || workspace?.brands?.audience_psychology}
               angles={availableAngles}
               selectedAngleIds={selectedAngleIds}
               gridData={gridData.length > 0 ? gridData : productionItems.map(pi => ({
