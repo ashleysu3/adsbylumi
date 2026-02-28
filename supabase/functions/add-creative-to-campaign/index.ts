@@ -68,20 +68,22 @@ Deno.serve(async (req) => {
     }
 
     const metaCampaignIds = workspace.meta_campaign_ids as any;
-    if (!metaCampaignIds?.ad_set_id) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'No existing ad set found. Use Build Campaign instead.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const adSetId = metaCampaignIds.ad_set_id;
     const metaAccountId = brand.meta_account_id;
     const pageId = brand.page_id;
 
     if (!metaAccountId || !pageId) {
       return new Response(
         JSON.stringify({ success: false, error: 'Meta account or Page not connected' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get the campaign ID — could be stored as ad_set_id, campaignId, or campaign_id
+    const campaignId = metaCampaignIds?.campaignId || metaCampaignIds?.campaign_id;
+
+    if (!metaCampaignIds?.ad_set_id && !campaignId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'No existing campaign found. Use Build Campaign instead.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -94,6 +96,46 @@ Deno.serve(async (req) => {
         JSON.stringify({ success: false, error: 'Meta token not found. Please reconnect your Meta account.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Resolve ad set ID — use stored one or fetch from Meta campaign
+    let adSetId = metaCampaignIds?.ad_set_id;
+
+    if (!adSetId && campaignId) {
+      console.log(`No ad_set_id stored, fetching ad sets from campaign ${campaignId}...`);
+      const adSetsRes = await fetch(
+        `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=id,name,status&limit=5&access_token=${metaAccessToken}`
+      );
+      const adSetsData = await adSetsRes.json();
+
+      if (adSetsData.error) {
+        console.error('Failed to fetch ad sets:', adSetsData.error);
+        return new Response(
+          JSON.stringify({ success: false, error: `Failed to fetch ad sets: ${adSetsData.error.message}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Prefer an active ad set, fall back to any
+      const activeAdSet = adSetsData.data?.find((s: any) => s.status === 'ACTIVE') || adSetsData.data?.[0];
+
+      if (!activeAdSet) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'No ad sets found in this campaign.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      adSetId = activeAdSet.id;
+      console.log(`Resolved ad set: ${adSetId} (${activeAdSet.name})`);
+
+      // Cache it for future use
+      await supabase
+        .from('campaign_workspaces')
+        .update({
+          meta_campaign_ids: { ...metaCampaignIds, ad_set_id: adSetId },
+        })
+        .eq('id', workspaceId);
     }
 
     const accountId = metaAccountId.replace('act_', '');
