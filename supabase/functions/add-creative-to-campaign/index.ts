@@ -484,6 +484,59 @@ Deno.serve(async (req) => {
 
         const adData = await adResponse.json();
         if (adData.error) {
+          const isDynamicRestriction = adData.error?.error_subcode === 1885553;
+
+          // Fallback: Meta sometimes doesn't expose dynamic-creative mode reliably via ad set metadata.
+          // If we hit the runtime restriction, switch strategy and retry this asset in a cloned ad set.
+          if (isDynamicRestriction) {
+            console.warn(
+              `Dynamic creative restriction hit for ad set ${targetAdSetId}. Falling back to cloned ad set flow for ${asset.name}.`
+            );
+
+            // Persist adaptive mode so remaining assets skip the failing path.
+            isDynamicCreativeAdSet = true;
+
+            const fallbackAdSetId = await cloneAdSetForAsset(`${asset.name}-fallback`);
+            if (!fallbackAdSetId) {
+              failedAds.push({
+                assetName: asset.name,
+                error: 'Ad set is dynamic-creative restricted and fallback clone failed.',
+              });
+              continue;
+            }
+
+            const retryAdParams: Record<string, string> = {
+              adset_id: fallbackAdSetId,
+              name: adName,
+              creative: JSON.stringify({ creative_id: creativeData.id }),
+              status: 'PAUSED',
+              access_token: metaAccessToken,
+            };
+
+            const retryAdResponse = await fetch(
+              `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(retryAdParams),
+              }
+            );
+
+            const retryAdData = await retryAdResponse.json();
+            if (retryAdData.error) {
+              console.error(`Fallback ad creation failed for ${adName}:`, retryAdData.error);
+              failedAds.push({
+                assetName: asset.name,
+                error: `Ad fallback: ${retryAdData.error.message} (code ${retryAdData.error.code}${retryAdData.error.error_subcode ? `/${retryAdData.error.error_subcode}` : ''})`,
+              });
+              continue;
+            }
+
+            createdAdIds.push(retryAdData.id);
+            console.log(`Ad created via fallback: ${retryAdData.id} (${adName}) on cloned ad set ${fallbackAdSetId}`);
+            continue;
+          }
+
           console.error(`Ad creation failed for ${adName}:`, adData.error);
           failedAds.push({
             assetName: asset.name,
