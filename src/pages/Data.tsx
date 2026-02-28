@@ -427,14 +427,15 @@ export default function Data() {
       if (campaign.trackingVerified !== false || !campaign.metrics) return;
       const name = (campaign.name || '').toLowerCase();
       const obj = (campaign.objective || '').toLowerCase();
-      // Check conversions: use objective if available, otherwise infer from campaign name
       const isLeadCampaign = obj.includes('lead') || name.includes('lead');
       const isSalesCampaign = obj.includes('sale') || obj.includes('purchase') || name.includes('sale');
+      const isVideoCampaign = obj.includes('video') || name.includes('video') || name.includes('thruplay') || name.includes('views');
       const hasConversions =
         (isLeadCampaign && (campaign.metrics.leads ?? 0) > 0) ||
         (isSalesCampaign && (campaign.metrics.purchases ?? 0) > 0) ||
+        (isVideoCampaign && ((campaign.metrics.videoViews ?? 0) > 0 || (campaign.metrics.videoThruPlays ?? 0) > 0)) ||
         // Fallback: if either leads or purchases exist, tracking works
-        (!isLeadCampaign && !isSalesCampaign && ((campaign.metrics.leads ?? 0) > 0 || (campaign.metrics.purchases ?? 0) > 0));
+        (!isLeadCampaign && !isSalesCampaign && !isVideoCampaign && ((campaign.metrics.leads ?? 0) > 0 || (campaign.metrics.purchases ?? 0) > 0));
       if (!hasConversions) return;
       campaign.trackingVerified = true;
       supabase

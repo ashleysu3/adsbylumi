@@ -108,9 +108,11 @@ function hasLiveConversions(campaign: Campaign): boolean {
   const obj = (campaign.objective || '').toLowerCase();
   const isLeadCampaign = obj.includes('lead') || name.includes('lead');
   const isSalesCampaign = obj.includes('sale') || obj.includes('purchase') || name.includes('sale');
+  const isVideoCampaign = obj.includes('video') || name.includes('video') || name.includes('thruplay') || name.includes('views');
   if (isLeadCampaign && (campaign.metrics.leads ?? 0) > 0) return true;
   if (isSalesCampaign && (campaign.metrics.purchases ?? 0) > 0) return true;
-  if (!isLeadCampaign && !isSalesCampaign && ((campaign.metrics.leads ?? 0) > 0 || (campaign.metrics.purchases ?? 0) > 0)) return true;
+  if (isVideoCampaign && ((campaign.metrics.videoViews ?? 0) > 0 || (campaign.metrics.videoThruPlays ?? 0) > 0)) return true;
+  if (!isLeadCampaign && !isSalesCampaign && !isVideoCampaign && ((campaign.metrics.leads ?? 0) > 0 || (campaign.metrics.purchases ?? 0) > 0)) return true;
   return false;
 }
 
