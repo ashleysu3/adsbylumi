@@ -104,12 +104,19 @@ Deno.serve(async (req) => {
     const isAdSetValidForAccount = async (candidateAdSetId: string): Promise<boolean> => {
       try {
         const adSetCheckRes = await fetch(
-          `https://graph.facebook.com/v18.0/${candidateAdSetId}?fields=id,account_id,status,effective_status&access_token=${metaAccessToken}`
+          `https://graph.facebook.com/v18.0/${candidateAdSetId}?fields=id,account_id,status,effective_status,campaign_id&access_token=${metaAccessToken}`
         );
         const adSetCheck = await adSetCheckRes.json();
 
         if (adSetCheck.error) {
           console.warn(`Ad set validation failed for ${candidateAdSetId}:`, adSetCheck.error);
+          return false;
+        }
+
+        // Guard against accidentally using campaign IDs as ad_set_id values.
+        // A real ad set has campaign_id; campaign objects do not.
+        if (!adSetCheck.campaign_id) {
+          console.warn(`ID ${candidateAdSetId} is not an ad set (missing campaign_id).`);
           return false;
         }
 
@@ -119,6 +126,7 @@ Deno.serve(async (req) => {
           : [adSetCheck.effective_status].filter(Boolean);
         const isDeleted =
           adSetCheck.status === 'DELETED' ||
+          adSetCheck.status === 'ARCHIVED' ||
           effectiveStatuses.includes('DELETED') ||
           effectiveStatuses.includes('ARCHIVED');
 
