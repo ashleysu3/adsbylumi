@@ -32,7 +32,7 @@ export function FloatingBugButton() {
       <LumiTooltip content="Report a bug" side="top">
         <motion.button
           onClick={() => setBugReportOpen(true)}
-          className="fixed bottom-4 left-4 z-50 group"
+          className="fixed bottom-4 right-4 z-50 group"
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 1, type: "spring", stiffness: 200 }}
