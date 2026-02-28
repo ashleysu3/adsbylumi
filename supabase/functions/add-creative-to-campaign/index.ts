@@ -283,43 +283,72 @@ Deno.serve(async (req) => {
     const createdAdIds: string[] = [];
     const failedAds: Array<{ assetName: string; error: string }> = [];
 
-    for (const asset of assets) {
-      console.log(`Processing asset: ${asset.name}`);
+    const uploadAssetToMeta = async (asset: any) => {
+      const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader,
+        },
+        body: JSON.stringify({
+          assetStoragePath: asset.storage_path,
+          brandId: brand.id,
+          fileName: asset.name,
+        }),
+      });
 
-      let uploadResult: any;
-      try {
-        const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': authHeader,
-          },
-          body: JSON.stringify({
-            assetStoragePath: asset.storage_path,
-            brandId: brand.id,
-            fileName: asset.name,
-          }),
-        });
-
-        uploadResult = await uploadResponse.json();
-
-        if (!uploadResult.success || !uploadResult.assetId) {
-          failedAds.push({ assetName: asset.name, error: `Upload failed: ${uploadResult.error || 'Unknown'}` });
-          continue;
-        }
-      } catch (e: any) {
-        failedAds.push({ assetName: asset.name, error: `Upload error: ${e.message}` });
-        continue;
+      const uploadResult = await uploadResponse.json();
+      if (!uploadResult.success || !uploadResult.assetId) {
+        throw new Error(`Upload failed: ${uploadResult.error || 'Unknown'}`);
       }
 
-      const { assetId, assetType } = uploadResult;
-      console.log(`Asset uploaded to Meta: ${assetType} ${assetId}`);
+      return {
+        assetId: uploadResult.assetId,
+        assetType: uploadResult.assetType,
+        assetName: asset.name,
+      };
+    };
 
-      // Build ONE ad per asset with all copy variations as text options
-      const adName = `Ad - ${asset.name.replace(/\.[^/.]+$/, '')}`;
+    // Detect dynamic creative ad set restrictions (Meta allows only one ad in certain dynamic ad sets)
+    let isDynamicCreativeAdSet = false;
+    try {
+      const adSetMetaRes = await fetch(
+        `https://graph.facebook.com/v18.0/${adSetId}?fields=id,is_dynamic_creative&access_token=${metaAccessToken}`
+      );
+      const adSetMeta = await adSetMetaRes.json();
+      isDynamicCreativeAdSet = Boolean(adSetMeta?.is_dynamic_creative);
+      console.log(`Ad set ${adSetId} dynamic creative mode: ${isDynamicCreativeAdSet}`);
+    } catch (e) {
+      console.warn('Could not determine ad set dynamic mode, proceeding with standard flow:', e);
+    }
 
+    // Dynamic creative path: update existing ad with merged asset_feed_spec
+    if (isDynamicCreativeAdSet) {
       try {
-        // Collect all copy variations as arrays for asset_feed_spec
+        const uploadedAssets: Array<{ assetId: string; assetType: string; assetName: string }> = [];
+        for (const asset of assets) {
+          try {
+            console.log(`Processing asset (dynamic set): ${asset.name}`);
+            uploadedAssets.push(await uploadAssetToMeta(asset));
+          } catch (e: any) {
+            failedAds.push({ assetName: asset.name, error: e.message || 'Upload failed' });
+          }
+        }
+
+        if (uploadedAssets.length === 0) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              adIds: [],
+              totalCreated: 0,
+              totalFailed: failedAds.length,
+              failedAds,
+              message: 'Failed to upload assets for dynamic creative ad set.',
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const bodies = copyVariations
           .map((c: any) => c.primary_text)
           .filter(Boolean)
@@ -335,40 +364,35 @@ Deno.serve(async (req) => {
           .filter(Boolean)
           .map((text: string) => ({ text }));
 
-        // Deduplicate
         const uniqueBodies = [...new Map(bodies.map((b: any) => [b.text, b])).values()];
         const uniqueTitles = [...new Map(titles.map((t: any) => [t.text, t])).values()];
         const uniqueDescriptions = [...new Map(descriptions.map((d: any) => [d.text, d])).values()];
 
-        // Build asset_feed_spec with the creative + all copy options
-        const assetFeedSpec: any = {
+        const imageHashes = uploadedAssets.filter((a) => a.assetType !== 'video').map((a) => ({ hash: a.assetId }));
+        const videoIds = uploadedAssets.filter((a) => a.assetType === 'video').map((a) => ({ video_id: a.assetId }));
+
+        const mergedAssetFeedSpec: any = {
           bodies: uniqueBodies.length > 0 ? uniqueBodies : [{ text: '' }],
           titles: uniqueTitles.length > 0 ? uniqueTitles : [{ text: 'Learn More' }],
           descriptions: uniqueDescriptions.length > 0 ? uniqueDescriptions : undefined,
           call_to_action_types: [ctaType],
           link_urls: [{ website_url: link }],
-          ad_formats: ['SINGLE_IMAGE'],
+          ad_formats: videoIds.length > 0 ? ['SINGLE_VIDEO'] : ['SINGLE_IMAGE'],
+          images: imageHashes.length > 0 ? imageHashes : undefined,
+          videos: videoIds.length > 0 ? videoIds : undefined,
         };
 
-        if (assetType === 'video') {
-          assetFeedSpec.videos = [{ video_id: assetId }];
-          assetFeedSpec.ad_formats = ['SINGLE_VIDEO'];
-        } else {
-          assetFeedSpec.images = [{ hash: assetId }];
-        }
+        if (!mergedAssetFeedSpec.descriptions) delete mergedAssetFeedSpec.descriptions;
+        if (!mergedAssetFeedSpec.images) delete mergedAssetFeedSpec.images;
+        if (!mergedAssetFeedSpec.videos) delete mergedAssetFeedSpec.videos;
 
-        // Remove undefined fields
-        if (!assetFeedSpec.descriptions) delete assetFeedSpec.descriptions;
-
-        // Build creative params
         const creativeParams: Record<string, string> = {
-          name: `Creative - ${adName}`,
-          asset_feed_spec: JSON.stringify(assetFeedSpec),
+          name: `Creative - Dynamic Bundle - ${new Date().toISOString()}`,
+          asset_feed_spec: JSON.stringify(mergedAssetFeedSpec),
           object_story_spec: JSON.stringify({ page_id: pageId }),
           access_token: metaAccessToken,
         };
 
-        // Clone URL tags from existing ad if present
         if (referenceSettings?.url_tags) {
           creativeParams.url_tags = referenceSettings.url_tags;
         }
@@ -384,44 +408,198 @@ Deno.serve(async (req) => {
 
         const creativeData = await creativeResponse.json();
         if (creativeData.error) {
-          console.error(`Creative failed for ${adName}:`, creativeData.error);
-          failedAds.push({ assetName: asset.name, error: `Creative: ${creativeData.error.message}` });
-          continue;
+          return new Response(
+            JSON.stringify({ success: false, error: `Creative: ${creativeData.error.message}` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
-        // Build ad params (do not pass tracking_specs; Meta often rejects it on create)
-        const adParams: Record<string, string> = {
-          adset_id: adSetId,
-          name: adName,
-          creative: JSON.stringify({ creative_id: creativeData.id }),
-          status: 'PAUSED',
-          access_token: metaAccessToken,
-        };
+        const existingAdsRes = await fetch(
+          `https://graph.facebook.com/v18.0/${adSetId}/ads?fields=id,status,effective_status&limit=1&access_token=${metaAccessToken}`
+        );
+        const existingAdsData = await existingAdsRes.json();
+        const existingAdId = existingAdsData?.data?.[0]?.id;
 
-        const adResponse = await fetch(
-          `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
+        if (!existingAdId) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Dynamic creative ad set found, but no existing ad to update. Please rebuild the campaign once to seed the first ad.',
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const updateAdResponse = await fetch(
+          `https://graph.facebook.com/v18.0/${existingAdId}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(adParams),
+            body: new URLSearchParams({
+              creative: JSON.stringify({ creative_id: creativeData.id }),
+              status: 'PAUSED',
+              access_token: metaAccessToken,
+            }),
           }
         );
 
-        const adData = await adResponse.json();
-        if (adData.error) {
-          console.error(`Ad creation failed for ${adName}:`, adData.error);
-          failedAds.push({
-            assetName: asset.name,
-            error: `Ad: ${adData.error.message} (code ${adData.error.code}${adData.error.error_subcode ? `/${adData.error.error_subcode}` : ''})`,
+        const updateAdData = await updateAdResponse.json();
+        if (updateAdData.error) {
+          return new Response(
+            JSON.stringify({ success: false, error: `Ad update: ${updateAdData.error.message}` }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        createdAdIds.push(existingAdId);
+      } catch (error: any) {
+        return new Response(
+          JSON.stringify({ success: false, error: error.message || 'Dynamic creative update failed' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // Standard path: one ad per asset
+      for (const asset of assets) {
+        console.log(`Processing asset: ${asset.name}`);
+
+        let uploadResult: any;
+        try {
+          const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authHeader,
+            },
+            body: JSON.stringify({
+              assetStoragePath: asset.storage_path,
+              brandId: brand.id,
+              fileName: asset.name,
+            }),
           });
+
+          uploadResult = await uploadResponse.json();
+
+          if (!uploadResult.success || !uploadResult.assetId) {
+            failedAds.push({ assetName: asset.name, error: `Upload failed: ${uploadResult.error || 'Unknown'}` });
+            continue;
+          }
+        } catch (e: any) {
+          failedAds.push({ assetName: asset.name, error: `Upload error: ${e.message}` });
           continue;
         }
 
-        createdAdIds.push(adData.id);
-        console.log(`Ad created: ${adData.id} (${adName}) with ${uniqueBodies.length} body options, ${uniqueTitles.length} title options`);
-      } catch (adError: any) {
-        console.error(`Error creating ad ${adName}:`, adError);
-        failedAds.push({ assetName: asset.name, error: adError.message });
+        const { assetId, assetType } = uploadResult;
+        console.log(`Asset uploaded to Meta: ${assetType} ${assetId}`);
+
+        // Build ONE ad per asset with all copy variations as text options
+        const adName = `Ad - ${asset.name.replace(/\.[^/.]+$/, '')}`;
+
+        try {
+          // Collect all copy variations as arrays for asset_feed_spec
+          const bodies = copyVariations
+            .map((c: any) => c.primary_text)
+            .filter(Boolean)
+            .map((text: string) => ({ text }));
+
+          const titles = copyVariations
+            .map((c: any) => c.headline)
+            .filter(Boolean)
+            .map((text: string) => ({ text }));
+
+          const descriptions = copyVariations
+            .map((c: any) => c.description)
+            .filter(Boolean)
+            .map((text: string) => ({ text }));
+
+          // Deduplicate
+          const uniqueBodies = [...new Map(bodies.map((b: any) => [b.text, b])).values()];
+          const uniqueTitles = [...new Map(titles.map((t: any) => [t.text, t])).values()];
+          const uniqueDescriptions = [...new Map(descriptions.map((d: any) => [d.text, d])).values()];
+
+          // Build asset_feed_spec with the creative + all copy options
+          const assetFeedSpec: any = {
+            bodies: uniqueBodies.length > 0 ? uniqueBodies : [{ text: '' }],
+            titles: uniqueTitles.length > 0 ? uniqueTitles : [{ text: 'Learn More' }],
+            descriptions: uniqueDescriptions.length > 0 ? uniqueDescriptions : undefined,
+            call_to_action_types: [ctaType],
+            link_urls: [{ website_url: link }],
+            ad_formats: ['SINGLE_IMAGE'],
+          };
+
+          if (assetType === 'video') {
+            assetFeedSpec.videos = [{ video_id: assetId }];
+            assetFeedSpec.ad_formats = ['SINGLE_VIDEO'];
+          } else {
+            assetFeedSpec.images = [{ hash: assetId }];
+          }
+
+          // Remove undefined fields
+          if (!assetFeedSpec.descriptions) delete assetFeedSpec.descriptions;
+
+          // Build creative params
+          const creativeParams: Record<string, string> = {
+            name: `Creative - ${adName}`,
+            asset_feed_spec: JSON.stringify(assetFeedSpec),
+            object_story_spec: JSON.stringify({ page_id: pageId }),
+            access_token: metaAccessToken,
+          };
+
+          // Clone URL tags from existing ad if present
+          if (referenceSettings?.url_tags) {
+            creativeParams.url_tags = referenceSettings.url_tags;
+          }
+
+          const creativeResponse = await fetch(
+            `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams(creativeParams),
+            }
+          );
+
+          const creativeData = await creativeResponse.json();
+          if (creativeData.error) {
+            console.error(`Creative failed for ${adName}:`, creativeData.error);
+            failedAds.push({ assetName: asset.name, error: `Creative: ${creativeData.error.message}` });
+            continue;
+          }
+
+          // Build ad params (do not pass tracking_specs; Meta often rejects it on create)
+          const adParams: Record<string, string> = {
+            adset_id: adSetId,
+            name: adName,
+            creative: JSON.stringify({ creative_id: creativeData.id }),
+            status: 'PAUSED',
+            access_token: metaAccessToken,
+          };
+
+          const adResponse = await fetch(
+            `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams(adParams),
+            }
+          );
+
+          const adData = await adResponse.json();
+          if (adData.error) {
+            console.error(`Ad creation failed for ${adName}:`, adData.error);
+            failedAds.push({
+              assetName: asset.name,
+              error: `Ad: ${adData.error.message} (code ${adData.error.code}${adData.error.error_subcode ? `/${adData.error.error_subcode}` : ''})`,
+            });
+            continue;
+          }
+
+          createdAdIds.push(adData.id);
+          console.log(`Ad created: ${adData.id} (${adName}) with ${uniqueBodies.length} body options, ${uniqueTitles.length} title options`);
+        } catch (adError: any) {
+          console.error(`Error creating ad ${adName}:`, adError);
+          failedAds.push({ assetName: asset.name, error: adError.message });
+        }
       }
     }
 
