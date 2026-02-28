@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,12 +18,12 @@ import { toast } from 'sonner';
 import {
   Sparkles, Check, CheckCheck, DollarSign, Pause, Play,
   RefreshCw, Loader2, AlertTriangle, TrendingUp, TrendingDown,
-  ShieldCheck
+  ShieldCheck, ArrowRight, PlusCircle
 } from 'lucide-react';
 
 interface Recommendation {
   id: string;
-  type: 'budget_increase' | 'budget_decrease' | 'pause_ad' | 'resume_ad' | 'swap_creative' | 'keep_running';
+  type: 'budget_increase' | 'budget_decrease' | 'pause_ad' | 'resume_ad' | 'swap_creative' | 'keep_running' | 'create_creative';
   title: string;
   description: string;
   impact: string;
@@ -30,6 +31,8 @@ interface Recommendation {
   requiresDoubleApproval: boolean;
   actionPayload: Record<string, any>;
   priority: number;
+  userAction?: boolean;
+  actionUrl?: string;
 }
 
 interface LumiRecommendationsProps {
@@ -48,6 +51,7 @@ function getRecIcon(type: string) {
     case 'pause_ad': return <Pause className="h-4 w-4 text-red-500" />;
     case 'resume_ad': return <Play className="h-4 w-4 text-green-500" />;
     case 'swap_creative': return <RefreshCw className="h-4 w-4 text-blue-500" />;
+    case 'create_creative': return <PlusCircle className="h-4 w-4 text-purple-500" />;
     default: return <Sparkles className="h-4 w-4 text-primary" />;
   }
 }
@@ -59,9 +63,12 @@ function getRecBorderColor(type: string) {
     case 'pause_ad': return 'border-l-red-400';
     case 'resume_ad': return 'border-l-green-400';
     case 'swap_creative': return 'border-l-blue-400';
+    case 'create_creative': return 'border-l-purple-400';
     default: return 'border-l-primary';
   }
 }
+
+const USER_ACTION_TYPES = new Set(['create_creative']);
 
 export function LumiRecommendations({
   recommendations,
@@ -71,6 +78,7 @@ export function LumiRecommendations({
   compact = false,
   maxItems,
 }: LumiRecommendationsProps) {
+  const navigate = useNavigate();
   const [executing, setExecuting] = useState<Record<string, boolean>>({});
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [budgetConfirm, setBudgetConfirm] = useState<Recommendation | null>(null);
@@ -277,21 +285,34 @@ export function LumiRecommendations({
                       )}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={isCompleted ? 'ghost' : 'outline'}
-                    onClick={() => executeRecommendation(rec)}
-                    disabled={isCompleted || isExecuting}
-                    className="rounded-xl text-xs shrink-0"
-                  >
-                    {isCompleted ? (
-                      <><Check className="h-3.5 w-3.5 mr-1 text-green-600" /> Done</>
-                    ) : isExecuting ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      'Approve'
-                    )}
-                  </Button>
+                  {rec.userAction || USER_ACTION_TYPES.has(rec.type) ? (
+                    <Button
+                      size="sm"
+                      variant="lumi"
+                      onClick={() => {
+                        if (rec.actionUrl) navigate(rec.actionUrl);
+                      }}
+                      className="rounded-xl text-xs shrink-0 gap-1"
+                    >
+                      Next Step <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant={isCompleted ? 'ghost' : 'outline'}
+                      onClick={() => executeRecommendation(rec)}
+                      disabled={isCompleted || isExecuting}
+                      className="rounded-xl text-xs shrink-0"
+                    >
+                      {isCompleted ? (
+                        <><Check className="h-3.5 w-3.5 mr-1 text-green-600" /> Done</>
+                      ) : isExecuting ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        'Approve'
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             );

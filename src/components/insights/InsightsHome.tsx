@@ -152,6 +152,7 @@ export function InsightsHome({
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
+  const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
   
   const [linkOfferModal, setLinkOfferModal] = useState<{
     open: boolean;
@@ -225,6 +226,12 @@ export function InsightsHome({
         }
       }
       setRecommendations(allRecs);
+      // Build per-campaign count map
+      const counts: Record<string, number> = {};
+      allRecs.forEach(r => {
+        counts[r.campaignId] = (counts[r.campaignId] || 0) + 1;
+      });
+      setRecCountsByWorkspace(counts);
     } catch (err) {
       console.error('Failed to fetch recommendations:', err);
     } finally {
@@ -340,6 +347,7 @@ export function InsightsHome({
             const isActive = campaign.status === 'active' || campaign.status === 'live';
             const isToggling = togglingCampaign === campaign.id;
             const objMetrics = getObjectiveMetrics(campaign.metrics, kpiConfig);
+            const recCount = recCountsByWorkspace[campaign.id] || 0;
 
             return (
               <Card 
@@ -445,6 +453,17 @@ export function InsightsHome({
                         <Eye className="h-3.5 w-3.5 mr-1" />
                         View Details
                       </Button>
+                      {recCount > 0 && (
+                        <Button
+                          onClick={() => onViewInsights(campaign.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-xl text-xs gap-1.5 text-[hsl(var(--lumi-orange-1))] hover:text-[hsl(var(--lumi-orange-1))] hover:bg-[hsl(var(--lumi-orange-1)/0.1)]"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          {recCount} recommendation{recCount > 1 ? 's' : ''}
+                        </Button>
+                      )}
                       {!campaign.offerId && (
                         <Button
                           onClick={() => setLinkOfferModal({ open: true, campaign })}

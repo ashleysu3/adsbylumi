@@ -358,6 +358,14 @@ export function CampaignInsightDetail({
         </Card>
       ) : (
         <>
+          {/* Lumi Actionable Recommendations — top of detail view */}
+          <LumiRecommendations
+            recommendations={recommendations}
+            loading={recsLoading}
+            onRefresh={fetchRecommendations}
+            onRecommendationExecuted={fetchRecommendations}
+          />
+
           {/* HIGH-LEVEL: 3 Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-3">
             {/* What's Working */}
@@ -417,14 +425,6 @@ export function CampaignInsightDetail({
               </CardContent>
             </Card>
           </div>
-
-          {/* Lumi Actionable Recommendations */}
-          <LumiRecommendations
-            recommendations={recommendations}
-            loading={recsLoading}
-            onRefresh={fetchRecommendations}
-            onRecommendationExecuted={fetchRecommendations}
-          />
 
           {/* Budget Recommendation */}
           <Card className={`rounded-2xl border ${budgetVerdict.colorClass}`}>
