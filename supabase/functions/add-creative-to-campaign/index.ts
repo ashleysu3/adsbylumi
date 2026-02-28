@@ -297,6 +297,23 @@ Deno.serve(async (req) => {
       console.warn('Could not determine ad set dynamic mode, proceeding with standard flow:', e);
     }
 
+    const getAdSetDynamicMode = async (candidateAdSetId: string): Promise<boolean | null> => {
+      try {
+        const modeRes = await fetch(
+          `https://graph.facebook.com/v18.0/${candidateAdSetId}?fields=id,is_dynamic_creative&access_token=${metaAccessToken}`
+        );
+        const modeData = await modeRes.json();
+        if (modeData?.error) {
+          console.warn(`Could not get dynamic mode for ad set ${candidateAdSetId}:`, modeData.error);
+          return null;
+        }
+        return Boolean(modeData?.is_dynamic_creative);
+      } catch (e) {
+        console.warn(`Failed dynamic mode fetch for ad set ${candidateAdSetId}:`, e);
+        return null;
+      }
+    };
+
     // Dynamic creative ad sets allow only one ad per ad set.
     // To support one-ad-per-creative, clone the base ad set per asset when needed.
     const cloneAdSetForAsset = async (assetName: string): Promise<string | null> => {
@@ -415,52 +432,103 @@ Deno.serve(async (req) => {
         const uniqueTitles = [...new Map(titles.map((t: any) => [t.text, t])).values()];
         const uniqueDescriptions = [...new Map(descriptions.map((d: any) => [d.text, d])).values()];
 
-        // Build asset_feed_spec with the creative + all copy options
-        const assetFeedSpec: any = {
-          bodies: uniqueBodies.length > 0 ? uniqueBodies : [{ text: '' }],
-          titles: uniqueTitles.length > 0 ? uniqueTitles : [{ text: 'Learn More' }],
-          descriptions: uniqueDescriptions.length > 0 ? uniqueDescriptions : undefined,
-          call_to_action_types: [ctaType],
-          link_urls: [{ website_url: link }],
-          ad_formats: ['SINGLE_IMAGE'],
-        };
+        const targetAdSetDynamicMode =
+          (await getAdSetDynamicMode(targetAdSetId)) ?? isDynamicCreativeAdSet;
 
-        if (assetType === 'video') {
-          assetFeedSpec.videos = [{ video_id: assetId }];
-          assetFeedSpec.ad_formats = ['SINGLE_VIDEO'];
-        } else {
-          assetFeedSpec.images = [{ hash: assetId }];
-        }
+        const buildCreativeForMode = async (dynamicMode: boolean): Promise<string> => {
+          const creativeParams: Record<string, string> = {
+            name: `Creative - ${adName}`,
+            access_token: metaAccessToken,
+          };
 
-        // Remove undefined fields
-        if (!assetFeedSpec.descriptions) delete assetFeedSpec.descriptions;
+          if (dynamicMode) {
+            const assetFeedSpec: any = {
+              bodies: uniqueBodies.length > 0 ? uniqueBodies : [{ text: '' }],
+              titles: uniqueTitles.length > 0 ? uniqueTitles : [{ text: 'Learn More' }],
+              descriptions: uniqueDescriptions.length > 0 ? uniqueDescriptions : undefined,
+              call_to_action_types: [ctaType],
+              link_urls: [{ website_url: link }],
+              ad_formats: ['SINGLE_IMAGE'],
+            };
 
-        // Build creative params
-        const creativeParams: Record<string, string> = {
-          name: `Creative - ${adName}`,
-          asset_feed_spec: JSON.stringify(assetFeedSpec),
-          object_story_spec: JSON.stringify({ page_id: pageId }),
-          access_token: metaAccessToken,
-        };
+            if (assetType === 'video') {
+              assetFeedSpec.videos = [{ video_id: assetId }];
+              assetFeedSpec.ad_formats = ['SINGLE_VIDEO'];
+            } else {
+              assetFeedSpec.images = [{ hash: assetId }];
+            }
 
-        // Clone URL tags from existing ad if present
-        if (referenceSettings?.url_tags) {
-          creativeParams.url_tags = referenceSettings.url_tags;
-        }
+            if (!assetFeedSpec.descriptions) delete assetFeedSpec.descriptions;
 
-        const creativeResponse = await fetch(
-          `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(creativeParams),
+            creativeParams.asset_feed_spec = JSON.stringify(assetFeedSpec);
+            creativeParams.object_story_spec = JSON.stringify({ page_id: pageId });
+          } else {
+            const selectedCopy = copyVariations[0] || {};
+            const message = selectedCopy.primary_text || '';
+            const name = selectedCopy.headline || 'Learn More';
+            const description = selectedCopy.description || '';
+
+            const objectStorySpec = assetType === 'video'
+              ? {
+                  page_id: pageId,
+                  video_data: {
+                    video_id: assetId,
+                    message,
+                    title: name,
+                    ...(description ? { description } : {}),
+                    call_to_action: {
+                      type: ctaType,
+                      value: { link },
+                    },
+                  },
+                }
+              : {
+                  page_id: pageId,
+                  link_data: {
+                    link,
+                    message,
+                    name,
+                    ...(description ? { description } : {}),
+                    image_hash: assetId,
+                    call_to_action: {
+                      type: ctaType,
+                      value: { link },
+                    },
+                  },
+                };
+
+            creativeParams.object_story_spec = JSON.stringify(objectStorySpec);
           }
-        );
 
-        const creativeData = await creativeResponse.json();
-        if (creativeData.error) {
-          console.error(`Creative failed for ${adName}:`, creativeData.error);
-          failedAds.push({ assetName: asset.name, error: `Creative: ${creativeData.error.message}` });
+          if (referenceSettings?.url_tags) {
+            creativeParams.url_tags = referenceSettings.url_tags;
+          }
+
+          const creativeResponse = await fetch(
+            `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams(creativeParams),
+            }
+          );
+
+          const creativeData = await creativeResponse.json();
+          if (creativeData.error) {
+            throw new Error(
+              `Creative: ${creativeData.error.message} (code ${creativeData.error.code}${creativeData.error.error_subcode ? `/${creativeData.error.error_subcode}` : ''})`
+            );
+          }
+
+          return creativeData.id;
+        };
+
+        let creativeId: string;
+        try {
+          creativeId = await buildCreativeForMode(targetAdSetDynamicMode);
+        } catch (creativeError: any) {
+          console.error(`Creative failed for ${adName}:`, creativeError);
+          failedAds.push({ assetName: asset.name, error: creativeError.message || 'Creative creation failed' });
           continue;
         }
 
@@ -468,7 +536,7 @@ Deno.serve(async (req) => {
         const adParams: Record<string, string> = {
           adset_id: targetAdSetId,
           name: adName,
-          creative: JSON.stringify({ creative_id: creativeData.id }),
+          creative: JSON.stringify({ creative_id: creativeId }),
           status: 'PAUSED',
           access_token: metaAccessToken,
         };
@@ -493,9 +561,6 @@ Deno.serve(async (req) => {
               `Dynamic creative restriction hit for ad set ${targetAdSetId}. Falling back to cloned ad set flow for ${asset.name}.`
             );
 
-            // Persist adaptive mode so remaining assets skip the failing path.
-            isDynamicCreativeAdSet = true;
-
             const fallbackAdSetId = await cloneAdSetForAsset(`${asset.name}-fallback`);
             if (!fallbackAdSetId) {
               failedAds.push({
@@ -505,10 +570,26 @@ Deno.serve(async (req) => {
               continue;
             }
 
+            const fallbackDynamicMode =
+              (await getAdSetDynamicMode(fallbackAdSetId)) ?? targetAdSetDynamicMode;
+
+            let fallbackCreativeId = creativeId;
+            if (fallbackDynamicMode !== targetAdSetDynamicMode) {
+              try {
+                fallbackCreativeId = await buildCreativeForMode(fallbackDynamicMode);
+              } catch (fallbackCreativeError: any) {
+                failedAds.push({
+                  assetName: asset.name,
+                  error: fallbackCreativeError.message || 'Fallback creative creation failed',
+                });
+                continue;
+              }
+            }
+
             const retryAdParams: Record<string, string> = {
               adset_id: fallbackAdSetId,
               name: adName,
-              creative: JSON.stringify({ creative_id: creativeData.id }),
+              creative: JSON.stringify({ creative_id: fallbackCreativeId }),
               status: 'PAUSED',
               access_token: metaAccessToken,
             };
