@@ -164,3 +164,6 @@ verify_jwt = false
 
 [functions.generate-custom-angle]
 verify_jwt = true
+
+[functions.generate-advanced-copy]
+verify_jwt = false
