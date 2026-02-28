@@ -1,27 +1,25 @@
 
 
-## Plan: Campaign Name on Recommendations + Always-Visible Badges
+## Updated Plan: Replace "New Ad" with Smart "Next Steps" Button in Sidebar
 
-### Problem
-1. The overview-level recommendations don't show which campaign they belong to, causing confusion.
-2. Badges only appear when the `generate-recommendations` edge function returns results (which depends on specific metric thresholds). If none trigger, the badge doesn't show — even though the KPI verdict already implies an action.
+This modifies the approved sidebar plan. Instead of a prominent "New Ad" gradient button at the top of the sidebar, add a "Next Steps" button that routes intelligently.
 
-### Changes
+### Logic
+- If user has active campaigns with performance data → navigate to `/data` (Results page)
+- If user has no campaigns or no results → navigate to `/start` (Home, which has offer/ad creation flows)
 
-#### 1. `src/components/insights/LumiRecommendations.tsx` — Show campaign name on each recommendation
-- In the recommendation row (around line 308-309), after the `rec.title`, render `rec.campaignName` as a secondary `Badge` with `variant="secondary"` so the user always knows which campaign a recommendation belongs to.
-- Access it via `(rec as any).campaignName` since it's added at the InsightsHome level when mapping results.
+### Implementation
 
-#### 2. `src/components/insights/InsightsHome.tsx` — Generate client-side fallback recommendations from KPI verdicts
-- After computing `status` and `verdict` for each campaign (lines 341-346), generate a local recommendation object if the edge function returned nothing for that campaign.
-- Logic:
-  - `healthy` → type `budget_increase`, title "Strong performance — consider scaling", userAction false
-  - `attention` → type `keep_running`, title "Monitor closely — performance is borderline", userAction true, actionUrl to detail view
-  - `critical` → type `create_creative`, title "Below benchmark — refresh creative", userAction true, actionUrl `/creative`
-  - `unknown` → type `keep_running`, title "Still gathering data", userAction true
-- These fallback recs ensure `recCountsByWorkspace` always has a count for campaigns with any computed status, so the badge always appears.
-- In `fetchRecommendations`, after building `allRecs` from the edge function, loop through `campaigns` and add a fallback rec for any campaign not already represented. Include `campaignName` and `campaignId` on each.
+#### In `src/components/AppSidebar.tsx` (when created)
+- Replace the "New Ad" gradient pill with a "Next Steps" pill using the same Lumi gradient styling
+- Icon: `ArrowRight` or `Zap` instead of `Sparkles`
+- On click: check if user has any campaigns with metrics (query `campaigns` or check a lightweight flag from context), then route accordingly
+- The "New Ad" action is still accessible from: the Home page cards, the My Ads page, and the Library — so removing it from the sidebar loses nothing critical
 
-#### Layout
-No layout changes — badges stay in Row 1 next to campaign name, overview recommendations stay at the top above campaign cards. Both already exist in the current code.
+#### Routing logic (lightweight)
+- Use existing brand context or a quick Supabase query for `campaign_workspaces` count
+- If count > 0 → `/data`
+- If count === 0 → `/start`
+
+No other changes to the sidebar plan. Everything else (nav groups, Ask Lumi, collapse behavior, mobile untouched) stays the same.
 
