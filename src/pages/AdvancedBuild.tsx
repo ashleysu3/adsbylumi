@@ -5,6 +5,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,6 +63,7 @@ export default function AdvancedBuild() {
 
   // Step 3: Publishing
   const [publishing, setPublishing] = useState(false);
+  const [saveToBench, setSaveToBench] = useState(false);
 
   useEffect(() => {
     if (!workspaceId) {
@@ -280,30 +282,68 @@ export default function AdvancedBuild() {
     }));
   };
 
-  // Step 3: Save and mark ready
+  // Step 3: Save and mark ready (or save to bench)
   const handlePublish = async () => {
     setPublishing(true);
     try {
       // Save final state
       await saveState();
 
-      // Update workspace status
-      await supabase
-        .from("campaign_workspaces")
-        .update({
-          progress_status: "ready_to_publish",
-          user_uploaded_assets: assets.map(({ file, ...rest }) => rest) as any,
-          selected_copy: Object.fromEntries(
-            Object.entries(assetCopy).map(([id, copy]) => [
-              id,
-              copy.variations[copy.selectedIndex],
-            ])
-          ) as any,
-        })
-        .eq("id", workspaceId!);
+      if (saveToBench) {
+        // Save each asset to creative_bench
+        for (const asset of assets) {
+          const copy = assetCopy[asset.id];
+          const selected = copy?.variations[copy?.selectedIndex || 0];
+          await supabase.from("creative_bench").insert({
+            workspace_id: workspaceId!,
+            brand_id: brand.id,
+            production_item_id: asset.id,
+            status: "bench",
+            auto_rotate_approved: true,
+            performance_snapshot: {
+              asset_name: asset.name,
+              asset_url: asset.file_url,
+              asset_type: asset.file_type,
+              copy: selected || null,
+            } as any,
+          });
+        }
 
-      toast.success("Campaign ready! Heading to build...");
-      navigate(`/campaigns/build?workspace=${workspaceId}`);
+        await supabase
+          .from("campaign_workspaces")
+          .update({
+            progress_status: "bench_saved",
+            user_uploaded_assets: assets.map(({ file, ...rest }) => rest) as any,
+            selected_copy: Object.fromEntries(
+              Object.entries(assetCopy).map(([id, copy]) => [
+                id,
+                copy.variations[copy.selectedIndex],
+              ])
+            ) as any,
+          } as any)
+          .eq("id", workspaceId!);
+
+        toast.success(`${assets.length} creative saved to bench!`);
+        navigate("/campaigns");
+      } else {
+        // Normal publish flow
+        await supabase
+          .from("campaign_workspaces")
+          .update({
+            progress_status: "ready_to_publish",
+            user_uploaded_assets: assets.map(({ file, ...rest }) => rest) as any,
+            selected_copy: Object.fromEntries(
+              Object.entries(assetCopy).map(([id, copy]) => [
+                id,
+                copy.variations[copy.selectedIndex],
+              ])
+            ) as any,
+          })
+          .eq("id", workspaceId!);
+
+        toast.success("Campaign ready! Heading to build...");
+        navigate(`/campaigns/build?workspace=${workspaceId}`);
+      }
     } catch (error: any) {
       console.error("Publish error:", error);
       toast.error("Failed to save campaign");
@@ -600,11 +640,46 @@ export default function AdvancedBuild() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-4"
             >
+              {/* Destination Toggle */}
+              <Card className="border-2 border-blue-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl ${saveToBench ? 'bg-blue-500/10' : 'bg-primary/10'}`}>
+                        {saveToBench ? (
+                          <Sparkles className="h-5 w-5 text-blue-500" />
+                        ) : (
+                          <Upload className="h-5 w-5 text-primary" />
+                        )}
+                      </div>
+                      <div>
+                        <Label className="font-semibold text-sm">
+                          {saveToBench ? "Save to Bench" : "Go Live on Meta"}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {saveToBench 
+                            ? "Creative will be saved for future rotation when fatigue is detected"
+                            : "Creative will be uploaded to Meta and built into ad sets"
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={saveToBench}
+                      onCheckedChange={setSaveToBench}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Review Your Campaign</CardTitle>
+                  <CardTitle className="text-lg">Review Your {saveToBench ? "Bench Creative" : "Campaign"}</CardTitle>
                   <CardDescription>
-                    {assets.length} ad set{assets.length !== 1 ? "s" : ""} will be created — one per creative asset.
+                    {saveToBench 
+                      ? `${assets.length} creative will be saved to your bench for auto-rotation.`
+                      : `${assets.length} ad set${assets.length !== 1 ? "s" : ""} will be created — one per creative asset.`
+                    }
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -656,12 +731,12 @@ export default function AdvancedBuild() {
                   {publishing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      {saveToBench ? "Saving to Bench..." : "Saving..."}
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-2" />
-                      Build Campaign
+                      {saveToBench ? "Save to Bench" : "Build Campaign"}
                     </>
                   )}
                 </Button>

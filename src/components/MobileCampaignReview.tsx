@@ -19,7 +19,8 @@ import {
   Pencil,
   Check,
   X,
-  ChevronRight
+  ChevronRight,
+  Archive
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -39,6 +40,7 @@ export function MobileCampaignReview({
   onEditSection 
 }: MobileCampaignReviewProps) {
   const [launchAsActive, setLaunchAsActive] = useState(false);
+  const [saveToBench, setSaveToBench] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
 
@@ -234,38 +236,71 @@ export function MobileCampaignReview({
           </ReviewCard>
         )}
 
-        {/* Launch Status */}
-        <Card className="border-2 border-primary/20">
+        {/* Save to Bench Toggle */}
+        <Card className="border-2 border-blue-500/20">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {launchAsActive ? (
-                  <div className="p-2 rounded-lg bg-green-500/10">
-                    <Play className="h-5 w-5 text-green-500" />
-                  </div>
-                ) : (
-                  <div className="p-2 rounded-lg bg-amber-500/10">
-                    <Pause className="h-5 w-5 text-amber-500" />
-                  </div>
-                )}
+                <div className={`p-2 rounded-lg ${saveToBench ? 'bg-blue-500/10' : 'bg-primary/10'}`}>
+                  {saveToBench ? (
+                    <Pause className="h-5 w-5 text-blue-500" />
+                  ) : (
+                    <Rocket className="h-5 w-5 text-primary" />
+                  )}
+                </div>
                 <div>
                   <p className="font-semibold text-sm">
-                    {launchAsActive ? "Launch Active" : "Launch Paused"}
+                    {saveToBench ? "Save to Bench" : "Go Live"}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {launchAsActive 
-                      ? "Goes live after Meta approval" 
-                      : "Activate later from dashboard"}
+                    {saveToBench 
+                      ? "Ready for future rotation" 
+                      : "Upload to Meta now"}
                   </p>
                 </div>
               </div>
               <Switch
-                checked={launchAsActive}
-                onCheckedChange={setLaunchAsActive}
+                checked={saveToBench}
+                onCheckedChange={setSaveToBench}
               />
             </div>
           </CardContent>
         </Card>
+
+        {/* Launch Status — only if going live */}
+        {!saveToBench && (
+          <Card className="border-2 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {launchAsActive ? (
+                    <div className="p-2 rounded-lg bg-green-500/10">
+                      <Play className="h-5 w-5 text-green-500" />
+                    </div>
+                  ) : (
+                    <div className="p-2 rounded-lg bg-amber-500/10">
+                      <Pause className="h-5 w-5 text-amber-500" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-semibold text-sm">
+                      {launchAsActive ? "Launch Active" : "Launch Paused"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {launchAsActive 
+                        ? "Goes live after Meta approval" 
+                        : "Activate later from dashboard"}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={launchAsActive}
+                  onCheckedChange={setLaunchAsActive}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Sticky Publish Button */}
