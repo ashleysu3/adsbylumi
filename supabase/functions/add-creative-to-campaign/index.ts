@@ -286,6 +286,7 @@ Deno.serve(async (req) => {
 
     // Detect dynamic creative ad set restrictions (Meta allows only one ad in certain dynamic ad sets)
     let isDynamicCreativeAdSet = false;
+    let forceClonePerAsset = false;
     try {
       const adSetMetaRes = await fetch(
         `https://graph.facebook.com/v18.0/${adSetId}?fields=id,is_dynamic_creative&access_token=${metaAccessToken}`
@@ -365,7 +366,7 @@ Deno.serve(async (req) => {
 
       // Default to resolved ad set; for dynamic creative, clone a fresh ad set per asset.
       let targetAdSetId = adSetId;
-      if (isDynamicCreativeAdSet) {
+      if (isDynamicCreativeAdSet || forceClonePerAsset) {
         const clonedAdSetId = await cloneAdSetForAsset(asset.name);
         if (!clonedAdSetId) {
           failedAds.push({
@@ -432,8 +433,9 @@ Deno.serve(async (req) => {
         const uniqueTitles = [...new Map(titles.map((t: any) => [t.text, t])).values()];
         const uniqueDescriptions = [...new Map(descriptions.map((d: any) => [d.text, d])).values()];
 
-        const targetAdSetDynamicMode =
-          (await getAdSetDynamicMode(targetAdSetId)) ?? isDynamicCreativeAdSet;
+        // Force standard (non-dynamic) creative payload per ad to avoid Meta 1885998 mismatches.
+        // One-creative-per-ad is still supported via ad set cloning fallback on 1885553.
+        const targetAdSetDynamicMode = false;
 
         const buildCreativeForMode = async (dynamicMode: boolean): Promise<string> => {
           const creativeParams: Record<string, string> = {
@@ -554,12 +556,13 @@ Deno.serve(async (req) => {
         if (adData.error) {
           const isDynamicRestriction = adData.error?.error_subcode === 1885553;
 
-          // Fallback: Meta sometimes doesn't expose dynamic-creative mode reliably via ad set metadata.
-          // If we hit the runtime restriction, switch strategy and retry this asset in a cloned ad set.
+          // If Meta enforces one-ad-per-dynamic-ad-set, retry this asset in a cloned ad set.
           if (isDynamicRestriction) {
             console.warn(
               `Dynamic creative restriction hit for ad set ${targetAdSetId}. Falling back to cloned ad set flow for ${asset.name}.`
             );
+
+            forceClonePerAsset = true;
 
             const fallbackAdSetId = await cloneAdSetForAsset(`${asset.name}-fallback`);
             if (!fallbackAdSetId) {
@@ -570,26 +573,10 @@ Deno.serve(async (req) => {
               continue;
             }
 
-            const fallbackDynamicMode =
-              (await getAdSetDynamicMode(fallbackAdSetId)) ?? targetAdSetDynamicMode;
-
-            let fallbackCreativeId = creativeId;
-            if (fallbackDynamicMode !== targetAdSetDynamicMode) {
-              try {
-                fallbackCreativeId = await buildCreativeForMode(fallbackDynamicMode);
-              } catch (fallbackCreativeError: any) {
-                failedAds.push({
-                  assetName: asset.name,
-                  error: fallbackCreativeError.message || 'Fallback creative creation failed',
-                });
-                continue;
-              }
-            }
-
             const retryAdParams: Record<string, string> = {
               adset_id: fallbackAdSetId,
               name: adName,
-              creative: JSON.stringify({ creative_id: fallbackCreativeId }),
+              creative: JSON.stringify({ creative_id: creativeId }),
               status: 'PAUSED',
               access_token: metaAccessToken,
             };
@@ -612,6 +599,21 @@ Deno.serve(async (req) => {
               });
               continue;
             }
+
+            createdAdIds.push(retryAdData.id);
+            console.log(`Ad created via fallback: ${retryAdData.id} (${adName}) on cloned ad set ${fallbackAdSetId}`);
+            continue;
+          }
+
+          console.error(`Ad creation failed for ${adName}:`, adData.error);
+          failedAds.push({
+            assetName: asset.name,
+            error: `Ad: ${adData.error.message} (code ${adData.error.code}${adData.error.error_subcode ? `/${adData.error.error_subcode}` : ''})`,
+          });
+          continue;
+        }
+
+        createdAdIds.push(adData.id);
 
             createdAdIds.push(retryAdData.id);
             console.log(`Ad created via fallback: ${retryAdData.id} (${adName}) on cloned ad set ${fallbackAdSetId}`);
