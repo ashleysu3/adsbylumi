@@ -7,7 +7,7 @@ const corsHeaders = {
 
 interface Recommendation {
   id: string;
-  type: 'budget_increase' | 'budget_decrease' | 'pause_ad' | 'resume_ad' | 'swap_creative' | 'keep_running';
+  type: 'budget_increase' | 'budget_decrease' | 'pause_ad' | 'resume_ad' | 'swap_creative' | 'keep_running' | 'create_creative';
   title: string;
   description: string;
   impact: string;
@@ -15,6 +15,8 @@ interface Recommendation {
   requiresDoubleApproval: boolean;
   actionPayload: Record<string, any>;
   priority: number;
+  userAction?: boolean;
+  actionUrl?: string;
 }
 
 Deno.serve(async (req) => {
@@ -138,7 +140,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Fatigue detection → swap creative
+      // Fatigue detection → swap creative or prompt user to create new
       if (ad.frequency && ad.frequency >= fatigueThreshold && ad.status === 'ACTIVE') {
         const availableBench = bench.filter(b => b.auto_rotate_approved && b.meta_ad_id && b.status === 'bench');
         if (availableBench.length > 0) {
@@ -157,6 +159,21 @@ Deno.serve(async (req) => {
               benchAdId: availableBench[0].meta_ad_id,
               benchItemName: availableBench[0].production_item_id || 'Bench creative',
             },
+            priority: priority++,
+          });
+        } else {
+          // No bench creative available — user needs to create new creative
+          recommendations.push({
+            id: `create-creative-${ad.id}`,
+            type: 'create_creative',
+            title: `Create fresh creative for "${ad.name}"`,
+            description: `Frequency of ${Number(ad.frequency).toFixed(1)} is causing fatigue, but your bench is empty. Time to create new creative to keep performance strong.`,
+            impact: 'Prevent further performance decline from creative fatigue',
+            confidence: 'high',
+            requiresDoubleApproval: false,
+            actionPayload: { workspaceId, brandId, fatigueAdId: ad.id },
+            userAction: true,
+            actionUrl: `/creative?workspace=${workspaceId}&addCreative=true`,
             priority: priority++,
           });
         }
