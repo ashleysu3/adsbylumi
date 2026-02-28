@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import confetti from "canvas-confetti";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 interface UploadedAsset {
@@ -354,14 +355,27 @@ export default function AdvancedBuild() {
               })
               .eq("id", workspaceId!);
 
-            toast.success(result.message || `${result.totalCreated} new ad(s) added to your campaign!`);
+            // 🎉 Confetti celebration
+            const lumiColors = ['#F97316', '#EC4899', '#A78BFA', '#93C5FD'];
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: lumiColors });
+            setTimeout(() => {
+              confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 }, colors: lumiColors });
+              confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1 }, colors: lumiColors });
+            }, 250);
+
+            toast.success(`✨ ${result.totalCreated} ad${result.totalCreated > 1 ? 's' : ''} added to your campaign!`, {
+              description: "Your new creatives are paused in Ads Manager — turn them on when you're ready to shine.",
+              duration: 6000,
+            });
+
             if (result.failedAds?.length > 0) {
               toast.warning(`${result.totalFailed} ad(s) failed to create. Check Ads Manager for details.`);
             }
           } else {
-            throw new Error(result?.error || "Failed to add creative to campaign");
+            throw new Error(result?.error || "Failed to add to campaign");
           }
-          navigate("/campaigns");
+
+          setTimeout(() => navigate("/campaigns"), 2500);
         } else {
           await supabase
             .from("campaign_workspaces")
@@ -402,7 +416,7 @@ export default function AdvancedBuild() {
   const canProceedToStep2 = assets.length > 0;
   const canProceedToStep3 = sharedCopy.variations.length > 0 && sharedCopy.selectedIndices.length > 0;
   const approvedCount = sharedCopy.selectedIndices.length;
-  const publishLabel = saveToBench ? "Save to Bench" : isExistingCampaign ? "Add Creative" : "Build Campaign";
+  const publishLabel = saveToBench ? "Save to Bench" : isExistingCampaign ? "Add to Campaign" : "Build Campaign";
 
   if (loading) {
     return (
