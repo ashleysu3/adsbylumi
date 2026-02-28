@@ -81,12 +81,11 @@ export function InlineProgressChecklist({ brand, offers, onScrollToSection }: In
           return (
             <button
               key={step.id}
-              onClick={() => !step.completed && onScrollToSection(step.section)}
-              disabled={step.completed}
+              onClick={() => onScrollToSection(step.section)}
               className={cn(
                 "flex-1 flex flex-col items-center gap-1.5 p-2 rounded-lg transition-all",
                 step.completed 
-                  ? "text-green-600 dark:text-green-400" 
+                  ? "text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/10 cursor-pointer" 
                   : "text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
               )}
             >
@@ -104,7 +103,9 @@ export function InlineProgressChecklist({ brand, offers, onScrollToSection }: In
               </div>
               <span className={cn(
                 "text-[10px] sm:text-xs font-medium text-center leading-tight",
-                step.completed && "text-green-600 dark:text-green-400"
+                step.completed 
+                  ? "text-green-600 dark:text-green-400" 
+                  : "hover:underline"
               )}>
                 {step.label}
               </span>
