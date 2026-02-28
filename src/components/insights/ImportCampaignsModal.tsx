@@ -229,8 +229,8 @@ export function ImportCampaignsModal({
   if (showSuccessView) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md">
-          <div className="text-center py-6 space-y-6">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <div className="text-center py-4 space-y-5">
             {/* Success Animation */}
             <div className="relative mx-auto w-20 h-20">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-100 to-green-50 animate-pulse" />
