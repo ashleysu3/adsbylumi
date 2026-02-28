@@ -114,9 +114,13 @@ Deno.serve(async (req) => {
         }
 
         const adSetAccountId = normalizeAccountId(adSetCheck.account_id);
+        const effectiveStatuses = Array.isArray(adSetCheck.effective_status)
+          ? adSetCheck.effective_status
+          : [adSetCheck.effective_status].filter(Boolean);
         const isDeleted =
           adSetCheck.status === 'DELETED' ||
-          (Array.isArray(adSetCheck.effective_status) && adSetCheck.effective_status.includes('DELETED'));
+          effectiveStatuses.includes('DELETED') ||
+          effectiveStatuses.includes('ARCHIVED');
 
         if (adSetAccountId !== accountId || isDeleted) {
           console.warn(
