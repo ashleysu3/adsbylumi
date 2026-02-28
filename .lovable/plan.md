@@ -1,28 +1,17 @@
-## Completed: Lumi Actionable Recommendations
 
-### What was built
 
-1. **Edge function `generate-recommendations`** — Analyzes campaign metrics, ad performance, bench availability, and fatigue thresholds to produce structured actionable recommendations (budget changes, pause/resume ads, swap bench creative).
+## Plan: Stay on Results Tab After Linking an Offer
 
-2. **`LumiRecommendations` component** — Displays recommendations with individual "Approve" buttons and an "Approve All" button. Budget changes require double confirmation via an AlertDialog. Completed recommendations are visually marked.
+### Problem
+Two places redirect away from the Results tab after linking an offer:
+1. `InsightsHome.tsx` line 198: `handleOfferLinked` navigates to `/creative?workspace=...&addCreative=true`
+2. `CampaignInsightDetail.tsx` line 235-238: calls `onOfferLinked?.()` which correctly stays (just refetches campaigns in `Data.tsx`)
 
-3. **InsightsHome integration** — Overview page fetches recommendations across all campaigns and shows top 4 in compact mode with "Approve All".
+### Changes
 
-4. **CampaignInsightDetail integration** — Full recommendations panel shown below the 3 summary cards, with all recommendations for that campaign.
+**`src/components/insights/InsightsHome.tsx`** (line 197-199)
+- Change `handleOfferLinked` to simply close the modal, refresh the campaigns list, and stay on the current page
+- Replace `navigate(...)` with: close the `linkOfferModal`, call `fetchCampaigns()` to refresh the list, and show a toast confirming the link
 
-5. **Weekly digest enhancement** — Added "LUMI'S RECOMMENDATIONS" section with actionable items and a direct link to approve them in the Results dashboard.
+That's it — one function change in one file.
 
-### Recommendation types
-- **Budget increase/decrease** — Requires double approval (confirmation dialog with current vs. new budget)
-- **Pause ad** — One-click approval, pauses underperforming ads via Meta API
-- **Resume ad** — One-click approval, resumes strong paused ads
-- **Swap creative** — One-click approval, rotates bench creative into fatigued ad slots
-
-### Files created
-- `supabase/functions/generate-recommendations/index.ts`
-- `src/components/insights/LumiRecommendations.tsx`
-
-### Files edited
-- `src/components/insights/InsightsHome.tsx` — Added recommendation fetching + display
-- `src/components/insights/CampaignInsightDetail.tsx` — Added full recommendation panel
-- `supabase/functions/generate-weekly-report/index.ts` — Added recommendations section to email
