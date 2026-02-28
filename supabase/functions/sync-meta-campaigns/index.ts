@@ -106,11 +106,22 @@ Deno.serve(async (req) => {
     }
 
     if (brandData.user_id !== user.id) {
-      console.error('Access denied: User', user.id, 'does not own brand', brandId);
-      return new Response(
-        JSON.stringify({ error: 'Access denied: You do not own this brand' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      // Check if user is admin — admins can access any brand (impersonation support)
+      const { data: adminRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (!adminRole) {
+        console.error('Access denied: User', user.id, 'does not own brand', brandId);
+        return new Response(
+          JSON.stringify({ error: 'Access denied: You do not own this brand' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      console.log('Admin bypass: User', user.id, 'accessing brand', brandId);
     }
 
     console.log('Brand ownership verified for user:', user.id);
