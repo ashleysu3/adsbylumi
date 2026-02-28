@@ -1,6 +1,7 @@
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Circle, Building2, Target, Brain, Package, Link } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ProgressStep {
   id: string;
@@ -9,6 +10,7 @@ interface ProgressStep {
   section: string;
   icon: React.ElementType;
   detail?: string;
+  tooltip?: string;
 }
 
 interface InlineProgressChecklistProps {
@@ -18,6 +20,39 @@ interface InlineProgressChecklistProps {
 }
 
 export function InlineProgressChecklist({ brand, offers, onScrollToSection }: InlineProgressChecklistProps) {
+  const getTooltip = (id: string, completed: boolean) => {
+    if (completed) {
+      const map: Record<string, string> = {
+        "brand-basics": "Brand name, website & industry ✓",
+        "positioning": "Value proposition & audience ✓",
+        "brand-brain": "Psychology & preferences ✓",
+        "offers": `${offers.length} offer${offers.length !== 1 ? 's' : ''} added ✓`,
+        "meta": brand?.page_name ? `Connected: ${brand.page_name} ✓` : "Ad account connected ✓",
+      };
+      return map[id] || "Complete ✓";
+    }
+    const map: Record<string, string> = {
+      "brand-basics": [
+        !brand?.name && "brand name",
+        !brand?.website_url && "website URL",
+        !brand?.industry && "industry",
+      ].filter(Boolean).join(", ") || "Complete your brand basics",
+      "positioning": [
+        !brand?.value_proposition && "value proposition",
+        !brand?.target_audience && "target audience",
+      ].filter(Boolean).join(", ") || "Add your positioning",
+      "brand-brain": [
+        brand?.psychology_status !== "approved" && "audience psychology",
+        brand?.use_emojis === undefined && "emoji preferences",
+      ].filter(Boolean).join(", ") || "Set up your brand brain",
+      "offers": "Add at least one offer to get started",
+      "meta": "Connect your Meta ad account",
+    };
+    const missing = map[id];
+    if (id === "offers" || id === "meta") return missing;
+    return `Add: ${missing}`;
+  };
+
   const steps: ProgressStep[] = [
     {
       id: "brand-basics",
@@ -77,49 +112,58 @@ export function InlineProgressChecklist({ brand, offers, onScrollToSection }: In
       </div>
 
       {/* Step indicators */}
-      <div className="flex items-center justify-between gap-1">
-        {steps.map((step, index) => {
-          const Icon = step.icon;
-          return (
-            <button
-              key={step.id}
-              onClick={() => onScrollToSection(step.section)}
-              className={cn(
-                "flex-1 flex flex-col items-center gap-1.5 p-2 rounded-lg transition-all",
-                step.completed 
-                  ? "text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/10 cursor-pointer" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
-              )}
-            >
-              <div className={cn(
-                "relative w-8 h-8 rounded-full flex items-center justify-center transition-colors",
-                step.completed 
-                  ? "bg-green-100 dark:bg-green-900/30" 
-                  : "bg-muted"
-              )}>
-                {step.completed ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : (
-                  <Icon className="h-4 w-4" />
-                )}
-              </div>
-              <span className={cn(
-                "text-[10px] sm:text-xs font-medium text-center leading-tight",
-                step.completed 
-                  ? "text-green-600 dark:text-green-400" 
-                  : "hover:underline"
-              )}>
-                {step.label}
-              </span>
-              {step.completed && step.detail && (
-                <span className="text-[9px] sm:text-[10px] text-muted-foreground text-center leading-tight truncate max-w-[80px]">
-                  {step.detail}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <TooltipProvider delayDuration={200}>
+        <div className="flex items-center justify-between gap-1">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            const tooltipText = getTooltip(step.id, step.completed);
+            return (
+              <Tooltip key={step.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onScrollToSection(step.section)}
+                    className={cn(
+                      "flex-1 flex flex-col items-center gap-1.5 p-2 rounded-lg transition-all",
+                      step.completed 
+                        ? "text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/10 cursor-pointer" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
+                    )}
+                  >
+                    <div className={cn(
+                      "relative w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                      step.completed 
+                        ? "bg-green-100 dark:bg-green-900/30" 
+                        : "bg-muted"
+                    )}>
+                      {step.completed ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <Icon className="h-4 w-4" />
+                      )}
+                    </div>
+                    <span className={cn(
+                      "text-[10px] sm:text-xs font-medium text-center leading-tight",
+                      step.completed 
+                        ? "text-green-600 dark:text-green-400" 
+                        : "hover:underline"
+                    )}>
+                      {step.label}
+                    </span>
+                    {step.completed && step.detail && (
+                      <span className="text-[9px] sm:text-[10px] text-muted-foreground text-center leading-tight truncate max-w-[80px]">
+                        {step.detail}
+                      </span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-[200px] text-center">
+                  {tooltipText}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
 
       {/* Next step hint */}
       {!isComplete && (
