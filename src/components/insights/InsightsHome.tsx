@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +84,7 @@ interface InsightsHomeProps {
   onCustomDateRangeChange?: (range: { from: Date; to: Date } | null) => void;
   onViewInsights: (campaignId: string) => void;
   onUpdateGoal: (campaignId: string, goal: number) => void;
+  onOfferLinked?: () => void;
   isLoading: boolean;
   accountMetrics?: AccountMetrics | null;
   accountMetricsLoading?: boolean;
@@ -143,11 +143,11 @@ export function InsightsHome({
   onCustomDateRangeChange,
   onViewInsights,
   onUpdateGoal,
+  onOfferLinked,
   isLoading,
   accountMetrics,
   accountMetricsLoading,
 }: InsightsHomeProps) {
-  const navigate = useNavigate();
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live', 'paused', 'imported']);
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -194,8 +194,10 @@ export function InsightsHome({
     }
   };
 
-  const handleOfferLinked = (campaign: Campaign) => {
-    navigate(`/creative?workspace=${campaign.id}&addCreative=true`);
+  const handleOfferLinked = () => {
+    setLinkOfferModal({ open: false, campaign: null });
+    toast.success('Offer linked successfully!');
+    onOfferLinked?.();
   };
 
   // Fetch recommendations for campaigns with metrics
@@ -483,7 +485,7 @@ export function InsightsHome({
           workspaceId={linkOfferModal.campaign.id}
           workspaceName={linkOfferModal.campaign.name}
           brandId={linkOfferModal.campaign.brandId || ''}
-          onSuccess={() => handleOfferLinked(linkOfferModal.campaign!)}
+          onSuccess={() => handleOfferLinked()}
         />
       )}
     </div>
