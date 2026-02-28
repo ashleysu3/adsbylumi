@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Authorization': authHeader,
           },
           body: JSON.stringify({
             assetStoragePath: asset.storage_path,
