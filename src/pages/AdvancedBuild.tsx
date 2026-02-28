@@ -327,17 +327,25 @@ export default function AdvancedBuild() {
         toast.success(`${assets.length} creative saved to bench!`);
         navigate("/campaigns");
       } else {
+        const isExistingCampaign = workspace?.meta_campaign_ids && 
+          (Array.isArray(workspace.meta_campaign_ids) ? workspace.meta_campaign_ids.length > 0 : Object.keys(workspace.meta_campaign_ids).length > 0);
+
         await supabase
           .from("campaign_workspaces")
           .update({
-            progress_status: "ready_to_publish",
+            progress_status: isExistingCampaign ? "creative_added" : "ready_to_publish",
             user_uploaded_assets: assets.map(({ file, ...rest }) => rest) as any,
             selected_copy: { shared_variations: approvedVariations } as any,
           })
           .eq("id", workspaceId!);
 
-        toast.success("Campaign ready! Heading to build...");
-        navigate(`/campaigns/build?workspace=${workspaceId}`);
+        if (isExistingCampaign) {
+          toast.success(`${assets.length} new creative added to your campaign!`);
+          navigate("/campaigns");
+        } else {
+          toast.success("Campaign ready! Heading to build...");
+          navigate(`/campaigns/build?workspace=${workspaceId}`);
+        }
       }
     } catch (error: any) {
       console.error("Publish error:", error);
@@ -360,9 +368,12 @@ export default function AdvancedBuild() {
     "direct-benefit": "💪 Direct Benefit",
   };
 
+  const isExistingCampaign = workspace?.meta_campaign_ids && 
+    (Array.isArray(workspace.meta_campaign_ids) ? workspace.meta_campaign_ids.length > 0 : Object.keys(workspace.meta_campaign_ids).length > 0);
   const canProceedToStep2 = assets.length > 0;
   const canProceedToStep3 = sharedCopy.variations.length > 0 && sharedCopy.selectedIndices.length > 0;
   const approvedCount = sharedCopy.selectedIndices.length;
+  const publishLabel = saveToBench ? "Save to Bench" : isExistingCampaign ? "Add Creative" : "Build Campaign";
 
   if (loading) {
     return (
@@ -791,7 +802,7 @@ export default function AdvancedBuild() {
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-2" />
-                      {saveToBench ? "Save to Bench" : "Build Campaign"}
+                      {publishLabel}
                     </>
                   )}
                 </Button>
