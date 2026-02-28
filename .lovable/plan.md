@@ -1,57 +1,41 @@
 
 
-## Plan: Recommendation Badges on Campaign Cards + Enhanced Detail View
+## Plan: Unify "What To Do Next" with Actionable Recommendations
 
-### Overview
-Add a per-campaign recommendation count badge on each campaign card in the Results overview, and enhance the detail view to show recommendations prominently below the date range. Recommendations are split into two types: **Lumi-executable** (approve and Lumi does it) and **user-action** (button takes user to the right place).
+### Problem
+The `LumiRecommendations` component uses ad-level metrics that may be empty, showing "Everything looks good" even when the `analyze-performance` function has returned useful `next_steps`. These two systems are disconnected.
 
 ### Changes
 
-#### 1. `src/components/insights/InsightsHome.tsx`
-- **Track per-campaign recommendation counts** during the existing `fetchRecommendations` loop. Store a `Map<campaignId, number>` in state.
-- **Add a recommendation badge** on each campaign card (next to the campaign name or near the "View Details" button). Shows a small Sparkles icon + count (e.g., "3 recommendations"). Clicking it calls `onViewInsights(campaignId)`.
-- Pass a `scrollToRecs` flag when the badge is clicked vs the "View Details" button.
+#### 1. `src/components/insights/CampaignInsightDetail.tsx`
+- **Move `LumiRecommendations` back below the 3 summary cards** (after the What's Working / What's Not / What To Do grid).
+- **Pass `analysis.next_steps` into `LumiRecommendations`** as a new `nextSteps` prop so they get merged into the recommendation list.
+- **Remove the static "What To Do Next" card** from the 3-card grid — replace it with a clickable card that scrolls to / highlights the recommendations section below. The card shows the count of actionable items and acts as a shortcut.
 
 #### 2. `src/components/insights/LumiRecommendations.tsx`
-- **Add a new recommendation type: `'create_creative'`** for user-action items (things Lumi can't do automatically, like making new creative).
-- For each recommendation, if the type is user-actionable (not automatable), render a **"Next Step"** button instead of "Approve" that navigates the user to the appropriate page (e.g., `/creative?workspace=...&addCreative=true` for creative refresh).
-- Add a `userActionTypes` set: `{'create_creative', 'record_new_video', ...}` — these render navigation buttons instead of approve buttons.
+- **Accept a new `nextSteps` prop** (`string[]`) — these are the AI-generated next steps from `analyze-performance`.
+- **Convert each `nextStep` into a Recommendation object** with:
+  - Type inferred from keywords (e.g., "creative" → `create_creative`, "budget" → `budget_increase`, default → `keep_running`)
+  - `userAction: true` with an `actionUrl` pointing to the relevant page (`/creative`, `/planning`, etc.)
+  - Each gets an actionable "Next Step →" button
+- **Merge these with any ad-level recommendations** from the edge function, deduplicating where possible.
+- **Never show "Everything looks good"** if there are next_steps available — only show the green state when both sources are empty.
 
-#### 3. `src/components/insights/CampaignInsightDetail.tsx`
-- **Move `LumiRecommendations` to directly below the date range card** (currently it's after the 3 summary cards). This puts recommendations front and center.
-- Keep "Approve All" and individual approve buttons as-is for Lumi-executable actions.
+#### 3. "What To Do Next" summary card becomes a clickable anchor
+- Keep the card in the 3-card grid but make it a clickable summary showing recommendation count.
+- Clicking it scrolls to the `LumiRecommendations` section below.
+- Add a `ref` on the recommendations section and use `scrollIntoView` on click.
 
-#### 4. `supabase/functions/generate-recommendations/index.ts`
-- **Add a `create_creative` recommendation** when creative fatigue is detected but no bench items are available. Include a `userAction: true` flag and `actionUrl` in the payload pointing to `/creative?workspace=...&addCreative=true`.
-- Add `userAction` boolean and `actionUrl` string to the Recommendation interface so the frontend knows whether to show "Approve" vs "Next Step →".
-
-### Technical Detail
-
-**Recommendation interface addition:**
-```typescript
-interface Recommendation {
-  // ... existing fields
-  userAction?: boolean;    // true = user must do something (navigate)
-  actionUrl?: string;      // where to send them
-}
-```
-
-**Badge on campaign card** — small inline element:
-```
-[Sparkles icon] 3 recommendations
-```
-Styled as a clickable badge with the lumi gradient, placed in Row 4 next to "View Details".
-
-**Detail view layout order** (after changes):
-1. Back button
-2. Campaign header
-3. Link Offer section
-4. Date range picker
-5. **Lumi Recommendations** (moved up from below summary cards)
-6. 3 Summary cards
-7. Budget recommendation
-8. Primary KPI
-9. Ad breakdown
-10. Creative bench
-11. Advanced analysis
+### Layout Order (after changes)
+1. Back button + Campaign header
+2. Link Offer section
+3. Date range picker
+4. 3 Summary cards: What's Working | What's Not Working | What To Do Next (clickable, shows count)
+5. **Lumi Recommendations** (merged: ad-level recs + next_steps as actionable items)
+6. Budget Recommendation
+7. Primary KPI
+8. Ad Breakdown
+9. Creative Bench
+10. What's Working Card
+11. Advanced Analysis
 
