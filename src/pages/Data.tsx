@@ -788,6 +788,7 @@ export default function Data() {
             isLoading={loading || syncing}
             accountMetrics={accountMetrics}
             accountMetricsLoading={accountMetricsLoading}
+            onOfferLinked={() => fetchCampaigns()}
           />
         ) : selectedCampaign ? (
           <CampaignInsightDetail
