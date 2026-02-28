@@ -175,7 +175,7 @@ export default function AdvancedBuild() {
 
       for (const file of Array.from(files)) {
         const ext = file.name.split('.').pop();
-        const path = `${user.id}/${workspaceId}/${crypto.randomUUID()}.${ext}`;
+        const path = `${brand.id}/${workspaceId}/${crypto.randomUUID()}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
           .from("creative-assets")
