@@ -897,7 +897,7 @@ export default function CreativeStudio() {
               <SelectTrigger className="w-[180px] sm:w-[240px]"><FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Select campaign" /></SelectTrigger>
               <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
             </Select>
-            {gridData.length > 0 && (
+            {(gridData.length > 0 || productionItems.length > 0) && (
               <Button variant="outline" size="sm" onClick={() => setShowBrief(true)} className="gap-2 hidden sm:flex">
                 <FileDown className="h-4 w-4" />
                 Creative Brief
@@ -1231,7 +1231,16 @@ export default function CreativeStudio() {
               audiencePsychology={workspace?.brands?.audience_psychology}
               angles={availableAngles}
               selectedAngleIds={selectedAngleIds}
-              gridData={gridData}
+              gridData={gridData.length > 0 ? gridData : productionItems.map(pi => ({
+                id: pi.id,
+                angleId: availableAngles.find(a => a.name === pi.angleName)?.id || "direct_from_page",
+                format: pi.format,
+                hook: pi.hook || "",
+                guidance: pi.guidance || "",
+                row: "attention" as const,
+                why_this_works: pi.why_this_works || "",
+                script_lines: pi.script_lines || [],
+              }))}
               angleCopy={angleCopy}
             />
           </ScrollArea>
