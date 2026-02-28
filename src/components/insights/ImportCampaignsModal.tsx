@@ -229,13 +229,13 @@ export function ImportCampaignsModal({
   if (showSuccessView) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-          <div className="text-center py-4 space-y-5">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col overflow-y-auto">
+          <div className="text-center py-2 space-y-4">
             {/* Success Animation */}
-            <div className="relative mx-auto w-20 h-20">
+            <div className="relative mx-auto w-14 h-14">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-100 to-green-50 animate-pulse" />
-              <div className="absolute inset-2 rounded-full bg-white flex items-center justify-center">
-                <CheckCircle2 className="h-10 w-10 text-green-500" />
+              <div className="absolute inset-1.5 rounded-full bg-white flex items-center justify-center">
+                <CheckCircle2 className="h-7 w-7 text-green-500" />
               </div>
             </div>
 
