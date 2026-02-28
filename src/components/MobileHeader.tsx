@@ -68,7 +68,7 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/start")} className="min-h-[44px]">
               <Home className="mr-3 h-4 w-4" />
-              Home
+              Start Here
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/dashboard")} className="min-h-[44px]">
               <Building2 className="mr-3 h-4 w-4" />

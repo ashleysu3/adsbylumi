@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home, FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, ArrowRight, Zap } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, ArrowRight, Zap, Package, Link2, LifeBuoy } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
@@ -24,16 +24,17 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainNav = [
-  { path: "/start", icon: Home, label: "Home" },
-  { path: "/campaigns", icon: FolderKanban, label: "My Ads" },
+  { path: "/campaigns", icon: FolderKanban, label: "Drafts" },
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio" },
   { path: "/data", icon: BarChart3, label: "Results" },
 ];
 
 const toolsNav = [
   { path: "/content-library", icon: Library, label: "Library" },
-  { path: "/dashboard", icon: Building2, label: "My Brand" },
-  { path: "/glossary", icon: BookOpen, label: "Ads Glossary" },
+  { path: "/dashboard", icon: Package, label: "Offers" },
+  { path: "/dashboard?tab=brand", icon: Building2, label: "My Brand" },
+  { path: "/settings", icon: Link2, label: "Meta Connection" },
+  { path: "/glossary", icon: LifeBuoy, label: "Troubleshooting" },
 ];
 
 interface AppSidebarProps {
@@ -62,7 +63,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   }, [brandId]);
 
   const handleNextSteps = () => {
-    navigate(hasCampaigns ? "/data" : "/start");
+    navigate("/start");
   };
 
   const handleSignOut = async () => {
