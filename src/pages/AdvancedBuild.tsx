@@ -57,6 +57,7 @@ export default function AdvancedBuild() {
   // Step 1: Assets
   const [assets, setAssets] = useState<UploadedAsset[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Step 2: Copy per asset
   const [assetCopy, setAssetCopy] = useState<Record<string, AssetCopy>>({});
@@ -133,10 +134,37 @@ export default function AdvancedBuild() {
     }
   };
 
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const droppedFiles = e.dataTransfer.files;
+    if (!droppedFiles || droppedFiles.length === 0) return;
+    await uploadFiles(Array.from(droppedFiles));
+  };
+
   // Step 1: File upload
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    await uploadFiles(Array.from(files));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const uploadFiles = async (files: File[]) => {
 
     setUploading(true);
     try {
@@ -434,16 +462,23 @@ export default function AdvancedBuild() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div
-                    className="border-2 border-dashed rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
+                      isDragging 
+                        ? 'border-primary bg-primary/5 scale-[1.02]' 
+                        : 'border-border hover:border-primary/50'
+                    } ${uploading ? 'pointer-events-none opacity-50' : ''}`}
+                    onClick={() => !uploading && fileInputRef.current?.click()}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
                   >
                     {uploading ? (
                       <Loader2 className="h-10 w-10 mx-auto text-primary animate-spin mb-3" />
                     ) : (
-                      <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                      <Upload className={`h-10 w-10 mx-auto mb-3 transition-colors ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
                     )}
                     <p className="text-sm font-medium">
-                      {uploading ? "Uploading..." : "Click to upload or drag and drop"}
+                      {uploading ? "Uploading..." : isDragging ? "Drop files here" : "Click to upload or drag and drop"}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       MP4, JPG, PNG — Max 50MB per file
