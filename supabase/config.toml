@@ -167,3 +167,6 @@ verify_jwt = true
 
 [functions.generate-advanced-copy]
 verify_jwt = false
+
+[functions.add-creative-to-campaign]
+verify_jwt = false
