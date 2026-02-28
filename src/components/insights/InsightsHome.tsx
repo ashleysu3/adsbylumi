@@ -225,6 +225,36 @@ export function InsightsHome({
           })));
         }
       }
+      // Add fallback recs for campaigns not already represented
+      const representedIds = new Set(allRecs.map((r: any) => r.campaignId));
+      for (const campaign of campaignsWithMetrics) {
+        if (representedIds.has(campaign.id)) continue;
+        const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
+        const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
+        const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
+        
+        let fallback: any = null;
+        switch (status) {
+          case 'healthy':
+            fallback = { id: `fallback-${campaign.id}`, type: 'budget_increase', title: 'Strong performance — consider scaling', description: 'Your primary KPI is above benchmark. This could be a good time to increase budget.', impact: 'Capture more results at efficient cost', confidence: 'medium', requiresDoubleApproval: true, actionPayload: { workspaceId: campaign.id, percentageChange: 20, currentBudget: campaign.dailyBudget || 25 }, priority: 50 };
+            break;
+          case 'attention':
+            fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Monitor closely — performance is borderline', description: 'Your primary KPI is near the benchmark threshold. Keep an eye on it.', impact: 'Prevent performance from slipping', confidence: 'medium', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: `/data` };
+            break;
+          case 'critical':
+            fallback = { id: `fallback-${campaign.id}`, type: 'create_creative', title: 'Below benchmark — refresh creative', description: 'Your primary KPI is below benchmark. Fresh creative angles could help turn things around.', impact: 'Improve performance with new creative', confidence: 'high', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: '/creative' };
+            break;
+          default:
+            fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Still gathering data', description: 'Not enough data yet to make a confident recommendation. Let it run.', impact: 'Allow the algorithm to optimize', confidence: 'low', requiresDoubleApproval: false, actionPayload: {}, priority: 99, userAction: true, actionUrl: '/data' };
+            break;
+        }
+        if (fallback) {
+          fallback.campaignName = campaign.name;
+          fallback.campaignId = campaign.id;
+          allRecs.push(fallback);
+        }
+      }
+
       setRecommendations(allRecs);
       // Build per-campaign count map
       const counts: Record<string, number> = {};
