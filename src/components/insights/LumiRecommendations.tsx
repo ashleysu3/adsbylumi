@@ -307,6 +307,11 @@ export function LumiRecommendations({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold">{rec.title}</p>
+                        {(rec as any).campaignName && (
+                          <Badge variant="secondary" className="text-xs">
+                            {(rec as any).campaignName}
+                          </Badge>
+                        )}
                         <Badge
                           variant="outline"
                           className={`text-xs ${
