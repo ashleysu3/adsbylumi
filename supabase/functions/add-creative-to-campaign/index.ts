@@ -314,7 +314,7 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Build ad params — clone tracking_specs from existing ad
+        // Build ad params (do not pass tracking_specs; Meta often rejects it on create)
         const adParams: Record<string, string> = {
           adset_id: adSetId,
           name: adName,
@@ -322,10 +322,6 @@ Deno.serve(async (req) => {
           status: 'PAUSED',
           access_token: metaAccessToken,
         };
-
-        if (referenceSettings?.tracking_specs) {
-          adParams.tracking_specs = JSON.stringify(referenceSettings.tracking_specs);
-        }
 
         const adResponse = await fetch(
           `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
@@ -339,7 +335,10 @@ Deno.serve(async (req) => {
         const adData = await adResponse.json();
         if (adData.error) {
           console.error(`Ad creation failed for ${adName}:`, adData.error);
-          failedAds.push({ assetName: asset.name, error: `Ad: ${adData.error.message}` });
+          failedAds.push({
+            assetName: asset.name,
+            error: `Ad: ${adData.error.message} (code ${adData.error.code}${adData.error.error_subcode ? `/${adData.error.error_subcode}` : ''})`,
+          });
           continue;
         }
 
