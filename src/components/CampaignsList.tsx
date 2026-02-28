@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus } from "lucide-react";
+import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { AdsEmptyState } from "./AdsEmptyState";
 import { CampaignDetailDrawer } from "./CampaignDetailDrawer";
@@ -290,6 +290,15 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/advanced-build?workspace=${campaign.id}`);
+                              }}
+                            >
+                              <Upload className="mr-2 h-4 w-4" />
+                              Advanced Upload
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();

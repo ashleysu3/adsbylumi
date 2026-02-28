@@ -31,7 +31,8 @@ import {
   Wand2,
   Rocket,
   Instagram,
-  Users
+  Users,
+  Upload
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -962,6 +963,86 @@ export default function Create() {
                             </p>
                           </div>
                         </div>
+                      </div>
+
+                      {/* Advanced Build Option */}
+                      <div className="pt-2">
+                        <details className="group">
+                          <summary className="flex items-center justify-between cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                            <span>Already have finished creative?</span>
+                            <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                          </summary>
+                          <div className="mt-3">
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              disabled={isGeneratingAngles || isCreatingCampaign}
+                              onClick={async () => {
+                                if (!selectedOfferId || !selectedTemplateId) {
+                                  toast.error("Please select an offer and strategy first");
+                                  return;
+                                }
+                                setIsCreatingCampaign(true);
+                                try {
+                                  const selectedOffer = offers.find(o => o.id === selectedOfferId);
+                                  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+                                  if (!selectedOffer || !selectedTemplate) throw new Error("Missing selection");
+
+                                  const { data: strategy, error: sErr } = await supabase
+                                    .from("strategies")
+                                    .insert({
+                                      brand_id: brand.id,
+                                      template_id: selectedTemplate.id,
+                                      name: `Advanced Build - ${selectedOffer.name}`,
+                                      campaign_type: selectedTemplate.strategy_template?.campaign_type || "cold",
+                                      status: "active",
+                                      offer_name: selectedOffer.name,
+                                      offer_url: selectedOffer.url,
+                                      offer_price: selectedOffer.price_point,
+                                      offer_description: selectedOffer.description,
+                                    })
+                                    .select()
+                                    .single();
+                                  if (sErr) throw sErr;
+
+                                  const { data: ws, error: wErr } = await supabase
+                                    .from("campaign_workspaces")
+                                    .insert([{
+                                      brand_id: brand.id,
+                                      strategy_id: strategy.id,
+                                      template_id: selectedTemplate.id,
+                                      name: `Advanced Build - ${selectedOffer.name}`,
+                                      strategy_json: selectedTemplate.strategy_template as any,
+                                      progress_status: "draft",
+                                      offer_id: selectedOffer.id,
+                                      offer_name: selectedOffer.name,
+                                      offer_url: selectedOffer.url,
+                                      offer_price: selectedOffer.price_point,
+                                      offer_description: selectedOffer.description,
+                                      campaign_builder_answers: { advancedBuild: true } as any,
+                                    }])
+                                    .select()
+                                    .single();
+                                  if (wErr) throw wErr;
+
+                                  clearSavedProgress();
+                                  navigate(`/advanced-build?workspace=${ws.id}`);
+                                } catch (err: any) {
+                                  console.error(err);
+                                  toast.error(err.message || "Failed to create workspace");
+                                } finally {
+                                  setIsCreatingCampaign(false);
+                                }
+                              }}
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Advanced Build — Upload & Go
+                            </Button>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Upload your own videos/images and Lumi will write the copy.
+                            </p>
+                          </div>
+                        </details>
                       </div>
                     </>
                   ) : null;

@@ -47,6 +47,7 @@ import ContentLibrary from "./pages/ContentLibrary";
 import CreativeStudio from "./pages/CreativeStudio";
 import Glossary from "./pages/Glossary";
 import NotFound from "./pages/NotFound";
+import AdvancedBuild from "./pages/AdvancedBuild";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +103,7 @@ const App = () => {
                   <Route path="/content-library" element={<ContentLibrary />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
                   <Route path="/glossary" element={<Glossary />} />
+                  <Route path="/advanced-build" element={<AdvancedBuild />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/templates" element={<AdminTemplates />} />
