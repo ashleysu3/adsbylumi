@@ -62,7 +62,11 @@ export default function Dashboard() {
   });
   const [newEmoji, setNewEmoji] = useState('');
    const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
-   const [activeTab, setActiveTab] = useState('overview');
+   const [activeTab, setActiveTab] = useState(() => {
+     const tab = searchParams.get('tab');
+     if (tab === 'brand-settings') return 'brand-settings';
+     return 'overview';
+   });
   const hasShownConfetti = useRef(false);
   const hasHandledCheckout = useRef(false);
   const hasCheckedBrand = useRef(false);
@@ -504,15 +508,7 @@ export default function Dashboard() {
            <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="overview" className="gap-2">
               <Building2 className="h-4 w-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="brand-brain" className="gap-2">
-              <Brain className="h-4 w-4" />
-              Brand Brain
-            </TabsTrigger>
-            <TabsTrigger value="offers" className="gap-2">
-              <Package className="h-4 w-4" />
-              Offers
+              My Brand
             </TabsTrigger>
             <TabsTrigger value="brand-settings" className="gap-2">
               <Smile className="h-4 w-4" />
@@ -520,7 +516,7 @@ export default function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
+          {/* Combined My Brand Tab */}
           <TabsContent value="overview" className="space-y-6">
             {/* Brand Details Card */}
             <Card variant="glow" data-section="brand-details">
@@ -542,18 +538,12 @@ export default function Dashboard() {
                     <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div>
                       <p className="text-sm font-medium">Website</p>
-                      <a
-                        href={brand.website_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-primary hover:underline"
-                      >
+                      <a href={brand.website_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
                         {brand.website_url}
                       </a>
                     </div>
                   </div>
                 )}
-                
                 {brand.industry && (
                   <div className="flex items-start space-x-3">
                     <Target className="h-5 w-5 text-muted-foreground mt-0.5" />
@@ -563,17 +553,14 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
-
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* Brand Brain Tab - Content Library + Psychology only */}
-          <TabsContent value="brand-brain" className="space-y-6">
-             <ContentAssetsEditor 
-               brandId={brand.id} 
-               offers={offers.map(o => ({ id: o.id, name: o.name }))} 
-             />
+            {/* Content Library + Psychology */}
+            <ContentAssetsEditor 
+              brandId={brand.id} 
+              offers={offers.map(o => ({ id: o.id, name: o.name }))} 
+            />
              
             <div data-section="audience-psychology">
               <AudiencePsychology
@@ -585,41 +572,8 @@ export default function Dashboard() {
                 onUpdate={fetchBrandData}
               />
             </div>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Meta Best Practices for Copy</CardTitle>
-                <CardDescription>How Lumi formats your primary copy based on Meta's recommendations</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">✓ What Lumi Does</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Uses line breaks for readability</li>
-                      <li>• Adds strategic emoji placement</li>
-                      <li>• Creates scannable bullet lists</li>
-                      <li>• Varies copy lengths (short/medium/long)</li>
-                      <li>• Puts the hook first, CTA last</li>
-                    </ul>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">✗ What Lumi Avoids</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Emoji overload (max 2-3 per section)</li>
-                      <li>• Wall-of-text paragraphs</li>
-                      <li>• ALL CAPS abuse</li>
-                      <li>• Clickbait or misleading claims</li>
-                      <li>• Generic, non-specific language</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Offers Tab */}
-          <TabsContent value="offers" className="space-y-6">
+            {/* Offers */}
             <div data-section="offers">
               <OfferManager
                 brandId={brand.id}
@@ -809,6 +763,38 @@ export default function Dashboard() {
                     {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                     Save Emoji Settings
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Meta Best Practices for Copy */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Meta Best Practices for Copy</CardTitle>
+                <CardDescription>How Lumi formats your primary copy based on Meta's recommendations</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">✓ What Lumi Does</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Uses line breaks for readability</li>
+                      <li>• Adds strategic emoji placement</li>
+                      <li>• Creates scannable bullet lists</li>
+                      <li>• Varies copy lengths (short/medium/long)</li>
+                      <li>• Puts the hook first, CTA last</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">✗ What Lumi Avoids</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Emoji overload (max 2-3 per section)</li>
+                      <li>• Wall-of-text paragraphs</li>
+                      <li>• ALL CAPS abuse</li>
+                      <li>• Clickbait or misleading claims</li>
+                      <li>• Generic, non-specific language</li>
+                    </ul>
+                  </div>
                 </div>
               </CardContent>
             </Card>
