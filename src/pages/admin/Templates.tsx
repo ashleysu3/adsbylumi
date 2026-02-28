@@ -834,7 +834,7 @@ EVALUATION PRIORITY:
                                         <SelectItem value="$">$ (currency)</SelectItem>
                                         <SelectItem value="%">% (percent)</SelectItem>
                                         <SelectItem value="x">x (multiplier)</SelectItem>
-                                        <SelectItem value="">(none)</SelectItem>
+                                        <SelectItem value="none">(none)</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>

@@ -142,8 +142,8 @@ export default function AdminUsers() {
   
   // Filter states
   const [filters, setFilters] = useState<Filters>({
-    subscriptionStatus: "",
-    planTier: "",
+    subscriptionStatus: "all",
+    planTier: "all",
     dateFrom: undefined,
     dateTo: undefined,
     showArchived: false,
@@ -190,8 +190,8 @@ export default function AdminUsers() {
     
     // Always use edge function to get roles + archive status
     const filterObj: Record<string, any> = {};
-    if (filters.subscriptionStatus) filterObj.subscriptionStatus = filters.subscriptionStatus;
-    if (filters.planTier) filterObj.planTier = filters.planTier;
+    if (filters.subscriptionStatus && filters.subscriptionStatus !== "all") filterObj.subscriptionStatus = filters.subscriptionStatus;
+    if (filters.planTier && filters.planTier !== "all") filterObj.planTier = filters.planTier;
     if (filters.dateFrom) filterObj.dateFrom = filters.dateFrom.toISOString();
     if (filters.dateTo) filterObj.dateTo = filters.dateTo.toISOString();
     if (filters.showArchived) filterObj.showArchived = true;
@@ -238,15 +238,15 @@ export default function AdminUsers() {
   
   const clearFilters = () => {
     setFilters({
-      subscriptionStatus: "",
-      planTier: "",
+      subscriptionStatus: "all",
+      planTier: "all",
       dateFrom: undefined,
       dateTo: undefined,
       showArchived: false,
     });
   };
   
-  const hasActiveFilters = filters.subscriptionStatus || filters.planTier || filters.dateFrom || filters.dateTo;
+  const hasActiveFilters = (filters.subscriptionStatus && filters.subscriptionStatus !== "all") || (filters.planTier && filters.planTier !== "all") || filters.dateFrom || filters.dateTo;
 
   const fetchUserDetails = async (user: Profile) => {
     setSelectedUser(user);
@@ -604,7 +604,7 @@ export default function AdminUsers() {
                           <SelectValue placeholder="Any status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any status</SelectItem>
+                          <SelectItem value="all">Any status</SelectItem>
                           <SelectItem value="active">Active</SelectItem>
                           <SelectItem value="cancelled">Cancelled</SelectItem>
                           <SelectItem value="trial">Trial</SelectItem>
@@ -624,7 +624,7 @@ export default function AdminUsers() {
                           <SelectValue placeholder="Any tier" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any tier</SelectItem>
+                          <SelectItem value="all">Any tier</SelectItem>
                           <SelectItem value="starter">Solo</SelectItem>
                           <SelectItem value="growth">Creator</SelectItem>
                           <SelectItem value="agency_pro">Agency</SelectItem>
