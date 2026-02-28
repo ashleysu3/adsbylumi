@@ -261,7 +261,7 @@ export function LinkOfferModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[min(42rem,calc(100vw-2rem))] max-w-none max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
@@ -277,47 +277,47 @@ export function LinkOfferModal({
           <div className="space-y-3 py-4">
             <Button
               variant="outline"
-              className="w-full justify-start gap-3 h-auto p-4 rounded-xl text-left"
+              className="w-full justify-start gap-3 h-auto p-4 rounded-xl text-left whitespace-normal"
               onClick={() => setView("link")}
             >
               <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 <Package className="h-4 w-4 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="font-medium text-sm">Link an Existing Offer</p>
-                <p className="text-xs text-muted-foreground">Choose from your current offers</p>
+                <p className="text-xs text-muted-foreground break-words">Choose from your current offers</p>
               </div>
-              <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
+              <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground shrink-0" />
             </Button>
 
             <Button
               variant="outline"
-              className="w-full justify-start gap-3 h-auto p-4 rounded-xl text-left"
+              className="w-full justify-start gap-3 h-auto p-4 rounded-xl text-left whitespace-normal"
               onClick={handleAutoCreate}
             >
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shrink-0">
                 <Wand2 className="h-4 w-4 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="font-medium text-sm">Let Lumi Auto-Create It</p>
-                <p className="text-xs text-muted-foreground">Lumi will scan your ad's landing page and create the offer for you</p>
+                <p className="text-xs text-muted-foreground break-words">Lumi will scan your ad's landing page and create the offer for you</p>
               </div>
-              <Sparkles className="h-4 w-4 ml-auto text-primary animate-sparkle-pulse" />
+              <Sparkles className="h-4 w-4 ml-auto text-primary animate-sparkle-pulse shrink-0" />
             </Button>
 
             <Button
               variant="outline"
-              className="w-full justify-start gap-3 h-auto p-4 rounded-xl text-left"
+              className="w-full justify-start gap-3 h-auto p-4 rounded-xl text-left whitespace-normal"
               onClick={() => setShowCreateOffer(true)}
             >
               <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
                 <Plus className="h-4 w-4 text-muted-foreground" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="font-medium text-sm">Create a New Offer Manually</p>
-                <p className="text-xs text-muted-foreground">Enter your offer details step by step</p>
+                <p className="text-xs text-muted-foreground break-words">Enter your offer details step by step</p>
               </div>
-              <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground" />
+              <ArrowRight className="h-4 w-4 ml-auto text-muted-foreground shrink-0" />
             </Button>
           </div>
         )}
