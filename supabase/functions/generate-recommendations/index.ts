@@ -100,6 +100,74 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 1b. Campaign-level metric recommendations (no ROAS required)
+    const ctr = campaignMetrics.ctr || (campaignMetrics.clicks && campaignMetrics.impressions ? (campaignMetrics.clicks / campaignMetrics.impressions) * 100 : null);
+    const frequency = campaignMetrics.frequency || null;
+    const reach = campaignMetrics.reach || 0;
+    const hasEnoughData = reach >= 1000;
+
+    if (hasEnoughData && ctr !== null && ctr < alertThresholds.ctr_warning) {
+      recommendations.push({
+        id: `low-ctr-${workspaceId}`,
+        type: 'create_creative',
+        title: 'Creative isn\'t resonating',
+        description: `CTR of ${Number(ctr).toFixed(2)}% is below the ${alertThresholds.ctr_warning}% benchmark. Your audience isn't clicking — time to test new hooks or angles.`,
+        impact: 'Fresh creative can dramatically improve engagement',
+        confidence: reach >= 3000 ? 'high' : 'medium',
+        requiresDoubleApproval: false,
+        actionPayload: { workspaceId, brandId },
+        userAction: true,
+        actionUrl: `/creative?workspace=${workspaceId}&addCreative=true`,
+        priority: priority++,
+      });
+    }
+
+    if (hasEnoughData && ctr !== null && ctr >= 2.0 && campaignMetrics.cpl && campaignMetrics.cpl < 10) {
+      recommendations.push({
+        id: `strong-perf-${workspaceId}`,
+        type: 'budget_increase',
+        title: 'Strong performance — scale up',
+        description: `CTR of ${Number(ctr).toFixed(2)}% and CPL of $${Number(campaignMetrics.cpl).toFixed(2)} show this campaign is converting efficiently. Consider increasing budget.`,
+        impact: 'Capture more leads at this strong cost per lead',
+        confidence: 'high',
+        requiresDoubleApproval: true,
+        actionPayload: { workspaceId, percentageChange: 20, currentBudget: campaignMetrics.dailyBudget },
+        priority: priority++,
+      });
+    }
+
+    if (hasEnoughData && frequency !== null && frequency >= fatigueThreshold) {
+      recommendations.push({
+        id: `fatigue-${workspaceId}`,
+        type: 'create_creative',
+        title: 'Creative fatigue detected',
+        description: `Frequency of ${Number(frequency).toFixed(1)} means people are seeing your ads too many times. Fresh creative will re-engage your audience.`,
+        impact: 'Prevent declining performance from ad fatigue',
+        confidence: 'high',
+        requiresDoubleApproval: false,
+        actionPayload: { workspaceId, brandId },
+        userAction: true,
+        actionUrl: `/creative?workspace=${workspaceId}&addCreative=true`,
+        priority: priority++,
+      });
+    }
+
+    if (hasEnoughData && campaignMetrics.cpp && campaignMetrics.cpp > 100) {
+      recommendations.push({
+        id: `high-cpp-${workspaceId}`,
+        type: 'create_creative',
+        title: 'Cost per purchase is high',
+        description: `CPP of $${Number(campaignMetrics.cpp).toFixed(2)} suggests your funnel needs attention. Test new creative angles or review your offer alignment.`,
+        impact: 'Lower acquisition cost and improve profitability',
+        confidence: 'medium',
+        requiresDoubleApproval: false,
+        actionPayload: { workspaceId, brandId },
+        userAction: true,
+        actionUrl: `/creative?workspace=${workspaceId}&addCreative=true`,
+        priority: priority++,
+      });
+    }
+
     // 2. Ad-level recommendations
     for (const ad of adList) {
       const reach = ad.reach || ad.impressions || 0;
