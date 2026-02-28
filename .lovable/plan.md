@@ -1,64 +1,58 @@
-## Advanced Upload Build — Plan
 
-### What It Does
 
-A new "Advanced Build" flow that lets you upload finished creative assets (videos/images) in bulk, have Lumi auto-generate up to 5 copy variations per asset (primary text, headline, description), and push each asset into its own ad set on Meta. You can enter this flow from two places:
+## Plan: Live/Bench Toggle + Creative Fatigue Settings + One-Press Refresh
 
-1. **After Step 3 of the Create wizard** (strategy already selected) — as an alternative to "Create My Ad" which goes to Creative Studio
-2. **From an existing campaign workspace** on the Campaigns page — strategy already determined
+### Changes Overview
 
-If you provide your own copy, Lumi uses it. If you don't, Lumi writes copy based on the offer data and infers angles from the uploaded creative filenames/types and information from the offer URL, audience psychology and information.
+Three features:
+1. **Live vs Bench toggle** in both Campaign Builder review and Advanced Build review steps
+2. **Creative Automation settings** fix in Settings (currently wired to wrong state variables) + add "notify only" vs "auto-rotate" preference
+3. **One-press "Refresh Creative" button** on the Campaigns/Insights page when fatigue is detected and auto-rotate is OFF
 
-### Technical Approach
+---
 
-#### 1. New page: `src/pages/AdvancedBuild.tsx`
+### 1. Add "Go Live / Save to Bench" toggle
 
-- Route: `/advanced-build?workspace={id}`
-- Multi-step flow:
-  - **Step 1 — Upload**: Drag-drop bulk uploader for videos/images (reuse patterns from `BulkUploader.tsx`). Each asset gets a thumbnail preview.
-  - **Step 2 — Copy**: For each asset, show a card. User can either: (a) paste their own headline/primary/description, or (b) click "Let Lumi Write It" to auto-generate 5 variations per field. User picks which variation to use per asset.
-  - **Step 3 — Review & Publish**: Summary of all ad sets (1 asset = 1 ad set, up to 5 copy combos). Confirm and push to Meta.
+**`src/components/CampaignReview.tsx`**
+- Add a second toggle alongside the existing Active/Paused toggle: "Destination: Go Live Now / Save to Bench"
+- When "Save to Bench" is selected, the creative gets saved to `creative_bench` table with status `bench` instead of being pushed to Meta
+- The launch status toggle still applies if "Go Live" is chosen
 
-#### 2. New edge function: `supabase/functions/generate-advanced-copy/index.ts`
+**`src/pages/AdvancedBuild.tsx`** (Step 3 — Review)
+- Add the same "Go Live / Save to Bench" toggle before the "Build Campaign" button
+- Add per-asset toggle or a global toggle: "Upload to Meta now" vs "Save to bench for later rotation"
+- When bench is selected, save each asset to `creative_bench` with `status: 'bench'` and `auto_rotate_approved: true`
 
-- Accepts: offer data, brand voice, uploaded asset metadata (filename, type, any user notes)
-- Returns: 5 variations each of primary_text, headline, description per asset
-- Uses Lovable AI (gemini-3-flash-preview) with brand context and offer psychology
+**`src/components/MobileCampaignReview.tsx`**
+- Mirror the same bench toggle for mobile
 
-#### 3. Entry point A: Create wizard (Step 3)
+### 2. Fix & Enhance Creative Automation Settings
 
-- Add an "Advanced Build" button alongside the existing "Create My Ad" button on Step 3 of `/create`
-- On click: creates workspace + strategy (same as current flow), then navigates to `/advanced-build?workspace={id}`
+**`src/pages/Settings.tsx`** — Creative Automation tab
+- Currently the auto-rotate and auto-retest switches are incorrectly wired to `notificationPrefs.critical_alerts` and `notificationPrefs.performance_drops`
+- Create dedicated state: `creativeAutomation` with fields: `auto_rotate_enabled`, `auto_retest_enabled`, `fatigue_threshold`, `retest_cooldown_days`, `fatigue_action` (`'auto_rotate' | 'notify_only'`)
+- Save these to `brand.rotation_preferences` (or a new brand-level JSON field)
+- Add a radio/select for "When fatigue is detected": Auto-rotate from bench / Just notify me
+- When "Just notify me" is selected, show explanation that they'll get a notification + one-press button
 
-#### 4. Entry point B: Existing campaigns
+### 3. One-Press "Refresh from Bench" Button
 
-- Add "Advanced Upload" option in the campaign card dropdown menu in `CampaignsList.tsx`
-- Navigates to `/advanced-build?workspace={id}` for that existing workspace
+**`src/components/insights/CreativeBenchPanel.tsx`**
+- Already has "Swap In" buttons per bench item — enhance with a prominent "Refresh All Fatigued" button at the top when fatigue is detected
+- Show a banner: "X ads showing fatigue — Y bench creative ready" with a single "Swap Now" button
 
-#### 5. Upload to Meta
-
-- Extend `build-meta-campaign` or create a new `build-advanced-campaign` edge function that:
-  - Uploads each creative asset to Meta via the existing `upload-creative-to-meta` function
-  - Creates one ad set per asset
-  - Inserts up to 5 ad variations per ad set (different copy combos)
-
-#### 6. Storage
-
-- Upload creative files to the existing `creative-assets` storage bucket
-- Save advanced build state to `campaign_workspaces.campaign_builder_answers` as `{ advancedBuild: true, assets: [...], copyVariations: {...} }`
-
-#### 7. Route registration
-
-- Add `/advanced-build` route in `App.tsx`
-
-### Files to Create
-
-- `src/pages/AdvancedBuild.tsx` — main page
-- `supabase/functions/generate-advanced-copy/index.ts` — AI copy generation
+**`src/components/CampaignsList.tsx`** or workspace detail
+- When `fatigue_detected` status exists in rotation logs, show an alert banner with a "Refresh Creative" button that invokes `rotate-creative` for all fatigued ads at once
 
 ### Files to Edit
+- `src/components/CampaignReview.tsx` — add bench toggle
+- `src/components/MobileCampaignReview.tsx` — add bench toggle
+- `src/pages/AdvancedBuild.tsx` — add bench toggle on step 3
+- `src/pages/Settings.tsx` — fix Creative Automation wiring, add notify-only option
+- `src/components/insights/CreativeBenchPanel.tsx` — add bulk refresh button + fatigue banner
 
-- `src/App.tsx` — add route
-- `src/pages/Create.tsx` — add "Advanced Build" button on Step 3
-- `src/components/CampaignsList.tsx` — add "Advanced Upload" dropdown option
-- `supabase/config.toml` — register new edge function
+### No Database Changes Required
+- `creative_bench` table already has the right schema
+- `campaign_workspaces.rotation_preferences` already stores automation prefs
+- Brand-level `notification_preferences` can store the `fatigue_action` preference
+
