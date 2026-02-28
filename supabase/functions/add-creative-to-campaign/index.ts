@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     const { data: workspace, error: wsError } = await supabase
       .from('campaign_workspaces')
-      .select('*, brands!inner(id, name, user_id, meta_account_id, page_id)')
+      .select('*, brands!inner(id, name, user_id, meta_account_id, page_id, meta_access_token)')
       .eq('id', workspaceId)
       .single();
 
@@ -88,10 +88,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { data: metaAccessToken, error: tokenError } = await supabase
-      .rpc('get_meta_token', { p_brand_id: brand.id });
+    const metaAccessToken = brand.meta_access_token;
 
-    if (tokenError || !metaAccessToken) {
+    if (!metaAccessToken) {
       return new Response(
         JSON.stringify({ success: false, error: 'Meta token not found. Please reconnect your Meta account.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
