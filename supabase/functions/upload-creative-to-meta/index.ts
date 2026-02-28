@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     // 3. Verify brand ownership
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('user_id, meta_account_id')
+      .select('user_id, meta_account_id, meta_access_token')
       .eq('id', brandId)
       .single();
 
@@ -86,12 +86,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Get Meta token from database (never accept as parameter)
-    const { data: metaAccessToken, error: tokenError } = await supabase
-      .rpc('get_meta_token', { p_brand_id: brandId });
+    // 4. Read Meta token from brand (project token storage pattern)
+    const metaAccessToken = brand.meta_access_token;
 
-    if (tokenError || !metaAccessToken) {
-      console.error('Failed to retrieve Meta token:', tokenError?.message);
+    if (!metaAccessToken) {
+      console.error('Meta token missing on brand:', brandId);
       return new Response(
         JSON.stringify({ success: false, error: 'Meta token not found. Please reconnect your Meta account.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
