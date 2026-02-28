@@ -302,14 +302,14 @@ export function PixelVerificationCard({
                         "flex items-center justify-between p-3 rounded-lg border",
                         isActive 
                           ? "bg-green-500/5 border-green-500/20" 
-                          : "bg-destructive/5 border-destructive/20"
+                          : "bg-muted/30 border-border"
                       )}
                     >
                       <div className="flex items-center gap-3">
                         {isActive ? (
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
                         ) : (
-                          <XCircle className="h-5 w-5 text-destructive" />
+                          <AlertTriangle className="h-5 w-5 text-yellow-500" />
                         )}
                         <div>
                           <p className="font-medium">{event}</p>
@@ -322,7 +322,9 @@ export function PixelVerificationCard({
                             {eventData.count_7d.toLocaleString()} events
                           </Badge>
                         ) : (
-                          <Badge variant="destructive">Not receiving</Badge>
+                          <Badge variant="secondary" className="text-yellow-600 bg-yellow-500/10">
+                            No recent activity
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -367,13 +369,13 @@ export function PixelVerificationCard({
               </Accordion>
             </div>
 
-            {/* Warning if primary events not firing */}
+            {/* Info if primary events have no recent activity */}
             {primaryEvents.some(e => !pixelData.events[e]?.active || pixelData.events[e]?.count_7d === 0) && (
               <Alert className="border-yellow-500/30 bg-yellow-500/5">
                 <AlertTriangle className="h-4 w-4 text-yellow-500" />
                 <AlertDescription className="text-sm">
-                  <strong>Missing event tracking:</strong> Purchase or Lead events aren't being received. 
-                  Set up event tracking on your conversion pages using the guides below.
+                  <strong>No recent activity:</strong> Purchase or Lead events haven't fired in the last 7 days. 
+                  This is normal if you haven't had conversions recently. If you've set up tracking, it will appear here once events start firing.
                 </AlertDescription>
               </Alert>
             )}

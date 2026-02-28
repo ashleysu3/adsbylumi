@@ -118,8 +118,8 @@ export function MetaReadinessChecklist({
       description: 'Your pixel tracks who visits your site so Meta knows your ads are working.',
       helpText: 'Install the Meta Pixel on your website so Meta can track conversions. Check your platform\'s guide below.',
       icon: <Activity className="h-4 w-4" />,
-      isComplete: !!brand?.meta_pixel_id && pixelActive,
-      actionLabel: !brand?.meta_pixel_id ? 'Check status' : undefined,
+      isComplete: !!brand?.meta_pixel_id || pixelActive,
+      actionLabel: !brand?.meta_pixel_id && !pixelActive ? 'Check status' : undefined,
       onAction: () => checkPixelStatus(),
     },
   ];
