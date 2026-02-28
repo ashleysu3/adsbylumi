@@ -1,76 +1,37 @@
 
 
-## Plan: Revamp Sidebar Nav + Beef Up Start Page as Command Center
+## Plan: Upgrade Advanced Build Copy System
 
-Two parts: sidebar label/link changes, and a major upgrade to `/start` as the prioritized "what needs attention" hub.
+### Problem
+1. Copy quality is generic — doesn't leverage offer psychology, brand voice, emojis, or proper formatting
+2. Current model generates copy per-asset (redundant) — should generate ONE shared set of variations for all creatives
+3. Each creative still needs its own ad, just sharing the same approved copy variations
 
-### 1. Sidebar Changes (`src/components/AppSidebar.tsx`)
+### Changes
 
-**Rename/restructure `mainNav` and `toolsNav`:**
-- Remove `/start` (Home) from mainNav entirely
-- Rename "My Ads" → "Drafts" (`/campaigns`)
-- Add new items to Tools group:
-  - "Offers" → `/dashboard` (or a dedicated offers section — will route to My Brand's offers tab)
-  - "Meta Connection" → `/settings` (Meta section)
-  - "Troubleshooting" → `/glossary` (or a help/troubleshoot page)
-- Keep Creative Studio, Results in Main
+#### 1. Upgrade `generate-advanced-copy` edge function
+- Fetch knowledge base docs (copy formulas, psychology triggers, meta best practices) to inject into the prompt
+- Include full offer psychology, audience psychology, messaging guidelines, brand emojis, copy perspective (I/We), and never-use words
+- Rewrite the system prompt to enforce: emoji usage, proper spacing (hook → blank line → short paragraphs), psychology-driven angles, brand voice matching
+- Enforce headline ≤25 chars, description ≤27 chars
+- Remove `assetFilename`/`assetType` params since copy is no longer per-asset
+- Add `brandEmojis`, `bulletEmoji`, `useEmojis`, `copyPerspective`, `neverUseWords`, `messagingGuidelines` to the request body
 
-**Updated nav structure:**
-```text
-Main:
-  - Drafts (/campaigns) — FolderKanban
-  - Creative Studio (/creative-studio) — Sparkles
-  - Results (/data) — BarChart3
+#### 2. Refactor `AdvancedBuild.tsx` — shared copy model
+- Replace per-asset `assetCopy` state with a single shared `sharedCopy` state: `{ variations: CopyVariation[], selectedIndices: number[], generating: boolean }`
+- Step 2 becomes a single card: "Let Lumi Write Copy" generates ONE set of 5 variations for the campaign
+- Users can select/approve multiple variations (checkboxes instead of single select) — all approved variations are used in every ad
+- Each creative in the review step shows the same approved copy set
+- Update `canProceedToStep3` to check that at least one variation is approved
+- Update `handlePublish` and `saveState` to use the shared copy model
+- Update the Lumi intro text to reflect the new model: "I'll write 5 psychology-driven copy variations for your campaign. Each of your creatives will be deployed as its own ad using these same variations."
 
-Tools:
-  - Library (/content-library) — Library
-  - Offers (/dashboard?tab=offers) — Package
-  - My Brand (/dashboard) — Building2
-  - Meta Connection (/settings) — Link2
-  - Troubleshooting (/glossary) — LifeBuoy
+#### 3. Update review step (Step 3)
+- Show the shared copy variations at the top
+- Show the list of creative assets below, each labeled as its own ad
+- Clarify: "X ads will be created — one per creative, each with Y approved copy variations"
 
-Account: (unchanged)
-```
-
-**"Next Steps" button** now always routes to `/start`.
-
-### 2. Mobile Nav Updates
-- `MobileBottomNav.tsx`: Rename "Home" → "Start Here", "My Ads" → "Drafts"
-- `MobileHeader.tsx`: Update dropdown label "Home" → "Start Here"
-
-### 3. Start Page Overhaul (`src/pages/Start.tsx`)
-
-Transform from a centered card layout into a sectioned dashboard with prioritized attention items. Keep greeting + progress bar at top. Replace the generic "next steps" cards with organized sections:
-
-**Section A: "Needs Attention" (priority alerts)**
-- Rendered as a compact list of colored alert cards, sorted by priority
-- Sources:
-  - Meta disconnected or unhealthy → red/amber alert card with "Fix Meta Connection" CTA
-  - Recommendations from Results that need user action (fetch `recCountsByWorkspace` summary) → amber card "X recommendations need review"
-  - Draft campaigns in progress → card with count + "Continue" CTA
-  - No offers yet → card prompting offer creation
-
-**Section B: "Quick Actions" (always visible grid)**
-- 2×2 grid of shortcut cards:
-  - "Create New Ad" → `/create`
-  - "View Results" → `/data`
-  - "Manage Offers" → `/dashboard`
-  - "Creative Studio" → `/creative-studio`
-
-**Section C: "Your Setup" (status overview)**
-- Keep existing status badges (Meta Connected, X offers, X ads) but expand into a small checklist-style section showing setup completion
-
-**Data fetching additions:**
-- Check Meta connection health (existing `activeBrand.meta_account_id`)
-- Fetch recommendation counts from `campaign_workspaces` + the same logic used in InsightsHome for `recCountsByWorkspace`
-- Fetch offer count, draft count (already done)
-- Sort "Needs Attention" items: critical first (meta broken, critical recs), then medium (drafts to continue, attention recs), then low (suggestions)
-
-**No new database tables needed** — all data already exists in `campaign_workspaces`, `offers`, and brand context.
-
-### Files to change:
-1. `src/components/AppSidebar.tsx` — restructure nav arrays, Next Steps → always `/start`
-2. `src/components/MobileBottomNav.tsx` — rename labels
-3. `src/components/MobileHeader.tsx` — rename "Home" to "Start Here"
-4. `src/pages/Start.tsx` — full rewrite of the page body into sectioned command center
+### Files Modified
+- `supabase/functions/generate-advanced-copy/index.ts` — enhanced prompt + KB integration
+- `src/pages/AdvancedBuild.tsx` — shared copy model, multi-select variations, updated UI
 
