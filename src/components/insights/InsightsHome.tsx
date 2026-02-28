@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ import { StatusFilter } from './StatusFilter';
 import { AccountOverview } from './AccountOverview';
 import { LinkOfferModal } from './LinkOfferModal';
 import { UnlinkedCampaignsBanner } from './UnlinkedCampaignsBanner';
+import { LumiRecommendations } from './LumiRecommendations';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -149,6 +150,8 @@ export function InsightsHome({
   const navigate = useNavigate();
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live', 'paused', 'imported']);
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recsLoading, setRecsLoading] = useState(false);
   
   const [linkOfferModal, setLinkOfferModal] = useState<{
     open: boolean;
@@ -194,6 +197,44 @@ export function InsightsHome({
   const handleOfferLinked = (campaign: Campaign) => {
     navigate(`/creative?workspace=${campaign.id}&addCreative=true`);
   };
+
+  // Fetch recommendations for campaigns with metrics
+  const fetchRecommendations = async () => {
+    const campaignsWithMetrics = campaigns.filter(c => c.metrics);
+    if (campaignsWithMetrics.length === 0) return;
+    
+    setRecsLoading(true);
+    try {
+      const allRecs: any[] = [];
+      for (const campaign of campaignsWithMetrics.slice(0, 5)) {
+        const { data, error } = await supabase.functions.invoke('generate-recommendations', {
+          body: {
+            workspaceId: campaign.id,
+            brandId: campaign.brandId,
+            metrics: { ...campaign.metrics, dailyBudget: campaign.dailyBudget },
+          },
+        });
+        if (!error && data?.recommendations) {
+          allRecs.push(...data.recommendations.map((r: any) => ({
+            ...r,
+            campaignName: campaign.name,
+            campaignId: campaign.id,
+          })));
+        }
+      }
+      setRecommendations(allRecs);
+    } catch (err) {
+      console.error('Failed to fetch recommendations:', err);
+    } finally {
+      setRecsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoading && campaigns.some(c => c.metrics)) {
+      fetchRecommendations();
+    }
+  }, [isLoading, campaigns.length]);
 
   return (
     <div className="space-y-8">
@@ -244,6 +285,18 @@ export function InsightsHome({
           selectedStatuses={selectedStatuses}
           onStatusChange={setSelectedStatuses}
           statusCounts={statusCounts}
+        />
+      )}
+
+      {/* Lumi Recommendations — overview level */}
+      {(recommendations.length > 0 || recsLoading) && (
+        <LumiRecommendations
+          recommendations={recommendations}
+          loading={recsLoading}
+          onRefresh={fetchRecommendations}
+          onRecommendationExecuted={fetchRecommendations}
+          compact
+          maxItems={4}
         />
       )}
 

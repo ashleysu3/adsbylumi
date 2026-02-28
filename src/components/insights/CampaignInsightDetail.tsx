@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -37,6 +37,7 @@ import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
 import { LinkOfferModal } from './LinkOfferModal';
 import { CreativeBenchPanel } from './CreativeBenchPanel';
 import { WhatsWorkingCard } from './WhatsWorkingCard';
+import { LumiRecommendations } from './LumiRecommendations';
 
 interface CampaignMetrics {
   cpl?: number;
@@ -159,6 +160,48 @@ export function CampaignInsightDetail({
   const [showLinkOfferModal, setShowLinkOfferModal] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(detailLevel === 'detailed');
   const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [recsLoading, setRecsLoading] = useState(false);
+
+  // Fetch recommendations for this campaign
+  const fetchRecommendations = async () => {
+    if (!campaign.metrics) return;
+    setRecsLoading(true);
+    try {
+      // Also fetch bench items for swap recommendations
+      let benchItems: any[] = [];
+      if (campaign.brandId) {
+        const { data: bench } = await supabase
+          .from('creative_bench')
+          .select('*')
+          .eq('workspace_id', campaign.id)
+          .eq('status', 'bench');
+        benchItems = bench || [];
+      }
+
+      const { data, error } = await supabase.functions.invoke('generate-recommendations', {
+        body: {
+          workspaceId: campaign.id,
+          brandId: campaign.brandId,
+          metrics: campaign.metrics,
+          benchItems,
+        },
+      });
+      if (!error && data?.recommendations) {
+        setRecommendations(data.recommendations);
+      }
+    } catch (err) {
+      console.error('Failed to fetch recommendations:', err);
+    } finally {
+      setRecsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (campaign.metrics && !isLoading) {
+      fetchRecommendations();
+    }
+  }, [campaign.id, isLoading]);
 
   // Load auto_rotate_enabled from workspace
   const handleAutoRotateChange = async (enabled: boolean) => {
@@ -374,6 +417,14 @@ export function CampaignInsightDetail({
               </CardContent>
             </Card>
           </div>
+
+          {/* Lumi Actionable Recommendations */}
+          <LumiRecommendations
+            recommendations={recommendations}
+            loading={recsLoading}
+            onRefresh={fetchRecommendations}
+            onRecommendationExecuted={fetchRecommendations}
+          />
 
           {/* Budget Recommendation */}
           <Card className={`rounded-2xl border ${budgetVerdict.colorClass}`}>

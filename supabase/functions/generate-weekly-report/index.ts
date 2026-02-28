@@ -107,6 +107,28 @@ ${report.creative_diagnosis?.recommended_creatives_to_add
 === YOUR TOP 3 NEXT STEPS ===
 ${report.next_steps?.map((step: string, i: number) => `${i + 1}️⃣ ${step}`).join('\n') || '1️⃣ Keep monitoring your performance\n2️⃣ Test new creative variations\n3️⃣ Optimize your top performers'}
 
+=== LUMI'S RECOMMENDATIONS ===
+${(() => {
+  const recs: string[] = [];
+  // Budget recommendations
+  if (metrics.roas !== undefined && metrics.roas !== null) {
+    if (metrics.roas >= 4) recs.push(`📈 SCALE BUDGET +20% — ROAS of ${Number(metrics.roas).toFixed(1)}x is exceptional. Approve this in your Results dashboard.`);
+    else if (metrics.roas < 1) recs.push(`📉 REDUCE BUDGET -30% — ROAS of ${Number(metrics.roas).toFixed(1)}x is below breakeven. Approve this in your Results dashboard.`);
+  }
+  // Fatigue
+  if (metrics.frequency && metrics.frequency >= 4) {
+    recs.push(`🔄 REFRESH CREATIVE — Frequency of ${Number(metrics.frequency).toFixed(1)} means fatigue. Swap in bench creative from your Results dashboard.`);
+  }
+  // Low CTR
+  if (metrics.ctr && metrics.ctr < 0.8) {
+    recs.push(`⏸️ PAUSE LOW PERFORMERS — CTR of ${Number(metrics.ctr).toFixed(2)}% is below benchmark. Review ads in your Results dashboard.`);
+  }
+  if (recs.length === 0) recs.push('✅ Everything looks good! No urgent actions needed.');
+  return recs.join('\n');
+})()}
+
+👉 Approve all recommendations with one click: ${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app/data?workspace=${workspaceId}
+
 === A NOTE FROM LUMI ===
 ${report.seasonality_context?.notes 
   ? `${report.seasonality_context.notes} ${report.seasonality_context.recommendation}`
@@ -118,7 +140,7 @@ ${report.kpi_evaluation?.ctr?.status === 'excellent' || report.kpi_evaluation?.r
   ? '💡 Time to refresh your creative - your audience is seeing the same ads too often.'
   : '📈 You\'re on the right track - small improvements compound over time!'}
 
-[View Full Dashboard] → ${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app/data
+[View Full Dashboard & Approve Recommendations] → ${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app/data
 
 Keep going - you're doing great! 🎉
 - Lumi
