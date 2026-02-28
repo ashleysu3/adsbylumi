@@ -42,6 +42,8 @@ interface LumiRecommendationsProps {
   onRecommendationExecuted?: () => void;
   compact?: boolean;
   maxItems?: number;
+  nextSteps?: string[];
+  recsRef?: React.Ref<HTMLDivElement>;
 }
 
 function getRecIcon(type: string) {
@@ -70,6 +72,44 @@ function getRecBorderColor(type: string) {
 
 const USER_ACTION_TYPES = new Set(['create_creative']);
 
+function inferRecType(step: string): Recommendation['type'] {
+  const lower = step.toLowerCase();
+  if (lower.includes('creative') || lower.includes('video') || lower.includes('ugc') || lower.includes('hook')) return 'create_creative';
+  if (lower.includes('budget') && lower.includes('increase')) return 'budget_increase';
+  if (lower.includes('budget') && lower.includes('decrease')) return 'budget_decrease';
+  if (lower.includes('pause')) return 'pause_ad';
+  if (lower.includes('swap') || lower.includes('rotate')) return 'swap_creative';
+  return 'keep_running';
+}
+
+function inferActionUrl(step: string): string {
+  const lower = step.toLowerCase();
+  if (lower.includes('creative') || lower.includes('video') || lower.includes('ugc') || lower.includes('hook')) return '/creative';
+  if (lower.includes('audience') || lower.includes('target')) return '/planning';
+  if (lower.includes('offer') || lower.includes('landing')) return '/brand';
+  return '/data';
+}
+
+function convertNextStepsToRecs(steps: string[]): Recommendation[] {
+  return steps.map((step, i) => {
+    const type = inferRecType(step);
+    const isUserAction = USER_ACTION_TYPES.has(type) || type === 'keep_running';
+    return {
+      id: `next-step-${i}`,
+      type,
+      title: step.length > 80 ? step.slice(0, 77) + '...' : step,
+      description: step,
+      impact: 'AI-recommended next step based on your campaign performance',
+      confidence: 'medium' as const,
+      requiresDoubleApproval: false,
+      actionPayload: {},
+      priority: 10 + i,
+      userAction: isUserAction,
+      actionUrl: inferActionUrl(step),
+    };
+  });
+}
+
 export function LumiRecommendations({
   recommendations,
   loading,
@@ -77,6 +117,8 @@ export function LumiRecommendations({
   onRecommendationExecuted,
   compact = false,
   maxItems,
+  nextSteps = [],
+  recsRef,
 }: LumiRecommendationsProps) {
   const navigate = useNavigate();
   const [executing, setExecuting] = useState<Record<string, boolean>>({});
@@ -84,7 +126,11 @@ export function LumiRecommendations({
   const [budgetConfirm, setBudgetConfirm] = useState<Recommendation | null>(null);
   const [approvingAll, setApprovingAll] = useState(false);
 
-  const visibleRecs = maxItems ? recommendations.slice(0, maxItems) : recommendations;
+  // Merge ad-level recs with next_steps converted to recs
+  const nextStepRecs = convertNextStepsToRecs(nextSteps);
+  const allRecommendations = [...recommendations, ...nextStepRecs];
+
+  const visibleRecs = maxItems ? allRecommendations.slice(0, maxItems) : allRecommendations;
   const pendingRecs = visibleRecs.filter(r => !completed.has(r.id));
 
   const executeRecommendation = async (rec: Recommendation) => {
@@ -191,21 +237,24 @@ export function LumiRecommendations({
     );
   }
 
-  if (recommendations.length === 0) {
+  if (allRecommendations.length === 0) {
     return (
-      <Card className="rounded-2xl border-green-200 bg-green-50/30">
-        <CardContent className="p-6 text-center">
-          <ShieldCheck className="h-8 w-8 text-green-600 mx-auto mb-2" />
-          <p className="text-sm font-medium text-green-800">Everything looks good!</p>
-          <p className="text-xs text-green-600 mt-1">No action needed right now. Lumi is watching.</p>
-        </CardContent>
-      </Card>
+      <div ref={recsRef}>
+        <Card className="rounded-2xl border-green-200 bg-green-50/30">
+          <CardContent className="p-6 text-center">
+            <ShieldCheck className="h-8 w-8 text-green-600 mx-auto mb-2" />
+            <p className="text-sm font-medium text-green-800">Everything looks good!</p>
+            <p className="text-xs text-green-600 mt-1">No action needed right now. Lumi is watching.</p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <>
-      <Card className="rounded-2xl border-[hsl(var(--lumi-orange-1)/0.3)]">
+    <div ref={recsRef}>
+      <>
+        <Card className="rounded-2xl border-[hsl(var(--lumi-orange-1)/0.3)]">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
@@ -364,5 +413,6 @@ export function LumiRecommendations({
         </AlertDialogContent>
       </AlertDialog>
     </>
+    </div>
   );
 }

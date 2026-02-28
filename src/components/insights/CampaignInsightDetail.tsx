@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -156,6 +156,7 @@ export function CampaignInsightDetail({
   detailLevel = 'simple',
 }: CampaignInsightDetailProps) {
   const navigate = useNavigate();
+  const recsRef = useRef<HTMLDivElement>(null);
   const [localDateRange, setLocalDateRange] = useState<string>('global');
   const [showLinkOfferModal, setShowLinkOfferModal] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(detailLevel === 'detailed');
@@ -358,14 +359,6 @@ export function CampaignInsightDetail({
         </Card>
       ) : (
         <>
-          {/* Lumi Actionable Recommendations — top of detail view */}
-          <LumiRecommendations
-            recommendations={recommendations}
-            loading={recsLoading}
-            onRefresh={fetchRecommendations}
-            onRecommendationExecuted={fetchRecommendations}
-          />
-
           {/* HIGH-LEVEL: 3 Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-3">
             {/* What's Working */}
@@ -406,25 +399,41 @@ export function CampaignInsightDetail({
               </CardContent>
             </Card>
 
-            {/* What To Do Next */}
-            <Card className="rounded-2xl border-[hsl(var(--lumi-orange-1)/0.3)] bg-[hsl(var(--lumi-orange-1)/0.05)]">
+            {/* What To Do Next — clickable anchor to recommendations */}
+            <Card
+              className="rounded-2xl border-[hsl(var(--lumi-orange-1)/0.3)] bg-[hsl(var(--lumi-orange-1)/0.05)] cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => recsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkle className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
                   <h3 className="font-semibold text-sm">What To Do Next</h3>
+                  {(nextSteps.length > 0 || recommendations.length > 0) && (
+                    <Badge className="ml-auto bg-[hsl(var(--lumi-orange-1))] text-white text-xs rounded-full">
+                      {nextSteps.length + recommendations.length}
+                    </Badge>
+                  )}
                 </div>
                 {nextSteps.length > 0 ? (
-                  <ul className="space-y-2">
-                    {nextSteps.map((step, i) => (
-                      <li key={i} className="text-sm">• {step}</li>
-                    ))}
-                  </ul>
+                  <p className="text-sm text-muted-foreground">
+                    {nextSteps.length + recommendations.length} actionable recommendation{nextSteps.length + recommendations.length !== 1 ? 's' : ''} — tap to view
+                  </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">Check back soon for recommendations</p>
                 )}
               </CardContent>
             </Card>
           </div>
+
+          {/* Lumi Actionable Recommendations — below summary cards */}
+          <LumiRecommendations
+            recommendations={recommendations}
+            loading={recsLoading}
+            onRefresh={fetchRecommendations}
+            onRecommendationExecuted={fetchRecommendations}
+            nextSteps={analysis?.next_steps || []}
+            recsRef={recsRef}
+          />
 
           {/* Budget Recommendation */}
           <Card className={`rounded-2xl border ${budgetVerdict.colorClass}`}>
