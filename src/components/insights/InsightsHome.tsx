@@ -362,6 +362,15 @@ export function InsightsHome({
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusDot}`} />
                         <h3 className="font-display font-semibold text-sm sm:text-base truncate">{campaign.name}</h3>
+                        {recCount > 0 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onViewInsights(campaign.id); }}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white bg-gradient-lumi shrink-0 hover:opacity-90 transition-opacity shadow-glow animate-sparkle-pulse"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            {recCount}
+                          </button>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className={`text-xs font-medium ${isActive ? 'text-green-600' : 'text-muted-foreground'}`}>
@@ -453,17 +462,6 @@ export function InsightsHome({
                         <Eye className="h-3.5 w-3.5 mr-1" />
                         View Details
                       </Button>
-                      {recCount > 0 && (
-                        <Button
-                          onClick={() => onViewInsights(campaign.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="rounded-xl text-xs gap-1.5 text-[hsl(var(--lumi-orange-1))] hover:text-[hsl(var(--lumi-orange-1))] hover:bg-[hsl(var(--lumi-orange-1)/0.1)]"
-                        >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          {recCount} recommendation{recCount > 1 ? 's' : ''}
-                        </Button>
-                      )}
                       {!campaign.offerId && (
                         <Button
                           onClick={() => setLinkOfferModal({ open: true, campaign })}
