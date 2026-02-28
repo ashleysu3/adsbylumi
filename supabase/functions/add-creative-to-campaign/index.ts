@@ -97,11 +97,54 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Resolve ad set ID — use stored one or fetch from Meta campaign
+    const accountId = metaAccountId.replace('act_', '');
+
+    const normalizeAccountId = (value?: string | null) => value?.replace(/^act_/, '');
+
+    const isAdSetValidForAccount = async (candidateAdSetId: string): Promise<boolean> => {
+      try {
+        const adSetCheckRes = await fetch(
+          `https://graph.facebook.com/v18.0/${candidateAdSetId}?fields=id,account_id,status,effective_status&access_token=${metaAccessToken}`
+        );
+        const adSetCheck = await adSetCheckRes.json();
+
+        if (adSetCheck.error) {
+          console.warn(`Ad set validation failed for ${candidateAdSetId}:`, adSetCheck.error);
+          return false;
+        }
+
+        const adSetAccountId = normalizeAccountId(adSetCheck.account_id);
+        const isDeleted =
+          adSetCheck.status === 'DELETED' ||
+          (Array.isArray(adSetCheck.effective_status) && adSetCheck.effective_status.includes('DELETED'));
+
+        if (adSetAccountId !== accountId || isDeleted) {
+          console.warn(
+            `Ad set ${candidateAdSetId} is invalid for connected account. adSetAccountId=${adSetAccountId}, expected=${accountId}, deleted=${isDeleted}`
+          );
+          return false;
+        }
+
+        return true;
+      } catch (e) {
+        console.warn(`Could not validate ad set ${candidateAdSetId}:`, e);
+        return false;
+      }
+    };
+
+    // Resolve ad set ID — use stored one if still valid, otherwise resolve from Meta campaign
     let adSetId = metaCampaignIds?.ad_set_id;
 
+    if (adSetId) {
+      const stillValid = await isAdSetValidForAccount(adSetId);
+      if (!stillValid) {
+        console.warn(`Stored ad_set_id ${adSetId} is stale/invalid; attempting re-resolve.`);
+        adSetId = undefined;
+      }
+    }
+
     if (!adSetId && campaignId) {
-      console.log(`No ad_set_id stored, resolving from campaign ${campaignId}...`);
+      console.log(`No valid ad_set_id stored, resolving from campaign ${campaignId}...`);
 
       // First try: get ad set from an existing ad (avoids extra API call)
       const existingAdIds = metaCampaignIds?.ad_ids || [];
@@ -111,7 +154,7 @@ Deno.serve(async (req) => {
             `https://graph.facebook.com/v18.0/${existingAdIds[0]}?fields=adset_id&access_token=${metaAccessToken}`
           );
           const adInfo = await adInfoRes.json();
-          if (adInfo.adset_id) {
+          if (adInfo.adset_id && await isAdSetValidForAccount(adInfo.adset_id)) {
             adSetId = adInfo.adset_id;
             console.log(`Resolved ad set from existing ad: ${adSetId}`);
           }
@@ -123,7 +166,7 @@ Deno.serve(async (req) => {
       // Second try: fetch ad sets from campaign
       if (!adSetId) {
         const adSetsRes = await fetch(
-          `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=id,name,status&limit=5&access_token=${metaAccessToken}`
+          `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=id,name,status,effective_status&limit=10&access_token=${metaAccessToken}`
         );
         const adSetsData = await adSetsRes.json();
 
@@ -142,16 +185,29 @@ Deno.serve(async (req) => {
           );
         }
 
-        const activeAdSet = adSetsData.data?.find((s: any) => s.status === 'ACTIVE') || adSetsData.data?.[0];
-        if (!activeAdSet) {
+        const candidates = adSetsData.data || [];
+        const preferredCandidates = [
+          ...candidates.filter((s: any) => s.status === 'ACTIVE'),
+          ...candidates.filter((s: any) => s.status !== 'ACTIVE'),
+        ];
+
+        for (const candidate of preferredCandidates) {
+          if (await isAdSetValidForAccount(candidate.id)) {
+            adSetId = candidate.id;
+            console.log(`Resolved ad set from campaign: ${adSetId} (${candidate.name})`);
+            break;
+          }
+        }
+
+        if (!adSetId) {
           return new Response(
-            JSON.stringify({ success: false, error: 'No ad sets found in this campaign.' }),
+            JSON.stringify({
+              success: false,
+              error: 'No valid ad set found for the connected Meta ad account. Please rebuild the campaign or reconnect the correct ad account.',
+            }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-
-        adSetId = activeAdSet.id;
-        console.log(`Resolved ad set from campaign: ${adSetId} (${activeAdSet.name})`);
       }
 
       // Cache for future use
@@ -162,8 +218,6 @@ Deno.serve(async (req) => {
         })
         .eq('id', workspaceId);
     }
-
-    const accountId = metaAccountId.replace('act_', '');
 
     // ── Fetch existing ad's creative settings to clone ──
     let referenceSettings: any = null;
