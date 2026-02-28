@@ -330,19 +330,48 @@ export default function AdvancedBuild() {
         const isExistingCampaign = workspace?.meta_campaign_ids && 
           (Array.isArray(workspace.meta_campaign_ids) ? workspace.meta_campaign_ids.length > 0 : Object.keys(workspace.meta_campaign_ids).length > 0);
 
-        await supabase
-          .from("campaign_workspaces")
-          .update({
-            progress_status: isExistingCampaign ? "creative_added" : "ready_to_publish",
-            user_uploaded_assets: assets.map(({ file, ...rest }) => rest) as any,
-            selected_copy: { shared_variations: approvedVariations } as any,
-          })
-          .eq("id", workspaceId!);
-
         if (isExistingCampaign) {
-          toast.success(`${assets.length} new creative added to your campaign!`);
+          // Push creatives to Meta directly into existing ad set
+          toast.info("Uploading creative to Meta...");
+          
+          const { data: result, error: addError } = await supabase.functions.invoke("add-creative-to-campaign", {
+            body: {
+              workspaceId,
+              assets: assets.map(({ file, ...rest }) => rest),
+              copyVariations: approvedVariations,
+            },
+          });
+
+          if (addError) throw addError;
+
+          if (result?.success) {
+            await supabase
+              .from("campaign_workspaces")
+              .update({
+                progress_status: "creative_added",
+                user_uploaded_assets: assets.map(({ file, ...rest }) => rest) as any,
+                selected_copy: { shared_variations: approvedVariations } as any,
+              })
+              .eq("id", workspaceId!);
+
+            toast.success(result.message || `${result.totalCreated} new ad(s) added to your campaign!`);
+            if (result.failedAds?.length > 0) {
+              toast.warning(`${result.totalFailed} ad(s) failed to create. Check Ads Manager for details.`);
+            }
+          } else {
+            throw new Error(result?.error || "Failed to add creative to campaign");
+          }
           navigate("/campaigns");
         } else {
+          await supabase
+            .from("campaign_workspaces")
+            .update({
+              progress_status: "ready_to_publish",
+              user_uploaded_assets: assets.map(({ file, ...rest }) => rest) as any,
+              selected_copy: { shared_variations: approvedVariations } as any,
+            })
+            .eq("id", workspaceId!);
+
           toast.success("Campaign ready! Heading to build...");
           navigate(`/campaigns/build?workspace=${workspaceId}`);
         }
