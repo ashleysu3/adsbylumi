@@ -1,62 +1,64 @@
+## Advanced Upload Build — Plan
 
+### What It Does
 
-## Plan: Add Custom Angles + Full Creative Brief Document
+A new "Advanced Build" flow that lets you upload finished creative assets (videos/images) in bulk, have Lumi auto-generate up to 5 copy variations per asset (primary text, headline, description), and push each asset into its own ad set on Meta. You can enter this flow from two places:
 
-### Feature 1: "Add Your Own" Custom Angle
+1. **After Step 3 of the Create wizard** (strategy already selected) — as an alternative to "Create My Ad" which goes to Creative Studio
+2. **From an existing campaign workspace** on the Campaigns page — strategy already determined
 
-**What it does:** Adds a card in the AngleSelector grid that lets users type their own creative angle idea. Lumi processes it into a proper angle format, asking clarifying questions only if the input is too vague.
+If you provide your own copy, Lumi uses it. If you don't, Lumi writes copy based on the offer data and infers angles from the uploaded creative filenames/types and information from the offer URL, audience psychology and information.
 
-**Implementation steps:**
+### Technical Approach
 
-1. **Add "Add Your Own" card to AngleSelector** (`src/components/creative/AngleSelector.tsx`)
-   - Add a special card at the end of the angles grid with a `+` icon and "Add Your Own" label
-   - Clicking it opens a small dialog/popover with a text input for the user's angle idea
-   - On submit, call a new edge function to process the input
+#### 1. New page: `src/pages/AdvancedBuild.tsx`
 
-2. **Create `generate-custom-angle` edge function** (`supabase/functions/generate-custom-angle/index.ts`)
-   - Accepts: user's raw angle idea text, brand context, offer context
-   - Uses AI (gemini-2.5-flash) to either:
-     - Return a properly formatted angle object (id, name, description) if the input is clear enough
-     - Return `{ needsClarification: true, question: "..." }` if the input is too vague
-   - The AI decides whether clarification is needed based on specificity of the input
+- Route: `/advanced-build?workspace={id}`
+- Multi-step flow:
+  - **Step 1 — Upload**: Drag-drop bulk uploader for videos/images (reuse patterns from `BulkUploader.tsx`). Each asset gets a thumbnail preview.
+  - **Step 2 — Copy**: For each asset, show a card. User can either: (a) paste their own headline/primary/description, or (b) click "Let Lumi Write It" to auto-generate 5 variations per field. User picks which variation to use per asset.
+  - **Step 3 — Review & Publish**: Summary of all ad sets (1 asset = 1 ad set, up to 5 copy combos). Confirm and push to Meta.
 
-3. **Add clarification dialog** in AngleSelector
-   - If the edge function returns `needsClarification`, show a follow-up dialog with Lumi's question
-   - User answers, re-submits with original + clarification to the same edge function
-   - Once resolved, the custom angle is appended to `availableAngles` and auto-selected
+#### 2. New edge function: `supabase/functions/generate-advanced-copy/index.ts`
 
-4. **Mark custom angles visually** with a small "Custom" badge so users can distinguish them from AI-generated ones
+- Accepts: offer data, brand voice, uploaded asset metadata (filename, type, any user notes)
+- Returns: 5 variations each of primary_text, headline, description per asset
+- Uses Lovable AI (gemini-3-flash-preview) with brand context and offer psychology
 
-5. **Persist custom angles** — they save to `creative_json.angles` alongside AI-generated ones via the existing `saveCreativeState` mechanism
+#### 3. Entry point A: Create wizard (Step 3)
 
-### Feature 2: Creative Brief Document for Agencies
+- Add an "Advanced Build" button alongside the existing "Create My Ad" button on Step 3 of `/create`
+- On click: creates workspace + strategy (same as current flow), then navigates to `/advanced-build?workspace={id}`
 
-**What it does:** A comprehensive, client-facing creative brief document (not just the CSV export) that includes offer context, psychology, angles, concepts, and ad copy in a polished format.
+#### 4. Entry point B: Existing campaigns
 
-**Implementation steps:**
+- Add "Advanced Upload" option in the campaign card dropdown menu in `CampaignsList.tsx`
+- Navigates to `/advanced-build?workspace={id}` for that existing workspace
 
-1. **Create `CreativeBriefDocument` component** (`src/components/creative/CreativeBriefDocument.tsx`)
-   - A full-page printable/exportable document with sections:
-     - **Offer Overview**: name, URL, price, description
-     - **Offer Psychology**: product psychology, audience psychology, pain points, desires
-     - **Creative Angles**: each selected angle with its description and psychology trigger
-     - **Creative Concepts**: grouped by angle — hook, format, guidance, why it works
-     - **Ad Copy**: headlines, descriptions, primary copy per angle
-   - Styled for print with clean typography
+#### 5. Upload to Meta
 
-2. **Add "Creative Brief" button to the Creative Studio toolbar** (`src/pages/CreativeStudio.tsx`)
-   - Visible once concepts have been generated (after the angles step)
-   - Opens a dialog/sheet showing the brief with a "Print / Save as PDF" button and a "Download CSV" option (reuses existing CSV export)
+- Extend `build-meta-campaign` or create a new `build-advanced-campaign` edge function that:
+  - Uploads each creative asset to Meta via the existing `upload-creative-to-meta` function
+  - Creates one ad set per asset
+  - Inserts up to 5 ad variations per ad set (different copy combos)
 
-3. **Add print-friendly styles** — use `@media print` CSS rules in the component for clean PDF output via browser print
+#### 6. Storage
 
-4. **Gate behind agency tier** (optional enhancement) — show for all users but highlight as an "Agency Pro" feature in the UI
+- Upload creative files to the existing `creative-assets` storage bucket
+- Save advanced build state to `campaign_workspaces.campaign_builder_answers` as `{ advancedBuild: true, assets: [...], copyVariations: {...} }`
 
-### Files to create:
-- `supabase/functions/generate-custom-angle/index.ts`
-- `src/components/creative/CreativeBriefDocument.tsx`
+#### 7. Route registration
 
-### Files to modify:
-- `src/components/creative/AngleSelector.tsx` — add custom angle card + input dialog + clarification dialog
-- `src/pages/CreativeStudio.tsx` — add Creative Brief button to toolbar, pass new props to AngleSelector for custom angle handling, wire up brief dialog
+- Add `/advanced-build` route in `App.tsx`
 
+### Files to Create
+
+- `src/pages/AdvancedBuild.tsx` — main page
+- `supabase/functions/generate-advanced-copy/index.ts` — AI copy generation
+
+### Files to Edit
+
+- `src/App.tsx` — add route
+- `src/pages/Create.tsx` — add "Advanced Build" button on Step 3
+- `src/components/CampaignsList.tsx` — add "Advanced Upload" dropdown option
+- `supabase/config.toml` — register new edge function
