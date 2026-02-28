@@ -101,34 +101,60 @@ Deno.serve(async (req) => {
     let adSetId = metaCampaignIds?.ad_set_id;
 
     if (!adSetId && campaignId) {
-      console.log(`No ad_set_id stored, fetching ad sets from campaign ${campaignId}...`);
-      const adSetsRes = await fetch(
-        `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=id,name,status&limit=5&access_token=${metaAccessToken}`
-      );
-      const adSetsData = await adSetsRes.json();
+      console.log(`No ad_set_id stored, resolving from campaign ${campaignId}...`);
 
-      if (adSetsData.error) {
-        console.error('Failed to fetch ad sets:', adSetsData.error);
-        return new Response(
-          JSON.stringify({ success: false, error: `Failed to fetch ad sets: ${adSetsData.error.message}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      // First try: get ad set from an existing ad (avoids extra API call)
+      const existingAdIds = metaCampaignIds?.ad_ids || [];
+      if (existingAdIds.length > 0) {
+        try {
+          const adInfoRes = await fetch(
+            `https://graph.facebook.com/v18.0/${existingAdIds[0]}?fields=adset_id&access_token=${metaAccessToken}`
+          );
+          const adInfo = await adInfoRes.json();
+          if (adInfo.adset_id) {
+            adSetId = adInfo.adset_id;
+            console.log(`Resolved ad set from existing ad: ${adSetId}`);
+          }
+        } catch (e) {
+          console.warn('Could not resolve ad set from existing ad, falling back to campaign fetch');
+        }
       }
 
-      // Prefer an active ad set, fall back to any
-      const activeAdSet = adSetsData.data?.find((s: any) => s.status === 'ACTIVE') || adSetsData.data?.[0];
-
-      if (!activeAdSet) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'No ad sets found in this campaign.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      // Second try: fetch ad sets from campaign
+      if (!adSetId) {
+        const adSetsRes = await fetch(
+          `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=id,name,status&limit=5&access_token=${metaAccessToken}`
         );
+        const adSetsData = await adSetsRes.json();
+
+        if (adSetsData.error) {
+          // Rate limit — suggest retry
+          const isRateLimit = adSetsData.error.message?.includes('request limit') || adSetsData.error.code === 32;
+          console.error('Failed to fetch ad sets:', adSetsData.error);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: isRateLimit
+                ? 'Meta API rate limit reached. Please wait a few minutes and try again.'
+                : `Failed to fetch ad sets: ${adSetsData.error.message}`,
+            }),
+            { status: isRateLimit ? 429 : 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const activeAdSet = adSetsData.data?.find((s: any) => s.status === 'ACTIVE') || adSetsData.data?.[0];
+        if (!activeAdSet) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'No ad sets found in this campaign.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        adSetId = activeAdSet.id;
+        console.log(`Resolved ad set from campaign: ${adSetId} (${activeAdSet.name})`);
       }
 
-      adSetId = activeAdSet.id;
-      console.log(`Resolved ad set: ${adSetId} (${activeAdSet.name})`);
-
-      // Cache it for future use
+      // Cache for future use
       await supabase
         .from('campaign_workspaces')
         .update({
