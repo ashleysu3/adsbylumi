@@ -303,7 +303,7 @@ export function CampaignInsightDetail({
             <div className="flex items-center gap-2">
               {campaign.offerId ? (
                 <Button size="sm" onClick={handleAddCreative} className="rounded-xl">
-                  <PlusCircle className="h-4 w-4 mr-2" />Add Creative
+                  <PlusCircle className="h-4 w-4 mr-2" />Add to Campaign
                 </Button>
               ) : (
                 <Button onClick={() => setShowLinkOfferModal(true)} className="rounded-xl">
