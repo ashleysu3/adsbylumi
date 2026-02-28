@@ -8,6 +8,7 @@ interface ProgressStep {
   completed: boolean;
   section: string;
   icon: React.ElementType;
+  detail?: string;
 }
 
 interface InlineProgressChecklistProps {
@@ -52,6 +53,7 @@ export function InlineProgressChecklist({ brand, offers, onScrollToSection }: In
       completed: !!brand?.meta_account_id,
       section: "meta-account",
       icon: Link,
+      detail: brand?.page_name || (brand?.meta_account_id ? `Act ${brand.meta_account_id}` : undefined),
     },
   ];
 
@@ -109,6 +111,11 @@ export function InlineProgressChecklist({ brand, offers, onScrollToSection }: In
               )}>
                 {step.label}
               </span>
+              {step.completed && step.detail && (
+                <span className="text-[9px] sm:text-[10px] text-muted-foreground text-center leading-tight truncate max-w-[80px]">
+                  {step.detail}
+                </span>
+              )}
             </button>
           );
         })}
