@@ -235,6 +235,7 @@ export default function CreativeStudio() {
 
   // Creative Brief state
   const [showBrief, setShowBrief] = useState(false);
+  const [offerPsychology, setOfferPsychology] = useState<any>(null);
 
   const urlWorkspaceId = searchParams.get("workspace");
 
@@ -338,6 +339,18 @@ export default function CreativeStudio() {
       }
       
       setWorkspace(data);
+      
+      // Fetch offer psychology if workspace has an offer_id
+      if (data?.offer_id) {
+        const { data: offerData } = await supabase
+          .from('offers')
+          .select('product_psychology, offer_audience_psychology')
+          .eq('id', data.offer_id)
+          .single();
+        setOfferPsychology(offerData?.product_psychology || null);
+      } else {
+        setOfferPsychology(null);
+      }
       const c = data?.creative_json as Record<string, any> | null;
       // Inject default angle if angles exist but it's missing
       const DEFAULT_ANGLE = {
@@ -1227,7 +1240,7 @@ export default function CreativeStudio() {
                 price: workspace?.offer_price || undefined,
                 url: workspace?.offer_url || undefined,
               }}
-              productPsychology={null}
+              productPsychology={offerPsychology}
               audiencePsychology={workspace?.brands?.audience_psychology}
               angles={availableAngles}
               selectedAngleIds={selectedAngleIds}
