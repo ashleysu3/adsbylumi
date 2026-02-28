@@ -18,6 +18,7 @@ import {
   getLumiStatusDot,
   getObjectiveMetrics,
 } from '@/lib/lumi-kpi-config';
+import { CampaignGoalRow } from './CampaignGoalRow';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
 import { DateRangePicker } from './DateRangePicker';
@@ -480,6 +481,14 @@ export function InsightsHome({
                         </Badge>
                       )}
                     </div>
+
+                    {/* Row 3.5: Goal vs Actual */}
+                    <CampaignGoalRow
+                      kpiConfig={kpiConfig}
+                      currentValue={primaryValue}
+                      userGoal={campaign.userGoal ?? null}
+                      onUpdateGoal={(goal) => onUpdateGoal(campaign.id, goal)}
+                    />
 
                     {/* Row 4: View button */}
                     <div className="flex items-center gap-2 pt-1 pl-5">
