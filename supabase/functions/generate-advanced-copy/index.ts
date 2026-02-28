@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,44 +22,132 @@ serve(async (req) => {
       offerPrice,
       productPsychology,
       audiencePsychology,
-      assetFilename,
-      assetType,
+      brandEmojis,
+      bulletEmoji,
+      useEmojis,
+      copyPerspective,
+      neverUseWords,
+      messagingGuidelines,
     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const isVideo = assetType?.startsWith("video/");
-    const fileHint = assetFilename
-      ? `The creative file is named "${assetFilename}" (${isVideo ? "video" : "image"}). Infer likely angles from the filename.`
+    // Fetch knowledge base docs for copy formulas + psychology triggers
+    let kbContext = "";
+    try {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      const { data: kbDocs } = await supabase
+        .from("knowledge_documents")
+        .select("title, content, category")
+        .eq("active", true)
+        .in("category", [
+          "copy_formulas",
+          "psychology",
+          "buyer_psychology",
+          "meta_best_practices",
+          "hooks",
+          "cta_frameworks",
+        ])
+        .order("priority", { ascending: false })
+        .limit(10);
+
+      if (kbDocs && kbDocs.length > 0) {
+        kbContext = kbDocs
+          .map((doc) => `### ${doc.title} (${doc.category})\n${doc.content}`)
+          .join("\n\n")
+          .slice(0, 6000);
+      }
+    } catch (e) {
+      console.warn("KB fetch failed, continuing without KB:", e);
+    }
+
+    const perspective = copyPerspective === "We" ? "We/Our" : "I/My";
+    const emojiInstruction = useEmojis !== false
+      ? `USE EMOJIS liberally. Brand emojis: ${(brandEmojis || ["✨", "🎯", "💡", "🚀", "💪"]).join(" ")}. Bullet emoji: ${bulletEmoji || "✅"}. Place emojis at the start of key lines and as bullet points.`
+      : "Do NOT use emojis.";
+
+    const neverWords = neverUseWords?.length > 0
+      ? `NEVER use these words: ${neverUseWords.join(", ")}`
       : "";
 
     const psychContext = productPsychology
-      ? `Product Psychology: ${JSON.stringify(productPsychology).slice(0, 1500)}`
+      ? `\n## Product Psychology\n${JSON.stringify(productPsychology, null, 2).slice(0, 2000)}`
       : "";
+
     const audienceContext = audiencePsychology
-      ? `Audience Psychology: ${JSON.stringify(audiencePsychology).slice(0, 1500)}`
+      ? `\n## Audience Psychology\n${JSON.stringify(audiencePsychology, null, 2).slice(0, 2000)}`
       : "";
 
-    const systemPrompt = `You are a world-class Meta Ads copywriter. You write psychology-driven, compliant ad copy that converts.
-You NEVER use hype, guarantees, or personal attribute claims. You match the brand voice exactly.
-Return exactly 5 variations. Each variation has: primary_text, headline (under 25 chars), description.
-Use the tool provided to return structured output.`;
+    const guidelinesContext = messagingGuidelines && Object.keys(messagingGuidelines).length > 0
+      ? `\n## Messaging Guidelines\n${JSON.stringify(messagingGuidelines, null, 2).slice(0, 1500)}`
+      : "";
 
-    const userPrompt = `Write 5 ad copy variations for this creative asset.
+    const systemPrompt = `You are the world's best Meta Ads copywriter working for "${brandName || "a premium brand"}". You write psychology-driven, emotionally compelling, conversion-optimized ad copy.
 
+## VOICE & PERSPECTIVE
+- Brand voice: ${brandVoice || "Professional, warm, strategic"}
+- Write in ${perspective} perspective consistently
+- Match the brand's tone exactly — be their voice, not a generic marketer
+
+## FORMATTING RULES (CRITICAL)
+- Primary text MUST follow this structure:
+  1. Start with a POWERFUL hook line that stops the scroll (pattern interrupt, bold claim, or emotional trigger)
+  2. Follow with a BLANK LINE
+  3. Then 2-3 short paragraphs (1-2 sentences each) with BLANK LINES between them
+  4. Use ${bulletEmoji || "✅"} bullet points for benefits/features
+  5. End with a clear call-to-action line
+- ${emojiInstruction}
+- NO walls of text. Every line should breathe.
+- Hook → Problem → Solution → Benefits → CTA
+
+## CHARACTER LIMITS (STRICT)
+- Headline: MAXIMUM 25 characters (this is a hard limit — Meta truncates beyond this)
+- Description: MAXIMUM 27 characters (short, complementary action phrase)
+- Primary text: 150-300 characters ideal, up to 500 max
+
+## COPY QUALITY RULES
+- Each variation must use a DIFFERENT psychology angle (problem-solution, social proof, curiosity/open loop, transformation/before-after, urgency/scarcity)
+- Lead with the audience's #1 pain point or deepest desire
+- Use specific numbers, outcomes, or timeframes when possible
+- ${neverWords}
+- NEVER use hype words like "revolutionary", "game-changing", "unlock your potential"
+- NEVER make income claims, health guarantees, or personal attribute assumptions
+- NEVER use generic phrases like "Don't miss out" or "Act now" without context
+
+${kbContext ? `\n## KNOWLEDGE BASE REFERENCE\n${kbContext}` : ""}
+
+Return exactly 5 variations using the tool provided. Each must feel distinctly different in angle and psychology.`;
+
+    const userPrompt = `Write 5 high-converting ad copy variations for this campaign.
+
+## BRAND
 Brand: ${brandName || "Unknown"}
-Brand Voice: ${brandVoice || "Professional, warm, strategic"}
+
+## OFFER DETAILS
 Offer: ${offerName || "Unknown"}
 Description: ${offerDescription || "N/A"}
 URL: ${offerUrl || "N/A"}
 Price: ${offerPrice || "N/A"}
 ${psychContext}
 ${audienceContext}
-${fileHint}
+${guidelinesContext}
 
-Each variation should take a slightly different angle — e.g., problem-solution, social proof, curiosity, urgency, transformation.
-Headlines must be under 25 characters. Primary text should be 1-3 sentences. Description is optional but helpful.`;
+## REQUIRED ANGLES (one per variation)
+1. Problem-Solution: Lead with the pain, present the offer as the fix
+2. Social Proof / Authority: Imply credibility, results, trust
+3. Curiosity / Open Loop: Tease a result or insight without revealing everything
+4. Transformation: Paint the before/after picture
+5. Direct Benefit: Lead with the strongest tangible outcome
+
+Remember:
+- Headlines ≤ 25 chars (STRICT)
+- Descriptions ≤ 27 chars (short action phrase like "Try it free today" or "Start your journey")
+- Primary text: hook line → blank line → short paragraphs → CTA
+- Each variation MUST feel completely different`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -79,7 +168,7 @@ Headlines must be under 25 characters. Primary text should be 1-3 sentences. Des
               type: "function",
               function: {
                 name: "return_copy_variations",
-                description: "Return 5 ad copy variations",
+                description: "Return 5 ad copy variations with different psychology angles",
                 parameters: {
                   type: "object",
                   properties: {
@@ -88,11 +177,12 @@ Headlines must be under 25 characters. Primary text should be 1-3 sentences. Des
                       items: {
                         type: "object",
                         properties: {
-                          primary_text: { type: "string" },
-                          headline: { type: "string" },
-                          description: { type: "string" },
+                          primary_text: { type: "string", description: "Main ad copy with hook, spacing, and CTA. Use \\n\\n for paragraph breaks." },
+                          headline: { type: "string", description: "Max 25 characters" },
+                          description: { type: "string", description: "Max 27 characters" },
+                          angle: { type: "string", description: "The psychology angle used (e.g. problem-solution, social-proof, curiosity, transformation, direct-benefit)" },
                         },
-                        required: ["primary_text", "headline", "description"],
+                        required: ["primary_text", "headline", "description", "angle"],
                         additionalProperties: false,
                       },
                     },
