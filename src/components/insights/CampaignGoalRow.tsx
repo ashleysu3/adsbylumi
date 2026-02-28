@@ -18,8 +18,9 @@ function getRecommendedGoal(kpiConfig: LumiKPIConfig): number {
   if (kpiConfig.primary === 'roas') {
     return kpiConfig.benchmark.min;
   }
-  // For cost metrics (lower is better), recommend the max of the range (realistic target)
-  return kpiConfig.benchmark.max;
+  // For cost metrics (lower is better), recommend lower third of range (more ambitious but realistic)
+  const range = kpiConfig.benchmark.max - kpiConfig.benchmark.min;
+  return Math.round((kpiConfig.benchmark.min + range / 3) * 100) / 100;
 }
 
 function isGoalUnrealistic(goal: number, kpiConfig: LumiKPIConfig): boolean {
