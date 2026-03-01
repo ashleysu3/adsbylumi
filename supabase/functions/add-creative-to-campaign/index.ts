@@ -614,22 +614,7 @@ Deno.serve(async (req) => {
         }
 
         createdAdIds.push(adData.id);
-
-            createdAdIds.push(retryAdData.id);
-            console.log(`Ad created via fallback: ${retryAdData.id} (${adName}) on cloned ad set ${fallbackAdSetId}`);
-            continue;
-          }
-
-          console.error(`Ad creation failed for ${adName}:`, adData.error);
-          failedAds.push({
-            assetName: asset.name,
-            error: `Ad: ${adData.error.message} (code ${adData.error.code}${adData.error.error_subcode ? `/${adData.error.error_subcode}` : ''})`,
-          });
-          continue;
-        }
-
-        createdAdIds.push(adData.id);
-        console.log(`Ad created: ${adData.id} (${adName}) on ad set ${targetAdSetId} with ${uniqueBodies.length} body options, ${uniqueTitles.length} title options`);
+        console.log(`Ad created: ${adData.id} (${adName}) on ad set ${targetAdSetId}`);
       } catch (adError: any) {
         console.error(`Error creating ad ${adName}:`, adError);
         failedAds.push({ assetName: asset.name, error: adError.message });
