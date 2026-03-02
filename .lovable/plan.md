@@ -1,29 +1,42 @@
 
 
-## Plan: Remove the Giant LumiChat Drawer
+## Plan: Smart Creative Refresh Flow from Recommendations
 
-The `LumiChat` component is an 85vh bottom drawer that auto-opens in several places, blocking the user's view of the page they just navigated to. It doesn't add enough value to justify taking over the screen. The app already has a smaller, more contextual `LumiAssistant` component (the floating chat widget in the sidebar/corner) that handles the same chat functionality without being intrusive.
+When a "create_creative" recommendation's "Next Step" button is clicked, the current behavior just dumps the user at `/creative` with no context. This needs three changes:
 
-### Changes
+### 1. Pass workspace ID in the navigation URL
+**Files:** `src/components/insights/InsightsHome.tsx`, `src/components/insights/LumiRecommendations.tsx`
 
-#### 1. Remove LumiChat from Creative page
+- Update fallback `create_creative` recommendations (line 248) to include `actionUrl: '/creative?workspace=${campaign.id}&refreshCreative=true'` instead of just `/creative`
+- For AI-generated recommendations of type `create_creative`, also inject the `campaignId` into the `actionUrl`
+
+### 2. Create a Creative Refresh Dialog
+**File:** `src/components/creative/CreativeRefreshDialog.tsx` (new)
+
+A dialog that appears when `refreshCreative=true` is in the URL params. It presents two clear options:
+
+- **"Build on what's working"** — Shows top performing ads from the campaign + account (30/60/90 day data via the existing `analyze-past-creatives` edge function), lets user generate similar angles/formats
+- **"Start fresh with new angles"** — Goes straight to angle generation as usual
+
+The dialog fetches performance data using the existing `analyze-past-creatives` function and displays:
+- Top performing ad names/formats from this campaign
+- Top performers across the account
+- Key patterns identified (formats, hooks that work)
+
+### 3. Wire it into Creative.tsx
 **File:** `src/pages/Creative.tsx`
 
-- Remove the `LumiChat` import
-- Remove the `showLumiChat` state and its `useEffect` trigger (lines 57, 140-144)
-- Remove both `LumiChat` render blocks (lines 1276-1308 for add-creative mode, lines 1311-1346 for angle-feedback mode)
-- Keep the angle feedback conversation insights logic — move it to save automatically after angle generation instead of requiring a chat interaction
+- Detect `refreshCreative=true` search param
+- Auto-load the workspace for that campaign
+- Show the `CreativeRefreshDialog` on mount
+- If user chooses "build on what's working," pass the performance context into angle generation (the existing `generate-creative-angles` function already accepts performance context)
+- If user chooses "start fresh," proceed normally
 
-#### 2. Remove LumiChat from Campaigns page
-**File:** `src/pages/Campaigns.tsx`
+### Technical Details
 
-- Remove the `LumiChat` import
-- Remove `showLumiGuidance` state and the `LumiChat` render block (lines 105-122)
-
-#### 3. Remove the LumiChat component file
-**File:** `src/components/LumiChat.tsx`
-
-- Delete or empty this file since it will no longer be used anywhere
-
-The existing `LumiAssistant` (the small floating chat widget) remains available on every page for users who want to ask questions — it just won't auto-open and block the entire screen.
+- `CreativeRefreshDialog` calls `supabase.functions.invoke('analyze-past-creatives')` with the brand ID
+- Dialog shows a loading state while fetching, then renders performance summary + two action buttons
+- When "build on what's working" is chosen, the performance patterns are stored in workspace `creative_json.performanceContext` and passed to angle generation
+- The `refreshCreative` param is cleared from URL after dialog interaction
+- No new edge functions needed — reuses `analyze-past-creatives`
 
