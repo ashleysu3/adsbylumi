@@ -5,14 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload } from "lucide-react";
+import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit } from "lucide-react";
 import { toast } from "sonner";
 import { AdsEmptyState } from "./AdsEmptyState";
 import { CampaignDetailDrawer } from "./CampaignDetailDrawer";
+
+// Social template slugs — these use existing posts, not custom creative
+const SOCIAL_POST_SLUGS = ["social-traffic", "comment-dm-engagement"];
 
 interface Campaign {
   id: string;
@@ -23,6 +25,8 @@ interface Campaign {
   updated_at: string;
   archived: boolean;
   archived_at: string | null;
+  template_id: string | null;
+  template_slug?: string | null;
 }
 
 interface CampaignsListProps {
@@ -31,15 +35,23 @@ interface CampaignsListProps {
   onCampaignSelectForCreative?: (campaignId: string) => void;
 }
 
+type ViewFilter = "all" | "draft" | "live";
+
 export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSelectForCreative }: CampaignsListProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [showArchived, setShowArchived] = useState(false);
+  const [viewFilter, setViewFilter] = useState<ViewFilter>("all");
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [campaignToArchive, setCampaignToArchive] = useState<Campaign | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  // Combine mode
+  const [combineMode, setCombineMode] = useState(false);
+  const [selectedForCombine, setSelectedForCombine] = useState<Set<string>>(new Set());
+  const [combineDialogOpen, setCombineDialogOpen] = useState(false);
+  const [combining, setCombining] = useState(false);
 
   useEffect(() => {
     fetchCampaigns();
@@ -49,7 +61,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     try {
       let query = supabase
         .from("campaign_workspaces")
-        .select("id, name, progress_status, offer_name, created_at, updated_at, archived, archived_at")
+        .select("id, name, progress_status, offer_name, created_at, updated_at, archived, archived_at, template_id")
         .eq("brand_id", brandId);
 
       if (!showArchived) {
@@ -57,40 +69,42 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
       }
 
       const { data, error } = await query.order("updated_at", { ascending: false });
-
       if (error) throw error;
 
-      // Filter campaigns based on offer archive status (if not showing archived)
-      if (data && data.length > 0 && !showArchived) {
-        const filteredCampaigns = await Promise.all(
-          data.map(async (campaign) => {
+      // Enrich with template slugs
+      let enriched = (data || []) as Campaign[];
+      if (enriched.length > 0) {
+        const templateIds = [...new Set(enriched.filter(c => c.template_id).map(c => c.template_id!))];
+        if (templateIds.length > 0) {
+          const { data: templates } = await supabase
+            .from("campaign_templates")
+            .select("id, slug")
+            .in("id", templateIds);
+          const slugMap = new Map((templates || []).map(t => [t.id, t.slug]));
+          enriched = enriched.map(c => ({ ...c, template_slug: c.template_id ? slugMap.get(c.template_id) || null : null }));
+        }
+      }
+
+      // Filter out campaigns whose offers are archived (unless showing archived)
+      if (enriched.length > 0 && !showArchived) {
+        const filtered = await Promise.all(
+          enriched.map(async (campaign) => {
             if (!campaign.offer_name) return campaign;
-            
-            // Check if offer is archived
             const { data: offer } = await supabase
               .from('offers')
               .select('archived')
               .eq('brand_id', brandId)
               .eq('name', campaign.offer_name)
               .maybeSingle();
-            
-            // Show campaign if:
-            // 1. Offer doesn't exist in offers table (legacy)
-            // 2. Offer is not archived
-            // 3. Campaign is live/completed (performance tracking)
-            if (!offer || 
-                !offer.archived || 
-                ['live', 'completed'].includes(campaign.progress_status)) {
+            if (!offer || !offer.archived || ['live', 'completed'].includes(campaign.progress_status)) {
               return campaign;
             }
-            
             return null;
           })
         );
-
-        setCampaigns(filteredCampaigns.filter(Boolean) as Campaign[]);
+        setCampaigns(filtered.filter(Boolean) as Campaign[]);
       } else {
-        setCampaigns(data || []);
+        setCampaigns(enriched);
       }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
@@ -102,7 +116,6 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
   const handleArchiveCampaign = async () => {
     if (!campaignToArchive) return;
-
     try {
       const isArchiving = !campaignToArchive.archived;
       const { error } = await supabase
@@ -112,9 +125,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
           archived_at: isArchiving ? new Date().toISOString() : null,
         })
         .eq("id", campaignToArchive.id);
-
       if (error) throw error;
-
       toast.success(isArchiving ? "Campaign archived" : "Campaign restored");
       fetchCampaigns();
     } catch (error: any) {
@@ -126,60 +137,129 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      draft: "bg-secondary",
-      creative_in_progress: "bg-blue-500",
-      waiting_for_assets: "bg-yellow-500",
-      ready_to_publish: "bg-green-500",
-      publishing_to_meta: "bg-purple-500",
-      live: "bg-primary",
-      completed: "bg-gray-500",
-    };
-    return colors[status] || "bg-secondary";
+  const isSocialCampaign = (campaign: Campaign) => {
+    return campaign.template_slug && SOCIAL_POST_SLUGS.includes(campaign.template_slug);
   };
 
-  const isPublished = (status: string) => {
-    return ['live', 'completed'].includes(status);
+  const isLive = (status: string) => ['live', 'completed', 'publishing_to_meta'].includes(status);
+  const isDraft = (status: string) => !isLive(status);
+
+  const getStatusDot = (status: string) => {
+    if (isLive(status)) return 'bg-green-500';
+    if (status === 'ready_to_publish') return 'bg-amber-400';
+    return 'bg-muted-foreground/40';
   };
 
   const getStatusLabel = (status: string) => {
-    return status.split("_").map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(" ");
+    const labels: Record<string, string> = {
+      draft: "Draft",
+      creative_in_progress: "Creating",
+      waiting_for_assets: "Needs Assets",
+      ready_to_publish: "Ready",
+      publishing_to_meta: "Publishing",
+      live: "Live",
+      completed: "Completed",
+    };
+    return labels[status] || status;
   };
 
-  const getNavigationRoute = (campaign: Campaign): string => {
-    switch (campaign.progress_status) {
-      case 'draft':
-      case 'creative_in_progress':
-      case 'waiting_for_assets':
-        return `/creative-studio?workspace=${campaign.id}`;
-      
-      case 'ready_to_publish':
-      case 'publishing_to_meta':
-        return `/campaigns/build?workspace=${campaign.id}`;
-      
-      case 'live':
-      case 'completed':
-        return '/data';
-      
-      default:
-        return `/creative-studio?workspace=${campaign.id}`;
+  const handleArrowClick = (campaign: Campaign) => {
+    if (isSocialCampaign(campaign)) {
+      // Social campaigns → go to post selection
+      navigate(`/creative-studio?workspace=${campaign.id}&selectPosts=true`);
+      return;
+    }
+    if (['draft', 'creative_in_progress', 'waiting_for_assets'].includes(campaign.progress_status)) {
+      navigate(`/creative-studio?workspace=${campaign.id}`);
+      return;
+    }
+    setSelectedCampaignId(campaign.id);
+    setDetailDrawerOpen(true);
+  };
+
+  const handleCombine = async () => {
+    if (selectedForCombine.size < 2) return;
+    setCombining(true);
+
+    try {
+      const ids = Array.from(selectedForCombine);
+      // Fetch full workspaces
+      const { data: workspaces, error } = await supabase
+        .from("campaign_workspaces")
+        .select("id, name, production_items, production_checklist, creative_json, offer_name")
+        .in("id", ids);
+      if (error) throw error;
+      if (!workspaces || workspaces.length < 2) throw new Error("Could not load campaigns");
+
+      // Keep the first (most recently updated from our sorted list) as the target
+      const target = workspaces[0];
+      const others = workspaces.slice(1);
+
+      // Merge production items
+      let mergedItems: any[] = Array.isArray(target.production_items) ? [...(target.production_items as any[])] : [];
+      for (const other of others) {
+        if (Array.isArray(other.production_items)) {
+          mergedItems = [...mergedItems, ...(other.production_items as any[])];
+        }
+      }
+
+      // Update target with merged items
+      const { error: updateError } = await supabase
+        .from("campaign_workspaces")
+        .update({
+          production_items: mergedItems as any,
+          name: target.name + " (combined)",
+        })
+        .eq("id", target.id);
+      if (updateError) throw updateError;
+
+      // Archive the others
+      const otherIds = others.map(o => o.id);
+      const { error: archiveError } = await supabase
+        .from("campaign_workspaces")
+        .update({ archived: true, archived_at: new Date().toISOString() })
+        .in("id", otherIds);
+      if (archiveError) throw archiveError;
+
+      toast.success(`Combined ${workspaces.length} campaigns into "${target.name}"`);
+      setCombineMode(false);
+      setSelectedForCombine(new Set());
+      fetchCampaigns();
+    } catch (error: any) {
+      console.error("Error combining campaigns:", error);
+      toast.error(error.message || "Failed to combine campaigns");
+    } finally {
+      setCombining(false);
+      setCombineDialogOpen(false);
     }
   };
+
+  const toggleCombineSelect = (id: string) => {
+    setSelectedForCombine(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Filtered campaigns
+  const filteredCampaigns = campaigns.filter(c => {
+    if (viewFilter === "live") return isLive(c.progress_status);
+    if (viewFilter === "draft") return isDraft(c.progress_status);
+    return true;
+  });
+
+  const liveCount = campaigns.filter(c => isLive(c.progress_status)).length;
+  const draftCount = campaigns.filter(c => isDraft(c.progress_status)).length;
 
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <Skeleton className="h-6 w-32" />
-        </CardHeader>
+        <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-20 w-full" />
-            ))}
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
           </div>
         </CardContent>
       </Card>
@@ -188,170 +268,249 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
   return (
     <Card variant="glow">
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <CardTitle className="text-lg md:text-xl">My Campaigns</CardTitle>
-            <CardDescription className="text-sm">Active and draft campaign workspaces</CardDescription>
+            <CardTitle className="text-lg">My Campaigns</CardTitle>
+            <CardDescription className="text-sm">Your ads in progress and live</CardDescription>
           </div>
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="show-archived"
-                checked={showArchived}
-                onCheckedChange={setShowArchived}
-              />
-              <Label htmlFor="show-archived" className="text-xs md:text-sm cursor-pointer whitespace-nowrap">
-                Archived
-              </Label>
-            </div>
-            <Button onClick={() => navigate("/create")} size="sm" className="h-9">
-              <Plus className="h-4 w-4 mr-1 md:mr-2" />
-              <span className="hidden sm:inline">New Campaign</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+          <div className="flex items-center gap-2">
+            {!combineMode && draftCount >= 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setCombineMode(true)}
+              >
+                <Merge className="h-3.5 w-3.5 mr-1" />
+                Combine
+              </Button>
+            )}
+            {combineMode && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => { setCombineMode(false); setSelectedForCombine(new Set()); }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={selectedForCombine.size < 2}
+                  onClick={() => setCombineDialogOpen(true)}
+                >
+                  <Merge className="h-3.5 w-3.5 mr-1" />
+                  Combine {selectedForCombine.size > 0 ? `(${selectedForCombine.size})` : ""}
+                </Button>
+              </>
+            )}
+            {!combineMode && (
+              <Button onClick={() => navigate("/create")} size="sm" className="h-8">
+                <Plus className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">New Campaign</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+            )}
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="px-3 md:px-6">
-        {campaigns.length === 0 ? (
-          <AdsEmptyState />
-        ) : (
-          <div className="space-y-3">
-            {campaigns.map((campaign) => (
-              <Card
-                key={campaign.id}
-                variant="glow"
-                className={`transition-all duration-300 ${campaign.archived ? 'opacity-60' : ''} ${
-                  addCreativeMode 
-                    ? 'cursor-pointer border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10' 
-                    : ''
+
+        {/* Filter tabs */}
+        {campaigns.length > 0 && !combineMode && (
+          <div className="flex items-center gap-1 mt-3">
+            {([
+              { key: "all" as ViewFilter, label: "All", count: campaigns.length },
+              { key: "live" as ViewFilter, label: "Live", count: liveCount },
+              { key: "draft" as ViewFilter, label: "Drafts", count: draftCount },
+            ]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setViewFilter(tab.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  viewFilter === tab.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
                 }`}
-                onClick={() => {
-                  if (addCreativeMode && onCampaignSelectForCreative) {
-                    onCampaignSelectForCreative(campaign.id);
-                  }
-                }}
               >
-                <CardContent className="pt-3 pb-3 md:pt-4 md:pb-4 px-3 md:px-4">
-                  <div className="flex items-start justify-between gap-2 md:gap-4">
-                    <div 
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={(e) => {
-                        if (!addCreativeMode) {
-                          e.stopPropagation();
-                          // Direct navigation for in-progress creative campaigns
-                          if (['draft', 'creative_in_progress', 'waiting_for_assets'].includes(campaign.progress_status)) {
-                            navigate(`/creative-studio?workspace=${campaign.id}`);
-                            return;
-                          }
-                          setSelectedCampaignId(campaign.id);
-                          setDetailDrawerOpen(true);
-                        }
-                      }}
-                    >
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <h4 className="font-semibold text-sm md:text-base truncate">{campaign.name}</h4>
-                        {addCreativeMode && (
-                          <Badge className="bg-primary/20 text-primary border border-primary/30 gap-1 text-xs">
-                            <ImagePlus className="h-3 w-3" />
-                            <span className="hidden sm:inline">Select to add creative</span>
-                            <span className="sm:hidden">Add</span>
-                          </Badge>
-                        )}
-                        {campaign.archived && (
-                          <Badge variant="outline" className="text-xs">Archived</Badge>
-                        )}
-                        {!isPublished(campaign.progress_status) && !addCreativeMode && (
-                          <Badge variant="outline" className="border-yellow-500/50 text-yellow-700 dark:text-yellow-400 text-xs">
-                            Draft
-                          </Badge>
-                        )}
-                        <Badge className={`${getStatusColor(campaign.progress_status)} text-xs`}>
-                          <span className="hidden sm:inline">{getStatusLabel(campaign.progress_status)}</span>
-                          <span className="sm:hidden">{getStatusLabel(campaign.progress_status).split(' ')[0]}</span>
-                        </Badge>
-                      </div>
-                      {campaign.offer_name && (
-                        <p className="text-xs md:text-sm text-muted-foreground truncate">
-                          {campaign.offer_name}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Updated {new Date(campaign.updated_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    {!addCreativeMode && (
-                      <div className="flex items-center gap-2">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/advanced-build?workspace=${campaign.id}`);
-                              }}
-                            >
-                              <Upload className="mr-2 h-4 w-4" />
-                              Advanced Upload
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setCampaignToArchive(campaign);
-                                setArchiveDialogOpen(true);
-                              }}
-                            >
-                              {campaign.archived ? (
-                                <>
-                                  <ArchiveRestore className="mr-2 h-4 w-4" />
-                                  Restore Campaign
-                                </>
-                              ) : (
-                                <>
-                                  <Archive className="mr-2 h-4 w-4" />
-                                  Archive Campaign
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Direct navigation for in-progress creative campaigns
-                            if (['draft', 'creative_in_progress', 'waiting_for_assets'].includes(campaign.progress_status)) {
-                              navigate(`/creative-studio?workspace=${campaign.id}`);
-                              return;
-                            }
-                            setSelectedCampaignId(campaign.id);
-                            setDetailDrawerOpen(true);
-                          }}
-                        >
-                          <ArrowRight className="h-5 w-5 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    )}
-                    {addCreativeMode && (
-                      <div className="flex items-center">
-                        <ArrowRight className="h-5 w-5 text-primary" />
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className={`ml-1.5 ${viewFilter === tab.key ? 'text-primary-foreground/70' : 'text-muted-foreground/60'}`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
             ))}
+            <div className="flex-1" />
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showArchived ? "Hide archived" : "Archived"}
+            </button>
+          </div>
+        )}
+
+        {combineMode && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Select 2 or more draft campaigns to combine. The first selected will be kept, others will be archived.
+          </p>
+        )}
+      </CardHeader>
+
+      <CardContent className="px-3 md:px-6">
+        {filteredCampaigns.length === 0 ? (
+          campaigns.length === 0 ? (
+            <AdsEmptyState />
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">
+                No {viewFilter === "live" ? "live" : viewFilter === "draft" ? "draft" : ""} campaigns
+              </p>
+            </div>
+          )
+        ) : (
+          <div className="divide-y divide-border">
+            {filteredCampaigns.map((campaign) => {
+              const social = isSocialCampaign(campaign);
+              const live = isLive(campaign.progress_status);
+
+              return (
+                <div
+                  key={campaign.id}
+                  className={`flex items-center gap-3 py-3 px-1 ${campaign.archived ? 'opacity-50' : ''} ${
+                    addCreativeMode ? 'cursor-pointer hover:bg-primary/5 rounded-lg' : ''
+                  }`}
+                  onClick={() => {
+                    if (addCreativeMode && onCampaignSelectForCreative) {
+                      onCampaignSelectForCreative(campaign.id);
+                    }
+                  }}
+                >
+                  {/* Combine checkbox */}
+                  {combineMode && isDraft(campaign.progress_status) && (
+                    <Checkbox
+                      checked={selectedForCombine.has(campaign.id)}
+                      onCheckedChange={() => toggleCombineSelect(campaign.id)}
+                      className="flex-shrink-0"
+                    />
+                  )}
+
+                  {/* Status dot */}
+                  <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getStatusDot(campaign.progress_status)}`} />
+
+                  {/* Info */}
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={(e) => {
+                      if (addCreativeMode) return;
+                      e.stopPropagation();
+                      handleArrowClick(campaign);
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm truncate">{campaign.name}</span>
+                      {campaign.archived && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">Archived</Badge>
+                      )}
+                      {addCreativeMode && (
+                        <Badge className="bg-primary/20 text-primary border border-primary/30 gap-1 text-[10px]">
+                          <ImagePlus className="h-3 w-3" />
+                          Add
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {campaign.offer_name && (
+                        <span className="text-xs text-muted-foreground truncate max-w-[180px]">{campaign.offer_name}</span>
+                      )}
+                      <span className="text-xs text-muted-foreground">
+                        · {new Date(campaign.updated_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status pill */}
+                  <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                    live
+                      ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                      : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {live && <Radio className="h-3 w-3 inline mr-1" />}
+                    {getStatusLabel(campaign.progress_status)}
+                  </span>
+
+                  {/* Actions */}
+                  {!addCreativeMode && !combineMode && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {/* Only show Advanced Upload for non-social campaigns */}
+                          {!social && (
+                            <>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/advanced-build?workspace=${campaign.id}`);
+                                }}
+                              >
+                                <Upload className="mr-2 h-4 w-4" />
+                                Advanced Upload
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCampaignToArchive(campaign);
+                              setArchiveDialogOpen(true);
+                            }}
+                          >
+                            {campaign.archived ? (
+                              <>
+                                <ArchiveRestore className="mr-2 h-4 w-4" />
+                                Restore
+                              </>
+                            ) : (
+                              <>
+                                <Archive className="mr-2 h-4 w-4" />
+                                Archive
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleArrowClick(campaign);
+                        }}
+                      >
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  )}
+                  {addCreativeMode && (
+                    <ArrowRight className="h-4 w-4 text-primary flex-shrink-0" />
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>
 
+      {/* Archive dialog */}
       <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -360,14 +519,33 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
             </AlertDialogTitle>
             <AlertDialogDescription>
               {campaignToArchive?.archived
-                ? `Are you sure you want to restore "${campaignToArchive?.name}"?`
-                : `Are you sure you want to archive "${campaignToArchive?.name}"? You can restore it later.`}
+                ? `Restore "${campaignToArchive?.name}"?`
+                : `Archive "${campaignToArchive?.name}"? You can restore it later.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleArchiveCampaign}>
               {campaignToArchive?.archived ? "Restore" : "Archive"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Combine dialog */}
+      <AlertDialog open={combineDialogOpen} onOpenChange={setCombineDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Combine Campaigns</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will merge the production checklists from {selectedForCombine.size} campaigns into one.
+              The other campaigns will be archived. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCombine} disabled={combining}>
+              {combining ? "Combining..." : "Combine"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
