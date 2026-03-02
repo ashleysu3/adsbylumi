@@ -24,16 +24,15 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const mainNav = [
+const createNav = [
   { path: "/campaigns", icon: FolderKanban, label: "Drafts" },
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio" },
+  { path: "/content-library", icon: Library, label: "Concept Library" },
 ];
 
-const toolsNav = [
-  { path: "/content-library", icon: Library, label: "Saved Concepts" },
+const brandNav = [
+  { path: "/dashboard", icon: Building2, label: "Brand Details" },
   { path: "/offers", icon: Package, label: "Offers" },
-  { path: "/dashboard", icon: Building2, label: "My Brand" },
-  { path: "/glossary", icon: LifeBuoy, label: "Troubleshooting" },
 ];
 
 interface AppSidebarProps {
@@ -147,10 +146,10 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
       {/* Main Navigation */}
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
+          <SidebarGroupLabel>Create</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map((item) => (
+              {createNav.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild tooltip={item.label}>
                     <NavLink
@@ -173,10 +172,10 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
 
         {/* Tools */}
         <SidebarGroup>
-          <SidebarGroupLabel>Tools</SidebarGroupLabel>
+          <SidebarGroupLabel>My Brand</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {toolsNav.map((item) => (
+              {brandNav.map((item) => (
                 <SidebarMenuItem key={item.path}>
                   <SidebarMenuButton asChild tooltip={item.label}>
                     <NavLink
@@ -231,6 +230,19 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   >
                     <Settings className="h-4 w-4" />
                     {!collapsed && <span>Settings</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Troubleshooting">
+                  <NavLink
+                    to="/glossary"
+                    end
+                    className="transition-all duration-200"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <LifeBuoy className="h-4 w-4" />
+                    {!collapsed && <span>Troubleshooting</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
