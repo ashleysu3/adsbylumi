@@ -3,21 +3,21 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { 
-  Eye, 
-  Sparkles, 
+import {
+  Eye,
+  Sparkles,
   Calendar,
   Package,
   Loader2,
   DollarSign,
-  AlertTriangle,
-} from 'lucide-react';
-import { 
-  getLumiKPIConfig, 
+  AlertTriangle } from
+'lucide-react';
+import {
+  getLumiKPIConfig,
   getLumiKPIStatus,
   getLumiStatusDot,
-  getObjectiveMetrics,
-} from '@/lib/lumi-kpi-config';
+  getObjectiveMetrics } from
+'@/lib/lumi-kpi-config';
 import { CampaignGoalRow } from './CampaignGoalRow';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
@@ -80,9 +80,9 @@ interface AccountMetrics {
 interface InsightsHomeProps {
   campaigns: Campaign[];
   dateRange: string;
-  customDateRange?: { from: Date; to: Date } | null;
+  customDateRange?: {from: Date;to: Date;} | null;
   onDateRangeChange: (range: string) => void;
-  onCustomDateRangeChange?: (range: { from: Date; to: Date } | null) => void;
+  onCustomDateRangeChange?: (range: {from: Date;to: Date;} | null) => void;
   onViewInsights: (campaignId: string) => void;
   onUpdateGoal: (campaignId: string, goal: number) => void;
   onOfferLinked?: () => void;
@@ -116,21 +116,21 @@ function hasLiveConversions(campaign: Campaign): boolean {
   return false;
 }
 
-function getVerdict(status: string): { label: string; colorClass: string } {
+function getVerdict(status: string): {label: string;colorClass: string;} {
   switch (status) {
-    case 'healthy': return { label: 'Above benchmark', colorClass: 'text-green-700' };
-    case 'attention': return { label: 'Right at benchmark', colorClass: 'text-amber-700' };
-    case 'critical': return { label: 'Below benchmark', colorClass: 'text-red-700' };
-    default: return { label: 'Gathering data', colorClass: 'text-muted-foreground' };
+    case 'healthy':return { label: 'Above benchmark', colorClass: 'text-green-700' };
+    case 'attention':return { label: 'Right at benchmark', colorClass: 'text-amber-700' };
+    case 'critical':return { label: 'Below benchmark', colorClass: 'text-red-700' };
+    default:return { label: 'Gathering data', colorClass: 'text-muted-foreground' };
   }
 }
 
 function getActionRecommendation(status: string): string {
   switch (status) {
-    case 'healthy': return 'Increase budget';
-    case 'attention': return 'Keep spend the same';
-    case 'critical': return 'Refresh creative or pause';
-    default: return 'Wait for more data';
+    case 'healthy':return 'Increase budget';
+    case 'attention':return 'Keep spend the same';
+    case 'critical':return 'Refresh creative or pause';
+    default:return 'Wait for more data';
   }
 }
 
@@ -138,25 +138,25 @@ function isBudgetAction(action: string): boolean {
   return action === 'Increase budget' || action === 'Keep spend the same';
 }
 
-export function InsightsHome({ 
-  campaigns, 
-  dateRange, 
+export function InsightsHome({
+  campaigns,
+  dateRange,
   customDateRange,
-  onDateRangeChange, 
+  onDateRangeChange,
   onCustomDateRangeChange,
   onViewInsights,
   onUpdateGoal,
   onOfferLinked,
   isLoading,
   accountMetrics,
-  accountMetricsLoading,
+  accountMetricsLoading
 }: InsightsHomeProps) {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live', 'paused', 'imported']);
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
-  
+
   const [linkOfferModal, setLinkOfferModal] = useState<{
     open: boolean;
     campaign: Campaign | null;
@@ -185,7 +185,7 @@ export function InsightsHome({
     setTogglingCampaign(campaign.id);
     try {
       const { data, error } = await supabase.functions.invoke('check-campaign-status', {
-        body: { workspaceId: campaign.id, action },
+        body: { workspaceId: campaign.id, action }
       });
       if (error || !data?.success) {
         throw new Error(data?.error || error?.message || `Failed to ${action} campaign`);
@@ -206,9 +206,9 @@ export function InsightsHome({
 
   // Fetch recommendations for campaigns with metrics
   const fetchRecommendations = async () => {
-    const campaignsWithMetrics = campaigns.filter(c => c.metrics);
+    const campaignsWithMetrics = campaigns.filter((c) => c.metrics);
     if (campaignsWithMetrics.length === 0) return;
-    
+
     setRecsLoading(true);
     try {
       const allRecs: any[] = [];
@@ -217,14 +217,14 @@ export function InsightsHome({
           body: {
             workspaceId: campaign.id,
             brandId: campaign.brandId,
-            metrics: { ...campaign.metrics, dailyBudget: campaign.dailyBudget },
-          },
+            metrics: { ...campaign.metrics, dailyBudget: campaign.dailyBudget }
+          }
         });
         if (!error && data?.recommendations) {
           allRecs.push(...data.recommendations.map((r: any) => ({
             ...r,
             campaignName: campaign.name,
-            campaignId: campaign.id,
+            campaignId: campaign.id
           })));
         }
       }
@@ -235,7 +235,7 @@ export function InsightsHome({
         const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
         const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
         const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
-        
+
         let fallback: any = null;
         switch (status) {
           case 'healthy':
@@ -261,7 +261,7 @@ export function InsightsHome({
       setRecommendations(allRecs);
       // Build per-campaign count map
       const counts: Record<string, number> = {};
-      allRecs.forEach(r => {
+      allRecs.forEach((r) => {
         counts[r.campaignId] = (counts[r.campaignId] || 0) + 1;
       });
       setRecCountsByWorkspace(counts);
@@ -273,7 +273,7 @@ export function InsightsHome({
   };
 
   useEffect(() => {
-    if (!isLoading && campaigns.some(c => c.metrics)) {
+    if (!isLoading && campaigns.some((c) => c.metrics)) {
       fetchRecommendations();
     }
   }, [isLoading, campaigns.length]);
@@ -289,21 +289,21 @@ export function InsightsHome({
         <h1 className="text-3xl font-display font-bold text-foreground">
           Let's keep this <span className="text-gradient-lumi">simple</span>.
         </h1>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Here's the clearest signal for each of your campaigns.
+        <p className="text-muted-foreground max-w-md mx-auto text-lg">Track performance and get smart recommendations
+
         </p>
       </div>
 
       {/* Account Overview */}
-      {(accountMetrics || accountMetricsLoading) && (
-        <AccountOverview metrics={accountMetrics || null} isLoading={accountMetricsLoading || false} />
-      )}
+      {(accountMetrics || accountMetricsLoading) &&
+      <AccountOverview metrics={accountMetrics || null} isLoading={accountMetricsLoading || false} />
+      }
 
       {/* Unlinked Campaigns Banner */}
       <UnlinkedCampaignsBanner
         campaigns={campaigns}
-        onLinkOffer={(campaign) => setLinkOfferModal({ open: true, campaign })}
-      />
+        onLinkOffer={(campaign) => setLinkOfferModal({ open: true, campaign })} />
+      
       <Card variant="glow" className="rounded-2xl">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -315,79 +315,79 @@ export function InsightsHome({
               dateRange={dateRange}
               customDateRange={customDateRange}
               onDateRangeChange={onDateRangeChange}
-              onCustomDateRangeChange={onCustomDateRangeChange}
-            />
+              onCustomDateRangeChange={onCustomDateRangeChange} />
+            
           </div>
         </CardContent>
       </Card>
 
       {/* Status Filter */}
-      {campaigns.length > 0 && (
-        <StatusFilter
-          selectedStatuses={selectedStatuses}
-          onStatusChange={setSelectedStatuses}
-          statusCounts={statusCounts}
-        />
-      )}
+      {campaigns.length > 0 &&
+      <StatusFilter
+        selectedStatuses={selectedStatuses}
+        onStatusChange={setSelectedStatuses}
+        statusCounts={statusCounts} />
+
+      }
 
       {/* Lumi Recommendations — overview level */}
-      {(recommendations.length > 0 || recsLoading) && (
-        <LumiRecommendations
-          recommendations={recommendations}
-          loading={recsLoading}
-          onRefresh={fetchRecommendations}
-          onRecommendationExecuted={fetchRecommendations}
-          compact
-          maxItems={4}
-        />
-      )}
+      {(recommendations.length > 0 || recsLoading) &&
+      <LumiRecommendations
+        recommendations={recommendations}
+        loading={recsLoading}
+        onRefresh={fetchRecommendations}
+        onRecommendationExecuted={fetchRecommendations}
+        compact
+        maxItems={4} />
+
+      }
 
       {/* Campaign Cards */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map(i => (
-            <Card key={i} className="rounded-2xl animate-pulse">
+      {isLoading ?
+      <div className="space-y-4">
+          {[1, 2, 3].map((i) =>
+        <Card key={i} className="rounded-2xl animate-pulse">
               <CardContent className="p-6">
                 <div className="h-20 bg-muted rounded-xl" />
               </CardContent>
             </Card>
-          ))}
-        </div>
-      ) : filteredCampaigns.length === 0 ? (
-        <Card variant="gradient" className="rounded-2xl border-dashed border-2">
+        )}
+        </div> :
+      filteredCampaigns.length === 0 ?
+      <Card variant="gradient" className="rounded-2xl border-dashed border-2">
           <CardContent className="p-12 text-center">
             <Sparkles className="h-12 w-12 mx-auto mb-4 text-primary/30 animate-sparkle-pulse" />
             <h3 className="text-lg font-medium mb-2 text-gradient-lumi">
               {campaigns.length === 0 ? 'No campaigns yet' : 'No campaigns match filter'}
             </h3>
             <p className="text-muted-foreground">
-              {campaigns.length === 0 
-                ? 'Build and publish a campaign to see your insights here.'
-                : 'Try adjusting the status filter to see more campaigns.'
-              }
+              {campaigns.length === 0 ?
+            'Build and publish a campaign to see your insights here.' :
+            'Try adjusting the status filter to see more campaigns.'
+            }
             </p>
           </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {filteredCampaigns.map(campaign => {
-            const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
-            const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
-            const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
-            const statusDot = getLumiStatusDot(status);
-            const verdict = getVerdict(status);
-            const actionRec = getActionRecommendation(status);
-            const isActive = campaign.status === 'active' || campaign.status === 'live';
-            const isToggling = togglingCampaign === campaign.id;
-            const objMetrics = getObjectiveMetrics(campaign.metrics, kpiConfig);
-            const recCount = recCountsByWorkspace[campaign.id] || 0;
+        </Card> :
 
-            return (
-              <Card 
-                key={campaign.id} 
-                variant="glow"
-                className="rounded-2xl transition-all duration-300 hover:scale-[1.005]"
-              >
+      <div className="space-y-3">
+          {filteredCampaigns.map((campaign) => {
+          const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
+          const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
+          const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
+          const statusDot = getLumiStatusDot(status);
+          const verdict = getVerdict(status);
+          const actionRec = getActionRecommendation(status);
+          const isActive = campaign.status === 'active' || campaign.status === 'live';
+          const isToggling = togglingCampaign === campaign.id;
+          const objMetrics = getObjectiveMetrics(campaign.metrics, kpiConfig);
+          const recCount = recCountsByWorkspace[campaign.id] || 0;
+
+          return (
+            <Card
+              key={campaign.id}
+              variant="glow"
+              className="rounded-2xl transition-all duration-300 hover:scale-[1.005]">
+              
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-col gap-3">
                     {/* Row 1: Name + status dot + Live/Paused label + toggle */}
@@ -395,50 +395,50 @@ export function InsightsHome({
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusDot}`} />
                         <h3 className="font-display font-semibold text-sm sm:text-base truncate">{campaign.name}</h3>
-                        {recCount > 0 && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); onViewInsights(campaign.id); }}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white bg-gradient-lumi shrink-0 hover:opacity-90 transition-opacity shadow-glow animate-sparkle-pulse"
-                          >
+                        {recCount > 0 &&
+                      <button
+                        onClick={(e) => {e.stopPropagation();onViewInsights(campaign.id);}}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white bg-gradient-lumi shrink-0 hover:opacity-90 transition-opacity shadow-glow animate-sparkle-pulse">
+                        
                             <Sparkles className="h-3 w-3" />
                             {recCount}
                           </button>
-                        )}
+                      }
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className={`text-xs font-medium ${isActive ? 'text-green-600' : 'text-muted-foreground'}`}>
                           {isActive ? 'Live' : 'Paused'}
                         </span>
-                        {isToggling ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        ) : (
-                          <Switch
-                            checked={isActive}
-                            onCheckedChange={() => toggleCampaignStatus(campaign)}
-                            aria-label={`Toggle ${campaign.name}`}
-                          />
-                        )}
+                        {isToggling ?
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> :
+
+                      <Switch
+                        checked={isActive}
+                        onCheckedChange={() => toggleCampaignStatus(campaign)}
+                        aria-label={`Toggle ${campaign.name}`} />
+
+                      }
                       </div>
                     </div>
 
                     {/* Row 2: Budget + Spend + Objective KPIs */}
                     <div className="flex flex-wrap items-center gap-2 pl-5">
-                      {campaign.dailyBudget != null && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                      {campaign.dailyBudget != null &&
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                           <DollarSign className="h-3 w-3" />
                           ${campaign.dailyBudget}/day
                         </span>
-                      )}
-                      {campaign.metrics?.spend != null && (
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    }
+                      {campaign.metrics?.spend != null &&
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                           ${Number(campaign.metrics.spend).toFixed(2)} spent
                         </span>
-                      )}
-                      {objMetrics.map((m, i) => (
-                        <span key={i} className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                    }
+                      {objMetrics.map((m, i) =>
+                    <span key={i} className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                           {m.value} {m.label}
                         </span>
-                      ))}
+                    )}
                     </div>
 
                     {/* Row 3: Verdict + Action */}
@@ -446,106 +446,106 @@ export function InsightsHome({
                       <span className={`text-sm font-medium ${verdict.colorClass}`}>
                         {verdict.label}
                       </span>
-                      {isBudgetAction(actionRec) ? (
-                        <Popover>
+                      {isBudgetAction(actionRec) ?
+                    <Popover>
                           <PopoverTrigger asChild>
-                            <Badge 
-                              variant="outline" 
-                              className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors"
-                            >
+                            <Badge
+                          variant="outline"
+                          className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors">
+                          
                               {actionRec}
                             </Badge>
                           </PopoverTrigger>
                           <PopoverContent className="w-80 p-0" align="end">
                             <BudgetAdjustmentPanel
-                              workspaceId={campaign.id}
-                              workspaceName={campaign.name}
-                              currentBudget={campaign.dailyBudget || 25}
-                              metrics={{
-                                roas: campaign.metrics?.roas,
-                                cpl: campaign.metrics?.cpl,
-                                cpp: campaign.metrics?.cpp,
-                                ctr: campaign.metrics?.cpc ? undefined : undefined,
-                                frequency: undefined,
-                                spend: campaign.metrics?.spend,
-                              }}
-                              inline
-                            />
+                          workspaceId={campaign.id}
+                          workspaceName={campaign.name}
+                          currentBudget={campaign.dailyBudget || 25}
+                          metrics={{
+                            roas: campaign.metrics?.roas,
+                            cpl: campaign.metrics?.cpl,
+                            cpp: campaign.metrics?.cpp,
+                            ctr: campaign.metrics?.cpc ? undefined : undefined,
+                            frequency: undefined,
+                            spend: campaign.metrics?.spend
+                          }}
+                          inline />
+                        
                           </PopoverContent>
-                        </Popover>
-                      ) : (
-                        <Badge 
-                          variant="outline" 
-                          className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors"
-                          onClick={() => onViewInsights(campaign.id)}
-                        >
+                        </Popover> :
+
+                    <Badge
+                      variant="outline"
+                      className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors"
+                      onClick={() => onViewInsights(campaign.id)}>
+                      
                           {actionRec}
                         </Badge>
-                      )}
+                    }
                     </div>
 
                     {/* Row 3.5: Goal vs Actual */}
                     <CampaignGoalRow
-                      kpiConfig={kpiConfig}
-                      currentValue={primaryValue}
-                      userGoal={campaign.userGoal ?? null}
-                      onUpdateGoal={(goal) => onUpdateGoal(campaign.id, goal)}
-                    />
+                    kpiConfig={kpiConfig}
+                    currentValue={primaryValue}
+                    userGoal={campaign.userGoal ?? null}
+                    onUpdateGoal={(goal) => onUpdateGoal(campaign.id, goal)} />
+                  
 
                     {/* Row 4: View button */}
                     <div className="flex items-center gap-2 pt-1 pl-5">
                       <Button
-                        onClick={() => onViewInsights(campaign.id)}
-                        variant="lumi"
-                        size="sm"
-                        className="rounded-xl text-xs"
-                      >
+                      onClick={() => onViewInsights(campaign.id)}
+                      variant="lumi"
+                      size="sm"
+                      className="rounded-xl text-xs">
+                      
                         <Eye className="h-3.5 w-3.5 mr-1" />
                         View Details
                       </Button>
-                      {!campaign.offerId && (
-                        <Button
-                          onClick={() => setLinkOfferModal({ open: true, campaign })}
-                          variant="outline"
-                          size="sm"
-                          className="rounded-xl text-xs"
-                        >
+                      {!campaign.offerId &&
+                    <Button
+                      onClick={() => setLinkOfferModal({ open: true, campaign })}
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs">
+                      
                           <Package className="h-3.5 w-3.5 mr-1" />
                           Link Offer
                         </Button>
-                      )}
-                      {campaign.trackingVerified === false && !hasLiveConversions(campaign) && (
-                        <Badge variant="outline" className="text-xs rounded-full text-amber-600 border-amber-500/30 gap-1">
+                    }
+                      {campaign.trackingVerified === false && !hasLiveConversions(campaign) &&
+                    <Badge variant="outline" className="text-xs rounded-full text-amber-600 border-amber-500/30 gap-1">
                           <AlertTriangle className="h-3 w-3" />
                           Tracking not verified
                         </Badge>
-                      )}
+                    }
                     </div>
                   </div>
                 </CardContent>
-              </Card>
-            );
-          })}
+              </Card>);
+
+        })}
         </div>
-      )}
+      }
 
       {/* Footer */}
-      {campaigns.length > 0 && (
-        <p className="text-center text-sm text-muted-foreground">
+      {campaigns.length > 0 &&
+      <p className="text-center text-sm text-muted-foreground">
           <span className="text-gradient-lumi font-medium">✨ Lumi's got you</span> — focus on the green signals, and we'll alert you when something needs attention.
         </p>
-      )}
+      }
       
-      {linkOfferModal.campaign && (
-        <LinkOfferModal
-          open={linkOfferModal.open}
-          onOpenChange={(open) => setLinkOfferModal({ open, campaign: open ? linkOfferModal.campaign : null })}
-          workspaceId={linkOfferModal.campaign.id}
-          workspaceName={linkOfferModal.campaign.name}
-          brandId={linkOfferModal.campaign.brandId || ''}
-          onSuccess={() => handleOfferLinked()}
-        />
-      )}
-    </div>
-  );
+      {linkOfferModal.campaign &&
+      <LinkOfferModal
+        open={linkOfferModal.open}
+        onOpenChange={(open) => setLinkOfferModal({ open, campaign: open ? linkOfferModal.campaign : null })}
+        workspaceId={linkOfferModal.campaign.id}
+        workspaceName={linkOfferModal.campaign.name}
+        brandId={linkOfferModal.campaign.brandId || ''}
+        onSuccess={() => handleOfferLinked()} />
+
+      }
+    </div>);
+
 }
