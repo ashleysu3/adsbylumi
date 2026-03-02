@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { LumiProvider } from "@/contexts/LumiContext";
 import { BrandProvider } from "@/contexts/BrandContext";
@@ -27,7 +27,7 @@ import Data from "./pages/Data";
 import Production from "./pages/Production";
 import WorkspaceRedirect from "./pages/WorkspaceRedirect";
 import CampaignBuilder from "./pages/CampaignBuilder";
-import { Navigate } from "react-router-dom";
+
 import Campaigns from "./pages/Campaigns";
 import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import AdminKnowledge from "./pages/admin/Knowledge";
@@ -49,6 +49,11 @@ import Glossary from "./pages/Glossary";
 import NotFound from "./pages/NotFound";
 import AdvancedBuild from "./pages/AdvancedBuild";
 
+
+function CreativeRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/creative-studio${location.search}`} replace />;
+}
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -88,7 +93,7 @@ const App = () => {
                   <Route path="/create" element={<Create />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
-                  <Route path="/creative" element={<Creative />} />
+                  <Route path="/creative" element={<CreativeRedirect />} />
                   <Route path="/data" element={<Data />} />
                   <Route path="/production" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/campaigns" element={<Campaigns />} />
