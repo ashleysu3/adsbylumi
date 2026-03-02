@@ -699,27 +699,27 @@ export default function Data() {
         {/* Page Header */}
         <div className="mb-4 sm:mb-6 space-y-2">
           {/* Row 1: Title + Detail Toggle */}
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              
-              
-            </div>
-            
-            <div className="flex items-center rounded-lg border bg-card p-0.5 text-xs">
-              <button
-                onClick={() => {setDetailLevel('simple');localStorage.setItem('lumi-insights-detail-level', 'simple');}}
-                className={`px-3 py-1.5 rounded-md transition-colors ${detailLevel === 'simple' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-                
-                Simple
-              </button>
-              <button
-                onClick={() => {setDetailLevel('detailed');localStorage.setItem('lumi-insights-detail-level', 'detailed');}}
-                className={`px-3 py-1.5 rounded-md transition-colors ${detailLevel === 'detailed' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-                
-                Detailed
-              </button>
-            </div>
-          </div>
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          
 
           {/* Row 2: Meta status + Import (secondary) */}
           <div className="flex items-center justify-between gap-2">
