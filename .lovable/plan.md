@@ -1,59 +1,26 @@
 
 
-## Plan: Update Navigation & Home Screen Behavior
+## Plan: Clean Up Results Page Header
 
-### Summary
-
-Four changes requested:
-
-1. **Replace "Next Steps" button** in the sidebar with two prominent buttons: **"Create a New Ad"** and **"See Live Ads"**
-2. **Make the Start page (`/start`) the default landing** for returning users (login redirects to `/start` instead of requiring onboarding). Onboarding only for brand-new users with no brands.
-3. **Lumi logo click → `/start`** (already works in sidebar, just confirm consistency)
-4. **"Create a New Ad" button → choice screen**: "Create a New Ad Campaign" or "Create New Ads for an Existing Campaign"
-
----
+The screenshot shows the Results page header area is cluttered — the Simple/Detailed toggle, Import button, and Meta Connected badge are all crammed together, making it visually noisy and potentially confusing.
 
 ### Changes
 
-#### 1. Sidebar: Replace "Next Steps" with two buttons
-**File:** `src/components/AppSidebar.tsx`
+**File:** `src/pages/Data.tsx` (lines 696–767)
 
-- Remove the single "Next Steps" gradient button (lines 92–104)
-- Replace with two stacked buttons:
-  - **"Create a New Ad"** — gradient style, navigates to `/create` (which will now show a choice modal/screen)
-  - **"See Live Ads"** — outline/secondary style, navigates to `/data` (Results/performance dashboard)
-- Keep both buttons responsive to sidebar collapsed state (show icon-only when collapsed)
+Reorganize the header into a cleaner two-row layout:
 
-#### 2. Login redirect logic — existing users go to `/start`
-**File:** `src/pages/Auth.tsx` (line 84)
+1. **Top row**: "Results" title + subtitle on the left, Simple/Detailed toggle on the right — clean and minimal
+2. **Second row (subtle)**: Meta status badge on the left, Import button on the right — smaller, secondary visual weight, only shown when relevant
+3. Remove the orange-bordered "Import from Ads Manager" appearance by using a more subdued ghost/text style button
+4. Make the Meta Connected badge smaller and less prominent (it's a status indicator, not a call-to-action)
 
-- Already redirects to `/start` on login. No change needed here.
-
-**File:** `src/pages/Start.tsx` (lines 71–79)
-
-- Currently, if `activeBrand` is null, it redirects to `/onboarding`. This is correct — only brand-new users (no brands) get sent to onboarding. Returning users with at least one brand land on `/start`. This already works as described.
-
-#### 3. Lumi logo click → `/start`
-**File:** `src/components/AppSidebar.tsx`
-
-- Make the logo image clickable with `onClick={() => navigate("/start")}` and add `cursor-pointer`
-- Mobile header logo already navigates to `/start` (confirmed in `MobileHeader.tsx` line 37)
-
-#### 4. "Create a New Ad" → choice: New Campaign vs. Existing Campaign
-**File:** `src/pages/Create.tsx`
-
-- Add an initial "entry step" before the current flow that asks:
-  - **"Create a New Ad Campaign"** → continues into the existing Create flow (offer selection → template → generation)
-  - **"Create New Ads for an Existing Campaign"** → navigates to `/advanced-build` (the existing "Add to Campaign" flow)
-- This step renders as two large selectable cards, matching the app's existing card-based UI pattern
-
----
+This separates the primary control (detail level) from secondary status/actions, reducing visual clutter and giving each element breathing room.
 
 ### Technical Details
 
-- The sidebar button replacement is purely UI — swap one button block for two
-- The Create page entry step is a new `step: "entry"` added before the current step machine, defaulting to show on mount
-- Logo clickability requires wrapping the `<img>` in a clickable element with navigation
-- No database changes needed
-- No new components needed — all changes fit within existing files
+- All changes in `src/pages/Data.tsx` lines 696–767
+- Restructure the flex container into two distinct rows with appropriate spacing
+- Move the Meta badge and Import button into a secondary row with smaller text and subdued styling
+- No logic changes — purely layout and visual hierarchy
 
