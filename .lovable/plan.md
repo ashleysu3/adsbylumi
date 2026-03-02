@@ -1,26 +1,28 @@
 
 
-## Plan: Clean Up Results Page Header
+## Plan: Simplify Lumi Recommendations Layout
 
-The screenshot shows the Results page header area is cluttered — the Simple/Detailed toggle, Import button, and Meta Connected badge are all crammed together, making it visually noisy and potentially confusing.
+The current card packs too many elements per row — icon, title, campaign badge, confidence badge, budget badge, and action button all compete for attention. For overwhelmed users, this creates visual noise.
 
-### Changes
+### Redesign Approach
 
-**File:** `src/pages/Data.tsx` (lines 696–767)
+**File:** `src/components/insights/LumiRecommendations.tsx`
 
-Reorganize the header into a cleaner two-row layout:
+Restructure each recommendation card into a clean two-line layout:
 
-1. **Top row**: "Results" title + subtitle on the left, Simple/Detailed toggle on the right — clean and minimal
-2. **Second row (subtle)**: Meta status badge on the left, Import button on the right — smaller, secondary visual weight, only shown when relevant
-3. Remove the orange-bordered "Import from Ads Manager" appearance by using a more subdued ghost/text style button
-4. Make the Meta Connected badge smaller and less prominent (it's a status indicator, not a call-to-action)
+1. **Line 1**: Icon + title + action button (right-aligned). Remove the confidence badge entirely — it adds cognitive load without helping the user decide. Remove the "Budget" badge — the budget confirmation dialog already handles that safety net.
 
-This separates the primary control (detail level) from secondary status/actions, reducing visual clutter and giving each element breathing room.
+2. **Line 2**: Campaign name as small muted text (not a badge) below the title. This gives context without visual weight.
+
+3. **Remove** the `impact` line and `description` line in non-compact mode — they repeat the title and add clutter. The title alone ("Strong performance — scale up") is self-explanatory.
+
+Result: Each recommendation becomes a single clean row with one clear action, instead of a badge-heavy block.
 
 ### Technical Details
 
-- All changes in `src/pages/Data.tsx` lines 696–767
-- Restructure the flex container into two distinct rows with appropriate spacing
-- Move the Meta badge and Import button into a secondary row with smaller text and subdued styling
-- No logic changes — purely layout and visual hierarchy
+- Remove `confidence` Badge render (lines 315-324)
+- Remove `requiresDoubleApproval` Budget Badge render (lines 325-329)
+- Convert `campaignName` from a Badge to plain `text-xs text-muted-foreground` on a second line
+- Remove the `description` and `impact` paragraphs (lines 332-339) — keep the compact layout always
+- Keep all execution logic, approve-all, and budget confirmation dialog unchanged
 
