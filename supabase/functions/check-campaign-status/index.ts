@@ -48,7 +48,7 @@ serve(async (req) => {
     // Fetch workspace and brand data
     const { data: workspace, error: workspaceError } = await supabase
       .from('campaign_workspaces')
-      .select('*, brand:brands(id, meta_account_id)')
+      .select('*, brand:brands(id, meta_account_id, meta_access_token)')
       .eq('id', workspaceId)
       .single();
 
@@ -61,11 +61,10 @@ serve(async (req) => {
       throw new Error('Meta account not connected');
     }
 
-    // Get token securely from vault
-    const { data: metaAccessToken, error: tokenError } = await supabase
-      .rpc('get_meta_token', { p_brand_id: brand.id });
+    // Read token directly (service-role context can't use get_meta_token RPC which requires auth.uid())
+    const metaAccessToken = brand.meta_access_token;
 
-    if (tokenError || !metaAccessToken) {
+    if (!metaAccessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 
