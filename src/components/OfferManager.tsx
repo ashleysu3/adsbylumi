@@ -4,12 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OfferDialog } from "./OfferDialog";
-import { Plus, ExternalLink, Package, Loader2, Sparkles, Rocket, Archive, ArchiveRestore } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Plus, ExternalLink, Package, Loader2, Sparkles, Rocket, Archive, ArchiveRestore, ChevronRight, Brain, Target } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LumiRecommendedBadge } from "./LumiRecommendedBadge";
 
 interface Offer {
   id: string;
@@ -57,11 +56,8 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
   const toggleOffer = (offerId: string) => {
     setExpandedOffers(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(offerId)) {
-        newSet.delete(offerId);
-      } else {
-        newSet.add(offerId);
-      }
+      if (newSet.has(offerId)) newSet.delete(offerId);
+      else newSet.add(offerId);
       return newSet;
     });
   };
@@ -71,13 +67,11 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
       toast.error("No campaign recommendation available");
       return;
     }
-
     setCreatingCampaign(offer.id);
     try {
       const template = templates.find(t => t.id === offer.recommended_template_id);
       if (!template) throw new Error("Template not found");
 
-      // Create strategy with pre-filled offer data
       const { data: strategy, error: strategyError } = await supabase
         .from('strategies')
         .insert({
@@ -92,10 +86,8 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
         })
         .select()
         .single();
-
       if (strategyError) throw strategyError;
 
-      // Create workspace
       const { data: workspace, error: workspaceError } = await supabase
         .from('campaign_workspaces')
         .insert({
@@ -112,7 +104,6 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
         })
         .select()
         .single();
-
       if (workspaceError) throw workspaceError;
 
       toast.success(`Campaign workspace created for ${offer.name}!`);
@@ -125,12 +116,6 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
     }
   };
 
-  const getConfidenceBadgeVariant = (confidence?: string | null) => {
-    if (confidence === 'high') return 'default';
-    if (confidence === 'medium') return 'secondary';
-    return 'outline';
-  };
-
   const getRecommendedTemplate = (templateId?: string | null) => {
     if (!templateId) return null;
     return templates.find(t => t.id === templateId);
@@ -138,7 +123,6 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
 
   const handleArchiveOffer = async () => {
     if (!offerToArchive) return;
-
     try {
       const isArchiving = !offerToArchive.archived;
       const { error } = await supabase
@@ -148,9 +132,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
           archived_at: isArchiving ? new Date().toISOString() : null,
         })
         .eq('id', offerToArchive.id);
-
       if (error) throw error;
-
       toast.success(isArchiving ? `${offerToArchive.name} archived` : `${offerToArchive.name} restored`);
       onUpdate();
     } catch (error: any) {
@@ -163,6 +145,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
   };
 
   const filteredOffers = showArchived ? offers : offers.filter(offer => !offer.archived);
+  const archivedCount = offers.filter(o => o.archived).length;
 
   return (
     <>
@@ -171,21 +154,17 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />
-              <CardTitle>Your Offers & Products</CardTitle>
+              <CardTitle>Your Offers</CardTitle>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="show-archived-offers"
-                  checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
-                  className="rounded border-input"
-                />
-                <label htmlFor="show-archived-offers" className="text-sm text-muted-foreground cursor-pointer">
-                  Show Archived
-                </label>
-              </div>
+              {archivedCount > 0 && (
+                <button
+                  onClick={() => setShowArchived(!showArchived)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showArchived ? "Hide archived" : `${archivedCount} archived`}
+                </button>
+              )}
               <Button size="sm" onClick={() => setDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Offer
@@ -193,7 +172,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
             </div>
           </div>
           <CardDescription>
-            Manage your offers and their product-specific psychological profiles
+            Your products, services, and lead magnets — each with its own psychological profile for smarter ads.
           </CardDescription>
         </CardHeader>
 
@@ -210,224 +189,203 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredOffers.map((offer) => (
-                <Collapsible
-                  key={offer.id}
-                  open={expandedOffers.has(offer.id)}
-                  onOpenChange={() => toggleOffer(offer.id)}
-                >
-                  <Card variant={offer.recommended_template_id ? "gradient" : "glow"} className={`${offer.archived ? 'opacity-60' : ''}`}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <CollapsibleTrigger asChild>
-                          <button className="flex-1 text-left hover:opacity-80 transition-opacity">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-semibold">{offer.name}</h4>
+            <div className="divide-y divide-border">
+              {filteredOffers.map((offer) => {
+                const isExpanded = expandedOffers.has(offer.id);
+                const recTemplate = getRecommendedTemplate(offer.recommended_template_id);
+                const hasPsychology = !!offer.product_psychology;
+
+                return (
+                  <Collapsible
+                    key={offer.id}
+                    open={isExpanded}
+                    onOpenChange={() => toggleOffer(offer.id)}
+                  >
+                    <div className={`${offer.archived ? 'opacity-50' : ''}`}>
+                      {/* Row */}
+                      <CollapsibleTrigger asChild>
+                        <button className="w-full flex items-center gap-3 py-4 px-1 text-left hover:bg-muted/30 transition-colors rounded-lg group">
+                          {/* Status dot */}
+                          <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                            hasPsychology ? 'bg-green-500' : 'bg-amber-400 animate-pulse'
+                          }`} />
+
+                          {/* Name + meta */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm truncate">{offer.name}</span>
                               {offer.archived && (
-                                <Badge variant="outline" className="text-xs">Archived</Badge>
-                              )}
-                              {offer.product_psychology ? (
-                                <Badge variant="default" className="text-xs">Psychology Ready</Badge>
-                              ) : (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                                  Generating...
-                                </Badge>
-                              )}
-                              {offer.recommended_template_id && getRecommendedTemplate(offer.recommended_template_id) && (
-                                <Badge variant={getConfidenceBadgeVariant(offer.recommendation_confidence)} className="text-xs">
-                                  <Sparkles className="mr-1 h-3 w-3" />
-                                  Best fit: {getRecommendedTemplate(offer.recommended_template_id)?.name}
-                                </Badge>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">Archived</Badge>
                               )}
                             </div>
-                            {offer.price_point && (
-                              <p className="text-sm text-muted-foreground mt-1">{offer.price_point}</p>
-                            )}
-                          </button>
-                        </CollapsibleTrigger>
-                        <div className="flex items-center gap-2">
-                          {offer.url && (
-                            <a
-                              href={offer.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOfferToArchive(offer);
-                              setArchiveDialogOpen(true);
-                            }}
-                            title={offer.archived ? "Restore offer" : "Archive offer"}
-                          >
-                            {offer.archived ? (
-                              <ArchiveRestore className="h-4 w-4" />
-                            ) : (
-                              <Archive className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-
-                    <CollapsibleContent>
-                      <CardContent className="pt-0 space-y-4">
-                        {offer.description && (
-                          <div>
-                            <p className="text-sm font-medium mb-1">Description</p>
-                            <p className="text-sm text-muted-foreground">{offer.description}</p>
-                          </div>
-                        )}
-
-                        {offer.product_psychology && (
-                          <>
-                            {offer.product_psychology.positioning && (
-                              <div>
-                                <p className="text-sm font-medium mb-1">Product Positioning</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {offer.product_psychology.positioning}
-                                </p>
-                              </div>
-                            )}
-
-                            {offer.product_psychology.product_pain_points?.length > 0 && (
-                              <div>
-                                <p className="text-sm font-medium mb-1">Product-Specific Pain Points</p>
-                                <ul className="list-disc list-inside space-y-1">
-                                  {offer.product_psychology.product_pain_points.map((point: string, i: number) => (
-                                    <li key={i} className="text-sm text-muted-foreground">{point}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {offer.product_psychology.product_desires?.length > 0 && (
-                              <div>
-                                <p className="text-sm font-medium mb-1">Product-Specific Desires</p>
-                                <ul className="list-disc list-inside space-y-1">
-                                  {offer.product_psychology.product_desires.map((desire: string, i: number) => (
-                                    <li key={i} className="text-sm text-muted-foreground">{desire}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {offer.product_psychology.buying_triggers && (
-                              <div>
-                                <p className="text-sm font-medium mb-1">Buying Triggers</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {offer.product_psychology.buying_triggers}
-                                </p>
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        {/* Offer-Audience Psychology Section */}
-                        {offer.offer_audience_psychology && (
-                          <div className="pt-4 border-t space-y-3">
-                            <h5 className="font-semibold text-sm flex items-center gap-2">
-                              <Sparkles className="h-4 w-4 text-primary" />
-                              How Your Audience Relates to This Offer
-                            </h5>
-                            
-                            {offer.offer_audience_psychology.why_they_need_this && (
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground">Why They Need This</p>
-                                <p className="text-sm">{offer.offer_audience_psychology.why_they_need_this}</p>
-                              </div>
-                            )}
-                            
-                            {offer.offer_audience_psychology.moment_they_realize && (
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground">The Moment They Realize</p>
-                                <p className="text-sm italic">"{offer.offer_audience_psychology.moment_they_realize}"</p>
-                              </div>
-                            )}
-                            
-                            {offer.offer_audience_psychology.specific_hesitations?.length > 0 && (
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground">Specific Hesitations</p>
-                                <ul className="list-disc list-inside space-y-1">
-                                  {offer.offer_audience_psychology.specific_hesitations.map((h: string, i: number) => (
-                                    <li key={i} className="text-sm text-muted-foreground">{h}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            
-                            {offer.offer_audience_psychology.what_finally_convinces && (
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground">What Finally Convinces Them</p>
-                                <p className="text-sm">{offer.offer_audience_psychology.what_finally_convinces}</p>
-                              </div>
-                            )}
-                            
-                            {offer.offer_audience_psychology.emotional_before_after && (
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="p-2 rounded bg-destructive/5 border border-destructive/10">
-                                  <p className="text-xs font-medium text-destructive">Before</p>
-                                  <p className="text-xs text-muted-foreground">{offer.offer_audience_psychology.emotional_before_after.before}</p>
-                                </div>
-                                <div className="p-2 rounded bg-green-500/5 border border-green-500/10">
-                                  <p className="text-xs font-medium text-green-600">After</p>
-                                  <p className="text-xs text-muted-foreground">{offer.offer_audience_psychology.emotional_before_after.after}</p>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {offer.recommended_template_id && getRecommendedTemplate(offer.recommended_template_id) && (
-                          <div className="pt-4 border-t">
-                            <LumiRecommendedBadge label="Recommended Campaign" size="sm" className="mb-2" />
-                            <div className="bg-gradient-to-br from-lumi-purple-1/5 to-lumi-pink-1/5 p-3 rounded-lg space-y-3 border border-primary/20">
-                              <div className="flex items-center gap-2">
-                                <Sparkles className="h-4 w-4 text-primary animate-sparkle-pulse" />
-                                <span className="font-semibold">{getRecommendedTemplate(offer.recommended_template_id)?.name}</span>
-                              </div>
-                              {offer.recommendation_reason && (
-                                <p className="text-sm text-muted-foreground">{offer.recommendation_reason}</p>
+                            <div className="flex items-center gap-3 mt-0.5">
+                              {offer.price_point && (
+                                <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                  {offer.price_point}
+                                </span>
                               )}
-                              <Button 
-                                onClick={() => createCampaignForOffer(offer)} 
-                                disabled={creatingCampaign === offer.id}
-                                className="w-full"
+                              {recTemplate && (
+                                <span className="text-xs text-primary flex items-center gap-1">
+                                  <Target className="h-3 w-3" />
+                                  {recTemplate.name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Status label */}
+                          <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${
+                            hasPsychology
+                              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                              : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                          }`}>
+                            {hasPsychology ? 'Ready' : 'Processing'}
+                          </span>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {offer.url && (
+                              <a
+                                href={offer.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                            <button
+                              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOfferToArchive(offer);
+                                setArchiveDialogOpen(true);
+                              }}
+                              title={offer.archived ? "Restore" : "Archive"}
+                            >
+                              {offer.archived ? (
+                                <ArchiveRestore className="h-3.5 w-3.5" />
+                              ) : (
+                                <Archive className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                          </div>
+                        </button>
+                      </CollapsibleTrigger>
+
+                      {/* Expanded detail */}
+                      <CollapsibleContent>
+                        <div className="pl-6 pr-1 pb-4 space-y-4">
+                          {offer.description && (
+                            <p className="text-sm text-muted-foreground">{offer.description}</p>
+                          )}
+
+                          {/* Psychology summary — compact grid */}
+                          {offer.product_psychology && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {offer.product_psychology.positioning && (
+                                <div className="p-3 rounded-lg bg-muted/40">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Positioning</p>
+                                  <p className="text-sm">{offer.product_psychology.positioning}</p>
+                                </div>
+                              )}
+                              {offer.product_psychology.buying_triggers && (
+                                <div className="p-3 rounded-lg bg-muted/40">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Buying Triggers</p>
+                                  <p className="text-sm">{offer.product_psychology.buying_triggers}</p>
+                                </div>
+                              )}
+                              {offer.product_psychology.product_pain_points?.length > 0 && (
+                                <div className="p-3 rounded-lg bg-muted/40">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Pain Points</p>
+                                  <ul className="space-y-0.5">
+                                    {offer.product_psychology.product_pain_points.slice(0, 3).map((p: string, i: number) => (
+                                      <li key={i} className="text-sm text-muted-foreground">• {p}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {offer.product_psychology.product_desires?.length > 0 && (
+                                <div className="p-3 rounded-lg bg-muted/40">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Desires</p>
+                                  <ul className="space-y-0.5">
+                                    {offer.product_psychology.product_desires.slice(0, 3).map((d: string, i: number) => (
+                                      <li key={i} className="text-sm text-muted-foreground">• {d}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Audience psychology — before/after */}
+                          {offer.offer_audience_psychology && (
+                            <div className="space-y-3">
+                              <h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                                <Brain className="h-3.5 w-3.5 text-primary" />
+                                Audience Journey
+                              </h5>
+
+                              {offer.offer_audience_psychology.emotional_before_after && (
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/10">
+                                    <p className="text-[11px] font-semibold text-destructive mb-1">Before</p>
+                                    <p className="text-xs text-muted-foreground">{offer.offer_audience_psychology.emotional_before_after.before}</p>
+                                  </div>
+                                  <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/10">
+                                    <p className="text-[11px] font-semibold text-green-600 dark:text-green-400 mb-1">After</p>
+                                    <p className="text-xs text-muted-foreground">{offer.offer_audience_psychology.emotional_before_after.after}</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {offer.offer_audience_psychology.what_finally_convinces && (
+                                <div className="p-3 rounded-lg bg-muted/40">
+                                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">What convinces them</p>
+                                  <p className="text-sm">{offer.offer_audience_psychology.what_finally_convinces}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Campaign recommendation — clean CTA */}
+                          {recTemplate && (
+                            <div className="flex items-center gap-3 p-3 rounded-lg border border-primary/15 bg-primary/5">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-muted-foreground">Recommended campaign</p>
+                                <p className="text-sm font-medium flex items-center gap-1.5">
+                                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                  {recTemplate.name}
+                                </p>
+                                {offer.recommendation_reason && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{offer.recommendation_reason}</p>
+                                )}
+                              </div>
+                              <Button
+                                size="sm"
                                 variant="lumi"
+                                onClick={() => createCampaignForOffer(offer)}
+                                disabled={creatingCampaign === offer.id}
                               >
                                 {creatingCampaign === offer.id ? (
-                                  <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Creating...
-                                  </>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                   <>
-                                    <Rocket className="mr-2 h-4 w-4" />
-                                    Create Campaign for This Offer
+                                    <Rocket className="mr-1.5 h-3.5 w-3.5" />
+                                    Create Ad
                                   </>
                                 )}
                               </Button>
-                              <p className="text-xs text-center text-muted-foreground">
-                                Or choose a different template in Ad Planner
-                              </p>
                             </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              ))}
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -448,8 +406,8 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {offerToArchive?.archived
-                ? `Are you sure you want to restore "${offerToArchive?.name}"? It will be available for new campaigns.`
-                : `Are you sure you want to archive "${offerToArchive?.name}"? Campaigns with this offer will remain visible if they're live or completed.`}
+                ? `Are you sure you want to restore "${offerToArchive?.name}"?`
+                : `Are you sure you want to archive "${offerToArchive?.name}"? Existing campaigns won't be affected.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
