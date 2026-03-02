@@ -1137,20 +1137,6 @@ export default function CreativeStudio() {
                 toast.success("Checklist cleared — all items archived");
               }}
             />
-            {/* Build Campaign CTA at bottom of Creation tab */}
-            {productionItems.length > 0 && (
-              <div className="mt-8 flex justify-end">
-                <Button 
-                  variant="lumi"
-                  size="lg"
-                  onClick={handleBuildCampaign}
-                  className="gap-2"
-                >
-                  <Rocket className="h-4 w-4" />
-                  Build Campaign
-                </Button>
-              </div>
-            )}
           </TabsContent>
         </Tabs>
       </div>
