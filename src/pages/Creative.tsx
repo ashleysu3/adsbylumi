@@ -22,7 +22,6 @@ import { CreativeGrid } from "@/components/creative/CreativeGrid";
 import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionChecklistPanel, ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { CopyPreview } from "@/components/creative/CopyPreview";
-import { LumiChat } from "@/components/LumiChat";
 import { cn } from "@/lib/utils";
 
 type DashboardStep = "select_angles" | "creative_grid";
@@ -54,10 +53,8 @@ export default function Creative() {
   // URL parameters for add-creative mode
   const urlWorkspaceId = searchParams.get("workspace");
   const isAddCreativeMode = searchParams.get("addCreative") === "true";
-  const [showLumiChat, setShowLumiChat] = useState(false);
   
-  // Proactive Lumi chat after first angle generation
-  const [showAngleFeedbackChat, setShowAngleFeedbackChat] = useState(false);
+  
   
   // Creative state
   const [dashboardStep, setDashboardStep] = useState<DashboardStep>("select_angles");
@@ -137,11 +134,6 @@ export default function Creative() {
   }, [brandContextLoading, activeBrand?.id]);
   
   // Show Lumi chat when in add-creative mode
-  useEffect(() => {
-    if (isAddCreativeMode && !loading && workspace) {
-      setShowLumiChat(true);
-    }
-  }, [isAddCreativeMode, loading, workspace]);
 
   // Contextual recommendations based on workflow state
   useEffect(() => {
@@ -383,9 +375,6 @@ export default function Creative() {
       await saveCreativeState({ angles: data.angles });
       
       toast.success("Creative angles ready!");
-      
-      // Trigger proactive Lumi chat for angle feedback
-      setShowAngleFeedbackChat(true);
     } catch (error: any) {
       console.error("Error generating angles:", error);
       if (error.message?.includes("429")) toast.error("Rate limit exceeded. Please wait a moment.");
@@ -1273,74 +1262,6 @@ export default function Creative() {
         )}
       </div>
       
-      {/* Lumi Chat for add-creative mode */}
-      {showLumiChat && brand && workspace && (
-        <LumiChat 
-          context="add-creative" 
-          brand={brand}
-          workspace={workspace}
-          trigger={null}
-          autoOpen={true}
-          onOpenChange={(open) => {
-            if (!open) {
-              setShowLumiChat(false);
-              // Clear URL params when closing
-              if (isAddCreativeMode) {
-                searchParams.delete("addCreative");
-                setSearchParams(searchParams);
-              }
-            }
-          }}
-          customStarters={
-            workspace.strategy_json
-              ? [
-                  { label: "Upload my creative", message: `I have new creative ready for "${workspace.name}". Walk me through the upload process.` },
-                  { label: "Brainstorm new angles", message: `Help me come up with fresh creative angles for "${workspace.offer_name || workspace.name}".` },
-                  { label: "What's working?", message: "Based on my campaign, what types of creative tend to perform best?" },
-                  { label: "Generate more ideas", message: "Generate additional creative concepts I can add to this campaign." },
-                ]
-              : [
-                  { label: "Complete strategy first", message: `I want to add creative but "${workspace.name}" doesn't have a complete strategy yet. What should I do?` },
-                  { label: "Go to Planning", message: "Take me to the Planning page to complete my campaign strategy." },
-                  { label: "Pick different campaign", message: "Help me choose a different campaign that's ready for new creative." },
-                ]
-          }
-        />
-      )}
-      
-      {/* Proactive Lumi Chat after angle generation */}
-      {showAngleFeedbackChat && brand && workspace && availableAngles.length > 0 && (
-        <LumiChat 
-          context="angle-feedback" 
-          brand={brand}
-          workspace={workspace}
-          trigger={null}
-          autoOpen={true}
-          initialMessage="What do you think about these angles? Would you like to chat about your offer and audience so I can create even better angles, hooks and creative concepts?"
-          generatedAngles={availableAngles}
-          onOpenChange={(open) => {
-            if (!open) {
-              setShowAngleFeedbackChat(false);
-            }
-          }}
-          onSaveInsights={(insights) => {
-            // Save conversation insights to workspace for future creative generations
-            saveCreativeState({ 
-              conversationInsights: [
-                ...(workspace.creative_json?.conversationInsights || []),
-                insights
-              ]
-            });
-            toast.success("Conversation insights saved for future creative");
-          }}
-          customStarters={[
-            { label: "I love these!", message: "These angles are great! Let's build on them and create the hooks and concepts." },
-            { label: "Let's refine them", message: "I'd like to chat about my offer and audience to make these angles even more powerful." },
-            { label: "Different direction", message: "I want to explore a different creative direction. Let me tell you more about what I'm looking for." },
-            { label: "Tell me more", message: "Can you explain why you chose these specific angles for my offer?" },
-          ]}
-        />
-      )}
     </DashboardLayout>
   );
 }
