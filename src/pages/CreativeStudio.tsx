@@ -55,6 +55,7 @@ import {
    SheetTitle,
  } from "@/components/ui/sheet";
  import { ScrollArea } from "@/components/ui/scroll-area";
+ import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDialog";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
@@ -239,6 +240,8 @@ export default function CreativeStudio() {
   const [offerAudiencePsychology, setOfferAudiencePsychology] = useState<any>(null);
 
   const urlWorkspaceId = searchParams.get("workspace");
+  const isRefreshCreativeMode = searchParams.get("refreshCreative") === "true";
+  const [showRefreshDialog, setShowRefreshDialog] = useState(false);
 
   // Idle detection
   useEffect(() => {
@@ -284,6 +287,13 @@ export default function CreativeStudio() {
       fetchInitialData(); 
     }
   }, [brandLoading, activeBrand?.id]);
+
+  // Show refresh dialog when navigating from recommendations
+  useEffect(() => {
+    if (!loading && workspace && isRefreshCreativeMode) {
+      setShowRefreshDialog(true);
+    }
+  }, [loading, workspace, isRefreshCreativeMode]);
 
   const fetchInitialData = async () => {
     try {
@@ -1307,7 +1317,41 @@ export default function CreativeStudio() {
              existingContext={(workspace?.creative_json as Record<string, any>)?.preGenerationContext}
            />
          </DialogContent>
-       </Dialog>
+        </Dialog>
+
+        {/* Creative Refresh Dialog */}
+        <CreativeRefreshDialog
+          open={showRefreshDialog}
+          onClose={() => {
+            setShowRefreshDialog(false);
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('refreshCreative');
+            setSearchParams(newParams, { replace: true });
+          }}
+          onBuildOnWhatWorks={(performanceContext) => {
+            setShowRefreshDialog(false);
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('refreshCreative');
+            setSearchParams(newParams, { replace: true });
+            // Save performance context then generate with it
+            const cur = (workspace?.creative_json || {}) as Record<string, any>;
+            supabase.from("campaign_workspaces").update({
+              creative_json: { ...cur, performanceContext: performanceContext as unknown as Json },
+              updated_at: new Date().toISOString(),
+            }).eq("id", workspace?.id).then(() => {
+              generateAngles({ performanceContext } as any);
+            });
+          }}
+          onStartFresh={() => {
+            setShowRefreshDialog(false);
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('refreshCreative');
+            setSearchParams(newParams, { replace: true });
+            setShowContextInput(true);
+          }}
+          brandId={brandId}
+          campaignObjective={workspace?.strategy_json?.objective}
+        />
       </motion.div>
     </DashboardLayout>
   );

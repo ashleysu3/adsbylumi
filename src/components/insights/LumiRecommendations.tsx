@@ -86,7 +86,7 @@ function inferRecType(step: string): Recommendation['type'] {
 function inferActionUrl(step: string, campaignId?: string): string {
   const lower = step.toLowerCase();
   if (lower.includes('creative') || lower.includes('video') || lower.includes('ugc') || lower.includes('hook')) {
-    return campaignId ? `/creative?workspace=${campaignId}&refreshCreative=true` : '/creative';
+    return campaignId ? `/creative-studio?workspace=${campaignId}&refreshCreative=true` : '/creative-studio';
   }
   if (lower.includes('audience') || lower.includes('target')) return '/planning';
   if (lower.includes('offer') || lower.includes('landing')) return '/brand';

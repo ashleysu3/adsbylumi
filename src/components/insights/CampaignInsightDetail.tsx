@@ -239,7 +239,7 @@ export function CampaignInsightDetail({
   };
   
   const handleAddCreative = () => {
-    navigate(`/creative?workspace=${campaign.id}&addCreative=true`);
+    navigate(`/creative-studio?workspace=${campaign.id}&addCreative=true`);
   };
 
   // Extract signals
