@@ -64,14 +64,15 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
 
   // Check Meta connection status
   useEffect(() => {
-    if (!brandId) {
+    const effectiveBrandId = activeBrand?.id || brandId;
+    if (!effectiveBrandId) {
       setMetaStatus('disconnected');
       return;
     }
     supabase
       .from("brands")
       .select("meta_account_id, meta_token_expires_at")
-      .eq("id", brandId)
+      .eq("id", effectiveBrandId)
       .single()
       .then(({ data }) => {
         if (!data?.meta_account_id) {
