@@ -702,7 +702,7 @@ export default function Data() {
           <div className="flex items-center justify-between gap-3">
             <div>
               
-              <p className="text-muted-foreground text-xs sm:text-sm">Track performance and get smart recommendations</p>
+              
             </div>
             
             <div className="flex items-center rounded-lg border bg-card p-0.5 text-xs">
