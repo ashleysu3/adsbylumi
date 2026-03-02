@@ -10,6 +10,7 @@ interface PerformanceData {
   hasData: boolean;
   summary: string;
   topFormats?: string[];
+  topCopyAngles?: string[];
   keyPatterns?: string[];
   recommendations?: string[];
   adsAnalyzed?: number;
@@ -109,7 +110,24 @@ export function CreativeRefreshDialog({
               </div>
             )}
 
-            {/* Key Patterns */}
+            {/* Top Copy Angles */}
+            {performanceData.topCopyAngles && performanceData.topCopyAngles.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  Top Copy Angles
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {performanceData.topCopyAngles.map((a, i) => (
+                    <Badge key={i} variant="outline" className="rounded-lg text-xs">
+                      {a}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+
             {performanceData.keyPatterns && performanceData.keyPatterns.length > 0 && (
               <div className="space-y-2">
                 <p className="text-sm font-medium flex items-center gap-1.5">
