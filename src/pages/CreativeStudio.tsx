@@ -838,55 +838,80 @@ export default function CreativeStudio() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="min-h-[calc(100vh-120px)] flex flex-col"
       >
-        {/* Slim toolbar */}
-        <div className="flex items-center justify-between gap-3 mb-6">
-          <div className="flex flex-col gap-1 min-w-0">
-            <span className="text-xs text-muted-foreground font-medium">Campaign</span>
-            <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
-              <SelectTrigger className="w-[200px] sm:w-[260px]"><SelectValue placeholder="Select campaign" /></SelectTrigger>
-              <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            {(gridData.length > 0 || productionItems.length > 0) && (
-              <Button variant="outline" size="sm" onClick={() => setShowBrief(true)} className="gap-2 hidden sm:flex">
-                <FileDown className="h-4 w-4" />
-                Creative Brief
-              </Button>
-            )}
-            {primaryAction && (
-              <Button 
-                variant="lumi"
-                onClick={primaryAction.action} 
-                disabled={primaryAction.disabled}
-                className="gap-2 hidden sm:flex"
-              >
-                <primaryAction.icon className="h-4 w-4" />
-                {primaryAction.label}
-              </Button>
-            )}
-          </div>
-        </div>
-
         {/* Main Content */}
         <div className="flex-1 max-w-6xl mx-auto w-full">
+          {/* Toolbar — inside content container for alignment */}
+          <div className="flex items-end justify-between gap-3 mb-6">
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="text-xs text-muted-foreground font-medium">Campaign</span>
+              <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
+                <SelectTrigger className="w-[200px] sm:w-[260px]"><SelectValue placeholder="Select campaign" /></SelectTrigger>
+                <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              {(gridData.length > 0 || productionItems.length > 0) && (
+                <Button variant="outline" size="sm" onClick={() => setShowBrief(true)} className="gap-2 hidden sm:flex">
+                  <FileDown className="h-4 w-4" />
+                  Creative Brief
+                </Button>
+              )}
+              {primaryAction && (
+                <Button 
+                  variant="lumi"
+                  onClick={primaryAction.action} 
+                  disabled={primaryAction.disabled}
+                  className="gap-2 hidden sm:flex"
+                >
+                  <primaryAction.icon className="h-4 w-4" />
+                  {primaryAction.label}
+                </Button>
+              )}
+            </div>
+          </div>
+
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-            <TabsList className="grid w-full grid-cols-4 mb-6 h-11 bg-muted p-1 rounded-xl border shadow-sm">
-            {workflowTabs.map((t) => (
-              <TabsTrigger 
-                key={t.id} 
-                value={t.id} 
-                className="gap-1.5 relative rounded-lg h-9 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-              >
-                <t.icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{t.label}</span>
-                {tabProgress[t.id] && (
-                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-background flex items-center justify-center">
-                    <Check className="h-2 w-2 text-white" />
-                  </span>
-                )}
-              </TabsTrigger>
-            ))}
+            <TabsList className="grid w-full grid-cols-4 mb-6 h-12 bg-transparent p-0 gap-2 rounded-none">
+            {workflowTabs.map((t) => {
+              const isActive = activeTab === t.id;
+              const colorMap: Record<string, { active: string; inactive: string }> = {
+                angles: {
+                  active: "bg-tab-orange-light text-primary-foreground shadow-md",
+                  inactive: "bg-tab-orange-light/10 text-tab-orange-dark hover:bg-tab-orange-light/20 border border-tab-orange-light/20",
+                },
+                concepts: {
+                  active: "bg-tab-pink-light text-primary-foreground shadow-md",
+                  inactive: "bg-tab-pink-light/10 text-tab-pink-dark hover:bg-tab-pink-light/20 border border-tab-pink-light/20",
+                },
+                copy: {
+                  active: "bg-tab-purple-light text-primary-foreground shadow-md",
+                  inactive: "bg-tab-purple-light/10 text-tab-purple-dark hover:bg-tab-purple-light/20 border border-tab-purple-light/20",
+                },
+                build: {
+                  active: "bg-tab-blue-light text-primary-foreground shadow-md",
+                  inactive: "bg-tab-blue-light/10 text-tab-blue-dark hover:bg-tab-blue-light/20 border border-tab-blue-light/20",
+                },
+              };
+              const colors = colorMap[t.id] || colorMap.angles;
+              return (
+                <TabsTrigger 
+                  key={t.id} 
+                  value={t.id} 
+                  className={cn(
+                    "gap-1.5 relative rounded-xl h-10 text-sm font-semibold transition-all",
+                    isActive ? colors.active : colors.inactive,
+                  )}
+                >
+                  <t.icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t.label}</span>
+                  {tabProgress[t.id] && (
+                    <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-background flex items-center justify-center">
+                      <Check className="h-2 w-2 text-white" />
+                    </span>
+                  )}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           <TabsContent value="angles">
