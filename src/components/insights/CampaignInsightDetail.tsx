@@ -433,6 +433,7 @@ export function CampaignInsightDetail({
             onRecommendationExecuted={fetchRecommendations}
             nextSteps={analysis?.next_steps || []}
             recsRef={recsRef}
+            campaignId={campaign?.id}
           />
 
           {/* Budget Recommendation */}
