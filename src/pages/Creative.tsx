@@ -322,7 +322,7 @@ export default function Creative() {
     }
   };
 
-  const generateAngles = async () => {
+  const generateAngles = async (performanceOverride?: any) => {
     if (!workspace) return;
 
     // Check for strategy_json - either from planner or from linked offer (imported campaign)
@@ -364,7 +364,7 @@ export default function Creative() {
           };
       
       // Get performance context if available (from refresh flow) — pass as creativeIntelligence
-      const performanceContext = workspace.creative_json?.performanceContext || null;
+      const performanceContext = performanceOverride || workspace.creative_json?.performanceContext || null;
       
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
         body: {
@@ -1308,7 +1308,7 @@ export default function Creative() {
           }
           // Trigger angle generation with performance context baked in
           toast.success("Performance insights loaded! Generating angles based on what's working...");
-          generateAngles();
+          generateAngles(performanceContext);
         }}
         onStartFresh={() => {
           setShowRefreshDialog(false);

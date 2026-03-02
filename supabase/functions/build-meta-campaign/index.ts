@@ -587,7 +587,9 @@ Deno.serve(async (req) => {
 
     for (let i = 0; i < uploadedAssets.length; i++) {
       const { item, assetId, assetType } = uploadedAssets[i];
-      const adName = `Ad ${i + 1} - ${item.concept?.hookLabel || item.concept?.title || 'Creative'}`;
+      const formatPrefix = assetType === 'video' ? 'V' : 'G';
+      const descriptor = item.concept?.hookLabel || item.concept?.title || 'Creative';
+      const adName = `${formatPrefix} - ${descriptor}`;
       
       // Normalize copy fields - prioritizes angle-level selected copy, then item-level copy
       const copy = normalizeCopy(item, angles, angleCopy, copySelections);
