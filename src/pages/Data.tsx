@@ -85,7 +85,7 @@ export default function Data() {
 
   // Detail level preference
   const [detailLevel, setDetailLevel] = useState<'simple' | 'detailed'>(() => {
-    return (localStorage.getItem('lumi-insights-detail-level') as 'simple' | 'detailed') || 'simple';
+    return localStorage.getItem('lumi-insights-detail-level') as 'simple' | 'detailed' || 'simple';
   });
 
   // Data state
@@ -111,7 +111,7 @@ export default function Data() {
   // Date range state
   const [globalDateRange, setGlobalDateRange] = useState<string>('7');
   const [detailDateRange, setDetailDateRange] = useState<string>('7');
-  const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | null>(null);
+  const [customDateRange, setCustomDateRange] = useState<{from: Date;to: Date;} | null>(null);
 
   // User goals stored locally and loaded from DB
   const [userGoals, setUserGoals] = useState<Record<string, number>>({});
@@ -127,7 +127,7 @@ export default function Data() {
         title: "Connect Meta to See Insights",
         message: "Link your Meta ad account to unlock real-time performance data and AI-powered optimization recommendations.",
         actionLabel: "Go to Dashboard",
-        onAction: () => navigate("/dashboard"),
+        onAction: () => navigate("/dashboard")
       });
       return;
     }
@@ -139,7 +139,7 @@ export default function Data() {
         title: "Meta Connection Expired",
         message: "Your access token has expired. Reconnect to continue tracking your campaign performance.",
         actionLabel: "Reconnect",
-        onAction: () => navigate("/dashboard"),
+        onAction: () => navigate("/dashboard")
       });
       return;
     }
@@ -151,16 +151,16 @@ export default function Data() {
         title: "No Live Campaigns Yet",
         message: "Publish your first campaign to start tracking performance and get AI-powered insights.",
         actionLabel: "Create Campaign",
-        onAction: () => navigate("/create"),
+        onAction: () => navigate("/create")
       });
       return;
     }
 
     // Priority 4: Analyze campaign performance
-    const campaignsWithMetrics = campaigns.filter(c => c.metrics);
+    const campaignsWithMetrics = campaigns.filter((c) => c.metrics);
     if (campaignsWithMetrics.length > 0) {
       // Find campaigns with low CTR
-      const lowCtrCampaign = campaignsWithMetrics.find(c => {
+      const lowCtrCampaign = campaignsWithMetrics.find((c) => {
         const ctr = c.metrics?.ctr || 0;
         return ctr < 1.0 && ctr > 0;
       });
@@ -171,13 +171,13 @@ export default function Data() {
           title: "CTR Below Benchmark",
           message: `"${lowCtrCampaign.name}" has a ${(lowCtrCampaign.metrics?.ctr || 0).toFixed(2)}% CTR. This is below the 1% benchmark — your creative might need a refresh.`,
           actionLabel: "View Insights",
-          onAction: () => handleViewInsights(lowCtrCampaign.id),
+          onAction: () => handleViewInsights(lowCtrCampaign.id)
         });
         return;
       }
 
       // Find campaigns with high frequency (creative fatigue)
-      const fatigueRisk = campaignsWithMetrics.find(c => {
+      const fatigueRisk = campaignsWithMetrics.find((c) => {
         const frequency = c.metrics?.frequency || 0;
         return frequency >= 3;
       });
@@ -188,13 +188,13 @@ export default function Data() {
           title: "Creative Fatigue Alert",
           message: `"${fatigueRisk.name}" has a frequency of ${(fatigueRisk.metrics?.frequency || 0).toFixed(1)}. Your audience is seeing ads too often — time to add fresh creative.`,
           actionLabel: "View Insights",
-          onAction: () => handleViewInsights(fatigueRisk.id),
+          onAction: () => handleViewInsights(fatigueRisk.id)
         });
         return;
       }
 
       // Good performance - celebrate
-      const topPerformer = campaignsWithMetrics.find(c => {
+      const topPerformer = campaignsWithMetrics.find((c) => {
         const roas = c.metrics?.roas || 0;
         return roas >= 3;
       });
@@ -205,14 +205,14 @@ export default function Data() {
           title: "You Have a Winner! 🎉",
           message: `"${topPerformer.name}" is crushing it with ${(topPerformer.metrics?.roas || 0).toFixed(1)}x ROAS! Consider scaling your budget to maximize returns.`,
           actionLabel: "View Insights",
-          onAction: () => handleViewInsights(topPerformer.id),
+          onAction: () => handleViewInsights(topPerformer.id)
         });
       }
     }
   }, [loading, metaConnected, metaTokenExpired, campaigns, setRecommendation, navigate]);
 
   // Convert date range string to actual dates
-  const getDateRange = (rangeValue: string, custom?: { from: Date; to: Date } | null): { from: Date; to: Date } => {
+  const getDateRange = (rangeValue: string, custom?: {from: Date;to: Date;} | null): {from: Date;to: Date;} => {
     if (rangeValue === 'custom' && custom?.from && custom?.to) {
       return { from: startOfDay(custom.from), to: endOfDay(custom.to) };
     }
@@ -246,16 +246,16 @@ export default function Data() {
     if (brandData && metaConnected && brandData.meta_token_expires_at && !tokenExpirationChecked) {
       const expiresAt = new Date(brandData.meta_token_expires_at);
       const now = new Date();
-      
+
       if (expiresAt < now) {
         setMetaTokenExpired(true);
         toast.error("Meta connection expired", {
           description: "Reconnect to continue syncing your campaigns.",
           action: {
             label: "Reconnect",
-            onClick: () => navigate("/meta-settings"),
+            onClick: () => navigate("/meta-settings")
           },
-          duration: 10000,
+          duration: 10000
         });
       }
       setTokenExpirationChecked(true);
@@ -286,9 +286,9 @@ export default function Data() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('campaign_workspaces')
-        .select(`
+      const { data, error } = await supabase.
+      from('campaign_workspaces').
+      select(`
           id, 
           name, 
           meta_campaign_ids, 
@@ -305,15 +305,15 @@ export default function Data() {
             name,
             objective
           )
-        `)
-        .eq('brand_id', activeBrand.id)
-        .not('meta_campaign_ids', 'is', null)
-        .order('created_at', { ascending: false });
+        `).
+      eq('brand_id', activeBrand.id).
+      not('meta_campaign_ids', 'is', null).
+      order('created_at', { ascending: false });
 
       if (error) throw error;
 
       // Filter published campaigns
-      const publishedWorkspaces = (data || []).filter(workspace => {
+      const publishedWorkspaces = (data || []).filter((workspace) => {
         if (!workspace.meta_campaign_ids) return false;
         const campaignId = (workspace.meta_campaign_ids as any)?.campaignId;
         if (!campaignId) return false;
@@ -322,7 +322,7 @@ export default function Data() {
           const numericPart = parts[parts.length - 1];
           const timestamp = parseInt(numericPart);
           const now = Date.now();
-          const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
+          const oneYearAgo = now - 365 * 24 * 60 * 60 * 1000;
           if (timestamp > oneYearAgo && timestamp <= now) return false;
         }
         if (workspace.meta_campaign_status === 'draft') return false;
@@ -331,15 +331,15 @@ export default function Data() {
 
       // Load user goals from final_answers
       const loadedGoals: Record<string, number> = {};
-      publishedWorkspaces.forEach(w => {
+      publishedWorkspaces.forEach((w) => {
         const finalAnswers = w.final_answers as any;
         if (finalAnswers?.userKpiGoal) {
           loadedGoals[w.id] = finalAnswers.userKpiGoal;
         }
       });
-      setUserGoals(prev => ({ ...prev, ...loadedGoals }));
+      setUserGoals((prev) => ({ ...prev, ...loadedGoals }));
 
-      const campaignData: CampaignData[] = publishedWorkspaces.map(w => {
+      const campaignData: CampaignData[] = publishedWorkspaces.map((w) => {
         const builderAnswers = w.campaign_builder_answers as any;
         const dailyBudget = builderAnswers?.budget ? Number(builderAnswers.budget) : undefined;
         return {
@@ -354,7 +354,7 @@ export default function Data() {
           offerName: w.offer_name || null,
           brandId: w.brand_id,
           dailyBudget,
-          trackingVerified: (w as any).tracking_verified ?? false,
+          trackingVerified: (w as any).tracking_verified ?? false
         };
       });
 
@@ -363,9 +363,9 @@ export default function Data() {
       // Fetch metrics for all campaigns and account overview
       if (metaConnected && campaignData.length > 0) {
         await Promise.all([
-          fetchAllMetrics(campaignData),
-          fetchAccountOverview(activeBrand.id),
-        ]);
+        fetchAllMetrics(campaignData),
+        fetchAccountOverview(activeBrand.id)]
+        );
       } else if (metaConnected) {
         await fetchAccountOverview(activeBrand.id);
       }
@@ -389,14 +389,14 @@ export default function Data() {
         body: {
           brandId: id,
           dateRangeStart: format(dateRange.from, 'yyyy-MM-dd'),
-          dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd'),
-        },
+          dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd')
+        }
       });
 
       // Check for token errors
       const responseError = data?.error || '';
-      if (responseError.includes('Meta access token not found') || 
-          responseError.includes('Please reconnect')) {
+      if (responseError.includes('Meta access token not found') ||
+      responseError.includes('Please reconnect')) {
         setMetaTokenExpired(true);
         return;
       }
@@ -413,12 +413,12 @@ export default function Data() {
       setAccountMetricsLoading(false);
     }
   };
-  const getPreviousPeriodRange = (rangeValue: string, custom?: { from: Date; to: Date } | null): { from: Date; to: Date } => {
+  const getPreviousPeriodRange = (rangeValue: string, custom?: {from: Date;to: Date;} | null): {from: Date;to: Date;} => {
     const current = getDateRange(rangeValue, custom);
     const daysDiff = Math.ceil((current.to.getTime() - current.from.getTime()) / (1000 * 60 * 60 * 24));
     return {
       from: subDays(current.from, daysDiff),
-      to: subDays(current.to, daysDiff),
+      to: subDays(current.to, daysDiff)
     };
   };
 
@@ -431,20 +431,20 @@ export default function Data() {
       const isSalesCampaign = obj.includes('sale') || obj.includes('purchase') || name.includes('sale');
       const isVideoCampaign = obj.includes('video') || name.includes('video') || name.includes('thruplay') || name.includes('views');
       const hasConversions =
-        (isLeadCampaign && (campaign.metrics.leads ?? 0) > 0) ||
-        (isSalesCampaign && (campaign.metrics.purchases ?? 0) > 0) ||
-        (isVideoCampaign && ((campaign.metrics.videoViews ?? 0) > 0 || (campaign.metrics.videoThruPlays ?? 0) > 0)) ||
-        // Fallback: if either leads or purchases exist, tracking works
-        (!isLeadCampaign && !isSalesCampaign && !isVideoCampaign && ((campaign.metrics.leads ?? 0) > 0 || (campaign.metrics.purchases ?? 0) > 0));
+      isLeadCampaign && (campaign.metrics.leads ?? 0) > 0 ||
+      isSalesCampaign && (campaign.metrics.purchases ?? 0) > 0 ||
+      isVideoCampaign && ((campaign.metrics.videoViews ?? 0) > 0 || (campaign.metrics.videoThruPlays ?? 0) > 0) ||
+      // Fallback: if either leads or purchases exist, tracking works
+      !isLeadCampaign && !isSalesCampaign && !isVideoCampaign && ((campaign.metrics.leads ?? 0) > 0 || (campaign.metrics.purchases ?? 0) > 0);
       if (!hasConversions) return;
       campaign.trackingVerified = true;
-      supabase
-        .from('campaign_workspaces')
-        .update({ tracking_verified: true })
-        .eq('id', campaign.id)
-        .then(({ error }) => {
-          if (error) console.error('Auto-verify tracking update failed:', error);
-        });
+      supabase.
+      from('campaign_workspaces').
+      update({ tracking_verified: true }).
+      eq('id', campaign.id).
+      then(({ error }) => {
+        if (error) console.error('Auto-verify tracking update failed:', error);
+      });
     });
   };
 
@@ -465,16 +465,16 @@ export default function Data() {
               body: {
                 workspaceId: campaign.id,
                 dateRangeStart: format(dateRange.from, 'yyyy-MM-dd'),
-                dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd'),
-              },
+                dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd')
+              }
             });
 
             // Check for token expiration or missing token
             const responseError = data?.error || '';
-            if (responseError.includes('Error validating access token') || 
-                responseError.includes('session has been invalidated') ||
-                responseError.includes('Meta access token not found') ||
-                responseError.includes('Please reconnect')) {
+            if (responseError.includes('Error validating access token') ||
+            responseError.includes('session has been invalidated') ||
+            responseError.includes('Meta access token not found') ||
+            responseError.includes('Please reconnect')) {
               setMetaTokenExpired(true);
               return campaign;
             }
@@ -493,7 +493,7 @@ export default function Data() {
                 metrics: null, // No metrics for inactive campaigns
                 previousMetrics: null,
                 status: newStatus,
-                userGoal: userGoals[campaign.id] || null,
+                userGoal: userGoals[campaign.id] || null
               };
             }
 
@@ -504,8 +504,8 @@ export default function Data() {
                 body: {
                   workspaceId: campaign.id,
                   dateRangeStart: format(prevDateRange.from, 'yyyy-MM-dd'),
-                  dateRangeEnd: format(prevDateRange.to, 'yyyy-MM-dd'),
-                },
+                  dateRangeEnd: format(prevDateRange.to, 'yyyy-MM-dd')
+                }
               });
               // Only use previous metrics if campaign was also active then
               if (prevData?.status === 'ACTIVE' || !prevData?.status) {
@@ -521,17 +521,17 @@ export default function Data() {
               metrics: data?.metrics || null,
               previousMetrics,
               status: 'active', // Confirmed active from Meta
-              userGoal: userGoals[campaign.id] || null,
+              userGoal: userGoals[campaign.id] || null
             };
           } catch (err: any) {
             console.error(`Error fetching metrics for ${campaign.name}:`, err);
             // Check for token expiration or missing token in thrown errors
             const errorMsg = err?.message || err?.toString() || '';
-            if (errorMsg.includes('validating access token') || 
-                errorMsg.includes('session has been invalidated') ||
-                errorMsg.includes('OAuthException') ||
-                errorMsg.includes('Meta access token not found') ||
-                errorMsg.includes('Please reconnect')) {
+            if (errorMsg.includes('validating access token') ||
+            errorMsg.includes('session has been invalidated') ||
+            errorMsg.includes('OAuthException') ||
+            errorMsg.includes('Meta access token not found') ||
+            errorMsg.includes('Please reconnect')) {
               setMetaTokenExpired(true);
             }
             return campaign;
@@ -546,11 +546,11 @@ export default function Data() {
     } catch (error: any) {
       console.error('Error fetching metrics:', error);
       const errorMsg = error?.message || error?.toString() || '';
-      if (errorMsg.includes('validating access token') || 
-          errorMsg.includes('session has been invalidated') ||
-          errorMsg.includes('OAuthException') ||
-          errorMsg.includes('Meta access token not found') ||
-          errorMsg.includes('Please reconnect')) {
+      if (errorMsg.includes('validating access token') ||
+      errorMsg.includes('session has been invalidated') ||
+      errorMsg.includes('OAuthException') ||
+      errorMsg.includes('Meta access token not found') ||
+      errorMsg.includes('Please reconnect')) {
         setMetaTokenExpired(true);
       }
     } finally {
@@ -570,16 +570,16 @@ export default function Data() {
           body: {
             workspaceId: campaignId,
             dateRangeStart: format(dateRange.from, 'yyyy-MM-dd'),
-            dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd'),
-          },
+            dateRangeEnd: format(dateRange.to, 'yyyy-MM-dd')
+          }
         }
       );
 
       const responseError = metricsData?.error || '';
-      if (responseError.includes('Error validating access token') || 
-          responseError.includes('session has been invalidated') ||
-          responseError.includes('Meta access token not found') ||
-          responseError.includes('Please reconnect')) {
+      if (responseError.includes('Error validating access token') ||
+      responseError.includes('session has been invalidated') ||
+      responseError.includes('Meta access token not found') ||
+      responseError.includes('Please reconnect')) {
         setMetaTokenExpired(true);
         setSyncing(false);
         return;
@@ -589,10 +589,10 @@ export default function Data() {
 
       // Update campaign metrics
       if (metricsData?.metrics) {
-        setCampaigns(prev => prev.map(c => 
-          c.id === campaignId 
-            ? { ...c, metrics: metricsData.metrics }
-            : c
+        setCampaigns((prev) => prev.map((c) =>
+        c.id === campaignId ?
+        { ...c, metrics: metricsData.metrics } :
+        c
         ));
 
         // Fetch analysis
@@ -601,8 +601,8 @@ export default function Data() {
           {
             body: {
               workspaceId: campaignId,
-              metricsData: metricsData.metrics,
-            },
+              metricsData: metricsData.metrics
+            }
           }
         );
 
@@ -615,13 +615,13 @@ export default function Data() {
     } catch (error: any) {
       console.error('Error fetching campaign detail:', error);
       const errorMsg = error?.message || error?.toString() || '';
-      if (errorMsg.includes('validating access token') || 
-          errorMsg.includes('session has been invalidated') ||
-          errorMsg.includes('OAuthException') ||
-          errorMsg.includes('non-2xx status code') || 
-          errorMsg.includes('Edge Function') ||
-          errorMsg.includes('Meta access token not found') ||
-          errorMsg.includes('Please reconnect')) {
+      if (errorMsg.includes('validating access token') ||
+      errorMsg.includes('session has been invalidated') ||
+      errorMsg.includes('OAuthException') ||
+      errorMsg.includes('non-2xx status code') ||
+      errorMsg.includes('Edge Function') ||
+      errorMsg.includes('Meta access token not found') ||
+      errorMsg.includes('Please reconnect')) {
         setMetaTokenExpired(true);
       } else {
         toast.error('Failed to load campaign insights');
@@ -646,26 +646,26 @@ export default function Data() {
 
   // FIX: Persist user goals to database
   const handleUpdateGoal = async (campaignId: string, goal: number) => {
-    setUserGoals(prev => ({ ...prev, [campaignId]: goal }));
-    setCampaigns(prev => prev.map(c => 
-      c.id === campaignId ? { ...c, userGoal: goal } : c
+    setUserGoals((prev) => ({ ...prev, [campaignId]: goal }));
+    setCampaigns((prev) => prev.map((c) =>
+    c.id === campaignId ? { ...c, userGoal: goal } : c
     ));
-    
+
     // Save to database in final_answers
     try {
-      const { data: workspace } = await supabase
-        .from('campaign_workspaces')
-        .select('final_answers')
-        .eq('id', campaignId)
-        .single();
+      const { data: workspace } = await supabase.
+      from('campaign_workspaces').
+      select('final_answers').
+      eq('id', campaignId).
+      single();
 
-      const currentAnswers = (workspace?.final_answers as any) || {};
+      const currentAnswers = workspace?.final_answers as any || {};
       const updatedAnswers = { ...currentAnswers, userKpiGoal: goal };
 
-      await supabase
-        .from('campaign_workspaces')
-        .update({ final_answers: updatedAnswers })
-        .eq('id', campaignId);
+      await supabase.
+      from('campaign_workspaces').
+      update({ final_answers: updatedAnswers }).
+      eq('id', campaignId);
 
       toast.success('Goal saved!');
     } catch (error) {
@@ -678,7 +678,7 @@ export default function Data() {
     setGlobalDateRange(range);
   };
 
-  const handleCustomDateRangeChange = (range: { from: Date; to: Date } | null) => {
+  const handleCustomDateRangeChange = (range: {from: Date;to: Date;} | null) => {
     setCustomDateRange(range);
   };
 
@@ -691,7 +691,7 @@ export default function Data() {
   };
 
   // Get selected campaign for detail view
-  const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId);
+  const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId);
 
   return (
     <DashboardLayout>
@@ -701,21 +701,21 @@ export default function Data() {
           {/* Row 1: Title + Detail Toggle */}
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl sm:text-2xl font-display tracking-tight">Results</h1>
+              
               <p className="text-muted-foreground text-xs sm:text-sm">Track performance and get smart recommendations</p>
             </div>
             
             <div className="flex items-center rounded-lg border bg-card p-0.5 text-xs">
               <button
-                onClick={() => { setDetailLevel('simple'); localStorage.setItem('lumi-insights-detail-level', 'simple'); }}
-                className={`px-3 py-1.5 rounded-md transition-colors ${detailLevel === 'simple' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
+                onClick={() => {setDetailLevel('simple');localStorage.setItem('lumi-insights-detail-level', 'simple');}}
+                className={`px-3 py-1.5 rounded-md transition-colors ${detailLevel === 'simple' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                
                 Simple
               </button>
               <button
-                onClick={() => { setDetailLevel('detailed'); localStorage.setItem('lumi-insights-detail-level', 'detailed'); }}
-                className={`px-3 py-1.5 rounded-md transition-colors ${detailLevel === 'detailed' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              >
+                onClick={() => {setDetailLevel('detailed');localStorage.setItem('lumi-insights-detail-level', 'detailed');}}
+                className={`px-3 py-1.5 rounded-md transition-colors ${detailLevel === 'detailed' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                
                 Detailed
               </button>
             </div>
@@ -724,109 +724,109 @@ export default function Data() {
           {/* Row 2: Meta status + Import (secondary) */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              {metaConnected && !metaTokenExpired && (
-                <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+              {metaConnected && !metaTokenExpired &&
+              <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                   <CheckCircle2 className="h-3 w-3" />
                   <span className="hidden sm:inline">Meta Connected</span>
                   <span className="sm:hidden">Connected</span>
                 </span>
-              )}
-              {metaConnected && metaTokenExpired && (
-                <button
-                  onClick={() => navigate("/dashboard")}
-                  className="inline-flex items-center gap-1 text-xs text-destructive hover:underline"
-                >
+              }
+              {metaConnected && metaTokenExpired &&
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="inline-flex items-center gap-1 text-xs text-destructive hover:underline">
+                
                   <AlertTriangle className="h-3 w-3" />
                   Reconnect Meta
                 </button>
-              )}
-              {!metaConnected && !loading && (
-                <button
-                  onClick={() => navigate("/dashboard")}
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
-                >
+              }
+              {!metaConnected && !loading &&
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline">
+                
                   <Link2 className="h-3 w-3" />
                   Connect Meta
                 </button>
-              )}
+              }
             </div>
 
-            {metaConnected && !metaTokenExpired && brandId && metaAccountId && (
-              <button
-                onClick={() => setImportModalOpen(true)}
-                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
+            {metaConnected && !metaTokenExpired && brandId && metaAccountId &&
+            <button
+              onClick={() => setImportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              
                 <Download className="h-3 w-3" />
                 <span className="hidden sm:inline">Import from Ads Manager</span>
                 <span className="sm:hidden">Import</span>
               </button>
-            )}
+            }
           </div>
         </div>
 
         {/* Meta Token Expired - Modal popup */}
-        {metaTokenExpired && (
-          <MetaConnectionAlert 
-            type="expired" 
-            onDismiss={() => setMetaTokenExpired(false)}
-          />
-        )}
+        {metaTokenExpired &&
+        <MetaConnectionAlert
+          type="expired"
+          onDismiss={() => setMetaTokenExpired(false)} />
+
+        }
 
         {/* Main Content */}
-        {!metaConnected && !loading ? (
-          <ResultsEmptyState />
-        ) : view === 'home' ? (
-          <InsightsHome
-            campaigns={campaigns}
-            dateRange={globalDateRange}
-            customDateRange={customDateRange}
-            onDateRangeChange={handleDateRangeChange}
-            onCustomDateRangeChange={handleCustomDateRangeChange}
-            onViewInsights={handleViewInsights}
-            onUpdateGoal={handleUpdateGoal}
-            isLoading={loading || syncing}
-            accountMetrics={accountMetrics}
-            accountMetricsLoading={accountMetricsLoading}
-            onOfferLinked={() => fetchCampaigns()}
-          />
-        ) : selectedCampaign ? (
-          <CampaignInsightDetail
-            campaign={selectedCampaign}
-            analysis={analysis}
-            globalDateRange={globalDateRange}
-            onBack={handleBackToHome}
-            onUpdateGoal={(goal) => handleUpdateGoal(selectedCampaign.id, goal)}
-            onDateRangeChange={handleDetailDateRangeChange}
-            onOfferLinked={() => {
-              fetchCampaigns();
-            }}
-            isLoading={syncing}
-            dateRangeStart={format(getDateRange(detailDateRange, customDateRange).from, 'yyyy-MM-dd')}
-            dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
-            detailLevel={detailLevel}
-          />
-        ) : (
-          <div className="text-center py-12">
+        {!metaConnected && !loading ?
+        <ResultsEmptyState /> :
+        view === 'home' ?
+        <InsightsHome
+          campaigns={campaigns}
+          dateRange={globalDateRange}
+          customDateRange={customDateRange}
+          onDateRangeChange={handleDateRangeChange}
+          onCustomDateRangeChange={handleCustomDateRangeChange}
+          onViewInsights={handleViewInsights}
+          onUpdateGoal={handleUpdateGoal}
+          isLoading={loading || syncing}
+          accountMetrics={accountMetrics}
+          accountMetricsLoading={accountMetricsLoading}
+          onOfferLinked={() => fetchCampaigns()} /> :
+
+        selectedCampaign ?
+        <CampaignInsightDetail
+          campaign={selectedCampaign}
+          analysis={analysis}
+          globalDateRange={globalDateRange}
+          onBack={handleBackToHome}
+          onUpdateGoal={(goal) => handleUpdateGoal(selectedCampaign.id, goal)}
+          onDateRangeChange={handleDetailDateRangeChange}
+          onOfferLinked={() => {
+            fetchCampaigns();
+          }}
+          isLoading={syncing}
+          dateRangeStart={format(getDateRange(detailDateRange, customDateRange).from, 'yyyy-MM-dd')}
+          dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
+          detailLevel={detailLevel} /> :
+
+
+        <div className="text-center py-12">
             <p className="text-muted-foreground">Campaign not found</p>
             <Button onClick={handleBackToHome} className="mt-4">
               Back to Overview
             </Button>
           </div>
-        )}
+        }
 
         {/* Import Campaigns Modal */}
-        {brandId && metaAccountId && (
-          <ImportCampaignsModal
-            open={importModalOpen}
-            onOpenChange={setImportModalOpen}
-            brandId={brandId}
-            metaAccountId={metaAccountId}
-            dateRangeStart={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).from, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.from, 'yyyy-MM-dd') : undefined}
-            dateRangeEnd={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).to, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.to, 'yyyy-MM-dd') : undefined}
-            onImportComplete={fetchCampaigns}
-          />
-        )}
+        {brandId && metaAccountId &&
+        <ImportCampaignsModal
+          open={importModalOpen}
+          onOpenChange={setImportModalOpen}
+          brandId={brandId}
+          metaAccountId={metaAccountId}
+          dateRangeStart={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).from, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.from, 'yyyy-MM-dd') : undefined}
+          dateRangeEnd={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).to, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.to, 'yyyy-MM-dd') : undefined}
+          onImportComplete={fetchCampaigns} />
+
+        }
       </div>
-    </DashboardLayout>
-  );
+    </DashboardLayout>);
+
 }
