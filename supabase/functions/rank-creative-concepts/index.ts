@@ -131,11 +131,6 @@ Prioritize formats that have historically performed well for this account.
         performanceContext += `\nKey patterns: ${clientPerformanceContext.keyPatterns.join("; ")}`;
       }
     }
-        }
-      } catch (e) {
-        console.log("Could not fetch performance data:", e);
-      }
-    }
 
     // Fetch knowledge base for best practices
     const { data: kbDocs } = await supabase
