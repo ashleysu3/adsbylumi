@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
 
     // Cap KB context to prevent prompt bloat
     const kbContext = (kbDocs || []).map(doc => {
-      const truncated = doc.content.length > 1500 ? doc.content.slice(0, 1500) + "..." : doc.content;
+      const truncated = doc.content.length > 1200 ? doc.content.slice(0, 1200) + "..." : doc.content;
       return `## ${doc.title}\n${truncated}`;
     }).join("\n\n");
 
@@ -403,6 +403,13 @@ Example hooks for this angle:
 
     const allAnglesDescription = angles.map((a: any) => `- ID: "${a.id}" | Name: ${a.name}: ${a.description}`).join("\n");
 
+    // Helper to truncate JSON payloads to prevent prompt bloat
+    const truncateJson = (obj: unknown, maxLen = 800): string => {
+      if (!obj) return "";
+      const str = JSON.stringify(obj, null, 1);
+      return str.length > maxLen ? str.slice(0, maxLen) + "... (truncated)" : str;
+    };
+
     const userPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate and relevant to this time period. Do NOT reference holidays, seasons, or events that are not upcoming or current.
 
 Generate a 3×3 creative grid for each of these angles:
@@ -419,24 +426,24 @@ ${nicheContext ? `Industry/Niche: ${nicheContext}` : ''}
 
 === OFFER CONTEXT ===
 Offer: ${offerData?.name || "Not specified"}
-${offerData?.description ? `Description: ${offerData.description}` : ""}
+${offerData?.description ? `Description: ${offerData.description.slice(0, 500)}` : ""}
 ${offerData?.price ? `Price: ${offerData.price}` : ""}
 ${offerData?.url ? `URL: ${offerData.url}` : ""}
 
 ${messagingGuidelines ? `=== MESSAGING GUIDELINES ===
-${JSON.stringify(messagingGuidelines, null, 2)}` : ''}
+${truncateJson(messagingGuidelines)}` : ''}
 
 ${productPsychology ? `=== PRODUCT PSYCHOLOGY ===
-${JSON.stringify(productPsychology, null, 2)}` : ''}
+${truncateJson(productPsychology)}` : ''}
 
 === STRATEGY CONTEXT ===
-${JSON.stringify(strategyData, null, 2)}
+${truncateJson(strategyData, 600)}
 
 ${audiencePsychology ? `=== FULL AUDIENCE PSYCHOLOGY ===
-${JSON.stringify(audiencePsychology, null, 2)}` : ""}
+${truncateJson(audiencePsychology, 1000)}` : ""}
 
 ${offerAudiencePsychology ? `=== OFFER-AUDIENCE PSYCHOLOGY ===
-${JSON.stringify(offerAudiencePsychology, null, 2)}` : ""}
+${truncateJson(offerAudiencePsychology, 600)}` : ""}
 
 === YOUR TASK ===
 Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length} angles = ${angles.length * 9} total cells).
@@ -450,23 +457,48 @@ Remember:
 6. Use the offer-audience psychology to make creative that addresses THIS specific offer's hesitations and transformation
 7. For the "direct_from_page" angle (if present), follow the SPECIAL ANGLE instructions above — keep it simple and direct`;
 
-    console.log("Generating creative grid with enriched context for", angles.length, "angles");
+    console.log("Generating creative grid with enriched context for", angles.length, "angles. Prompt length:", systemPrompt.length + userPrompt.length);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        max_tokens: 32000,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
+    // Retry logic for transient connection errors
+    const MAX_RETRIES = 2;
+    let response: Response | null = null;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`Retry attempt ${attempt}/${MAX_RETRIES}...`);
+          await new Promise(r => setTimeout(r, 1000 * attempt)); // Exponential backoff
+        }
+        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            max_tokens: 32000,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+          }),
+        });
+        // If we got a response (even an error status), break out of retry loop
+        break;
+      } catch (fetchError) {
+        lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+        console.error(`Fetch attempt ${attempt + 1} failed:`, lastError.message);
+        if (attempt === MAX_RETRIES) {
+          throw new Error(`Connection failed after ${MAX_RETRIES + 1} attempts: ${lastError.message}`);
+        }
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error("No response from AI gateway");
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
