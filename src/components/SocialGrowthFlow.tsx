@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,11 +30,17 @@ interface SocialGrowthFlowProps {
   instagramAccountName: string | null;
   audiencePsychology: any;
   onComplete: (data: {
-    objective: "traffic" | "video_views";
+    objective: "traffic" | "video_views" | "engagement";
     selectedPosts: InstagramPost[];
   }) => void;
   onConnectInstagram: () => void;
   onBack: () => void;
+  /** When set, skips the objective selection step and goes directly to post picker */
+  fixedObjective?: "traffic" | "video_views" | "engagement";
+  /** Custom header text for the post picker intro */
+  headerText?: string;
+  /** Custom subtext for the post picker intro */
+  headerSubtext?: string;
 }
 
 type FlowStep = "objective" | "post_selection";
@@ -48,17 +54,18 @@ export function SocialGrowthFlow({
   onComplete,
   onConnectInstagram,
   onBack,
+  fixedObjective,
+  headerText,
+  headerSubtext,
 }: SocialGrowthFlowProps) {
-  const [step, setStep] = useState<FlowStep>("objective");
-  const [objective, setObjective] = useState<"traffic" | "video_views" | null>(null);
+  const [step, setStep] = useState<FlowStep>(fixedObjective ? "post_selection" : "objective");
+  const [objective, setObjective] = useState<"traffic" | "video_views" | "engagement" | null>(fixedObjective || null);
   const [posts, setPosts] = useState<InstagramPost[]>([]);
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleObjectiveSelect = async (selected: "traffic" | "video_views") => {
-    setObjective(selected);
-    
+  const fetchPosts = async (selected: "traffic" | "video_views" | "engagement") => {
     if (!instagramAccountId) return;
     
     setIsLoading(true);
@@ -87,6 +94,18 @@ export function SocialGrowthFlow({
       setIsLoading(false);
     }
   };
+
+  const handleObjectiveSelect = async (selected: "traffic" | "video_views" | "engagement") => {
+    setObjective(selected);
+    await fetchPosts(selected);
+  };
+
+  // Auto-fetch posts when fixedObjective is set
+  useEffect(() => {
+    if (fixedObjective && instagramAccountId && posts.length === 0 && !isLoading && !error) {
+      fetchPosts(fixedObjective);
+    }
+  }, [fixedObjective, instagramAccountId]);
 
   const togglePostSelection = (postId: string) => {
     setSelectedPosts(prev =>
@@ -206,9 +225,9 @@ export function SocialGrowthFlow({
         <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
           <img src={lumiLogo} alt="Lumi" className="h-10 w-10 rounded-full" />
           <div>
-            <h3 className="font-semibold">Pick the posts you want to promote ✨</h3>
+            <h3 className="font-semibold">{headerText || "Pick the posts you want to promote ✨"}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Select up to 6 posts to use in your campaign. Choose your best-performing or most representative content.
+              {headerSubtext || "Select up to 6 posts to use in your campaign. Choose your best-performing or most representative content."}
             </p>
           </div>
         </div>

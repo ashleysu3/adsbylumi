@@ -100,6 +100,9 @@ const optimizationEventOptions = [
   { value: "InitiateCheckout", label: "Initiate Checkout" },
   { value: "ViewContent", label: "View Content" },
   { value: "LinkClick", label: "Link Click" },
+  { value: "Conversations", label: "Conversations (Messages)" },
+  { value: "2s ThruPlay", label: "2s ThruPlay (Video)" },
+  { value: "Profile Visits", label: "Profile Visits" },
 ];
 
 const audienceTypeOptions = [
