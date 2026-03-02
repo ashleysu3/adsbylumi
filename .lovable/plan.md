@@ -1,28 +1,29 @@
 
 
-## Plan: Simplify Lumi Recommendations Layout
+## Plan: Remove the Giant LumiChat Drawer
 
-The current card packs too many elements per row — icon, title, campaign badge, confidence badge, budget badge, and action button all compete for attention. For overwhelmed users, this creates visual noise.
+The `LumiChat` component is an 85vh bottom drawer that auto-opens in several places, blocking the user's view of the page they just navigated to. It doesn't add enough value to justify taking over the screen. The app already has a smaller, more contextual `LumiAssistant` component (the floating chat widget in the sidebar/corner) that handles the same chat functionality without being intrusive.
 
-### Redesign Approach
+### Changes
 
-**File:** `src/components/insights/LumiRecommendations.tsx`
+#### 1. Remove LumiChat from Creative page
+**File:** `src/pages/Creative.tsx`
 
-Restructure each recommendation card into a clean two-line layout:
+- Remove the `LumiChat` import
+- Remove the `showLumiChat` state and its `useEffect` trigger (lines 57, 140-144)
+- Remove both `LumiChat` render blocks (lines 1276-1308 for add-creative mode, lines 1311-1346 for angle-feedback mode)
+- Keep the angle feedback conversation insights logic — move it to save automatically after angle generation instead of requiring a chat interaction
 
-1. **Line 1**: Icon + title + action button (right-aligned). Remove the confidence badge entirely — it adds cognitive load without helping the user decide. Remove the "Budget" badge — the budget confirmation dialog already handles that safety net.
+#### 2. Remove LumiChat from Campaigns page
+**File:** `src/pages/Campaigns.tsx`
 
-2. **Line 2**: Campaign name as small muted text (not a badge) below the title. This gives context without visual weight.
+- Remove the `LumiChat` import
+- Remove `showLumiGuidance` state and the `LumiChat` render block (lines 105-122)
 
-3. **Remove** the `impact` line and `description` line in non-compact mode — they repeat the title and add clutter. The title alone ("Strong performance — scale up") is self-explanatory.
+#### 3. Remove the LumiChat component file
+**File:** `src/components/LumiChat.tsx`
 
-Result: Each recommendation becomes a single clean row with one clear action, instead of a badge-heavy block.
+- Delete or empty this file since it will no longer be used anywhere
 
-### Technical Details
-
-- Remove `confidence` Badge render (lines 315-324)
-- Remove `requiresDoubleApproval` Budget Badge render (lines 325-329)
-- Convert `campaignName` from a Badge to plain `text-xs text-muted-foreground` on a second line
-- Remove the `description` and `impact` paragraphs (lines 332-339) — keep the compact layout always
-- Keep all execution logic, approve-all, and budget confirmation dialog unchanged
+The existing `LumiAssistant` (the small floating chat widget) remains available on every page for users who want to ask questions — it just won't auto-open and block the entire screen.
 
