@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit } from "lucide-react";
+import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AdsEmptyState } from "./AdsEmptyState";
 import { CampaignDetailDrawer } from "./CampaignDetailDrawer";
@@ -454,9 +454,30 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {/* Only show Advanced Upload for non-social campaigns */}
-                          {!social && (
+                          {social ? (
                             <>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/creative-studio?workspace=${campaign.id}&selectPosts=true`);
+                                }}
+                              >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add More Posts
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          ) : (
+                            <>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/creative-studio?workspace=${campaign.id}&refreshCreative=true`);
+                                }}
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Refresh Creative
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
