@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
-  Sparkles, ArrowRight, FolderOpen, Video, Film, Image, Trash2,
-  X, HelpCircle, ArrowLeft, Check, FileDown, Printer
+  Sparkles, ArrowRight, Video, Film, Image, Trash2,
+  X, Check, FileDown, Printer
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -137,54 +137,6 @@ const creativeGenerationCopy = [
 const formatIcons = { talking_head: Video, broll: Film, graphic: Image };
 const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic" };
 
-// Context-aware help messages for idle popup
-const getIdleHelpMessage = (
-  activeTab: WorkflowTab,
-  availableAngles: CreativeAngle[],
-  selectedAngleIds: string[],
-  gridData: CreativeCellData[],
-  productionItems: ProductionItem[],
-  angleCopy: Record<string, any>
-) => {
-  if (activeTab === "angles") {
-    if (availableAngles.length === 0) {
-      return "Click 'Generate Angles' to get smart creative angle suggestions for your campaign.";
-    }
-    if (selectedAngleIds.length === 0) {
-      return "Select 1-3 angles that resonate with your offer, then click 'Generate Creative' to continue.";
-    }
-    return "Great picks! Click 'Generate Creative' to create hooks and concepts for your selected angles.";
-  }
-  if (activeTab === "concepts") {
-    if (gridData.length === 0) {
-      return "Head to the Angles tab to generate your creative concepts first.";
-    }
-    if (productionItems.length === 0) {
-      return "Browse the concepts and click 'Add to Checklist' on the ones you want to produce.";
-    }
-    return `You have ${productionItems.length} concepts selected. Browse each concept angle, then continue to Ad Copy.`;
-  }
-  if (activeTab === "copy") {
-    if (productionItems.length === 0) {
-      return "Select creative concepts first, then come here to write your ad copy.";
-    }
-    const hasAnyCopy = Object.keys(angleCopy).some(id => {
-      const copy = angleCopy[id];
-      return copy && (copy.headlines?.length > 0 || copy.descriptions?.length > 0 || copy.primary_copy?.length > 0);
-    });
-    if (!hasAnyCopy) {
-      return "Click 'Generate Copy' to create headlines, descriptions, and primary copy for your ads.";
-    }
-    return "Looking good! Review your copy and continue to Build when ready.";
-  }
-  if (activeTab === "build") {
-    if (productionItems.length === 0) {
-      return "Add concepts from the Concepts tab to start building your campaign.";
-    }
-    return "Upload your video or image files to each creative concept, then build your campaign!";
-  }
-  return "Need help? Let me know what you're trying to accomplish.";
-};
 
 export default function CreativeStudio() {
   const navigate = useNavigate();
@@ -217,10 +169,6 @@ export default function CreativeStudio() {
   const [creativeIntelligence, setCreativeIntelligence] = useState<CreativeIntelligence | null>(null);
   const [fetchingIntelligence, setFetchingIntelligence] = useState(false);
 
-  // Idle help state
-  const [showIdleHelp, setShowIdleHelp] = useState(false);
-  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const IDLE_TIMEOUT = 45000; // 45 seconds
 
   // Regeneration confirmation state
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
@@ -243,30 +191,6 @@ export default function CreativeStudio() {
   const isRefreshCreativeMode = searchParams.get("refreshCreative") === "true";
   const [showRefreshDialog, setShowRefreshDialog] = useState(false);
 
-  // Idle detection
-  useEffect(() => {
-    const resetIdleTimer = () => {
-      setShowIdleHelp(false);
-      if (idleTimerRef.current) {
-        clearTimeout(idleTimerRef.current);
-      }
-      idleTimerRef.current = setTimeout(() => {
-        setShowIdleHelp(true);
-      }, IDLE_TIMEOUT);
-    };
-
-    // Listen for user activity
-    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    events.forEach(event => window.addEventListener(event, resetIdleTimer));
-    resetIdleTimer();
-
-    return () => {
-      events.forEach(event => window.removeEventListener(event, resetIdleTimer));
-      if (idleTimerRef.current) {
-        clearTimeout(idleTimerRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => { 
     if (!brandLoading && activeBrand) {
@@ -310,9 +234,10 @@ export default function CreativeStudio() {
 
       const { data: workspacesData } = await supabase
         .from("campaign_workspaces")
-        .select("id, name, offer_name, creative_json, production_items, strategy_json")
+        .select("id, name, offer_name, creative_json, production_items, strategy_json, archived")
         .eq("brand_id", activeBrand.id)
         .not("strategy_json", "is", null)
+        .neq("archived", true)
         .order("updated_at", { ascending: false });
 
       const options: WorkspaceOption[] = (workspacesData || []).map(w => {
@@ -912,23 +837,16 @@ export default function CreativeStudio() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="min-h-[calc(100vh-120px)] flex flex-col"
       >
-        {/* Slim toolbar (replaces old sticky header) */}
-        <div className="flex items-center justify-between gap-3 mb-8">
+        {/* Slim toolbar */}
+        <div className="flex items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-3 min-w-0">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/campaigns")} className="shrink-0">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="min-w-0">
-              <h1 className="text-lg font-bold truncate"><span className="text-gradient-lumi">Creative Studio</span></h1>
-              {activeBrand && <p className="text-xs text-muted-foreground truncate">{activeBrand.name}</p>}
-            </div>
             {workspace && <AutoSaveIndicator status={saveStatus} />}
-          </div>
-          <div className="flex items-center gap-3">
             <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
-              <SelectTrigger className="w-[180px] sm:w-[240px]"><FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" /><SelectValue placeholder="Select campaign" /></SelectTrigger>
+              <SelectTrigger className="w-[200px] sm:w-[260px]"><SelectValue placeholder="Select campaign" /></SelectTrigger>
               <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center gap-2">
             {(gridData.length > 0 || productionItems.length > 0) && (
               <Button variant="outline" size="sm" onClick={() => setShowBrief(true)} className="gap-2 hidden sm:flex">
                 <FileDown className="h-4 w-4" />
@@ -952,21 +870,18 @@ export default function CreativeStudio() {
         {/* Main Content */}
         <div className="flex-1 max-w-6xl mx-auto w-full">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-            <TabsList className="grid w-full grid-cols-4 mb-8 h-12 bg-muted/60 p-1 rounded-2xl">
-            {workflowTabs.map((t, index) => (
+            <TabsList className="grid w-full grid-cols-4 mb-6 h-11 bg-muted/50 p-1 rounded-xl">
+            {workflowTabs.map((t) => (
               <TabsTrigger 
                 key={t.id} 
                 value={t.id} 
-                className="gap-2 relative rounded-xl h-10 text-sm font-semibold transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-lumi-orange-1 data-[state=active]:to-lumi-pink-1 data-[state=active]:text-white data-[state=active]:shadow-glow"
+                className="gap-1.5 relative rounded-lg h-9 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
               >
-                <span className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="flex items-center justify-center h-5 w-5 rounded-full bg-current/10 text-[10px] font-bold">{index + 1}</span>
-                  <t.icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t.label}</span>
-                </span>
+                <t.icon className="h-4 w-4" />
+                <span className="hidden sm:inline">{t.label}</span>
                 {tabProgress[t.id] && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-green-500 border-2 border-background flex items-center justify-center shadow-sm">
-                    <Check className="h-2.5 w-2.5 text-white" />
+                  <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-background flex items-center justify-center">
+                    <Check className="h-2 w-2 text-white" />
                   </span>
                 )}
               </TabsTrigger>
@@ -1216,60 +1131,6 @@ export default function CreativeStudio() {
         </div>
       )}
       
-      {/* Idle Help Popup - max 20% screen width */}
-      <AnimatePresence>
-        {showIdleHelp && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 max-w-[20vw] min-w-[280px]"
-          >
-            <Card className="shadow-xl border-primary/20 bg-background/95 backdrop-blur-sm">
-              <CardContent className="pt-4 pb-4 relative">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 h-6 w-6"
-                  onClick={() => setShowIdleHelp(false)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-                <div className="flex items-start gap-3 pr-6">
-                  <SparkleIcon size="sm" state="idle" glow />
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <HelpCircle className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-medium">Need help?</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {getIdleHelpMessage(activeTab, availableAngles, selectedAngleIds, gridData, productionItems, angleCopy)}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="link"
-                      className="px-0 h-auto text-xs text-primary"
-                      onClick={() => {
-                        setShowIdleHelp(false);
-                        // Navigate to the next logical step
-                        if (activeTab === "angles" && availableAngles.length > 0 && selectedAngleIds.length > 0) {
-                          generateCreativeGrid();
-                        } else if (activeTab === "concepts" && productionItems.length > 0) {
-                          setActiveTab("copy");
-                        } else if (activeTab === "copy") {
-                          setActiveTab("build");
-                        }
-                      }}
-                    >
-                      Show me what to do next →
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
       
       <LumiThinking isOpen={generating} customCopy={creativeGenerationCopy} />
       <CreativeStudioExplainer open={showExplainer} onClose={closeExplainer} />
