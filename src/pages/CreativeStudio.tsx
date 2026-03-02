@@ -789,8 +789,9 @@ export default function CreativeStudio() {
     if (activeTab === "copy") {
       return { label: "Continue to Build", icon: ArrowRight, action: () => setActiveTab("build"), disabled: false };
     }
+    // No top-right action for build tab — Build Campaign lives at bottom of Creation tab
     if (activeTab === "build") {
-      return { label: "Build Campaign", icon: Rocket, action: handleBuildCampaign, disabled: productionItems.length < 1 };
+      return null;
     }
     return null;
   };
@@ -839,8 +840,8 @@ export default function CreativeStudio() {
       >
         {/* Slim toolbar */}
         <div className="flex items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">Campaign:</span>
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-xs text-muted-foreground font-medium">Campaign</span>
             <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
               <SelectTrigger className="w-[200px] sm:w-[260px]"><SelectValue placeholder="Select campaign" /></SelectTrigger>
               <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
@@ -870,7 +871,7 @@ export default function CreativeStudio() {
         {/* Main Content */}
         <div className="flex-1 max-w-6xl mx-auto w-full">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
-            <TabsList className="grid w-full grid-cols-4 mb-6 h-11 bg-muted/50 p-1 rounded-xl">
+            <TabsList className="grid w-full grid-cols-4 mb-6 h-11 bg-muted p-1 rounded-xl border shadow-sm">
             {workflowTabs.map((t) => (
               <TabsTrigger 
                 key={t.id} 
@@ -1111,6 +1112,20 @@ export default function CreativeStudio() {
                 toast.success("Checklist cleared — all items archived");
               }}
             />
+            {/* Build Campaign CTA at bottom of Creation tab */}
+            {productionItems.length > 0 && (
+              <div className="mt-8 flex justify-end">
+                <Button 
+                  variant="lumi"
+                  size="lg"
+                  onClick={handleBuildCampaign}
+                  className="gap-2"
+                >
+                  <Rocket className="h-4 w-4" />
+                  Build Campaign
+                </Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
