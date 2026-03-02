@@ -302,6 +302,7 @@ export function InsightsHome({
       {/* Unlinked Campaigns Banner */}
       <UnlinkedCampaignsBanner
         campaigns={campaigns}
+        brandId={campaigns[0]?.brandId}
         onLinkOffer={(campaign) => setLinkOfferModal({ open: true, campaign })} />
       
       <Card variant="glow" className="rounded-2xl">
