@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus, Eye } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
@@ -26,7 +26,6 @@ import {
 const mainNav = [
   { path: "/campaigns", icon: FolderKanban, label: "Drafts" },
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio" },
-  { path: "/data", icon: BarChart3, label: "Results" },
 ];
 
 const toolsNav = [
@@ -105,8 +104,8 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
             className="w-full rounded-xl border-2 border-primary/30 hover:border-primary/60 bg-card hover:bg-primary/5 transition-all"
           >
             <span className="flex items-center justify-center gap-2 py-2 px-3 text-foreground font-medium text-sm">
-              <Eye className="h-4 w-4 text-primary" />
-              {!collapsed && <span>See Live Ads</span>}
+              <BarChart3 className="h-4 w-4 text-primary" />
+              {!collapsed && <span>Ad Performance</span>}
             </span>
           </button>
         </div>
