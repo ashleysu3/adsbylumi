@@ -23,6 +23,7 @@ import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionChecklistPanel, ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { CopyPreview } from "@/components/creative/CopyPreview";
 import { cn } from "@/lib/utils";
+import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDialog";
 
 type DashboardStep = "select_angles" | "creative_grid";
 type CreativeTab = "copy" | "ideas"; // Copy first, then creative
@@ -50,9 +51,12 @@ export default function Creative() {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [workspace, setWorkspace] = useState<any>(null);
   
-  // URL parameters for add-creative mode
+  // URL parameters for add-creative mode and refresh mode
   const urlWorkspaceId = searchParams.get("workspace");
   const isAddCreativeMode = searchParams.get("addCreative") === "true";
+  const isRefreshCreativeMode = searchParams.get("refreshCreative") === "true";
+  
+  const [showRefreshDialog, setShowRefreshDialog] = useState(false);
   
   
   
@@ -133,7 +137,12 @@ export default function Creative() {
     }
   }, [brandContextLoading, activeBrand?.id]);
   
-  // Show Lumi chat when in add-creative mode
+  // Show refresh dialog when navigating from recommendations
+  useEffect(() => {
+    if (!loading && workspace && isRefreshCreativeMode) {
+      setShowRefreshDialog(true);
+    }
+  }, [loading, workspace, isRefreshCreativeMode]);
 
   // Contextual recommendations based on workflow state
   useEffect(() => {
@@ -354,6 +363,9 @@ export default function Creative() {
             price: workspace.offer_price,
           };
       
+      // Get performance context if available (from refresh flow) — pass as creativeIntelligence
+      const performanceContext = workspace.creative_json?.performanceContext || null;
+      
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
         body: {
           brandName: workspace.brands?.name || workspace.name,
@@ -364,6 +376,8 @@ export default function Creative() {
           offerData,
           conversationInsights: existingInsights,
           isImportedCampaign,
+          // Performance context from refresh flow gets passed as creativeIntelligence
+          ...(performanceContext?.hasData ? { creativeIntelligence: performanceContext } : {}),
         }
       });
 
@@ -1261,6 +1275,50 @@ export default function Creative() {
           </div>
         )}
       </div>
+      {/* Creative Refresh Dialog */}
+      <CreativeRefreshDialog
+        open={showRefreshDialog}
+        onClose={() => {
+          setShowRefreshDialog(false);
+          // Clear the refreshCreative param from URL
+          const newParams = new URLSearchParams(searchParams);
+          newParams.delete('refreshCreative');
+          setSearchParams(newParams, { replace: true });
+        }}
+        onBuildOnWhatWorks={async (performanceContext) => {
+          setShowRefreshDialog(false);
+          const newParams = new URLSearchParams(searchParams);
+          newParams.delete('refreshCreative');
+          setSearchParams(newParams, { replace: true });
+          
+          // Save performance context to workspace creative_json
+          if (workspace) {
+            const existingCreative = (workspace.creative_json as Record<string, any>) || {};
+            await supabase
+              .from('campaign_workspaces')
+              .update({
+                creative_json: { ...existingCreative, performanceContext } as any,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', workspace.id);
+            setWorkspace((prev: any) => ({
+              ...prev,
+              creative_json: { ...existingCreative, performanceContext },
+            }));
+          }
+          // Trigger angle generation with performance context baked in
+          toast.success("Performance insights loaded! Generating angles based on what's working...");
+          generateAngles();
+        }}
+        onStartFresh={() => {
+          setShowRefreshDialog(false);
+          const newParams = new URLSearchParams(searchParams);
+          newParams.delete('refreshCreative');
+          setSearchParams(newParams, { replace: true });
+        }}
+        brandId={activeBrand?.id || ''}
+        campaignObjective={workspace?.strategy_json?.objective}
+      />
       
     </DashboardLayout>
   );

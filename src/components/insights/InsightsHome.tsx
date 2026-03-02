@@ -245,7 +245,7 @@ export function InsightsHome({
             fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Monitor closely — performance is borderline', description: 'Your primary KPI is near the benchmark threshold. Keep an eye on it.', impact: 'Prevent performance from slipping', confidence: 'medium', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: `/data` };
             break;
           case 'critical':
-            fallback = { id: `fallback-${campaign.id}`, type: 'create_creative', title: 'Below benchmark — refresh creative', description: 'Your primary KPI is below benchmark. Fresh creative angles could help turn things around.', impact: 'Improve performance with new creative', confidence: 'high', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: '/creative' };
+            fallback = { id: `fallback-${campaign.id}`, type: 'create_creative', title: 'Below benchmark — refresh creative', description: 'Your primary KPI is below benchmark. Fresh creative angles could help turn things around.', impact: 'Improve performance with new creative', confidence: 'high', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: `/creative?workspace=${campaign.id}&refreshCreative=true` };
             break;
           default:
             fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Still gathering data', description: 'Not enough data yet to make a confident recommendation. Let it run.', impact: 'Allow the algorithm to optimize', confidence: 'low', requiresDoubleApproval: false, actionPayload: {}, priority: 99, userAction: true, actionUrl: '/data' };

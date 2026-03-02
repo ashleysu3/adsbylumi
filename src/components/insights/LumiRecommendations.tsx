@@ -44,6 +44,7 @@ interface LumiRecommendationsProps {
   maxItems?: number;
   nextSteps?: string[];
   recsRef?: React.Ref<HTMLDivElement>;
+  campaignId?: string;
 }
 
 function getRecIcon(type: string) {
@@ -82,15 +83,17 @@ function inferRecType(step: string): Recommendation['type'] {
   return 'keep_running';
 }
 
-function inferActionUrl(step: string): string {
+function inferActionUrl(step: string, campaignId?: string): string {
   const lower = step.toLowerCase();
-  if (lower.includes('creative') || lower.includes('video') || lower.includes('ugc') || lower.includes('hook')) return '/creative';
+  if (lower.includes('creative') || lower.includes('video') || lower.includes('ugc') || lower.includes('hook')) {
+    return campaignId ? `/creative?workspace=${campaignId}&refreshCreative=true` : '/creative';
+  }
   if (lower.includes('audience') || lower.includes('target')) return '/planning';
   if (lower.includes('offer') || lower.includes('landing')) return '/brand';
   return '/data';
 }
 
-function convertNextStepsToRecs(steps: string[]): Recommendation[] {
+function convertNextStepsToRecs(steps: string[], campaignId?: string): Recommendation[] {
   return steps.map((step, i) => {
     const type = inferRecType(step);
     const isUserAction = USER_ACTION_TYPES.has(type) || type === 'keep_running';
@@ -105,7 +108,7 @@ function convertNextStepsToRecs(steps: string[]): Recommendation[] {
       actionPayload: {},
       priority: 10 + i,
       userAction: isUserAction,
-      actionUrl: inferActionUrl(step),
+      actionUrl: inferActionUrl(step, campaignId),
     };
   });
 }
@@ -119,6 +122,7 @@ export function LumiRecommendations({
   maxItems,
   nextSteps = [],
   recsRef,
+  campaignId,
 }: LumiRecommendationsProps) {
   const navigate = useNavigate();
   const [executing, setExecuting] = useState<Record<string, boolean>>({});
@@ -127,7 +131,7 @@ export function LumiRecommendations({
   const [approvingAll, setApprovingAll] = useState(false);
 
   // Merge ad-level recs with next_steps converted to recs
-  const nextStepRecs = convertNextStepsToRecs(nextSteps);
+  const nextStepRecs = convertNextStepsToRecs(nextSteps, campaignId);
   const allRecommendations = [...recommendations, ...nextStepRecs];
 
   const visibleRecs = maxItems ? allRecommendations.slice(0, maxItems) : allRecommendations;
