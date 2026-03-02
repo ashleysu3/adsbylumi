@@ -611,13 +611,11 @@ export function ProductionManager({
                   </div>
                 </div>
                 <Button 
+                  variant="lumi"
                   onClick={onBuildCampaign} 
                   disabled={!isReadyToBuild}
                   size="lg"
-                  className={cn(
-                    "gap-2",
-                    isReadyToBuild && "bg-green-600 hover:bg-green-700"
-                  )}
+                  className="gap-2"
                 >
                   <Rocket className="h-5 w-5" />
                   Build Campaign
