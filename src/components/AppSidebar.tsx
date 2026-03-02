@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, ArrowRight, Zap, Package, Link2, LifeBuoy, Plus, Eye } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus, Eye } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
@@ -97,7 +97,6 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
             <span className="relative flex items-center justify-center gap-2 py-2.5 px-3 text-white font-semibold text-sm">
               <Plus className="h-4 w-4" />
               {!collapsed && <span>Create a New Ad</span>}
-              {!collapsed && <ArrowRight className="h-3.5 w-3.5 ml-auto group-hover:translate-x-1 transition-transform" />}
             </span>
           </button>
 
