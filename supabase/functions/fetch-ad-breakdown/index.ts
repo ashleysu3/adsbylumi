@@ -105,7 +105,16 @@ Deno.serve(async (req) => {
 
     if (!adsResponse.ok) {
       console.error('Failed to fetch ads:', adsData);
-      throw new Error(adsData.error?.message || 'Failed to fetch ads');
+      const errorCode = adsData.error?.code;
+      const errorMsg = adsData.error?.message || 'Failed to fetch ads';
+      // Rate limit error - return friendly message with 429 status
+      if (errorCode === 17 || errorCode === 32 || adsData.error?.error_subcode === 2446079) {
+        return new Response(
+          JSON.stringify({ error: 'Meta API rate limit reached. Please wait a few minutes and try again.', success: false, rateLimited: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+        );
+      }
+      throw new Error(errorMsg);
     }
 
     const ads = adsData.data || [];
