@@ -63,7 +63,7 @@ export function CampaignBuilderForm({
   const defaultCreativeType = isSocialGrowth ? "existing_posts" : (strategyJson?.creativeType || "video");
 
   const [budget, setBudget] = useState(answers.budget || 30);
-  const [launchActive, setLaunchActive] = useState(answers.launchActive ?? false);
+  const [launchActive, setLaunchActive] = useState(answers.launchActive ?? true);
 
   // Sync answers on change
   useEffect(() => {
@@ -173,6 +173,17 @@ export function CampaignBuilderForm({
               onCheckedChange={setLaunchActive}
             />
           </div>
+          {!launchActive && (
+            <div className="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0" />
+                Advanced users only
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                You'll need to manually turn on your ads inside Meta Ads Manager. Most users should launch active and let Lumi handle it.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
