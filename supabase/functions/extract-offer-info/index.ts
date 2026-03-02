@@ -272,13 +272,37 @@ ${!fetchSuccess ? 'Since the page content could not be fetched, set needs_clarif
       throw new Error('AI response was empty');
     }
 
-    // Robust JSON extraction
+    // Robust JSON extraction with repair
     const extractJson = (text: string) => {
       const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-      const raw = (codeBlock?.[1] ?? text).trim();
+      let raw = (codeBlock?.[1] ?? text).trim();
       const first = raw.indexOf("{");
       const last = raw.lastIndexOf("}");
-      return JSON.parse(first !== -1 && last !== -1 ? raw.slice(first, last + 1) : raw);
+      if (first !== -1 && last !== -1) {
+        raw = raw.slice(first, last + 1);
+      }
+      // Clean common LLM JSON issues
+      raw = raw
+        .replace(/,\s*([}\]])/g, '$1')          // trailing commas
+        .replace(/[\x00-\x1F\x7F]/g, ' ')       // control chars
+        .replace(/"\s*\n\s*"/g, '", "');         // missing commas between strings
+
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        // Brace-balancing fallback for truncated JSON
+        let open = 0, close = 0;
+        for (const ch of raw) { if (ch === '{') open++; if (ch === '}') close++; }
+        let repaired = raw;
+        if (open > close) repaired += '}'.repeat(open - close);
+        // Also balance arrays
+        let ao = 0, ac = 0;
+        for (const ch of repaired) { if (ch === '[') ao++; if (ch === ']') ac++; }
+        if (ao > ac) repaired = repaired.replace(/,?\s*$/, '') + ']'.repeat(ao - ac);
+        // Re-clean trailing commas after repair
+        repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+        return JSON.parse(repaired);
+      }
     };
 
     const offerInfo = extractJson(rawContent);
