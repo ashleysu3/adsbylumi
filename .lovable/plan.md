@@ -1,29 +1,30 @@
 
 
-## Plan: Clean Up Creative Studio Toolbar & Tab Bar
+## Plan: Redesign Creative Studio Header & Tab Bar
 
 ### Changes
 
-#### 1. Restructure campaign selector — label above dropdown
-- Stack "Campaign:" label above the `<Select>` instead of inline
-- Use a vertical flex layout: label on top, dropdown below
-- Removes the cramped horizontal spacing
+#### 1. Restructure the toolbar — everything inside `max-w-6xl` container
+- Move the toolbar (campaign selector + Creative Brief + primary action) **inside** the `max-w-6xl mx-auto` container so it aligns with the tab bar and content below
+- Campaign label stacked above dropdown (already done), but now aligned with the content grid
 
-#### 2. Remove "Build Campaign" from top toolbar
-- The primary action button in the top-right currently shows "Build Campaign" on the `build` tab — remove it from the toolbar entirely for the `build` tab
-- Instead, keep it only at the bottom of the Creation/build tab content (inside the production checklist area)
-- Other tabs (Angles → "Generate Creative", Concepts → "Next Concept"/"Continue to Ad Copy", Copy → "Continue to Build") keep their top-right actions since they're navigation-focused
-- Mobile floating action also skips "Build Campaign" — it'll be inline in the build tab
+#### 2. Redesign the tab bar with Lumi brand colors
+- Each tab gets its own brand color from the gradient palette:
+  - **Angles** → Orange (`lumi-orange-1`)
+  - **Creative Concepts** → Pink (`lumi-pink-1`)
+  - **Ad Copy** → Purple (`lumi-purple-1`)
+  - **Creation** → Blue (`lumi-blue-1`)
+- Active tab: filled background with its color, white text
+- Inactive tabs: subtle tinted background (`color/10`), colored text
+- Remove the generic `bg-muted` container — use a transparent or very light container with individual colored pills
+- Add a subtle bottom border or underline accent on the active tab
+- Slightly larger tab height (`h-12`) with better padding for a more designed feel
 
-#### 3. Make the tab bar visually distinct
-- Currently `bg-muted/50` blends into the page background
-- Add a visible border (`border`), slightly stronger background (`bg-muted`), and a subtle shadow (`shadow-sm`) so it reads as a clear navigation element
-- This makes it obvious these are interactive tabs users need to toggle between
-
-#### 4. Add "Build Campaign" button at bottom of Creation tab
-- After the production checklist content in the `build` TabsContent, add the Build Campaign button as a prominent full-width or right-aligned CTA
-- Only enabled when production items exist
+#### 3. Polish spacing & alignment
+- Remove the outer margin spacing before the `max-w-6xl` container
+- Everything flows inside one consistent content column
+- Toolbar row: campaign dropdown left, Creative Brief + primary action right, all on one line
 
 ### Files Modified
-- `src/pages/CreativeStudio.tsx` — ~20 lines changed
+- `src/pages/CreativeStudio.tsx` — restructure toolbar position, restyle tab triggers with per-tab brand colors (~30 lines changed)
 
