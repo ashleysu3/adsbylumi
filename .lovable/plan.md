@@ -1,37 +1,59 @@
 
 
-## Plan: Upgrade Advanced Build Copy System
+## Plan: Update Navigation & Home Screen Behavior
 
-### Problem
-1. Copy quality is generic — doesn't leverage offer psychology, brand voice, emojis, or proper formatting
-2. Current model generates copy per-asset (redundant) — should generate ONE shared set of variations for all creatives
-3. Each creative still needs its own ad, just sharing the same approved copy variations
+### Summary
+
+Four changes requested:
+
+1. **Replace "Next Steps" button** in the sidebar with two prominent buttons: **"Create a New Ad"** and **"See Live Ads"**
+2. **Make the Start page (`/start`) the default landing** for returning users (login redirects to `/start` instead of requiring onboarding). Onboarding only for brand-new users with no brands.
+3. **Lumi logo click → `/start`** (already works in sidebar, just confirm consistency)
+4. **"Create a New Ad" button → choice screen**: "Create a New Ad Campaign" or "Create New Ads for an Existing Campaign"
+
+---
 
 ### Changes
 
-#### 1. Upgrade `generate-advanced-copy` edge function
-- Fetch knowledge base docs (copy formulas, psychology triggers, meta best practices) to inject into the prompt
-- Include full offer psychology, audience psychology, messaging guidelines, brand emojis, copy perspective (I/We), and never-use words
-- Rewrite the system prompt to enforce: emoji usage, proper spacing (hook → blank line → short paragraphs), psychology-driven angles, brand voice matching
-- Enforce headline ≤25 chars, description ≤27 chars
-- Remove `assetFilename`/`assetType` params since copy is no longer per-asset
-- Add `brandEmojis`, `bulletEmoji`, `useEmojis`, `copyPerspective`, `neverUseWords`, `messagingGuidelines` to the request body
+#### 1. Sidebar: Replace "Next Steps" with two buttons
+**File:** `src/components/AppSidebar.tsx`
 
-#### 2. Refactor `AdvancedBuild.tsx` — shared copy model
-- Replace per-asset `assetCopy` state with a single shared `sharedCopy` state: `{ variations: CopyVariation[], selectedIndices: number[], generating: boolean }`
-- Step 2 becomes a single card: "Let Lumi Write Copy" generates ONE set of 5 variations for the campaign
-- Users can select/approve multiple variations (checkboxes instead of single select) — all approved variations are used in every ad
-- Each creative in the review step shows the same approved copy set
-- Update `canProceedToStep3` to check that at least one variation is approved
-- Update `handlePublish` and `saveState` to use the shared copy model
-- Update the Lumi intro text to reflect the new model: "I'll write 5 psychology-driven copy variations for your campaign. Each of your creatives will be deployed as its own ad using these same variations."
+- Remove the single "Next Steps" gradient button (lines 92–104)
+- Replace with two stacked buttons:
+  - **"Create a New Ad"** — gradient style, navigates to `/create` (which will now show a choice modal/screen)
+  - **"See Live Ads"** — outline/secondary style, navigates to `/data` (Results/performance dashboard)
+- Keep both buttons responsive to sidebar collapsed state (show icon-only when collapsed)
 
-#### 3. Update review step (Step 3)
-- Show the shared copy variations at the top
-- Show the list of creative assets below, each labeled as its own ad
-- Clarify: "X ads will be created — one per creative, each with Y approved copy variations"
+#### 2. Login redirect logic — existing users go to `/start`
+**File:** `src/pages/Auth.tsx` (line 84)
 
-### Files Modified
-- `supabase/functions/generate-advanced-copy/index.ts` — enhanced prompt + KB integration
-- `src/pages/AdvancedBuild.tsx` — shared copy model, multi-select variations, updated UI
+- Already redirects to `/start` on login. No change needed here.
+
+**File:** `src/pages/Start.tsx` (lines 71–79)
+
+- Currently, if `activeBrand` is null, it redirects to `/onboarding`. This is correct — only brand-new users (no brands) get sent to onboarding. Returning users with at least one brand land on `/start`. This already works as described.
+
+#### 3. Lumi logo click → `/start`
+**File:** `src/components/AppSidebar.tsx`
+
+- Make the logo image clickable with `onClick={() => navigate("/start")}` and add `cursor-pointer`
+- Mobile header logo already navigates to `/start` (confirmed in `MobileHeader.tsx` line 37)
+
+#### 4. "Create a New Ad" → choice: New Campaign vs. Existing Campaign
+**File:** `src/pages/Create.tsx`
+
+- Add an initial "entry step" before the current flow that asks:
+  - **"Create a New Ad Campaign"** → continues into the existing Create flow (offer selection → template → generation)
+  - **"Create New Ads for an Existing Campaign"** → navigates to `/advanced-build` (the existing "Add to Campaign" flow)
+- This step renders as two large selectable cards, matching the app's existing card-based UI pattern
+
+---
+
+### Technical Details
+
+- The sidebar button replacement is purely UI — swap one button block for two
+- The Create page entry step is a new `step: "entry"` added before the current step machine, defaulting to show on mount
+- Logo clickability requires wrapping the `<img>` in a clickable element with navigation
+- No database changes needed
+- No new components needed — all changes fit within existing files
 
