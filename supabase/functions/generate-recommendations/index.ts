@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
         requiresDoubleApproval: false,
         actionPayload: { workspaceId, brandId },
         userAction: true,
-        actionUrl: `/creative?workspace=${workspaceId}&addCreative=true`,
+        actionUrl: `/creative?workspace=${workspaceId}&refreshCreative=true`,
         priority: priority++,
       });
     }
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
         requiresDoubleApproval: false,
         actionPayload: { workspaceId, brandId },
         userAction: true,
-        actionUrl: `/creative?workspace=${workspaceId}&addCreative=true`,
+        actionUrl: `/creative?workspace=${workspaceId}&refreshCreative=true`,
         priority: priority++,
       });
     }
@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
         requiresDoubleApproval: false,
         actionPayload: { workspaceId, brandId },
         userAction: true,
-        actionUrl: `/creative?workspace=${workspaceId}&addCreative=true`,
+        actionUrl: `/creative?workspace=${workspaceId}&refreshCreative=true`,
         priority: priority++,
       });
     }
@@ -241,7 +241,7 @@ Deno.serve(async (req) => {
             requiresDoubleApproval: false,
             actionPayload: { workspaceId, brandId, fatigueAdId: ad.id },
             userAction: true,
-            actionUrl: `/creative?workspace=${workspaceId}&addCreative=true`,
+            actionUrl: `/creative?workspace=${workspaceId}&refreshCreative=true`,
             priority: priority++,
           });
         }
