@@ -90,20 +90,24 @@ Deno.serve(async (req) => {
 
     console.log('Template data:', template);
 
-    // Fetch all knowledge documents
+    // Fetch high-priority knowledge documents (limit to prevent prompt bloat)
     const { data: knowledgeDocs, error: kbError } = await supabase
       .from('knowledge_documents')
-      .select('*')
-      .eq('active', true);
+      .select('category, content, priority')
+      .eq('active', true)
+      .order('priority', { ascending: false })
+      .limit(8);
 
     if (kbError) {
       console.error('Error fetching knowledge base:', kbError);
     }
 
-    // Organize knowledge by category
+    // Organize knowledge by category, truncate each doc
+    const MAX_KB_CHARS = 1200;
     const kbByCategory = (knowledgeDocs || []).reduce((acc: any, doc: any) => {
       if (!acc[doc.category]) acc[doc.category] = [];
-      acc[doc.category].push(doc.content);
+      const trimmed = doc.content?.length > MAX_KB_CHARS ? doc.content.substring(0, MAX_KB_CHARS) + '…' : doc.content;
+      acc[doc.category].push(trimmed);
       return acc;
     }, {});
 
@@ -302,26 +306,43 @@ Provide a comprehensive analysis following the JSON structure specified.`;
 
     console.log('Calling Lovable AI for performance analysis...');
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-      }),
-    });
+    // Retry helper for transient 502/503 errors
+    const MAX_RETRIES = 2;
+    let aiResponse: Response | null = null;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.7,
+        }),
+      });
 
-    if (!aiResponse.ok) {
+      if (aiResponse.ok) break;
+
       const errorText = await aiResponse.text();
-      console.error('AI API error:', aiResponse.status, errorText);
-      throw new Error(`AI analysis failed: ${errorText}`);
+      console.error(`AI API error (attempt ${attempt + 1}):`, aiResponse.status, errorText.substring(0, 200));
+
+      if (aiResponse.status >= 500 && attempt < MAX_RETRIES) {
+        const delay = (attempt + 1) * 3000;
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
+      throw new Error(`AI analysis failed after ${attempt + 1} attempts (status ${aiResponse.status})`);
+    }
+
+    if (!aiResponse || !aiResponse.ok) {
+      throw new Error('AI analysis failed: no successful response');
     }
 
     const aiData = await aiResponse.json();
