@@ -305,37 +305,9 @@ export function LumiRecommendations({
                   <div className="flex items-start gap-2.5 flex-1 min-w-0">
                     <div className="mt-0.5">{getRecIcon(rec.type)}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold">{rec.title}</p>
-                        {(rec as any).campaignName && (
-                          <Badge variant="secondary" className="text-xs">
-                            {(rec as any).campaignName}
-                          </Badge>
-                        )}
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            rec.confidence === 'high' ? 'border-green-300 text-green-700' :
-                            rec.confidence === 'medium' ? 'border-amber-300 text-amber-700' :
-                            'border-muted text-muted-foreground'
-                          }`}
-                        >
-                          {rec.confidence}
-                        </Badge>
-                        {rec.requiresDoubleApproval && (
-                          <Badge variant="outline" className="text-xs border-primary/30 text-primary gap-1">
-                            <DollarSign className="h-3 w-3" />
-                            Budget
-                          </Badge>
-                        )}
-                      </div>
-                      {!compact && (
-                        <>
-                          <p className="text-xs text-muted-foreground mt-1">{rec.description}</p>
-                          <p className="text-xs text-primary/80 mt-1 font-medium">
-                            Impact: {rec.impact}
-                          </p>
-                        </>
+                      <p className="text-sm font-semibold">{rec.title}</p>
+                      {(rec as any).campaignName && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{(rec as any).campaignName}</p>
                       )}
                     </div>
                   </div>
