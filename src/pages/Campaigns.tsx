@@ -91,7 +91,7 @@ export default function Campaigns() {
           addCreativeMode={isAddCreativeMode}
           onCampaignSelectForCreative={(campaignId) => {
             // Navigate to creative page for this campaign
-            navigate(`/creative?workspace=${campaignId}&addCreative=true`);
+            navigate(`/creative-studio?workspace=${campaignId}&addCreative=true`);
           }}
         />
 
