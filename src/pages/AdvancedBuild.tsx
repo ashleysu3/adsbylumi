@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -72,6 +73,11 @@ export default function AdvancedBuild() {
   const [publishing, setPublishing] = useState(false);
   const [saveToBench, setSaveToBench] = useState(false);
 
+  // Instagram account selection (for multi-IG scenarios)
+  const [instagramAccounts, setInstagramAccounts] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedInstagramId, setSelectedInstagramId] = useState<string | null>(null);
+  const [loadingInstagram, setLoadingInstagram] = useState(false);
+
   useEffect(() => {
     if (!workspaceId) {
       toast.error("No workspace specified");
@@ -93,6 +99,14 @@ export default function AdvancedBuild() {
 
       setWorkspace(ws);
       setBrand(ws.brands);
+
+      // Fetch Instagram accounts linked to the page
+      const brandData = ws.brands as any;
+      if (brandData?.page_id && brandData?.meta_access_token) {
+        fetchInstagramAccounts(brandData.page_id, brandData.meta_access_token, brandData.instagram_account_id);
+      } else if (brandData?.instagram_account_id) {
+        setSelectedInstagramId(brandData.instagram_account_id);
+      }
 
       if (ws.offer_id) {
         const { data: offerData } = await supabase
@@ -121,6 +135,35 @@ export default function AdvancedBuild() {
       navigate("/campaigns");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchInstagramAccounts = async (pageId: string, accessToken: string, defaultIgId?: string) => {
+    setLoadingInstagram(true);
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v18.0/${pageId}/instagram_accounts?fields=id,username,profile_pic&access_token=${accessToken}`
+      );
+      const data = await res.json();
+      const accounts = (data?.data || []).map((a: any) => ({
+        id: a.id,
+        name: a.username || a.id,
+      }));
+
+      setInstagramAccounts(accounts);
+
+      if (accounts.length === 1) {
+        setSelectedInstagramId(accounts[0].id);
+      } else if (defaultIgId && accounts.some((a: any) => a.id === defaultIgId)) {
+        setSelectedInstagramId(defaultIgId);
+      } else if (accounts.length > 0) {
+        setSelectedInstagramId(accounts[0].id);
+      }
+    } catch (e) {
+      console.warn("Could not fetch Instagram accounts:", e);
+      if (defaultIgId) setSelectedInstagramId(defaultIgId);
+    } finally {
+      setLoadingInstagram(false);
     }
   };
 
@@ -340,6 +383,7 @@ export default function AdvancedBuild() {
               workspaceId,
               assets: assets.map(({ file, ...rest }) => rest),
               copyVariations: approvedVariations,
+              instagramActorId: selectedInstagramId || undefined,
             },
           });
 
@@ -364,7 +408,7 @@ export default function AdvancedBuild() {
             }, 250);
 
             toast.success(`✨ ${result.totalCreated} ad${result.totalCreated > 1 ? 's' : ''} added to your campaign!`, {
-              description: "Your new creatives are paused in Ads Manager — turn them on when you're ready to shine.",
+              description: "Your new creatives are live! Multi-advertiser ads are disabled.",
               duration: 6000,
             });
 
@@ -766,6 +810,35 @@ export default function AdvancedBuild() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Instagram Account Selector — only show if multiple accounts */}
+              {!saveToBench && instagramAccounts.length > 1 && (
+                <Card className="border-2 border-purple-500/20">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <Label className="font-semibold text-sm">Instagram Account</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Choose which Instagram account these ads will be published from.
+                      </p>
+                      <Select
+                        value={selectedInstagramId || ""}
+                        onValueChange={setSelectedInstagramId}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Instagram account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {instagramAccounts.map((acc) => (
+                            <SelectItem key={acc.id} value={acc.id}>
+                              @{acc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Summary */}
               <Card>

@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { workspaceId, assets, copyVariations } = await req.json();
+    const { workspaceId, assets, copyVariations, instagramActorId } = await req.json();
 
     if (!workspaceId || !assets?.length || !copyVariations?.length) {
       return new Response(
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
 
     const { data: workspace, error: wsError } = await supabase
       .from('campaign_workspaces')
-      .select('*, brands!inner(id, name, user_id, meta_account_id, page_id, meta_access_token)')
+      .select('*, brands!inner(id, name, user_id, meta_account_id, page_id, meta_access_token, instagram_account_id, multi_advertiser_ads)')
       .eq('id', workspaceId)
       .single();
 
@@ -276,9 +276,14 @@ Deno.serve(async (req) => {
     // Fallback defaults
     const link = referenceSettings?.link || workspace.offer_url || '';
     const ctaType = referenceSettings?.call_to_action_type || 'LEARN_MORE';
+    
+    // Resolve Instagram actor ID: prefer explicit param, fall back to brand setting
+    const igActorId = instagramActorId || brand.instagram_account_id || null;
+    // Multi-advertiser ads: default OFF unless brand explicitly enabled it
+    const multiAdvertiserAds = brand.multi_advertiser_ads === true;
 
     console.log(`Adding ${assets.length} creative(s) with ${copyVariations.length} copy variation(s) to ad set ${adSetId}`);
-    console.log(`Using link: ${link}, CTA: ${ctaType}`);
+    console.log(`Using link: ${link}, CTA: ${ctaType}, IG actor: ${igActorId}, multi_advertiser: ${multiAdvertiserAds}`);
 
     const createdAdIds: string[] = [];
     const failedAds: Array<{ assetName: string; error: string }> = [];
@@ -463,16 +468,19 @@ Deno.serve(async (req) => {
             if (!assetFeedSpec.descriptions) delete assetFeedSpec.descriptions;
 
             creativeParams.asset_feed_spec = JSON.stringify(assetFeedSpec);
-            creativeParams.object_story_spec = JSON.stringify({ page_id: pageId });
+            const storySpec: any = { page_id: pageId };
+            if (igActorId) storySpec.instagram_actor_id = igActorId;
+            creativeParams.object_story_spec = JSON.stringify(storySpec);
           } else {
             const selectedCopy = copyVariations[0] || {};
             const message = selectedCopy.primary_text || '';
             const name = selectedCopy.headline || 'Learn More';
             const description = selectedCopy.description || '';
 
-            const objectStorySpec = assetType === 'video'
+            const objectStorySpec: any = assetType === 'video'
               ? {
                   page_id: pageId,
+                  ...(igActorId ? { instagram_actor_id: igActorId } : {}),
                   video_data: {
                     video_id: assetId,
                     message,
@@ -486,6 +494,7 @@ Deno.serve(async (req) => {
                 }
               : {
                   page_id: pageId,
+                  ...(igActorId ? { instagram_actor_id: igActorId } : {}),
                   link_data: {
                     link,
                     message,
@@ -496,6 +505,7 @@ Deno.serve(async (req) => {
                       type: ctaType,
                       value: { link },
                     },
+                    multi_share_optimized: false,
                   },
                 };
 
@@ -539,9 +549,14 @@ Deno.serve(async (req) => {
           adset_id: targetAdSetId,
           name: adName,
           creative: JSON.stringify({ creative_id: creativeId }),
-          status: 'PAUSED',
+          status: 'ACTIVE',
           access_token: metaAccessToken,
         };
+
+        // Disable multi-advertiser ads unless brand explicitly opted in
+        if (!multiAdvertiserAds) {
+          adParams.multi_advertiser_ads = 'false';
+        }
 
         const adResponse = await fetch(
           `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
@@ -577,9 +592,13 @@ Deno.serve(async (req) => {
               adset_id: fallbackAdSetId,
               name: adName,
               creative: JSON.stringify({ creative_id: creativeId }),
-              status: 'PAUSED',
+              status: 'ACTIVE',
               access_token: metaAccessToken,
             };
+
+            if (!multiAdvertiserAds) {
+              retryAdParams.multi_advertiser_ads = 'false';
+            }
 
             const retryAdResponse = await fetch(
               `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
@@ -635,7 +654,7 @@ Deno.serve(async (req) => {
 
     const success = createdAdIds.length > 0;
     const message = success
-      ? `${createdAdIds.length} new ad(s) added to your campaign.${failedAds.length > 0 ? ` ${failedAds.length} failed.` : ''} Ads are paused — activate in Ads Manager when ready.`
+      ? `${createdAdIds.length} new ad(s) added to your campaign.${failedAds.length > 0 ? ` ${failedAds.length} failed.` : ''} Ads are live!`
       : 'Failed to create any ads. Please check your assets and try again.';
 
     return new Response(
