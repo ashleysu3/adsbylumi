@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { path: "/start", icon: Home, label: "Start Here", tourId: "start" },
-  { path: "/campaigns", icon: FolderKanban, label: "Drafts", tourId: "campaigns" },
+  { path: "/campaigns", icon: FolderKanban, label: "Campaigns", tourId: "campaigns" },
   { path: "/creative-studio", icon: Palette, label: "Creative Studio", tourId: "creative" },
   { path: "/data", icon: BarChart3, label: "Results", tourId: "results" },
 ];

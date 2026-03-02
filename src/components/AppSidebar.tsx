@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const createNav = [
-  { path: "/campaigns", icon: FolderKanban, label: "Drafts" },
+  { path: "/campaigns", icon: FolderKanban, label: "My Campaigns" },
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio" },
   { path: "/content-library", icon: Library, label: "Concept Library" },
 ];

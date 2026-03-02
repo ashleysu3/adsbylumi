@@ -35,7 +35,7 @@ export default function Campaigns() {
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight">
-              My <span className="text-gradient-lumi">Ads</span>
+              My <span className="text-gradient-lumi">Campaigns</span>
             </h1>
             <p className="text-muted-foreground mt-2">
               Loading your ads...
@@ -63,7 +63,7 @@ export default function Campaigns() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold tracking-tight">
-              My <span className="text-gradient-lumi">Ads</span>
+              My <span className="text-gradient-lumi">Campaigns</span>
             </h1>
             <p className="text-muted-foreground mt-2">
               {isAddCreativeMode 
