@@ -43,6 +43,7 @@ import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
 import Pricing from "./pages/Pricing";
+import Offers from "./pages/Offers";
 import ContentLibrary from "./pages/ContentLibrary";
 import CreativeStudio from "./pages/CreativeStudio";
 import Glossary from "./pages/Glossary";
@@ -106,6 +107,7 @@ const App = () => {
    <Route path="/settings/meta" element={<Navigate to="/meta-settings" replace />} />
                   <Route path="/settings/digest-preview" element={<WeeklyDigestPreview />} />
                   <Route path="/content-library" element={<ContentLibrary />} />
+                  <Route path="/offers" element={<Offers />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
                   <Route path="/glossary" element={<Glossary />} />
                   <Route path="/advanced-build" element={<AdvancedBuild />} />

@@ -11,24 +11,20 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { BrandEditDialog } from "@/components/BrandEditDialog";
-import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { AudiencePsychology } from "@/components/AudiencePsychology";
-import { OfferManager } from "@/components/OfferManager";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { InlineProgressChecklist } from "@/components/InlineProgressChecklist";
 import { PageShimmer } from "@/components/GradientShimmer";
 import { AlertsBanner } from "@/components/AlertsBanner";
 import { useLumiRecommend } from "@/components/LumiAssistant";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
- import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
- import { BrandOnboardingWizard } from "@/components/BrandOnboardingWizard";
-import { Building2, Globe, Target, Edit, CheckCircle2, ChevronDown, Brain, Package, Link, AlertTriangle, Smile, X, Loader2 } from "lucide-react";
+import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
+import { BrandOnboardingWizard } from "@/components/BrandOnboardingWizard";
+import { Building2, Globe, Target, Edit, CheckCircle2, Brain, Package, Link, Smile, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface EmojiSettings {
   use_emojis: boolean;
@@ -54,19 +50,13 @@ export default function Dashboard() {
   const [checklistDismissed, setChecklistDismissed] = useState(() => {
     return localStorage.getItem('onboarding-dismissed') === 'true';
   });
-  const [progressPopoverOpen, setProgressPopoverOpen] = useState(false);
   const [emojiSettings, setEmojiSettings] = useState<EmojiSettings>({
     use_emojis: true,
     brand_emojis: DEFAULT_EMOJIS,
     bullet_emoji: '✅',
   });
   const [newEmoji, setNewEmoji] = useState('');
-   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
-   const [activeTab, setActiveTab] = useState(() => {
-     const tab = searchParams.get('tab');
-     if (tab === 'brand-settings') return 'brand-settings';
-     return 'overview';
-   });
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
   const hasShownConfetti = useRef(false);
   const hasHandledCheckout = useRef(false);
   const hasCheckedBrand = useRef(false);
@@ -80,7 +70,6 @@ export default function Dashboard() {
       toast.success("Welcome to Lumi! Your subscription is now active.", {
         duration: 5000,
       });
-      // Clear the query param
       setSearchParams({});
     }
   }, [searchParams, setSearchParams]);
@@ -94,7 +83,6 @@ export default function Dashboard() {
   useEffect(() => {
     fetchBrandData();
     
-    // Setup realtime subscription for brand updates
     const channel = supabase
       .channel('brand-updates')
       .on(
@@ -105,7 +93,6 @@ export default function Dashboard() {
           table: 'brands'
         },
         (payload) => {
-          console.log('Brand updated:', payload);
           if (payload.new.id === brand?.id) {
             setBrand(payload.new);
           }
@@ -129,9 +116,7 @@ export default function Dashboard() {
     if (progress.percentage === 100 && !hasShownBefore && !hasShownConfetti.current) {
       hasShownConfetti.current = true;
       
-      // Delay slightly to ensure UI has updated
       setTimeout(() => {
-        // Fire confetti from multiple angles
         const duration = 3000;
         const animationEnd = Date.now() + duration;
         const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1000 };
@@ -142,14 +127,11 @@ export default function Dashboard() {
 
         const interval: any = setInterval(function() {
           const timeLeft = animationEnd - Date.now();
-
           if (timeLeft <= 0) {
             clearInterval(interval);
             return;
           }
-
           const particleCount = 50 * (timeLeft / duration);
-          
           confetti({
             ...defaults,
             particleCount,
@@ -162,7 +144,6 @@ export default function Dashboard() {
           });
         }, 250);
 
-        // Store that confetti was shown
         localStorage.setItem(confettiShownKey, 'true');
         toast.success("🎉 Profile Complete! You're ready to create amazing campaigns!");
       }, 300);
@@ -171,11 +152,11 @@ export default function Dashboard() {
 
   const calculateBrandProgress = () => {
     const checks = [
-      !!(brand?.name && brand?.website_url && brand?.industry), // Brand basics
-      !!(brand?.value_proposition && brand?.target_audience),   // Positioning
-      brand?.psychology_status === "approved",                   // Psychology approved
-      offers.length > 0,                                         // Has offers
-      !!brand?.meta_account_id                                   // Meta connected
+      !!(brand?.name && brand?.website_url && brand?.industry),
+      !!(brand?.value_proposition && brand?.target_audience),
+      brand?.psychology_status === "approved",
+      offers.length > 0,
+      !!brand?.meta_account_id
     ];
     
     const completed = checks.filter(Boolean).length;
@@ -187,7 +168,6 @@ export default function Dashboard() {
 
   const getIncompleteItems = () => {
     const items = [];
-    
     if (!(brand?.name && brand?.website_url && brand?.industry)) {
       items.push({ label: "Complete brand basics", section: "brand-details", icon: Building2 });
     }
@@ -198,44 +178,31 @@ export default function Dashboard() {
       items.push({ label: "Approve audience psychology", section: "audience-psychology", icon: Brain });
     }
     if (offers.length === 0) {
-      items.push({ label: "Add your first offer", section: "offers", icon: Package });
+      items.push({ label: "Add your first offer", section: "offers", icon: Package, action: () => navigate("/offers") });
     }
     if (!brand?.meta_account_id) {
-      items.push({ label: "Connect Meta ad account", section: "meta-account", icon: Link });
+      items.push({ label: "Connect Meta ad account", section: "meta-account", icon: Link, action: () => navigate("/meta-settings") });
     }
-    
     return items;
   };
 
   const scrollToSection = (sectionId: string) => {
-    // Determine which tab contains this section
-    const brandSettingsSections = ['meta-account'];
-    const targetTab = brandSettingsSections.includes(sectionId) ? 'brand-settings' : 'overview';
-    
-    if (activeTab !== targetTab) {
-      setActiveTab(targetTab);
-      // Wait for tab switch to render before scrolling
+    // Redirect to other pages for sections that moved
+    if (sectionId === 'offers') {
+      navigate('/offers');
+      return;
+    }
+    if (sectionId === 'meta-account') {
+      navigate('/meta-settings');
+      return;
+    }
+    const element = document.querySelector(`[data-section="${sectionId}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
       setTimeout(() => {
-        const element = document.querySelector(`[data-section="${sectionId}"]`);
-        if (element) {
-          setProgressPopoverOpen(false);
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
-          setTimeout(() => {
-            element.classList.add('animate-pulse');
-            setTimeout(() => element.classList.remove('animate-pulse'), 1000);
-          }, 500);
-        }
-      }, 150);
-    } else {
-      const element = document.querySelector(`[data-section="${sectionId}"]`);
-      if (element) {
-        setProgressPopoverOpen(false);
-        element.scrollIntoView({ behavior: "smooth", block: "start" });
-        setTimeout(() => {
-          element.classList.add('animate-pulse');
-          setTimeout(() => element.classList.remove('animate-pulse'), 1000);
-        }, 500);
-      }
+        element.classList.add('animate-pulse');
+        setTimeout(() => element.classList.remove('animate-pulse'), 1000);
+      }, 500);
     }
   };
 
@@ -244,15 +211,12 @@ export default function Dashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Use effective user ID for impersonation support
       const effectiveUserId = await getEffectiveUserId();
       if (!effectiveUserId) return;
 
-      // Use active brand from context if available, otherwise fall back to query
       let brandData: any = null;
       
       if (contextBrand) {
-        // Fetch full brand data using context brand ID
         const { data, error } = await supabase
           .from("brands")
           .select("*")
@@ -261,7 +225,6 @@ export default function Dashboard() {
         if (error) throw error;
         brandData = data;
       } else {
-        // Fallback: fetch first brand for user
         const { data, error } = await supabase
           .from("brands")
           .select("*")
@@ -273,8 +236,6 @@ export default function Dashboard() {
         brandData = data;
       }
 
-      // If no brand exists and we haven't redirected yet, send to onboarding
-      // Don't redirect when impersonating - the impersonated user may not have a brand
       if (!brandData && !hasCheckedBrand.current && !isImpersonating) {
         hasCheckedBrand.current = true;
         navigate("/onboarding");
@@ -283,7 +244,6 @@ export default function Dashboard() {
 
       setBrand(brandData);
       
-      // Load emoji settings from brand
       if (brandData) {
         setEmojiSettings({
           use_emojis: brandData.use_emojis ?? true,
@@ -292,7 +252,6 @@ export default function Dashboard() {
         });
       }
 
-      // Fetch subscription (use effective user ID)
       const { data: subData } = await supabase
         .from("subscriptions")
         .select("*")
@@ -301,7 +260,6 @@ export default function Dashboard() {
 
       setSubscription(subData);
 
-      // Fetch offers (exclude archived)
       if (brandData) {
         const { data: offersData } = await supabase
           .from("offers")
@@ -340,7 +298,6 @@ export default function Dashboard() {
 
   const handleSaveEmojiSettings = async () => {
     if (!brand) return;
-    
     setSaving(true);
     try {
       const { error } = await supabase
@@ -386,41 +343,34 @@ export default function Dashboard() {
     }));
   };
 
-   // Show onboarding wizard for incomplete profiles (only once per session)
-   useEffect(() => {
-     if (!loading && brand) {
-       const wizardDismissedKey = `brand-wizard-dismissed-${brand.id}`;
-       const wasRecentlyDismissed = localStorage.getItem(wizardDismissedKey);
-       
-       // Show wizard if profile is incomplete and not recently dismissed
-       const progress = calculateBrandProgress();
-       if (progress.percentage < 100 && !wasRecentlyDismissed) {
-         // Delay slightly to let the page render
-         const timer = setTimeout(() => setShowOnboardingWizard(true), 500);
-         return () => clearTimeout(timer);
-       }
-     }
-   }, [loading, brand?.id]);
- 
-   const handleWizardDismiss = () => {
-     setShowOnboardingWizard(false);
-     if (brand) {
-       localStorage.setItem(`brand-wizard-dismissed-${brand.id}`, 'true');
-     }
-   };
- 
-   const handleWizardNavigateToTab = (tab: string) => {
-     setActiveTab(tab);
-   };
- 
-   const handleWizardComplete = () => {
-     setShowOnboardingWizard(false);
-     if (brand) {
-       localStorage.setItem(`brand-wizard-dismissed-${brand.id}`, 'true');
-     }
-   };
- 
-  // Show contextual recommendation based on incomplete items
+  // Show onboarding wizard for incomplete profiles
+  useEffect(() => {
+    if (!loading && brand) {
+      const wizardDismissedKey = `brand-wizard-dismissed-${brand.id}`;
+      const wasRecentlyDismissed = localStorage.getItem(wizardDismissedKey);
+      const progress = calculateBrandProgress();
+      if (progress.percentage < 100 && !wasRecentlyDismissed) {
+        const timer = setTimeout(() => setShowOnboardingWizard(true), 500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [loading, brand?.id]);
+
+  const handleWizardDismiss = () => {
+    setShowOnboardingWizard(false);
+    if (brand) {
+      localStorage.setItem(`brand-wizard-dismissed-${brand.id}`, 'true');
+    }
+  };
+
+  const handleWizardComplete = () => {
+    setShowOnboardingWizard(false);
+    if (brand) {
+      localStorage.setItem(`brand-wizard-dismissed-${brand.id}`, 'true');
+    }
+  };
+
+  // Show contextual recommendation
   useEffect(() => {
     if (!loading && brand && !hasShownRecommendation.current) {
       hasShownRecommendation.current = true;
@@ -433,7 +383,7 @@ export default function Dashboard() {
           title: "Lumi recommends",
           message: `${firstIncomplete.label} to unlock better campaign recommendations and creative.`,
           actionLabel: "Let's do it",
-          onAction: () => scrollToSection(firstIncomplete.section),
+          onAction: () => firstIncomplete.action ? firstIncomplete.action() : scrollToSection(firstIncomplete.section),
         });
       } else if (!brand.meta_account_id) {
         setRecommendation({
@@ -441,7 +391,7 @@ export default function Dashboard() {
           title: "Lumi recommends",
           message: "Connect your Meta ad account to start building and launching campaigns directly from Lumi!",
           actionLabel: "Connect Meta",
-          onAction: () => scrollToSection("meta-account"),
+          onAction: () => navigate("/meta-settings"),
         });
       }
     }
@@ -499,7 +449,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Inline Progress Checklist - more prominent than popover */}
+        {/* Inline Progress Checklist */}
         {calculateBrandProgress().percentage < 100 && (
           <InlineProgressChecklist 
             brand={brand}
@@ -521,364 +471,276 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Tabs Navigation */}
-         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-           <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="overview" className="gap-2">
-              <Building2 className="h-4 w-4" />
-              My Brand
-            </TabsTrigger>
-            <TabsTrigger value="brand-settings" className="gap-2">
-              <Smile className="h-4 w-4" />
-              Brand Settings
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Combined My Brand Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Brand Details Card */}
-            <Card variant="glow" data-section="brand-details">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Building2 className="h-5 w-5 text-primary" />
-                    <CardTitle>Brand Details</CardTitle>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit Details
-                  </Button>
+        {/* Brand Details Card */}
+        <Card variant="glow" data-section="brand-details">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                <CardTitle>Brand Details</CardTitle>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Details
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {brand.website_url && (
+              <div className="flex items-start space-x-3">
+                <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Website</p>
+                  <a href={brand.website_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+                    {brand.website_url}
+                  </a>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {brand.website_url && (
-                  <div className="flex items-start space-x-3">
-                    <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Website</p>
-                      <a href={brand.website_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
-                        {brand.website_url}
-                      </a>
-                    </div>
-                  </div>
-                )}
-                {brand.industry && (
-                  <div className="flex items-start space-x-3">
-                    <Target className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium">Industry</p>
-                      <p className="text-sm text-muted-foreground">{brand.industry}</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              </div>
+            )}
+            {brand.industry && (
+              <div className="flex items-start space-x-3">
+                <Target className="h-5 w-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">Industry</p>
+                  <p className="text-sm text-muted-foreground">{brand.industry}</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-            {/* Content Library + Psychology */}
-            <div data-section="brand-brain">
-              <ContentAssetsEditor 
-                brandId={brand.id} 
-                offers={offers.map(o => ({ id: o.id, name: o.name }))} 
+        {/* Content Library + Psychology */}
+        <div data-section="brand-brain">
+          <ContentAssetsEditor 
+            brandId={brand.id} 
+            offers={offers.map(o => ({ id: o.id, name: o.name }))} 
+          />
+           
+          <div data-section="audience-psychology" className="mt-6">
+            <AudiencePsychology
+              brandId={brand.id}
+              psychology={brand.audience_psychology}
+              status={brand.psychology_status}
+              psychologyContentHash={brand.psychology_content_hash}
+              psychologyGeneratedAt={brand.psychology_generated_at}
+              onUpdate={fetchBrandData}
+            />
+          </div>
+        </div>
+
+        {/* Copy Voice */}
+        <Card variant="glow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Ad Copy Voice
+            </CardTitle>
+            <CardDescription>
+              Should your ads say "I" or "We"? This applies to all generated ad copy for this brand.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleSaveCopyPerspective('I')}
+                className={cn(
+                  'rounded-xl border-2 p-4 text-left transition-all',
+                  brand.copy_perspective !== 'We'
+                    ? 'border-primary bg-primary/5 shadow-sm'
+                    : 'border-border hover:border-muted-foreground/50'
+                )}
+              >
+                <span className="font-semibold text-sm">Personal "I"</span>
+                <p className="text-xs text-muted-foreground mt-1 italic">
+                  "I help entrepreneurs scale..."
+                </p>
+              </button>
+              <button
+                onClick={() => handleSaveCopyPerspective('We')}
+                className={cn(
+                  'rounded-xl border-2 p-4 text-left transition-all',
+                  brand.copy_perspective === 'We'
+                    ? 'border-primary bg-primary/5 shadow-sm'
+                    : 'border-border hover:border-muted-foreground/50'
+                )}
+              >
+                <span className="font-semibold text-sm">Team "We"</span>
+                <p className="text-xs text-muted-foreground mt-1 italic">
+                  "We help entrepreneurs scale..."
+                </p>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Emoji Settings */}
+        <Card variant="glow">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Smile className="h-5 w-5" />
+              Emoji Preferences
+            </CardTitle>
+            <CardDescription>
+              Control how emojis are used in your smart-generated ad copy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-base">Use Emojis in Copy</Label>
+                <p className="text-sm text-muted-foreground">
+                  Enable or disable emoji usage in generated headlines, descriptions, and primary copy
+                </p>
+              </div>
+              <Switch
+                checked={emojiSettings.use_emojis}
+                onCheckedChange={(checked) => setEmojiSettings(prev => ({ ...prev, use_emojis: checked }))}
               />
-               
-              <div data-section="audience-psychology" className="mt-6">
-                <AudiencePsychology
-                  brandId={brand.id}
-                  psychology={brand.audience_psychology}
-                  status={brand.psychology_status}
-                  psychologyContentHash={brand.psychology_content_hash}
-                  psychologyGeneratedAt={brand.psychology_generated_at}
-                  onUpdate={fetchBrandData}
-                />
+            </div>
+            
+            {emojiSettings.use_emojis && (
+              <>
+                <Separator />
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-base">Your Brand Emojis</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Choose up to 6 emojis that represent your brand. These will be used in your ad copy.
+                    </p>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {emojiSettings.brand_emojis.map((emoji) => (
+                      <div 
+                        key={emoji}
+                        className="flex items-center gap-1 px-3 py-2 bg-muted rounded-lg border"
+                      >
+                        <span className="text-xl">{emoji}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 hover:bg-destructive/20"
+                          onClick={() => removeEmoji(emoji)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {emojiSettings.brand_emojis.length < 6 && (
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <EmojiQuickPicker 
+                        onSelect={(emoji) => {
+                          if (emojiSettings.brand_emojis.length >= 6) {
+                            toast.error('Maximum 6 emojis allowed');
+                            return;
+                          }
+                          if (emojiSettings.brand_emojis.includes(emoji)) {
+                            toast.error('Emoji already added');
+                            return;
+                          }
+                          setEmojiSettings(prev => ({
+                            ...prev,
+                            brand_emojis: [...prev.brand_emojis, emoji]
+                          }));
+                        }}
+                        selectedEmojis={emojiSettings.brand_emojis}
+                      />
+                      <span className="text-xs text-muted-foreground">or</span>
+                      <div className="flex gap-2">
+                        <Input
+                          value={newEmoji}
+                          onChange={(e) => setNewEmoji(e.target.value)}
+                          placeholder="Paste emoji..."
+                          className="w-24"
+                          maxLength={4}
+                        />
+                        <Button variant="ghost" size="sm" onClick={addEmoji}>
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-base">Bullet Point Style</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Choose the emoji or symbol used for bullet points in your primary copy
+                    </p>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {BULLET_OPTIONS.map((bullet) => (
+                      <Button
+                        key={bullet}
+                        variant={emojiSettings.bullet_emoji === bullet ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setEmojiSettings(prev => ({ ...prev, bullet_emoji: bullet }))}
+                        className="text-lg w-10 h-10 p-0"
+                      >
+                        {bullet}
+                      </Button>
+                    ))}
+                  </div>
+                  
+                  <div className="bg-muted/50 rounded-lg p-4 border">
+                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Preview</p>
+                    <div className="space-y-1 text-sm">
+                      <p>{emojiSettings.bullet_emoji} Stop wasting time on ads that don't convert</p>
+                      <p>{emojiSettings.bullet_emoji} Get smart creative that actually works</p>
+                      <p>{emojiSettings.bullet_emoji} Launch campaigns in minutes, not days</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            
+            <div className="pt-4">
+              <Button onClick={handleSaveEmojiSettings} disabled={saving} variant="lumi">
+                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Save Emoji Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Meta Best Practices for Copy */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Meta Best Practices for Copy</CardTitle>
+            <CardDescription>How Lumi formats your primary copy based on Meta's recommendations</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">✓ What Lumi Does</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Uses line breaks for readability</li>
+                  <li>• Adds strategic emoji placement</li>
+                  <li>• Creates scannable bullet lists</li>
+                  <li>• Varies copy lengths (short/medium/long)</li>
+                  <li>• Puts the hook first, CTA last</li>
+                </ul>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">✗ What Lumi Avoids</h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Emoji overload (max 2-3 per section)</li>
+                  <li>• Wall-of-text paragraphs</li>
+                  <li>• ALL CAPS abuse</li>
+                  <li>• Clickbait or misleading claims</li>
+                  <li>• Generic, non-specific language</li>
+                </ul>
               </div>
             </div>
-
-            {/* Offers */}
-            <div data-section="offers">
-              <OfferManager
-                brandId={brand.id}
-                offers={offers}
-                onUpdate={fetchBrandData}
-              />
-            </div>
-          </TabsContent>
-
-          {/* Brand Settings Tab - Emoji, Copy Voice, Meta Connection */}
-          <TabsContent value="brand-settings" className="space-y-6">
-            {/* Copy Perspective Toggle */}
-            <Card variant="glow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Ad Copy Voice
-                </CardTitle>
-                <CardDescription>
-                  Should your ads say "I" or "We"? This applies to all generated ad copy for this brand.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => handleSaveCopyPerspective('I')}
-                    className={cn(
-                      'rounded-xl border-2 p-4 text-left transition-all',
-                      brand.copy_perspective !== 'We'
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-border hover:border-muted-foreground/50'
-                    )}
-                  >
-                    <span className="font-semibold text-sm">Personal "I"</span>
-                    <p className="text-xs text-muted-foreground mt-1 italic">
-                      "I help entrepreneurs scale..."
-                    </p>
-                  </button>
-                  <button
-                    onClick={() => handleSaveCopyPerspective('We')}
-                    className={cn(
-                      'rounded-xl border-2 p-4 text-left transition-all',
-                      brand.copy_perspective === 'We'
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-border hover:border-muted-foreground/50'
-                    )}
-                  >
-                    <span className="font-semibold text-sm">Team "We"</span>
-                    <p className="text-xs text-muted-foreground mt-1 italic">
-                      "We help entrepreneurs scale..."
-                    </p>
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Emoji Settings */}
-            <Card variant="glow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Smile className="h-5 w-5" />
-                  Emoji Preferences
-                </CardTitle>
-                <CardDescription>
-                  Control how emojis are used in your smart-generated ad copy.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-base">Use Emojis in Copy</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Enable or disable emoji usage in generated headlines, descriptions, and primary copy
-                    </p>
-                  </div>
-                  <Switch
-                    checked={emojiSettings.use_emojis}
-                    onCheckedChange={(checked) => setEmojiSettings(prev => ({ ...prev, use_emojis: checked }))}
-                  />
-                </div>
-                
-                {emojiSettings.use_emojis && (
-                  <>
-                    <Separator />
-                    
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label className="text-base">Your Brand Emojis</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Choose up to 6 emojis that represent your brand. These will be used in your ad copy.
-                        </p>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        {emojiSettings.brand_emojis.map((emoji) => (
-                          <div 
-                            key={emoji}
-                            className="flex items-center gap-1 px-3 py-2 bg-muted rounded-lg border"
-                          >
-                            <span className="text-xl">{emoji}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-5 w-5 hover:bg-destructive/20"
-                              onClick={() => removeEmoji(emoji)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {emojiSettings.brand_emojis.length < 6 && (
-                        <div className="flex flex-wrap gap-2 items-center">
-                          <EmojiQuickPicker 
-                            onSelect={(emoji) => {
-                              if (emojiSettings.brand_emojis.length >= 6) {
-                                toast.error('Maximum 6 emojis allowed');
-                                return;
-                              }
-                              if (emojiSettings.brand_emojis.includes(emoji)) {
-                                toast.error('Emoji already added');
-                                return;
-                              }
-                              setEmojiSettings(prev => ({
-                                ...prev,
-                                brand_emojis: [...prev.brand_emojis, emoji]
-                              }));
-                            }}
-                            selectedEmojis={emojiSettings.brand_emojis}
-                          />
-                          <span className="text-xs text-muted-foreground">or</span>
-                          <div className="flex gap-2">
-                            <Input
-                              value={newEmoji}
-                              onChange={(e) => setNewEmoji(e.target.value)}
-                              placeholder="Paste emoji..."
-                              className="w-24"
-                              maxLength={4}
-                            />
-                            <Button variant="ghost" size="sm" onClick={addEmoji}>
-                              Add
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label className="text-base">Bullet Point Style</Label>
-                        <p className="text-sm text-muted-foreground">
-                          Choose the emoji or symbol used for bullet points in your primary copy
-                        </p>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        {BULLET_OPTIONS.map((bullet) => (
-                          <Button
-                            key={bullet}
-                            variant={emojiSettings.bullet_emoji === bullet ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setEmojiSettings(prev => ({ ...prev, bullet_emoji: bullet }))}
-                            className="text-lg w-10 h-10 p-0"
-                          >
-                            {bullet}
-                          </Button>
-                        ))}
-                      </div>
-                      
-                      <div className="bg-muted/50 rounded-lg p-4 border">
-                        <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Preview</p>
-                        <div className="space-y-1 text-sm">
-                          <p>{emojiSettings.bullet_emoji} Stop wasting time on ads that don't convert</p>
-                          <p>{emojiSettings.bullet_emoji} Get smart creative that actually works</p>
-                          <p>{emojiSettings.bullet_emoji} Launch campaigns in minutes, not days</p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-                
-                <div className="pt-4">
-                  <Button onClick={handleSaveEmojiSettings} disabled={saving} variant="lumi">
-                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                    Save Emoji Settings
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Meta Best Practices for Copy */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Meta Best Practices for Copy</CardTitle>
-                <CardDescription>How Lumi formats your primary copy based on Meta's recommendations</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">✓ What Lumi Does</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Uses line breaks for readability</li>
-                      <li>• Adds strategic emoji placement</li>
-                      <li>• Creates scannable bullet lists</li>
-                      <li>• Varies copy lengths (short/medium/long)</li>
-                      <li>• Puts the hook first, CTA last</li>
-                    </ul>
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">✗ What Lumi Avoids</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Emoji overload (max 2-3 per section)</li>
-                      <li>• Wall-of-text paragraphs</li>
-                      <li>• ALL CAPS abuse</li>
-                      <li>• Clickbait or misleading claims</li>
-                      <li>• Generic, non-specific language</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Meta Connection */}
-            <Card variant="glow" data-section="meta-account">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link className="h-5 w-5" />
-                  Meta Ad Account
-                </CardTitle>
-                <CardDescription>
-                  Connect your Meta (Facebook/Instagram) ad account to launch campaigns.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {brand.meta_account_id ? (
-                  <div className="space-y-3">
-                    {brand.meta_token_expires_at && new Date(brand.meta_token_expires_at) < new Date() && (
-                      <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm">
-                        <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="font-medium text-destructive">Connection Expired</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Your Meta access has expired. Reconnect to continue syncing campaigns.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <code className="text-xs bg-muted px-2 py-1 rounded">{brand.meta_account_id}</code>
-                        {brand.page_name && (
-                          <p className="text-xs text-muted-foreground">Page: {brand.page_name}</p>
-                        )}
-                      </div>
-                      <MetaAccountConnect 
-                        brandId={brand.id} 
-                        currentAccountId={brand.meta_account_id}
-                        currentPageId={brand.page_id}
-                        currentPageName={brand.page_name}
-                        tokenExpired={brand.meta_token_expires_at ? new Date(brand.meta_token_expires_at) < new Date() : false}
-                        onUpdate={fetchBrandData}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Connect your Meta Ad Account to enable campaign creation
-                    </p>
-                    <MetaAccountConnect 
-                      brandId={brand.id} 
-                      currentAccountId={brand.meta_account_id}
-                      currentPageId={brand.page_id}
-                      currentPageName={brand.page_name}
-                      onUpdate={fetchBrandData}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          </CardContent>
+        </Card>
       </div>
 
       <BrandEditDialog
@@ -887,18 +749,18 @@ export default function Dashboard() {
         brand={brand}
         onUpdate={fetchBrandData}
       />
- 
-       {/* Onboarding Wizard Overlay */}
-       {showOnboardingWizard && (
-         <BrandOnboardingWizard
-           brand={brand}
-           offers={offers}
-           onDismiss={handleWizardDismiss}
-           onNavigateToTab={handleWizardNavigateToTab}
-           onEditBrand={() => setEditDialogOpen(true)}
-           onComplete={handleWizardComplete}
-         />
-       )}
+
+      {/* Onboarding Wizard Overlay */}
+      {showOnboardingWizard && (
+        <BrandOnboardingWizard
+          brand={brand}
+          offers={offers}
+          onDismiss={handleWizardDismiss}
+          onNavigateToTab={() => {}}
+          onEditBrand={() => setEditDialogOpen(true)}
+          onComplete={handleWizardComplete}
+        />
+      )}
     </DashboardLayout>
   );
 }

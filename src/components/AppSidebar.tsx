@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { useLumiAssistant } from "@/components/LumiAssistant";
+import { useBrand } from "@/contexts/BrandContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -30,9 +31,8 @@ const mainNav = [
 
 const toolsNav = [
   { path: "/content-library", icon: Library, label: "Saved Concepts" },
-  { path: "/dashboard", icon: Package, label: "Offers" },
-  { path: "/dashboard?tab=brand", icon: Building2, label: "My Brand" },
-  { path: "/settings", icon: Link2, label: "Meta Connection" },
+  { path: "/offers", icon: Package, label: "Offers" },
+  { path: "/dashboard", icon: Building2, label: "My Brand" },
   { path: "/glossary", icon: LifeBuoy, label: "Troubleshooting" },
 ];
 
@@ -47,7 +47,9 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { openChat, unreadCount } = useLumiAssistant();
+  const { activeBrand } = useBrand();
   const [hasCampaigns, setHasCampaigns] = useState(false);
+  const [metaStatus, setMetaStatus] = useState<'connected' | 'expired' | 'disconnected'>('disconnected');
 
   // Lightweight check for campaign count
   useEffect(() => {
@@ -61,6 +63,28 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
       });
   }, [brandId]);
 
+  // Check Meta connection status
+  useEffect(() => {
+    if (!brandId) {
+      setMetaStatus('disconnected');
+      return;
+    }
+    supabase
+      .from("brands")
+      .select("meta_account_id, meta_token_expires_at")
+      .eq("id", brandId)
+      .single()
+      .then(({ data }) => {
+        if (!data?.meta_account_id) {
+          setMetaStatus('disconnected');
+        } else if (data.meta_token_expires_at && new Date(data.meta_token_expires_at) < new Date()) {
+          setMetaStatus('expired');
+        } else {
+          setMetaStatus('connected');
+        }
+      });
+  }, [brandId, activeBrand]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     toast.success("Signed out successfully");
@@ -68,6 +92,13 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   };
 
   const isActive = (path: string) => location.pathname === path;
+
+  const MetaStatusIcon = () => {
+    if (metaStatus === 'connected') {
+      return <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />;
+    }
+    return <AlertTriangle className="h-3.5 w-3.5 text-destructive" />;
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -160,6 +191,25 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {/* Meta Connection with status indicator */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Meta Connection">
+                  <NavLink
+                    to="/meta-settings"
+                    end
+                    className="transition-all duration-200"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    {!collapsed && (
+                      <span className="flex items-center gap-2 flex-1">
+                        Meta Connection
+                        <MetaStatusIcon />
+                      </span>
+                    )}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -205,7 +255,6 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
 
       {/* Footer: Ask Lumi + Sign Out */}
       <SidebarFooter className="p-3 pt-2 space-y-2">
-        {/* Ask Lumi */}
         <button
           onClick={openChat}
           className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl
@@ -223,7 +272,6 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
           )}
         </button>
 
-        {/* Sign Out */}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
