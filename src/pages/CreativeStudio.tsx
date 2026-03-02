@@ -605,6 +605,9 @@ export default function CreativeStudio() {
    const generateAngles = async (context?: CreativeContext | null) => {
     if (!workspace?.strategy_json) { toast.error("Complete strategy first"); return; }
     
+    // Create a new round timestamp
+    const newRound = new Date().toISOString();
+    
     setGenerating(true); setGeneratingPhase("angles");
     try {
       // Fetch intelligence in parallel with setting up
@@ -640,7 +643,8 @@ export default function CreativeStudio() {
          angles: allAngles, 
          selectedAngleIds: ["direct_from_page"], 
          gridData: [],
-         preGenerationContext: context || null
+         preGenerationContext: context || null,
+         currentRound: newRound,
        });
       toast.success("Angles ready!");
       setActiveTab("angles");
@@ -703,6 +707,7 @@ export default function CreativeStudio() {
 
   const addToChecklist = (cell: CreativeCellData) => {
     const angle = availableAngles.find(a => a.id === cell.angleId);
+    const currentRound = (workspace?.creative_json as Record<string, any>)?.currentRound || null;
     const newItem: ProductionItem = { 
       id: `prod_${Date.now()}`, 
       format: cell.format, 
@@ -710,6 +715,7 @@ export default function CreativeStudio() {
       guidance: cell.guidance, 
       angleName: angle?.name || "", 
       completed: false,
+      round: currentRound || undefined,
       // Talking head multi-hook system
       verbal_hook: cell.verbal_hook,
       written_hook: cell.written_hook,
@@ -1153,6 +1159,42 @@ export default function CreativeStudio() {
               brandId={brandId}
               angleCopy={angleCopy}
               onRefineScript={refineScript}
+              currentRound={(workspace?.creative_json as Record<string, any>)?.currentRound}
+              onArchivePrevious={async () => {
+                const currentRound = (workspace?.creative_json as Record<string, any>)?.currentRound;
+                if (!currentRound) return;
+                const previousItems = productionItems.filter(i => !i.round || i.round !== currentRound);
+                const currentItems = productionItems.filter(i => i.round === currentRound);
+                // Archive previous items into creative_json
+                const cur = (workspace?.creative_json || {}) as Record<string, any>;
+                const archived = [...(cur.archivedProductionItems || []), ...previousItems];
+                await supabase.from("campaign_workspaces").update({
+                  creative_json: { ...cur, archivedProductionItems: archived },
+                  production_items: currentItems as unknown as Json,
+                  updated_at: new Date().toISOString(),
+                }).eq("id", workspace.id);
+                setProductionItems(currentItems);
+                setWorkspace((prev: any) => ({
+                  ...prev,
+                  creative_json: { ...prev?.creative_json, archivedProductionItems: archived },
+                }));
+                toast.success(`Archived ${previousItems.length} items from previous rounds`);
+              }}
+              onClearAll={async () => {
+                const cur = (workspace?.creative_json || {}) as Record<string, any>;
+                const archived = [...(cur.archivedProductionItems || []), ...productionItems];
+                await supabase.from("campaign_workspaces").update({
+                  creative_json: { ...cur, archivedProductionItems: archived },
+                  production_items: [] as unknown as Json,
+                  updated_at: new Date().toISOString(),
+                }).eq("id", workspace.id);
+                setProductionItems([]);
+                setWorkspace((prev: any) => ({
+                  ...prev,
+                  creative_json: { ...prev?.creative_json, archivedProductionItems: archived },
+                }));
+                toast.success("Checklist cleared — all items archived");
+              }}
             />
           </TabsContent>
         </Tabs>

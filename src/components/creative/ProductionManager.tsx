@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Rocket, Upload, CheckCircle2, AlertCircle, 
   Video, Film, Image, Eye, FolderOpen, Maximize2,
-  Sparkles, Loader2, Filter, Library, Info, Download
+  Sparkles, Loader2, Filter, Library, Info, Download,
+  Archive, Trash2, ChevronDown, Star
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +19,7 @@ import { CreativeChecklistCard } from "./CreativeChecklistCard";
 import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
 import { ExportChecklistModal } from "./ExportChecklistModal";
+import { format } from "date-fns";
 
 interface RankedItem extends ProductionItem {
   rank: number;
@@ -35,6 +38,9 @@ interface ProductionManagerProps {
   brandId?: string;
   angleCopy?: Record<string, any>;
   onRefineScript?: (itemId: string, feedback: string) => Promise<void>;
+  currentRound?: string;
+  onArchivePrevious?: () => Promise<void>;
+  onClearAll?: () => Promise<void>;
 }
 
 export function ProductionManager({
@@ -49,6 +55,9 @@ export function ProductionManager({
   brandId,
   angleCopy: angleCopyProp,
   onRefineScript,
+  currentRound,
+  onArchivePrevious,
+  onClearAll,
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [previewAsset, setPreviewAsset] = useState<any>(null);
@@ -60,16 +69,39 @@ export function ProductionManager({
   const [showTopOnly, setShowTopOnly] = useState(false);
   const [movingToLibrary, setMovingToLibrary] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [previousOpen, setPreviousOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
   const angleCopy = angleCopyProp || workspace?.creative_json?.angle_copy || {};
   
+  // Split items by round
+  const currentRoundItems = currentRound 
+    ? productionItems.filter(i => i.round === currentRound)
+    : productionItems;
+  const previousRoundItems = currentRound
+    ? productionItems.filter(i => !i.round || i.round !== currentRound)
+    : [];
+  
+  // Group previous items by round for collapsible display
+  const previousByRound = previousRoundItems.reduce((acc, item) => {
+    const key = item.round || "legacy";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(item);
+    return acc;
+  }, {} as Record<string, ProductionItem[]>);
+  
+  const displayItems = showTopOnly && rankedItems.length > 0 
+    ? currentRoundItems 
+    : currentRoundItems;
+  
   const canRank = productionItems.length >= 6;
   const hasRankedItems = rankedItems.length > 0;
   
   // Group items by angle
-  const itemsByAngle = productionItems.reduce((acc, item) => {
+  const itemsByAngle = displayItems.reduce((acc, item) => {
     const angleKey = item.angleName || "Unassigned";
     if (!acc[angleKey]) acc[angleKey] = [];
     acc[angleKey].push(item);
@@ -358,6 +390,42 @@ export function ProductionManager({
                       </Tooltip>
                     </TooltipProvider>
                   )}
+                  {/* Archive / Clear Actions */}
+                  {previousRoundItems.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!onArchivePrevious) return;
+                          setArchiving(true);
+                          await onArchivePrevious();
+                          setArchiving(false);
+                        }}
+                        disabled={archiving}
+                        className="gap-1"
+                      >
+                        {archiving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Archive className="h-3 w-3" />}
+                        Archive Previous ({previousRoundItems.length})
+                      </Button>
+                    </div>
+                  )}
+                  {productionItems.length > 0 && onClearAll && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        setClearing(true);
+                        await onClearAll();
+                        setClearing(false);
+                      }}
+                      disabled={clearing}
+                      className="gap-1 text-muted-foreground"
+                    >
+                      {clearing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                      Clear All
+                    </Button>
+                  )}
                   <Badge variant={itemsWithAssets === productionItems.length ? "default" : "secondary"}>
                     {itemsWithAssets}/{productionItems.length} uploaded
                   </Badge>
@@ -370,6 +438,17 @@ export function ProductionManager({
               )}
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Current Round Label */}
+              {currentRound && previousRoundItems.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Current Round</span>
+                  <Badge variant="secondary" className="text-xs">
+                    {currentRoundItems.length} creative{currentRoundItems.length !== 1 ? "s" : ""}
+                  </Badge>
+                </div>
+              )}
+              
               {showTopOnly && hasRankedItems ? (
                 /* When showing Top 5, display in rank order with angle as badge */
                 <div className="space-y-2">
@@ -432,6 +511,60 @@ export function ProductionManager({
                     </div>
                   );
                 })
+              )}
+              
+              {/* Previous Batches Collapsible */}
+              {previousRoundItems.length > 0 && (
+                <Collapsible open={previousOpen} onOpenChange={setPreviousOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-between gap-2 text-muted-foreground hover:text-foreground">
+                      <span className="flex items-center gap-2">
+                        <Archive className="h-4 w-4" />
+                        Previous Batches
+                        <Badge variant="outline" className="text-xs">{previousRoundItems.length}</Badge>
+                      </span>
+                      <ChevronDown className={cn("h-4 w-4 transition-transform", previousOpen && "rotate-180")} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-2">
+                    {Object.entries(previousByRound).map(([roundKey, items]) => {
+                      const roundLabel = roundKey === "legacy" 
+                        ? "Legacy Items" 
+                        : `Round from ${format(new Date(roundKey), "MMM d")}`;
+                      const prevByAngle = items.reduce((acc, item) => {
+                        const k = item.angleName || "Unassigned";
+                        if (!acc[k]) acc[k] = [];
+                        acc[k].push(item);
+                        return acc;
+                      }, {} as Record<string, ProductionItem[]>);
+                      
+                      return (
+                        <div key={roundKey} className="space-y-3 border-l-2 border-muted pl-4">
+                          <p className="text-xs font-medium text-muted-foreground">{roundLabel} · {items.length} items</p>
+                          {Object.entries(prevByAngle).map(([angleName, angleItems]) => (
+                            <div key={angleName} className="space-y-2">
+                              <h4 className="text-xs font-semibold text-muted-foreground/70">{angleName}</h4>
+                              {angleItems.map((item) => (
+                                <CreativeChecklistCard
+                                  key={item.id}
+                                  item={item}
+                                  uploadedAsset={getAssetForItem(item.id)}
+                                  onUploadClick={() => handleUploadClick(item.id)}
+                                  onRemove={() => onRemoveItem(item.id)}
+                                  onPreview={setPreviewAsset}
+                                  onAdPreview={() => setAdPreviewItem(item)}
+                                  onSaveToLibrary={onSaveToLibrary ? () => handleSaveToLibrary(item) : undefined}
+                                  savingToLibrary={savingToLibrary === item.id}
+                                  onRefineScript={onRefineScript}
+                                />
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
               )}
             </CardContent>
           </Card>
