@@ -7,13 +7,13 @@ import { CampaignsList } from "@/components/CampaignsList";
 import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
 import { GridShimmer } from "@/components/GradientShimmer";
 import { toast } from "sonner";
-import { LumiChat } from "@/components/LumiChat";
+
 
 export default function Campaigns() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { activeBrand, loading: brandLoading } = useBrand();
-  const [showLumiGuidance, setShowLumiGuidance] = useState(false);
+  
 
   const isAddCreativeMode = searchParams.get("addCreative") === "true";
 
@@ -23,17 +23,10 @@ export default function Campaigns() {
     }
   }, [brandLoading, activeBrand]);
 
-  useEffect(() => {
-    // Show Lumi guidance when in add creative mode
-    if (isAddCreativeMode && activeBrand) {
-      setShowLumiGuidance(true);
-    }
-  }, [isAddCreativeMode, activeBrand?.id]);
 
   const handleClearAddCreativeMode = () => {
     searchParams.delete("addCreative");
     setSearchParams(searchParams);
-    setShowLumiGuidance(false);
   };
 
   if (brandLoading) {
@@ -102,24 +95,6 @@ export default function Campaigns() {
           }}
         />
 
-        {/* Lumi Chat guidance for add creative mode */}
-        {showLumiGuidance && activeBrand && (
-          <LumiChat 
-            context="add-creative" 
-            brand={activeBrand}
-            trigger={null}
-            autoOpen={true}
-            onOpenChange={(open) => {
-              if (!open) setShowLumiGuidance(false);
-            }}
-            customStarters={[
-              { label: "Help me choose", message: "Help me pick the best campaign to add new creative to based on performance." },
-              { label: "New creative idea", message: "I want to brainstorm a fresh creative angle before uploading." },
-              { label: "Go straight to upload", message: "I already have my creative ready. Walk me through the upload process." },
-              { label: "What performs best?", message: "What types of creative are performing best right now?" },
-            ]}
-          />
-        )}
       </div>
     </DashboardLayout>
   );
