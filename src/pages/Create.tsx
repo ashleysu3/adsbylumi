@@ -126,7 +126,7 @@ export default function Create() {
   const navigate = useNavigate();
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // 0 = entry choice
   const totalSteps = 3;
 
   // Data
@@ -215,7 +215,7 @@ export default function Create() {
     setGeneratedAngles([]);
     setSelectedCreativeTemplates([]);
     setShowSocialGrowthFlow(false);
-    setCurrentStep(1);
+    setCurrentStep(0);
   }, [activeBrand?.id]);
 
   const fetchData = async () => {
@@ -458,6 +458,8 @@ export default function Create() {
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+    } else if (currentStep === 1) {
+      setCurrentStep(0); // Go back to entry choice
     } else {
       navigate("/start");
     }
@@ -669,6 +671,66 @@ export default function Create() {
           )}
         </AnimatePresence>
 
+        {/* Entry Step: Choose flow */}
+        {currentStep === 0 && (
+          <motion.div
+            key="step-entry"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6 py-8"
+          >
+            <div className="text-center space-y-2 mb-8">
+              <h1 className="text-2xl font-heading font-bold text-foreground">What would you like to do?</h1>
+              <p className="text-muted-foreground">Choose how you'd like to get started</p>
+            </div>
+
+            <div className="grid gap-4">
+              {/* New Campaign */}
+              <button
+                onClick={() => setCurrentStep(1)}
+                className="group text-left w-full"
+              >
+                <Card variant="glow" className="p-6 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50">
+                  <div className="flex items-start gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
+                      <Rocket className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-foreground text-lg">Create a New Ad Campaign</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Start from scratch — pick your offer, strategy, and generate creative
+                      </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all mt-1 flex-shrink-0" />
+                  </div>
+                </Card>
+              </button>
+
+              {/* Existing Campaign */}
+              <button
+                onClick={() => navigate("/advanced-build")}
+                className="group text-left w-full"
+              >
+                <Card variant="glow" className="p-6 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50">
+                  <div className="flex items-start gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-lumi-purple-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
+                      <Upload className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-foreground text-lg">Create New Ads for an Existing Campaign</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Add fresh creative to a campaign that's already running
+                      </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all mt-1 flex-shrink-0" />
+                  </div>
+                </Card>
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {currentStep >= 1 && (
         <MobileStepWizard
           currentStep={currentStep}
           totalSteps={totalSteps}
@@ -1240,6 +1302,7 @@ export default function Create() {
             )}
           </AnimatePresence>
         </MobileStepWizard>
+        )}
       </div>
 
       {/* Offer Dialog */}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, ArrowRight, Zap, Package, Link2, LifeBuoy } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, ArrowRight, Zap, Package, Link2, LifeBuoy, Plus, Eye } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
@@ -62,10 +62,6 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
       });
   }, [brandId]);
 
-  const handleNextSteps = () => {
-    navigate("/start");
-  };
-
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     toast.success("Signed out successfully");
@@ -81,27 +77,40 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
         <div className="flex items-center gap-2 min-h-[40px]">
           <img
             alt="Lumi"
-            className="h-8 w-auto object-contain flex-shrink-0"
+            className="h-8 w-auto object-contain flex-shrink-0 cursor-pointer"
             src={lumiLogo}
+            onClick={() => navigate("/start")}
           />
           {!collapsed && (
             <BrandSelector className="ml-auto" compact />
           )}
         </div>
 
-        {/* Next Steps Button */}
-        <button
-          onClick={handleNextSteps}
-          className="mt-3 w-full relative group overflow-hidden rounded-xl"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 opacity-90 group-hover:opacity-100 transition-opacity" />
-          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
-          <span className="relative flex items-center justify-center gap-2 py-2.5 px-3 text-white font-semibold text-sm">
-            <Zap className="h-4 w-4" />
-            {!collapsed && <span>Next Steps</span>}
-            {!collapsed && <ArrowRight className="h-3.5 w-3.5 ml-auto group-hover:translate-x-1 transition-transform" />}
-          </span>
-        </button>
+        {/* Action Buttons */}
+        <div className="mt-3 space-y-2">
+          <button
+            onClick={() => navigate("/create")}
+            className="w-full relative group overflow-hidden rounded-xl"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 opacity-90 group-hover:opacity-100 transition-opacity" />
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
+            <span className="relative flex items-center justify-center gap-2 py-2.5 px-3 text-white font-semibold text-sm">
+              <Plus className="h-4 w-4" />
+              {!collapsed && <span>Create a New Ad</span>}
+              {!collapsed && <ArrowRight className="h-3.5 w-3.5 ml-auto group-hover:translate-x-1 transition-transform" />}
+            </span>
+          </button>
+
+          <button
+            onClick={() => navigate("/data")}
+            className="w-full rounded-xl border-2 border-primary/30 hover:border-primary/60 bg-card hover:bg-primary/5 transition-all"
+          >
+            <span className="flex items-center justify-center gap-2 py-2 px-3 text-foreground font-medium text-sm">
+              <Eye className="h-4 w-4 text-primary" />
+              {!collapsed && <span>See Live Ads</span>}
+            </span>
+          </button>
+        </div>
       </SidebarHeader>
 
       <SidebarSeparator />
