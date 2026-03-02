@@ -55,12 +55,13 @@ export const campaignKPIConfig: Record<string, KPIConfig> = {
   'Engagement': {
     primary: 'cpm',
     primaryLabel: 'Cost Per 1000 Impressions',
-    secondary: ['ctr', 'frequency', 'videoViews'],
+    secondary: ['ctr', 'frequency', 'videoViews', 'conversations'],
     irrelevant: ['cpl_cpp', 'roas'],
     benchmarks: {
       cpm: { min: 3, max: 10, unit: '$' },
       ctr: { min: 2.0, max: 5.0, unit: '%' },
       frequency: { min: 1.0, max: 3.0, unit: '' },
+      conversations: { min: 5, max: 30, unit: '' },
     },
   },
 };
@@ -117,6 +118,7 @@ export function getGoalDescription(objective: string | null | undefined): string
     'Leads': 'Generate leads and signups at the lowest cost per lead',
     'Sales': 'Maximize purchases and return on ad spend',
     'Engagement': 'Increase video views and engagement at scale',
+    'Conversations': 'Maximize comments and DMs on your content',
   };
   return descriptions[objective || ''] || 'Optimize campaign performance';
 }
@@ -131,6 +133,7 @@ export function getKPILabel(kpiKey: string): string {
     roas: 'Return on Ad Spend',
     linkClicks: 'Link Clicks',
     videoViews: 'Video Views',
+    conversations: 'Conversations',
   };
   return labels[kpiKey] || kpiKey.toUpperCase();
 }

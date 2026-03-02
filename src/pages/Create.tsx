@@ -39,8 +39,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import lumiLogo from "@/assets/lumi-logo.png";
 import { SocialGrowthFlow } from "@/components/SocialGrowthFlow";
 
-// System offer ID for social growth
+// System offer IDs
 const SOCIAL_GROWTH_OFFER_ID = "system-social-growth";
+const COMMENT_DM_OFFER_ID = "system-comment-dm";
 
 // Types
 interface Offer {
@@ -766,12 +767,19 @@ export default function Create() {
                     instagramAccountId={brand.instagram_account_id}
                     instagramAccountName={brand.instagram_account_name}
                     audiencePsychology={brand.audience_psychology}
+                    fixedObjective={selectedOfferId === COMMENT_DM_OFFER_ID ? "engagement" : undefined}
+                    headerText={selectedOfferId === COMMENT_DM_OFFER_ID ? "Pick the posts that drive comments & DMs 💬" : undefined}
+                    headerSubtext={selectedOfferId === COMMENT_DM_OFFER_ID ? "Select up to 6 posts with autoresponder triggers. We'll put them in front of a broad audience to maximize conversations." : undefined}
                     onComplete={async (data) => {
                       try {
                         setIsCreatingCampaign(true);
                         
-                        // Find the matching social growth template
-                        const templateSlug = data.objective === "video_views" ? "video-views" : "social-traffic";
+                        const isCommentDm = selectedOfferId === COMMENT_DM_OFFER_ID;
+                        
+                        // Find the matching template
+                        const templateSlug = isCommentDm 
+                          ? "comment-dm-engagement"
+                          : data.objective === "video_views" ? "video-views" : "social-traffic";
                         const matchedTemplate = templates.find(t => t.slug === templateSlug) || templates[0];
                         
                         // Create strategy
@@ -780,8 +788,10 @@ export default function Create() {
                           .insert({
                             brand_id: brand.id,
                             template_id: matchedTemplate?.id,
-                            name: `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic to Instagram"}`,
-                            campaign_type: "social_growth",
+                            name: isCommentDm 
+                              ? "Increase Comments/DMs"
+                              : `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic to Instagram"}`,
+                            campaign_type: isCommentDm ? "comment_dm" : "social_growth",
                             status: "active",
                           })
                           .select()
@@ -796,11 +806,13 @@ export default function Create() {
                             brand_id: brand.id,
                             strategy_id: strategy.id,
                             template_id: matchedTemplate?.id,
-                            name: `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic"}`,
+                            name: isCommentDm 
+                              ? "Increase Comments/DMs"
+                              : `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic"}`,
                             strategy_json: matchedTemplate?.strategy_template as any,
                             progress_status: "ready_to_build",
                             creative_json: {
-                              socialGrowth: true,
+                              ...(isCommentDm ? { commentDmCampaign: true } : { socialGrowth: true }),
                               objective: data.objective,
                               selectedPosts: data.selectedPosts.map(p => ({
                                 id: p.id,
@@ -818,10 +830,12 @@ export default function Create() {
                         if (workspaceError) throw workspaceError;
 
                         clearSavedProgress();
-                        toast.success("Posts selected! Let's build your campaign.");
+                        toast.success(isCommentDm 
+                          ? "Posts selected! Let's build your engagement campaign." 
+                          : "Posts selected! Let's build your campaign.");
                         navigate(`/campaigns/build?workspace=${workspace.id}`);
                       } catch (error: any) {
-                        console.error("Error creating social growth workspace:", error);
+                        console.error("Error creating workspace:", error);
                         toast.error(error.message || "Failed to create campaign");
                       } finally {
                         setIsCreatingCampaign(false);
@@ -846,6 +860,19 @@ export default function Create() {
                       title="Grow my Instagram following"
                       description="Get more followers with strategic content promotion"
                       badge="Popular"
+                    />
+
+                    {/* System offer: Increase Comments/DMs */}
+                    <StepOption
+                      selected={selectedOfferId === COMMENT_DM_OFFER_ID}
+                      onSelect={() => {
+                        setSelectedOfferId(COMMENT_DM_OFFER_ID);
+                        setShowSocialGrowthFlow(true);
+                      }}
+                      icon={<Users className="h-5 w-5" />}
+                      title="Increase Comments/DMs"
+                      description="Drive comments and DMs using your existing posts + autoresponder"
+                      badge="ManyChat"
                     />
                     
                     {/* Divider */}
