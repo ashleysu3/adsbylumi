@@ -552,9 +552,11 @@ export default function Create() {
     }
   };
 
+  const isSystemOffer = SYSTEM_OFFER_IDS.includes(selectedOfferId);
+
   const getStepTitle = (): string => {
     switch (currentStep) {
-      case 1: return "Choose your offer";
+      case 1: return isSystemOffer ? "Choose your creative" : "Choose your offer";
       case 2: return "Recommended strategy";
       case 3: return "Campaign structure";
       default: return "";
@@ -563,8 +565,8 @@ export default function Create() {
 
   const getStepSubtitle = (): string => {
     switch (currentStep) {
-      case 1: return "What are we promoting?";
-      case 2: return "Lumi's recommendation based on your offer";
+      case 1: return isSystemOffer ? "Select the posts you'd like to promote" : "What are we promoting?";
+      case 2: return isSystemOffer ? "Lumi's recommendation for your strategy" : "Lumi's recommendation based on your offer";
       case 3: return "How we'll structure your campaign";
       default: return "";
     }
