@@ -839,8 +839,8 @@ export default function CreativeStudio() {
       >
         {/* Slim toolbar */}
         <div className="flex items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-3 min-w-0">
-            {workspace && <AutoSaveIndicator status={saveStatus} />}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">Campaign:</span>
             <Select value={selectedWorkspaceId} onValueChange={loadWorkspace}>
               <SelectTrigger className="w-[200px] sm:w-[260px]"><SelectValue placeholder="Select campaign" /></SelectTrigger>
               <SelectContent>{workspaces.map(w => <SelectItem key={w.id} value={w.id}>{w.offerName || w.name}</SelectItem>)}</SelectContent>
@@ -1255,6 +1255,12 @@ export default function CreativeStudio() {
           brandId={brandId}
           campaignObjective={workspace?.strategy_json?.objective}
         />
+        {/* Auto-save status indicator */}
+        {workspace && (
+          <div className="fixed bottom-4 right-4 z-30 bg-background/80 backdrop-blur-sm rounded-full px-3 py-1.5 border shadow-sm">
+            <AutoSaveIndicator status={saveStatus} size="sm" />
+          </div>
+        )}
       </motion.div>
     </DashboardLayout>
   );
