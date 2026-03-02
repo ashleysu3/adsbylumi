@@ -20,6 +20,7 @@ interface Campaign {
   id: string;
   name: string;
   progress_status: string;
+  meta_campaign_status: string | null;
   offer_name: string | null;
   created_at: string;
   updated_at: string;
@@ -61,7 +62,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     try {
       let query = supabase
         .from("campaign_workspaces")
-        .select("id, name, progress_status, offer_name, created_at, updated_at, archived, archived_at, template_id")
+        .select("id, name, progress_status, meta_campaign_status, offer_name, created_at, updated_at, archived, archived_at, template_id")
         .eq("brand_id", brandId);
 
       if (!showArchived) {
@@ -141,16 +142,18 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     return campaign.template_slug && SOCIAL_POST_SLUGS.includes(campaign.template_slug);
   };
 
-  const isLive = (status: string) => ['live', 'completed', 'publishing_to_meta'].includes(status);
-  const isDraft = (status: string) => !isLive(status);
+  const isLive = (status: string, metaStatus?: string | null) => 
+    ['live', 'completed', 'publishing_to_meta'].includes(status) || metaStatus === 'active';
+  const isDraft = (status: string, metaStatus?: string | null) => !isLive(status, metaStatus);
 
-  const getStatusDot = (status: string) => {
-    if (isLive(status)) return 'bg-green-500';
+  const getStatusDot = (status: string, metaStatus?: string | null) => {
+    if (isLive(status, metaStatus)) return 'bg-green-500';
     if (status === 'ready_to_publish') return 'bg-amber-400';
     return 'bg-muted-foreground/40';
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string, metaStatus?: string | null) => {
+    if (isLive(status, metaStatus)) return 'Live';
     const labels: Record<string, string> = {
       draft: "Draft",
       creative_in_progress: "Creating",
@@ -245,13 +248,13 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
   // Filtered campaigns
   const filteredCampaigns = campaigns.filter(c => {
-    if (viewFilter === "live") return isLive(c.progress_status);
-    if (viewFilter === "draft") return isDraft(c.progress_status);
+    if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status);
+    if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status);
     return true;
   });
 
-  const liveCount = campaigns.filter(c => isLive(c.progress_status)).length;
-  const draftCount = campaigns.filter(c => isDraft(c.progress_status)).length;
+  const liveCount = campaigns.filter(c => isLive(c.progress_status, c.meta_campaign_status)).length;
+  const draftCount = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status)).length;
 
   if (loading) {
     return (
@@ -374,7 +377,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
           <div className="divide-y divide-border">
             {filteredCampaigns.map((campaign) => {
               const social = isSocialCampaign(campaign);
-              const live = isLive(campaign.progress_status);
+              const live = isLive(campaign.progress_status, campaign.meta_campaign_status);
 
               return (
                 <div
@@ -389,7 +392,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                   }}
                 >
                   {/* Combine checkbox */}
-                  {combineMode && isDraft(campaign.progress_status) && (
+                  {combineMode && isDraft(campaign.progress_status, campaign.meta_campaign_status) && (
                     <Checkbox
                       checked={selectedForCombine.has(campaign.id)}
                       onCheckedChange={() => toggleCombineSelect(campaign.id)}
@@ -398,7 +401,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                   )}
 
                   {/* Status dot */}
-                  <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getStatusDot(campaign.progress_status)}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getStatusDot(campaign.progress_status, campaign.meta_campaign_status)}`} />
 
                   {/* Info */}
                   <div
@@ -438,7 +441,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                       : 'bg-muted text-muted-foreground'
                   }`}>
                     {live && <Radio className="h-3 w-3 inline mr-1" />}
-                    {getStatusLabel(campaign.progress_status)}
+                    {getStatusLabel(campaign.progress_status, campaign.meta_campaign_status)}
                   </span>
 
                   {/* Actions */}
