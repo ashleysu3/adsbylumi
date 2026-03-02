@@ -43,6 +43,7 @@ export interface ProductionItem {
   angleName: string;
   completed: boolean;
   assetNote?: string;
+  round?: string; // ISO timestamp of generation batch
   // Talking head multi-hook system
   verbal_hook?: string;
   written_hook?: string;

@@ -38,7 +38,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { items, brandId } = await req.json();
+    const { items, brandId, performanceContext: clientPerformanceContext } = await req.json();
 
     if (!items || items.length < 6) {
       return new Response(
@@ -109,6 +109,28 @@ ${Object.entries(formatPerformance).map(([f, p]) => `- ${f}: ${p.count} campaign
 
 Prioritize formats that have historically performed well for this account.
 `;
+        }
+      } catch (e) {
+        console.log("Could not fetch performance data:", e);
+      }
+    }
+
+    // If client provided performance context from the refresh dialog, use it
+    if (clientPerformanceContext && typeof clientPerformanceContext === 'object') {
+      hasPerformanceData = true;
+      if (clientPerformanceContext.summary) {
+        performanceContext += `\nRefresh analysis: ${clientPerformanceContext.summary}`;
+      }
+      if (clientPerformanceContext.topFormats?.length) {
+        performanceContext += `\nTop performing formats: ${clientPerformanceContext.topFormats.join(", ")}`;
+      }
+      if (clientPerformanceContext.topCopyAngles?.length) {
+        performanceContext += `\nTop copy angles: ${clientPerformanceContext.topCopyAngles.join(", ")}`;
+      }
+      if (clientPerformanceContext.keyPatterns?.length) {
+        performanceContext += `\nKey patterns: ${clientPerformanceContext.keyPatterns.join("; ")}`;
+      }
+    }
         }
       } catch (e) {
         console.log("Could not fetch performance data:", e);
