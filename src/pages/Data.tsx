@@ -5,9 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { format, subDays, startOfDay, endOfDay, startOfYesterday, endOfYesterday } from 'date-fns';
-import { RefreshCw, Link2Off, CheckCircle2, AlertTriangle, Link2, Download } from 'lucide-react';
+import { RefreshCw, Link2Off, AlertTriangle, Link2, Calendar } from 'lucide-react';
+import { DateRangePicker } from '@/components/insights/DateRangePicker';
 import { InsightsHome } from '@/components/insights/InsightsHome';
 import { CampaignInsightDetail } from '@/components/insights/CampaignInsightDetail';
 import { ResultsEmptyState } from '@/components/insights/ResultsEmptyState';
@@ -720,17 +722,25 @@ export default function Data() {
 
 
           
+          {/* Date Range Picker */}
+          <Card variant="glow" className="rounded-2xl">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  <span>Viewing data for:</span>
+                </div>
+                <DateRangePicker
+                  dateRange={globalDateRange}
+                  customDateRange={customDateRange}
+                  onDateRangeChange={handleDateRangeChange}
+                  onCustomDateRangeChange={handleCustomDateRangeChange} />
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Row 2: Meta status + Import (secondary) */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              {metaConnected && !metaTokenExpired &&
-              <span className="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                  <CheckCircle2 className="h-3 w-3" />
-                  <span className="hidden sm:inline">Meta Connected</span>
-                  <span className="sm:hidden">Connected</span>
-                </span>
-              }
+          {/* Row 2: Reconnect warning OR Refresh button */}
+          <div className="flex items-center justify-end gap-2">
               {metaConnected && metaTokenExpired &&
               <button
                 onClick={() => navigate("/dashboard")}
@@ -749,16 +759,15 @@ export default function Data() {
                   Connect Meta
                 </button>
               }
-            </div>
 
             {metaConnected && !metaTokenExpired && brandId && metaAccountId &&
             <button
               onClick={() => setImportModalOpen(true)}
               className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
               
-                <Download className="h-3 w-3" />
-                <span className="hidden sm:inline">Import from Ads Manager</span>
-                <span className="sm:hidden">Import</span>
+                <RefreshCw className="h-3 w-3" />
+                <span className="hidden sm:inline">Refresh Ad Results</span>
+                <span className="sm:hidden">Refresh</span>
               </button>
             }
           </div>
