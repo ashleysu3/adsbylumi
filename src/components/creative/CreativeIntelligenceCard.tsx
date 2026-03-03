@@ -42,6 +42,10 @@ export function CreativeIntelligenceCard({ intelligence }: CreativeIntelligenceC
     );
   }
 
+  const hasDetails =
+    (intelligence.keyPatterns && intelligence.keyPatterns.length > 0) ||
+    (intelligence.recommendations && intelligence.recommendations.length > 0);
+
   return (
     <Card className="rounded-2xl border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
       <CardContent className="py-4 px-5 space-y-3">
@@ -62,14 +66,16 @@ export function CreativeIntelligenceCard({ intelligence }: CreativeIntelligenceC
               <p className="text-xs text-muted-foreground">{intelligence.summary}</p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
+          {hasDetails && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          )}
         </div>
 
         {/* Key patterns as badges */}
@@ -85,7 +91,7 @@ export function CreativeIntelligenceCard({ intelligence }: CreativeIntelligenceC
         )}
 
         {/* Expanded details */}
-        {expanded && (
+        {expanded && hasDetails && (
           <div className="space-y-3 pt-2 border-t border-border">
             {intelligence.keyPatterns && intelligence.keyPatterns.length > 0 && (
               <div>
