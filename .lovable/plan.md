@@ -1,56 +1,47 @@
 
 
-## Plan: Campaign Selection + Deep LUMI Recommendations in Client Reports
+## Add "Include Existing Posts" Option to Campaign Builder
 
-### What Changes
+### What this does
+Adds an optional step in the Campaign Builder (Configure stage) that asks: "Do you have any existing posts you'd like to include as well?" Users can pick Instagram posts from their connected account, and those posts get added as additional ads alongside the generated creative assets when the campaign is published.
 
-**1. Frontend — Campaign selector in ClientReportModal**
+### Implementation
 
-Before showing "Generate Report," add a campaign selection step:
-- Pass `campaigns` array from `InsightsHome` into `ClientReportModal` as a new prop
-- Show a checklist of all campaigns (name + status badge) with checkboxes, all selected by default
-- User can uncheck campaigns they don't want in the report
-- Send `selectedWorkspaceIds` array to the edge function
-- Update `InsightsHome` to pass its `campaigns` prop through to the modal
+**1. Add post picker toggle + selector to `CampaignBuilderForm.tsx` and `MobileCampaignBuilder.tsx`**
+- After the budget section, add a card: "Include existing posts?" with a toggle
+- When toggled on, show the `SocialGrowthFlow` post picker (reuse the existing component in post-selection-only mode with `fixedObjective` set)
+- Alternatively, build a simpler inline post picker that fetches from the same Instagram media endpoint and lets users check/uncheck posts
+- Store selected posts in `answers.additionalPosts[]`
 
-**2. Edge function — Filter by selected campaigns + richer AI prompt**
+**2. Create a lightweight `ExistingPostPicker` component**
+- Fetches Instagram posts using the existing `analyze-instagram-posts` edge function (already built)
+- Grid of posts with checkboxes, thumbnail + caption preview
+- Selected posts stored in campaign builder answers
+- Only shown when brand has `instagram_account_id` connected
 
-In `generate-client-report/index.ts`:
-- Accept `selectedWorkspaceIds` in the request body
-- Filter fetched workspaces to only those in the selected list
-- Validate every selected campaign appears in the output (post-generation check)
-- Overhaul the AI prompt to demand specific, actionable recommendations per campaign:
+**3. Update `CampaignReview.tsx`**
+- Show selected existing posts in the review screen alongside the generated creative summary
+- Display count and thumbnails
 
-The new prompt rules will include:
-- For each campaign, LUMI must provide a **specific diagnosis** (what's happening and why) and a **concrete next step** (not "we'll look into it")
-- Decision tree logic baked into the prompt:
-  - **Meeting goal** → "This is performing well. We recommend scaling budget by 20% to capture more volume at this efficient cost."
-  - **Slightly above goal (10-30%)** → "CPL has risen from $X to $Y. The likely cause is [creative fatigue / audience saturation / seasonal shift]. Our next step is [specific action: swap in new creative variant / broaden targeting / adjust budget]. We expect this to bring CPL back under goal within 3-5 days."
-  - **Significantly above goal or 0 conversions** → "This campaign hasn't converted yet. This is normal in the first 3-7 days as Meta's algorithm optimizes delivery. We're monitoring [specific metrics like CTR and CPC] which are [healthy/concerning]. If we don't see conversions by [date], we will [specific fallback action]."
-  - **Paused/off** → "We turned this off because [reason]. The replacement plan is [what's next]."
-- Include a "confidence frame" in the system prompt: "Write as a strategist who has managed millions in ad spend. Be direct about what's working and what isn't. When recommending patience, explain the specific signals you're watching and the timeline. Never say 'we'll look into it' — always state what you're doing and why."
-- Reference previous week's recommendations and whether they were followed/effective
+**4. Update `build-meta-campaign` edge function**
+- After creating standard ads from production items, check `answers.additionalPosts`
+- For each additional post, create a "Use Existing Post" ad creative (same payload as `add-posts-to-campaign`: `object_id`, `instagram_user_id`, `source_instagram_media_id`)
+- Add these ads to the same ad set
+- Track success/failure in the result object
 
-**3. Post-generation validation**
+**5. Update `QACheckScreen` (if needed)**
+- Include existing posts count in the pre-flight summary
 
-After AI generates the report, check that every selected campaign name appears in the output. If any are missing, append a note or regenerate.
+### Files to create/edit
+- **New**: `src/components/ExistingPostPicker.tsx` — reusable post picker with grid + checkboxes
+- **Edit**: `src/components/CampaignBuilderForm.tsx` — add the "include existing posts" card
+- **Edit**: `src/components/MobileCampaignBuilder.tsx` — same for mobile
+- **Edit**: `src/components/CampaignReview.tsx` — show additional posts in review
+- **Edit**: `supabase/functions/build-meta-campaign/index.ts` — create ads from existing posts after standard ads
 
-### Files to Modify
-
-1. **`src/components/insights/ClientReportModal.tsx`** — Add campaign selection step with checkboxes, pass selected IDs to edge function
-2. **`src/components/insights/InsightsHome.tsx`** — Pass `campaigns` prop to `ClientReportModal`
-3. **`supabase/functions/generate-client-report/index.ts`** — Accept `selectedWorkspaceIds`, filter campaigns, upgrade prompt with decision-tree recommendations and confidence framing
-
-### Technical Details
-
-Campaign selector UI flow:
-1. Modal opens → shows campaign checklist (all checked by default) + "Generate Report" button
-2. User unchecks any they want excluded
-3. Click generate → sends `selectedWorkspaceIds` to edge function
-4. Edge function filters to only those campaigns, builds richer prompt, validates output coverage
-
-Prompt upgrades focus on three things:
-- **Specificity**: Every recommendation names the exact creative, metric, or action
-- **Confidence**: Language conveys expertise and a clear plan, not uncertainty
-- **Accountability**: References last week's recommendations and reports on their outcome
+### UX Flow
+1. User sets budget → sees new card "Want to include existing posts too?"
+2. Toggle on → post grid appears, user selects posts
+3. Review screen shows both generated creatives and selected existing posts
+4. On publish, standard ads are created first, then existing post ads are added to the same ad set
 
