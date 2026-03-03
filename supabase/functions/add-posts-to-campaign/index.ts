@@ -184,17 +184,14 @@ Deno.serve(async (req) => {
 
         // Build object_story_spec for promoting an existing IG post
         // Use the post's permalink ID to create an ad from existing content
-        const objectStorySpec: any = {
-          page_id: pageId,
-        };
+        // For existing Instagram posts, source_instagram_media_id and
+        // instagram_actor_id must be top-level params, NOT inside object_story_spec
+        creativeParams.source_instagram_media_id = postId;
+        creativeParams.object_story_spec = JSON.stringify({ page_id: pageId });
 
         if (igAccountId) {
-          objectStorySpec.instagram_actor_id = igAccountId;
+          creativeParams.instagram_actor_id = igAccountId;
         }
-
-        // For existing Instagram posts, we use source_instagram_media_id
-        creativeParams.source_instagram_media_id = postId;
-        creativeParams.object_story_spec = JSON.stringify(objectStorySpec);
 
         const creativeRes = await fetch(
           `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
