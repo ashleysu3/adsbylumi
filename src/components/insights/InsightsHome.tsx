@@ -14,8 +14,10 @@ import {
   RefreshCw,
   Plus,
   Wand2,
-  ArrowRight } from
+  ArrowRight,
+  FileText } from
 'lucide-react';
+import { ClientReportModal } from './ClientReportModal';
 import {
   getLumiKPIConfig,
   getLumiKPIStatus,
@@ -109,6 +111,9 @@ interface InsightsHomeProps {
   isLoading: boolean;
   accountMetrics?: AccountMetrics | null;
   accountMetricsLoading?: boolean;
+  brandId?: string;
+  dateRangeStart?: string;
+  dateRangeEnd?: string;
 }
 
 function getPrimaryKPIValue(metrics: CampaignMetrics | null, primaryKey: string): number | null {
@@ -169,7 +174,10 @@ export function InsightsHome({
   onOfferLinked,
   isLoading,
   accountMetrics,
-  accountMetricsLoading
+  accountMetricsLoading,
+  brandId,
+  dateRangeStart,
+  dateRangeEnd
 }: InsightsHomeProps) {
   const navigate = useNavigate();
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live']);
@@ -177,6 +185,7 @@ export function InsightsHome({
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   const [linkOfferModal, setLinkOfferModal] = useState<{
     open: boolean;
@@ -333,16 +342,29 @@ export function InsightsHome({
         </p>
       </div>
 
-      {/* Subtle date range row */}
-      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Calendar className="h-4 w-4" />
-        <span>Viewing data for:</span>
-        <DateRangePicker
-          dateRange={dateRange}
-          customDateRange={customDateRange}
-          onDateRangeChange={onDateRangeChange}
-          onCustomDateRangeChange={onCustomDateRangeChange}
-        />
+      {/* Subtle date range row + Generate Report */}
+      <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground flex-wrap">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          <span>Viewing data for:</span>
+          <DateRangePicker
+            dateRange={dateRange}
+            customDateRange={customDateRange}
+            onDateRangeChange={onDateRangeChange}
+            onCustomDateRangeChange={onCustomDateRangeChange}
+          />
+        </div>
+        {brandId && campaigns.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl text-xs gap-1.5"
+            onClick={() => setReportModalOpen(true)}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Generate Report
+          </Button>
+        )}
       </div>
 
       {/* Account Overview */}
@@ -642,6 +664,17 @@ export function InsightsHome({
         onSuccess={() => handleOfferLinked()} />
 
       }
+
+      {/* Client Report Modal */}
+      {brandId && (
+        <ClientReportModal
+          open={reportModalOpen}
+          onOpenChange={setReportModalOpen}
+          brandId={brandId}
+          dateRangeStart={dateRangeStart || ''}
+          dateRangeEnd={dateRangeEnd || ''}
+        />
+      )}
     </div>);
 
 }
