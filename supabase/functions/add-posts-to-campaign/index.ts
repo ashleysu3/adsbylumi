@@ -78,9 +78,9 @@ Deno.serve(async (req) => {
     const metaAccessToken = brand.meta_access_token;
     const igAccountId = brand.instagram_account_id;
 
-    if (!metaAccountId || !pageId || !metaAccessToken) {
+    if (!metaAccountId || !pageId || !metaAccessToken || !igAccountId) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Meta account, Page, or access token not connected' }),
+        JSON.stringify({ success: false, error: 'Meta account, Page, Instagram account, or access token not connected' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -174,30 +174,17 @@ Deno.serve(async (req) => {
       const mediaType = post.media_type; // IMAGE or VIDEO
       const caption = post.caption || '';
 
-      // Meta constraint: existing Instagram VIDEO posts cannot be promoted directly
-      // unless they are uploaded to Facebook first.
-      if (mediaType === 'VIDEO') {
-        failedAds.push({
-          postId,
-          error: 'This Instagram video cannot be promoted directly. Please select image posts, or upload this video to Facebook first.',
-        });
-        continue;
-      }
 
       try {
-        // For Instagram posts, we create an ad creative using the existing post's ID.
-        // We use source_instagram_media_id to promote the existing post.
+        // Use Existing Post payload for Instagram media:
+        // Meta expects page (object_id), instagram_user_id, and source_instagram_media_id.
         const creativeParams: Record<string, string> = {
           name: `Post Ad - ${caption.substring(0, 40) || postId}`,
+          object_id: pageId,
+          instagram_user_id: igAccountId,
+          source_instagram_media_id: postId,
           access_token: metaAccessToken,
         };
-
-        // Build object_story_spec for promoting an existing IG post
-        // Use the post's permalink ID to create an ad from existing content
-        // For existing Instagram posts, source_instagram_media_id and
-        // instagram_actor_id must be top-level params, NOT inside object_story_spec
-        // Promote existing IG media: specify only one promoted object
-        creativeParams.source_instagram_media_id = postId;
 
 
         const creativeRes = await fetch(
@@ -213,8 +200,9 @@ Deno.serve(async (req) => {
 
         if (creativeData.error) {
           console.error(`Creative creation failed for post ${postId}:`, creativeData.error);
-          const metaUserMessage = creativeData.error.error_user_msg || creativeData.error.message || 'Creative creation failed';
-          failedAds.push({ postId, error: metaUserMessage });
+          const metaMessage = creativeData.error.error_user_msg || creativeData.error.message || 'Creative creation failed';
+          const subcode = creativeData.error.error_subcode ? ` (code ${creativeData.error.error_subcode})` : '';
+          failedAds.push({ postId, error: `${metaMessage}${subcode}` });
           continue;
         }
 
