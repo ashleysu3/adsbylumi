@@ -1207,7 +1207,22 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
 export function useLumiAssistant() {
   const context = useContext(LumiAssistantContext);
   if (context === undefined) {
-    throw new Error("useLumiAssistant must be used within a LumiAssistantProvider");
+    // Return safe defaults instead of throwing — prevents HMR/module duplication crashes
+    return {
+      recommendation: null,
+      setRecommendation: () => {},
+      clearRecommendation: () => {},
+      dismissForSession: () => {},
+      isPausedForSession: false,
+      history: [],
+      unreadCount: 0,
+      markHistoryRead: () => {},
+      openChat: () => {},
+      isDesktopNavLayout: false,
+      setDesktopNavLayout: () => {},
+      lumiUserState: undefined,
+      setLumiUserState: () => {},
+    } as LumiAssistantContextType;
   }
   return context;
 }
