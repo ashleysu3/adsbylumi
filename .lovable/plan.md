@@ -1,38 +1,38 @@
 
 
-## Plan: Split Recommendations Between Campaign Cards and Lumi Card
+## Simplify Campaign Goal Display
 
 ### Problem
-Currently all recommendations (both user-action items like "refresh creative" and automatable items like "scale budget") live in the Lumi Recommendations card. The user wants:
-- **User-action recommendations** (creative refresh, add posts, try new angles) shown directly on each campaign card
-- **Lumi Recommendations card** reserved for things Lumi can execute automatically (budget changes, ad pause/resume, bench swaps)
-- Button labels should be specific ("Refresh Creative", "Add New Posts") not generic "Next Step"
+The current goal row shows a variance badge with numbers like `-$0.24 (-90%)` which is confusing for non-expert users. Too much data, not enough meaning.
+
+### Approach: Status dot + plain-language hover tooltip
+
+Replace the numeric variance badge with a simple **colored status dot** next to the goal value. The dot communicates performance at a glance (green = great, amber = watch, red = needs attention). On hover, a friendly tooltip explains what's happening in plain language:
+
+- **Green dot + hover**: "Your ads are beating your goal of $0.27 — great job! 🎉"
+- **Amber dot + hover**: "Your ads are close to your goal of $0.27. Keep an eye on it."
+- **Red dot + hover**: "Your ads aren't meeting your goal of $0.27. Check Lumi's recommendations for next steps."
+- **No data**: No dot, just the goal badge
+
+This removes the confusing percentages and absolute differences entirely. The goal value stays visible as a badge, and the edit button remains.
+
+### Layout (before → after)
+
+```text
+BEFORE:  ⊕ Cost Per Click Goal:  [$0.27 (Lumi's rec)]  [-$0.24 (-90%)]  ✏ Edit
+AFTER:   ⊕ Cost Per Click Goal:  🟢 [$0.27 (Lumi's rec)]  ✏ Edit
+                                  ↑ hover for friendly message
+```
 
 ### Changes
 
-#### 1. `src/components/insights/InsightsHome.tsx` — Show per-campaign action tips on cards + filter Lumi card
-
-- After fetching recommendations, split them into two buckets:
-  - **Automatable** (`budget_increase`, `budget_decrease`, `pause_ad`, `resume_ad`, `swap_creative`) → stay in `LumiRecommendations` card
-  - **User-action** (`create_creative`, `keep_running`, or any with `userAction: true`) → stored per-campaign and rendered inline on the campaign card
-- On each campaign card (Row 3 area), if there's a user-action rec for that campaign, show a small inline recommendation row with a specific button label derived from the rec type/title:
-  - If title contains "resonating" or "CTR" → "Add New Posts" linking to selectPosts flow
-  - If title contains "fatigue" or "cost per purchase" or "refresh" → "Refresh Creative" linking to refreshCreative flow
-  - Fallback → "Try New Angles"
-- Pass only automatable recs to `<LumiRecommendations>`; hide the card entirely if none exist
-
-#### 2. `src/components/insights/LumiRecommendations.tsx` — Minor cleanup
-
-- Remove `create_creative` and other user-action types from this component's rendering since they'll live on campaign cards
-- The "Next Step" button path is no longer needed here — all items in Lumi Recommendations will have "Approve" buttons
-
-#### 3. `src/components/insights/CampaignInsightDetail.tsx` — Same split on detail page
-
-- Filter the recommendations passed to `<LumiRecommendations>` to only automatable types
-- Show user-action recs inline above/below the summary cards with specific action buttons
+**`src/components/insights/CampaignGoalRow.tsx`**
+- Remove the variance badge entirely
+- Add a small colored dot (using existing `getLumiKPIStatus` logic) before the goal badge
+- Wrap the dot in a `<Tooltip>` with a warm, plain-language message based on status
+- Keep the goal badge and edit popover as-is
+- Import `Tooltip` components
 
 ### Files to edit
-- `src/components/insights/InsightsHome.tsx`
-- `src/components/insights/LumiRecommendations.tsx`
-- `src/components/insights/CampaignInsightDetail.tsx`
+- `src/components/insights/CampaignGoalRow.tsx`
 
