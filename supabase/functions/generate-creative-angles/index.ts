@@ -208,7 +208,8 @@ ANGLE TYPES TO CONSIDER (but don't expose these labels):
 - Urgency/Scarcity (limited opportunity)
 
 OUTPUT FORMAT:
-Return a JSON object with an "angles" array. Each angle object must have:
+Return ONLY valid JSON (RFC8259) with an "angles" array. No markdown, no code fences, no extra text.
+Each angle object must have:
 - id: unique string (lowercase, underscore-separated)
 - name: short display name (2-4 words)
 - description: one sentence for non-marketers
@@ -278,16 +279,93 @@ Generate exactly 11 creative angles that would resonate with this audience and o
 
     console.log("[generate-creative-angles] Parsing AI response...");
 
-    // Robust JSON extraction
-    const extractJson = (text: string) => {
-      const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-      const raw = (codeBlock?.[1] ?? text).trim();
-      const first = raw.indexOf("{");
-      const last = raw.lastIndexOf("}");
-      return JSON.parse(first !== -1 && last !== -1 ? raw.slice(first, last + 1) : raw);
+    // Resilient JSON extraction + repair for malformed LLM output
+    const extractJson = async (text: string) => {
+      const parseWithHeuristics = (input: string) => {
+        const codeBlock = input.match(/```(?:json)?\s*([\s\S]*?)```/i);
+        let raw = (codeBlock?.[1] ?? input).trim();
+
+        const first = raw.indexOf("{");
+        const last = raw.lastIndexOf("}");
+        if (first !== -1 && last !== -1) raw = raw.slice(first, last + 1);
+
+        raw = raw
+          .replace(/^\uFEFF/, "")
+          .replace(/,\s*([}\]])/g, "$1")
+          .replace(/[\x00-\x1F\x7F]/g, " ")
+          .replace(/"\s*\n\s*"/g, '", "')
+          .trim();
+
+        try {
+          return JSON.parse(raw);
+        } catch {
+          // Brace/bracket balancing fallback (for truncated JSON)
+          let repaired = raw;
+
+          const openBraces = (repaired.match(/{/g) || []).length;
+          const closeBraces = (repaired.match(/}/g) || []).length;
+          if (openBraces > closeBraces) repaired += "}".repeat(openBraces - closeBraces);
+
+          const openBrackets = (repaired.match(/\[/g) || []).length;
+          const closeBrackets = (repaired.match(/\]/g) || []).length;
+          if (openBrackets > closeBrackets) repaired += "]".repeat(openBrackets - closeBrackets);
+
+          repaired = repaired
+            .replace(/,\s*([}\]])/g, "$1")
+            .replace(/,\s*$/, "")
+            .trim();
+
+          return JSON.parse(repaired);
+        }
+      };
+
+      try {
+        return parseWithHeuristics(text);
+      } catch (initialParseError) {
+        console.warn("[generate-creative-angles] Initial JSON parse failed, attempting AI repair...");
+
+        const repairResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You repair malformed JSON. Return ONLY valid JSON with identical meaning. No markdown, no commentary.",
+              },
+              {
+                role: "user",
+                content: `Repair this malformed JSON and return only valid JSON:\n\n${text}`,
+              },
+            ],
+          }),
+        });
+
+        if (!repairResponse.ok) {
+          throw initialParseError;
+        }
+
+        const repairPayload = await repairResponse.json();
+        const repairedContent =
+          repairPayload?.choices?.[0]?.message?.content ??
+          repairPayload?.choices?.[0]?.text ??
+          repairPayload?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
+          "";
+
+        if (!repairedContent) {
+          throw initialParseError;
+        }
+
+        return parseWithHeuristics(repairedContent);
+      }
     };
 
-    const parsed = extractJson(rawContent);
+    const parsed = await extractJson(rawContent);
 
     console.log("[generate-creative-angles] Success - generated", parsed.angles?.length || 0, "angles");
 
