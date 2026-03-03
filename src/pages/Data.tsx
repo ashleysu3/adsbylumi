@@ -344,6 +344,7 @@ export default function Data() {
       const campaignData: CampaignData[] = publishedWorkspaces.map((w) => {
         const builderAnswers = w.campaign_builder_answers as any;
         const dailyBudget = builderAnswers?.budget ? Number(builderAnswers.budget) : undefined;
+        const normalizedStatus = ((w.meta_campaign_status || 'unknown') as string).toLowerCase();
         return {
           id: w.id,
           name: w.name,
@@ -351,7 +352,7 @@ export default function Data() {
           objective: (w.campaign_templates as any)?.objective || null,
           metrics: null,
           userGoal: loadedGoals[w.id] || null,
-          status: w.meta_campaign_status || 'live',
+          status: normalizedStatus,
           offerId: w.offer_id || null,
           offerName: w.offer_name || null,
           brandId: w.brand_id,
@@ -486,10 +487,11 @@ export default function Data() {
               return campaign;
             }
 
-            // NEW: Check if campaign is not ACTIVE in Meta
-            // Update local status to match Meta's real-time status
-            if (data?.status && data.status !== 'ACTIVE') {
-              const newStatus = data.status.toLowerCase();
+            const metaStatus = (data?.status || '').toString().toUpperCase();
+
+            // If Meta explicitly says non-active, treat as inactive and hide from live recommendations
+            if (metaStatus && metaStatus !== 'ACTIVE') {
+              const newStatus = metaStatus.toLowerCase();
               return {
                 ...campaign,
                 metrics: null, // No metrics for inactive campaigns
@@ -518,11 +520,13 @@ export default function Data() {
               console.log('Could not fetch previous period metrics');
             }
 
+            const normalizedCurrentStatus = metaStatus === 'ACTIVE' ? 'active' : ((campaign.status || 'unknown') as string).toLowerCase();
+
             return {
               ...campaign,
-              metrics: data?.metrics || null,
+              metrics: normalizedCurrentStatus === 'active' ? data?.metrics || null : null,
               previousMetrics,
-              status: 'active', // Confirmed active from Meta
+              status: normalizedCurrentStatus,
               userGoal: userGoals[campaign.id] || null
             };
           } catch (err: any) {
