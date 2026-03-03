@@ -18,7 +18,10 @@ import {
   Pause,
   ShieldCheck,
   Instagram,
+  ImagePlus,
 } from "lucide-react";
+import { useBrand } from "@/contexts/BrandContext";
+import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
 
 interface CampaignBuilderFormProps {
   workspace: any;
@@ -64,6 +67,14 @@ export function CampaignBuilderForm({
 
   const [budget, setBudget] = useState(answers.budget || 30);
   const [launchActive, setLaunchActive] = useState(answers.launchActive ?? true);
+  const [includeExistingPosts, setIncludeExistingPosts] = useState(
+    (answers.additionalPosts?.length || 0) > 0
+  );
+  const [additionalPosts, setAdditionalPosts] = useState<SelectedPost[]>(
+    answers.additionalPosts || []
+  );
+  const { activeBrand } = useBrand();
+  const hasInstagram = !!activeBrand?.meta_account_id && !!(workspace?.brands?.instagram_account_id);
 
   // Sync answers on change
   useEffect(() => {
@@ -80,9 +91,10 @@ export function CampaignBuilderForm({
       placements: "Advantage+",
       warmRetargeting: false,
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
+      additionalPosts: includeExistingPosts ? additionalPosts : [],
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts]);
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
@@ -141,6 +153,45 @@ export function CampaignBuilderForm({
           </div>
         </CardContent>
       </Card>
+
+      {/* Include Existing Posts — only if Instagram connected and NOT a social growth campaign */}
+      {hasInstagram && !isSocialGrowth && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-pink-500/10">
+                  <ImagePlus className="h-5 w-5 text-pink-500" />
+                </div>
+                <div>
+                  <Label htmlFor="existing-posts-toggle" className="font-semibold text-sm cursor-pointer">
+                    Include existing posts?
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Add Instagram posts as additional ads
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="existing-posts-toggle"
+                checked={includeExistingPosts}
+                onCheckedChange={(checked) => {
+                  setIncludeExistingPosts(checked);
+                  if (!checked) setAdditionalPosts([]);
+                }}
+              />
+            </div>
+            {includeExistingPosts && workspace?.brands?.instagram_account_id && (
+              <ExistingPostPicker
+                brandId={workspace.brands.id || workspace.brand_id}
+                instagramAccountId={workspace.brands.instagram_account_id}
+                selectedPosts={additionalPosts}
+                onSelectionChange={setAdditionalPosts}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Launch Status */}
       <Card>

@@ -706,6 +706,95 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Step 5: Create ads from additional existing Instagram posts
+    const additionalPosts = answers?.additionalPosts || [];
+    if (additionalPosts.length > 0 && pageId) {
+      console.log(`Creating ${additionalPosts.length} ads from existing Instagram posts...`);
+
+      // Get Instagram account ID from brand
+      const { data: brandFull } = await supabase
+        .from('brands')
+        .select('instagram_account_id')
+        .eq('id', brand.id)
+        .single();
+
+      const igAccountId = brandFull?.instagram_account_id;
+
+      if (igAccountId) {
+        for (const post of additionalPosts) {
+          try {
+            // Create ad creative using "Use Existing Post" pattern
+            const creativeParams: Record<string, string> = {
+              name: `Existing Post - ${post.id}`,
+              object_id: pageId,
+              instagram_user_id: igAccountId,
+              source_instagram_media_id: post.id,
+              access_token: metaAccessToken,
+            };
+
+            const creativeResponse = await fetch(
+              `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(creativeParams),
+              }
+            );
+            const creativeData = await creativeResponse.json();
+
+            if (creativeData.error) {
+              console.error(`Existing post creative failed (${post.id}):`, creativeData.error);
+              result.failedAds.push({
+                conceptId: post.id,
+                conceptTitle: `Instagram Post`,
+                error: `Existing post creative failed: ${creativeData.error.message || 'Unknown'}`,
+              });
+              continue;
+            }
+
+            // Create ad in the primary ad set
+            const adResponse = await fetch(
+              `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                  adset_id: primaryAdSetId,
+                  name: `IG Post - ${post.caption?.slice(0, 30) || post.id}`,
+                  creative: JSON.stringify({ creative_id: creativeData.id }),
+                  status: 'PAUSED',
+                  access_token: metaAccessToken,
+                }),
+              }
+            );
+            const adData = await adResponse.json();
+
+            if (adData.error) {
+              console.error(`Existing post ad failed (${post.id}):`, adData.error);
+              result.failedAds.push({
+                conceptId: post.id,
+                conceptTitle: `Instagram Post`,
+                error: `Existing post ad failed: ${adData.error.message || 'Unknown'}`,
+              });
+              continue;
+            }
+
+            result.adIds.push(adData.id);
+            console.log(`Existing post ad created: ${adData.id}`);
+          } catch (postError: any) {
+            console.error(`Error creating ad for existing post ${post.id}:`, postError);
+            result.failedAds.push({
+              conceptId: post.id,
+              conceptTitle: `Instagram Post`,
+              error: `Existing post error: ${postError.message}`,
+            });
+          }
+        }
+      } else {
+        result.warnings.push('Instagram account not connected — existing posts were skipped.');
+      }
+    }
+
     // Determine overall success - we need at least 1 ad
     result.success = result.adIds.length > 0;
 

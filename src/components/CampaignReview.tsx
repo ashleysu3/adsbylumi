@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Instagram as InstagramIcon } from "lucide-react";
 import { 
   ArrowLeft, 
   Rocket, 
@@ -45,6 +46,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   // Detect social growth campaign (uses Instagram posts, no creative concepts needed)
   const isSocialGrowth = !!(workspace?.creative_json as any)?.socialGrowth;
   const selectedPosts = isSocialGrowth ? ((workspace?.creative_json as any)?.selectedPosts || []) : [];
+  const additionalPosts = answers?.additionalPosts || [];
   
   // Check if campaign was already published
   const existingCampaignIds = workspace.meta_campaign_ids;
@@ -560,6 +562,34 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           )}
         </CardContent>
       </Card>
+
+      {/* Additional Existing Posts */}
+      {additionalPosts.length > 0 && (
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <InstagramIcon className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">
+                Additional Instagram Posts ({additionalPosts.length})
+              </h3>
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+              {additionalPosts.map((post: any) => (
+                <div key={post.id} className="relative aspect-square rounded-lg overflow-hidden border">
+                  <img
+                    src={post.thumbnail_url || post.media_url}
+                    alt={post.caption?.slice(0, 30) || "Post"}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              These posts will be added as extra ads alongside your generated creatives.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pre-Build Copy Summary — skip for social growth */}
       {!isSocialGrowth && (
