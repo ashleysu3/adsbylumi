@@ -174,13 +174,7 @@ EXTRACT THE FOLLOWING (be thorough - pull actual quotes and language from the pa
 
 3. **price_point** - The price in text format (e.g., "$47", "$997", "Free", "$297/month"). Include any payment plans, crossed-out prices, or "value" comparisons if mentioned.
 
-4. **target_outcome** - The main transformation or result, formatted clearly:
-   
-   Before: [Current state/problem]
-   
-   After: [Transformed state/result]
-   
-   Be SPECIFIC about what will change in their life/business.
+4. **target_outcome** - The main transformation or result. Return this as a single plain string, not an object or JSON. Format it as: "Before: [Current state/problem]. After: [Transformed state/result]." Be SPECIFIC about what will change in their life/business.
 
 5. **key_benefits** - Array of 5-7 specific benefits. Each benefit should be a clear, complete statement.
 

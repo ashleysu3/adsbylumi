@@ -126,7 +126,11 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
             ...prev,
             description: data.description || prev.description,
             price_point: data.price_point || prev.price_point,
-            target_outcome: data.target_outcome || prev.target_outcome,
+            target_outcome: typeof data.target_outcome === 'string'
+              ? data.target_outcome
+              : data.target_outcome
+                ? JSON.stringify(data.target_outcome)
+                : prev.target_outcome,
           }));
           toast.success("✨ Page analyzed! Review the extracted info.");
         }
@@ -182,7 +186,11 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
         ...prev,
         description: data.description || prev.description,
         price_point: data.price_point || prev.price_point,
-        target_outcome: data.target_outcome || prev.target_outcome,
+        target_outcome: typeof data.target_outcome === 'string'
+          ? data.target_outcome
+          : data.target_outcome
+            ? JSON.stringify(data.target_outcome)
+            : prev.target_outcome,
       }));
 
       if (data.needs_clarification) {
@@ -224,7 +232,11 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
         ...prev,
         description: data.description || prev.description,
         price_point: data.price_point || prev.price_point,
-        target_outcome: data.target_outcome || prev.target_outcome,
+        target_outcome: typeof data.target_outcome === 'string'
+          ? data.target_outcome
+          : data.target_outcome
+            ? JSON.stringify(data.target_outcome)
+            : prev.target_outcome,
       }));
 
       if (data.needs_clarification) {
@@ -336,7 +348,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Offer</DialogTitle>
+          <DialogTitle>Add What You're Promoting</DialogTitle>
           <DialogDescription>
             Enter your offer details and we'll generate a product-specific psychological profile
           </DialogDescription>

@@ -81,7 +81,7 @@ export default function Offers() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="space-y-1">
-          <h2 className="text-2xl md:text-3xl font-display tracking-tight">Offers</h2>
+          <h2 className="text-2xl md:text-3xl font-display tracking-tight">What I'm Promoting</h2>
           <p className="text-sm md:text-base text-muted-foreground">
             Manage the products, services, and programs you're promoting.
           </p>
