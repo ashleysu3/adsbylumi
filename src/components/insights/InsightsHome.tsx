@@ -170,7 +170,7 @@ export function InsightsHome({
   accountMetricsLoading
 }: InsightsHomeProps) {
   const navigate = useNavigate();
-  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live', 'paused', 'imported']);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live']);
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
