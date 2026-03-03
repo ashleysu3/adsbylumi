@@ -722,22 +722,6 @@ export default function Data() {
 
 
           
-          {/* Date Range Picker */}
-          <Card variant="glow" className="rounded-2xl">
-            <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  <span>Viewing data for:</span>
-                </div>
-                <DateRangePicker
-                  dateRange={globalDateRange}
-                  customDateRange={customDateRange}
-                  onDateRangeChange={handleDateRangeChange}
-                  onCustomDateRangeChange={handleCustomDateRangeChange} />
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Row 2: Reconnect warning OR Refresh button */}
           <div className="flex items-center justify-end gap-2">
