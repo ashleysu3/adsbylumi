@@ -189,9 +189,6 @@ Deno.serve(async (req) => {
         creativeParams.source_instagram_media_id = postId;
         creativeParams.object_story_spec = JSON.stringify({ page_id: pageId });
 
-        if (igAccountId) {
-          creativeParams.instagram_actor_id = igAccountId;
-        }
 
         const creativeRes = await fetch(
           `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
