@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useBrand } from '@/contexts/BrandContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -182,6 +183,7 @@ export function InsightsHome({
   dateRangeEnd
 }: InsightsHomeProps) {
   const navigate = useNavigate();
+  const { isAgencyUser } = useBrand();
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live']);
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -382,7 +384,7 @@ export function InsightsHome({
             onCustomDateRangeChange={onCustomDateRangeChange}
           />
         </div>
-        {brandId && campaigns.length > 0 && (
+        {brandId && campaigns.length > 0 && isAgencyUser && (
           <Button
             variant="outline"
             size="sm"
