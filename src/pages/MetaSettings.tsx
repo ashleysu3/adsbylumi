@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { MetaAccountConnect } from '@/components/MetaAccountConnect';
 import { useLumi } from '@/contexts/LumiContext';
+import { useBrand } from '@/contexts/BrandContext';
 import { 
   Link2, Link2Off, CheckCircle, XCircle, 
   AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
@@ -20,7 +21,8 @@ import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
 
 export default function MetaSettings() {
   const navigate = useNavigate();
-  const { brandId: activeBrandId, setBrandId: setActiveBrandId } = useLumi();
+  const { setBrandId: setLumiBrandId } = useLumi();
+  const { activeBrand, loading: brandContextLoading } = useBrand();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [hasValidToken, setHasValidToken] = useState(false);
@@ -41,9 +43,14 @@ export default function MetaSettings() {
     };
   } | null>(null);
 
+  // Re-fetch when active brand changes
   useEffect(() => {
-    fetchBrand();
-  }, []);
+    if (!brandContextLoading && activeBrand?.id) {
+      fetchBrand(activeBrand.id);
+    } else if (!brandContextLoading && !activeBrand) {
+      setLoading(false);
+    }
+  }, [activeBrand?.id, brandContextLoading]);
 
   // Auto-test connection when brand is loaded and connected
   useEffect(() => {
@@ -87,7 +94,13 @@ export default function MetaSettings() {
     }
   };
 
-  const fetchBrand = async () => {
+  const fetchBrand = async (targetBrandId?: string) => {
+    const brandIdToFetch = targetBrandId || activeBrand?.id;
+    if (!brandIdToFetch) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -95,43 +108,22 @@ export default function MetaSettings() {
         return;
       }
 
-      // Must be a string literal (not built dynamically) so the typed client returns a real row shape.
       const brandSelect =
         'id,user_id,name,meta_account_id,page_id,page_name,instagram_account_id,instagram_account_name,meta_token_expires_at,meta_pixel_id,meta_pixel_name,meta_pixel_events' as const;
 
-      const fetchById = async (id: string) => {
-        // Safety: only load brands owned by the current user.
-        // Prevents stale/incorrect brandIds (e.g. from cached state) from breaking Meta OAuth.
-        const { data, error } = await supabase
-          .from('brands')
-          .select(brandSelect)
-          .eq('id', id)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (error) throw error;
-        return data;
-      };
+      const { data, error } = await supabase
+        .from('brands')
+        .select(brandSelect)
+        .eq('id', brandIdToFetch)
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      const fetchLatestForUser = async () => {
-        const { data, error } = await supabase
-          .from('brands')
-          .select(brandSelect)
-          .eq('user_id', user.id)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (error) throw error;
-        return data;
-      };
+      if (error) throw error;
 
-      const data = activeBrandId ? (await fetchById(activeBrandId)) : (await fetchLatestForUser());
-      const resolved = data ?? (await fetchLatestForUser());
-
-      setBrand(resolved);
-      if (resolved?.id) {
-        setActiveBrandId(resolved.id);
-        // Avoid reading meta_access_token client-side; treat meta_token_expires_at as the "token present" signal.
-        setHasValidToken(!!resolved.meta_token_expires_at);
+      setBrand(data);
+      if (data?.id) {
+        setLumiBrandId(data.id);
+        setHasValidToken(!!data.meta_token_expires_at);
       } else {
         setHasValidToken(false);
       }
