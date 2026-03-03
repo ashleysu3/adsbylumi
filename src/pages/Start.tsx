@@ -23,7 +23,9 @@ import {
   AlertCircle,
   Palette,
   Zap,
+  Mail,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +57,9 @@ export default function Start() {
   const { activeBrand, loading: brandLoading } = useBrand();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
+  const [trendInsights, setTrendInsights] = useState<any[] | null>(null);
+  const [trendLoading, setTrendLoading] = useState(false);
+  const [trendFetched, setTrendFetched] = useState(false);
   const [userState, setUserState] = useState<UserState>({
     hasOffers: false,
     hasCampaigns: false,
@@ -355,7 +360,31 @@ export default function Start() {
           </div>
         </motion.section>
 
-        {/* Section C: Your Setup */}
+        {/* Section C: Weekly Digest Info (if live campaigns) */}
+        {userState.hasLiveCampaigns && (
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.25 }}
+          >
+            <Card className="border-primary/15 bg-primary/5">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Mail className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">📬 Your weekly digest arrives every Monday morning</p>
+                  <p className="text-xs text-muted-foreground">Performance recap + Lumi's recommendations for the week.</p>
+                </div>
+                <Button size="sm" variant="outline" className="text-xs flex-shrink-0" onClick={() => navigate('/settings/digest-preview')}>
+                  Preview Last Report
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.section>
+        )}
+
+        {/* Section D: Your Setup */}
         <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight, CheckCircle2, ChevronLeft, User, Smile, Link2, X } from "lucide-react";
+import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight, CheckCircle2, ChevronLeft, User, Smile, Link2, X, Mail } from "lucide-react";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { PostConnectionAnalysisModal } from "@/components/PostConnectionAnalysisModal";
@@ -532,12 +532,29 @@ export default function Onboarding() {
                     </p>
                   </div>
                 </motion.div>
+
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.8 }}
+                  className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
+                >
+                  <div className="p-2 rounded-lg bg-gradient-lumi">
+                    <Mail className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm mb-1">Your Weekly Lumi Digest</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Every Monday, Lumi sends you a performance recap and tells you exactly what to focus on that week — so you always know your next move.
+                    </p>
+                  </div>
+                </motion.div>
               </div>
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
+                transition={{ delay: 1.0 }}
                 className="flex gap-2"
               >
                 <Button variant="outline" onClick={() => setStep(2)}>
