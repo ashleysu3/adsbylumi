@@ -174,6 +174,16 @@ Deno.serve(async (req) => {
       const mediaType = post.media_type; // IMAGE or VIDEO
       const caption = post.caption || '';
 
+      // Meta constraint: existing Instagram VIDEO posts cannot be promoted directly
+      // unless they are uploaded to Facebook first.
+      if (mediaType === 'VIDEO') {
+        failedAds.push({
+          postId,
+          error: 'This Instagram video cannot be promoted directly. Please select image posts, or upload this video to Facebook first.',
+        });
+        continue;
+      }
+
       try {
         // For Instagram posts, we create an ad creative using the existing post's ID.
         // We use source_instagram_media_id to promote the existing post.
@@ -203,7 +213,8 @@ Deno.serve(async (req) => {
 
         if (creativeData.error) {
           console.error(`Creative creation failed for post ${postId}:`, creativeData.error);
-          failedAds.push({ postId, error: creativeData.error.message || 'Creative creation failed' });
+          const metaUserMessage = creativeData.error.error_user_msg || creativeData.error.message || 'Creative creation failed';
+          failedAds.push({ postId, error: metaUserMessage });
           continue;
         }
 
@@ -274,7 +285,7 @@ Deno.serve(async (req) => {
           : `Successfully added ${createdAdIds.length} post(s) as ads${failedAds.length > 0 ? ` (${failedAds.length} failed)` : ''}`,
       }),
       {
-        status: allFailed ? 400 : 200,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
