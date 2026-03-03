@@ -276,16 +276,16 @@ export function InsightsHome({
         let fallback: any = null;
         switch (status) {
           case 'healthy':
-            fallback = { id: `fallback-${campaign.id}`, type: 'budget_increase', title: 'Strong performance — consider scaling', description: 'Your primary KPI is above benchmark. This could be a good time to increase budget.', impact: 'Capture more results at efficient cost', confidence: 'medium', requiresDoubleApproval: true, actionPayload: { workspaceId: campaign.id, percentageChange: 20, currentBudget: campaign.dailyBudget || 25 }, priority: 50 };
+            fallback = { id: `fallback-${campaign.id}`, type: 'budget_increase', title: 'Strong ad performance — consider scaling', description: 'Your primary ad KPI is above benchmark. This could be a good time to increase ad budget.', impact: 'Capture more results at efficient cost', confidence: 'medium', requiresDoubleApproval: true, actionPayload: { workspaceId: campaign.id, percentageChange: 20, currentBudget: campaign.dailyBudget || 25 }, priority: 50 };
             break;
           case 'attention':
-            fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Monitor closely — performance is borderline', description: 'Your primary KPI is near the benchmark threshold. Keep an eye on it.', impact: 'Prevent performance from slipping', confidence: 'medium', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: `/data` };
+            fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Monitor ads closely — performance is borderline', description: 'Your primary ad KPI is near the benchmark threshold. Keep an eye on it.', impact: 'Prevent ad performance from slipping', confidence: 'medium', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: `/data` };
             break;
           case 'critical':
-            fallback = { id: `fallback-${campaign.id}`, type: 'create_creative', title: 'Below benchmark — refresh creative', description: 'Your primary KPI is below benchmark. Fresh creative angles could help turn things around.', impact: 'Improve performance with new creative', confidence: 'high', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: `/creative?workspace=${campaign.id}&refreshCreative=true` };
+            fallback = { id: `fallback-${campaign.id}`, type: 'create_creative', title: 'Ad below benchmark — refresh creative', description: 'Your primary ad KPI is below benchmark. Fresh ad creative angles could help turn things around.', impact: 'Improve ad performance with new creative', confidence: 'high', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: `/creative?workspace=${campaign.id}&refreshCreative=true` };
             break;
           default:
-            fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Still gathering data', description: 'Not enough data yet to make a confident recommendation. Let it run.', impact: 'Allow the algorithm to optimize', confidence: 'low', requiresDoubleApproval: false, actionPayload: {}, priority: 99, userAction: true, actionUrl: '/data' };
+            fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Still gathering ad data', description: 'Not enough ad delivery data yet to make a confident recommendation. Let it run.', impact: 'Allow the algorithm to optimize', confidence: 'low', requiresDoubleApproval: false, actionPayload: {}, priority: 99, userAction: true, actionUrl: '/data' };
             break;
         }
 
