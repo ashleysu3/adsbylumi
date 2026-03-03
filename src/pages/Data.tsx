@@ -489,14 +489,13 @@ export default function Data() {
 
             const metaStatus = (data?.status || '').toString().toUpperCase();
 
-            // If Meta explicitly says non-active, treat as inactive and hide from live recommendations
-            if (metaStatus && metaStatus !== 'ACTIVE') {
-              const newStatus = metaStatus.toLowerCase();
+            // Strict integrity gate: ONLY explicit ACTIVE campaigns can keep metrics
+            if (metaStatus !== 'ACTIVE') {
               return {
                 ...campaign,
-                metrics: null, // No metrics for inactive campaigns
+                metrics: null,
                 previousMetrics: null,
-                status: newStatus,
+                status: metaStatus ? metaStatus.toLowerCase() : 'unknown',
                 userGoal: userGoals[campaign.id] || null
               };
             }
@@ -511,22 +510,18 @@ export default function Data() {
                   dateRangeEnd: format(prevDateRange.to, 'yyyy-MM-dd')
                 }
               });
-              // Only use previous metrics if campaign was also active then
               if (prevData?.status === 'ACTIVE' || !prevData?.status) {
                 previousMetrics = prevData?.metrics || null;
               }
             } catch (prevErr) {
-              // Silently fail for previous period - not critical
               console.log('Could not fetch previous period metrics');
             }
 
-            const normalizedCurrentStatus = metaStatus === 'ACTIVE' ? 'active' : ((campaign.status || 'unknown') as string).toLowerCase();
-
             return {
               ...campaign,
-              metrics: normalizedCurrentStatus === 'active' ? data?.metrics || null : null,
+              metrics: data?.metrics || null,
               previousMetrics,
-              status: normalizedCurrentStatus,
+              status: 'active',
               userGoal: userGoals[campaign.id] || null
             };
           } catch (err: any) {
