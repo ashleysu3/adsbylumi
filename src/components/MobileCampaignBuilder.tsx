@@ -14,7 +14,10 @@ import {
   ShieldCheck,
   ChevronDown,
   Sparkles,
+  ImagePlus,
 } from "lucide-react";
+import { useBrand } from "@/contexts/BrandContext";
+import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
 
 interface MobileCampaignBuilderProps {
   workspace: any;
@@ -60,6 +63,14 @@ export function MobileCampaignBuilder({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [budget, setBudget] = useState(answers.budget || 30);
   const [launchActive, setLaunchActive] = useState(answers.launchActive ?? false);
+  const [includeExistingPosts, setIncludeExistingPosts] = useState(
+    (answers.additionalPosts?.length || 0) > 0
+  );
+  const [additionalPosts, setAdditionalPosts] = useState<SelectedPost[]>(
+    answers.additionalPosts || []
+  );
+  const { activeBrand } = useBrand();
+  const hasInstagram = !!activeBrand?.meta_account_id && !!(workspace?.brands?.instagram_account_id);
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
@@ -77,9 +88,10 @@ export function MobileCampaignBuilder({
       placements: "Advantage+",
       warmRetargeting: false,
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
+      additionalPosts: includeExistingPosts ? additionalPosts : [],
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts]);
 
   const handleNext = () => { if (step < 2) setStep(step + 1); };
   const handleBack = () => { if (step > 1) setStep(step - 1); };
@@ -135,6 +147,38 @@ export function MobileCampaignBuilder({
               <SummaryCard icon={<Layers className="h-4 w-4" />} label="Creative Type" value={defaultCreativeType === "video" ? "Video" : defaultCreativeType} />
             )}
           </div>
+
+          {/* Include Existing Posts */}
+          {hasInstagram && !isSocialGrowth && (
+            <div className="p-4 rounded-xl border bg-card space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-pink-500/10">
+                    <ImagePlus className="h-5 w-5 text-pink-500" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Include existing posts?</p>
+                    <p className="text-xs text-muted-foreground">Add Instagram posts as extra ads</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={includeExistingPosts}
+                  onCheckedChange={(checked) => {
+                    setIncludeExistingPosts(checked);
+                    if (!checked) setAdditionalPosts([]);
+                  }}
+                />
+              </div>
+              {includeExistingPosts && workspace?.brands?.instagram_account_id && (
+                <ExistingPostPicker
+                  brandId={workspace.brands.id || workspace.brand_id}
+                  instagramAccountId={workspace.brands.instagram_account_id}
+                  selectedPosts={additionalPosts}
+                  onSelectionChange={setAdditionalPosts}
+                />
+              )}
+            </div>
+          )}
 
           {/* Best Practices */}
           <div className="p-4 rounded-xl border bg-green-50/50 border-green-200 dark:bg-green-950/10 dark:border-green-900/30">
