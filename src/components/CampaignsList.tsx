@@ -8,10 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit, RefreshCw } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdsEmptyState } from "./AdsEmptyState";
 import { CampaignDetailDrawer } from "./CampaignDetailDrawer";
+import { SocialGrowthFlow } from "./SocialGrowthFlow";
 
 // Social template slugs — these use existing posts, not custom creative
 const SOCIAL_POST_SLUGS = ["social-traffic", "comment-dm-engagement"];
@@ -53,6 +55,11 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
   const [selectedForCombine, setSelectedForCombine] = useState<Set<string>>(new Set());
   const [combineDialogOpen, setCombineDialogOpen] = useState(false);
   const [combining, setCombining] = useState(false);
+  // Post picker for social campaigns
+  const [postPickerOpen, setPostPickerOpen] = useState(false);
+  const [postPickerCampaign, setPostPickerCampaign] = useState<Campaign | null>(null);
+  const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
+  const [addingPosts, setAddingPosts] = useState(false);
 
   useEffect(() => {
     fetchCampaigns();
@@ -168,8 +175,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
   const handleArrowClick = (campaign: Campaign) => {
     if (isSocialCampaign(campaign)) {
-      // Social campaigns → go to post selection
-      navigate(`/creative-studio?workspace=${campaign.id}&selectPosts=true`);
+      openPostPicker(campaign);
       return;
     }
     if (['draft', 'creative_in_progress', 'waiting_for_assets'].includes(campaign.progress_status)) {
@@ -178,6 +184,50 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     }
     setSelectedCampaignId(campaign.id);
     setDetailDrawerOpen(true);
+  };
+
+  const openPostPicker = async (campaign: Campaign) => {
+    setPostPickerCampaign(campaign);
+    setPostPickerOpen(true);
+    // Fetch brand data for Instagram info
+    try {
+      const { data: brand } = await supabase
+        .from('brands')
+        .select('id, name, instagram_account_id, instagram_account_name, audience_psychology')
+        .eq('id', brandId)
+        .single();
+      setPostPickerBrand(brand);
+    } catch (e) {
+      console.error('Error fetching brand for post picker:', e);
+    }
+  };
+
+  const handlePostsSelected = async (data: { objective: string; selectedPosts: any[] }) => {
+    if (!postPickerCampaign || !data.selectedPosts.length) return;
+    setAddingPosts(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('add-posts-to-campaign', {
+        body: {
+          workspaceId: postPickerCampaign.id,
+          posts: data.selectedPosts.map(p => ({
+            id: p.id,
+            media_type: p.media_type,
+            caption: p.caption || '',
+          })),
+        },
+      });
+      if (error) throw error;
+      if (!result?.success) throw new Error(result?.message || 'Failed to add posts');
+      toast.success(result.message || `Added ${data.selectedPosts.length} post(s) to your campaign!`);
+      setPostPickerOpen(false);
+      setPostPickerCampaign(null);
+      fetchCampaigns();
+    } catch (err: any) {
+      console.error('Error adding posts to campaign:', err);
+      toast.error(err.message || 'Failed to add posts to campaign');
+    } finally {
+      setAddingPosts(false);
+    }
   };
 
   const handleCombine = async () => {
@@ -459,7 +509,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/creative-studio?workspace=${campaign.id}&selectPosts=true`);
+                                  openPostPicker(campaign);
                                 }}
                               >
                                 <Plus className="mr-2 h-4 w-4" />
@@ -582,6 +632,40 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
         campaignId={selectedCampaignId}
         onUpdate={fetchCampaigns}
       />
+
+      {/* Add More Posts Dialog */}
+      <Dialog open={postPickerOpen} onOpenChange={(open) => { if (!addingPosts) { setPostPickerOpen(open); if (!open) setPostPickerCampaign(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Posts to {postPickerCampaign?.name}</DialogTitle>
+            <DialogDescription>Select existing Instagram posts to add as new ads in this campaign.</DialogDescription>
+          </DialogHeader>
+          {addingPosts ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Adding posts to your campaign...</p>
+            </div>
+          ) : postPickerBrand ? (
+            <SocialGrowthFlow
+              brandId={brandId}
+              brandName={postPickerBrand.name || ''}
+              instagramAccountId={postPickerBrand.instagram_account_id}
+              instagramAccountName={postPickerBrand.instagram_account_name}
+              audiencePsychology={postPickerBrand.audience_psychology}
+              fixedObjective="traffic"
+              headerText="Pick posts to add to your campaign ✨"
+              headerSubtext="Select up to 6 posts to add as new ads. They'll go live in your existing campaign with the same settings."
+              onComplete={handlePostsSelected}
+              onConnectInstagram={() => navigate('/settings')}
+              onBack={() => { setPostPickerOpen(false); setPostPickerCampaign(null); }}
+            />
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
