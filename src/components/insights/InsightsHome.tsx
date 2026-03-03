@@ -313,6 +313,18 @@ export function InsightsHome({
         </p>
       </div>
 
+      {/* Subtle date range row */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Calendar className="h-4 w-4" />
+        <span>Viewing data for:</span>
+        <DateRangePicker
+          dateRange={dateRange}
+          customDateRange={customDateRange}
+          onDateRangeChange={onDateRangeChange}
+          onCustomDateRangeChange={onCustomDateRangeChange}
+        />
+      </div>
+
       {/* Account Overview */}
       {(accountMetrics || accountMetricsLoading) &&
       <AccountOverview metrics={accountMetrics || null} isLoading={accountMetricsLoading || false} />
