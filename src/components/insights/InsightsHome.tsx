@@ -108,6 +108,7 @@ interface InsightsHomeProps {
   onViewInsights: (campaignId: string) => void;
   onUpdateGoal: (campaignId: string, goal: number) => void;
   onOfferLinked?: () => void;
+  onCampaignStatusChange?: (campaignId: string, newStatus: string) => void;
   isLoading: boolean;
   accountMetrics?: AccountMetrics | null;
   accountMetricsLoading?: boolean;
@@ -172,6 +173,7 @@ export function InsightsHome({
   onViewInsights,
   onUpdateGoal,
   onOfferLinked,
+  onCampaignStatusChange,
   isLoading,
   accountMetrics,
   accountMetricsLoading,
@@ -214,13 +216,39 @@ export function InsightsHome({
     const action = isActive ? 'pause' : 'unpause';
     setTogglingCampaign(campaign.id);
     try {
+      // Step 1: Send the toggle command to Meta
       const { data, error } = await supabase.functions.invoke('check-campaign-status', {
         body: { workspaceId: campaign.id, action }
       });
       if (error || !data?.success) {
         throw new Error(data?.error || error?.message || `Failed to ${action} campaign`);
       }
-      toast.success(`Campaign ${action === 'pause' ? 'paused' : 'resumed'}`);
+
+      // Step 2: Wait briefly for Meta to propagate the change
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Step 3: Re-fetch status from Meta to VERIFY the change actually stuck
+      const { data: verifyData, error: verifyError } = await supabase.functions.invoke('check-campaign-status', {
+        body: { workspaceId: campaign.id }
+      });
+
+      const verifiedStatus = verifyData?.status?.effectiveStatus?.toLowerCase() || data.newStatus?.toLowerCase();
+
+      if (verifyError) {
+        console.warn('Verification fetch failed, trusting initial response');
+      }
+
+      const expectedStatus = action === 'pause' ? 'paused' : 'active';
+      const actualStatus = verifiedStatus || expectedStatus;
+
+      // Step 4: Update local state immediately so UI reflects truth
+      onCampaignStatusChange?.(campaign.id, actualStatus);
+
+      if (actualStatus !== expectedStatus) {
+        toast.warning(`Meta reports campaign is "${actualStatus}" — may take a moment to propagate`);
+      } else {
+        toast.success(`Campaign ${action === 'pause' ? 'paused' : 'resumed'}`);
+      }
     } catch (err: any) {
       toast.error(err.message);
     } finally {
