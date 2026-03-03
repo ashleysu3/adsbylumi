@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import DashboardLayout from "@/components/DashboardLayout";
-import { LumiThinking } from "@/components/LumiThinking";
+import { LumiThinking, LumiThinkingInline } from "@/components/LumiThinking";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { AngleSelector, CreativeAngle } from "@/components/creative/AngleSelector";
 import { CreativeBriefDocument } from "@/components/creative/CreativeBriefDocument";
@@ -918,12 +918,26 @@ export default function CreativeStudio() {
             {!workspace ? (
               <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold">Select a campaign above</h3></CardContent></Card>
             ) : availableAngles.length === 0 ? (
-               <CreativeContextInput
-                 onGenerate={(context) => generateAngles(context)}
-                 onSkip={() => generateAngles()}
-                 isGenerating={generating}
-                 existingContext={(workspace?.creative_json as Record<string, any>)?.preGenerationContext}
-               />
+               <Card className="rounded-2xl">
+                 <CardContent className="pt-6 text-center py-16">
+                   <Sparkles className="h-12 w-12 mx-auto text-primary/50 mb-4 animate-pulse" />
+                   <h3 className="text-lg font-semibold mb-2">
+                     {generating ? "Generating your angles…" : "Generate Creative Angles"}
+                   </h3>
+                   <p className="text-muted-foreground text-sm mb-6">
+                     {generating
+                       ? "Lumi is crafting unique creative angles for your campaign"
+                       : "Lumi will suggest unique creative angles based on your strategy"}
+                   </p>
+                   {!generating && (
+                     <Button onClick={() => generateAngles()} className="gap-2">
+                       <Sparkles className="h-4 w-4" />
+                       Generate Angles
+                     </Button>
+                   )}
+                   {generating && <LumiThinkingInline isOpen={true} customCopy={["Crafting your creative angles…"]} />}
+                 </CardContent>
+               </Card>
             ) : (
               <div className="space-y-8">
                 {/* Creative Intelligence Card */}
