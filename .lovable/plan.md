@@ -1,65 +1,73 @@
 
 
-## Plan: Ensure 100% Accurate Meta Data on the Results Dashboard
+## Plan: Generate Client-Ready Weekly Report with Historical Tracking
 
-### Problem Diagnosis
+### What We're Building
 
-Three root causes are creating inaccurate budget and metric data:
+A "Generate Report" button on the Results dashboard that produces a polished, copy-paste-ready client report matching your current format (with status emojis, per-campaign breakdowns, daily budgets, final notes). It also saves each report to a historical log so you can track recommendations week-over-week and measure progress toward goals.
 
-1. **Stale local budget takes priority over Meta's real budget.** The app reads `campaign_builder_answers.budget` (whatever the user typed during campaign setup) and shows that first. Meta's actual budget only overrides it _after_ a successful sync — and even then, the logic says `campaign.dailyBudget || metaDailyBudget`, meaning the stale local value always wins if it exists.
+### Architecture
 
-2. **Ad set-level budgets are ignored.** Meta campaigns using ABO (Ad Set Budget Optimization) have budgets on each ad set, not the campaign. The current code only reads `daily_budget` at the campaign level, which returns `null` for ABO campaigns. This makes budgets show as missing or $0.
+**New edge function: `generate-client-report`**
+- Accepts `brandId` and `dateRange` (start/end)
+- Fetches ALL campaign workspaces for that brand with `meta_campaign_ids`
+- For each campaign: pulls current metrics from `performance_history`, goals from `final_answers`, template/objective info
+- Uses AI (Lovable AI / Gemini Flash) to generate the formatted report with:
+  - Status emoji assignment per campaign (✅ meeting goal, ⚠️ needs intervention, 👀 watching, ❌ turned off)
+  - Per-campaign sections: primary KPI vs goal, total conversions, standout/underperforming creatives, notes
+  - Daily budgets summary section
+  - Total spend & revenue for period
+  - Final strategic notes
+- Loads **previous reports** from a new `weekly_reports` table to include week-over-week context (e.g., "CPL improved from $5.20 last week to $4.95 this week")
+- Saves the generated report + structured data (metrics snapshot, recommendations) to `weekly_reports` table
 
-3. **No data integrity validation.** Metrics from Meta are trusted blindly. If the API returns partial data, stale cached data, or unexpected formats, the app passes it straight through to the UI.
+**New DB table: `weekly_reports`**
+- `id`, `brand_id`, `created_at`, `date_range_start`, `date_range_end`
+- `report_text` (the formatted output)
+- `metrics_snapshot` (JSONB — per-campaign metrics at time of report)
+- `recommendations_snapshot` (JSONB — what was recommended)
+- `campaign_statuses` (JSONB — status emoji assignments per campaign)
+- RLS: users can CRUD their own brand's reports
 
-### Plan
+**Frontend: "Generate Report" button on InsightsHome**
+- Button in the header area of the Results dashboard
+- On click: calls `generate-client-report`, shows a loading modal
+- On complete: opens a modal/drawer with the formatted report text + "Copy to Clipboard" button
+- Below the report: a collapsible "Report History" section showing past reports with dates, allowing comparison
 
-#### 1. Fix budget accuracy in the edge function (`fetch-meta-performance/index.ts`)
-- When fetching campaign status, also request ad set budgets: query `/{campaignId}/adsets?fields=daily_budget,lifetime_budget,status`
-- If campaign-level `daily_budget` is null, sum the active ad set budgets
-- Return both `dailyBudget` and `budgetLevel` ('campaign' or 'adset') so the UI can label it correctly
-- All budget values converted from cents to dollars consistently
+**Frontend: Report history viewer**
+- Small "Past Reports" link/accordion on the Results page
+- Shows list of past reports by date
+- Click to view any past report
+- Week-over-week trend indicators on key metrics
 
-#### 2. Always prefer Meta's budget over local data (`Data.tsx`)
-- Flip the priority: `metaDailyBudget || campaign.dailyBudget` instead of the current `campaign.dailyBudget || metaDailyBudget`
-- On initial campaign load (before sync), do NOT show a budget at all rather than showing a potentially stale local value — only show budget once Meta confirms it
+### Key Report Format Improvements Over Current
 
-#### 3. Fix budget handling in sync-meta-campaigns (`sync-meta-campaigns/index.ts`)
-- Convert `daily_budget` from cents to dollars (currently stored raw)
-- Also fetch ad set budgets for ABO campaigns during import
+Based on your example:
+- Status emojis (✅⚠️👀❌) assigned per campaign based on goal comparison
+- Specific creative callouts (top performers by name with metrics)
+- Daily budgets section at bottom
+- Total spend + revenue summary
+- Strategic "Final Notes" section
+- Week-over-week comparison notes inline (e.g., "CPL improved from $X.XX last week")
 
-#### 4. Add metric integrity checks
-- In `fetch-meta-performance`, validate that key numeric fields (`spend`, `impressions`, `ctr`, `cpc`) are actual numbers before returning them
-- If any metric is `NaN` or negative, set it to `null` with a flag so the UI shows "Data unavailable" instead of $0.00
-- Add a `dataIntegrity` field to the response: `{ verified: true, source: 'meta_api', fetchedAt: timestamp }`
+### Files to Create/Modify
 
-#### 5. Add "Last synced" indicator on campaign cards (`InsightsHome.tsx`)
-- Show when data was last pulled from Meta so users know if they're seeing real-time or cached data
-- If data is older than 1 hour, show a subtle "Stale data" warning
+1. **Create** `supabase/functions/generate-client-report/index.ts` — AI-powered report generation
+2. **Create** DB migration for `weekly_reports` table
+3. **Modify** `src/components/insights/InsightsHome.tsx` — add Generate Report button + report modal
+4. **Create** `src/components/insights/ClientReportModal.tsx` — report display + copy + history
 
 ### Technical Details
 
-**Edge function changes** (`fetch-meta-performance/index.ts`):
-- Add ad set budget aggregation query
-- Add numeric validation layer before returning metrics
-- Add `dataIntegrity` metadata to response
+The edge function will:
+1. Fetch all active campaign workspaces for the brand
+2. For each, get metrics, goal, template objective, daily budget
+3. Query `weekly_reports` for the most recent prior report to compare metrics
+4. Build a structured prompt for AI that includes the example format, current data, and prior week data
+5. AI generates the formatted text report
+6. Save report + snapshots to `weekly_reports`
+7. Return the report text
 
-**Frontend changes** (`Data.tsx`):
-- Reverse budget priority to always prefer Meta source
-- Don't render budget until Meta sync completes
-- Pass `lastSyncedAt` to campaign cards
-
-**Frontend changes** (`InsightsHome.tsx`):
-- Show "last synced" timestamp on each card
-- Handle `null` budgets gracefully (show "—" not "$0")
-
-**Edge function changes** (`sync-meta-campaigns/index.ts`):
-- Convert budget from cents to dollars during import
-- Fetch ad set budgets for imported campaigns
-
-### Files to Change
-- `supabase/functions/fetch-meta-performance/index.ts`
-- `supabase/functions/sync-meta-campaigns/index.ts`
-- `src/pages/Data.tsx`
-- `src/components/insights/InsightsHome.tsx`
+The `metrics_snapshot` JSONB stores per-campaign data at report time so historical comparison is always available regardless of Meta data changes.
 
