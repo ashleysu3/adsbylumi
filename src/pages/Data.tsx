@@ -59,7 +59,9 @@ interface CampaignData {
   offerName?: string | null;
   brandId?: string;
   dailyBudget?: number;
+  budgetLevel?: 'campaign' | 'adset' | null;
   trackingVerified?: boolean;
+  lastSyncedAt?: string | null;
 }
 
 interface AccountMetrics {
@@ -342,8 +344,6 @@ export default function Data() {
       setUserGoals((prev) => ({ ...prev, ...loadedGoals }));
 
       const campaignData: CampaignData[] = publishedWorkspaces.map((w) => {
-        const builderAnswers = w.campaign_builder_answers as any;
-        const dailyBudget = builderAnswers?.budget ? Number(builderAnswers.budget) : undefined;
         const normalizedStatus = ((w.meta_campaign_status || 'unknown') as string).toLowerCase();
         return {
           id: w.id,
@@ -356,8 +356,11 @@ export default function Data() {
           offerId: w.offer_id || null,
           offerName: w.offer_name || null,
           brandId: w.brand_id,
-          dailyBudget,
-          trackingVerified: (w as any).tracking_verified ?? false
+          // Don't show any budget until Meta confirms it
+          dailyBudget: undefined,
+          budgetLevel: null,
+          trackingVerified: (w as any).tracking_verified ?? false,
+          lastSyncedAt: (w as any).meta_insights_last_sync || null
         };
       });
 
@@ -488,7 +491,10 @@ export default function Data() {
             }
 
             const metaStatus = (data?.status || '').toString().toUpperCase();
-            const metaDailyBudget = data?.dailyBudget ? Number(data.dailyBudget) : undefined;
+            // Always prefer Meta's budget over any local value
+            const metaDailyBudget = data?.dailyBudget != null ? Number(data.dailyBudget) : undefined;
+            const metaBudgetLevel = data?.budgetLevel || null;
+            const syncedAt = new Date().toISOString();
 
             // Strict integrity gate: ONLY explicit ACTIVE campaigns can keep metrics
             if (metaStatus !== 'ACTIVE') {
@@ -497,8 +503,10 @@ export default function Data() {
                 metrics: null,
                 previousMetrics: null,
                 status: metaStatus ? metaStatus.toLowerCase() : 'unknown',
-                dailyBudget: campaign.dailyBudget || metaDailyBudget,
-                userGoal: userGoals[campaign.id] || null
+                dailyBudget: metaDailyBudget,
+                budgetLevel: metaBudgetLevel,
+                userGoal: userGoals[campaign.id] || null,
+                lastSyncedAt: syncedAt
               };
             }
 
@@ -524,8 +532,10 @@ export default function Data() {
               metrics: data?.metrics || null,
               previousMetrics,
               status: 'active',
-              dailyBudget: campaign.dailyBudget || metaDailyBudget,
-              userGoal: userGoals[campaign.id] || null
+              dailyBudget: metaDailyBudget,
+              budgetLevel: metaBudgetLevel,
+              userGoal: userGoals[campaign.id] || null,
+              lastSyncedAt: syncedAt
             };
           } catch (err: any) {
             console.error(`Error fetching metrics for ${campaign.name}:`, err);
