@@ -314,7 +314,7 @@ export function InsightsHome({
       </div>
 
       {/* Subtle date range row */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
         <Calendar className="h-4 w-4" />
         <span>Viewing data for:</span>
         <DateRangePicker
