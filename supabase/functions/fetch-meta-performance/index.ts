@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
     // ============================================
     // STEP 1: Fetch real-time campaign status from Meta
     // ============================================
-    const statusUrl = `https://graph.facebook.com/v18.0/${campaignId}?fields=status,effective_status&access_token=${metaAccessToken}`;
+    const statusUrl = `https://graph.facebook.com/v18.0/${campaignId}?fields=status,effective_status,daily_budget,lifetime_budget&access_token=${metaAccessToken}`;
     const statusResponse = await fetch(statusUrl);
     const statusData = await statusResponse.json();
 
@@ -162,7 +162,10 @@ Deno.serve(async (req) => {
     }
 
     const effectiveStatus = statusData.effective_status || statusData.status || 'UNKNOWN';
-    console.log(`Campaign ${campaignId} effective_status: ${effectiveStatus}`);
+    // daily_budget from Meta is in cents (minor units), convert to dollars
+    const metaDailyBudget = statusData.daily_budget ? parseFloat(statusData.daily_budget) / 100 : null;
+    const metaLifetimeBudget = statusData.lifetime_budget ? parseFloat(statusData.lifetime_budget) / 100 : null;
+    console.log(`Campaign ${campaignId} effective_status: ${effectiveStatus}, daily_budget: ${metaDailyBudget}`);
 
     // Update workspace status if it changed
     const newStatus = effectiveStatus.toLowerCase();
@@ -182,6 +185,8 @@ Deno.serve(async (req) => {
           success: true,
           metrics: null,
           status: effectiveStatus,
+          dailyBudget: metaDailyBudget,
+          lifetimeBudget: metaLifetimeBudget,
           message: `Campaign is ${effectiveStatus}, not ACTIVE`,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -337,6 +342,8 @@ Deno.serve(async (req) => {
         success: true,
         metrics: processedMetrics,
         status: effectiveStatus,
+        dailyBudget: metaDailyBudget,
+        lifetimeBudget: metaLifetimeBudget,
         snapshot: performanceSnapshot,
       }),
       {
