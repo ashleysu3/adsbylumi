@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { LumiTooltip } from '@/components/LumiTooltip';
 import { Target, Pencil, AlertTriangle, Check, X } from 'lucide-react';
-import { LumiKPIConfig, formatLumiKPIValue } from '@/lib/lumi-kpi-config';
+import { LumiKPIConfig } from '@/lib/lumi-kpi-config';
 
 interface CampaignGoalRowProps {
   kpiConfig: LumiKPIConfig;
@@ -14,39 +15,54 @@ interface CampaignGoalRowProps {
 }
 
 function getRecommendedGoal(kpiConfig: LumiKPIConfig): number {
-  // For ROAS (higher is better), recommend the minimum benchmark
   if (kpiConfig.primary === 'roas') {
     return kpiConfig.benchmark.min;
   }
-  // For cost metrics (lower is better), recommend lower third of range (more ambitious but realistic)
   const range = kpiConfig.benchmark.max - kpiConfig.benchmark.min;
   return Math.round((kpiConfig.benchmark.min + range / 3) * 100) / 100;
 }
 
 function isGoalUnrealistic(goal: number, kpiConfig: LumiKPIConfig): boolean {
   if (kpiConfig.primary === 'roas') {
-    // For ROAS, unrealistic if > 3x the max benchmark
     return goal > kpiConfig.benchmark.max * 3;
   }
-  // For cost metrics, unrealistic if < 30% of the min benchmark
   return goal < kpiConfig.benchmark.min * 0.3;
 }
 
-function getVariance(current: number | null, goal: number): { abs: string; pct: string; isGood: boolean } | null {
-  if (current === null || current === 0) return null;
-  const diff = current - goal;
-  const pctDiff = ((diff / goal) * 100);
-  
-  // For cost metrics, being under goal is good. We'll handle ROAS inversion at render.
-  return {
-    abs: `${diff >= 0 ? '+' : ''}${formatAbsValue(diff)}`,
-    pct: `${pctDiff >= 0 ? '+' : ''}${pctDiff.toFixed(0)}%`,
-    isGood: diff <= 0, // Under budget = good for cost metrics (inverted for ROAS at render)
-  };
+type GoalStatus = 'great' | 'close' | 'behind' | null;
+
+function getGoalStatus(currentValue: number | null, goal: number, isRoas: boolean): GoalStatus {
+  if (currentValue === null || currentValue === 0) return null;
+  const pct = ((currentValue - goal) / goal) * 100;
+  if (isRoas) {
+    // Higher is better
+    if (pct >= 0) return 'great';
+    if (pct >= -20) return 'close';
+    return 'behind';
+  }
+  // Lower is better (cost metrics)
+  if (pct <= 0) return 'great';
+  if (pct <= 20) return 'close';
+  return 'behind';
 }
 
-function formatAbsValue(value: number): string {
-  return `$${Math.abs(value).toFixed(2)}`;
+const STATUS_DOT_CLASSES: Record<string, string> = {
+  great: 'bg-green-500',
+  close: 'bg-amber-500',
+  behind: 'bg-red-500',
+};
+
+function getStatusMessage(status: GoalStatus, goalDisplay: string): string {
+  switch (status) {
+    case 'great':
+      return `Your ads are beating your goal of ${goalDisplay} — great job! 🎉`;
+    case 'close':
+      return `Your ads are close to your goal of ${goalDisplay}. Keep an eye on it.`;
+    case 'behind':
+      return `Your ads aren't meeting your goal of ${goalDisplay}. Check Lumi's recommendations for next steps.`;
+    default:
+      return '';
+  }
 }
 
 export function CampaignGoalRow({ kpiConfig, currentValue, userGoal, onUpdateGoal }: CampaignGoalRowProps) {
@@ -58,23 +74,13 @@ export function CampaignGoalRow({ kpiConfig, currentValue, userGoal, onUpdateGoa
   const recommended = getRecommendedGoal(kpiConfig);
   const activeGoal = userGoal ?? recommended;
   const isRoas = kpiConfig.primary === 'roas';
-  const unit = kpiConfig.benchmark.unit;
 
-  const variance = currentValue !== null && currentValue !== 0
-    ? (() => {
-        const diff = currentValue - activeGoal;
-        const pctDiff = ((diff / activeGoal) * 100);
-        const isGood = isRoas ? diff >= 0 : diff <= 0;
-        const absStr = isRoas
-          ? `${diff >= 0 ? '+' : ''}${Math.abs(diff).toFixed(2)}x`
-          : `${diff >= 0 ? '+' : '-'}$${Math.abs(diff).toFixed(2)}`;
-        return {
-          abs: absStr,
-          pct: `${pctDiff >= 0 ? '+' : ''}${pctDiff.toFixed(0)}%`,
-          isGood,
-        };
-      })()
-    : null;
+  const formatGoalDisplay = (value: number) => {
+    if (isRoas) return `${value.toFixed(1)}x`;
+    return `$${value.toFixed(2)}`;
+  };
+
+  const status = getGoalStatus(currentValue, activeGoal, isRoas);
 
   const handleOpenEdit = () => {
     setInputValue(String(activeGoal));
@@ -86,22 +92,18 @@ export function CampaignGoalRow({ kpiConfig, currentValue, userGoal, onUpdateGoa
   const handleSave = () => {
     const parsed = parseFloat(inputValue);
     if (isNaN(parsed) || parsed <= 0) return;
-
     if (isGoalUnrealistic(parsed, kpiConfig)) {
       setPendingGoal(parsed);
       setShowWarning(true);
       return;
     }
-
     onUpdateGoal(parsed);
     setEditing(false);
     setShowWarning(false);
   };
 
   const handleConfirmUnrealistic = () => {
-    if (pendingGoal !== null) {
-      onUpdateGoal(pendingGoal);
-    }
+    if (pendingGoal !== null) onUpdateGoal(pendingGoal);
     setEditing(false);
     setShowWarning(false);
     setPendingGoal(null);
@@ -113,17 +115,18 @@ export function CampaignGoalRow({ kpiConfig, currentValue, userGoal, onUpdateGoa
     setPendingGoal(null);
   };
 
-  const formatGoalDisplay = (value: number) => {
-    if (isRoas) return `${value.toFixed(1)}x`;
-    return `$${value.toFixed(2)}`;
-  };
-
   return (
     <div className="flex items-center gap-2 pl-5 flex-wrap">
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Target className="h-3 w-3" />
         <span className="font-medium">{kpiConfig.primaryLabel} Goal:</span>
       </div>
+
+      {status && (
+        <LumiTooltip content={getStatusMessage(status, formatGoalDisplay(activeGoal))} side="top">
+          <span className={`inline-block h-2.5 w-2.5 rounded-full ${STATUS_DOT_CLASSES[status]} shrink-0 cursor-default`} />
+        </LumiTooltip>
+      )}
 
       {!editing ? (
         <>
@@ -133,19 +136,6 @@ export function CampaignGoalRow({ kpiConfig, currentValue, userGoal, onUpdateGoa
               <span className="text-muted-foreground/70 ml-0.5">(Lumi's rec)</span>
             )}
           </Badge>
-
-          {variance && (
-            <Badge
-              variant="outline"
-              className={`text-xs rounded-full ${
-                variance.isGood
-                  ? 'text-green-700 border-green-500/30 bg-green-50 dark:bg-green-950/20'
-                  : 'text-red-700 border-red-500/30 bg-red-50 dark:bg-red-950/20'
-              }`}
-            >
-              {variance.abs} ({variance.pct})
-            </Badge>
-          )}
 
           <Popover open={editing} onOpenChange={(open) => open ? handleOpenEdit() : handleCancel()}>
             <PopoverTrigger asChild>
@@ -206,16 +196,11 @@ export function CampaignGoalRow({ kpiConfig, currentValue, userGoal, onUpdateGoa
                     </p>
                     <p className="text-amber-700 dark:text-amber-300 mt-0.5">
                       {isRoas
-                        ? `Most campaigns in this category achieve ${kpiConfig.benchmark.min.toFixed(1)}x – ${kpiConfig.benchmark.max.toFixed(1)}x ROAS. Setting expectations too high may lead to unnecessary stress.`
-                        : `Industry benchmarks for this type sit around $${kpiConfig.benchmark.min.toFixed(2)} – $${kpiConfig.benchmark.max.toFixed(2)}. Going much lower may not be realistic.`
+                        ? `Most campaigns achieve ${kpiConfig.benchmark.min.toFixed(1)}x – ${kpiConfig.benchmark.max.toFixed(1)}x ROAS.`
+                        : `Industry benchmarks sit around $${kpiConfig.benchmark.min.toFixed(2)} – $${kpiConfig.benchmark.max.toFixed(2)}.`
                       }
                     </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="mt-2 h-7 text-xs"
-                      onClick={handleConfirmUnrealistic}
-                    >
+                    <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={handleConfirmUnrealistic}>
                       Set anyway
                     </Button>
                   </div>
@@ -223,15 +208,7 @@ export function CampaignGoalRow({ kpiConfig, currentValue, userGoal, onUpdateGoa
               )}
 
               <div className="flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    setInputValue(String(recommended));
-                    setShowWarning(false);
-                  }}
-                >
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setInputValue(String(recommended)); setShowWarning(false); }}>
                   Use Lumi's rec
                 </Button>
                 <div className="flex items-center gap-1">
