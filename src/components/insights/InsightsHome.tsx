@@ -10,7 +10,11 @@ import {
   Package,
   Loader2,
   DollarSign,
-  AlertTriangle } from
+  AlertTriangle,
+  RefreshCw,
+  Plus,
+  Wand2,
+  ArrowRight } from
 'lucide-react';
 import {
   getLumiKPIConfig,
@@ -29,6 +33,20 @@ import { UnlinkedCampaignsBanner } from './UnlinkedCampaignsBanner';
 import { LumiRecommendations } from './LumiRecommendations';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+
+const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_ad', 'resume_ad', 'swap_creative']);
+
+function getActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode } {
+  const title = (rec.title || '').toLowerCase();
+  if (title.includes('resonat') || title.includes('ctr') || title.includes('click')) {
+    return { label: 'Add New Posts', url: `/creative-studio?workspace=${campaignId}&selectPosts=true`, icon: <Plus className="h-3.5 w-3.5" /> };
+  }
+  if (title.includes('fatigue') || title.includes('cost per purchase') || title.includes('refresh') || title.includes('cpp') || title.includes('below benchmark')) {
+    return { label: 'Refresh Creative', url: `/creative-studio?workspace=${campaignId}&refreshCreative=true`, icon: <RefreshCw className="h-3.5 w-3.5" /> };
+  }
+  return { label: 'Try New Angles', url: `/creative-studio?workspace=${campaignId}`, icon: <Wand2 className="h-3.5 w-3.5" /> };
+}
 
 interface CampaignMetrics {
   cpl?: number;
@@ -151,6 +169,7 @@ export function InsightsHome({
   accountMetrics,
   accountMetricsLoading
 }: InsightsHomeProps) {
+  const navigate = useNavigate();
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live', 'paused', 'imported']);
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -331,17 +350,20 @@ export function InsightsHome({
 
       }
 
-      {/* Lumi Recommendations — overview level */}
-      {(recommendations.length > 0 || recsLoading) &&
-      <LumiRecommendations
-        recommendations={recommendations}
-        loading={recsLoading}
-        onRefresh={fetchRecommendations}
-        onRecommendationExecuted={fetchRecommendations}
-        compact
-        maxItems={4} />
-
-      }
+      {/* Lumi Recommendations — only automatable actions */}
+      {(() => {
+        const automatableRecs = recommendations.filter(r => AUTOMATABLE_TYPES.has(r.type));
+        if (automatableRecs.length === 0 && !recsLoading) return null;
+        return (
+          <LumiRecommendations
+            recommendations={automatableRecs}
+            loading={recsLoading}
+            onRefresh={fetchRecommendations}
+            onRecommendationExecuted={fetchRecommendations}
+            compact
+            maxItems={4} />
+        );
+      })()}
 
       {/* Campaign Cards */}
       {isLoading ?
@@ -484,6 +506,44 @@ export function InsightsHome({
                         </Badge>
                     }
                     </div>
+
+                    {/* Row 3.5: User-action recommendations inline */}
+                    {(() => {
+                      const userRecs = recommendations.filter(
+                        r => r.campaignId === campaign.id && !AUTOMATABLE_TYPES.has(r.type)
+                      );
+                      if (userRecs.length === 0) return null;
+                      return (
+                        <div className="space-y-1.5 pl-5">
+                          {userRecs.slice(0, 2).map((rec: any) => {
+                            const action = getActionButton(rec, campaign.id);
+                            return (
+                              <div
+                                key={rec.id}
+                                className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[hsl(var(--lumi-orange-1)/0.06)] border border-[hsl(var(--lumi-orange-1)/0.15)]"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0" />
+                                  <span className="text-xs font-medium truncate">{rec.title}</span>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="lumi"
+                                  className="rounded-xl text-xs shrink-0 gap-1 h-7 px-2.5"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(action.url);
+                                  }}
+                                >
+                                  {action.icon}
+                                  {action.label}
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
 
                     {/* Row 3.5: Goal vs Actual */}
                     <CampaignGoalRow

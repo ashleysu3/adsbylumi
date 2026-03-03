@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +17,7 @@ import { toast } from 'sonner';
 import {
   Sparkles, Check, CheckCheck, DollarSign, Pause, Play,
   RefreshCw, Loader2, AlertTriangle, TrendingUp, TrendingDown,
-  ShieldCheck, ArrowRight, PlusCircle
+  ShieldCheck
 } from 'lucide-react';
 
 interface Recommendation {
@@ -54,7 +53,6 @@ function getRecIcon(type: string) {
     case 'pause_ad': return <Pause className="h-4 w-4 text-red-500" />;
     case 'resume_ad': return <Play className="h-4 w-4 text-green-500" />;
     case 'swap_creative': return <RefreshCw className="h-4 w-4 text-blue-500" />;
-    case 'create_creative': return <PlusCircle className="h-4 w-4 text-purple-500" />;
     default: return <Sparkles className="h-4 w-4 text-primary" />;
   }
 }
@@ -66,52 +64,11 @@ function getRecBorderColor(type: string) {
     case 'pause_ad': return 'border-l-red-400';
     case 'resume_ad': return 'border-l-green-400';
     case 'swap_creative': return 'border-l-blue-400';
-    case 'create_creative': return 'border-l-purple-400';
     default: return 'border-l-primary';
   }
 }
 
-const USER_ACTION_TYPES = new Set(['create_creative']);
-
-function inferRecType(step: string): Recommendation['type'] {
-  const lower = step.toLowerCase();
-  if (lower.includes('creative') || lower.includes('video') || lower.includes('ugc') || lower.includes('hook')) return 'create_creative';
-  if (lower.includes('budget') && lower.includes('increase')) return 'budget_increase';
-  if (lower.includes('budget') && lower.includes('decrease')) return 'budget_decrease';
-  if (lower.includes('pause')) return 'pause_ad';
-  if (lower.includes('swap') || lower.includes('rotate')) return 'swap_creative';
-  return 'keep_running';
-}
-
-function inferActionUrl(step: string, campaignId?: string): string {
-  const lower = step.toLowerCase();
-  if (lower.includes('creative') || lower.includes('video') || lower.includes('ugc') || lower.includes('hook')) {
-    return campaignId ? `/creative-studio?workspace=${campaignId}&refreshCreative=true` : '/creative-studio';
-  }
-  if (lower.includes('audience') || lower.includes('target')) return '/planning';
-  if (lower.includes('offer') || lower.includes('landing')) return '/brand';
-  return '/data';
-}
-
-function convertNextStepsToRecs(steps: string[], campaignId?: string): Recommendation[] {
-  return steps.map((step, i) => {
-    const type = inferRecType(step);
-    const isUserAction = USER_ACTION_TYPES.has(type) || type === 'keep_running';
-    return {
-      id: `next-step-${i}`,
-      type,
-      title: step.length > 80 ? step.slice(0, 77) + '...' : step,
-      description: step,
-      impact: 'AI-recommended next step based on your campaign performance',
-      confidence: 'medium' as const,
-      requiresDoubleApproval: false,
-      actionPayload: {},
-      priority: 10 + i,
-      userAction: isUserAction,
-      actionUrl: inferActionUrl(step, campaignId),
-    };
-  });
-}
+const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_ad', 'resume_ad', 'swap_creative']);
 
 export function LumiRecommendations({
   recommendations,
@@ -124,16 +81,33 @@ export function LumiRecommendations({
   recsRef,
   campaignId,
 }: LumiRecommendationsProps) {
-  const navigate = useNavigate();
   const [executing, setExecuting] = useState<Record<string, boolean>>({});
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [budgetConfirm, setBudgetConfirm] = useState<Recommendation | null>(null);
   const [approvingAll, setApprovingAll] = useState(false);
 
-  // Merge ad-level recs with next_steps converted to recs
-  const nextStepRecs = convertNextStepsToRecs(nextSteps, campaignId);
-  const allRecommendations = [...recommendations, ...nextStepRecs];
+  // Only show automatable recs (filter out user-action types)
+  const automatableRecs = recommendations.filter(r => AUTOMATABLE_TYPES.has(r.type));
 
+  // Convert next_steps to automatable recs only (budget/pause related)
+  const nextStepRecs: Recommendation[] = nextSteps
+    .filter(step => {
+      const lower = step.toLowerCase();
+      return lower.includes('budget') || lower.includes('pause') || lower.includes('scale') || lower.includes('resume');
+    })
+    .map((step, i) => ({
+      id: `next-step-${i}`,
+      type: (step.toLowerCase().includes('increase') || step.toLowerCase().includes('scale') ? 'budget_increase' : 'budget_decrease') as Recommendation['type'],
+      title: step.length > 80 ? step.slice(0, 77) + '...' : step,
+      description: step,
+      impact: 'AI-recommended action',
+      confidence: 'medium' as const,
+      requiresDoubleApproval: step.toLowerCase().includes('budget'),
+      actionPayload: {},
+      priority: 10 + i,
+    }));
+
+  const allRecommendations = [...automatableRecs, ...nextStepRecs];
   const visibleRecs = maxItems ? allRecommendations.slice(0, maxItems) : allRecommendations;
   const pendingRecs = visibleRecs.filter(r => !completed.has(r.id));
 
@@ -315,19 +289,7 @@ export function LumiRecommendations({
                       )}
                     </div>
                   </div>
-                  {rec.userAction || USER_ACTION_TYPES.has(rec.type) ? (
-                    <Button
-                      size="sm"
-                      variant="lumi"
-                      onClick={() => {
-                        if (rec.actionUrl) navigate(rec.actionUrl);
-                      }}
-                      className="rounded-xl text-xs shrink-0 gap-1"
-                    >
-                      Next Step <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  ) : (
-                    <Button
+                  <Button
                       size="sm"
                       variant={isCompleted ? 'ghost' : 'outline'}
                       onClick={() => executeRecommendation(rec)}
@@ -342,7 +304,6 @@ export function LumiRecommendations({
                         'Approve'
                       )}
                     </Button>
-                  )}
                 </div>
               </div>
             );

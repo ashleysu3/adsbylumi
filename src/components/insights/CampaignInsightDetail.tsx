@@ -23,7 +23,9 @@ import {
   PlusCircle,
   ArrowRight,
   ChevronDown,
-  DollarSign
+  DollarSign,
+  Plus,
+  Wand2
 } from 'lucide-react';
 import { 
   getLumiKPIConfig, 
@@ -38,6 +40,19 @@ import { LinkOfferModal } from './LinkOfferModal';
 import { CreativeBenchPanel } from './CreativeBenchPanel';
 import { WhatsWorkingCard } from './WhatsWorkingCard';
 import { LumiRecommendations } from './LumiRecommendations';
+
+const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_ad', 'resume_ad', 'swap_creative']);
+
+function getUserActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode } {
+  const title = (rec.title || '').toLowerCase();
+  if (title.includes('resonat') || title.includes('ctr') || title.includes('click')) {
+    return { label: 'Add New Posts', url: `/creative-studio?workspace=${campaignId}&selectPosts=true`, icon: <Plus className="h-3.5 w-3.5" /> };
+  }
+  if (title.includes('fatigue') || title.includes('cost per purchase') || title.includes('refresh') || title.includes('cpp') || title.includes('below benchmark')) {
+    return { label: 'Refresh Creative', url: `/creative-studio?workspace=${campaignId}&refreshCreative=true`, icon: <RefreshCw className="h-3.5 w-3.5" /> };
+  }
+  return { label: 'Try New Angles', url: `/creative-studio?workspace=${campaignId}`, icon: <Wand2 className="h-3.5 w-3.5" /> };
+}
 
 interface CampaignMetrics {
   cpl?: number;
@@ -425,9 +440,48 @@ export function CampaignInsightDetail({
             </Card>
           </div>
 
-          {/* Lumi Actionable Recommendations — below summary cards */}
+          {/* User-action recommendations inline */}
+          {(() => {
+            const userRecs = recommendations.filter((r: any) => !AUTOMATABLE_TYPES.has(r.type));
+            if (userRecs.length === 0) return null;
+            return (
+              <Card className="rounded-2xl border-[hsl(var(--lumi-orange-1)/0.2)]">
+                <CardContent className="p-4 space-y-2">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-[hsl(var(--lumi-orange-1))]" />
+                    Creative Actions
+                  </h3>
+                  {userRecs.slice(0, 3).map((rec: any) => {
+                    const action = getUserActionButton(rec, campaign.id);
+                    return (
+                      <div
+                        key={rec.id}
+                        className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-[hsl(var(--lumi-orange-1)/0.06)] border border-[hsl(var(--lumi-orange-1)/0.15)]"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0" />
+                          <span className="text-sm font-medium truncate">{rec.title}</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="lumi"
+                          className="rounded-xl text-xs shrink-0 gap-1"
+                          onClick={() => navigate(action.url)}
+                        >
+                          {action.icon}
+                          {action.label}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Lumi Actionable Recommendations — only automatable */}
           <LumiRecommendations
-            recommendations={recommendations}
+            recommendations={recommendations.filter((r: any) => AUTOMATABLE_TYPES.has(r.type))}
             loading={recsLoading}
             onRefresh={fetchRecommendations}
             onRecommendationExecuted={fetchRecommendations}
