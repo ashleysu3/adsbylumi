@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   Eye,
   Sparkles,
@@ -37,18 +38,19 @@ import { LumiRecommendations } from './LumiRecommendations';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { SocialGrowthFlow } from '@/components/SocialGrowthFlow';
 
 const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_ad', 'resume_ad', 'swap_creative']);
 
-function getActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode } {
+function getActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode; type: 'navigate' | 'add_posts' } {
   const title = (rec.title || '').toLowerCase();
   if (title.includes('resonat') || title.includes('ctr') || title.includes('click')) {
-    return { label: 'Add New Posts', url: `/creative-studio?workspace=${campaignId}&selectPosts=true`, icon: <Plus className="h-3.5 w-3.5" /> };
+    return { label: 'Add New Posts', url: '', icon: <Plus className="h-3.5 w-3.5" />, type: 'add_posts' };
   }
   if (title.includes('fatigue') || title.includes('cost per purchase') || title.includes('refresh') || title.includes('cpp') || title.includes('below benchmark')) {
-    return { label: 'Refresh Creative', url: `/creative-studio?workspace=${campaignId}&refreshCreative=true`, icon: <RefreshCw className="h-3.5 w-3.5" /> };
+    return { label: 'Refresh Creative', url: `/creative-studio?workspace=${campaignId}&refreshCreative=true`, icon: <RefreshCw className="h-3.5 w-3.5" />, type: 'navigate' };
   }
-  return { label: 'Try New Angles', url: `/creative-studio?workspace=${campaignId}`, icon: <Wand2 className="h-3.5 w-3.5" /> };
+  return { label: 'Try New Angles', url: `/creative-studio?workspace=${campaignId}`, icon: <Wand2 className="h-3.5 w-3.5" />, type: 'navigate' };
 }
 
 interface CampaignMetrics {
@@ -191,6 +193,12 @@ export function InsightsHome({
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
+  // Post picker state
+  const [postPickerOpen, setPostPickerOpen] = useState(false);
+  const [postPickerCampaignId, setPostPickerCampaignId] = useState<string | null>(null);
+  const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
+  const [addingPosts, setAddingPosts] = useState(false);
+
   const [linkOfferModal, setLinkOfferModal] = useState<{
     open: boolean;
     campaign: Campaign | null;
@@ -264,7 +272,50 @@ export function InsightsHome({
     onOfferLinked?.();
   };
 
-  // Fetch recommendations for campaigns with metrics
+  const openPostPicker = async (campaignId: string) => {
+    setPostPickerCampaignId(campaignId);
+    setPostPickerOpen(true);
+    if (brandId) {
+      try {
+        const { data: brand } = await supabase
+          .from('brands')
+          .select('id, name, instagram_account_id, instagram_account_name, audience_psychology')
+          .eq('id', brandId)
+          .single();
+        setPostPickerBrand(brand);
+      } catch (e) {
+        console.error('Error fetching brand for post picker:', e);
+      }
+    }
+  };
+
+  const handlePostsSelected = async (data: { objective: string; selectedPosts: any[] }) => {
+    if (!postPickerCampaignId || !data.selectedPosts.length) return;
+    setAddingPosts(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('add-posts-to-campaign', {
+        body: {
+          workspaceId: postPickerCampaignId,
+          posts: data.selectedPosts.map(p => ({
+            id: p.id,
+            media_type: p.media_type,
+            caption: p.caption || '',
+          })),
+        },
+      });
+      if (error) throw error;
+      if (!result?.success) throw new Error(result?.message || 'Failed to add posts');
+      toast.success(result.message || `Added ${data.selectedPosts.length} post(s) to your campaign!`);
+      setPostPickerOpen(false);
+      setPostPickerCampaignId(null);
+    } catch (err: any) {
+      console.error('Error adding posts:', err);
+      toast.error(err.message || 'Failed to add posts to campaign');
+    } finally {
+      setAddingPosts(false);
+    }
+  };
+
   const fetchRecommendations = async () => {
     const activeCampaigns = filteredCampaigns.length > 0 ? filteredCampaigns : campaigns.filter((c) => {
       const status = (c.status || '').toLowerCase();
@@ -619,7 +670,11 @@ export function InsightsHome({
                                   className="rounded-xl text-xs shrink-0 gap-1 h-7 px-2.5"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    navigate(action.url);
+                                    if (action.type === 'add_posts') {
+                                      openPostPicker(campaign.id);
+                                    } else {
+                                      navigate(action.url);
+                                    }
                                   }}
                                 >
                                   {action.icon}
@@ -711,6 +766,40 @@ export function InsightsHome({
           }))}
         />
       )}
+
+      {/* Add Posts Dialog */}
+      <Dialog open={postPickerOpen} onOpenChange={(open) => { if (!addingPosts) { setPostPickerOpen(open); if (!open) setPostPickerCampaignId(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Posts to Campaign</DialogTitle>
+            <DialogDescription>Select existing Instagram posts to add as new ads.</DialogDescription>
+          </DialogHeader>
+          {addingPosts ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Adding posts to your campaign...</p>
+            </div>
+          ) : postPickerBrand ? (
+            <SocialGrowthFlow
+              brandId={brandId || ''}
+              brandName={postPickerBrand.name || ''}
+              instagramAccountId={postPickerBrand.instagram_account_id}
+              instagramAccountName={postPickerBrand.instagram_account_name}
+              audiencePsychology={postPickerBrand.audience_psychology}
+              fixedObjective="traffic"
+              headerText="Pick posts to add to your campaign ✨"
+              headerSubtext="Select up to 6 posts to add as new ads. They'll go live in your existing campaign with the same settings."
+              onComplete={handlePostsSelected}
+              onConnectInstagram={() => navigate('/settings')}
+              onBack={() => { setPostPickerOpen(false); setPostPickerCampaignId(null); }}
+            />
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>);
 
 }

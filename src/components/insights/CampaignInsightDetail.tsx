@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { 
   ArrowLeft, 
   Sparkles, 
@@ -25,7 +26,8 @@ import {
   ChevronDown,
   DollarSign,
   Plus,
-  Wand2
+  Wand2,
+  Loader2
 } from 'lucide-react';
 import { 
   getLumiKPIConfig, 
@@ -40,18 +42,20 @@ import { LinkOfferModal } from './LinkOfferModal';
 import { CreativeBenchPanel } from './CreativeBenchPanel';
 import { WhatsWorkingCard } from './WhatsWorkingCard';
 import { LumiRecommendations } from './LumiRecommendations';
+import { SocialGrowthFlow } from '@/components/SocialGrowthFlow';
+import { toast } from 'sonner';
 
 const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_ad', 'resume_ad', 'swap_creative']);
 
-function getUserActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode } {
+function getUserActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode; type: 'navigate' | 'add_posts' } {
   const title = (rec.title || '').toLowerCase();
   if (title.includes('resonat') || title.includes('ctr') || title.includes('click')) {
-    return { label: 'Add New Posts', url: `/creative-studio?workspace=${campaignId}&selectPosts=true`, icon: <Plus className="h-3.5 w-3.5" /> };
+    return { label: 'Add New Posts', url: '', icon: <Plus className="h-3.5 w-3.5" />, type: 'add_posts' };
   }
   if (title.includes('fatigue') || title.includes('cost per purchase') || title.includes('refresh') || title.includes('cpp') || title.includes('below benchmark')) {
-    return { label: 'Refresh Creative', url: `/creative-studio?workspace=${campaignId}&refreshCreative=true`, icon: <RefreshCw className="h-3.5 w-3.5" /> };
+    return { label: 'Refresh Creative', url: `/creative-studio?workspace=${campaignId}&refreshCreative=true`, icon: <RefreshCw className="h-3.5 w-3.5" />, type: 'navigate' };
   }
-  return { label: 'Try New Angles', url: `/creative-studio?workspace=${campaignId}`, icon: <Wand2 className="h-3.5 w-3.5" /> };
+  return { label: 'Try New Angles', url: `/creative-studio?workspace=${campaignId}`, icon: <Wand2 className="h-3.5 w-3.5" />, type: 'navigate' };
 }
 
 interface CampaignMetrics {
@@ -178,6 +182,52 @@ export function CampaignInsightDetail({
   const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
+  // Post picker state
+  const [postPickerOpen, setPostPickerOpen] = useState(false);
+  const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
+  const [addingPosts, setAddingPosts] = useState(false);
+
+  const openPostPicker = async () => {
+    setPostPickerOpen(true);
+    if (campaign.brandId) {
+      try {
+        const { data: brand } = await supabase
+          .from('brands')
+          .select('id, name, instagram_account_id, instagram_account_name, audience_psychology')
+          .eq('id', campaign.brandId)
+          .single();
+        setPostPickerBrand(brand);
+      } catch (e) {
+        console.error('Error fetching brand for post picker:', e);
+      }
+    }
+  };
+
+  const handlePostsSelected = async (data: { objective: string; selectedPosts: any[] }) => {
+    if (!data.selectedPosts.length) return;
+    setAddingPosts(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('add-posts-to-campaign', {
+        body: {
+          workspaceId: campaign.id,
+          posts: data.selectedPosts.map(p => ({
+            id: p.id,
+            media_type: p.media_type,
+            caption: p.caption || '',
+          })),
+        },
+      });
+      if (error) throw error;
+      if (!result?.success) throw new Error(result?.message || 'Failed to add posts');
+      toast.success(result.message || `Added ${data.selectedPosts.length} post(s) to your campaign!`);
+      setPostPickerOpen(false);
+    } catch (err: any) {
+      console.error('Error adding posts:', err);
+      toast.error(err.message || 'Failed to add posts to campaign');
+    } finally {
+      setAddingPosts(false);
+    }
+  };
 
   // Fetch recommendations for this campaign
   const fetchRecommendations = async () => {
@@ -278,6 +328,7 @@ export function CampaignInsightDetail({
   const nextSteps = (analysis?.next_steps || []).slice(0, 2);
 
   return (
+    <>
     <div className="space-y-6 pb-12">
       {/* Back Button */}
       <Button variant="ghost" onClick={onBack} className="rounded-xl">
@@ -466,7 +517,7 @@ export function CampaignInsightDetail({
                           size="sm"
                           variant="lumi"
                           className="rounded-xl text-xs shrink-0 gap-1"
-                          onClick={() => navigate(action.url)}
+                          onClick={() => action.type === 'add_posts' ? openPostPicker() : navigate(action.url)}
                         >
                           {action.icon}
                           {action.label}
@@ -660,5 +711,40 @@ export function CampaignInsightDetail({
         </>
       )}
     </div>
+
+      {/* Add Posts Dialog */}
+      <Dialog open={postPickerOpen} onOpenChange={(open) => { if (!addingPosts) { setPostPickerOpen(open); } }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Posts to {campaign.name}</DialogTitle>
+            <DialogDescription>Select existing Instagram posts to add as new ads.</DialogDescription>
+          </DialogHeader>
+          {addingPosts ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Adding posts to your campaign...</p>
+            </div>
+          ) : postPickerBrand ? (
+            <SocialGrowthFlow
+              brandId={campaign.brandId || ''}
+              brandName={postPickerBrand.name || ''}
+              instagramAccountId={postPickerBrand.instagram_account_id}
+              instagramAccountName={postPickerBrand.instagram_account_name}
+              audiencePsychology={postPickerBrand.audience_psychology}
+              fixedObjective="traffic"
+              headerText="Pick posts to add to your campaign ✨"
+              headerSubtext="Select up to 6 posts to add as new ads. They'll go live in your existing campaign with the same settings."
+              onComplete={handlePostsSelected}
+              onConnectInstagram={() => navigate('/settings')}
+              onBack={() => setPostPickerOpen(false)}
+            />
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
