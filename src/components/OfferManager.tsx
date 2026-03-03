@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OfferDialog } from "./OfferDialog";
-import { Plus, ExternalLink, Package, Loader2, Sparkles, Rocket, Archive, ArchiveRestore, ChevronRight, Brain, Target } from "lucide-react";
+import { Plus, ExternalLink, Package, Loader2, Sparkles, Rocket, Archive, ArchiveRestore, ChevronRight, Brain, Target, Pencil } from "lucide-react";
+import { OfferEditDialog } from "./OfferEditDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +41,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [offerToArchive, setOfferToArchive] = useState<Offer | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -259,6 +261,16 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
                               className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setEditingOffer(offer);
+                              }}
+                              title="Edit offer"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setOfferToArchive(offer);
                                 setArchiveDialogOpen(true);
                               }}
@@ -418,6 +430,12 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <OfferEditDialog
+        open={!!editingOffer}
+        onOpenChange={(open) => { if (!open) setEditingOffer(null); }}
+        offer={editingOffer}
+        onSuccess={onUpdate}
+      />
     </>
   );
 }
