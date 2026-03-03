@@ -488,6 +488,7 @@ export default function Data() {
             }
 
             const metaStatus = (data?.status || '').toString().toUpperCase();
+            const metaDailyBudget = data?.dailyBudget ? Number(data.dailyBudget) : undefined;
 
             // Strict integrity gate: ONLY explicit ACTIVE campaigns can keep metrics
             if (metaStatus !== 'ACTIVE') {
@@ -496,6 +497,7 @@ export default function Data() {
                 metrics: null,
                 previousMetrics: null,
                 status: metaStatus ? metaStatus.toLowerCase() : 'unknown',
+                dailyBudget: campaign.dailyBudget || metaDailyBudget,
                 userGoal: userGoals[campaign.id] || null
               };
             }
@@ -522,6 +524,7 @@ export default function Data() {
               metrics: data?.metrics || null,
               previousMetrics,
               status: 'active',
+              dailyBudget: campaign.dailyBudget || metaDailyBudget,
               userGoal: userGoals[campaign.id] || null
             };
           } catch (err: any) {
