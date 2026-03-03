@@ -80,7 +80,9 @@ interface Campaign {
   offerName?: string | null;
   brandId?: string;
   dailyBudget?: number;
+  budgetLevel?: 'campaign' | 'adset' | null;
   trackingVerified?: boolean;
+  lastSyncedAt?: string | null;
 }
 
 interface AccountMetrics {
@@ -458,15 +460,21 @@ export function InsightsHome({
                       </div>
                     </div>
 
-                    {/* Row 2: Budget + Spend + Objective KPIs */}
+                    {/* Row 2: Budget + Spend + Objective KPIs + Last Synced */}
                     <div className="flex flex-wrap items-center gap-2 pl-5">
-                      {campaign.dailyBudget != null &&
+                      {campaign.dailyBudget != null && campaign.dailyBudget > 0 ?
                     <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                           <DollarSign className="h-3 w-3" />
-                          ${campaign.dailyBudget}/day
-                        </span>
+                          ${campaign.dailyBudget.toFixed(2)}/day
+                          {campaign.budgetLevel === 'adset' && <span className="text-[10px] opacity-60">(ad sets)</span>}
+                        </span> :
+                      campaign.dailyBudget === undefined && campaign.lastSyncedAt ?
+                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground/50">
+                          <DollarSign className="h-3 w-3" />
+                          —
+                        </span> : null
                     }
-                      {campaign.metrics?.spend != null &&
+                      {campaign.metrics?.spend != null && Number(campaign.metrics.spend) > 0 &&
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                           ${Number(campaign.metrics.spend).toFixed(2)} spent
                         </span>
@@ -476,6 +484,19 @@ export function InsightsHome({
                           {m.value} {m.label}
                         </span>
                     )}
+                      {campaign.lastSyncedAt && (() => {
+                        const syncAge = Date.now() - new Date(campaign.lastSyncedAt).getTime();
+                        const isStale = syncAge > 60 * 60 * 1000; // > 1 hour
+                        const syncLabel = syncAge < 60000 ? 'Just now' :
+                          syncAge < 3600000 ? `${Math.floor(syncAge / 60000)}m ago` :
+                          `${Math.floor(syncAge / 3600000)}h ago`;
+                        return (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isStale ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground/60'}`}>
+                            {isStale && <AlertTriangle className="h-2.5 w-2.5 inline mr-0.5" />}
+                            Synced {syncLabel}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     {/* Row 3: Verdict + Action */}

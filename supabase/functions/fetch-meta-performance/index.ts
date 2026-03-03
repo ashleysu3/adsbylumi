@@ -162,10 +162,66 @@ Deno.serve(async (req) => {
     }
 
     const effectiveStatus = statusData.effective_status || statusData.status || 'UNKNOWN';
-    // daily_budget from Meta is in cents (minor units), convert to dollars
-    const metaDailyBudget = statusData.daily_budget ? parseFloat(statusData.daily_budget) / 100 : null;
-    const metaLifetimeBudget = statusData.lifetime_budget ? parseFloat(statusData.lifetime_budget) / 100 : null;
-    console.log(`Campaign ${campaignId} effective_status: ${effectiveStatus}, daily_budget: ${metaDailyBudget}`);
+
+    // ============================================
+    // BUDGET RESOLUTION: Campaign-level first, then ad set aggregation (ABO)
+    // ============================================
+    let resolvedDailyBudget: number | null = null;
+    let resolvedLifetimeBudget: number | null = null;
+    let budgetLevel: 'campaign' | 'adset' | null = null;
+
+    // Campaign-level budget (Meta returns cents/minor units)
+    if (statusData.daily_budget) {
+      resolvedDailyBudget = parseFloat(statusData.daily_budget) / 100;
+      budgetLevel = 'campaign';
+    }
+    if (statusData.lifetime_budget) {
+      resolvedLifetimeBudget = parseFloat(statusData.lifetime_budget) / 100;
+      if (!budgetLevel) budgetLevel = 'campaign';
+    }
+
+    // If no campaign-level budget, fetch ad set budgets (ABO campaigns)
+    if (!resolvedDailyBudget && !resolvedLifetimeBudget) {
+      try {
+        const adSetsUrl = `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=daily_budget,lifetime_budget,status&limit=100&access_token=${metaAccessToken}`;
+        const adSetsResponse = await fetch(adSetsUrl);
+        const adSetsData = await adSetsResponse.json();
+
+        if (adSetsData.data && Array.isArray(adSetsData.data)) {
+          let totalDailyBudget = 0;
+          let totalLifetimeBudget = 0;
+          let hasDaily = false;
+          let hasLifetime = false;
+
+          for (const adSet of adSetsData.data) {
+            // Only sum ACTIVE ad sets
+            if (adSet.status !== 'ACTIVE') continue;
+            if (adSet.daily_budget) {
+              totalDailyBudget += parseFloat(adSet.daily_budget) / 100;
+              hasDaily = true;
+            }
+            if (adSet.lifetime_budget) {
+              totalLifetimeBudget += parseFloat(adSet.lifetime_budget) / 100;
+              hasLifetime = true;
+            }
+          }
+
+          if (hasDaily) {
+            resolvedDailyBudget = totalDailyBudget;
+            budgetLevel = 'adset';
+          }
+          if (hasLifetime) {
+            resolvedLifetimeBudget = totalLifetimeBudget;
+            if (!budgetLevel) budgetLevel = 'adset';
+          }
+          console.log(`ABO budget aggregation: daily=${resolvedDailyBudget}, lifetime=${resolvedLifetimeBudget}, adsets=${adSetsData.data.length}`);
+        }
+      } catch (adSetErr) {
+        console.error('Error fetching ad set budgets:', adSetErr);
+      }
+    }
+
+    console.log(`Campaign ${campaignId} effective_status: ${effectiveStatus}, daily_budget: ${resolvedDailyBudget}, budget_level: ${budgetLevel}`);
 
     // Update workspace status if it changed
     const newStatus = effectiveStatus.toLowerCase();
@@ -185,9 +241,11 @@ Deno.serve(async (req) => {
           success: true,
           metrics: null,
           status: effectiveStatus,
-          dailyBudget: metaDailyBudget,
-          lifetimeBudget: metaLifetimeBudget,
+          dailyBudget: resolvedDailyBudget,
+          lifetimeBudget: resolvedLifetimeBudget,
+          budgetLevel,
           message: `Campaign is ${effectiveStatus}, not ACTIVE`,
+          dataIntegrity: { verified: true, source: 'meta_api', fetchedAt: new Date().toISOString() },
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
@@ -279,7 +337,7 @@ Deno.serve(async (req) => {
 
     const spend = extractMetric(campaignMetrics, 'spend');
 
-    const processedMetrics = {
+    const rawMetrics = {
       spend,
       impressions: extractMetric(campaignMetrics, 'impressions'),
       reach: extractMetric(campaignMetrics, 'reach'),
@@ -310,6 +368,21 @@ Deno.serve(async (req) => {
       // ROAS calculation
       roas: campaignMetrics.purchase_roas ? extractMetric(campaignMetrics, 'purchase_roas') : null,
     };
+
+    // ============================================
+    // METRIC INTEGRITY VALIDATION
+    // ============================================
+    const validateMetric = (value: any): number | null => {
+      if (value === null || value === undefined) return null;
+      const num = Number(value);
+      if (isNaN(num) || num < 0) return null;
+      return num;
+    };
+
+    const processedMetrics: Record<string, number | null> = {};
+    for (const [key, value] of Object.entries(rawMetrics)) {
+      processedMetrics[key] = validateMetric(value);
+    }
 
     // Save to performance_history
     const performanceSnapshot = {
@@ -342,9 +415,11 @@ Deno.serve(async (req) => {
         success: true,
         metrics: processedMetrics,
         status: effectiveStatus,
-        dailyBudget: metaDailyBudget,
-        lifetimeBudget: metaLifetimeBudget,
+        dailyBudget: resolvedDailyBudget,
+        lifetimeBudget: resolvedLifetimeBudget,
+        budgetLevel,
         snapshot: performanceSnapshot,
+        dataIntegrity: { verified: true, source: 'meta_api', fetchedAt: new Date().toISOString() },
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

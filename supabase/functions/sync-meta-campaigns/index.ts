@@ -282,6 +282,47 @@ Deno.serve(async (req) => {
                          campaign.status === 'PAUSED' ? 'paused' : 
                          campaign.status === 'ARCHIVED' ? 'archived' : 'unknown';
 
+      // ============================================
+      // BUDGET RESOLUTION: Campaign-level or ad set aggregation
+      // ============================================
+      let resolvedDailyBudget: number | null = null;
+      let budgetLevel: string | null = null;
+
+      // Campaign-level budget (Meta returns cents/minor units → convert to dollars)
+      if (campaign.daily_budget) {
+        resolvedDailyBudget = parseFloat(campaign.daily_budget) / 100;
+        budgetLevel = 'campaign';
+      }
+
+      // If no campaign-level budget, fetch ad set budgets (ABO)
+      if (!resolvedDailyBudget) {
+        try {
+          const adSetsUrl = `https://graph.facebook.com/v18.0/${campaign.id}/adsets?fields=daily_budget,lifetime_budget,status&limit=100&access_token=${metaAccessToken}`;
+          const adSetsResponse = await fetch(adSetsUrl);
+          const adSetsData = await adSetsResponse.json();
+
+          if (adSetsData.data && Array.isArray(adSetsData.data)) {
+            let totalDailyBudget = 0;
+            let hasDaily = false;
+            for (const adSet of adSetsData.data) {
+              if (adSet.status !== 'ACTIVE') continue;
+              if (adSet.daily_budget) {
+                totalDailyBudget += parseFloat(adSet.daily_budget) / 100;
+                hasDaily = true;
+              }
+            }
+            if (hasDaily) {
+              resolvedDailyBudget = totalDailyBudget;
+              budgetLevel = 'adset';
+            }
+          }
+        } catch (adSetErr) {
+          console.error(`Error fetching ad set budgets for campaign ${campaign.id}:`, adSetErr);
+        }
+      }
+
+      console.log(`Campaign ${campaign.name}: budget=$${resolvedDailyBudget}, level=${budgetLevel}`);
+
       // Fetch initial performance data
       console.log(`Fetching performance data for: ${campaign.name} (${campaign.id})`);
       const performanceMetrics = await fetchCampaignPerformance(campaign.id, metaAccessToken);
@@ -296,8 +337,10 @@ Deno.serve(async (req) => {
         syncedAt: new Date().toISOString(),
       }] : [];
 
+      // Store budget in campaign_builder_answers so the UI can read it
+      const builderAnswers = resolvedDailyBudget ? { budget: resolvedDailyBudget, budgetLevel } : null;
+
       // Create new workspace record with initial performance data
-      // Mark as 'imported' to indicate it needs an offer linked before creative generation
       const { data: newWorkspace, error: insertError } = await supabase
         .from('campaign_workspaces')
         .insert({
@@ -305,12 +348,11 @@ Deno.serve(async (req) => {
           name: campaign.name,
           meta_campaign_ids: { campaignId: campaign.id },
           meta_campaign_status: metaStatus,
-          progress_status: 'imported', // Always 'imported' - needs offer link for creative
+          progress_status: 'imported',
           published_at: new Date().toISOString(),
           performance_history: initialPerformanceHistory,
           meta_insights_last_sync: performanceMetrics ? new Date().toISOString() : null,
-          // Leave strategy_json, creative_json, and offer fields null initially
-          // User will link an offer later to enable creative generation
+          campaign_builder_answers: builderAnswers,
         })
         .select()
         .single();
@@ -328,6 +370,8 @@ Deno.serve(async (req) => {
         name: campaign.name,
         workspaceId: newWorkspace.id,
         hasPerformanceData: !!performanceMetrics,
+        dailyBudget: resolvedDailyBudget,
+        budgetLevel,
       });
     }
 
