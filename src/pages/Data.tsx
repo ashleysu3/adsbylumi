@@ -704,6 +704,15 @@ export default function Data() {
     }
   };
 
+  // Handle campaign status change from toggle (updates local state immediately)
+  const handleCampaignStatusChange = (campaignId: string, newStatus: string) => {
+    setCampaigns(prev => prev.map(c => 
+      c.id === campaignId 
+        ? { ...c, status: newStatus, metrics: newStatus !== 'active' ? null : c.metrics }
+        : c
+    ));
+  };
+
   // Get selected campaign for detail view
   const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId);
 
@@ -793,6 +802,7 @@ export default function Data() {
           accountMetrics={accountMetrics}
           accountMetricsLoading={accountMetricsLoading}
           onOfferLinked={() => fetchCampaigns()}
+          onCampaignStatusChange={handleCampaignStatusChange}
           brandId={brandId || undefined}
           dateRangeStart={format(getDateRange(globalDateRange, customDateRange).from, 'yyyy-MM-dd')}
           dateRangeEnd={format(getDateRange(globalDateRange, customDateRange).to, 'yyyy-MM-dd')} /> :

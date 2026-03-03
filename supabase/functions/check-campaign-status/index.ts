@@ -112,11 +112,22 @@ serve(async (req) => {
 
       console.log('Update result:', updateResult);
 
-      // Update workspace with new status
+      // MULTI-CHECK: Wait briefly then re-verify Meta actually accepted the change
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      const verifyResponse = await fetch(
+        `https://graph.facebook.com/v21.0/${targetId}?fields=status,effective_status&access_token=${metaAccessToken}`
+      );
+      const verifyResult = await verifyResponse.json();
+      const verifiedStatus = verifyResult.effective_status || verifyResult.status || newStatus;
+      
+      console.log(`Verification: requested=${newStatus}, verified=${verifiedStatus}`);
+
+      // Update workspace with verified status (not just what we requested)
       await supabase
         .from('campaign_workspaces')
         .update({ 
-          meta_campaign_status: newStatus.toLowerCase(),
+          meta_campaign_status: verifiedStatus.toLowerCase(),
           updated_at: new Date().toISOString()
         })
         .eq('id', workspaceId);
@@ -124,8 +135,12 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: true, 
-          newStatus,
-          message: `Campaign ${action}d successfully`
+          newStatus: verifiedStatus,
+          requestedStatus: newStatus,
+          verified: verifiedStatus === newStatus,
+          message: verifiedStatus === newStatus 
+            ? `Campaign ${action}d successfully` 
+            : `Campaign status is ${verifiedStatus} (requested ${newStatus})`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
