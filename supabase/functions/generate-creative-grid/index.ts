@@ -446,7 +446,7 @@ ${offerAudiencePsychology ? `=== OFFER-AUDIENCE PSYCHOLOGY ===
 ${truncateJson(offerAudiencePsychology, 600)}` : ""}
 
 === YOUR TASK ===
-Generate 9 creative cells (3 rows × 3 formats) for EACH angle (${angles.length} angles = ${angles.length * 9} total cells).
+Generate 9 creative cells (3 rows × 3 formats) for EACH angle listed above.
 
 Remember:
 1. Each hook must be SPECIFIC - name a micro-moment, use numbers, reference real scenarios
@@ -457,82 +457,22 @@ Remember:
 6. Use the offer-audience psychology to make creative that addresses THIS specific offer's hesitations and transformation
 7. For the "direct_from_page" angle (if present), follow the SPECIAL ANGLE instructions above — keep it simple and direct`;
 
-    console.log("Generating creative grid with enriched context for", angles.length, "angles. Prompt length:", systemPrompt.length + userPrompt.length);
-
-    // Retry logic for transient connection errors
-    const MAX_RETRIES = 2;
-    let response: Response | null = null;
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        if (attempt > 0) {
-          console.log(`Retry attempt ${attempt}/${MAX_RETRIES}...`);
-          await new Promise(r => setTimeout(r, 1000 * attempt)); // Exponential backoff
-        }
-        response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            max_tokens: 32000,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt },
-            ],
-          }),
-        });
-        // If we got a response (even an error status), break out of retry loop
-        break;
-      } catch (fetchError) {
-        lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
-        console.error(`Fetch attempt ${attempt + 1} failed:`, lastError.message);
-        if (attempt === MAX_RETRIES) {
-          throw new Error(`Connection failed after ${MAX_RETRIES + 1} attempts: ${lastError.message}`);
-        }
-      }
+    // --- BATCHED GENERATION: split angles into groups of 2 to avoid truncation ---
+    const BATCH_SIZE = 2;
+    const angleBatches: typeof angles[] = [];
+    for (let i = 0; i < angles.length; i += BATCH_SIZE) {
+      angleBatches.push(angles.slice(i, i + BATCH_SIZE));
     }
 
-    if (!response) {
-      throw lastError || new Error("No response from AI gateway");
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI API error:", response.status, errorText);
-      if (response.status === 429) {
-        throw new Error("429: Rate limit exceeded");
-      }
-      if (response.status === 402) {
-        throw new Error("402: AI credits depleted");
-      }
-      throw new Error(`AI API error: ${response.status}`);
-    }
-
-    const aiResponse = await response.json();
-    const rawContent =
-      aiResponse?.choices?.[0]?.message?.content ??
-      aiResponse?.choices?.[0]?.text ??
-      aiResponse?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
-      "";
-
-    if (!rawContent) {
-      console.error("Unexpected AI response shape:", aiResponse);
-      throw new Error("AI response was empty");
-    }
+    console.log(`Generating creative grid in ${angleBatches.length} batch(es) for ${angles.length} angles. System prompt length: ${systemPrompt.length}`);
 
     // Robust JSON extraction with error recovery
     const extractJson = (text: string): unknown => {
-      // Step 1: Remove markdown code blocks
       let cleaned = text
         .replace(/```json\s*/gi, "")
         .replace(/```\s*/g, "")
         .trim();
 
-      // Step 2: Find JSON boundaries
       const jsonStart = cleaned.indexOf("{");
       const jsonEnd = cleaned.lastIndexOf("}");
 
@@ -542,28 +482,25 @@ Remember:
 
       cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
 
-      // Step 3: Attempt parse with error handling
       try {
         return JSON.parse(cleaned);
       } catch (e) {
         console.log("Initial JSON parse failed, attempting repair...");
         
-        // Step 4: Try to fix common issues
         cleaned = cleaned
-          .replace(/,\s*}/g, "}") // Remove trailing commas before }
-          .replace(/,\s*]/g, "]") // Remove trailing commas before ]
-          .replace(/[\x00-\x1F\x7F]/g, " ") // Remove control characters
-          .replace(/\n\s*\n/g, "\n") // Remove double newlines
-          .replace(/"\s*\n\s*"/g, '", "') // Fix broken string arrays
-          .replace(/:\s*,/g, ': "",') // Fix empty values before comma
-          .replace(/:\s*}/g, ': ""}'); // Fix empty values before }
+          .replace(/,\s*}/g, "}") 
+          .replace(/,\s*]/g, "]") 
+          .replace(/[\x00-\x1F\x7F]/g, " ") 
+          .replace(/\n\s*\n/g, "\n") 
+          .replace(/"\s*\n\s*"/g, '", "') 
+          .replace(/:\s*,/g, ': "",') 
+          .replace(/:\s*}/g, ': ""}'); 
 
         try {
           return JSON.parse(cleaned);
         } catch (e2) {
           console.log("Second parse attempt failed, trying brace balancing...");
           
-          // Step 5: Balance unbalanced braces/brackets
           let braces = 0, brackets = 0;
           for (const char of cleaned) {
             if (char === '{') braces++;
@@ -572,20 +509,17 @@ Remember:
             if (char === ']') brackets--;
           }
           
-          // Add missing closing brackets/braces
           while (brackets > 0) { cleaned += ']'; brackets--; }
           while (braces > 0) { cleaned += '}'; braces--; }
           
           try {
             return JSON.parse(cleaned);
           } catch (e3) {
-            // Step 6: Check for truncation indicators
-            if (cleaned.includes('...') || cleaned.includes('[truncated]') || cleaned.length > 25000) {
+            if (cleaned.length > 25000) {
               console.error("Response appears to be truncated. Length:", cleaned.length);
-              throw new Error("AI response was truncated. The creative grid is too large - try generating for fewer angles.");
+              throw new Error("AI response was truncated for this batch.");
             }
             
-            // Log the problematic area for debugging
             const errorMatch = (e3 as Error).message.match(/position (\d+)/);
             if (errorMatch) {
               const pos = parseInt(errorMatch[1]);
@@ -598,7 +532,118 @@ Remember:
       }
     };
 
-    const parsed = extractJson(rawContent) as { grid?: unknown[] };
+    // Helper: call AI for a batch of angles
+    const generateBatch = async (batchAngles: typeof angles, batchIndex: number): Promise<any[]> => {
+      const batchAnglesDesc = batchAngles.map((a: any) => `- ID: "${a.id}" | Name: ${a.name}: ${a.description}`).join("\n");
+      
+      // Include direct angle instructions only if this batch contains it
+      const batchHasDirect = batchAngles.some((a: any) => a.id === "direct_from_page");
+      
+      const batchUserPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate.
+
+Generate a 3×3 creative grid for each of these ${batchAngles.length} angle(s):
+
+${batchAnglesDesc}
+${batchHasDirect ? directAngleInstructions : ''}
+
+IMPORTANT: Use the exact angle ID (not the name) for the angleId field.
+
+=== BRAND CONTEXT ===
+Brand: ${brandName}
+${brandVoice ? `Brand Voice: ${brandVoice}` : ''}
+${nicheContext ? `Industry/Niche: ${nicheContext}` : ''}
+
+=== OFFER CONTEXT ===
+Offer: ${offerData?.name || "Not specified"}
+${offerData?.description ? `Description: ${offerData.description.slice(0, 500)}` : ""}
+${offerData?.price ? `Price: ${offerData.price}` : ""}
+
+${messagingGuidelines ? `=== MESSAGING GUIDELINES ===\n${truncateJson(messagingGuidelines)}` : ''}
+${productPsychology ? `=== PRODUCT PSYCHOLOGY ===\n${truncateJson(productPsychology)}` : ''}
+
+=== STRATEGY CONTEXT ===
+${truncateJson(strategyData, 600)}
+
+${audiencePsychology ? `=== FULL AUDIENCE PSYCHOLOGY ===\n${truncateJson(audiencePsychology, 1000)}` : ""}
+
+=== YOUR TASK ===
+Generate exactly ${batchAngles.length * 9} creative cells (${batchAngles.length} angles × 9 cells each).`;
+
+      console.log(`Batch ${batchIndex + 1}: generating for ${batchAngles.length} angles (${batchAngles.map((a: any) => a.name).join(', ')})`);
+
+      const MAX_RETRIES = 2;
+      let response: Response | null = null;
+      let lastError: Error | null = null;
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`Batch ${batchIndex + 1} retry ${attempt}/${MAX_RETRIES}...`);
+            await new Promise(r => setTimeout(r, 1000 * attempt));
+          }
+          response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-flash",
+              max_tokens: 32000,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: batchUserPrompt },
+              ],
+            }),
+          });
+          break;
+        } catch (fetchError) {
+          lastError = fetchError instanceof Error ? fetchError : new Error(String(fetchError));
+          console.error(`Batch ${batchIndex + 1} fetch attempt ${attempt + 1} failed:`, lastError.message);
+          if (attempt === MAX_RETRIES) {
+            throw new Error(`Connection failed after ${MAX_RETRIES + 1} attempts: ${lastError.message}`);
+          }
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error("No response from AI gateway");
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Batch ${batchIndex + 1} AI API error:`, response.status, errorText);
+        if (response.status === 429) throw new Error("429: Rate limit exceeded");
+        if (response.status === 402) throw new Error("402: AI credits depleted");
+        throw new Error(`AI API error: ${response.status}`);
+      }
+
+      const aiResponse = await response.json();
+      const rawContent =
+        aiResponse?.choices?.[0]?.message?.content ??
+        aiResponse?.choices?.[0]?.text ??
+        aiResponse?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text).filter(Boolean).join("\n") ??
+        "";
+
+      if (!rawContent) {
+        console.error(`Batch ${batchIndex + 1} unexpected AI response shape:`, aiResponse);
+        throw new Error("AI response was empty");
+      }
+
+      const parsed = extractJson(rawContent) as { grid?: any[] };
+      return parsed.grid || [];
+    };
+
+    // Run batches sequentially to respect rate limits
+    let allCells: any[] = [];
+    for (let i = 0; i < angleBatches.length; i++) {
+      // Small delay between batches to avoid rate limits
+      if (i > 0) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+      const batchCells = await generateBatch(angleBatches[i], i);
+      allCells = allCells.concat(batchCells);
+    }
 
     // Post-process to ensure angleId matches actual angle IDs
     const angleIdMap = new Map<string, string>();
@@ -607,37 +652,33 @@ Remember:
       angleIdMap.set(angle.id.toLowerCase(), angle.id);
     }
 
-    if (parsed.grid && Array.isArray(parsed.grid)) {
-      parsed.grid = parsed.grid.map((cell: any) => {
-        const lookupKey = (cell.angleId || "").toLowerCase();
-        const correctedId = angleIdMap.get(lookupKey);
-        if (correctedId) {
-          cell.angleId = correctedId;
-        }
-        // Ensure new fields have defaults if AI didn't include them
-        cell.psychology_trigger = cell.psychology_trigger || "curiosity";
-        cell.pain_point_addressed = cell.pain_point_addressed || "general";
-        cell.why_this_works = cell.why_this_works || "";
-        
-        // Ensure talking_head specific fields have defaults
-        if (cell.format === "talking_head") {
-          cell.verbal_hook = cell.verbal_hook || cell.hook || "";
-          cell.written_hook = cell.written_hook || "";
-          cell.visual_hook = cell.visual_hook || "";
-          cell.visual_hook_options = cell.visual_hook_options || [];
-          cell.hook_technique = cell.hook_technique || "pattern_interrupt";
-          cell.delivery_style = cell.delivery_style || "Conversational and authentic - no acting required.";
-          cell.script_lines = cell.script_lines || [];
-          cell.text_overlays = cell.text_overlays || [];
-          cell.caption_reminder = true; // Always true for talking head
-        }
-        return cell;
-      });
-    }
+    allCells = allCells.map((cell: any) => {
+      const lookupKey = (cell.angleId || "").toLowerCase();
+      const correctedId = angleIdMap.get(lookupKey);
+      if (correctedId) {
+        cell.angleId = correctedId;
+      }
+      cell.psychology_trigger = cell.psychology_trigger || "curiosity";
+      cell.pain_point_addressed = cell.pain_point_addressed || "general";
+      cell.why_this_works = cell.why_this_works || "";
+      
+      if (cell.format === "talking_head") {
+        cell.verbal_hook = cell.verbal_hook || cell.hook || "";
+        cell.written_hook = cell.written_hook || "";
+        cell.visual_hook = cell.visual_hook || "";
+        cell.visual_hook_options = cell.visual_hook_options || [];
+        cell.hook_technique = cell.hook_technique || "pattern_interrupt";
+        cell.delivery_style = cell.delivery_style || "Conversational and authentic - no acting required.";
+        cell.script_lines = cell.script_lines || [];
+        cell.text_overlays = cell.text_overlays || [];
+        cell.caption_reminder = true;
+      }
+      return cell;
+    });
 
-    console.log("Successfully generated", parsed.grid?.length || 0, "creative cells");
+    console.log("Successfully generated", allCells.length, "creative cells across", angleBatches.length, "batch(es)");
 
-    return new Response(JSON.stringify(parsed), {
+    return new Response(JSON.stringify({ grid: allCells }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
