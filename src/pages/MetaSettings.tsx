@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LumiEducationCard } from '@/components/LumiEducationCard';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -250,6 +251,14 @@ export default function MetaSettings() {
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
+        {/* Education card for successful connection */}
+        {isConnected && (
+          <LumiEducationCard
+            cardId="meta-connected-tip"
+            headline="You're connected! Here's what happens next."
+            body="Lumi will now be able to publish your ads directly to Meta and pull in your performance data automatically."
+          />
+        )}
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button 

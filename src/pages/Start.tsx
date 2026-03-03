@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useBrand } from "@/contexts/BrandContext";
+import { useLumiAssistant } from "@/components/LumiAssistant";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { LumiEducationCard } from "@/components/LumiEducationCard";
 
 interface UserState {
   hasOffers: boolean;
@@ -55,6 +57,7 @@ interface AttentionItem {
 export default function Start() {
   const navigate = useNavigate();
   const { activeBrand, loading: brandLoading } = useBrand();
+  const { setLumiUserState } = useLumiAssistant();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [trendInsights, setTrendInsights] = useState<any[] | null>(null);
@@ -85,6 +88,21 @@ export default function Start() {
     setBrand(activeBrand);
     checkUserState(activeBrand);
   }, [brandLoading, activeBrand?.id]);
+
+  // Fetch trend insights once after user state is loaded
+  useEffect(() => {
+    if (loading || trendFetched || !activeBrand?.id || !userState.hasOffers) return;
+    setTrendLoading(true);
+    setTrendFetched(true);
+    supabase.functions.invoke('generate-trend-insights', { body: { brandId: activeBrand.id } })
+      .then(({ data, error }) => {
+        if (!error && data?.insights && Array.isArray(data.insights) && data.insights.length > 0) {
+          setTrendInsights(data.insights.slice(0, 3));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setTrendLoading(false));
+  }, [loading, trendFetched, activeBrand?.id, userState.hasOffers]);
 
   const checkUserState = async (currentBrand: any) => {
     setLoading(true);
@@ -126,7 +144,7 @@ export default function Start() {
         ? new Date(tokenExpiry).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000
         : false;
 
-      setUserState({
+      const newState = {
         hasOffers: offers.length > 0,
         hasCampaigns: campaigns.length > 0,
         hasLiveCampaigns: liveCampaigns.length > 0,
@@ -137,7 +155,10 @@ export default function Start() {
         campaignCount: campaigns.length,
         draftCount: draftCampaigns.length,
         recommendationCount: recCount,
-      });
+      };
+      setUserState(newState);
+      // Push to Lumi context for dynamic starters
+      setLumiUserState(newState);
     } catch (error) {
       console.error("Error checking user state:", error);
     } finally {
@@ -381,6 +402,62 @@ export default function Start() {
                 </Button>
               </CardContent>
             </Card>
+          </motion.section>
+        )}
+
+        {/* Section E: What's Working Right Now (Trend Insights) */}
+        {trendLoading && userState.hasOffers && (
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.28 }}
+            className="space-y-3"
+          >
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              What's Working Right Now
+            </h2>
+            <div className="space-y-2">
+              {[1, 2].map((i) => (
+                <Skeleton key={i} className="h-20 w-full rounded-xl" />
+              ))}
+            </div>
+          </motion.section>
+        )}
+
+        {trendInsights && trendInsights.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.28 }}
+            className="space-y-3"
+          >
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              What's Working Right Now
+            </h2>
+            <div className="space-y-2">
+              {trendInsights.map((insight: any, i: number) => (
+                <Card
+                  key={i}
+                  className="border hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer"
+                  onClick={() => navigate("/creative-studio")}
+                >
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-lumi-orange-1/20 to-lumi-pink-1/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{insight.title || insight.hook || "Trending angle"}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{insight.description || insight.summary || ""}</p>
+                    </div>
+                    <Button size="sm" variant="ghost" className="flex-shrink-0 text-xs text-primary">
+                      Try This Angle →
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </motion.section>
         )}
 

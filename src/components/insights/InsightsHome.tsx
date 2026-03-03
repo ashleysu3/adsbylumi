@@ -407,8 +407,63 @@ export function InsightsHome({
     }
   }, [isLoading, campaigns, selectedStatuses]);
 
+  // Section 7: Generate "What Lumi Sees" summary
+  const lumiSummary = useMemo(() => {
+    const activeCampaigns = campaigns.filter(c => {
+      const s = (c.status || '').toLowerCase();
+      return s === 'active' || s === 'live';
+    });
+    
+    if (activeCampaigns.length === 0) {
+      if (!isLoading && campaigns.length === 0) {
+        return "Connect your Meta account and run your first campaign to see insights here.";
+      }
+      return null;
+    }
+
+    const withMetrics = activeCampaigns.filter(c => c.metrics && (c.metrics.spend || 0) > 0);
+    if (withMetrics.length === 0) return null;
+
+    const avgCtr = withMetrics.reduce((sum, c) => {
+      const impressions = c.metrics?.impressions || 0;
+      const clicks = c.metrics?.clicks || c.metrics?.linkClicks || 0;
+      return sum + (impressions > 0 ? (clicks / impressions) * 100 : 0);
+    }, 0) / withMetrics.length;
+
+    const totalSpend = withMetrics.reduce((sum, c) => sum + (c.metrics?.spend || 0), 0);
+    const totalLeads = withMetrics.reduce((sum, c) => sum + (c.metrics?.leads || 0), 0);
+    const avgCpl = totalLeads > 0 ? totalSpend / totalLeads : null;
+    const avgRoas = withMetrics.reduce((sum, c) => sum + (c.metrics?.roas || 0), 0) / withMetrics.length;
+
+    if (avgRoas > 2) {
+      return "Your ads are profitable — great time to consider increasing budget.";
+    }
+    if (avgCtr < 1) {
+      return "Your ads are being seen but not clicked — the creative or hook may not be grabbing attention.";
+    }
+    if (avgCpl && avgCpl > 20) {
+      return "Your cost per lead is on the higher side. Fresh creative angles usually help.";
+    }
+    return "Things look solid. Keep an eye on creative fatigue over the next 2 weeks.";
+  }, [campaigns, isLoading]);
+
   return (
     <div className="space-y-8">
+      {/* What Lumi Sees summary */}
+      {lumiSummary && (
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 rounded-2xl">
+          <CardContent className="p-5 flex items-start gap-3">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-lumi-orange-1/20 via-lumi-pink-1/20 to-lumi-purple-1/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm text-foreground mb-1">What Lumi Sees</h3>
+              <p className="text-sm text-muted-foreground">{lumiSummary}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-lumi-orange-1/10 via-lumi-pink-1/10 to-lumi-purple-1/10 border border-primary/20">
