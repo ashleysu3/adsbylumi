@@ -233,7 +233,9 @@ export function InsightsHome({
     const campaignsWithMetrics = activeCampaigns.filter((c) => {
       const normalizedStatus = (c.status || '').toLowerCase();
       const isLiveStatus = normalizedStatus === 'active' || normalizedStatus === 'live';
-      return isLiveStatus && !!c.metrics;
+      const hasMetricsObject = !!c.metrics;
+      const hasDelivery = (Number(c.metrics?.spend || 0) > 0) || (Number(c.metrics?.impressions || 0) > 0);
+      return isLiveStatus && hasMetricsObject && hasDelivery;
     });
 
     if (campaignsWithMetrics.length === 0) {
