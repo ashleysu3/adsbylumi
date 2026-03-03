@@ -792,7 +792,10 @@ export default function Data() {
           isLoading={loading || syncing}
           accountMetrics={accountMetrics}
           accountMetricsLoading={accountMetricsLoading}
-          onOfferLinked={() => fetchCampaigns()} /> :
+          onOfferLinked={() => fetchCampaigns()}
+          brandId={brandId || undefined}
+          dateRangeStart={format(getDateRange(globalDateRange, customDateRange).from, 'yyyy-MM-dd')}
+          dateRangeEnd={format(getDateRange(globalDateRange, customDateRange).to, 'yyyy-MM-dd')} /> :
 
         selectedCampaign ?
         <CampaignInsightDetail

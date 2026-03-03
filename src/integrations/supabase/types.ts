@@ -1203,6 +1203,50 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_reports: {
+        Row: {
+          brand_id: string
+          campaign_statuses: Json
+          created_at: string
+          date_range_end: string
+          date_range_start: string
+          id: string
+          metrics_snapshot: Json
+          recommendations_snapshot: Json
+          report_text: string
+        }
+        Insert: {
+          brand_id: string
+          campaign_statuses?: Json
+          created_at?: string
+          date_range_end: string
+          date_range_start: string
+          id?: string
+          metrics_snapshot?: Json
+          recommendations_snapshot?: Json
+          report_text: string
+        }
+        Update: {
+          brand_id?: string
+          campaign_statuses?: Json
+          created_at?: string
+          date_range_end?: string
+          date_range_start?: string
+          id?: string
+          metrics_snapshot?: Json
+          recommendations_snapshot?: Json
+          report_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_reports_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
