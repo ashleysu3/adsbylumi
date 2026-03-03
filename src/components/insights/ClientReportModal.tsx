@@ -4,10 +4,17 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Copy, Check, FileText, Calendar, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+
+interface CampaignOption {
+  id: string;
+  name: string;
+  status?: string;
+  templateName?: string | null;
+}
 
 interface ClientReportModalProps {
   open: boolean;
@@ -15,6 +22,7 @@ interface ClientReportModalProps {
   brandId: string;
   dateRangeStart: string;
   dateRangeEnd: string;
+  campaigns?: CampaignOption[];
 }
 
 interface PastReport {
@@ -32,6 +40,7 @@ export function ClientReportModal({
   brandId,
   dateRangeStart,
   dateRangeEnd,
+  campaigns = [],
 }: ClientReportModalProps) {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<string | null>(null);
@@ -39,10 +48,14 @@ export function ClientReportModal({
   const [pastReports, setPastReports] = useState<PastReport[]>([]);
   const [viewingPast, setViewingPast] = useState<string | null>(null);
   const [pastReportsLoading, setPastReportsLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // Reset selections when modal opens
   useEffect(() => {
     if (open && brandId) {
       fetchPastReports();
+      // Select all campaigns by default
+      setSelectedIds(new Set(campaigns.map((c) => c.id)));
     }
     if (!open) {
       setReport(null);
@@ -70,19 +83,47 @@ export function ClientReportModal({
     }
   };
 
+  const toggleCampaign = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === campaigns.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(campaigns.map((c) => c.id)));
+    }
+  };
+
   const generateReport = async () => {
+    if (selectedIds.size === 0) {
+      toast.error('Select at least one campaign');
+      return;
+    }
     setLoading(true);
     setReport(null);
     try {
       const { data, error } = await supabase.functions.invoke('generate-client-report', {
-        body: { brandId, dateRangeStart, dateRangeEnd },
+        body: {
+          brandId,
+          dateRangeStart,
+          dateRangeEnd,
+          selectedWorkspaceIds: Array.from(selectedIds),
+        },
       });
 
       if (error) throw new Error(error.message || 'Failed to generate report');
       if (data?.error) throw new Error(data.error);
 
       setReport(data.report);
-      // Refresh past reports list
       fetchPastReports();
     } catch (err: any) {
       toast.error(err.message || 'Failed to generate report');
@@ -106,6 +147,13 @@ export function ClientReportModal({
     ? pastReports.find((r) => r.id === viewingPast)?.report_text || null
     : report;
 
+  const statusColor = (s?: string) => {
+    const sl = (s || '').toLowerCase();
+    if (sl === 'active' || sl === 'live') return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400';
+    if (sl === 'paused') return 'bg-amber-500/15 text-amber-700 dark:text-amber-400';
+    return 'bg-muted text-muted-foreground';
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
@@ -116,22 +164,57 @@ export function ClientReportModal({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Main content */}
         <div className="flex-1 min-h-0 flex flex-col gap-4">
+          {/* Campaign selection step (shown before report is generated) */}
           {!displayedReport && !loading && (
-            <div className="text-center py-8 space-y-4">
-              <p className="text-muted-foreground">
-                Generate a polished, copy-paste-ready weekly report for your client.
-              </p>
-              <Button
-                onClick={generateReport}
-                variant="lumi"
-                size="lg"
-                className="rounded-2xl"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Generate Report
-              </Button>
+            <div className="space-y-4">
+              {campaigns.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">Select campaigns to include:</p>
+                    <Button variant="ghost" size="sm" className="text-xs h-7" onClick={toggleAll}>
+                      {selectedIds.size === campaigns.length ? 'Deselect All' : 'Select All'}
+                    </Button>
+                  </div>
+                  <ScrollArea className="max-h-[200px]">
+                    <div className="space-y-1">
+                      {campaigns.map((c) => (
+                        <label
+                          key={c.id}
+                          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 cursor-pointer transition-colors"
+                        >
+                          <Checkbox
+                            checked={selectedIds.has(c.id)}
+                            onCheckedChange={() => toggleCampaign(c.id)}
+                          />
+                          <span className="flex-1 text-sm font-medium truncate">{c.name}</span>
+                          {c.status && (
+                            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${statusColor(c.status)}`}>
+                              {c.status}
+                            </Badge>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              <div className="text-center space-y-3 pt-2">
+                <p className="text-muted-foreground text-sm">
+                  Generate a polished, copy-paste-ready weekly report with LUMI's strategic recommendations.
+                </p>
+                <Button
+                  onClick={generateReport}
+                  variant="lumi"
+                  size="lg"
+                  className="rounded-2xl"
+                  disabled={selectedIds.size === 0}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Report ({selectedIds.size} campaign{selectedIds.size !== 1 ? 's' : ''})
+                </Button>
+              </div>
             </div>
           )}
 
@@ -186,14 +269,13 @@ export function ClientReportModal({
 
               {!viewingPast && (
                 <Button
-                  onClick={generateReport}
+                  onClick={() => { setReport(null); }}
                   variant="outline"
                   size="sm"
                   className="self-center rounded-xl text-xs"
-                  disabled={loading}
                 >
                   <FileText className="h-3.5 w-3.5 mr-1" />
-                  Regenerate
+                  New Report
                 </Button>
               )}
             </>

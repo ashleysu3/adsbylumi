@@ -703,6 +703,12 @@ export function InsightsHome({
           brandId={brandId}
           dateRangeStart={dateRangeStart || ''}
           dateRangeEnd={dateRangeEnd || ''}
+          campaigns={campaigns.map((c) => ({
+            id: c.id,
+            name: c.name,
+            status: c.status,
+            templateName: c.templateName,
+          }))}
         />
       )}
     </div>);
