@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { OfferDialog } from "./OfferDialog";
-import { Plus, ExternalLink, Package, Loader2, Sparkles, Rocket, Archive, ArchiveRestore, ChevronRight, Brain, Target, Pencil } from "lucide-react";
+import { Plus, ExternalLink, Package, Loader2, Sparkles, Rocket, Archive, ArchiveRestore, ChevronRight, Brain, Target, Pencil, Megaphone } from "lucide-react";
 import { OfferEditDialog } from "./OfferEditDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -42,9 +42,11 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
   const [offerToArchive, setOfferToArchive] = useState<Offer | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+  const [campaignCounts, setCampaignCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchTemplates();
+    fetchCampaignCounts();
   }, []);
 
   const fetchTemplates = async () => {
@@ -53,6 +55,32 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
       .select('*')
       .eq('active', true);
     if (data) setTemplates(data);
+  };
+
+  const fetchCampaignCounts = async () => {
+    try {
+      const { data } = await supabase
+        .from('campaign_workspaces')
+        .select('id, offer_id, offer_name, progress_status')
+        .eq('brand_id', brandId)
+        .eq('archived', false)
+        .in('progress_status', ['live', 'ready_to_publish', 'creative_in_progress']);
+      
+      if (data) {
+        const counts: Record<string, number> = {};
+        // Match by offer_id first, then by offer_name
+        for (const offer of offers) {
+          const matching = data.filter(c => 
+            (c.offer_id === offer.id) || 
+            (c.offer_name && c.offer_name === offer.name)
+          );
+          if (matching.length > 0) counts[offer.id] = matching.length;
+        }
+        setCampaignCounts(counts);
+      }
+    } catch (e) {
+      console.error('Error fetching campaign counts:', e);
+    }
   };
 
   const toggleOffer = (offerId: string) => {
@@ -233,6 +261,23 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
                                 </span>
                               )}
                             </div>
+                            {/* Active campaigns badge */}
+                            {campaignCounts[offer.id] ? (
+                              <button
+                                className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/campaigns`);
+                                }}
+                              >
+                                <Megaphone className="h-3 w-3" />
+                                {campaignCounts[offer.id]} Active Ad{campaignCounts[offer.id] !== 1 ? 's' : ''}
+                              </button>
+                            ) : (
+                              <span className="mt-1 inline-flex text-[11px] text-muted-foreground/60">
+                                No Ads Running
+                              </span>
+                            )}
                           </div>
 
                           {/* Status label */}

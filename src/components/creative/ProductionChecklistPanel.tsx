@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Video, Film, Image, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp, Copy, Mic, Type, Eye, Volume2, Brain } from "lucide-react";
+import { Video, Film, Image, Trash2, CheckCircle2, ArrowRight, Sparkles, Library, Crown, Info, ChevronDown, ChevronUp, Copy, Mic, Type, Eye, Volume2, Brain, Download, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -241,6 +241,27 @@ export function ProductionChecklistPanel({
                 <>{items.length}/3 min</>
               )}
             </Badge>
+          </div>
+          {/* Export / Print buttons */}
+          <div className="flex items-center gap-2 mt-2">
+            <Button
+              variant="lumi"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => window.print()}
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export Brief as PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => window.print()}
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Print Brief
+            </Button>
           </div>
           {!hasMinimumItems && (
             <p className="text-xs text-muted-foreground mt-1">

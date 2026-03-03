@@ -25,8 +25,10 @@ import {
   Pencil,
   Check,
   X,
-  Lightbulb
+  Lightbulb,
+  Package
 } from "lucide-react";
+import { getStatusLabel } from "@/lib/campaign-status-labels";
 import { toast } from "sonner";
 import { CreativeFlowModal } from "@/components/creative/CreativeFlowModal";
 
@@ -172,43 +174,43 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; color: string; icon: React.ReactNode; nextStep: string }> = {
       draft: { 
-        label: "Draft", 
+        label: getStatusLabel("draft"), 
         color: "bg-gray-100 text-gray-700 border-gray-200",
         icon: <PenTool className="h-4 w-4" />,
         nextStep: "Complete your creative setup"
       },
       creative_in_progress: { 
-        label: "Creating", 
+        label: getStatusLabel("creative_in_progress"), 
         color: "bg-blue-50 text-blue-700 border-blue-200",
         icon: <Sparkles className="h-4 w-4" />,
         nextStep: "Finish selecting your creative angles"
       },
       waiting_for_assets: { 
-        label: "Needs Assets", 
+        label: getStatusLabel("waiting_for_assets"), 
         color: "bg-yellow-50 text-yellow-700 border-yellow-200",
         icon: <Clock className="h-4 w-4" />,
         nextStep: "Upload your video or images"
       },
       ready_to_publish: { 
-        label: "Ready", 
+        label: getStatusLabel("ready_to_publish"), 
         color: "bg-green-50 text-green-700 border-green-200",
         icon: <CheckCircle2 className="h-4 w-4" />,
         nextStep: "Review and launch your campaign"
       },
       publishing_to_meta: { 
-        label: "Publishing", 
+        label: "Publishing...", 
         color: "bg-purple-50 text-purple-700 border-purple-200",
         icon: <RefreshCw className="h-4 w-4 animate-spin" />,
         nextStep: "Campaign is being published..."
       },
       live: { 
-        label: "Live", 
+        label: getStatusLabel("live"), 
         color: "bg-primary/10 text-primary border-primary/20",
         icon: <Play className="h-4 w-4" />,
         nextStep: "Monitor performance in Results"
       },
       completed: { 
-        label: "Completed", 
+        label: getStatusLabel("completed"), 
         color: "bg-gray-100 text-gray-600 border-gray-200",
         icon: <CheckCircle2 className="h-4 w-4" />,
         nextStep: "View final results"
@@ -366,7 +368,10 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
           ) : (
             <div className="flex items-center gap-2">
               {workspace?.offer_name ? (
-                <p className="text-sm text-muted-foreground">{workspace.offer_name}</p>
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Package className="h-3.5 w-3.5 text-primary" />
+                  <span className="font-medium text-foreground">Promoting:</span> {workspace.offer_name}
+                </p>
               ) : (
                 <p className="text-sm text-muted-foreground/60 italic">No offer linked</p>
               )}

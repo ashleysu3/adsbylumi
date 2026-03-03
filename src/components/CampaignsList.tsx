@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit, RefreshCw, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { AdsEmptyState } from "./AdsEmptyState";
 import { CampaignDetailDrawer } from "./CampaignDetailDrawer";
@@ -159,18 +159,10 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     return 'bg-muted-foreground/40';
   };
 
-  const getStatusLabel = (status: string, metaStatus?: string | null) => {
-    if (isLive(status, metaStatus)) return 'Live';
-    const labels: Record<string, string> = {
-      draft: "Draft",
-      creative_in_progress: "Creating",
-      waiting_for_assets: "Needs Assets",
-      ready_to_publish: "Ready",
-      publishing_to_meta: "Publishing",
-      live: "Live",
-      completed: "Completed",
-    };
-    return labels[status] || status;
+  const getStatusLabelForDisplay = (status: string, metaStatus?: string | null) => {
+    if (isLive(status, metaStatus)) return 'Running Live ✅';
+    const { getStatusLabel: getLabel } = require('@/lib/campaign-status-labels');
+    return getLabel(status);
   };
 
   const handleArrowClick = (campaign: Campaign) => {
@@ -476,7 +468,10 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       {campaign.offer_name && (
-                        <span className="text-xs text-muted-foreground truncate max-w-[180px]">{campaign.offer_name}</span>
+                        <span className="text-xs text-muted-foreground truncate max-w-[180px] flex items-center gap-1">
+                          <Package className="h-3 w-3" />
+                          Promoting: {campaign.offer_name}
+                        </span>
                       )}
                       <span className="text-xs text-muted-foreground">
                         · {new Date(campaign.updated_at).toLocaleDateString()}
@@ -491,7 +486,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                       : 'bg-muted text-muted-foreground'
                   }`}>
                     {live && <Radio className="h-3 w-3 inline mr-1" />}
-                    {getStatusLabel(campaign.progress_status, campaign.meta_campaign_status)}
+                    {getStatusLabelForDisplay(campaign.progress_status, campaign.meta_campaign_status)}
                   </span>
 
                   {/* Actions */}

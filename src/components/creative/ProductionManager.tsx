@@ -9,7 +9,7 @@ import {
   Rocket, Upload, CheckCircle2, AlertCircle, 
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
-  Archive, Trash2, ChevronDown, Star
+  Archive, Trash2, ChevronDown, Star, Printer
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -319,6 +319,25 @@ export function ProductionManager({
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-lg">Production Checklist</CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Export Brief / Print buttons */}
+                  <Button
+                    variant="lumi"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => window.print()}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Export Brief as PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => window.print()}
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Print Brief
+                  </Button>
                   {/* Export Button */}
                   <TooltipProvider>
                     <Tooltip>
