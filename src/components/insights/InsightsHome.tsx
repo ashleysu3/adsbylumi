@@ -226,10 +226,16 @@ export function InsightsHome({
   // Fetch recommendations for campaigns with metrics
   const fetchRecommendations = async () => {
     const activeCampaigns = filteredCampaigns.length > 0 ? filteredCampaigns : campaigns.filter((c) => {
-      const status = c.status || 'live';
+      const status = (c.status || '').toLowerCase();
       return status === 'active' || status === 'live';
     });
-    const campaignsWithMetrics = activeCampaigns.filter((c) => c.metrics);
+
+    const campaignsWithMetrics = activeCampaigns.filter((c) => {
+      const normalizedStatus = (c.status || '').toLowerCase();
+      const isLiveStatus = normalizedStatus === 'active' || normalizedStatus === 'live';
+      return isLiveStatus && !!c.metrics;
+    });
+
     if (campaignsWithMetrics.length === 0) {
       setRecommendations([]);
       setRecCountsByWorkspace({});
@@ -247,6 +253,7 @@ export function InsightsHome({
             metrics: { ...campaign.metrics, dailyBudget: campaign.dailyBudget }
           }
         });
+
         if (!error && data?.recommendations) {
           allRecs.push(...data.recommendations.map((r: any) => ({
             ...r,
@@ -255,6 +262,7 @@ export function InsightsHome({
           })));
         }
       }
+
       // Add fallback recs for campaigns not already represented
       const representedIds = new Set(allRecs.map((r: any) => r.campaignId));
       for (const campaign of campaignsWithMetrics) {
@@ -278,6 +286,7 @@ export function InsightsHome({
             fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Still gathering data', description: 'Not enough data yet to make a confident recommendation. Let it run.', impact: 'Allow the algorithm to optimize', confidence: 'low', requiresDoubleApproval: false, actionPayload: {}, priority: 99, userAction: true, actionUrl: '/data' };
             break;
         }
+
         if (fallback) {
           fallback.campaignName = campaign.name;
           fallback.campaignId = campaign.id;
@@ -286,7 +295,6 @@ export function InsightsHome({
       }
 
       setRecommendations(allRecs);
-      // Build per-campaign count map
       const counts: Record<string, number> = {};
       allRecs.forEach((r) => {
         counts[r.campaignId] = (counts[r.campaignId] || 0) + 1;
@@ -303,7 +311,7 @@ export function InsightsHome({
     if (!isLoading && campaigns.some((c) => c.metrics)) {
       fetchRecommendations();
     }
-  }, [isLoading, campaigns.length, selectedStatuses]);
+  }, [isLoading, campaigns, selectedStatuses]);
 
   return (
     <div className="space-y-8">
