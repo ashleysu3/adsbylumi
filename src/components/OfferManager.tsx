@@ -156,7 +156,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />
-              <CardTitle>Your Offers</CardTitle>
+              <CardTitle>What You're Promoting</CardTitle>
             </div>
             <div className="flex items-center gap-3">
               {archivedCount > 0 && (
@@ -169,7 +169,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
               )}
               <Button size="sm" onClick={() => setDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Offer
+                Add What You're Promoting
               </Button>
             </div>
           </div>
@@ -187,7 +187,7 @@ export function OfferManager({ brandId, offers, onUpdate }: OfferManagerProps) {
               </p>
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Your First Offer
+                Add What You're Promoting
               </Button>
             </div>
           ) : (

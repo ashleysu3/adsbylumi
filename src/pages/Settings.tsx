@@ -13,13 +13,15 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { toast } from 'sonner';
 import { 
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
-  Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen, RotateCcw
+  Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen, RotateCcw,
+  Smile, X
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GlossaryTooltip } from '@/components/GlossaryTooltip';
 import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
+import EmojiQuickPicker from '@/components/EmojiQuickPicker';
 
 interface NotificationPrefs {
   report_frequency: 'off' | 'daily' | 'weekly';
@@ -68,6 +70,16 @@ export default function Settings() {
     retest_cooldown_days: 14,
     fatigue_action: 'notify_only' as 'auto_rotate' | 'notify_only',
   });
+
+  // Copy Style state
+  const DEFAULT_EMOJIS = ['✨', '🎯', '💡', '🚀', '💪', '⭐'];
+  const BULLET_OPTIONS = ['✅', '→', '•', '✓', '▸', '★', '💫', '🔥'];
+  const [copyPerspective, setCopyPerspective] = useState<'I' | 'We'>('I');
+  const [useEmojis, setUseEmojis] = useState(true);
+  const [brandEmojis, setBrandEmojis] = useState<string[]>(DEFAULT_EMOJIS);
+  const [bulletEmoji, setBulletEmoji] = useState('✅');
+  const [newEmoji, setNewEmoji] = useState('');
+  const [savingCopyStyle, setSavingCopyStyle] = useState(false);
   
   const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status } = useSubscription();
 
@@ -96,6 +108,12 @@ export default function Settings() {
       
       if (brandRes.data) {
         setBrand(brandRes.data);
+        // Load copy style
+        setCopyPerspective(brandRes.data.copy_perspective === 'We' ? 'We' : 'I');
+        setUseEmojis(brandRes.data.use_emojis ?? true);
+        setBrandEmojis(brandRes.data.brand_emojis || DEFAULT_EMOJIS);
+        setBulletEmoji(brandRes.data.bullet_emoji || '✅');
+        
         if (brandRes.data.notification_preferences) {
           const prefs = brandRes.data.notification_preferences as any;
           const reportFrequency = prefs.report_frequency || 
@@ -106,7 +124,6 @@ export default function Settings() {
             performance_drops: prefs.performance_drops ?? true,
             last_report_sent_at: prefs.last_report_sent_at,
           });
-          // Load creative automation prefs
           if (prefs.creative_automation) {
             setCreativeAutomation(prev => ({ ...prev, ...prefs.creative_automation }));
           }
@@ -298,6 +315,10 @@ export default function Settings() {
               <User className="h-4 w-4" />
               Account
             </TabsTrigger>
+            <TabsTrigger value="copystyle" className="gap-2">
+              <Smile className="h-4 w-4" />
+              Copy Style
+            </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" />
               Notifications
@@ -353,7 +374,192 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
+          {/* Copy Style Tab */}
+          <TabsContent value="copystyle" className="space-y-6">
+            <Card variant="glow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Smile className="h-5 w-5" />
+                  Copy Style
+                </CardTitle>
+                <CardDescription>Set your ad copy voice, emoji preferences, and bullet point style</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Copy Perspective Toggle */}
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Ad Copy Voice</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Should your ads say "I" or "We"? Choose the voice that fits your brand.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setCopyPerspective('I')}
+                      className={`rounded-xl border-2 p-4 text-left transition-all ${
+                        copyPerspective === 'I'
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : 'border-border hover:border-muted-foreground/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <User className="h-4 w-4" />
+                        <span className="font-semibold text-sm">Personal "I"</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground italic">
+                        "I help entrepreneurs scale..."<br />
+                        "My program teaches you..."
+                      </p>
+                    </button>
+                    <button
+                      onClick={() => setCopyPerspective('We')}
+                      className={`rounded-xl border-2 p-4 text-left transition-all ${
+                        copyPerspective === 'We'
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : 'border-border hover:border-muted-foreground/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <User className="h-4 w-4" />
+                        <span className="font-semibold text-sm">Team "We"</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground italic">
+                        "We help entrepreneurs scale..."<br />
+                        "Our program teaches you..."
+                      </p>
+                    </button>
+                  </div>
+                </div>
 
+                <Separator />
+
+                {/* Emoji Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-base">Use Emojis in Copy</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Enable emojis in generated ad copy
+                    </p>
+                  </div>
+                  <Switch
+                    checked={useEmojis}
+                    onCheckedChange={setUseEmojis}
+                  />
+                </div>
+
+                {useEmojis && (
+                  <>
+                    {/* Brand Emojis */}
+                    <div className="space-y-3">
+                      <Label className="text-sm">Your Brand Emojis (up to 6)</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {brandEmojis.map((emoji) => (
+                          <div
+                            key={emoji}
+                            className="flex items-center gap-1 px-3 py-2 bg-muted rounded-lg border"
+                          >
+                            <span className="text-xl">{emoji}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 hover:bg-destructive/20"
+                              onClick={() => setBrandEmojis(prev => prev.filter(e => e !== emoji))}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      {brandEmojis.length < 6 && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <EmojiQuickPicker
+                            onSelect={(emoji) => {
+                              if (brandEmojis.length >= 6) {
+                                toast.error('Maximum 6 emojis allowed');
+                                return;
+                              }
+                              if (brandEmojis.includes(emoji)) {
+                                toast.error('Emoji already added');
+                                return;
+                              }
+                              setBrandEmojis(prev => [...prev, emoji]);
+                            }}
+                            selectedEmojis={brandEmojis}
+                          />
+                          <span className="text-xs text-muted-foreground">or</span>
+                          <div className="flex gap-2">
+                            <Input
+                              value={newEmoji}
+                              onChange={(e) => setNewEmoji(e.target.value)}
+                              placeholder="Paste emoji..."
+                              className="w-24"
+                              maxLength={4}
+                            />
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              if (!newEmoji.trim()) return;
+                              if (brandEmojis.length >= 6) { toast.error('Maximum 6 emojis allowed'); return; }
+                              if (brandEmojis.includes(newEmoji.trim())) { toast.error('Emoji already added'); return; }
+                              setBrandEmojis(prev => [...prev, newEmoji.trim()]);
+                              setNewEmoji('');
+                            }}>
+                              Add
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bullet Style */}
+                    <div className="space-y-3">
+                      <Label className="text-sm">Bullet Point Style</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {BULLET_OPTIONS.map((bullet) => (
+                          <Button
+                            key={bullet}
+                            variant={bulletEmoji === bullet ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setBulletEmoji(bullet)}
+                            className="text-lg w-10 h-10 p-0"
+                          >
+                            {bullet}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="pt-4">
+                  <Button
+                    onClick={async () => {
+                      if (!brand) return;
+                      setSavingCopyStyle(true);
+                      try {
+                        const { error } = await supabase
+                          .from('brands')
+                          .update({
+                            copy_perspective: copyPerspective,
+                            use_emojis: useEmojis,
+                            brand_emojis: brandEmojis,
+                            bullet_emoji: bulletEmoji,
+                          })
+                          .eq('id', brand.id);
+                        if (error) throw error;
+                        toast.success('Copy style saved');
+                      } catch (error: any) {
+                        toast.error('Failed to save copy style');
+                      } finally {
+                        setSavingCopyStyle(false);
+                      }
+                    }}
+                    disabled={savingCopyStyle}
+                    variant="lumi"
+                  >
+                    {savingCopyStyle && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Save Copy Style
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
 
           {/* Notifications Tab */}

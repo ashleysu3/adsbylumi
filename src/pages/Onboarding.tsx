@@ -20,7 +20,7 @@ import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { formatInvokeError } from "@/lib/formatInvokeError";
 import { useBrand } from "@/contexts/BrandContext";
 
-const STEP_LABELS = ["Brand Basics", "Positioning", "Copy Style", "Meet Lumi", "Connect Meta"];
+const STEP_LABELS = ["Brand Basics", "Positioning", "Meet Lumi", "Connect Meta"];
 const DEFAULT_EMOJIS = ['✨', '🎯', '💡', '🚀', '💪', '⭐'];
 const BULLET_OPTIONS = ['✅', '→', '•', '✓', '▸', '★', '💫', '🔥'];
 
@@ -296,7 +296,7 @@ export default function Onboarding() {
     );
   }
 
-  const progressPercentage = (step / 5) * 100;
+  const progressPercentage = (step / 4) * 100;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background via-background to-lumi-purple-1/10">
@@ -305,7 +305,7 @@ export default function Onboarding() {
           {/* Step progress */}
           <div className="space-y-3 mb-2">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Step {step} of 5</span>
+              <span>Step {step} of 4</span>
               <span>{STEP_LABELS[step - 1]}</span>
             </div>
             <Progress value={progressPercentage} className="h-2" />
@@ -326,15 +326,13 @@ export default function Onboarding() {
           <CardTitle className="font-display text-2xl">
             {step === 1 ? "Welcome to Lumi! ✨" :
              step === 2 ? "Your Positioning" :
-             step === 3 ? "Your Copy Style" :
-             step === 4 ? "Meet Lumi ✨" :
+             step === 3 ? "Meet Lumi ✨" :
              "Connect Meta"}
           </CardTitle>
           <CardDescription>
             {step === 1 ? "Let's get to know your brand" :
              step === 2 ? "Here's what Lumi found — feel free to tweak anything" :
-             step === 3 ? "Set your ad copy voice and emoji preferences" :
-             step === 4 ? "Your AI-powered Meta Ads assistant" :
+             step === 3 ? "Your AI-powered Meta Ads assistant" :
              "Link your Meta ad account to launch campaigns"}
           </CardDescription>
         </CardHeader>
@@ -467,163 +465,6 @@ export default function Onboarding() {
               </div>
             </div>
           ) : step === 3 ? (
-            // Copy Voice + Emoji Preferences
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              {/* Copy Perspective Toggle */}
-              <div className="space-y-3">
-                <Label className="text-base font-semibold">Ad Copy Voice</Label>
-                <p className="text-sm text-muted-foreground">
-                  Should your ads say "I" or "We"? Choose the voice that fits your brand.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setCopyPerspective('I')}
-                    className={`rounded-xl border-2 p-4 text-left transition-all ${
-                      copyPerspective === 'I'
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-border hover:border-muted-foreground/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="h-4 w-4" />
-                      <span className="font-semibold text-sm">Personal "I"</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground italic">
-                      "I help entrepreneurs scale..."<br />
-                      "My program teaches you..."
-                    </p>
-                  </button>
-                  <button
-                    onClick={() => setCopyPerspective('We')}
-                    className={`rounded-xl border-2 p-4 text-left transition-all ${
-                      copyPerspective === 'We'
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-border hover:border-muted-foreground/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="h-4 w-4" />
-                      <span className="font-semibold text-sm">Team "We"</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground italic">
-                      "We help entrepreneurs scale..."<br />
-                      "Our program teaches you..."
-                    </p>
-                  </button>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Emoji Toggle */}
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Use Emojis in Copy</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Enable emojis in generated ad copy
-                  </p>
-                </div>
-                <Switch
-                  checked={useEmojis}
-                  onCheckedChange={setUseEmojis}
-                />
-              </div>
-
-              {useEmojis && (
-                <>
-                  {/* Brand Emojis */}
-                  <div className="space-y-3">
-                    <Label className="text-sm">Your Brand Emojis (up to 6)</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {brandEmojis.map((emoji) => (
-                        <div
-                          key={emoji}
-                          className="flex items-center gap-1 px-3 py-2 bg-muted rounded-lg border"
-                        >
-                          <span className="text-xl">{emoji}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5 hover:bg-destructive/20"
-                            onClick={() => removeEmoji(emoji)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                    {brandEmojis.length < 6 && (
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <EmojiQuickPicker
-                          onSelect={(emoji) => {
-                            if (brandEmojis.length >= 6) {
-                              toast.error('Maximum 6 emojis allowed');
-                              return;
-                            }
-                            if (brandEmojis.includes(emoji)) {
-                              toast.error('Emoji already added');
-                              return;
-                            }
-                            setBrandEmojis(prev => [...prev, emoji]);
-                          }}
-                          selectedEmojis={brandEmojis}
-                        />
-                        <span className="text-xs text-muted-foreground">or</span>
-                        <div className="flex gap-2">
-                          <Input
-                            value={newEmoji}
-                            onChange={(e) => setNewEmoji(e.target.value)}
-                            placeholder="Paste emoji..."
-                            className="w-24"
-                            maxLength={4}
-                          />
-                          <Button variant="ghost" size="sm" onClick={addEmoji}>
-                            Add
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Bullet Style */}
-                  <div className="space-y-3">
-                    <Label className="text-sm">Bullet Point Style</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {BULLET_OPTIONS.map((bullet) => (
-                        <Button
-                          key={bullet}
-                          variant={bulletEmoji === bullet ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setBulletEmoji(bullet)}
-                          className="text-lg w-10 h-10 p-0"
-                        >
-                          {bullet}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => setStep(2)}>
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  Back
-                </Button>
-                <Button onClick={handleStep3Next} disabled={loading} className="flex-1" variant="lumi">
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Next"
-                  )}
-                </Button>
-              </div>
-            </motion.div>
-          ) : step === 4 ? (
             // Meet Lumi
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -699,12 +540,12 @@ export default function Onboarding() {
                 transition={{ delay: 0.8 }}
                 className="flex gap-2"
               >
-                <Button variant="outline" onClick={() => setStep(3)}>
+                <Button variant="outline" onClick={() => setStep(2)}>
                   <ChevronLeft className="mr-1 h-4 w-4" />
                   Back
                 </Button>
                 <Button 
-                  onClick={() => setStep(5)} 
+                  onClick={() => setStep(4)} 
                   variant="lumi" 
                   className="flex-1 group"
                   size="lg"
@@ -715,7 +556,7 @@ export default function Onboarding() {
               </motion.div>
             </motion.div>
           ) : (
-            // Step 5: Connect Meta
+            // Step 4: Connect Meta
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -760,7 +601,7 @@ export default function Onboarding() {
               )}
 
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setStep(4)}>
+                <Button variant="outline" onClick={() => setStep(3)}>
                   <ChevronLeft className="mr-1 h-4 w-4" />
                   Back
                 </Button>

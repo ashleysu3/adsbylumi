@@ -25,14 +25,14 @@ import {
 } from "@/components/ui/sidebar";
 
 const createNav = [
-  { path: "/campaigns", icon: FolderKanban, label: "My Campaigns" },
-  { path: "/creative-studio", icon: Sparkles, label: "Creative Studio" },
-  { path: "/content-library", icon: Library, label: "Concept Library" },
+  { path: "/campaigns", icon: FolderKanban, label: "My Campaigns", tooltip: "See and manage all your ads" },
+  { path: "/creative-studio", icon: Sparkles, label: "Creative Studio", tooltip: "Build your ad angles, copy, and creative briefs" },
+  { path: "/content-library", icon: Library, label: "Concept Library", tooltip: "Browse your saved ad concepts" },
 ];
 
 const brandNav = [
-  { path: "/dashboard", icon: Building2, label: "Brand Details" },
-  { path: "/offers", icon: Package, label: "Offers" },
+  { path: "/dashboard", icon: Building2, label: "Brand Details", tooltip: "Your brand info and settings" },
+  { path: "/offers", icon: Package, label: "What I'm Promoting", tooltip: "Add and manage your offers and services" },
 ];
 
 interface AppSidebarProps {
@@ -100,6 +100,10 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
     return <AlertTriangle className="h-3.5 w-3.5 text-destructive" />;
   };
 
+  const metaTooltip = metaStatus === 'disconnected' || metaStatus === 'expired'
+    ? "Action needed: Connect your Meta account to publish ads"
+    : "Meta Connection";
+
   return (
     <Sidebar collapsible="icon">
       {/* Header: Logo + Brand Selector */}
@@ -133,6 +137,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
           <button
             onClick={() => navigate("/data")}
             className="w-full rounded-xl border-2 border-primary/30 hover:border-primary/60 bg-card hover:bg-primary/5 transition-all"
+            title="See how your ads are performing"
           >
             <span className="flex items-center justify-center gap-2 py-2 px-3 text-foreground font-medium text-sm">
               <BarChart3 className="h-4 w-4 text-primary" />
@@ -152,7 +157,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
             <SidebarMenu>
               {createNav.map((item) => (
                 <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton asChild tooltip={item.label}>
+                  <SidebarMenuButton asChild tooltip={item.tooltip}>
                     <NavLink
                       to={item.path}
                       end
@@ -178,7 +183,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
             <SidebarMenu>
               {brandNav.map((item) => (
                 <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton asChild tooltip={item.label}>
+                  <SidebarMenuButton asChild tooltip={item.tooltip}>
                     <NavLink
                       to={item.path}
                       end
@@ -193,14 +198,19 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
               ))}
               {/* Meta Connection with status indicator */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Meta Connection">
+                <SidebarMenuButton asChild tooltip={metaTooltip}>
                   <NavLink
                     to="/meta-settings"
                     end
                     className="transition-all duration-200"
                     activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                   >
-                    <Link2 className="h-4 w-4" />
+                    <div className="relative">
+                      <Link2 className="h-4 w-4" />
+                      {(metaStatus === 'disconnected' || metaStatus === 'expired') && (
+                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[hsl(var(--lumi-orange-1))] animate-pulse" />
+                      )}
+                    </div>
                     {!collapsed && (
                       <span className="flex items-center gap-2 flex-1">
                         Meta Connection
@@ -235,7 +245,20 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Troubleshooting">
+                <SidebarMenuButton asChild tooltip="Learn advertising terms and concepts">
+                  <NavLink
+                    to="/glossary"
+                    end
+                    className="transition-all duration-200"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    {!collapsed && <span>Ad Glossary</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Troubleshooting and help">
                   <NavLink
                     to="/glossary"
                     end

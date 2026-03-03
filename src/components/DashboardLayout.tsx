@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useBrand } from "@/contexts/BrandContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { OnboardingWalkthrough } from "@/components/OnboardingWalkthrough";
@@ -14,6 +15,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useLumiAssistant } from "@/components/LumiAssistant";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { ArrowRight, X } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -29,6 +31,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [profile, setProfile] = useState<any>(null);
   const [brand, setBrand] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [inProgressWorkspace, setInProgressWorkspace] = useState<{ id: string; name: string } | null>(null);
+  const [progressBannerDismissed, setProgressBannerDismissed] = useState(false);
+  const { activeBrand } = useBrand();
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [walkthroughSteps, setWalkthroughSteps] = useState<any[]>([]);
   const [tourActive, setTourActive] = useState(false);
@@ -68,6 +73,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     };
     fetchData();
   }, [navigate, getEffectiveUserId]);
+
+  // Check for in-progress campaigns
+  useEffect(() => {
+    if (!activeBrand?.id || location.pathname.startsWith('/creative-studio')) {
+      setInProgressWorkspace(null);
+      return;
+    }
+    supabase
+      .from("campaign_workspaces")
+      .select("id, name")
+      .eq("brand_id", activeBrand.id)
+      .in("progress_status", ["creative_in_progress", "waiting_for_assets"])
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => setInProgressWorkspace(data || null));
+  }, [activeBrand?.id, location.pathname]);
 
   // Register desktop layout with LumiAssistant context
   useEffect(() => {
@@ -149,6 +171,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </Avatar>
             </div>
           </header>
+
+          {/* In-progress campaign banner */}
+          {inProgressWorkspace && !progressBannerDismissed && (
+            <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-between text-sm">
+              <a
+                href={`/creative-studio?workspace=${inProgressWorkspace.id}`}
+                className="flex items-center gap-2 text-primary font-medium hover:underline"
+              >
+                📍 You have an ad in progress — Continue Building
+                <ArrowRight className="h-3.5 w-3.5" />
+              </a>
+              <button onClick={() => setProgressBannerDismissed(true)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
 
           <main className="flex-1 container mx-auto px-4 md:px-6 py-4 md:py-6">
             {children}
