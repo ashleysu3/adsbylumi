@@ -70,6 +70,42 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
   ],
 };
 
+// Dynamic starters based on user state
+export interface LumiUserState {
+  hasOffers?: boolean;
+  hasCampaigns?: boolean;
+  hasLiveCampaigns?: boolean;
+  hasDraftCampaigns?: boolean;
+}
+
+function getDynamicStarters(context: string, userState?: LumiUserState): { label: string; message: string }[] {
+  if (context !== 'start' || !userState) return contextStarters[context] || contextStarters.start;
+
+  const starters: { label: string; message: string }[] = [];
+
+  // First starter based on state
+  if (!userState.hasOffers) {
+    starters.push({ label: "Add my offer", message: "How do I add what I'm promoting?" });
+  } else if (userState.hasDraftCampaigns) {
+    starters.push({ label: "Finish my ad", message: "Help me finish my ad in progress" });
+  } else if (userState.hasLiveCampaigns) {
+    starters.push({ label: "My ad results", message: "How are my ads performing?" });
+  } else if (userState.hasOffers && !userState.hasCampaigns) {
+    starters.push({ label: "Create my first ad", message: "Help me create my first ad" });
+  } else {
+    starters.push({ label: "Get started", message: "I'm new here. Where should I start?" });
+  }
+
+  // Remaining defaults
+  starters.push(
+    { label: "What can I do?", message: "What can this app help me with?" },
+    { label: "Need help", message: "I need help finding something." },
+    { label: "How ads work", message: "Explain how Facebook ads work in simple terms" },
+  );
+
+  return starters;
+}
+
 // Helper to format time ago
 function formatTimeAgo(date: Date): string {
   const now = new Date();
@@ -95,6 +131,7 @@ interface LumiAssistantUIProps {
   onMarkActionTaken?: (recId: string) => void;
   forceOpen?: boolean;
   onClose?: () => void;
+  lumiUserState?: LumiUserState;
 }
 
 function LumiAssistantUI({ 
@@ -107,6 +144,7 @@ function LumiAssistantUI({
   onMarkActionTaken,
   forceOpen,
   onClose,
+  lumiUserState,
 }: LumiAssistantUIProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -158,7 +196,7 @@ function LumiAssistantUI({
   };
 
   const context = getContextFromRoute();
-  const starters = contextStarters[context] || contextStarters.start;
+  const starters = getDynamicStarters(context, lumiUserState);
 
   // Handle navigation action click
   const handleActionClick = (action: NavigationAction) => {
@@ -1044,6 +1082,8 @@ interface LumiAssistantContextType {
   openChat: () => void;
   isDesktopNavLayout: boolean;
   setDesktopNavLayout: (val: boolean) => void;
+  lumiUserState: LumiUserState | undefined;
+  setLumiUserState: (state: LumiUserState) => void;
 }
 
 const LumiAssistantContext = createContext<LumiAssistantContextType | undefined>(undefined);
@@ -1056,6 +1096,7 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [isDesktopNavLayout, setDesktopNavLayout] = useState(false);
+  const [lumiUserState, setLumiUserState] = useState<LumiUserState | undefined>(undefined);
 
   const setRecommendation = (rec: LumiRecommendation | null) => {
     // Don't show if paused or already dismissed this session
@@ -1129,6 +1170,8 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
       openChat,
       isDesktopNavLayout,
       setDesktopNavLayout,
+      lumiUserState,
+      setLumiUserState,
     }}>
       {children}
       {/* Only show floating button if NOT in desktop nav layout */}
@@ -1140,6 +1183,7 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
           unreadCount={unreadCount}
           onMarkHistoryRead={markHistoryRead}
           onMarkActionTaken={markActionTaken}
+          lumiUserState={lumiUserState}
         />
       )}
       {/* Render just the chat popup controlled externally for desktop nav layout */}
@@ -1153,6 +1197,7 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
           onMarkActionTaken={markActionTaken}
           forceOpen={chatOpen}
           onClose={() => setChatOpen(false)}
+          lumiUserState={lumiUserState}
         />
       )}
     </LumiAssistantContext.Provider>

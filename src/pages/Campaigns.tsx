@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignsList } from "@/components/CampaignsList";
 import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
 import { GridShimmer } from "@/components/GradientShimmer";
+import { LumiEducationCard } from "@/components/LumiEducationCard";
 import { toast } from "sonner";
 
 
@@ -85,6 +86,13 @@ export default function Campaigns() {
         {!isAddCreativeMode && (
           <ResumeWorkspaceBanner brandId={activeBrand.id} />
         )}
+
+        {/* First live campaign education card */}
+        <LumiEducationCard
+          cardId="first-live-tip"
+          headline="Your ad is live! 🎉"
+          body="Give it 3–5 days before drawing conclusions. Meta's algorithm needs time to find the right people."
+        />
 
         <CampaignsList 
           brandId={activeBrand.id} 
