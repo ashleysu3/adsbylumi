@@ -225,8 +225,16 @@ export function InsightsHome({
 
   // Fetch recommendations for campaigns with metrics
   const fetchRecommendations = async () => {
-    const campaignsWithMetrics = campaigns.filter((c) => c.metrics);
-    if (campaignsWithMetrics.length === 0) return;
+    const activeCampaigns = filteredCampaigns.length > 0 ? filteredCampaigns : campaigns.filter((c) => {
+      const status = c.status || 'live';
+      return status === 'active' || status === 'live';
+    });
+    const campaignsWithMetrics = activeCampaigns.filter((c) => c.metrics);
+    if (campaignsWithMetrics.length === 0) {
+      setRecommendations([]);
+      setRecCountsByWorkspace({});
+      return;
+    }
 
     setRecsLoading(true);
     try {
@@ -295,7 +303,7 @@ export function InsightsHome({
     if (!isLoading && campaigns.some((c) => c.metrics)) {
       fetchRecommendations();
     }
-  }, [isLoading, campaigns.length]);
+  }, [isLoading, campaigns.length, selectedStatuses]);
 
   return (
     <div className="space-y-8">
