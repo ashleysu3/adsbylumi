@@ -1,38 +1,32 @@
 
 
-## Simplify Campaign Goal Display
+## Root Cause: Paused/Archived Campaigns Showing on Results Page
 
-### Problem
-The current goal row shows a variance badge with numbers like `-$0.24 (-90%)` which is confusing for non-expert users. Too much data, not enough meaning.
+The "AO // Engagement - GEO - Wedding MBA" campaign is showing because:
 
-### Approach: Status dot + plain-language hover tooltip
+1. **Import flow accepts ANY status** — When importing via "Refresh Ad Results" (Import from Ads Manager), the sync function imports campaigns regardless of their Meta status (ACTIVE, PAUSED, ARCHIVED). It stores the status at import time (line 281-283 in `sync-meta-campaigns`).
 
-Replace the numeric variance badge with a simple **colored status dot** next to the goal value. The dot communicates performance at a glance (green = great, amber = watch, red = needs attention). On hover, a friendly tooltip explains what's happening in plain language:
+2. **Data page shows all non-draft campaigns** — The `fetchCampaigns` query in `Data.tsx` (line 318-332) only filters out `draft` status and placeholder IDs. It does NOT filter out paused/archived campaigns.
 
-- **Green dot + hover**: "Your ads are beating your goal of $0.27 — great job! 🎉"
-- **Amber dot + hover**: "Your ads are close to your goal of $0.27. Keep an eye on it."
-- **Red dot + hover**: "Your ads aren't meeting your goal of $0.27. Check Lumi's recommendations for next steps."
-- **No data**: No dot, just the goal badge
+3. **Status only updates when metrics are fetched** — The real-time status check happens inside `fetch-meta-performance`, which correctly returns the non-ACTIVE status and sets `metrics: null`. But the campaign card still renders with a "paused" label, cluttering the page.
 
-This removes the confusing percentages and absolute differences entirely. The goal value stays visible as a badge, and the edit button remains.
+### Fix: Only Show ACTIVE Campaigns on the Results Page
 
-### Layout (before → after)
+**`src/pages/Data.tsx`** — Filter campaigns to only show those with an active/live status after metrics sync completes:
 
-```text
-BEFORE:  ⊕ Cost Per Click Goal:  [$0.27 (Lumi's rec)]  [-$0.24 (-90%)]  ✏ Edit
-AFTER:   ⊕ Cost Per Click Goal:  🟢 [$0.27 (Lumi's rec)]  ✏ Edit
-                                  ↑ hover for friendly message
-```
+- In `fetchCampaigns` (line 318-332): After metrics are fetched and statuses are updated from Meta, filter OUT campaigns whose `meta_campaign_status` is `paused`, `archived`, `deleted`, or any non-active status
+- Keep the status filter in `InsightsHome` but default to showing only `active`/`live` campaigns (removing `paused` and `imported` from defaults on line 173)
 
-### Changes
+**`src/components/insights/InsightsHome.tsx`** — Change default status filter:
 
-**`src/components/insights/CampaignGoalRow.tsx`**
-- Remove the variance badge entirely
-- Add a small colored dot (using existing `getLumiKPIStatus` logic) before the goal badge
-- Wrap the dot in a `<Tooltip>` with a warm, plain-language message based on status
-- Keep the goal badge and edit popover as-is
-- Import `Tooltip` components
+- Line 173: Change default from `['active', 'live', 'paused', 'imported']` to `['active', 'live']`
+- This way paused/imported campaigns are still accessible via filter toggle but don't clutter the main view
+
+**`src/components/insights/StatusFilter.tsx`** — Verify that the filter labels are clear so users can optionally toggle paused campaigns on/off
+
+This is the least disruptive fix. Campaigns that Meta reports as non-ACTIVE simply won't show by default. Users can toggle the "Paused" filter to see them if needed.
 
 ### Files to edit
-- `src/components/insights/CampaignGoalRow.tsx`
+- `src/components/insights/InsightsHome.tsx` (line 173 — change default filter)
+- `src/pages/Data.tsx` (optional: add a comment clarifying the filtering logic)
 
