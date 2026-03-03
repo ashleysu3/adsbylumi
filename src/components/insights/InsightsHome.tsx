@@ -324,22 +324,6 @@ export function InsightsHome({
         brandId={campaigns[0]?.brandId}
         onLinkOffer={(campaign) => setLinkOfferModal({ open: true, campaign })} />
       
-      <Card variant="glow" className="rounded-2xl">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>Viewing data for:</span>
-            </div>
-            <DateRangePicker
-              dateRange={dateRange}
-              customDateRange={customDateRange}
-              onDateRangeChange={onDateRangeChange}
-              onCustomDateRangeChange={onCustomDateRangeChange} />
-            
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Status Filter */}
       {campaigns.length > 0 &&
