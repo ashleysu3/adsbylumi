@@ -1,47 +1,41 @@
 
 
-## Add "Include Existing Posts" Option to Campaign Builder
+## Fix: Prevent Brand Bouncing on MetaSettings for Agency Accounts
 
-### What this does
-Adds an optional step in the Campaign Builder (Configure stage) that asks: "Do you have any existing posts you'd like to include as well?" Users can pick Instagram posts from their connected account, and those posts get added as additional ads alongside the generated creative assets when the campaign is published.
+### Problem
+When an agency user adds a new brand and navigates to `/meta-settings` to connect Meta, the page can load a **different brand** because:
 
-### Implementation
+1. **`fetchBrand` only runs once on mount** (`useEffect([], [])`) — it captures whatever `activeBrandId` exists at that moment, which may be stale or not yet updated to the new brand.
+2. **Fallback query uses `updated_at` ordering** — if `activeBrandId` is missing or doesn't match, it falls back to `fetchLatestForUser()` which grabs the most recently *updated* brand, not the one the user just created.
+3. **MetaSettings doesn't use `useBrand()` from BrandContext** — it relies on `useLumi()` which is a separate context. If BrandContext has the correct active brand but LumiContext hasn't synced yet, the page loads the wrong brand.
+4. **No re-fetch when active brand changes** — if the user switches brands via the BrandSelector while on MetaSettings, the page doesn't update.
 
-**1. Add post picker toggle + selector to `CampaignBuilderForm.tsx` and `MobileCampaignBuilder.tsx`**
-- After the budget section, add a card: "Include existing posts?" with a toggle
-- When toggled on, show the `SocialGrowthFlow` post picker (reuse the existing component in post-selection-only mode with `fixedObjective` set)
-- Alternatively, build a simpler inline post picker that fetches from the same Instagram media endpoint and lets users check/uncheck posts
-- Store selected posts in `answers.additionalPosts[]`
+### Fix
 
-**2. Create a lightweight `ExistingPostPicker` component**
-- Fetches Instagram posts using the existing `analyze-instagram-posts` edge function (already built)
-- Grid of posts with checkboxes, thumbnail + caption preview
-- Selected posts stored in campaign builder answers
-- Only shown when brand has `instagram_account_id` connected
+**1. Use `useBrand()` as the source of truth in MetaSettings**
+- Import and use `useBrand()` from BrandContext instead of (or in addition to) `useLumi()` for the active brand ID
+- This ensures the brand ID is always the one the user explicitly selected
 
-**3. Update `CampaignReview.tsx`**
-- Show selected existing posts in the review screen alongside the generated creative summary
-- Display count and thumbnails
+**2. Re-fetch when activeBrand changes**
+- Add `activeBrand.id` to the `fetchBrand` useEffect dependency array so the page re-fetches when the user switches brands
 
-**4. Update `build-meta-campaign` edge function**
-- After creating standard ads from production items, check `answers.additionalPosts`
-- For each additional post, create a "Use Existing Post" ad creative (same payload as `add-posts-to-campaign`: `object_id`, `instagram_user_id`, `source_instagram_media_id`)
-- Add these ads to the same ad set
-- Track success/failure in the result object
+**3. Remove the fallback to "latest updated" brand**
+- If no `activeBrandId` is available, don't silently load a random brand — show a "select a brand" prompt or redirect to dashboard
+- This prevents the "bounce" entirely
 
-**5. Update `QACheckScreen` (if needed)**
-- Include existing posts count in the pre-flight summary
+**4. Keep LumiContext in sync**
+- After resolving the brand, still call `setBrandId()` on LumiContext so the AI assistant stays scoped
 
-### Files to create/edit
-- **New**: `src/components/ExistingPostPicker.tsx` — reusable post picker with grid + checkboxes
-- **Edit**: `src/components/CampaignBuilderForm.tsx` — add the "include existing posts" card
-- **Edit**: `src/components/MobileCampaignBuilder.tsx` — same for mobile
-- **Edit**: `src/components/CampaignReview.tsx` — show additional posts in review
-- **Edit**: `supabase/functions/build-meta-campaign/index.ts` — create ads from existing posts after standard ads
+### Files to edit
+- `src/pages/MetaSettings.tsx` — switch to `useBrand()`, add dependency on active brand, remove silent fallback
 
-### UX Flow
-1. User sets budget → sees new card "Want to include existing posts too?"
-2. Toggle on → post grid appears, user selects posts
-3. Review screen shows both generated creatives and selected existing posts
-4. On publish, standard ads are created first, then existing post ads are added to the same ad set
+### Technical detail
+```text
+Current flow:
+  Mount → read LumiContext.brandId (may be stale) → fetch brand → fallback to any brand
+
+Fixed flow:
+  Mount → read BrandContext.activeBrand.id (always current) → fetch that brand only
+  Brand switch → re-fetch → update page
+```
 
