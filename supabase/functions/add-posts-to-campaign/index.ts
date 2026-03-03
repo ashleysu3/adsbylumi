@@ -186,8 +186,8 @@ Deno.serve(async (req) => {
         // Use the post's permalink ID to create an ad from existing content
         // For existing Instagram posts, source_instagram_media_id and
         // instagram_actor_id must be top-level params, NOT inside object_story_spec
+        // Promote existing IG media: specify only one promoted object
         creativeParams.source_instagram_media_id = postId;
-        creativeParams.object_story_spec = JSON.stringify({ page_id: pageId });
 
 
         const creativeRes = await fetch(
