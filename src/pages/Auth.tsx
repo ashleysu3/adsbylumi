@@ -97,6 +97,14 @@ export default function Auth() {
           return;
         }
 
+        // Check if this is a beta invite code
+        const { data: codeData } = await supabase
+          .from('invite_codes')
+          .select('is_beta')
+          .eq('code', inviteCode.toUpperCase().trim())
+          .maybeSingle();
+        const isBetaCode = codeData?.is_beta === true;
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -109,9 +117,9 @@ export default function Auth() {
         });
         if (error) throw error;
         
-        // Sync to Flodesk + send welcome email (fire-and-forget)
+        // Sync to Flodesk + send welcome email + beta welcome if applicable (fire-and-forget)
         try {
-          await Promise.allSettled([
+          const postSignupTasks = [
             supabase.functions.invoke('sync-flodesk', {
               body: { 
                 email: email.toLowerCase().trim(), 
@@ -126,11 +134,36 @@ export default function Auth() {
                 fullName: fullName.trim(),
               }
             }),
-          ]);
+          ];
+
+          // If beta code, also send beta welcome email
+          if (isBetaCode) {
+            postSignupTasks.push(
+              supabase.functions.invoke('send-beta-welcome-email', {
+                body: {
+                  email: email.toLowerCase().trim(),
+                  fullName: fullName.trim(),
+                }
+              })
+            );
+          }
+
+          await Promise.allSettled(postSignupTasks);
         } catch (err) {
           console.error('Post-signup sync failed:', err);
         }
         
+        // Mark profile as beta user if applicable
+        if (isBetaCode && data.user) {
+          supabase
+            .from('profiles')
+            .update({ is_beta_user: true } as any)
+            .eq('id', data.user.id)
+            .then(({ error: profileErr }) => {
+              if (profileErr) console.error('Failed to mark beta user:', profileErr);
+            });
+        }
+
         // Check if user is immediately confirmed (auto-confirm is enabled)
         if (data.user && data.session) {
           toast.success("Account created! Let's choose your plan.");
