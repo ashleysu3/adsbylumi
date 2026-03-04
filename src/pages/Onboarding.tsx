@@ -68,9 +68,14 @@ export default function Onboarding() {
   };
 
   // Auto-extract when URL is pasted/changed (debounced)
+  const extractingRef = useRef(false);
+  const hasExtractedUrlRef = useRef<string | null>(null);
+
   const triggerAutoExtract = useCallback((url: string) => {
     const normalizedUrl = normalizeWebsiteUrl(url);
     if (!normalizedUrl || normalizedUrl.length < 10) return;
+    // Don't re-extract the same URL
+    if (hasExtractedUrlRef.current === normalizedUrl) return;
     
     if (extractDebounceRef.current) {
       clearTimeout(extractDebounceRef.current);
@@ -79,11 +84,12 @@ export default function Onboarding() {
     setAutoExtractPending(true);
     
     extractDebounceRef.current = setTimeout(async () => {
-      if (extracting || hasExtracted) {
+      if (extractingRef.current) {
         setAutoExtractPending(false);
         return;
       }
       
+      extractingRef.current = true;
       setExtracting(true);
       setAutoExtractPending(false);
       
@@ -98,28 +104,24 @@ export default function Onboarding() {
         setTargetAudience(data.target_audience || "");
         setIndustry(data.industry || "");
         setHasExtracted(true);
+        hasExtractedUrlRef.current = normalizedUrl;
 
         toast.success("✨ Website analyzed! Review the extracted info below.");
       } catch (error: any) {
         console.error("Auto-extract error:", error);
       } finally {
+        extractingRef.current = false;
         setExtracting(false);
       }
     }, 1500);
-  }, [extracting, hasExtracted]);
-
-  useEffect(() => {
-    return () => {
-      if (extractDebounceRef.current) {
-        clearTimeout(extractDebounceRef.current);
-      }
-    };
   }, []);
 
   const handleWebsiteUrlChange = (value: string) => {
     setWebsiteUrl(value);
-    if (hasExtracted && value !== websiteUrl) {
+    const normalizedNew = normalizeWebsiteUrl(value);
+    if (hasExtractedUrlRef.current && hasExtractedUrlRef.current !== normalizedNew) {
       setHasExtracted(false);
+      hasExtractedUrlRef.current = null;
     }
     triggerAutoExtract(value);
   };
