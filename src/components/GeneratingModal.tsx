@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Lightbulb, Wand2, Brain, PenTool, Target } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { SparkleIcon } from "./SparkleIcon";
+import lumiLogo from "@/assets/lumi-logo.png";
 
 interface GeneratingModalProps {
   isOpen: boolean;
@@ -19,11 +18,9 @@ const defaultSteps = [
   "Finalizing production notes..."
 ];
 
-const icons = [Brain, Lightbulb, PenTool, Wand2, Target, Sparkles];
-
 export function GeneratingModal({ 
   isOpen, 
-  title = "Lumi is thinking...",
+  title = "Lumi is creating...",
   steps = defaultSteps 
 }: GeneratingModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -36,12 +33,10 @@ export function GeneratingModal({
       return;
     }
 
-    // Cycle through steps
     const stepInterval = setInterval(() => {
       setCurrentStep((prev) => (prev + 1) % steps.length);
     }, 3000);
 
-    // Animate progress (fake progress that slows down near end)
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 90) return prev + 0.1;
@@ -57,63 +52,75 @@ export function GeneratingModal({
     };
   }, [isOpen, steps.length]);
 
-  const CurrentIcon = icons[currentStep % icons.length];
-
   return (
     <Dialog open={isOpen}>
       <DialogContent 
-        className="sm:max-w-md border-0 bg-gradient-to-br from-background via-background to-muted/30 shadow-2xl"
+        className="sm:max-w-md border-0 bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        <div className="flex flex-col items-center py-8 px-4">
-          {/* Lumi Character with glow animation */}
+        {/* Gradient orbs behind content */}
+        <div className="absolute inset-0 overflow-hidden rounded-lg">
+          <motion.div
+            className="absolute top-[-40%] left-[-30%] w-[80%] h-[80%] rounded-full bg-lumi-orange-1/15 blur-[80px]"
+            animate={{ x: [0, 30, 0], y: [0, 20, 0], scale: [1, 1.15, 1] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute bottom-[-40%] right-[-30%] w-[70%] h-[70%] rounded-full bg-lumi-purple-1/15 blur-[70px]"
+            animate={{ x: [0, -25, 0], y: [0, -20, 0], scale: [1, 1.1, 1] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute top-[20%] right-[10%] w-[50%] h-[50%] rounded-full bg-lumi-pink-1/10 blur-[60px]"
+            animate={{ x: [0, -20, 0], y: [0, 30, 0] }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center py-8 px-4">
+          {/* Lumi Logo with glow */}
           <div className="relative mb-8">
-            {/* Outer glow ring */}
             <motion.div
-              className="absolute inset-0 rounded-full bg-glow/30 blur-xl"
-              style={{ width: 140, height: 140, margin: -20 }}
-              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+              className="absolute inset-0 blur-2xl opacity-40"
+              style={{
+                background: "linear-gradient(135deg, hsl(var(--lumi-orange-1)), hsl(var(--lumi-pink-1)), hsl(var(--lumi-purple-1)), hsl(var(--lumi-blue-1)))",
+              }}
+              animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.5, 0.3] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
             />
-            
-            {/* Rotating ring */}
-            <motion.div
-              className="absolute inset-0 rounded-full border-2 border-primary/30"
-              style={{ width: 120, height: 120, margin: -10 }}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            />
-            
-            {/* Lumi character */}
-            <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <SparkleIcon size="xl" state="loading" glow />
-            </motion.div>
 
-            {/* Floating particles with Lumi colors */}
-            {[...Array(6)].map((_, i) => (
+            {/* Sparkle accents */}
+            {[0, 1, 2].map((i) => (
               <motion.div
                 key={i}
-                className="absolute w-2 h-2 rounded-full bg-glow"
+                className="absolute w-2.5 h-2.5"
                 style={{
-                  left: 50 + Math.cos((i * Math.PI * 2) / 6) * 60,
-                  top: 50 + Math.sin((i * Math.PI * 2) / 6) * 60,
+                  top: [-8, 20, 40][i],
+                  left: [60, -12, 65][i],
                 }}
                 animate={{
-                  scale: [0.5, 1, 0.5],
-                  opacity: [0.3, 0.8, 0.3],
+                  scale: [0, 1, 0],
+                  opacity: [0, 1, 0],
+                  rotate: [0, 180, 360],
                 }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  delay: i * 0.3,
-                  ease: "easeInOut",
-                }}
-              />
+                transition={{ duration: 2, repeat: Infinity, delay: i * 0.4 }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" className={`w-full h-full ${
+                  ["text-lumi-orange-1", "text-lumi-pink-1", "text-lumi-blue-1"][i]
+                }`}>
+                  <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z" fill="currentColor" />
+                </svg>
+              </motion.div>
             ))}
+
+            <motion.img
+              src={lumiLogo}
+              alt="Lumi"
+              className="h-20 w-auto relative z-10"
+              animate={{ y: [0, -5, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
           </div>
 
           {/* Title */}
@@ -141,11 +148,14 @@ export function GeneratingModal({
             </AnimatePresence>
           </div>
 
-          {/* Progress Bar */}
+          {/* Progress Bar with gradient */}
           <div className="w-full max-w-xs">
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-primary via-primary/80 to-primary rounded-full"
+                className="h-full rounded-full"
+                style={{
+                  background: "linear-gradient(90deg, hsl(var(--lumi-orange-1)), hsl(var(--lumi-pink-1)), hsl(var(--lumi-purple-1)))",
+                }}
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(progress, 95)}%` }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
@@ -156,18 +166,28 @@ export function GeneratingModal({
             </p>
           </div>
 
-          {/* Step indicators */}
-          <div className="flex gap-1.5 mt-6">
-            {steps.map((_, i) => (
-              <motion.div
-                key={i}
-                className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-                  i === currentStep ? "bg-primary" : "bg-muted-foreground/30"
-                }`}
-                animate={i === currentStep ? { scale: [1, 1.3, 1] } : {}}
-                transition={{ duration: 0.5 }}
-              />
-            ))}
+          {/* Dot indicators matching SplashScreen */}
+          <div className="flex items-center gap-1.5 mt-6">
+            <motion.div
+              className="w-2 h-2 rounded-full bg-lumi-orange-1"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
+            />
+            <motion.div
+              className="w-2 h-2 rounded-full bg-lumi-pink-1"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: 0.2 }}
+            />
+            <motion.div
+              className="w-2 h-2 rounded-full bg-lumi-purple-1"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }}
+            />
+            <motion.div
+              className="w-2 h-2 rounded-full bg-lumi-blue-1"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 0.8, repeat: Infinity, delay: 0.6 }}
+            />
           </div>
         </div>
       </DialogContent>

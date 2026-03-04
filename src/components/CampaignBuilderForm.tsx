@@ -19,6 +19,10 @@ import {
   ShieldCheck,
   Instagram,
   ImagePlus,
+  MapPin,
+  Calendar,
+  Plus,
+  X,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
@@ -65,6 +69,11 @@ export function CampaignBuilderForm({
   const defaultAudience = template?.audience_type || "broad";
   const defaultCreativeType = isSocialGrowth ? "existing_posts" : (strategyJson?.creativeType || "video");
 
+  // Check if template uses location targeting
+  const templateStrategy = template?.strategy_template as any;
+  const usesLocationTargeting = templateStrategy?.location_type === "radius" || templateStrategy?.location_type === "places";
+  const defaultRadius = templateStrategy?.default_radius || 15;
+
   const [budget, setBudget] = useState(answers.budget || 30);
   const [launchActive, setLaunchActive] = useState(answers.launchActive ?? true);
   const [includeExistingPosts, setIncludeExistingPosts] = useState(
@@ -73,6 +82,22 @@ export function CampaignBuilderForm({
   const [additionalPosts, setAdditionalPosts] = useState<SelectedPost[]>(
     answers.additionalPosts || []
   );
+
+  // Location targeting state
+  const [locationAddresses, setLocationAddresses] = useState<string[]>(
+    answers.locationTargeting?.addresses || [""]
+  );
+  const [locationRadius, setLocationRadius] = useState(
+    answers.locationTargeting?.radius || defaultRadius
+  );
+
+  // Ad scheduling state
+  const [hasEndDate, setHasEndDate] = useState(!!answers.endDate);
+  const [endDate, setEndDate] = useState(answers.endDate || "");
+  const [startDate, setStartDate] = useState(
+    answers.startDate || new Date(Date.now() + 86400000).toISOString().split("T")[0]
+  );
+
   const { activeBrand } = useBrand();
   const hasInstagram = !!activeBrand?.meta_account_id && !!(workspace?.brands?.instagram_account_id);
 
@@ -84,7 +109,7 @@ export function CampaignBuilderForm({
       budget,
       creativeType: defaultCreativeType,
       audience: defaultAudience,
-      startDate: answers.startDate || new Date(Date.now() + 86400000).toISOString().split("T")[0],
+      startDate,
       launchActive,
       budgetType: "daily",
       metaAdvantage: true,
@@ -92,11 +117,34 @@ export function CampaignBuilderForm({
       warmRetargeting: false,
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
+      // Location targeting
+      ...(usesLocationTargeting && {
+        locationTargeting: {
+          addresses: locationAddresses.filter(a => a.trim()),
+          radius: locationRadius,
+        },
+      }),
+      // End date — only include if user explicitly set one
+      ...(hasEndDate && endDate ? { endDate } : {}),
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate]);
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
+
+  const addLocationAddress = () => {
+    setLocationAddresses([...locationAddresses, ""]);
+  };
+
+  const removeLocationAddress = (index: number) => {
+    setLocationAddresses(locationAddresses.filter((_, i) => i !== index));
+  };
+
+  const updateLocationAddress = (index: number, value: string) => {
+    const updated = [...locationAddresses];
+    updated[index] = value;
+    setLocationAddresses(updated);
+  };
 
   return (
     <div className="space-y-6 max-w-xl mx-auto">
@@ -151,6 +199,143 @@ export function CampaignBuilderForm({
               </Button>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Location Targeting — only for templates that need it */}
+      {usesLocationTargeting && (
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <MapPin className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Location Targeting</p>
+                <p className="text-xs text-muted-foreground">
+                  {templateStrategy?.location_type === "places"
+                    ? "Target specific locations like events, venues, or high-traffic areas"
+                    : "Target customers near your business location"}
+                </p>
+              </div>
+            </div>
+
+            {/* Address inputs */}
+            <div className="space-y-2">
+              {locationAddresses.map((address, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    placeholder={
+                      templateStrategy?.location_type === "places"
+                        ? "e.g., Convention Center, 123 Main St, City, State"
+                        : "Enter your business address"
+                    }
+                    value={address}
+                    onChange={(e) => updateLocationAddress(index, e.target.value)}
+                    className="flex-1"
+                  />
+                  {locationAddresses.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeLocationAddress(index)}
+                      className="shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addLocationAddress}
+                className="w-full gap-1 text-xs"
+              >
+                <Plus className="h-3 w-3" />
+                Add another location
+              </Button>
+            </div>
+
+            {/* Radius slider */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Targeting radius</span>
+                <span className="text-sm font-bold text-primary">{locationRadius} miles</span>
+              </div>
+              <Slider
+                value={[locationRadius]}
+                onValueChange={([v]) => setLocationRadius(v)}
+                min={1}
+                max={50}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1 mi</span>
+                <span>50 mi</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Ad Schedule */}
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Calendar className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-sm">
+                  {hasEndDate ? "Scheduled Campaign" : "Run Continuously"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {hasEndDate
+                    ? "Campaign will stop on the selected end date"
+                    : "Recommended — runs until you decide to stop it"}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="end-date-toggle" className="text-xs text-muted-foreground">
+                Set end date
+              </Label>
+              <Switch
+                id="end-date-toggle"
+                checked={hasEndDate}
+                onCheckedChange={(checked) => {
+                  setHasEndDate(checked);
+                  if (!checked) setEndDate("");
+                }}
+              />
+            </div>
+          </div>
+
+          {hasEndDate && (
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Start Date</Label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">End Date</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate}
+                />
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -257,7 +442,7 @@ export function CampaignBuilderForm({
           <div className="space-y-1.5 text-xs text-green-700 dark:text-green-400/80">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-              Broad audience targeting
+              {usesLocationTargeting ? "Radius-based location targeting" : "Broad audience targeting"}
             </div>
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
@@ -266,6 +451,14 @@ export function CampaignBuilderForm({
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
               Advantage+ placements
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              Personalized destinations disabled
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              {hasEndDate ? "Scheduled with end date" : "Ongoing campaign (no end date)"}
             </div>
           </div>
         </CardContent>
@@ -293,12 +486,23 @@ export function CampaignBuilderForm({
               <LumiSettingRow
                 icon={<Users className="h-4 w-4" />}
                 label="Audience"
-                value={defaultAudience === "broad" ? "Broad (recommended)" : defaultAudience}
+                value={
+                  usesLocationTargeting
+                    ? `Location-based (${locationRadius} mi radius)`
+                    : defaultAudience === "broad"
+                    ? "Broad (recommended)"
+                    : defaultAudience
+                }
               />
               <LumiSettingRow
                 icon={<Layers className="h-4 w-4" />}
                 label="Placements"
                 value="Advantage+ (all placements)"
+              />
+              <LumiSettingRow
+                icon={<Calendar className="h-4 w-4" />}
+                label="Schedule"
+                value={hasEndDate && endDate ? `${startDate} → ${endDate}` : "Ongoing (no end date)"}
               />
               {isSocialGrowth ? (
                 <LumiSettingRow
