@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { AdsEmptyState } from "./AdsEmptyState";
 import { CampaignDetailDrawer } from "./CampaignDetailDrawer";
 import { SocialGrowthFlow } from "./SocialGrowthFlow";
+import { getStatusLabel } from "@/lib/campaign-status-labels";
 
 // Social template slugs — these use existing posts, not custom creative
 const SOCIAL_POST_SLUGS = ["social-traffic", "comment-dm-engagement"];
@@ -161,8 +162,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
   const getStatusLabelForDisplay = (status: string, metaStatus?: string | null) => {
     if (isLive(status, metaStatus)) return 'Running Live ✅';
-    const { getStatusLabel: getLabel } = require('@/lib/campaign-status-labels');
-    return getLabel(status);
+    return getStatusLabel(status);
   };
 
   const handleArrowClick = (campaign: Campaign) => {
