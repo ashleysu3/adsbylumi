@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, TrendingUp, FileText } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
@@ -28,6 +28,8 @@ const createNav = [
   { path: "/campaigns", icon: FolderKanban, label: "My Campaigns", tooltip: "See and manage all your ads" },
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio", tooltip: "Build your ad angles, copy, and creative briefs" },
   { path: "/content-library", icon: Library, label: "Concept Library", tooltip: "Browse your saved ad concepts" },
+  { path: "/performance-history", icon: TrendingUp, label: "Performance History", tooltip: "Week-over-week performance trends" },
+  { path: "/past-reports", icon: FileText, label: "Past Reports", tooltip: "Browse your generated performance reports" },
 ];
 
 const brandNav = [
