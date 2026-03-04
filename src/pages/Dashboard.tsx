@@ -25,6 +25,8 @@ import { BrandOnboardingWizard } from "@/components/BrandOnboardingWizard";
 import { Building2, Globe, Target, Edit, CheckCircle2, Brain, Package, Link, Smile, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PerformanceHistoryCard } from "@/components/insights/PerformanceHistoryCard";
+import { ClientReportModal } from "@/components/insights/ClientReportModal";
 
 interface EmojiSettings {
   use_emojis: boolean;
@@ -57,6 +59,8 @@ export default function Dashboard() {
   });
   const [newEmoji, setNewEmoji] = useState('');
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportModalText, setReportModalText] = useState<string | undefined>(undefined);
   const hasShownConfetti = useRef(false);
   const hasHandledCheckout = useRef(false);
   const hasCheckedBrand = useRef(false);
@@ -710,6 +714,15 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* Performance History & Past Reports */}
+        <PerformanceHistoryCard
+          brandId={brand.id}
+          onViewReport={(text) => {
+            setReportModalText(text);
+            setReportModalOpen(true);
+          }}
+        />
+
         {/* Meta Best Practices for Copy */}
         <Card>
           <CardHeader>
@@ -761,6 +774,15 @@ export default function Dashboard() {
           onComplete={handleWizardComplete}
         />
       )}
+
+      <ClientReportModal
+        open={reportModalOpen}
+        onOpenChange={(v) => { setReportModalOpen(v); if (!v) setReportModalText(undefined); }}
+        brandId={brand.id}
+        dateRangeStart=""
+        dateRangeEnd=""
+        initialReportText={reportModalText}
+      />
     </DashboardLayout>
   );
 }
