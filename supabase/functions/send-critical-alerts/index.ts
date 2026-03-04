@@ -1,5 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { Resend } from 'https://esm.sh/resend@2.0.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { Resend } from 'npm:resend@2.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
           });
 
           const { error: emailError } = await resend.emails.send({
-            from: 'Lumi Alerts <alerts@youradassistant.com>',
+            from: 'Lumi Alerts <alerts@adsbylumi.com>',
             to: [profile.email],
             subject: `🚨 Critical Alert: ${criticalAlerts[0].title}`,
             html: emailHtml,
