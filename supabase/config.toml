@@ -173,3 +173,9 @@ verify_jwt = false
 
 [functions.add-creative-to-campaign]
 verify_jwt = false
+
+[functions.send-welcome-email]
+verify_jwt = false
+
+[functions.send-cancellation-email]
+verify_jwt = false
