@@ -27,9 +27,15 @@ const METRICS = [
 interface Props {
   brandId: string;
   onViewReport: (reportText: string) => void;
+  showChart?: boolean;
+  hideChart?: boolean;
+  showReportsList?: boolean;
+  hideReportsList?: boolean;
 }
 
-export function PerformanceHistoryCard({ brandId, onViewReport }: Props) {
+export function PerformanceHistoryCard({ brandId, onViewReport, showChart, hideChart, showReportsList, hideReportsList }: Props) {
+  const shouldShowChart = showChart ?? !hideChart;
+  const shouldShowReports = showReportsList ?? !hideReportsList;
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [activeMetric, setActiveMetric] = useState('spend');
   const [loading, setLoading] = useState(true);
@@ -145,6 +151,7 @@ export function PerformanceHistoryCard({ brandId, onViewReport }: Props) {
   return (
     <div className="space-y-6">
       {/* Chart */}
+      {shouldShowChart && (
       <Card variant="glow">
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -202,8 +209,10 @@ export function PerformanceHistoryCard({ brandId, onViewReport }: Props) {
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Past Reports List */}
+      {shouldShowReports && (
       <Card variant="glow">
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -247,6 +256,7 @@ export function PerformanceHistoryCard({ brandId, onViewReport }: Props) {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

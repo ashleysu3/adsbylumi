@@ -25,7 +25,6 @@ import { BrandOnboardingWizard } from "@/components/BrandOnboardingWizard";
 import { Building2, Globe, Target, Edit, CheckCircle2, Brain, Package, Link, Smile, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { PerformanceHistoryCard } from "@/components/insights/PerformanceHistoryCard";
 import { ClientReportModal } from "@/components/insights/ClientReportModal";
 
 interface EmojiSettings {
@@ -714,14 +713,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Performance History & Past Reports */}
-        <PerformanceHistoryCard
-          brandId={brand.id}
-          onViewReport={(text) => {
-            setReportModalText(text);
-            setReportModalOpen(true);
-          }}
-        />
 
         {/* Meta Best Practices for Copy */}
         <Card>
