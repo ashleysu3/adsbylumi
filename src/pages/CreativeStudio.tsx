@@ -11,7 +11,7 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
-  X, Check, FileDown, Printer
+  X, Check, FileDown, Printer, BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -930,12 +930,25 @@ export default function CreativeStudio() {
                        ? "Lumi is crafting unique creative angles for your campaign"
                        : "Lumi will suggest unique creative angles based on your strategy"}
                    </p>
-                   {!generating && (
-                     <Button onClick={() => generateAngles()} className="gap-2">
-                       <Sparkles className="h-4 w-4" />
-                       Generate Angles
-                     </Button>
-                   )}
+                    {!generating && (
+                      <div className="flex flex-col items-center gap-3">
+                        <Button onClick={() => generateAngles()} className="gap-2">
+                          <Sparkles className="h-4 w-4" />
+                          Generate Angles
+                        </Button>
+                        {workspace?.brands?.meta_account_id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 text-muted-foreground"
+                            onClick={() => setShowRefreshDialog(true)}
+                          >
+                            <BarChart3 className="h-4 w-4" />
+                            See What's Worked
+                          </Button>
+                        )}
+                      </div>
+                    )}
                    {generating && <LumiThinkingInline isOpen={true} customCopy={["Crafting your creative angles…"]} />}
                  </CardContent>
                </Card>
