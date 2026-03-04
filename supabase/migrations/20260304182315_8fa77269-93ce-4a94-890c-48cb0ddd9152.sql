@@ -1,0 +1,1 @@
+ALTER TABLE public.invite_codes ADD COLUMN is_beta boolean NOT NULL DEFAULT false;

@@ -124,6 +124,42 @@ export type Database = {
           },
         ]
       }
+      beta_feedback: {
+        Row: {
+          additional_notes: string | null
+          confusing_part: string | null
+          created_at: string
+          favorite_feature: string | null
+          id: string
+          missing_feature: string | null
+          recommendation_score: number | null
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          additional_notes?: string | null
+          confusing_part?: string | null
+          created_at?: string
+          favorite_feature?: string | null
+          id?: string
+          missing_feature?: string | null
+          recommendation_score?: number | null
+          user_email: string
+          user_id: string
+        }
+        Update: {
+          additional_notes?: string | null
+          confusing_part?: string | null
+          created_at?: string
+          favorite_feature?: string | null
+          id?: string
+          missing_feature?: string | null
+          recommendation_score?: number | null
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       brand_content_assets: {
         Row: {
           asset_type: string
@@ -767,6 +803,7 @@ export type Database = {
           description: string | null
           expires_at: string | null
           id: string
+          is_beta: boolean
           max_uses: number | null
         }
         Insert: {
@@ -778,6 +815,7 @@ export type Database = {
           description?: string | null
           expires_at?: string | null
           id?: string
+          is_beta?: boolean
           max_uses?: number | null
         }
         Update: {
@@ -789,6 +827,7 @@ export type Database = {
           description?: string | null
           expires_at?: string | null
           id?: string
+          is_beta?: boolean
           max_uses?: number | null
         }
         Relationships: []
@@ -932,31 +971,37 @@ export type Database = {
         Row: {
           archived: boolean | null
           archived_at: string | null
+          beta_feedback_email_sent: boolean
           created_at: string | null
           email: string
           full_name: string | null
           id: string
           is_agency_user: boolean | null
+          is_beta_user: boolean
           updated_at: string | null
         }
         Insert: {
           archived?: boolean | null
           archived_at?: string | null
+          beta_feedback_email_sent?: boolean
           created_at?: string | null
           email: string
           full_name?: string | null
           id: string
           is_agency_user?: boolean | null
+          is_beta_user?: boolean
           updated_at?: string | null
         }
         Update: {
           archived?: boolean | null
           archived_at?: string | null
+          beta_feedback_email_sent?: boolean
           created_at?: string | null
           email?: string
           full_name?: string | null
           id?: string
           is_agency_user?: boolean | null
+          is_beta_user?: boolean
           updated_at?: string | null
         }
         Relationships: []
