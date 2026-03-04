@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
+import { Progress } from "@/components/ui/progress";
 import { useBrand } from "@/contexts/BrandContext";
 import { useLumiAssistant } from "@/components/LumiAssistant";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +26,7 @@ import {
   Palette,
   Zap,
   Mail,
+  Building2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -253,13 +255,52 @@ export default function Start() {
 
   const attentionItems = getAttentionItems();
 
-  // Setup checklist
+  // Setup checklist — enhanced with descriptions and CTAs
   const setupSteps = [
-    { label: "Offers added", done: userState.hasOffers, count: userState.offerCount },
-    { label: "Ads created", done: userState.hasCampaigns, count: userState.campaignCount },
-    { label: "Meta connected", done: userState.isMetaConnected },
+    {
+      label: "Complete your brand profile",
+      description: "Add your website, industry, and positioning so Lumi can write copy that sounds like you.",
+      done: !!(brand?.name && brand?.website_url && brand?.industry && brand?.value_proposition),
+      action: () => navigate("/dashboard"),
+      actionLabel: "Set Up Brand",
+      icon: Building2,
+      color: "text-lumi-orange-1",
+    },
+    {
+      label: "Add your first offer",
+      description: "Tell Lumi what you're promoting — just drop in a URL and we'll handle the rest.",
+      done: userState.hasOffers,
+      count: userState.offerCount,
+      action: () => navigate("/dashboard"),
+      actionLabel: "Add Offer",
+      icon: Package,
+      color: "text-lumi-pink-1",
+    },
+    {
+      label: "Create your first ad",
+      description: "Lumi generates scripts, copy, and creative direction based on your audience's psychology.",
+      done: userState.hasCampaigns,
+      count: userState.campaignCount,
+      action: () => navigate("/create"),
+      actionLabel: "Create Ad",
+      icon: Sparkles,
+      color: "text-lumi-purple-1",
+    },
+    {
+      label: "Connect Meta",
+      description: "Link your ad account to publish campaigns and track performance — all from one place.",
+      done: userState.isMetaConnected,
+      action: () => navigate("/settings"),
+      actionLabel: "Connect",
+      icon: Link2,
+      color: "text-lumi-blue-1",
+    },
   ];
   const completedSteps = setupSteps.filter((s) => s.done).length;
+  const setupProgress = Math.round((completedSteps / setupSteps.length) * 100);
+
+  // Find the next incomplete step for the contextual nudge
+  const nextStep = setupSteps.find((s) => !s.done);
 
   const quickActions = [
     { label: "Create New Ad", icon: PlusCircle, path: "/create", color: "text-primary" },
@@ -470,47 +511,109 @@ export default function Start() {
         >
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
             Your Setup
-            {completedSteps < setupSteps.length && (
-              <span className="ml-2 text-xs font-normal">
-                {completedSteps}/{setupSteps.length} complete
-              </span>
-            )}
           </h2>
+
+          {/* Progress bar */}
+          {completedSteps < setupSteps.length && (
+            <Card className="border-primary/20">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="font-medium">{setupProgress}% complete</span>
+                  <span className="text-muted-foreground text-xs">{completedSteps} of {setupSteps.length} steps</span>
+                </div>
+                <Progress value={setupProgress} className="h-2" />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Contextual next-step nudge */}
+          {nextStep && (
+            <Card
+              className="border-primary/30 bg-primary/5 cursor-pointer hover:shadow-sm transition-all"
+              onClick={nextStep.action}
+            >
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <nextStep.icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">👉 Next up: {nextStep.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{nextStep.description}</p>
+                </div>
+                <Button size="sm" className="flex-shrink-0 text-xs">
+                  {nextStep.actionLabel}
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* All steps */}
           <Card>
-            <CardContent className="p-4 space-y-3">
-              {setupSteps.map((step, i) => (
-                <div key={i} className="flex items-center gap-3">
+            <CardContent className="p-4 space-y-1">
+              {setupSteps.map((step, i) => {
+                const StepIcon = step.icon;
+                return (
                   <div
+                    key={i}
                     className={cn(
-                      "h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0",
-                      step.done
-                        ? "bg-green-100 text-green-600"
-                        : "bg-muted text-muted-foreground"
+                      "flex items-center gap-3 rounded-lg p-2.5 transition-all",
+                      !step.done && "hover:bg-muted/50 cursor-pointer"
                     )}
+                    onClick={!step.done ? step.action : undefined}
                   >
-                    {step.done ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                    <div
+                      className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0",
+                        step.done
+                          ? "bg-green-500/10 text-green-600"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {step.done ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <StepIcon className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span
+                        className={cn(
+                          "text-sm font-medium",
+                          step.done ? "text-foreground" : "text-muted-foreground"
+                        )}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                    {step.done && step.count !== undefined && (
+                      <Badge variant="secondary" className="text-xs">
+                        {step.count}
+                      </Badge>
+                    )}
+                    {step.done && (
+                      <Badge variant="outline" className="text-xs text-green-600 border-green-500/30">
+                        Done
+                      </Badge>
+                    )}
+                    {!step.done && (
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
                   </div>
-                  <span
-                    className={cn(
-                      "text-sm flex-1",
-                      step.done ? "text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {step.label}
-                  </span>
-                  {step.done && step.count !== undefined && (
-                    <Badge variant="secondary" className="text-xs">
-                      {step.count}
-                    </Badge>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
+
+          {/* All done celebration */}
+          {completedSteps === setupSteps.length && (
+            <Card className="border-green-500/30 bg-green-500/5">
+              <CardContent className="p-4 text-center space-y-1">
+                <p className="text-sm font-semibold text-green-700">🎉 You're all set!</p>
+                <p className="text-xs text-muted-foreground">Your brand is fully configured. Time to create scroll-stopping ads.</p>
+              </CardContent>
+            </Card>
+          )}
         </motion.section>
       </div>
     </DashboardLayout>

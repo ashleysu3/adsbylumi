@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN onboarding_email_step integer NOT NULL DEFAULT 0;

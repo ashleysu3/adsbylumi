@@ -978,6 +978,7 @@ export type Database = {
           id: string
           is_agency_user: boolean | null
           is_beta_user: boolean
+          onboarding_email_step: number
           updated_at: string | null
         }
         Insert: {
@@ -990,6 +991,7 @@ export type Database = {
           id: string
           is_agency_user?: boolean | null
           is_beta_user?: boolean
+          onboarding_email_step?: number
           updated_at?: string | null
         }
         Update: {
@@ -1002,6 +1004,7 @@ export type Database = {
           id?: string
           is_agency_user?: boolean | null
           is_beta_user?: boolean
+          onboarding_email_step?: number
           updated_at?: string | null
         }
         Relationships: []
