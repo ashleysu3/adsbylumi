@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
 
         // Send email via Resend
         const { error: emailError } = await resend.emails.send({
-          from: 'Lumi <reports@youradassistant.com>',
+          from: 'Lumi <reports@adsbylumi.com>',
           to: [profile.email],
           subject: `📊 ${frequencyLabel} Ad Report: ${campaignName}`,
           html: emailHtml,

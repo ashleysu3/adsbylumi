@@ -1,5 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.83.0';
-import { Resend } from 'https://esm.sh/resend@2.0.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { Resend } from 'npm:resend@2.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -329,7 +329,7 @@ async function sendAlertEmail(
     }
 
     const { error: emailError } = await resend.emails.send({
-      from: 'Your Ad Assistant <notifications@resend.dev>',
+      from: 'Lumi <notifications@adsbylumi.com>',
       to: [profile.email],
       subject,
       html: `

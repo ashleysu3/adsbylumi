@@ -109,21 +109,26 @@ export default function Auth() {
         });
         if (error) throw error;
         
-        // Sync to Flodesk as active user
+        // Sync to Flodesk + send welcome email (fire-and-forget)
         try {
-          const { error: flodeskError } = await supabase.functions.invoke('sync-flodesk', {
-            body: { 
-              email: email.toLowerCase().trim(), 
-              firstName: fullName.split(' ')[0] || '',
-              lastName: fullName.split(' ').slice(1).join(' ') || '',
-              segment: 'active' 
-            }
-          });
-          if (flodeskError) {
-            console.error('Flodesk sync error:', flodeskError);
-          }
-        } catch (flodeskErr) {
-          console.error('Flodesk sync failed:', flodeskErr);
+          await Promise.allSettled([
+            supabase.functions.invoke('sync-flodesk', {
+              body: { 
+                email: email.toLowerCase().trim(), 
+                firstName: fullName.split(' ')[0] || '',
+                lastName: fullName.split(' ').slice(1).join(' ') || '',
+                segment: 'active' 
+              }
+            }),
+            supabase.functions.invoke('send-welcome-email', {
+              body: {
+                email: email.toLowerCase().trim(),
+                fullName: fullName.trim(),
+              }
+            }),
+          ]);
+        } catch (err) {
+          console.error('Post-signup sync failed:', err);
         }
         
         // Check if user is immediately confirmed (auto-confirm is enabled)
