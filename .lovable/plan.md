@@ -1,41 +1,25 @@
 
 
-## Fix: Prevent Brand Bouncing on MetaSettings for Agency Accounts
+## Plan: Rebrand Critical Alerts Email to Match Lumi Style
 
-### Problem
-When an agency user adds a new brand and navigates to `/meta-settings` to connect Meta, the page can load a **different brand** because:
+The critical alerts email currently uses a generic red/blue theme with system fonts. It needs to match the branded style established in the welcome and cancellation emails.
 
-1. **`fetchBrand` only runs once on mount** (`useEffect([], [])`) — it captures whatever `activeBrandId` exists at that moment, which may be stale or not yet updated to the new brand.
-2. **Fallback query uses `updated_at` ordering** — if `activeBrandId` is missing or doesn't match, it falls back to `fetchLatestForUser()` which grabs the most recently *updated* brand, not the one the user just created.
-3. **MetaSettings doesn't use `useBrand()` from BrandContext** — it relies on `useLumi()` which is a separate context. If BrandContext has the correct active brand but LumiContext hasn't synced yet, the page loads the wrong brand.
-4. **No re-fetch when active brand changes** — if the user switches brands via the BrandSelector while on MetaSettings, the page doesn't update.
+### Changes to `supabase/functions/send-critical-alerts/index.ts`
 
-### Fix
+**Template updates (lines 250–339, `buildAlertEmailHtml` function):**
 
-**1. Use `useBrand()` as the source of truth in MetaSettings**
-- Import and use `useBrand()` from BrandContext instead of (or in addition to) `useLumi()` for the active brand ID
-- This ensures the brand ID is always the one the user explicitly selected
+1. **Font**: Add `Red Hat Display` via Google Fonts import, apply across all text
+2. **Background**: Change outer background from `#f5f5f5` to Lumi cream `#FAF9F6`
+3. **Header**: Replace solid red gradient with Lumi's signature gradient (`#A78BFA → #EC4899 → #F97316`) — keep alert icon but soften the urgency to match brand tone
+4. **Card styling**: Round corners to `16px`, add soft box-shadow matching other emails
+5. **Alert cards**: Keep severity-based coloring (red for critical, amber for warning) but use Lumi-consistent border-radius and padding
+6. **"What to do next" card**: Restyle with Lumi purple tones (`#F5F3FF` bg, `#A78BFA` border) instead of blue
+7. **CTA button**: Replace blue gradient with Lumi gradient button (`#F97316 → #EC4899 → #A78BFA`), `border-radius: 12px`, matching welcome/cancellation emails
+8. **Copy tone**: Warm up the greeting and action text to match Lumi voice — e.g., "Hey {name}," instead of "Hi {name}," and softer action language
+9. **Footer**: Match cream background `#FAF9F6` with consistent font size and "Lumi by Ads by Lumi" branding
+10. **CTA URL**: Update from `youradassistant.com` to `adsbylumi.com`
 
-**2. Re-fetch when activeBrand changes**
-- Add `activeBrand.id` to the `fetchBrand` useEffect dependency array so the page re-fetches when the user switches brands
+**Redeploy** the function after changes.
 
-**3. Remove the fallback to "latest updated" brand**
-- If no `activeBrandId` is available, don't silently load a random brand — show a "select a brand" prompt or redirect to dashboard
-- This prevents the "bounce" entirely
-
-**4. Keep LumiContext in sync**
-- After resolving the brand, still call `setBrandId()` on LumiContext so the AI assistant stays scoped
-
-### Files to edit
-- `src/pages/MetaSettings.tsx` — switch to `useBrand()`, add dependency on active brand, remove silent fallback
-
-### Technical detail
-```text
-Current flow:
-  Mount → read LumiContext.brandId (may be stale) → fetch brand → fallback to any brand
-
-Fixed flow:
-  Mount → read BrandContext.activeBrand.id (always current) → fetch that brand only
-  Brand switch → re-fetch → update page
-```
+### No other files affected.
 
