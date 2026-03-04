@@ -372,25 +372,28 @@ function buildEmailHtml(params: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${frequencyLabel} Ad Report</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700;800&display=swap');
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+<body style="margin: 0; padding: 0; font-family: 'Red Hat Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #FAF9F6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAF9F6; padding: 30px 20px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          <!-- Header -->
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);">
+          <!-- Header with gradient -->
           <tr>
-            <td style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 30px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">📊 ${frequencyLabel} Performance Report</h1>
-              <p style="color: #a0aec0; margin: 10px 0 0 0; font-size: 14px;">${campaignName}</p>
+            <td style="background: linear-gradient(135deg, #F97316 0%, #EC4899 40%, #A78BFA 70%, #93C5FD 100%); padding: 35px 40px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">📊 ${frequencyLabel} Performance Report</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 15px; font-weight: 500;">${campaignName}</p>
             </td>
           </tr>
 
           <!-- Greeting -->
           <tr>
-            <td style="padding: 30px 30px 20px 30px;">
-              <p style="margin: 0; color: #2d3748; font-size: 16px;">Hi ${userName},</p>
-              <p style="margin: 10px 0 0 0; color: #718096; font-size: 14px;">Here's how your ${brandName} ads performed${frequencyLabel === 'Daily' ? ' today' : ' this week'}.</p>
+            <td style="padding: 35px 40px 20px 40px;">
+              <p style="margin: 0; color: #111111; font-size: 17px; font-weight: 600;">Hey ${userName} 👋</p>
+              <p style="margin: 12px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.7;">Here's how your ${brandName} ads performed${frequencyLabel === 'Daily' ? ' today' : ' this week'}. Let's break it down.</p>
             </td>
           </tr>
 
@@ -399,30 +402,30 @@ function buildEmailHtml(params: {
             <td style="padding: 0 30px 20px 30px;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td width="50%" style="padding: 10px;">
-                    <div style="background: #f7fafc; border-radius: 8px; padding: 15px; text-align: center;">
-                      <p style="margin: 0; color: #718096; font-size: 12px; text-transform: uppercase;">Spend</p>
-                      <p style="margin: 5px 0 0 0; color: #2d3748; font-size: 24px; font-weight: 600;">$${metrics.spend?.toFixed(2) || '0.00'}</p>
+                  <td width="50%" style="padding: 8px;">
+                    <div style="background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); border-radius: 12px; padding: 18px; text-align: center;">
+                      <p style="margin: 0; color: #9A3412; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Spend</p>
+                      <p style="margin: 6px 0 0 0; color: #111111; font-size: 26px; font-weight: 800;">$${metrics.spend?.toFixed(2) || '0.00'}</p>
                     </div>
                   </td>
-                  <td width="50%" style="padding: 10px;">
-                    <div style="background: #f7fafc; border-radius: 8px; padding: 15px; text-align: center;">
-                      <p style="margin: 0; color: #718096; font-size: 12px; text-transform: uppercase;">Reach</p>
-                      <p style="margin: 5px 0 0 0; color: #2d3748; font-size: 24px; font-weight: 600;">${(metrics.reach || 0).toLocaleString()}</p>
+                  <td width="50%" style="padding: 8px;">
+                    <div style="background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%); border-radius: 12px; padding: 18px; text-align: center;">
+                      <p style="margin: 0; color: #9D174D; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Reach</p>
+                      <p style="margin: 6px 0 0 0; color: #111111; font-size: 26px; font-weight: 800;">${(metrics.reach || 0).toLocaleString()}</p>
                     </div>
                   </td>
                 </tr>
                 <tr>
-                  <td width="50%" style="padding: 10px;">
-                    <div style="background: #f7fafc; border-radius: 8px; padding: 15px; text-align: center;">
-                      <p style="margin: 0; color: #718096; font-size: 12px; text-transform: uppercase;">Conversions</p>
-                      <p style="margin: 5px 0 0 0; color: #2d3748; font-size: 24px; font-weight: 600;">${metrics.leads || metrics.purchases || 0}</p>
+                  <td width="50%" style="padding: 8px;">
+                    <div style="background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%); border-radius: 12px; padding: 18px; text-align: center;">
+                      <p style="margin: 0; color: #5B21B6; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Conversions</p>
+                      <p style="margin: 6px 0 0 0; color: #111111; font-size: 26px; font-weight: 800;">${metrics.leads || metrics.purchases || 0}</p>
                     </div>
                   </td>
-                  <td width="50%" style="padding: 10px;">
-                    <div style="background: #f7fafc; border-radius: 8px; padding: 15px; text-align: center;">
-                      <p style="margin: 0; color: #718096; font-size: 12px; text-transform: uppercase;">Cost/Result</p>
-                      <p style="margin: 5px 0 0 0; color: #2d3748; font-size: 24px; font-weight: 600;">$${(metrics.cpl || metrics.cpp || 0).toFixed(2)}</p>
+                  <td width="50%" style="padding: 8px;">
+                    <div style="background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border-radius: 12px; padding: 18px; text-align: center;">
+                      <p style="margin: 0; color: #1E40AF; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Cost/Result</p>
+                      <p style="margin: 6px 0 0 0; color: #111111; font-size: 26px; font-weight: 800;">$${(metrics.cpl || metrics.cpp || 0).toFixed(2)}</p>
                     </div>
                   </td>
                 </tr>
@@ -436,10 +439,10 @@ function buildEmailHtml(params: {
           <!-- What's Working -->
           ${workingItems.length > 0 ? `
           <tr>
-            <td style="padding: 0 30px 20px 30px;">
-              <div style="background: #f0fff4; border-left: 4px solid #48bb78; border-radius: 0 8px 8px 0; padding: 15px;">
-                <p style="margin: 0; color: #22543d; font-size: 14px; font-weight: 600;">✅ What's Working</p>
-                ${workingItems.map(item => `<p style="margin: 8px 0 0 0; color: #276749; font-size: 13px;">• ${item}</p>`).join('')}
+            <td style="padding: 0 40px 16px 40px;">
+              <div style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border-left: 4px solid #22C55E; border-radius: 0 12px 12px 0; padding: 18px;">
+                <p style="margin: 0; color: #166534; font-size: 14px; font-weight: 700;">✅ What's Working</p>
+                ${workingItems.map(item => `<p style="margin: 8px 0 0 0; color: #15803D; font-size: 13px; line-height: 1.6;">• ${item}</p>`).join('')}
               </div>
             </td>
           </tr>
@@ -448,10 +451,10 @@ function buildEmailHtml(params: {
           <!-- Needs Attention -->
           ${attentionItems.length > 0 ? `
           <tr>
-            <td style="padding: 0 30px 20px 30px;">
-              <div style="background: #fffaf0; border-left: 4px solid #ed8936; border-radius: 0 8px 8px 0; padding: 15px;">
-                <p style="margin: 0; color: #744210; font-size: 14px; font-weight: 600;">⚠️ Needs Attention</p>
-                ${attentionItems.map(item => `<p style="margin: 8px 0 0 0; color: #975a16; font-size: 13px;">• ${item}</p>`).join('')}
+            <td style="padding: 0 40px 16px 40px;">
+              <div style="background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border-left: 4px solid #F59E0B; border-radius: 0 12px 12px 0; padding: 18px;">
+                <p style="margin: 0; color: #92400E; font-size: 14px; font-weight: 700;">⚠️ Needs Attention</p>
+                ${attentionItems.map(item => `<p style="margin: 8px 0 0 0; color: #B45309; font-size: 13px; line-height: 1.6;">• ${item}</p>`).join('')}
               </div>
             </td>
           </tr>
@@ -460,10 +463,10 @@ function buildEmailHtml(params: {
           <!-- Next Steps -->
           ${report.next_steps && report.next_steps.length > 0 ? `
           <tr>
-            <td style="padding: 0 30px 20px 30px;">
-              <div style="background: #ebf8ff; border-left: 4px solid #4299e1; border-radius: 0 8px 8px 0; padding: 15px;">
-                <p style="margin: 0; color: #2c5282; font-size: 14px; font-weight: 600;">📋 Your Next Steps</p>
-                ${report.next_steps.slice(0, 3).map((step: string, i: number) => `<p style="margin: 8px 0 0 0; color: #2b6cb0; font-size: 13px;">${i + 1}. ${step}</p>`).join('')}
+            <td style="padding: 0 40px 20px 40px;">
+              <div style="background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border-left: 4px solid #3B82F6; border-radius: 0 12px 12px 0; padding: 18px;">
+                <p style="margin: 0; color: #1E40AF; font-size: 14px; font-weight: 700;">✦ Your Next Moves</p>
+                ${report.next_steps.slice(0, 3).map((step: string, i: number) => `<p style="margin: 8px 0 0 0; color: #1D4ED8; font-size: 13px; line-height: 1.6;">${i + 1}. ${step}</p>`).join('')}
               </div>
             </td>
           </tr>
@@ -471,17 +474,27 @@ function buildEmailHtml(params: {
 
           <!-- CTA Button -->
           <tr>
-            <td style="padding: 10px 30px 30px 30px; text-align: center;">
-              <a href="https://youradassistant.com/data" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 14px 30px; border-radius: 8px; font-size: 14px; font-weight: 600;">View Full Dashboard →</a>
+            <td style="padding: 10px 40px 35px 40px; text-align: center;">
+              <a href="https://adsbylumi.com/data" style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EC4899 50%, #A78BFA 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3); letter-spacing: 0.3px;">View Full Dashboard →</a>
+            </td>
+          </tr>
+
+          <!-- Warm closer -->
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              <p style="margin: 0; color: #111111; font-size: 14px; font-weight: 600;">
+                Keep going — you're doing amazing 💜<br/>
+                <span style="font-weight: 700;">— Lumi</span>
+              </p>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="background: #f7fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
-              <p style="margin: 0; color: #a0aec0; font-size: 12px;">
-                This is an automated ${frequencyLabel.toLowerCase()} report from Lumi.<br>
-                Keep going - you're doing great! 🎉
+            <td style="background: #FAF9F6; padding: 22px 40px; text-align: center; border-top: 1px solid #F5F3EE;">
+              <p style="margin: 0; color: #a0aec0; font-size: 11px; line-height: 1.6;">
+                Lumi by Ads by Lumi · Meta Ads, Simplified<br/>
+                This is an automated ${frequencyLabel.toLowerCase()} report. Manage preferences in your dashboard settings.
               </p>
             </td>
           </tr>
