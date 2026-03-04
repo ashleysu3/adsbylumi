@@ -149,11 +149,11 @@ export function CreativeRefreshDialog({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <Button
                 variant="default"
-                className="rounded-xl h-auto py-3 px-4 flex flex-col items-start text-left gap-1"
+                className="rounded-xl h-auto py-3 px-4 flex flex-col items-start text-left gap-1 whitespace-normal min-h-[60px]"
                 onClick={() => onBuildOnWhatWorks(performanceData)}
               >
-                <span className="font-semibold flex items-center gap-1.5">
-                  <TrendingUp className="h-4 w-4" />
+                <span className="font-semibold flex items-center gap-1.5 flex-wrap">
+                  <TrendingUp className="h-4 w-4 shrink-0" />
                   Build on What's Working
                 </span>
                 <span className="text-xs opacity-80 font-normal">
@@ -162,11 +162,11 @@ export function CreativeRefreshDialog({
               </Button>
               <Button
                 variant="outline"
-                className="rounded-xl h-auto py-3 px-4 flex flex-col items-start text-left gap-1"
+                className="rounded-xl h-auto py-3 px-4 flex flex-col items-start text-left gap-1 whitespace-normal min-h-[60px]"
                 onClick={onStartFresh}
               >
                 <span className="font-semibold flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4" />
+                  <Sparkles className="h-4 w-4 shrink-0" />
                   Start Fresh
                 </span>
                 <span className="text-xs text-muted-foreground font-normal">
