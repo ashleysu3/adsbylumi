@@ -252,12 +252,12 @@ function buildAlertEmailHtml(params: {
 
   const alertsHtml = alerts.map(alert => `
     <tr>
-      <td style="padding: 15px 20px;">
-        <div style="background: ${alert.severity === 'critical' ? '#FEF2F2' : '#FFFBEB'}; border-left: 4px solid ${alert.severity === 'critical' ? '#EF4444' : '#F59E0B'}; border-radius: 0 8px 8px 0; padding: 15px;">
-          <p style="margin: 0; color: ${alert.severity === 'critical' ? '#991B1B' : '#92400E'}; font-size: 14px; font-weight: 600;">
+      <td style="padding: 10px 40px;">
+        <div style="background: ${alert.severity === 'critical' ? '#FEF2F2' : '#FFFBEB'}; border-left: 4px solid ${alert.severity === 'critical' ? '#EF4444' : '#F59E0B'}; border-radius: 0 12px 12px 0; padding: 18px 20px;">
+          <p style="margin: 0; color: ${alert.severity === 'critical' ? '#991B1B' : '#92400E'}; font-size: 14px; font-weight: 700; font-family: 'Red Hat Display', sans-serif;">
             ${alert.severity === 'critical' ? '🚨' : '⚠️'} ${alert.title}
           </p>
-          <p style="margin: 8px 0 0 0; color: ${alert.severity === 'critical' ? '#B91C1C' : '#B45309'}; font-size: 13px;">
+          <p style="margin: 8px 0 0 0; color: ${alert.severity === 'critical' ? '#B91C1C' : '#B45309'}; font-size: 13px; line-height: 1.6;">
             ${alert.message}
           </p>
         </div>
@@ -272,26 +272,29 @@ function buildAlertEmailHtml(params: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Campaign Alert</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700;800&display=swap');
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+<body style="margin: 0; padding: 0; font-family: 'Red Hat Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #FAF9F6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAF9F6; padding: 30px 20px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);">
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); padding: 25px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600;">🚨 Campaign Alert</h1>
-              <p style="color: #FEE2E2; margin: 8px 0 0 0; font-size: 14px;">${campaignName}</p>
+            <td style="background: linear-gradient(135deg, #F97316 0%, #EC4899 40%, #A78BFA 70%, #93C5FD 100%); padding: 40px 40px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">🚨 Campaign Alert</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 15px; font-weight: 500;">${campaignName}</p>
             </td>
           </tr>
 
           <!-- Greeting -->
           <tr>
-            <td style="padding: 25px 20px 15px 20px;">
-              <p style="margin: 0; color: #2d3748; font-size: 15px;">Hi ${userName},</p>
-              <p style="margin: 10px 0 0 0; color: #718096; font-size: 14px;">
-                We detected ${alerts.length > 1 ? 'some issues' : 'an issue'} with your ${brandName} campaign that needs your attention:
+            <td style="padding: 35px 40px 20px 40px;">
+              <p style="margin: 0; color: #111111; font-size: 17px; font-weight: 600; line-height: 1.5;">Hey ${userName} 👋</p>
+              <p style="margin: 12px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.8; font-weight: 400;">
+                I spotted ${alerts.length > 1 ? 'a few things' : 'something'} with your <strong>${brandName}</strong> campaign that could use your attention:
               </p>
             </td>
           </tr>
@@ -301,11 +304,11 @@ function buildAlertEmailHtml(params: {
 
           <!-- Action Section -->
           <tr>
-            <td style="padding: 15px 20px;">
-              <div style="background: #EFF6FF; border-left: 4px solid #3B82F6; border-radius: 0 8px 8px 0; padding: 15px;">
-                <p style="margin: 0; color: #1E40AF; font-size: 14px; font-weight: 600;">💡 What to do next</p>
-                <p style="margin: 8px 0 0 0; color: #1D4ED8; font-size: 13px;">
-                  Log in to your dashboard to review your campaign and make necessary adjustments. Lumi can help you diagnose and fix these issues.
+            <td style="padding: 15px 40px;">
+              <div style="background: #F5F3FF; border-left: 4px solid #A78BFA; border-radius: 0 12px 12px 0; padding: 18px 20px;">
+                <p style="margin: 0; color: #5B21B6; font-size: 14px; font-weight: 700; font-family: 'Red Hat Display', sans-serif;">💡 What to do next</p>
+                <p style="margin: 8px 0 0 0; color: #6D28D9; font-size: 13px; line-height: 1.7;">
+                  Pop into your dashboard and I'll walk you through what's happening and how to fix it. No guesswork — I've got you. 💜
                 </p>
               </div>
             </td>
@@ -313,8 +316,8 @@ function buildAlertEmailHtml(params: {
 
           <!-- CTA Button -->
           <tr>
-            <td style="padding: 15px 20px 25px 20px; text-align: center;">
-              <a href="https://youradassistant.com/data" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">
+            <td style="padding: 20px 40px 30px 40px; text-align: center;">
+              <a href="https://adsbylumi.com/data" style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EC4899 50%, #A78BFA 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3); letter-spacing: 0.3px;">
                 View Dashboard →
               </a>
             </td>
@@ -322,9 +325,9 @@ function buildAlertEmailHtml(params: {
 
           <!-- Footer -->
           <tr>
-            <td style="background: #f7fafc; padding: 18px 20px; text-align: center; border-top: 1px solid #e2e8f0;">
-              <p style="margin: 0; color: #a0aec0; font-size: 11px;">
-                This is an automated alert from Lumi.<br>
+            <td style="background: #FAF9F6; padding: 22px 40px; text-align: center; border-top: 1px solid #F5F3EE;">
+              <p style="margin: 0; color: #a0aec0; font-size: 11px; line-height: 1.6;">
+                Lumi by Ads by Lumi · Meta Ads, Simplified<br>
                 You're receiving this because you have active campaigns.
               </p>
             </td>
