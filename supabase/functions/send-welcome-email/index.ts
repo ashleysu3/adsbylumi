@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     const { error: emailError } = await resend.emails.send({
       from: 'Lumi <hello@adsbylumi.com>',
       to: [email],
-      subject: `Welcome to Lumi, ${firstName}! ✨`,
+      subject: `${firstName}, your ads era starts now ✨`,
       html: buildWelcomeEmailHtml(firstName),
     });
 
@@ -55,60 +55,74 @@ function buildWelcomeEmailHtml(firstName: string): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Welcome to Lumi</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700;800&display=swap');
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+<body style="margin: 0; padding: 0; font-family: 'Red Hat Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #FAF9F6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAF9F6; padding: 30px 20px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          <!-- Header -->
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);">
+          
+          <!-- Header with gradient -->
           <tr>
-            <td style="background: linear-gradient(135deg, #1a1a2e 0%, #2d1b69 50%, #1a1a2e 100%); padding: 40px 30px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">Welcome to Lumi ✨</h1>
-              <p style="color: #c4b5fd; margin: 12px 0 0 0; font-size: 16px;">Your Meta Ads co-pilot is ready.</p>
+            <td style="background: linear-gradient(135deg, #F97316 0%, #EC4899 40%, #A78BFA 70%, #93C5FD 100%); padding: 45px 40px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">Welcome to Lumi ✨</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px; font-weight: 500;">Your Meta Ads co-pilot just clocked in.</p>
             </td>
           </tr>
 
           <!-- Greeting -->
           <tr>
-            <td style="padding: 35px 30px 20px 30px;">
-              <p style="margin: 0; color: #2d3748; font-size: 17px; line-height: 1.6;">Hi ${firstName},</p>
-              <p style="margin: 14px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.7;">
-                Welcome aboard! I'm Lumi — your AI-powered Meta Ads strategist. I'm here to help you plan, create, launch, and optimize your ad campaigns without the overwhelm.
+            <td style="padding: 40px 40px 20px 40px;">
+              <p style="margin: 0; color: #111111; font-size: 18px; font-weight: 600; line-height: 1.5;">Hey ${firstName} 👋</p>
+              <p style="margin: 16px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.8; font-weight: 400;">
+                I'm so glad you're here.
+              </p>
+              <p style="margin: 12px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.8; font-weight: 400;">
+                Lumi is your AI-powered strategist for Meta Ads — I'll help you plan campaigns, write scroll-stopping copy, build your ads, and optimize performance. No Ads Manager headaches. No guesswork.
+              </p>
+              <p style="margin: 12px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.8; font-weight: 400;">
+                Think of me as the marketing bestie who actually knows what she's doing. 💅
               </p>
             </td>
           </tr>
 
-          <!-- Steps -->
+          <!-- Steps Section -->
           <tr>
-            <td style="padding: 10px 30px 25px 30px;">
-              <p style="margin: 0 0 15px 0; color: #2d3748; font-size: 16px; font-weight: 600;">Here's how to get started:</p>
+            <td style="padding: 10px 40px 30px 40px;">
+              <p style="margin: 0 0 20px 0; color: #111111; font-size: 17px; font-weight: 700; letter-spacing: -0.3px;">Here's how we get you running:</p>
               
-              <div style="background: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0; padding: 15px; margin-bottom: 12px;">
-                <p style="margin: 0; color: #166534; font-size: 14px;">
-                  <strong>1. Set up your brand</strong><br/>
-                  Tell me about your business, voice, and audience — I'll remember everything.
+              <!-- Step 1 -->
+              <div style="background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; border-left: 4px solid #F97316;">
+                <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+                  <strong style="color: #C2410C;">✦ Set up your brand</strong><br/>
+                  <span style="color: #9A3412;">Tell me about your business, voice, and dream client — I'll remember everything so your ads always sound like <em>you</em>.</span>
                 </p>
               </div>
 
-              <div style="background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 15px; margin-bottom: 12px;">
-                <p style="margin: 0; color: #1e40af; font-size: 14px;">
-                  <strong>2. Add your first offer</strong><br/>
-                  Drop in your landing page URL and I'll extract the details automatically.
+              <!-- Step 2 -->
+              <div style="background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; border-left: 4px solid #EC4899;">
+                <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+                  <strong style="color: #9D174D;">✦ Add your first offer</strong><br/>
+                  <span style="color: #831843;">Drop in your landing page URL and I'll extract the details, psychology, and messaging angles automatically.</span>
                 </p>
               </div>
 
-              <div style="background: #fdf4ff; border-left: 4px solid #a855f7; border-radius: 0 8px 8px 0; padding: 15px; margin-bottom: 12px;">
-                <p style="margin: 0; color: #6b21a8; font-size: 14px;">
-                  <strong>3. Connect Meta</strong><br/>
-                  Link your ad account so I can build and manage campaigns for you.
+              <!-- Step 3 -->
+              <div style="background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; border-left: 4px solid #A78BFA;">
+                <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+                  <strong style="color: #5B21B6;">✦ Connect Meta</strong><br/>
+                  <span style="color: #4C1D95;">Link your ad account so I can build, launch, and manage campaigns for you — right from the dashboard.</span>
                 </p>
               </div>
 
-              <div style="background: #fff7ed; border-left: 4px solid #f97316; border-radius: 0 8px 8px 0; padding: 15px;">
-                <p style="margin: 0; color: #9a3412; font-size: 14px;">
-                  <strong>4. Launch your first campaign</strong><br/>
-                  I'll handle the strategy, copy, and creative direction. You just hit publish.
+              <!-- Step 4 -->
+              <div style="background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border-radius: 12px; padding: 18px 20px; border-left: 4px solid #93C5FD;">
+                <p style="margin: 0; font-size: 14px; line-height: 1.6;">
+                  <strong style="color: #1E40AF;">✦ Launch your first campaign</strong><br/>
+                  <span style="color: #1E3A8A;">I'll handle the strategy, copy, and creative direction. You just hit publish and watch the magic happen.</span>
                 </p>
               </div>
             </td>
@@ -116,30 +130,30 @@ function buildWelcomeEmailHtml(firstName: string): string {
 
           <!-- CTA -->
           <tr>
-            <td style="padding: 5px 30px 30px 30px; text-align: center;">
-              <a href="https://adsbylumi.com/start" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 50%, #d946ef 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);">
-                Get Started →
+            <td style="padding: 5px 40px 35px 40px; text-align: center;">
+              <a href="https://adsbylumi.com/start" style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EC4899 50%, #A78BFA 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3); letter-spacing: 0.3px;">
+                Let's Get Started →
               </a>
             </td>
           </tr>
 
           <!-- Warm closer -->
           <tr>
-            <td style="padding: 0 30px 30px 30px;">
-              <p style="margin: 0; color: #4a5568; font-size: 14px; line-height: 1.7;">
-                I'm here whenever you need me — just open the chat inside the app. No question is too small.
+            <td style="padding: 0 40px 35px 40px;">
+              <p style="margin: 0; color: #4a5568; font-size: 14px; line-height: 1.8;">
+                I'm here whenever you need me — just open the chat inside the app. No question is too small, no campaign too messy. We've got this.
               </p>
-              <p style="margin: 14px 0 0 0; color: #4a5568; font-size: 14px;">
-                Let's make your ads work harder 💜<br/>
-                <strong>— Lumi</strong>
+              <p style="margin: 16px 0 0 0; color: #111111; font-size: 15px; font-weight: 600;">
+                Let's make your ads unforgettable 💜<br/>
+                <span style="font-weight: 700;">— Lumi</span>
               </p>
             </td>
           </tr>
 
           <!-- Footer -->
           <tr>
-            <td style="background: #f7fafc; padding: 20px 30px; text-align: center; border-top: 1px solid #e2e8f0;">
-              <p style="margin: 0; color: #a0aec0; font-size: 11px;">
+            <td style="background: #FAF9F6; padding: 22px 40px; text-align: center; border-top: 1px solid #F5F3EE;">
+              <p style="margin: 0; color: #a0aec0; font-size: 11px; line-height: 1.6;">
                 Lumi by Ads by Lumi · Meta Ads, Simplified<br/>
                 You're receiving this because you just created an account.
               </p>
