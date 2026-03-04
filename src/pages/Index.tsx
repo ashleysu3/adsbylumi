@@ -327,15 +327,15 @@ const Index = () => {
               transition={{ duration: 0.6, delay: 0.6 }}
             >
               <MagneticButton>
-                <Button
-                  variant="lumi"
-                  size="lg"
-                  className="text-sm md:text-base w-full sm:w-auto"
-                  onClick={() => navigate("/auth")}
-                >
-                  Get Started Free
-                  <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5" />
-                </Button>
+                 <Button
+                   variant="lumi"
+                   size="lg"
+                   className="text-sm md:text-base w-full sm:w-auto"
+                   onClick={() => navigate("/auth")}
+                 >
+                   Get Started
+                   <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5" />
+                 </Button>
               </MagneticButton>
 
               <MagneticButton>
@@ -624,28 +624,28 @@ const Index = () => {
                     <CardTitle className="text-xl">Lumi</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="text-center mb-4">
-                      <span className="text-2xl font-bold text-primary">Starting at $147</span>
-                      <span className="text-muted-foreground">/mo</span>
-                    </div>
-                    <ul className="space-y-2 text-sm">
-                      <li className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span>Launch campaigns in minutes</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span>Smart strategy & creative</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span>Psychology-driven approach</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span className="font-medium">14-day free trial included</span>
-                      </li>
-                    </ul>
+                     <div className="text-center mb-4">
+                       <span className="text-2xl font-bold text-primary">Starting at $97</span>
+                       <span className="text-muted-foreground">/mo</span>
+                     </div>
+                     <ul className="space-y-2 text-sm">
+                       <li className="flex items-start gap-2">
+                         <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                         <span>Launch campaigns in minutes</span>
+                       </li>
+                       <li className="flex items-start gap-2">
+                         <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                         <span>Smart strategy & creative</span>
+                       </li>
+                       <li className="flex items-start gap-2">
+                         <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                         <span>Psychology-driven approach</span>
+                       </li>
+                       <li className="flex items-start gap-2">
+                         <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                         <span className="font-medium">Cancel anytime — no contracts</span>
+                       </li>
+                     </ul>
                   </CardContent>
                 </Card>
               </div>
@@ -681,7 +681,7 @@ const Index = () => {
 
           <ScrollReveal delay={0.1}>
             <p className="text-xl mb-8 opacity-90">
-              Set up your first campaign in minutes. No credit card required.
+              Set up your first campaign in minutes.
             </p>
           </ScrollReveal>
 

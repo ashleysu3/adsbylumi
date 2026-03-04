@@ -512,6 +512,13 @@ Deno.serve(async (req) => {
             creativeParams.object_story_spec = JSON.stringify(objectStorySpec);
           }
 
+          // Disable personalized destinations (Advantage+ creative destinations)
+          creativeParams.degrees_of_freedom_spec = JSON.stringify({
+            creative_features_spec: {
+              standard_enhancements: { enroll_status: 'OPT_OUT' }
+            }
+          });
+
           if (referenceSettings?.url_tags) {
             creativeParams.url_tags = referenceSettings.url_tags;
           }

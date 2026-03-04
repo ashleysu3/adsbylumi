@@ -483,22 +483,51 @@ Deno.serve(async (req) => {
       };
     }
 
+    // Build targeting — use location targeting if provided, otherwise default to US broad
+    let targeting: any = {
+      geo_locations: { countries: ['US'] },
+      age_min: 18,
+      age_max: 65,
+    };
+
+    const locationTargeting = answers?.locationTargeting;
+    if (locationTargeting?.addresses?.length > 0 && locationTargeting.radius) {
+      // Radius-based targeting — use address strings as custom locations
+      // Meta expects lat/lng, but we pass addresses for the geo search API to resolve
+      const customLocations = locationTargeting.addresses.map((addr: string) => ({
+        address_string: addr,
+        radius: locationTargeting.radius,
+        distance_unit: 'mile',
+      }));
+      targeting = {
+        geo_locations: { custom_locations: customLocations },
+        age_min: 18,
+        age_max: 65,
+      };
+      console.log(`Using radius targeting: ${customLocations.length} location(s), ${locationTargeting.radius} mile radius`);
+    }
+
     // Create Cold Audience Ad Set
     const coldAdSetParams: Record<string, string> = {
       campaign_id: result.campaignId!,
-      name: `Cold - Broad - ${productName}`,
+      name: locationTargeting?.addresses?.length > 0
+        ? `Local - ${locationTargeting.radius}mi - ${productName}`
+        : `Cold - Broad - ${productName}`,
       optimization_goal: optimizationGoal,
       billing_event: 'IMPRESSIONS',
       bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
       daily_budget: dailyBudgetCents.toString(),
-      targeting: JSON.stringify({ 
-        geo_locations: { countries: ['US'] },
-        age_min: 18,
-        age_max: 65
-      }),
+      targeting: JSON.stringify(targeting),
       status: launchStatus,
       access_token: metaAccessToken
     };
+
+    // Add end_time only if user explicitly set an end date
+    if (answers?.endDate) {
+      const endTimestamp = new Date(answers.endDate + 'T23:59:59').toISOString();
+      coldAdSetParams.end_time = endTimestamp;
+      console.log('Ad set end date:', endTimestamp);
+    }
 
     // Add promoted_object if we have a pixel for conversion tracking
     if (promotedObject) {
@@ -637,17 +666,24 @@ Deno.serve(async (req) => {
           };
         }
 
-        // Create ad creative
+        // Create ad creative — disable personalized destinations (Advantage+ creative destinations)
+        const creativeParams: Record<string, string> = {
+          name: `Creative - ${adName}`,
+          object_story_spec: JSON.stringify(objectStorySpec),
+          degrees_of_freedom_spec: JSON.stringify({
+            creative_features_spec: {
+              standard_enhancements: { enroll_status: 'OPT_OUT' }
+            }
+          }),
+          access_token: metaAccessToken
+        };
+
         const creativeResponse = await fetch(
           `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              name: `Creative - ${adName}`,
-              object_story_spec: JSON.stringify(objectStorySpec),
-              access_token: metaAccessToken
-            })
+            body: new URLSearchParams(creativeParams)
           }
         );
 
