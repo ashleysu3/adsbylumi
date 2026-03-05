@@ -366,6 +366,12 @@ ADDITIONAL FIELDS FOR talking_head FORMAT ONLY:
 - text_overlays: Array of objects with "text", "timing", and "type" (hook/transition/insight/cta) properties
 - caption_reminder: boolean (always true for talking_head)
 
+== AD COPY FORMATTING CONVENTIONS (STRICT) ===
+- ALWAYS use digits for numbers: "7 days" not "seven days", "$997" not "$nine hundred ninety-seven", "3 clients" not "three clients"
+- Keep sentences punchy and scannable — no filler words
+- Double-check spelling of every word before output
+- Short paragraphs only — one thought per line
+
 Return a JSON object with a "grid" array containing all cells.`;
 
     // Separate default angle from AI-generated angles

@@ -136,6 +136,8 @@ serve(async (req) => {
 - Lead with the audience's #1 pain point or deepest desire
 - Use specific numbers, outcomes, or timeframes when possible
 - ${neverWords}
+- ALWAYS use digits for numbers: "7 days" not "seven days", "$997" not "$nine hundred ninety-seven"
+- Keep sentences punchy and scannable — no filler words, double-check spelling
 - NEVER use hype words like "revolutionary", "game-changing", "unlock your potential"
 - NEVER make income claims, health guarantees, or personal attribute assumptions
 - NEVER use generic phrases like "Don't miss out" or "Act now" without context

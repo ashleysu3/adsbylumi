@@ -258,7 +258,13 @@ Return valid JSON with this structure:
 - Each variation MUST use a different framework
 - Make copy angle-specific - reflect the unique positioning of each angle
 - Never use hype words, guarantees, or income claims
-- Sound human and conversational, not salesy`;
+- Sound human and conversational, not salesy
+
+## AD COPY FORMATTING CONVENTIONS (STRICT)
+- ALWAYS use digits for numbers: "7 days" not "seven days", "$997" not "$nine hundred ninety-seven", "3 clients" not "three clients"
+- Keep sentences punchy and scannable — no filler words
+- Double-check spelling of every word before output
+- Short paragraphs only — one thought per line`;
 
     const hasDirectAngle = angles.some((a: any) => a.id === "direct_from_page");
     
