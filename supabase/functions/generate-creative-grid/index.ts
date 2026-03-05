@@ -573,11 +573,13 @@ Remember:
           .replace(/"\s*\n\s*"/g, '", "') 
           .replace(/:\s*,/g, ': "",') 
           .replace(/:\s*}/g, ': ""}')
-          // Fix unescaped quotes inside string values (common LLM issue)
-          .replace(/"([^"]*?)(?:"|$)/g, (match) => {
-            // Only fix interior quotes if the value has obvious unescaped ones
-            return match;
-          });
+        // Fix unescaped quotes inside string values (common LLM issue)
+        // Walk through and escape quotes that appear mid-value
+        cleaned = cleaned.replace(/:\s*"((?:[^"\\]|\\.)*)"/g, (match, inner) => {
+          // If inner content has unescaped newlines, replace them
+          const fixed = inner.replace(/\n/g, "\\n").replace(/\r/g, "\\r").replace(/\t/g, "\\t");
+          return match.replace(inner, fixed);
+        });
 
         try {
           return JSON.parse(cleaned);
@@ -730,8 +732,9 @@ Generate exactly ${batchAngles.length * 9} creative cells (${batchAngles.length}
             body: JSON.stringify({
               model: "google/gemini-2.5-flash",
               max_tokens: 32000,
+              response_format: { type: "json_object" },
               messages: [
-                { role: "system", content: systemPrompt },
+                { role: "system", content: systemPrompt + "\n\nIMPORTANT: You MUST respond with valid JSON only. No markdown, no commentary, no code fences." },
                 { role: "user", content: batchUserPrompt },
               ],
             }),
