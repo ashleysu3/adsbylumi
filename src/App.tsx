@@ -21,10 +21,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Start from "./pages/Start";
 import Create from "./pages/Create";
-import Planning from "./pages/Planning";
-import Creative from "./pages/Creative";
 import Data from "./pages/Data";
-import Production from "./pages/Production";
 import WorkspaceRedirect from "./pages/WorkspaceRedirect";
 import CampaignBuilder from "./pages/CampaignBuilder";
 
