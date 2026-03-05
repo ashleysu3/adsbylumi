@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { X, Menu, DollarSign, Clock, BookOpen, Check, ChevronDown, Target, PenTool, Clapperboard, BarChart3, Lightbulb, Mail, ArrowRight, TrendingUp, RefreshCw, Shield } from "lucide-react";
+import { X, Menu, DollarSign, Clock, BookOpen, Check, ChevronDown, Target, PenTool, Clapperboard, BarChart3, Lightbulb, Mail, ArrowRight, TrendingUp, RefreshCw, Shield, Lock, Calendar, Sparkles, Rocket, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -61,12 +61,10 @@ const Sales = () => {
       <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "bg-background/95 backdrop-blur-md shadow-card border-b border-border" : "bg-transparent"}`}>
         <div className="container mx-auto flex items-center justify-between px-4 py-3 sm:py-4">
           <a href="/"><img src={lumiLogo} alt="LUMI" className="h-8 sm:h-10" /></a>
-          {/* Desktop links */}
           <div className="hidden md:flex items-center gap-4">
             <button onClick={goAuth} className="text-sm font-medium text-muted-foreground hover:text-foreground transition">Sign In</button>
             <Button variant="lumi" size="sm" onClick={goAuth}>Start Free</Button>
           </div>
-          {/* Mobile hamburger */}
           <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}><Menu className="w-6 h-6" /></button>
         </div>
         <AnimatePresence>
@@ -83,7 +81,6 @@ const Sales = () => {
 
       {/* ═══════ SECTION 1 — HERO ═══════ */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* BG blobs */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-15%] left-[-10%] w-[55%] h-[55%] rounded-full bg-primary/10 blur-[120px]" />
           <div className="absolute bottom-[-15%] right-[-10%] w-[45%] h-[45%] rounded-full bg-accent/15 blur-[100px]" />
@@ -98,18 +95,26 @@ const Sales = () => {
             </h1>
           </FadeUp>
           <FadeUp delay={0.2}>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-[600px] mx-auto mb-8 leading-relaxed">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-[600px] mx-auto mb-4 leading-relaxed">
               LUMI is your AI-powered Meta ads manager. It builds your campaigns, writes your copy, generates your creative strategy, and monitors your results — so you get professional ads without the agency price tag or the learning curve.
             </p>
           </FadeUp>
+          {/* #5 — Never run ads before? badge */}
+          <FadeUp delay={0.25}>
+            <Badge variant="outline" className="mb-6 text-xs px-4 py-1.5 border-border bg-muted/50 text-muted-foreground">🙋 Never run an ad before? Perfect. You'll skip all the bad habits.</Badge>
+          </FadeUp>
           <FadeUp delay={0.3}>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-3">
               <Button variant="lumi" size="lg" onClick={goAuth} className="w-full sm:w-auto">Start for $48.50/mo <ArrowRight className="w-4 h-4 ml-1" /></Button>
               <Button variant="outline" size="lg" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} className="w-full sm:w-auto">See How It Works</Button>
             </div>
             <p className="text-xs text-muted-foreground">Use code <strong>LUMIBETA</strong> for 50% off · Founders pricing $97/mo · Cancel anytime</p>
+            {/* #4 — Post-click clarity */}
+            <p className="text-[11px] text-muted-foreground mt-1">You'll create your account, enter code LUMIBETA, and be inside LUMI in under 2 minutes.</p>
+            {/* #8 — Support reassurance */}
+            <p className="text-[11px] text-muted-foreground mt-1">Questions along the way? Real humans. Real answers. <a href="mailto:hello@adsbylumi.com" className="text-primary hover:underline">hello@adsbylumi.com</a></p>
           </FadeUp>
-          {/* Hero mockup card */}
+          {/* Hero mockup card — #1 coaching context */}
           <FadeUp delay={0.45}>
             <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="mt-12 mx-auto max-w-sm">
               <div className="rounded-2xl border border-primary/20 bg-card p-6 shadow-lumi">
@@ -171,13 +176,13 @@ const Sales = () => {
           <FadeUp delay={0.1}><h2 className="font-display text-3xl sm:text-4xl md:text-5xl text-center mb-4 max-w-3xl mx-auto">Your AI ads manager.<br />Minus the agency&nbsp;invoice.</h2></FadeUp>
           <FadeUp delay={0.15}><p className="text-center text-muted-foreground max-w-[600px] mx-auto mb-16">LUMI does what an ads manager does — builds strategy, writes copy, creates your campaign, and watches your results — at a fraction of the cost.</p></FadeUp>
 
-          {/* Features alternating */}
+          {/* Features alternating — #1 coaching context mockups */}
           {[
             {
               headline: "Tell LUMI what you're promoting. It handles the rest.",
               body: "Paste in your offer URL and LUMI analyzes your page, understands your audience, and builds your entire campaign strategy — no briefing docs, no back-and-forth, no waiting.",
               bullets: ["Automatically extracts your offer details", "Builds your audience psychology profile", "Recommends the right campaign structure"],
-              mockTitle: "Add What You're Promoting", mockDetails: ["Auto-filled • Click to edit", "Offer URL detected ✅", "Audience mapped"],
+              mockTitle: "12-Week Business Coaching Program", mockDetails: ["Auto-filled from URL • Click to edit", "Offer type: Coaching ✅", "Audience: Aspiring entrepreneurs"],
             },
             {
               headline: "Multiple angles. Multiple formats. All built for you.",
@@ -189,7 +194,7 @@ const Sales = () => {
               headline: "It builds your campaign directly in Ads Manager.",
               body: "LUMI doesn't just give you a plan — it executes it. Your campaign gets built inside Meta Ads Manager automatically.",
               bullets: ["Campaign, ad set, and ads created automatically", "Best-practice targeting built in", "Connected directly to your Meta ad account"],
-              mockTitle: "Campaign Ready to Launch 🚀", mockDetails: ["Connected to Meta ✅", "3 ad sets configured", "12 ads queued"],
+              mockTitle: "Signature Course Launch — Lead Generation 🚀", mockDetails: ["Connected to Meta ✅", "3 ad sets configured", "12 ads queued"],
             },
             {
               headline: "LUMI watches your ads so you don't have to.",
@@ -222,8 +227,83 @@ const Sales = () => {
         </div>
       </section>
 
-      {/* ═══════ SECTION 5 — FEATURE GRID ═══════ */}
+      {/* ═══════ SECTION 4.5 — SEE IT IN ACTION ═══════ */}
       <section className="py-16 sm:py-24">
+        <div className="container mx-auto px-4">
+          <FadeUp><h2 className="font-display text-3xl sm:text-4xl text-center mb-3">See LUMI in action</h2></FadeUp>
+          <FadeUp delay={0.05}><p className="text-center text-muted-foreground max-w-[500px] mx-auto mb-12">This is what building a campaign actually looks like.</p></FadeUp>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {/* Card 1 */}
+            <FadeUp delay={0.1}>
+              <div className="text-center">
+                <p className="text-xs font-semibold text-primary mb-2">Step 1</p>
+                <h3 className="font-heading text-base font-semibold mb-4">LUMI generates your angles</h3>
+                <Card className="border-primary/20 shadow-card overflow-hidden">
+                  <CardContent className="p-4 space-y-2">
+                    {[
+                      { angle: "Problem-Solution", format: "Talking Head" },
+                      { angle: "Social Proof", format: "B-Roll" },
+                      { angle: "Curiosity Gap", format: "Graphic" },
+                    ].map((a, i) => (
+                      <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50 border border-border">
+                        <span className="text-sm font-medium">{a.angle}</span>
+                        <Badge variant="secondary" className="text-[10px]">{a.format}</Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+                <p className="text-xs text-muted-foreground mt-3">Multiple strategic angles, built around your specific offer</p>
+              </div>
+            </FadeUp>
+            {/* Card 2 */}
+            <FadeUp delay={0.15}>
+              <div className="text-center">
+                <p className="text-xs font-semibold text-primary mb-2">Step 2</p>
+                <h3 className="font-heading text-base font-semibold mb-4">Your full creative brief</h3>
+                <Card className="border-primary/20 shadow-card overflow-hidden">
+                  <CardContent className="p-4 text-left space-y-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Hook</p>
+                      <p className="text-sm font-medium">"I wasted $3K on ads before I figured this out…"</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Script</p>
+                      <p className="text-xs text-muted-foreground">0:00 — Open with the hook, direct to camera…</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Visual Direction</p>
+                      <p className="text-xs text-muted-foreground">Bright, casual setting. Laptop visible. Confident energy.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <p className="text-xs text-muted-foreground mt-3">Ready to hand to a UGC creator or record yourself</p>
+              </div>
+            </FadeUp>
+            {/* Card 3 */}
+            <FadeUp delay={0.2}>
+              <div className="text-center">
+                <p className="text-xs font-semibold text-primary mb-2">Step 3</p>
+                <h3 className="font-heading text-base font-semibold mb-4">Campaign live in Meta</h3>
+                <Card className="border-primary/20 shadow-card overflow-hidden">
+                  <CardContent className="p-4 space-y-3">
+                    <p className="font-display text-base">Signature Course Launch 🚀</p>
+                    <Badge className="bg-green-500/15 text-green-700 border-green-500/30 text-xs">Connected to Meta ✅</Badge>
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">3 ad sets configured</p>
+                      <p className="text-xs text-muted-foreground">12 ads ready to launch</p>
+                    </div>
+                    <div className="rounded-lg bg-primary/10 text-primary text-xs font-semibold py-2 text-center">Build Campaign</div>
+                  </CardContent>
+                </Card>
+                <p className="text-xs text-muted-foreground mt-3">LUMI builds it in Ads Manager — you just review and go</p>
+              </div>
+            </FadeUp>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ SECTION 5 — FEATURE GRID ═══════ */}
+      <section className="py-16 sm:py-24 bg-muted/20">
         <div className="container mx-auto px-4">
           <FadeUp><h2 className="font-display text-3xl sm:text-4xl text-center mb-12">Everything you need. Nothing you&nbsp;don't.</h2></FadeUp>
           <div className="grid sm:grid-cols-2 gap-5 max-w-4xl mx-auto">
@@ -265,7 +345,6 @@ const Sales = () => {
           <FadeUp delay={0.15}>
             <Card variant="gradient" className="max-w-4xl mx-auto overflow-hidden mb-16">
               <CardContent className="p-0">
-                {/* Header row */}
                 <div className="grid grid-cols-2">
                   <div className="p-4 sm:p-5 border-b border-border border-r border-border">
                     <p className="text-sm font-medium text-muted-foreground line-through decoration-destructive/50">Generic AI (ChatGPT, Claude, etc.)</p>
@@ -274,7 +353,6 @@ const Sales = () => {
                     <p className="text-sm font-semibold bg-gradient-lumi bg-clip-text text-transparent">LUMI ✨</p>
                   </div>
                 </div>
-                {/* Data rows */}
                 {[
                   ["Writes ads based on general knowledge", "Built on strategies proven to convert for coaches and course creators"],
                   ["No idea what Meta's algorithm rewards right now", "Trained on what's actually working on Meta today"],
@@ -335,7 +413,8 @@ const Sales = () => {
         </div>
       </section>
 
-      <section className="py-16 sm:py-24 bg-muted/30">
+      {/* ═══════ SECTION 6 — PRICING ═══════ */}
+      <section className="py-16 sm:py-24">
         <div className="container mx-auto px-4">
           <FadeUp><h2 className="font-display text-3xl sm:text-4xl text-center mb-10">Simple pricing. Serious&nbsp;results.</h2></FadeUp>
           <FadeUp delay={0.1}>
@@ -376,8 +455,20 @@ const Sales = () => {
                     ))}
                   </ul>
 
+                  {/* #2 — Ad budget reassurance */}
+                  <p className="text-[11px] text-muted-foreground text-center mb-4">You control your ad budget completely — LUMI just manages it smarter. Most beginners start with $10–$20/day.</p>
+
                   <Button variant="lumi" size="lg" className="w-full" onClick={goAuth}>Get Started for 50% Off <ArrowRight className="w-4 h-4 ml-1" /></Button>
-                  <p className="text-[11px] text-muted-foreground text-center mt-3">Cancel anytime. No contracts. Founders pricing locks in your rate.</p>
+                  {/* #4 — Post-click clarity */}
+                  <p className="text-[11px] text-muted-foreground text-center mt-2">You'll create your account, enter code LUMIBETA, and be inside LUMI in under 2 minutes.</p>
+
+                  {/* #3 — Locked-in founders rate callout */}
+                  <div className="mt-4 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-3 flex items-start gap-3">
+                    <Lock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                    <p className="text-xs font-medium text-foreground leading-relaxed">Sign up today and this is your rate forever. No price increases. Ever.</p>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground text-center mt-3">Cancel anytime. No contracts.</p>
                 </CardContent>
               </Card>
               <p className="text-center text-xs text-muted-foreground mt-6">vs. $2,000–$5,000/mo for an agency · vs. months learning Ads Manager yourself</p>
@@ -387,14 +478,15 @@ const Sales = () => {
       </section>
 
       {/* ═══════ SECTION 7 — HOW IT WORKS STEPS ═══════ */}
-      <section className="py-16 sm:py-24">
+      <section className="py-16 sm:py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <FadeUp><h2 className="font-display text-3xl sm:text-4xl text-center mb-12">From offer to live ads in&nbsp;minutes</h2></FadeUp>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {[
               { emoji: "🔗", title: "Connect your Meta account", desc: "Link LUMI to your Facebook ad account in one click. Takes 2 minutes." },
               { emoji: "📝", title: "Add what you're promoting", desc: "Paste your offer URL. LUMI reads your page and builds your brand and offer profile automatically." },
-              { emoji: "✨", title: "LUMI builds your campaign", desc: "Choose your angles, review your copy and creative briefs, and let LUMI build it all in Ads Manager." },
+              /* #10 — Updated Step 3 copy */
+              { emoji: "✨", title: "LUMI builds your campaign", desc: "Review your angles, read through the ad copy LUMI wrote for you, and approve your campaign. LUMI handles the technical build inside Meta — no Ads Manager required." },
               { emoji: "📈", title: "Watch. Optimize. Grow.", desc: "LUMI monitors your results and tells you exactly what to do next — every single week." },
             ].map((s, i) => (
               <FadeUp key={i} delay={i * 0.1}>
@@ -410,8 +502,42 @@ const Sales = () => {
             <div className="text-center mt-10">
               <p className="text-muted-foreground mb-3">Ready to try it?</p>
               <Button variant="lumi" size="lg" onClick={goAuth}>Start for 50% Off <ArrowRight className="w-4 h-4 ml-1" /></Button>
+              <p className="text-[11px] text-muted-foreground mt-2">You'll create your account, enter code LUMIBETA, and be inside LUMI in under 2 minutes.</p>
             </div>
           </FadeUp>
+        </div>
+      </section>
+
+      {/* ═══════ SECTION 7.5 — YOUR FIRST WEEK ═══════ */}
+      <section className="py-16 sm:py-24">
+        <div className="container mx-auto px-4">
+          <FadeUp><h2 className="font-display text-3xl sm:text-4xl text-center mb-3">Here's what your first week looks&nbsp;like</h2></FadeUp>
+          <FadeUp delay={0.05}><p className="text-center text-muted-foreground mb-12">From zero to live ads — faster than you'd think.</p></FadeUp>
+          <div className="max-w-[600px] mx-auto">
+            {[
+              { day: "Day 1", icon: Sparkles, text: "Connect your Meta account, add your offer, and meet LUMI. The whole setup takes about 20 minutes." },
+              { day: "Day 2", icon: Target, text: "Review the campaign strategy and creative angles LUMI built for your specific offer. Tweak anything you want." },
+              { day: "Day 3", icon: Clapperboard, text: "Get your creative brief — scripts, shot lists, graphic specs. Hand it to a creator or record it yourself." },
+              { day: "Day 5", icon: Rocket, text: "Your campaign goes live inside Meta. LUMI handles the technical build." },
+              { day: "Day 7", icon: MailCheck, text: "Your first weekly digest lands in your inbox. Plain English. Here's what's working, here's what to do next." },
+            ].map((step, i) => (
+              <FadeUp key={i} delay={i * 0.08}>
+                <div className="flex gap-4 mb-8 last:mb-0">
+                  {/* Timeline indicator */}
+                  <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <step.icon className="w-5 h-5 text-primary" />
+                    </div>
+                    {i < 4 && <div className="w-px flex-1 bg-border mt-2" />}
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-xs font-semibold text-primary mb-1">{step.day}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{step.text}</p>
+                  </div>
+                </div>
+              </FadeUp>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -442,12 +568,14 @@ const Sales = () => {
             <Button size="lg" onClick={goAuth} className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 rounded-2xl text-base font-semibold shadow-elevated px-8">
               Start for 50% Off with Code LUMIBETA <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
-            <p className="text-primary-foreground/70 text-xs mt-4">Founders pricing · $48.50/mo · Cancel anytime</p>
+            <p className="text-primary-foreground/70 text-xs mt-3">Founders pricing · $48.50/mo · Cancel anytime</p>
+            <p className="text-primary-foreground/60 text-[11px] mt-1">You'll create your account, enter code LUMIBETA, and be inside LUMI in under 2 minutes.</p>
           </FadeUp>
         </div>
       </section>
 
       {/* ═══════ SECTION 10 — FOOTER ═══════ */}
+      {/* #9 — Affiliates link removed */}
       <footer className="py-10 border-t border-border">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
@@ -457,7 +585,6 @@ const Sales = () => {
           <div className="flex flex-wrap justify-center gap-4">
             <button onClick={() => document.querySelector('[class*="bg-muted/30"]:has(h2)')?.scrollIntoView({ behavior: "smooth" })} className="hover:text-foreground transition">Pricing</button>
             <a href="/auth" className="hover:text-foreground transition">Sign In</a>
-            <a href="/partners" className="hover:text-foreground transition">Affiliates</a>
             <a href="/glossary" className="hover:text-foreground transition">Glossary</a>
           </div>
           <span>Questions? <a href="mailto:hello@adsbylumi.com" className="text-primary hover:underline">hello@adsbylumi.com</a></span>
