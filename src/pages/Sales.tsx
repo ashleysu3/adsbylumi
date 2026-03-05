@@ -86,45 +86,91 @@ const Sales = () => {
           <div className="absolute top-[-15%] left-[-10%] w-[55%] h-[55%] rounded-full bg-primary/10 blur-[120px]" />
           <div className="absolute bottom-[-15%] right-[-10%] w-[45%] h-[45%] rounded-full bg-accent/15 blur-[100px]" />
         </div>
-        <div className="relative container mx-auto px-4 text-center py-16 sm:py-24">
+        <div className="relative container mx-auto px-4 text-center pt-24 sm:pt-32 pb-16 sm:pb-24">
+          {/* Top badge */}
           <FadeUp>
-            <Badge variant="outline" className="mb-6 text-xs sm:text-sm px-4 py-1.5 border-primary/30 bg-primary/5">✨ Built for coaches, course creators &amp; service providers</Badge>
+            <span className="inline-block mb-8 text-[11px] sm:text-xs tracking-wide text-muted-foreground/70 uppercase">✨ For coaches, course creators & service providers</span>
           </FadeUp>
+
+          {/* Headline */}
           <FadeUp delay={0.1}>
-             <h1 className="font-display text-3xl sm:text-4xl md:text-[2.75rem] lg:text-[2.85rem] xl:text-[3.25rem] leading-[1.1] mb-6 max-w-5xl mx-auto [text-wrap:balance] md:[text-wrap:initial]">
-               You built something worth promoting.<br />LUMI makes sure the right people see it.
-             </h1>
+            <h1 className="font-display text-[1.75rem] sm:text-4xl md:text-[2.75rem] lg:text-[2.85rem] xl:text-[3.25rem] leading-[1.1] mb-8 sm:mb-10 max-w-5xl mx-auto [text-wrap:balance] md:[text-wrap:initial]">
+              You built something worth promoting.<br />LUMI makes sure the right people see it.
+            </h1>
           </FadeUp>
+
+          {/* Subheadline */}
           <FadeUp delay={0.2}>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-[600px] mx-auto mb-4 leading-relaxed">
-              LUMI is your AI-powered Meta ads manager. It builds your campaigns, writes your copy, generates your creative strategy, and monitors your results — so you get professional ads without the agency price tag or the learning curve.
+            <p className="text-base sm:text-lg text-muted-foreground max-w-[540px] mx-auto mb-10 sm:mb-12 leading-relaxed">
+              Professional Meta ads — built, launched, and optimized for you. No agency. No learning curve.
             </p>
           </FadeUp>
-          {/* #5 — Never run ads before? badge */}
-          <FadeUp delay={0.25}>
-            <Badge variant="outline" className="mb-6 text-xs px-4 py-1.5 border-border bg-muted/50 text-muted-foreground">🙋 Never run an ad before? Perfect. You'll skip all the bad habits.</Badge>
-          </FadeUp>
+
+          {/* Single CTA */}
           <FadeUp delay={0.3}>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-3">
-              <Button variant="lumi" size="lg" onClick={goAuth} className="w-full sm:w-auto">Start for $48.50/mo <ArrowRight className="w-4 h-4 ml-1" /></Button>
-              <Button variant="outline" size="lg" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} className="w-full sm:w-auto">See How It Works</Button>
+            <div className="flex justify-center mb-4">
+              <Button variant="lumi" size="lg" onClick={goAuth} className="px-8 text-base">
+                Start for 50% Off <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Use code <strong>LUMIBETA</strong> for 50% off forever · Founders pricing $48.50/mo · Cancel anytime</p>
-            {/* #4 — Post-click clarity */}
-            <p className="text-[11px] text-muted-foreground mt-1">You'll create your account, enter code LUMIBETA, and be inside LUMI in under 2 minutes.</p>
-            {/* #8 — Support reassurance */}
-            <p className="text-[11px] text-muted-foreground mt-1">Questions along the way? Real humans. Real answers. <a href="mailto:hello@adsbylumi.com" className="text-primary hover:underline">hello@adsbylumi.com</a></p>
+            <p className="text-xs text-muted-foreground">Use code <strong>LUMIBETA</strong> · $48.50/mo · Cancel anytime</p>
           </FadeUp>
-          {/* Hero mockup card — #1 coaching context */}
+
+          {/* Product visual card */}
           <FadeUp delay={0.45}>
-            <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="mt-12 mx-auto max-w-sm">
-              <div className="rounded-2xl border border-primary/20 bg-card p-6 shadow-lumi">
-                <p className="font-display text-lg mb-4">Your campaign is ready 🚀</p>
-                {["5 ad angles generated", "Copy written for all formats", "Campaign built in Ads Manager"].map((t, i) => (
-                  <div key={i} className="flex items-center gap-2 py-1.5 text-sm text-foreground/80"><Check className="w-4 h-4 text-primary flex-shrink-0" />{t}</div>
-                ))}
+            <motion.div
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+              className="mt-16 mx-auto max-w-[680px]"
+            >
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-b from-card to-card/80 shadow-[0_20px_60px_-15px_hsl(var(--primary)/0.15)] overflow-hidden">
+                {/* Browser chrome */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 bg-muted/30">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-destructive/40" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400/40" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500/40" />
+                  </div>
+                  <span className="text-[11px] text-muted-foreground/60 tracking-wide">LUMI — Campaign Builder</span>
+                  <div className="w-[52px]" />
+                </div>
+
+                {/* Three columns */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 sm:gap-0">
+                  {/* Column 1 — Your Offer */}
+                  <div className="p-5 sm:p-6 border-b sm:border-b-0 sm:border-r border-border/40">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-2">Promoting</p>
+                    <p className="font-display text-sm font-semibold leading-snug mb-1.5">12-Week Coaching Program</p>
+                    <p className="text-[11px] text-muted-foreground">Audience profile built ✅</p>
+                  </div>
+
+                  {/* Column 2 — Creative Angles (elevated) */}
+                  <div className="p-5 sm:p-6 border-b sm:border-b-0 sm:border-r border-border/40 relative sm:bg-primary/[0.03] sm:ring-1 sm:ring-primary/10 sm:ring-inset">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-2">Angles Generated</p>
+                    <div className="space-y-1.5 mb-3">
+                      {["Problem-Solution 🎯", "Social Proof ⭐", "Curiosity Gap 💡"].map((angle, i) => (
+                        <p key={i} className="text-sm text-foreground/80">{angle}</p>
+                      ))}
+                    </div>
+                    <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">5 angles ready</span>
+                  </div>
+
+                  {/* Column 3 — Campaign Status */}
+                  <div className="p-5 sm:p-6">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-2">Campaign</p>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <p className="font-display text-sm font-semibold text-green-600 dark:text-green-400">Ready to Launch 🚀</p>
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">Connected to Meta ✅</p>
+                  </div>
+                </div>
               </div>
             </motion.div>
+            <p className="text-[11px] text-muted-foreground/50 mt-5">No Ads Manager experience needed</p>
           </FadeUp>
         </div>
       </section>
