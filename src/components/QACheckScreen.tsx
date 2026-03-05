@@ -19,11 +19,13 @@ import {
   ChevronUp,
   ExternalLink,
   Zap,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { LumiManualSetupGuides } from "@/components/LumiManualSetupGuides";
+import { useNavigate } from "react-router-dom";
 
 interface Issue {
   field: string;
@@ -78,6 +80,7 @@ export function QACheckScreen({
   onProceed,
   onFixIssue,
 }: QACheckScreenProps) {
+  const navigate = useNavigate();
   const [phase, setPhase] = useState<"running" | "complete">("running");
   const [checks, setChecks] = useState<CheckResult[]>(INITIAL_CHECKS);
   const [currentCheckIndex, setCurrentCheckIndex] = useState(0);
@@ -105,7 +108,6 @@ export function QACheckScreen({
     }
 
     try {
-      // Get the template data from the workspace join or campaign_builder_answers
       const template = workspace.campaign_templates || workspace.template || null;
 
       const { data, error } = await supabase.functions.invoke("qa-preflight-check", {
@@ -174,6 +176,27 @@ export function QACheckScreen({
       case "warning": return "text-amber-600";
       case "failed": return "text-destructive";
     }
+  };
+
+  const renderMetaExpanded = (check: CheckResult) => {
+    return (
+      <div className="ml-10 mr-3 mb-3 space-y-3">
+        {check.details && (
+          <p className="text-sm text-muted-foreground">{check.details}</p>
+        )}
+        {check.status === "failed" && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2"
+            onClick={() => navigate("/meta-settings")}
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Connect Meta Ads
+          </Button>
+        )}
+      </div>
+    );
   };
 
   const renderLandingPageExpanded = (check: CheckResult) => {
@@ -247,6 +270,15 @@ export function QACheckScreen({
         )}
       </div>
     );
+  };
+
+  const getExpandedRenderer = (check: CheckResult) => {
+    switch (check.id) {
+      case "meta": return renderMetaExpanded(check);
+      case "landing_page": return renderLandingPageExpanded(check);
+      case "tracking": return renderTrackingExpanded(check);
+      default: return renderDefaultExpanded(check);
+    }
   };
 
   return (
@@ -351,13 +383,12 @@ export function QACheckScreen({
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {/* For landing_page, don't show URL inline — it's shown expanded */}
                         {check.message && check.status !== "pending" && check.id !== "landing_page" && (
                           <span className="text-sm text-muted-foreground max-w-[300px] truncate" title={check.message}>
                             {check.message}
                           </span>
                         )}
-                        {(check.issues?.length || check.details || check.id === "landing_page") &&
+                        {(check.issues?.length || check.details || check.id === "landing_page" || check.id === "meta") &&
                           check.status !== "pending" && (
                             expandedChecks.has(check.id) ? (
                               <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -370,11 +401,7 @@ export function QACheckScreen({
                   </CollapsibleTrigger>
 
                   <CollapsibleContent>
-                    {check.id === "landing_page"
-                      ? renderLandingPageExpanded(check)
-                      : check.id === "tracking"
-                      ? renderTrackingExpanded(check)
-                      : renderDefaultExpanded(check)}
+                    {getExpandedRenderer(check)}
                   </CollapsibleContent>
                 </motion.div>
               </Collapsible>
