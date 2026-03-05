@@ -826,8 +826,8 @@ export default function Create() {
                       selected={false}
                       onSelect={() => setSelectedGoal("promote_offer")}
                       icon={<Package className="h-5 w-5" />}
-                      title="Promote something I sell"
-                      description="A webinar, course, coaching program, lead magnet, or any offer with a landing page"
+                      title="Promote an offer or landing page"
+                      description="A webinar, course, coaching program, lead magnet, or any page you want traffic to"
                     />
                     <StepOption
                       selected={false}
