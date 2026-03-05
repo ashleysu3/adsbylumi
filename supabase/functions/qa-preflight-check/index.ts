@@ -255,39 +255,38 @@
  
      clearTimeout(timeoutId);
  
-     if (response.ok) {
-       return {
-         id: 'landing_page',
-         name: 'Landing Page',
-         status: 'passed',
-         message: `URL reachable (${response.status})`,
-         details: new URL(fullUrl).hostname,
-       };
-     } else if (response.status >= 300 && response.status < 400) {
-       return {
-         id: 'landing_page',
-         name: 'Landing Page',
-         status: 'passed',
-         message: `URL redirects (${response.status})`,
-         details: 'Page loads with redirect',
-       };
-     } else if (response.status === 403 || response.status === 405) {
-       // Some servers block HEAD requests
-       return {
-         id: 'landing_page',
-         name: 'Landing Page',
-         status: 'passed',
-         message: 'URL appears valid',
-         details: 'Server blocked verification request',
-       };
-     } else {
-       return {
-         id: 'landing_page',
-         name: 'Landing Page',
-         status: 'failed',
-         message: `Page returned ${response.status} error`,
-         details: 'Check that the URL is correct and accessible',
-       };
+      if (response.ok) {
+        return {
+          id: 'landing_page',
+          name: 'Landing Page',
+          status: 'passed',
+          message: fullUrl,
+          details: `This is the URL people will land on when they click your ad`,
+        };
+      } else if (response.status >= 300 && response.status < 400) {
+        return {
+          id: 'landing_page',
+          name: 'Landing Page',
+          status: 'passed',
+          message: fullUrl,
+          details: 'Page loads with a redirect — make sure it lands where you expect',
+        };
+      } else if (response.status === 403 || response.status === 405) {
+        return {
+          id: 'landing_page',
+          name: 'Landing Page',
+          status: 'passed',
+          message: fullUrl,
+          details: 'Server blocked our verification, but the URL looks valid',
+        };
+      } else {
+        return {
+          id: 'landing_page',
+          name: 'Landing Page',
+          status: 'failed',
+          message: fullUrl,
+          details: `Page returned a ${response.status} error — check that this URL is correct`,
+        };
      }
    } catch (error) {
      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
