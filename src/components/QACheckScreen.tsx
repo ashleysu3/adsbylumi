@@ -20,12 +20,22 @@ import {
   ExternalLink,
   Zap,
   Settings,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { LumiManualSetupGuides } from "@/components/LumiManualSetupGuides";
 import { useNavigate } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface Issue {
   field: string;
@@ -87,6 +97,12 @@ export function QACheckScreen({
   const [expandedChecks, setExpandedChecks] = useState<Set<string>>(new Set());
   const [summary, setSummary] = useState({ passed: 0, warnings: 0, failed: 0 });
   const hasStartedRef = useRef(false);
+
+  // Tracking dialog state
+  const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
+  const [confirmationUrl, setConfirmationUrl] = useState("");
+  const [trackingSaving, setTrackingSaving] = useState(false);
+  const [trackingCheck, setTrackingCheck] = useState<CheckResult | null>(null);
 
   const progress = phase === "complete" 
     ? 100 
@@ -153,6 +169,61 @@ export function QACheckScreen({
       else next.add(id);
       return next;
     });
+  };
+
+  const openTrackingDialog = (check: CheckResult) => {
+    setTrackingCheck(check);
+    setTrackingDialogOpen(true);
+  };
+
+  const handleSaveConfirmationUrl = async () => {
+    if (!confirmationUrl.trim()) {
+      toast.error("Please enter your confirmation page URL");
+      return;
+    }
+
+    setTrackingSaving(true);
+    try {
+      // Save the confirmation URL to the workspace as the custom conversion URL
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({
+          custom_conversion_id: confirmationUrl.trim(),
+          tracking_verified: true,
+        })
+        .eq("id", workspace.id);
+
+      if (error) throw error;
+
+      // Update the tracking check to passed
+      setChecks((prev) =>
+        prev.map((c) =>
+          c.id === "tracking"
+            ? {
+                ...c,
+                status: "passed" as const,
+                message: "Confirmation page URL set",
+                details: `Meta will track conversions when someone lands on: ${confirmationUrl.trim()}`,
+              }
+            : c
+        )
+      );
+
+      // Update summary
+      setSummary((prev) => ({
+        ...prev,
+        passed: prev.passed + 1,
+        warnings: Math.max(0, prev.warnings - 1),
+      }));
+
+      setTrackingDialogOpen(false);
+      toast.success("Tracking configured!");
+    } catch (error) {
+      console.error("Error saving confirmation URL:", error);
+      toast.error("Failed to save. Please try again.");
+    } finally {
+      setTrackingSaving(false);
+    }
   };
 
   const hasIssues = summary.warnings > 0 || summary.failed > 0;
@@ -227,17 +298,29 @@ export function QACheckScreen({
   };
 
   const renderTrackingExpanded = (check: CheckResult) => {
+    const goal = (check.campaignGoal as 'leads' | 'sales') || 'leads';
+    const event = check.requiredEvent || (goal === 'sales' ? 'Purchase' : 'Lead');
+    
     return (
-      <div className="ml-10 mr-3 mb-3 space-y-2">
+      <div className="ml-10 mr-3 mb-3 space-y-3">
         {check.details && (
           <p className="text-sm text-muted-foreground">{check.details}</p>
         )}
-        {(check.status === 'warning' || check.status === 'failed') && check.requiredEvent && (
-          <LumiManualSetupGuides
-            campaignGoal={(check.campaignGoal as 'leads' | 'sales') || 'leads'}
-            requiredEvent={check.requiredEvent}
-            pixelId={check.pixelId || null}
-          />
+        {(check.status === 'warning' || check.status === 'failed') && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Tell us the page someone lands on after they {goal === 'leads' ? 'submit your form' : 'complete a purchase'}.
+              Meta will count a conversion every time someone visits that page.
+            </p>
+            <Button
+              size="sm"
+              className="gap-2"
+              onClick={() => openTrackingDialog(check)}
+            >
+              <Zap className="h-3.5 w-3.5" />
+              Set Up Tracking
+            </Button>
+          </div>
         )}
       </div>
     );
@@ -280,6 +363,8 @@ export function QACheckScreen({
       default: return renderDefaultExpanded(check);
     }
   };
+
+  const trackingGoal = (trackingCheck?.campaignGoal as 'leads' | 'sales') || 'leads';
 
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center p-6">
@@ -441,6 +526,86 @@ export function QACheckScreen({
           </motion.div>
         )}
       </div>
+
+      {/* Event Tracking Setup Dialog */}
+      <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Set Up {trackingGoal === 'sales' ? 'Purchase' : 'Lead'} Tracking
+            </DialogTitle>
+            <DialogDescription>
+              This tells Meta when someone converts — so it can find more people like them.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 pt-2">
+            {/* Simple explanation */}
+            <div className="p-4 rounded-xl bg-muted/50 border space-y-2">
+              <p className="text-sm font-medium">How it works</p>
+              <p className="text-sm text-muted-foreground">
+                When someone {trackingGoal === 'leads' ? 'fills out your form' : 'completes a purchase'}, 
+                they usually land on a "Thank You" or confirmation page.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Paste that page's URL below and Meta will count a conversion every time someone visits it after clicking your ad.
+              </p>
+            </div>
+
+            {/* URL Input */}
+            <div className="space-y-2">
+              <Label htmlFor="confirmation-url" className="text-sm font-medium">
+                Confirmation page URL
+              </Label>
+              <Input
+                id="confirmation-url"
+                placeholder={trackingGoal === 'leads' 
+                  ? "https://yourdomain.com/thank-you" 
+                  : "https://yourdomain.com/order-confirmation"
+                }
+                value={confirmationUrl}
+                onChange={(e) => setConfirmationUrl(e.target.value)}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                This is the page people see after they {trackingGoal === 'leads' ? 'submit your form' : 'complete their purchase'}.
+              </p>
+            </div>
+
+            {/* Where to find it hint */}
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-1.5 text-xs text-primary hover:underline">
+                  <HelpCircle className="h-3 w-3" />
+                  Where do I find this URL?
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground space-y-2">
+                  <p><strong>Forms (Kajabi, Typeform, ConvertKit, etc.):</strong> Submit your own form, then copy the URL of the page it sends you to.</p>
+                  <p><strong>Checkout pages (Shopify, ThriveCart, etc.):</strong> Place a test order, then copy the URL of the order confirmation page.</p>
+                  <p><strong>Not sure?</strong> Go through your funnel as if you were a customer and copy the URL of the very last page you see.</p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Save button */}
+            <Button
+              onClick={handleSaveConfirmationUrl}
+              disabled={trackingSaving || !confirmationUrl.trim()}
+              className="w-full gap-2"
+            >
+              {trackingSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              Save & Verify
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
