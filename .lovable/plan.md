@@ -1,42 +1,47 @@
 
 
-## Plan: Fix QA Check — Spelling, Landing Page, and Event Tracking
+## Plan: Fix Spelling & Grammar Check for Ad Copy Context
 
-### Issues Found
+### Problem
 
-1. **Spelling check finds no copy**: The edge function looks for `creativeJson.angleCopy` (camelCase), but the actual workspace data stores it as `creative_json.angle_copy` (snake_case). This means zero copy items are collected, resulting in the "No copy to check" warning.
+Two related issues:
 
-2. **Landing page display**: Currently shows the URL inline as a truncated message. Needs to be on its own line below the title with an "Open" button to view in a new tab.
+1. **QA prompt is wrong for ad copy** — The spelling/grammar AI prompt treats copy like formal writing. In ads, numbers should NOT be spelled out ("7 days" not "seven days"), sentence fragments are intentional, and casual/punchy style is expected. The current prompt flags these as errors, making Lumi look like it's correcting its own work.
 
-3. **Event Tracking check**: Listed in `INITIAL_CHECKS` on the client but **no corresponding check exists** in the edge function. It never resolves. Need to add a real check that confirms the conversion event (Lead, Purchase, etc.) and provides a simple way to add it if missing.
-
----
+2. **Generation functions lack ad-copy conventions** — The copy generation prompts (generate-angle-copy, generate-creative-grid, generate-copy-variations) don't explicitly instruct the AI to use ad-copy best practices like using digits instead of spelled-out numbers. Adding a brief rule set to generation will reduce QA issues at the source.
 
 ### Changes
 
-#### 1. Fix spelling check — `supabase/functions/qa-preflight-check/index.ts`
-- In `checkSpellingGrammar`, change `creativeJson?.angleCopy` to `creativeJson?.angleCopy || creativeJson?.angle_copy` so it reads the actual data key.
-- Also check `creativeJson?.copy_selections` to pull selected copy variations.
+#### 1. Rewrite QA spelling prompt — `supabase/functions/qa-preflight-check/index.ts`
 
-#### 2. Add Event Tracking check — `supabase/functions/qa-preflight-check/index.ts`
-- Accept `template` and `brand` data in the request body.
-- New `checkEventTracking()` function that:
-  - Determines the required event from the template's `optimization_event` or objective (Sales → Purchase, Leads → Lead).
-  - Checks if `brand.meta_pixel_id` exists.
-  - Checks if `brand.meta_pixel_events` has the required event verified.
-  - Returns passed/warning/failed with the required event name.
-- Include a `requiredEvent` and `pixelId` field in the result so the client can render setup help.
+Replace the current generic "copy editor" prompt with an ad-copy-aware prompt that:
+- Explicitly allows numbers as digits (never flag "7" vs "seven")
+- Allows sentence fragments, one-word sentences, mid-sentence starts
+- Allows informal punctuation (ellipsis, dashes, no Oxford comma)
+- Allows ALL CAPS for emphasis words
+- Only flags genuine typos (misspelled words), broken grammar that would confuse readers, and missing/wrong punctuation that changes meaning
+- Frames itself as "checking readability for a social media feed audience" not "formal proofreading"
 
-#### 3. Redesign landing page display — `src/components/QACheckScreen.tsx`
-- For the `landing_page` check: render the URL on a new line below the title (not inline as the message), with an "Open in new tab" button.
-- For the `tracking` check: when it returns a warning/failed, show the required event and a simple inline guide (copy-paste code snippet for the event, like `fbq('track', 'Lead')`).
+The threshold should be high — only flag things that would make the brand look unprofessional or confuse the reader.
 
-#### 4. Pass template data to QA — `src/components/QACheckScreen.tsx`
-- Add `workspace.campaign_templates` (already fetched via the join) to the edge function body so the tracking check can read the template's optimization event.
+#### 2. Add ad-copy conventions to generation prompts
 
----
+Add a small, consistent rules block to these three edge functions:
+- `supabase/functions/generate-angle-copy/index.ts`
+- `supabase/functions/generate-creative-grid/index.ts`  
+- `supabase/functions/generate-copy-variations/index.ts`
+
+The rules block:
+- Always use digits for numbers (7 not seven, $997 not $nine hundred ninety-seven)
+- Keep sentences punchy and scannable
+- No filler words
+- Double-check spelling of common words
+
+This ensures copy is generated correctly from the start, so QA finds minimal issues.
 
 ### Files Modified
-- `supabase/functions/qa-preflight-check/index.ts` — fix angleCopy key, add tracking check
-- `src/components/QACheckScreen.tsx` — landing page redesign, tracking UI, pass template data
+- `supabase/functions/qa-preflight-check/index.ts` — rewrite spelling prompt
+- `supabase/functions/generate-angle-copy/index.ts` — add ad-copy conventions
+- `supabase/functions/generate-creative-grid/index.ts` — add ad-copy conventions
+- `supabase/functions/generate-copy-variations/index.ts` — add ad-copy conventions
 
