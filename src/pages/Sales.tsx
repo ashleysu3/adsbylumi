@@ -31,7 +31,7 @@ const Sales = () => {
   const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem("lumi-banner-dismissed") === "true");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [annual, setAnnual] = useState(true);
+  
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -425,30 +425,12 @@ const Sales = () => {
                 <CardContent className="p-6 sm:p-8">
                   <Badge className="bg-destructive/90 text-destructive-foreground mb-4">🔥 Founders Pricing — Limited Time</Badge>
 
-                  {/* Toggle */}
-                  <div className="flex items-center justify-center gap-3 mb-6">
-                    <span className={`text-sm font-medium ${!annual ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
-                    <button onClick={() => setAnnual(!annual)} className={`relative w-12 h-6 rounded-full transition-colors ${annual ? "bg-primary" : "bg-border"}`}>
-                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-primary-foreground shadow transition-transform ${annual ? "translate-x-6" : ""}`} />
-                    </button>
-                    <span className={`text-sm font-medium ${annual ? "text-foreground" : "text-muted-foreground"}`}>Annual</span>
-                    {annual && <Badge variant="secondary" className="text-[10px] ml-1">Best value</Badge>}
+                  {/* Price — Monthly only */}
+                  <div className="text-center mb-2">
+                    <span className="text-muted-foreground line-through text-lg mr-2">$97/mo</span>
+                    <span className="font-display text-4xl text-foreground">$48.50/mo</span>
+                    <p className="text-xs text-primary font-medium mt-1">with code LUMIBETA</p>
                   </div>
-
-                  {/* Price */}
-                  {annual ? (
-                    <div className="text-center mb-2">
-                      <span className="text-muted-foreground line-through text-lg mr-2">$970/yr</span>
-                      <span className="font-display text-4xl text-foreground">$776/yr</span>
-                      <p className="text-xs text-primary font-medium mt-1">Save $194 — 2 months free · with code LUMIBETA</p>
-                    </div>
-                  ) : (
-                    <div className="text-center mb-2">
-                      <span className="text-muted-foreground line-through text-lg mr-2">$97/mo</span>
-                      <span className="font-display text-4xl text-foreground">$48.50/mo</span>
-                      <p className="text-xs text-primary font-medium mt-1">with code LUMIBETA</p>
-                    </div>
-                  )}
 
                   {/* Features */}
                   <ul className="space-y-2 my-6">
