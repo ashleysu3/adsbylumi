@@ -457,8 +457,8 @@ Remember:
 6. Use the offer-audience psychology to make creative that addresses THIS specific offer's hesitations and transformation
 7. For the "direct_from_page" angle (if present), follow the SPECIAL ANGLE instructions above — keep it simple and direct`;
 
-    // --- BATCHED GENERATION: split angles into groups of 2 to avoid truncation ---
-    const BATCH_SIZE = 2;
+    // --- BATCHED GENERATION: 1 angle per batch to prevent truncation ---
+    const BATCH_SIZE = 1;
     const angleBatches: typeof angles[] = [];
     for (let i = 0; i < angles.length; i += BATCH_SIZE) {
       angleBatches.push(angles.slice(i, i + BATCH_SIZE));
@@ -515,17 +515,26 @@ Remember:
           try {
             return JSON.parse(cleaned);
           } catch (e3) {
-            if (cleaned.length > 25000) {
-              console.error("Response appears to be truncated. Length:", cleaned.length);
-              throw new Error("AI response was truncated for this batch.");
+            // Try to salvage partial grid array from truncated response
+            const gridMatch = cleaned.match(/"grid"\s*:\s*\[/);
+            if (gridMatch) {
+              const gridStart = cleaned.indexOf("[", gridMatch.index!);
+              let partial = cleaned.substring(gridStart);
+              // Close any open structures
+              let b = 0, s = 0;
+              for (const c of partial) { if (c === '[') s++; if (c === ']') s--; if (c === '{') b++; if (c === '}') b--; }
+              while (b > 0) { partial += '}'; b--; }
+              while (s > 0) { partial += ']'; s--; }
+              try {
+                const arr = JSON.parse(partial);
+                if (Array.isArray(arr) && arr.length > 0) {
+                  console.log(`Salvaged ${arr.length} cells from truncated response`);
+                  return { grid: arr };
+                }
+              } catch { /* fall through */ }
             }
             
-            const errorMatch = (e3 as Error).message.match(/position (\d+)/);
-            if (errorMatch) {
-              const pos = parseInt(errorMatch[1]);
-              console.error("JSON error near:", cleaned.substring(Math.max(0, pos - 100), pos + 100));
-            }
-            
+            console.error("Response length:", cleaned.length, "- could not salvage partial results");
             throw new Error(`Failed to parse AI response: ${(e3 as Error).message}`);
           }
         }
