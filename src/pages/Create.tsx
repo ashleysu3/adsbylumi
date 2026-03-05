@@ -35,20 +35,37 @@ import {
   Upload,
   MessageCircle,
   Play,
-  Globe
+  Globe,
+  MapPin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import lumiLogo from "@/assets/lumi-logo.png";
 import { SocialGrowthFlow } from "@/components/SocialGrowthFlow";
+import { LumiEducationCard } from "@/components/LumiEducationCard";
 
 // System offer IDs
 const SOCIAL_GROWTH_OFFER_ID = "system-social-growth";
 const COMMENT_DM_OFFER_ID = "system-comment-dm";
 const TRAFFIC_IG_OFFER_ID = "system-traffic-ig";
 const VIDEO_VIEWS_OFFER_ID = "system-video-views";
+const LOCAL_NEARBY_OFFER_ID = "system-local-nearby";
+const LOCAL_REGIONAL_OFFER_ID = "system-local-regional";
+const EVENT_LOCATION_OFFER_ID = "system-event-location";
 
-const SYSTEM_OFFER_IDS = [SOCIAL_GROWTH_OFFER_ID, COMMENT_DM_OFFER_ID, TRAFFIC_IG_OFFER_ID, VIDEO_VIEWS_OFFER_ID];
+const SYSTEM_OFFER_IDS = [
+  SOCIAL_GROWTH_OFFER_ID, COMMENT_DM_OFFER_ID, TRAFFIC_IG_OFFER_ID, VIDEO_VIEWS_OFFER_ID,
+  LOCAL_NEARBY_OFFER_ID, LOCAL_REGIONAL_OFFER_ID, EVENT_LOCATION_OFFER_ID
+];
+
+const LOCAL_STRATEGY_SLUG_MAP: Record<string, string> = {
+  [LOCAL_NEARBY_OFFER_ID]: "local-nearby",
+  [LOCAL_REGIONAL_OFFER_ID]: "local-regional",
+  [EVENT_LOCATION_OFFER_ID]: "event-location",
+};
+
+const SOCIAL_GROWTH_IDS = [SOCIAL_GROWTH_OFFER_ID, COMMENT_DM_OFFER_ID, TRAFFIC_IG_OFFER_ID, VIDEO_VIEWS_OFFER_ID];
+const LOCAL_STRATEGY_IDS = [LOCAL_NEARBY_OFFER_ID, LOCAL_REGIONAL_OFFER_ID, EVENT_LOCATION_OFFER_ID];
 
 // Types
 interface Offer {
@@ -338,19 +355,33 @@ export default function Create() {
 
   // New function: Generate angles, create workspace, and navigate to Creative Studio
   const handleGenerateAndNavigate = async () => {
-    if (!selectedOfferId || !selectedTemplateId) {
+    if (!selectedTemplateId) {
+      toast.error("Please select a strategy");
+      return;
+    }
+
+    const isLocalStrategy = LOCAL_STRATEGY_IDS.includes(selectedOfferId);
+
+    if (!isLocalStrategy && !selectedOfferId) {
       toast.error("Please select an offer and strategy");
       return;
     }
 
     setIsGeneratingAngles(true);
     try {
-      const selectedOffer = offers.find(o => o.id === selectedOfferId);
+      const selectedOffer = isLocalStrategy ? null : offers.find(o => o.id === selectedOfferId);
       const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
 
-      if (!selectedOffer || !selectedTemplate) {
-        throw new Error("Missing offer or template selection");
+      if (!selectedTemplate) {
+        throw new Error("Missing template selection");
       }
+      if (!isLocalStrategy && !selectedOffer) {
+        throw new Error("Missing offer selection");
+      }
+
+      const campaignName = isLocalStrategy
+        ? selectedTemplate.name
+        : `${selectedTemplate.name} - ${selectedOffer!.name}`;
 
       // Generate creative angles
       const { data: anglesData, error: anglesError } = await supabase.functions.invoke('generate-creative-angles', {
@@ -358,11 +389,14 @@ export default function Create() {
           brandName: brand.name,
           strategyData: selectedTemplate?.strategy_template,
           audiencePsychology: brand.audience_psychology,
-          offerData: {
-            name: selectedOffer?.name,
-            description: selectedOffer?.description,
-            price: selectedOffer?.price_point,
-            product_psychology: selectedOffer?.product_psychology,
+          offerData: isLocalStrategy ? {
+            name: selectedTemplate.name,
+            description: selectedTemplate.description,
+          } : {
+            name: selectedOffer!.name,
+            description: selectedOffer!.description,
+            price: selectedOffer!.price_point,
+            product_psychology: selectedOffer!.product_psychology,
           },
         }
       });
@@ -400,17 +434,17 @@ export default function Create() {
       const strategyInsert = {
         brand_id: brand.id,
         template_id: selectedTemplate.id,
-        name: `${selectedTemplate.name} - ${selectedOffer.name}`,
+        name: campaignName,
         campaign_type: selectedTemplate.strategy_template?.campaign_type || "cold",
         messaging_framework: selectedTemplate.strategy_template?.messaging_framework,
         audience_psychology: selectedTemplate.strategy_template?.audience_psychology,
         optimization_goals: selectedTemplate.strategy_template?.optimization_goals,
         kpi_benchmarks: selectedTemplate.strategy_template?.kpi_benchmarks,
         status: "active",
-        offer_name: selectedOffer.name,
-        offer_url: selectedOffer.url,
-        offer_price: selectedOffer.price_point,
-        offer_description: selectedOffer.description,
+        offer_name: selectedOffer?.name || null,
+        offer_url: selectedOffer?.url || null,
+        offer_price: selectedOffer?.price_point || null,
+        offer_description: selectedOffer?.description || null,
       };
 
       const { data: strategy, error: strategyError } = await supabase
@@ -426,19 +460,20 @@ export default function Create() {
         brand_id: brand.id as string,
         strategy_id: strategy.id,
         template_id: selectedTemplate.id,
-        name: `${selectedTemplate.name} - ${selectedOffer.name}`,
+        name: campaignName,
         strategy_json: selectedTemplate.strategy_template as any,
         progress_status: "creative_in_progress",
-        offer_id: selectedOffer.id,
-        offer_name: selectedOffer.name,
-        offer_url: selectedOffer.url,
-        offer_price: selectedOffer.price_point,
-        offer_description: selectedOffer.description,
+        offer_id: selectedOffer?.id || null,
+        offer_name: selectedOffer?.name || null,
+        offer_url: selectedOffer?.url || null,
+        offer_price: selectedOffer?.price_point || null,
+        offer_description: selectedOffer?.description || null,
         creative_json: {
           angles: finalAngles.map((a: any) => ({ ...a })),
           selectedAngleIds: [], // Let user select in Creative Studio
           selectedCreativeTemplates: [],
           phase1Flow: true,
+          ...(isLocalStrategy ? { localStrategy: true, locationSlug: LOCAL_STRATEGY_SLUG_MAP[selectedOfferId] } : {}),
         } as any,
       };
 
@@ -552,10 +587,12 @@ export default function Create() {
   };
 
   const isSystemOffer = SYSTEM_OFFER_IDS.includes(selectedOfferId);
+  const isSocialGrowth = SOCIAL_GROWTH_IDS.includes(selectedOfferId);
+  const isLocalStrategy = LOCAL_STRATEGY_IDS.includes(selectedOfferId);
 
   const getStepTitle = (): string => {
     switch (currentStep) {
-      case 1: return isSystemOffer ? "Choose your creative" : "Choose your offer";
+      case 1: return isSocialGrowth ? "Choose your creative" : "Choose your offer";
       case 2: return "Recommended strategy";
       default: return "";
     }
@@ -563,8 +600,12 @@ export default function Create() {
 
   const getStepSubtitle = (): string => {
     switch (currentStep) {
-      case 1: return isSystemOffer ? "Select the posts you'd like to promote" : "What are we promoting?";
-      case 2: return isSystemOffer ? "Lumi's recommendation for your strategy" : "Lumi picked the best approach for your offer";
+      case 1: return isSocialGrowth ? "Select the posts you'd like to promote" : "What are we promoting?";
+      case 2: return isLocalStrategy 
+        ? "Lumi matched this location-based strategy for you"
+        : isSocialGrowth 
+          ? "Lumi's recommendation for your strategy" 
+          : "Lumi picked the best approach for your offer";
       default: return "";
     }
   };
@@ -928,8 +969,69 @@ export default function Create() {
                       title="Video Views Campaign"
                       description="Get more eyes on your Reels and video content"
                     />
+
+                    {/* Local Strategy Divider */}
+                    <div className="flex items-center gap-3 py-2">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-muted-foreground">or grow locally</span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+
+                    {/* System offer: Event & Location Targeting */}
+                    <StepOption
+                      selected={selectedOfferId === EVENT_LOCATION_OFFER_ID}
+                      onSelect={() => {
+                        setSelectedOfferId(EVENT_LOCATION_OFFER_ID);
+                        setShowSocialGrowthFlow(false);
+                        const matched = templates.find(t => t.slug === "event-location");
+                        if (matched) {
+                          setSelectedTemplateId(matched.id);
+                          setRecommendedTemplate(matched);
+                        }
+                        setCurrentStep(2);
+                      }}
+                      icon={<MapPin className="h-5 w-5" />}
+                      title="Event & Location Targeting"
+                      description="Get in front of people at conferences, trade shows, or high-traffic locations"
+                    />
+
+                    {/* System offer: Local Business — Nearby */}
+                    <StepOption
+                      selected={selectedOfferId === LOCAL_NEARBY_OFFER_ID}
+                      onSelect={() => {
+                        setSelectedOfferId(LOCAL_NEARBY_OFFER_ID);
+                        setShowSocialGrowthFlow(false);
+                        const matched = templates.find(t => t.slug === "local-nearby");
+                        if (matched) {
+                          setSelectedTemplateId(matched.id);
+                          setRecommendedTemplate(matched);
+                        }
+                        setCurrentStep(2);
+                      }}
+                      icon={<MapPin className="h-5 w-5" />}
+                      title="Local Business — Nearby"
+                      description="Attract nearby customers to your storefront or location"
+                    />
+
+                    {/* System offer: Local Business — Regional */}
+                    <StepOption
+                      selected={selectedOfferId === LOCAL_REGIONAL_OFFER_ID}
+                      onSelect={() => {
+                        setSelectedOfferId(LOCAL_REGIONAL_OFFER_ID);
+                        setShowSocialGrowthFlow(false);
+                        const matched = templates.find(t => t.slug === "local-regional");
+                        if (matched) {
+                          setSelectedTemplateId(matched.id);
+                          setRecommendedTemplate(matched);
+                        }
+                        setCurrentStep(2);
+                      }}
+                      icon={<MapPin className="h-5 w-5" />}
+                      title="Local Business — Regional"
+                      description="Reach customers across your service area"
+                    />
                     
-                    {/* Divider */}
+                    {/* Offer Divider */}
                     {offers.length > 0 && (
                       <div className="flex items-center gap-3 py-2">
                         <div className="flex-1 h-px bg-border" />
@@ -1028,6 +1130,15 @@ export default function Create() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Event strategy education card */}
+                {selectedOfferId === EVENT_LOCATION_OFFER_ID && (
+                  <LumiEducationCard
+                    cardId="event-location-strategy"
+                    headline="How Event Targeting Works (2 Phases)"
+                    body="Phase 1: Run awareness ads at the event location to get people interacting with your content. Phase 2: Later, retarget those people with your offer ads (lead magnet or purchase). Make sure you also have an offer campaign set up so you can retarget these warm leads!"
+                  />
+                )}
 
                 {/* Campaign structure collapsible */}
                 {(() => {
