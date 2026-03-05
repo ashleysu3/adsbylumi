@@ -1,35 +1,39 @@
 
 
-## Plan: Merge Strategy + Campaign Structure into One Step
+## Plan: Simplify Campaign Review Screen
 
-### Current State
-The wizard has 3 steps after the entry choice:
-- **Step 1**: Choose offer
-- **Step 2**: Recommended strategy (with "Want to try a different strategy?" collapsible)
-- **Step 3**: Campaign structure preview (shows structure details, "What happens next?", and advanced build option)
+### Problem
+The review screen repeats information already shown in the configure step (offer details, budget, schedule, campaign settings) and adds complex sections (pixel preflight, creative readiness summaries, ad previews, bench toggle) that overwhelm the average user.
 
-Clicking "Continue" on Step 3 triggers `handleGenerateAndNavigate()` which generates angles and navigates to Creative Studio.
+### Approach
+Reduce the review to only **actionable decisions and confirmations** — things the user hasn't already seen or needs to explicitly confirm before publishing. Move detailed breakdowns behind a collapsible "See full details" section.
 
-### Changes
+### Changes to `src/components/CampaignReview.tsx`
 
-**Merge Step 3 into Step 2** — make the campaign structure an optional collapsible inside the strategy recommendation card, and reduce `totalSteps` from 3 to 2.
+1. **Keep at top level** (always visible):
+   - Meta Connection warning (critical blocker)
+   - Already Published warning (critical blocker)
+   - Missing requirements alert (critical blocker)
+   - **Simplified summary card**: Just a compact 1-line-per-item list:
+     - Offer name
+     - Budget: $X/day
+     - Schedule: Start date → End/Continuous
+     - Creatives: X ready
+   - **Destination toggle** (Save to Bench vs Publish)
+   - **Launch Status toggle** (Active vs Paused)
+   - **Action buttons** (Back / Publish)
 
-1. **`totalSteps`**: Change from `3` to `2`
+2. **Move behind a collapsible "See full details"**:
+   - Offer details grid (name, price, landing page)
+   - Campaign Settings grid (name, Advantage+, placements, optimization)
+   - Pixel Preflight Check
+   - Creative concepts list with readiness badges
+   - Incomplete concepts list
+   - Ad Previews section
+   - PreBuildCopySummary
 
-2. **Step titles/subtitles**: Remove case 3, update case 2 to "Recommended strategy" / "Lumi picked the best approach for your offer"
+3. **Remove entirely**:
+   - The readiness summary grid (Ready/With Assets/Total) — redundant with the simplified count above
 
-3. **`handleNext`**: Change the trigger from `currentStep === 3` to `currentStep === 2` for calling `handleGenerateAndNavigate()`
-
-4. **Step 2 UI** — restructure to:
-   - Keep the Lumi recommendation card as-is (strategy name, description, objective, use case)
-   - **Add a collapsible inside the recommendation card**: "See campaign structure" — shows `template.campaign_structure` text
-   - Replace "Want to try a different strategy?" with **"See all strategies (advanced)"** — same collapsible behavior, just relabeled
-   - Move the "What happens next?" info box from old Step 3 into Step 2 (below the recommendation card)
-   - Move the "Already have finished creative?" advanced build collapsible from old Step 3 into Step 2
-
-5. **Remove Step 3 block entirely** (lines ~1060-1196)
-
-6. **`nextLabel`**: Update from `currentStep === 3 ? "Generate Angles"` to `currentStep === 2 ? "Generate Angles"`
-
-7. **Saved progress references**: Update any `totalSteps` display logic (already uses the variable, so just the value change handles it)
+This keeps the review screen to roughly one viewport height for the common case, with full details available on demand.
 
