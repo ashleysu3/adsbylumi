@@ -191,3 +191,6 @@ verify_jwt = false
 
 [functions.admin-get-affiliates]
 verify_jwt = false
+
+[functions.generate-broll-ideas]
+verify_jwt = false

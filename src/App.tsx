@@ -51,6 +51,7 @@ import PerformanceHistory from "./pages/PerformanceHistory";
 import PastReports from "./pages/PastReports";
 import Partners from "./pages/Partners";
 import Refer from "./pages/Refer";
+import CreativeToolkit from "./pages/CreativeToolkit";
 import AdminAffiliates from "./pages/admin/Affiliates";
 
 function CreativeRedirect() {
@@ -112,6 +113,7 @@ const App = () => {
                   <Route path="/offers" element={<Offers />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
                   <Route path="/glossary" element={<Glossary />} />
+                  <Route path="/creative-toolkit" element={<CreativeToolkit />} />
                   <Route path="/advanced-build" element={<AdvancedBuild />} />
                   <Route path="/beta-feedback" element={<BetaFeedback />} />
                   <Route path="/performance-history" element={<PerformanceHistory />} />
