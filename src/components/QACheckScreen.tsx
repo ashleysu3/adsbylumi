@@ -325,9 +325,9 @@ const INITIAL_CHECKS: CheckResult[] = [
                          </div>
                        </div>
                        <div className="flex items-center gap-2">
-                         {check.message && check.status !== "pending" && (
-                           <span className="text-sm text-muted-foreground max-w-[200px] truncate">
-                             {check.message}
+                          {check.message && check.status !== "pending" && (
+                            <span className="text-sm text-muted-foreground max-w-[300px] truncate" title={check.message}>
+                              {check.message}
                            </span>
                          )}
                          {(check.issues?.length || check.details) &&
@@ -398,10 +398,10 @@ const INITIAL_CHECKS: CheckResult[] = [
              transition={{ delay: 0.3 }}
              className="flex items-center justify-between gap-4"
            >
-             <Button variant="outline" onClick={onBack} className="gap-2">
-               <ArrowLeft className="h-4 w-4" />
-               Back to Review
-             </Button>
+              <Button variant="outline" onClick={onBack} className="gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
  
              {hasBlockingIssues ? (
                <Button variant="outline" disabled className="gap-2">
