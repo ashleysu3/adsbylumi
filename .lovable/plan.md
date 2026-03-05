@@ -1,34 +1,35 @@
 
 
-## Plan: Redesign the "Target Outcome" field in OfferDialog and OfferEditDialog
+## Plan: Merge Strategy + Campaign Structure into One Step
 
-### Problem
-The current "Target Outcome" field is a single-line text input with vague labeling. Users don't understand what it means or why it matters for ad creation. The data often ends up as one long run-on sentence.
+### Current State
+The wizard has 3 steps after the entry choice:
+- **Step 1**: Choose offer
+- **Step 2**: Recommended strategy (with "Want to try a different strategy?" collapsible)
+- **Step 3**: Campaign structure preview (shows structure details, "What happens next?", and advanced build option)
 
-### Solution
-Replace the single input with a structured two-field layout using a clear, intuitive label and helper text that connects it to the ad creation process.
+Clicking "Continue" on Step 3 triggers `handleGenerateAndNavigate()` which generates angles and navigates to Creative Studio.
 
 ### Changes
 
-**1. OfferDialog.tsx (lines 641-665) — New offer creation**
+**Merge Step 3 into Step 2** — make the campaign structure an optional collapsible inside the strategy recommendation card, and reduce `totalSteps` from 3 to 2.
 
-Replace the single "Target Outcome" `Input` with:
+1. **`totalSteps`**: Change from `3` to `2`
 
-- **New label**: "Before & After" (with a small helper line: "This powers your ad copy — what's life like before and after your offer?")
-- **Two stacked `Textarea` fields**:
-  - **"Before"** — placeholder: "What are they struggling with right now?" (2 rows)
-  - **"After"** — placeholder: "What does life look like after they buy?" (2 rows)
-- On save, concatenate as `"Before: {before}. After: {after}."` into the existing `target_outcome` column (no DB change needed)
-- On load (when auto-filled from crawler), parse the existing `"Before: ... After: ..."` format back into the two fields
+2. **Step titles/subtitles**: Remove case 3, update case 2 to "Recommended strategy" / "Lumi picked the best approach for your offer"
 
-**2. OfferEditDialog.tsx (lines ~125-135) — Edit existing offer**
+3. **`handleNext`**: Change the trigger from `currentStep === 3` to `currentStep === 2` for calling `handleGenerateAndNavigate()`
 
-Same two-field layout. Parse the stored `target_outcome` string on load into before/after fields.
+4. **Step 2 UI** — restructure to:
+   - Keep the Lumi recommendation card as-is (strategy name, description, objective, use case)
+   - **Add a collapsible inside the recommendation card**: "See campaign structure" — shows `template.campaign_structure` text
+   - Replace "Want to try a different strategy?" with **"See all strategies (advanced)"** — same collapsible behavior, just relabeled
+   - Move the "What happens next?" info box from old Step 3 into Step 2 (below the recommendation card)
+   - Move the "Already have finished creative?" advanced build collapsible from old Step 3 into Step 2
 
-**3. No database changes** — the `target_outcome` column remains a text field; we just structure the UI input and format the stored string consistently.
+5. **Remove Step 3 block entirely** (lines ~1060-1196)
 
-### UI Details
-- Small muted hint below the label: *"Lumi uses this to write ads that speak to your audience's real experience"*
-- Each textarea gets a subtle emoji prefix in the label: "😩 Before" / "✨ After"
-- Keeps the auto-filled badge and "Needs info" badge logic intact
+6. **`nextLabel`**: Update from `currentStep === 3 ? "Generate Angles"` to `currentStep === 2 ? "Generate Angles"`
+
+7. **Saved progress references**: Update any `totalSteps` display logic (already uses the variable, so just the value change handles it)
 
