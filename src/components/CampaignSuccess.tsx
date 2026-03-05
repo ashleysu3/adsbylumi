@@ -149,7 +149,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
                 <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">
-                      {index === 0 ? 'Cold Audience' : 'Warm Retargeting'}
+                      Ad Set {index + 1}
                     </p>
                     <p className="font-mono text-xs">{id}</p>
                   </div>

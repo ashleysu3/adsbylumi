@@ -288,12 +288,6 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                 <Badge variant="secondary">{answers.optimizationEvent || 'Auto'}</Badge>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Warm Retargeting:</span>
-                <Badge variant={answers.warmRetargeting ? "default" : "secondary"}>
-                  {answers.warmRetargeting ? 'YES' : 'NO'}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-muted-foreground">Launch Status:</span>
                 <Badge variant={launchAsActive ? "default" : "secondary"}>
                   {launchAsActive ? 'Active (Live)' : 'Paused'}

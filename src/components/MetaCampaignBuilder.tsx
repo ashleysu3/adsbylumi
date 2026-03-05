@@ -23,12 +23,12 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
     budgetType: workspace.final_answers?.budgetType || "daily",
     advantagePlus: workspace.final_answers?.advantagePlus !== false,
     variations: workspace.final_answers?.variations !== false,
-    warmRetargeting: workspace.final_answers?.warmRetargeting !== false,
+    
     autoNaming: workspace.final_answers?.autoNaming !== false,
   });
 
   const [step, setStep] = useState(1);
-  const totalSteps = 6;
+  const totalSteps = 5;
 
   const updateAnswer = (key: string, value: any) => {
     const updated = { ...answers, [key]: value };
@@ -250,45 +250,8 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
               </div>
             )}
 
-            {/* Step 4: Warm Retargeting */}
+            {/* Step 4: Auto Naming */}
             {step === 4 && (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Run warm retargeting?</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Show ads to people who've already engaged with your content in the past 30 days
-                  </p>
-                </div>
-
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="warmRetargeting"
-                    checked={answers.warmRetargeting}
-                    onCheckedChange={(checked) => updateAnswer("warmRetargeting", checked)}
-                  />
-                  <div>
-                    <Label htmlFor="warmRetargeting" className="text-sm font-medium">
-                      Yes, retarget engaged audience (Recommended)
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Higher conversion rates from warm traffic
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-between">
-                  <Button variant="outline" onClick={() => setStep(3)}>
-                    Back
-                  </Button>
-                  <Button onClick={() => setStep(5)}>
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Step 5: Auto Naming */}
-            {step === 5 && (
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Auto-name your campaigns?</h3>
@@ -314,18 +277,18 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
                 </div>
 
                 <div className="flex justify-between">
-                  <Button variant="outline" onClick={() => setStep(4)}>
+                  <Button variant="outline" onClick={() => setStep(3)}>
                     Back
                   </Button>
-                  <Button onClick={() => setStep(6)}>
+                  <Button onClick={() => setStep(5)}>
                     Next
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* Step 6: Review & Publish */}
-            {step === 6 && (
+            {/* Step 5: Review & Publish */}
+            {step === 5 && (
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold mb-2">Review & Publish</h3>
@@ -352,10 +315,6 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
                       <span>{answers.variations ? "✓ Enabled" : "✗ Disabled"}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Warm Retargeting:</span>
-                      <span>{answers.warmRetargeting ? "✓ Enabled" : "✗ Disabled"}</span>
-                    </div>
-                    <div className="flex justify-between">
                       <span className="text-muted-foreground">Auto-naming:</span>
                       <span>{answers.autoNaming ? "✓ Enabled" : "✗ Disabled"}</span>
                     </div>
@@ -370,7 +329,7 @@ export function MetaCampaignBuilder({ workspace, onUpdate }: MetaCampaignBuilder
                 )}
 
                 <div className="flex justify-between">
-                  <Button variant="outline" onClick={() => setStep(5)} disabled={publishing}>
+                  <Button variant="outline" onClick={() => setStep(4)} disabled={publishing}>
                     Back
                   </Button>
                   <Button

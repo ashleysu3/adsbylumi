@@ -86,7 +86,7 @@ export function MobileCampaignBuilder({
       budgetType: "daily",
       metaAdvantage: true,
       placements: "Advantage+",
-      warmRetargeting: false,
+      
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
     };

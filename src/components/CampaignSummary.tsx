@@ -323,25 +323,6 @@ export function CampaignSummary({ workspace, answers, stage }: CampaignSummaryPr
           </div>
         </div>
 
-        {hasAnswer('warmRetargeting') && (
-          <>
-            <Separator />
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Users className="h-4 w-4 text-primary" />
-                <span>Audience</span>
-              </div>
-              <div className="ml-6 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Warm Retargeting:</span>
-                  <Badge variant={answers.warmRetargeting ? "default" : "secondary"} className="text-xs">
-                    {answers.warmRetargeting ? 'YES' : 'NO'}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
 
         {/* Campaign Name */}
         {hasAnswer('campaignName') && (
