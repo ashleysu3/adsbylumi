@@ -311,7 +311,45 @@ Example talking_head output:
   "guidance": "Record in your car or at your desk. Natural lighting. You're just telling a friend about a realization you had. No performance needed."
 }
 
-=== PSYCHOLOGY INTEGRATION REQUIREMENTS ===
+=== PSYCHOLOGY INTEGRATION REQUIREMENTS — THIS IS THE MOST IMPORTANT SECTION ===
+
+You have access to rich, specific psychological data about this exact audience and offer.
+Your job is to translate this data directly into hooks, scripts, and concepts — not summarize it.
+
+DIRECT TRANSLATION RULES:
+
+1. THE MOMENT THEY REALIZE → Use as a talking head mid-sentence hook
+   If moment_they_realize is: "When they've spent hours on a campaign and gotten 3 clicks"
+   Hook becomes: "—I remember staring at $200 spent and 3 clicks. That was the last time I did it alone."
+   
+2. ALTERNATIVE THEY TRIED → Use as the conflict in the hook
+   If alternative_they_tried is: "YouTube tutorials and ChatGPT"
+   Hook becomes: "I spent 14 hours on YouTube learning Meta ads. ChatGPT wrote my copy. I spent $400. Zero leads."
+   
+3. EMOTIONAL BEFORE STATE → Open scripts here, without mentioning the solution
+   If before state is: "Feels like a fraud promoting herself when the ads don't work"
+   Script opens: "You know that feeling when you've worked so hard on your offer and you genuinely believe in it — but the ads just stare back at you with zero results? And then the thought creeps in: maybe it's me."
+   
+4. EMOTIONAL AFTER STATE → Use only in the final 5 seconds of convert-stage scripts
+   Never reveal in grow-stage content — save it as the earned reward
+   
+5. WHAT FINALLY CONVINCES → Use as the logic bridge in nurture content
+   This is what makes them say yes — build the middle of trust-stage scripts around this
+   
+6. SPECIFIC HESITATIONS → Each major hesitation gets its own cell
+   Don't bury objections. Address them head-on as the hook:
+   If hesitation is: "I've tried ads before and wasted money"
+   Hook: "Every person who tells me ads don't work — I ask them the same thing."
+   
+7. BUYING TRIGGERS → Use as the action-stage CTA logic
+   If buying trigger is: "Seeing someone exactly like them get results"
+   Action cell should: Lead with a proof story from someone in their exact situation
+
+BANNED APPROACH:
+Do NOT dump psychology data into the script as a list of features.
+Do NOT write "Our audience struggles with X so we should address X."
+DO write scripts where the audience thinks "how did they know that's exactly what happened to me."
+
 ${painPoints.length > 0 ? `
 AUDIENCE PAIN POINTS TO REFERENCE (use these SPECIFIC phrases):
 ${painPoints.map((p: string, i: number) => `${i + 1}. "${p}"`).join('\n')}
@@ -333,14 +371,48 @@ ${buyingTriggers.map((t: string, i: number) => `${i + 1}. "${t}"`).join('\n')}
 ` : ''}
 
 ${offerAudiencePsychology ? `
-=== OFFER-SPECIFIC AUDIENCE INSIGHTS ===
-Use these to make creative hyper-targeted to THIS specific offer:
+=== OFFER-SPECIFIC AUDIENCE INSIGHTS — TRANSLATE THESE DIRECTLY INTO CREATIVE ===
 
-${offerAudiencePsychology.why_they_need_this ? `Why They Need THIS Offer: "${offerAudiencePsychology.why_they_need_this}"` : ''}
-${offerAudiencePsychology.moment_they_realize ? `The Moment They Realize: "${offerAudiencePsychology.moment_they_realize}"` : ''}
-${offerHesitations.length > 0 ? `\nHesitations About THIS Offer:\n${offerHesitations.map((h: string, i: number) => `${i + 1}. "${h}"`).join('\n')}` : ''}
-${offerAudiencePsychology.what_finally_convinces ? `\nWhat Convinces Them: "${offerAudiencePsychology.what_finally_convinces}"` : ''}
-${offerAudiencePsychology.emotional_before_after ? `\nEmotional Journey:\n  BEFORE: "${offerAudiencePsychology.emotional_before_after.before}"\n  AFTER: "${offerAudiencePsychology.emotional_before_after.after}"` : ''}
+${offerAudiencePsychology.moment_they_realize ? `
+THE EXACT MOMENT THEY REALIZE THEY NEED THIS:
+"${offerAudiencePsychology.moment_they_realize}"
+→ THIS MUST BECOME A HOOK. Write it as a first-person confession or mid-sentence start.
+→ At least 1 talking_head cell per angle must open in this exact moment.
+` : ''}
+
+${offerAudiencePsychology.alternative_they_tried ? `
+WHAT THEY TRIED BEFORE THAT DIDN'T WORK:
+"${offerAudiencePsychology.alternative_they_tried}"
+→ THIS IS YOUR CONFLICT. Use it to create contrast — "I tried X. Here's what actually happened."
+→ At least 1 cell per angle must reference this failed alternative directly.
+` : ''}
+
+${offerAudiencePsychology.emotional_before_after ? `
+EMOTIONAL JOURNEY:
+BEFORE: "${offerAudiencePsychology.emotional_before_after.before}"
+AFTER: "${offerAudiencePsychology.emotional_before_after.after}"
+→ BEFORE state: Open grow-stage scripts here. No solution mentioned. Pure empathy.
+→ AFTER state: Reserve for convert-stage scripts only. This is the reward.
+` : ''}
+
+${offerAudiencePsychology.what_finally_convinces ? `
+WHAT FINALLY MAKES THEM SAY YES:
+"${offerAudiencePsychology.what_finally_convinces}"
+→ Build trust-stage scripts TOWARD this. They should feel like they've arrived at this realization themselves.
+` : ''}
+
+${offerAudiencePsychology.specific_hesitations?.length ? `
+HESITATIONS THAT WILL KILL THE SALE IF NOT ADDRESSED:
+${offerAudiencePsychology.specific_hesitations.map((h: string, i: number) => `${i + 1}. "${h}"`).join('\n')}
+→ Each hesitation = 1 dedicated cell. Address it as the HOOK, not buried in the body.
+→ Don't defend. Validate first, then reframe.
+` : ''}
+
+${offerAudiencePsychology.why_they_need_this ? `
+WHY THEY NEED THIS SPECIFIC OFFER (not just any solution):
+"${offerAudiencePsychology.why_they_need_this}"
+→ This is your differentiation. Weave into action-stage content.
+` : ''}
 ` : ''}
 
 === OUTPUT REQUIREMENTS ===

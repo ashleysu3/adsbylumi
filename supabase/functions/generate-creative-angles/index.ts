@@ -194,18 +194,27 @@ ${conversationInsights?.length > 0 ? "- PRIORITIZE angles that address the speci
 ${preGenerationContext ? "- PRIORITIZE the user's specific direction for this creative round" : ""}
 ${creativeIntelligence?.hasData ? "- PRIORITIZE angles aligned with the user's proven top-performing creative patterns, while including 1-2 fresh test angles" : "- Generate a balanced TEST MIX of diverse angle types since there's no historical data"}
 
-ANGLE TYPES TO CONSIDER (but don't expose these labels):
-- Relatable Struggle (showing the problem they face)
-- Fast Win (quick result they can achieve)
-- Authority Proof (demonstrating expertise)
-- Before / After (transformation stories)
-- Myth Bust (correcting misconceptions)
-- Simple System (easy process to follow)
-- Social Proof (others' success)
-- Testimonial Proof (real client words, screenshot-style social proof)
-- "If This Is You" Callout (direct identification)
-- Behind the Scenes (authenticity)
-- Urgency/Scarcity (limited opportunity)
+ANGLE TYPES TO CONSIDER (but don't expose these labels to the user):
+- The Moment They Realized (built from moment_they_realize — name the exact scenario)
+- The Failed Alternative (built from alternative_they_tried — why what they did before didn't work)
+- The Hidden Cost (what staying stuck is actually costing them emotionally, financially, in self-belief)
+- The Identity Shift (who they become after — built from emotional_before_after.after)
+- The Specific Objection (built directly from specific_hesitations — one angle per major hesitation)
+- The Convincing Evidence (built from what_finally_convinces — lead with whatever pushes them over the line)
+- The Before State (built from emotional_before_after.before — describe their current emotional reality in vivid detail)
+- Social Proof Moment (someone like them who had the same doubts and crossed anyway)
+- The Contrarian Take (challenge the conventional solution they've already tried)
+- The Micro-Win (the smallest possible result they could get, making it feel safe to start)
+- Direct Callout (name their exact identity, situation, and struggle in the first sentence)
+
+CRITICAL ANGLE GENERATION RULES:
+- Every angle MUST be built from a specific field in the psychology profiles, not invented generically
+- The angle name should hint at the emotional territory, not describe a marketing technique
+- The description should feel like you're reading someone's diary, not writing a marketing brief
+- If moment_they_realize is provided, one angle MUST use it verbatim as the hook scenario
+- If alternative_they_tried is provided, one angle MUST address exactly why that didn't work
+- If emotional_before_after is provided, one angle MUST open in the "before" state with zero mention of the solution
+- Angles should feel uncomfortably specific — if it could apply to any business, it's too generic
 
 OUTPUT FORMAT:
 Return ONLY valid JSON (RFC8259) with an "angles" array. No markdown, no code fences, no extra text.
