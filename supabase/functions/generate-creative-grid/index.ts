@@ -545,7 +545,7 @@ Remember:
     console.log(`Generating creative grid in ${angleBatches.length} batch(es) for ${angles.length} angles. System prompt length: ${systemPrompt.length}`);
 
     // Robust JSON extraction with error recovery
-    const extractJson = (text: string): unknown => {
+    const extractJson = async (text: string): Promise<unknown> => {
       let cleaned = text
         .replace(/```json\s*/gi, "")
         .replace(/```\s*/g, "")
@@ -773,7 +773,7 @@ Generate exactly ${batchAngles.length * 9} creative cells (${batchAngles.length}
         throw new Error("AI response was empty");
       }
 
-      const parsed = extractJson(rawContent) as { grid?: any[] };
+      const parsed = await extractJson(rawContent) as { grid?: any[] };
       return parsed.grid || [];
     };
 
