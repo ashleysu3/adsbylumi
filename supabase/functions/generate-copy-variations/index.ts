@@ -149,6 +149,12 @@ If ANY check fails → regenerate before including.
 ## CTA HIERARCHY
 LEARN_MORE is best for Grow stage (default), SIGN_UP for Nurture, SHOP_NOW for Convert
 
+## AD COPY FORMATTING CONVENTIONS (STRICT)
+- ALWAYS use digits for numbers: "7 days" not "seven days", "$997" not "$nine hundred ninety-seven", "3 clients" not "three clients"
+- Keep sentences punchy and scannable — no filler words
+- Double-check spelling of every word before output
+- Short paragraphs only — one thought per line
+
 Your job: Generate 3-5 distinct copy variations, each using a DIFFERENT framework from the Knowledge Base.
 
 Each variation must:

@@ -338,21 +338,37 @@ async function checkSpellingGrammar(creativeJson: any, productionItems: any[]): 
       return { id: 'spelling', name: 'Spelling & Grammar', status: 'passed', message: `${copyToCheck.length} items checked`, details: 'AI check unavailable, manual review recommended' };
     }
 
-    const prompt = `You are a copy editor. Review the following ad copy for spelling and grammar errors.
+    const prompt = `You are reviewing ad copy for a social media feed (Meta/Facebook/Instagram ads). Your job is to catch ONLY genuine errors that would make a brand look unprofessional or confuse the reader.
+
+THIS IS AD COPY, NOT FORMAL WRITING. The following are NORMAL and should NEVER be flagged:
+- Numbers as digits ("7 days" NOT "seven days") — digits are CORRECT for ads
+- Sentence fragments, one-word sentences, incomplete thoughts — these are intentional hooks
+- Starting sentences with "And", "But", "So", "Because" — conversational tone is correct
+- ALL CAPS for 1-3 emphasis words (e.g., "This is THE moment")
+- Ellipsis (…), em dashes (—), informal punctuation
+- Missing Oxford commas
+- Casual/punchy tone, slang, contractions
+- Emoji usage
+- Short paragraphs or single-line paragraphs
+- Brand names, product names, or coined terms
+- Price formatting ($997, $47/mo)
+
+ONLY flag these as issues:
+1. Genuine misspelled words (typos like "teh", "recieve", "definately")
+2. Grammar so broken it confuses the meaning (not stylistic fragments)
+3. Wrong word usage that changes meaning ("your" vs "you're", "their" vs "there")
+4. Repeated words that are clearly accidental ("the the")
+
+Be very conservative. If in doubt, do NOT flag it. Most ad copy will have zero issues.
+
 Return a JSON array of issues found. Each issue should have:
 - field: the field name from the input
 - text: the problematic word or phrase
 - suggestion: the corrected text
-- reason: brief explanation (e.g., "typo", "grammar", "punctuation")
+- reason: brief explanation (e.g., "typo", "wrong word")
 - location: the location from the input
 
 If no issues found, return an empty array: []
-
-Be strict about actual errors but don't flag:
-- Intentional stylistic choices (sentence fragments in ads are OK)
-- Brand names or product names
-- Informal/conversational tone
-- Emoji usage
 
 COPY TO CHECK:
 ${JSON.stringify(copyToCheck, null, 2)}
