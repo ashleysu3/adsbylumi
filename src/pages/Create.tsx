@@ -13,12 +13,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageShimmer } from "@/components/GradientShimmer";
 import { OfferDialog } from "@/components/OfferDialog";
 import { toast } from "sonner";
-import { 
-  Package, 
-  Plus, 
-  Sparkles, 
-  Target, 
-  Zap, 
+import {
+  Package,
+  Plus,
+  Sparkles,
+  Target,
+  Zap,
   ChevronRight,
   Lightbulb,
   ArrowRight,
@@ -36,8 +36,8 @@ import {
   MessageCircle,
   Play,
   Globe,
-  MapPin
-} from "lucide-react";
+  MapPin } from
+"lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -54,14 +54,14 @@ const LOCAL_REGIONAL_OFFER_ID = "system-local-regional";
 const EVENT_LOCATION_OFFER_ID = "system-event-location";
 
 const SYSTEM_OFFER_IDS = [
-  SOCIAL_GROWTH_OFFER_ID, COMMENT_DM_OFFER_ID, TRAFFIC_IG_OFFER_ID, VIDEO_VIEWS_OFFER_ID,
-  LOCAL_NEARBY_OFFER_ID, LOCAL_REGIONAL_OFFER_ID, EVENT_LOCATION_OFFER_ID
-];
+SOCIAL_GROWTH_OFFER_ID, COMMENT_DM_OFFER_ID, TRAFFIC_IG_OFFER_ID, VIDEO_VIEWS_OFFER_ID,
+LOCAL_NEARBY_OFFER_ID, LOCAL_REGIONAL_OFFER_ID, EVENT_LOCATION_OFFER_ID];
+
 
 const LOCAL_STRATEGY_SLUG_MAP: Record<string, string> = {
   [LOCAL_NEARBY_OFFER_ID]: "local-nearby",
   [LOCAL_REGIONAL_OFFER_ID]: "local-regional",
-  [EVENT_LOCATION_OFFER_ID]: "event-location",
+  [EVENT_LOCATION_OFFER_ID]: "event-location"
 };
 
 const SOCIAL_GROWTH_IDS = [SOCIAL_GROWTH_OFFER_ID, COMMENT_DM_OFFER_ID, TRAFFIC_IG_OFFER_ID, VIDEO_VIEWS_OFFER_ID];
@@ -109,31 +109,31 @@ interface CreativeTemplate {
 
 // Creative templates with real Canva template URLs
 const CREATIVE_TEMPLATES: CreativeTemplate[] = [
-  {
-    id: "talking-head-1",
-    type: "video",
-    name: "Talking Head Script",
-    description: "Direct-to-camera script with proven hook structure",
-    canvaUrl: "https://www.canva.com/design/DAGd9R4X_Ck/edit",
-    thumbnail: "https://marketplace.canva.com/EAFaQMYuZbo/1/0/1600w/canva-white-elegant-simple-quote-instagram-story-u_dMvlfrVxU.jpg",
-  },
-  {
-    id: "carousel-1",
-    type: "graphic",
-    name: "Story Carousel",
-    description: "5-slide carousel that tells your transformation story",
-    canvaUrl: "https://www.canva.com/design/DAGKpB0mSYQ/edit",
-    thumbnail: "https://marketplace.canva.com/EAFXKFIDad4/1/0/1600w/canva-beige-minimalistic-modern-feminine-carousel-instagram-post-jJrNv-0gLJA.jpg",
-  },
-  {
-    id: "broll-1",
-    type: "hybrid",
-    name: "B-Roll + Voiceover",
-    description: "Visual montage with compelling voiceover script",
-    canvaUrl: "https://www.canva.com/design/DAGd6JZF3OA/edit",
-    thumbnail: "https://marketplace.canva.com/EAFqNrAJGSQ/1/0/1600w/canva-grey-black-white-animated-new-product-launch-countdown-video-7CqGPNaQNsM.jpg",
-  },
-];
+{
+  id: "talking-head-1",
+  type: "video",
+  name: "Talking Head Script",
+  description: "Direct-to-camera script with proven hook structure",
+  canvaUrl: "https://www.canva.com/design/DAGd9R4X_Ck/edit",
+  thumbnail: "https://marketplace.canva.com/EAFaQMYuZbo/1/0/1600w/canva-white-elegant-simple-quote-instagram-story-u_dMvlfrVxU.jpg"
+},
+{
+  id: "carousel-1",
+  type: "graphic",
+  name: "Story Carousel",
+  description: "5-slide carousel that tells your transformation story",
+  canvaUrl: "https://www.canva.com/design/DAGKpB0mSYQ/edit",
+  thumbnail: "https://marketplace.canva.com/EAFXKFIDad4/1/0/1600w/canva-beige-minimalistic-modern-feminine-carousel-instagram-post-jJrNv-0gLJA.jpg"
+},
+{
+  id: "broll-1",
+  type: "hybrid",
+  name: "B-Roll + Voiceover",
+  description: "Visual montage with compelling voiceover script",
+  canvaUrl: "https://www.canva.com/design/DAGd6JZF3OA/edit",
+  thumbnail: "https://marketplace.canva.com/EAFqNrAJGSQ/1/0/1600w/canva-grey-black-white-animated-new-product-launch-countdown-video-7CqGPNaQNsM.jpg"
+}];
+
 
 const STORAGE_KEY = "create_wizard_progress";
 
@@ -169,12 +169,12 @@ export default function Create() {
   const [selectedCreativeTemplates, setSelectedCreativeTemplates] = useState<string[]>([]);
   const [isGeneratingAngles, setIsGeneratingAngles] = useState(false);
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
-  
+
   // New offer form
   const [showOfferDialog, setShowOfferDialog] = useState(false);
   const [newOfferName, setNewOfferName] = useState("");
   const [newOfferUrl, setNewOfferUrl] = useState("");
-  
+
   // Social growth flow state
   const [showSocialGrowthFlow, setShowSocialGrowthFlow] = useState(false);
 
@@ -189,7 +189,7 @@ export default function Create() {
   useEffect(() => {
     if (!loading && brand && currentStep > 0) {
       setSaveStatus("saving");
-      
+
       const progress: WizardProgress = {
         currentStep,
         selectedOfferId,
@@ -197,10 +197,10 @@ export default function Create() {
         selectedAngle,
         generatedAngles,
         selectedCreativeTemplates,
-        savedAt: Date.now(),
+        savedAt: Date.now()
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-      
+
       // Show saved status
       setSaveStatus("saved");
       const timer = setTimeout(() => setSaveStatus("idle"), 2000);
@@ -255,7 +255,7 @@ export default function Create() {
 
       // Use active brand from context, or fall back to most recent
       let brandQuery = supabase.from("brands").select("*");
-      
+
       if (activeBrand?.id) {
         brandQuery = brandQuery.eq("id", activeBrand.id);
       } else {
@@ -271,21 +271,21 @@ export default function Create() {
       setBrand(brandData);
 
       // Fetch offers for the correct brand
-      const { data: offersData } = await supabase
-        .from("offers")
-        .select("*")
-        .eq("brand_id", brandData.id)
-        .eq("archived", false)
-        .order("created_at", { ascending: false });
+      const { data: offersData } = await supabase.
+      from("offers").
+      select("*").
+      eq("brand_id", brandData.id).
+      eq("archived", false).
+      order("created_at", { ascending: false });
 
       setOffers(offersData || []);
 
       // Fetch templates
-      const { data: templatesData } = await supabase
-        .from("campaign_templates")
-        .select("*")
-        .eq("active", true)
-        .order("sort_order");
+      const { data: templatesData } = await supabase.
+      from("campaign_templates").
+      select("*").
+      eq("active", true).
+      order("sort_order");
 
       setTemplates(templatesData || []);
 
@@ -296,11 +296,11 @@ export default function Create() {
           const progress: WizardProgress = JSON.parse(saved);
           const isRecent = Date.now() - progress.savedAt < 24 * 60 * 60 * 1000;
           const hasMeaningfulProgress = progress.currentStep > 1 || progress.selectedOfferId;
-          
+
           if (isRecent && hasMeaningfulProgress) {
-            const offerStillExists = !progress.selectedOfferId || 
-              (offersData || []).some(o => o.id === progress.selectedOfferId);
-            
+            const offerStillExists = !progress.selectedOfferId ||
+            (offersData || []).some((o) => o.id === progress.selectedOfferId);
+
             if (offerStillExists) {
               setSavedProgress(progress);
               setShowResumePrompt(true);
@@ -325,16 +325,16 @@ export default function Create() {
   // When offer is selected, find recommended template
   useEffect(() => {
     if (selectedOfferId) {
-      const offer = offers.find(o => o.id === selectedOfferId);
+      const offer = offers.find((o) => o.id === selectedOfferId);
       if (offer?.recommended_template_id) {
-        const template = templates.find(t => t.id === offer.recommended_template_id);
+        const template = templates.find((t) => t.id === offer.recommended_template_id);
         if (template) {
           setRecommendedTemplate(template);
           setSelectedTemplateId(template.id);
         }
       } else {
         // Default to first template if no recommendation
-        const defaultTemplate = templates.find(t => t.objective === "Sales") || templates[0];
+        const defaultTemplate = templates.find((t) => t.objective === "Sales") || templates[0];
         if (defaultTemplate) {
           setRecommendedTemplate(defaultTemplate);
           setSelectedTemplateId(defaultTemplate.id);
@@ -349,7 +349,7 @@ export default function Create() {
       await handleGenerateAndNavigate();
       return; // Don't increment step, we're navigating away
     }
-    
+
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     }
@@ -371,8 +371,8 @@ export default function Create() {
 
     setIsGeneratingAngles(true);
     try {
-      const selectedOffer = isLocalStrategy ? null : offers.find(o => o.id === selectedOfferId);
-      const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+      const selectedOffer = isLocalStrategy ? null : offers.find((o) => o.id === selectedOfferId);
+      const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
       if (!selectedTemplate) {
         throw new Error("Missing template selection");
@@ -381,9 +381,9 @@ export default function Create() {
         throw new Error("Missing offer selection");
       }
 
-      const campaignName = isLocalStrategy
-        ? selectedTemplate.name
-        : `${selectedTemplate.name} - ${selectedOffer!.name}`;
+      const campaignName = isLocalStrategy ?
+      selectedTemplate.name :
+      `${selectedTemplate.name} - ${selectedOffer!.name}`;
 
       // Generate creative angles
       const { data: anglesData, error: anglesError } = await supabase.functions.invoke('generate-creative-angles', {
@@ -393,44 +393,44 @@ export default function Create() {
           audiencePsychology: brand.audience_psychology,
           offerData: isLocalStrategy ? {
             name: selectedTemplate.name,
-            description: selectedTemplate.description,
+            description: selectedTemplate.description
           } : {
             name: selectedOffer!.name,
             description: selectedOffer!.description,
             price: selectedOffer!.price_point,
-            product_psychology: selectedOffer!.product_psychology,
-          },
+            product_psychology: selectedOffer!.product_psychology
+          }
         }
       });
 
       if (anglesError) throw anglesError;
 
       const angles = anglesData.angles || [];
-      
+
       // Fallback angles if API returns empty
       const finalAngles = angles.length > 0 ? angles : [
-        {
-          id: "angle-1",
-          name: "Problem-Solution",
-          hook: "Struggling with [pain point]? Here's the fix.",
-          description: "Lead with the pain your audience feels, then present your offer as the solution.",
-          psychologyTrigger: "Pain avoidance",
-        },
-        {
-          id: "angle-2", 
-          name: "Social Proof",
-          hook: "See why [X] people chose this...",
-          description: "Leverage testimonials and results to build trust quickly.",
-          psychologyTrigger: "Social validation",
-        },
-        {
-          id: "angle-3",
-          name: "Curiosity Gap",
-          hook: "The one thing most people don't know about...",
-          description: "Create intrigue that compels the viewer to learn more.",
-          psychologyTrigger: "Curiosity",
-        },
-      ];
+      {
+        id: "angle-1",
+        name: "Problem-Solution",
+        hook: "Struggling with [pain point]? Here's the fix.",
+        description: "Lead with the pain your audience feels, then present your offer as the solution.",
+        psychologyTrigger: "Pain avoidance"
+      },
+      {
+        id: "angle-2",
+        name: "Social Proof",
+        hook: "See why [X] people chose this...",
+        description: "Leverage testimonials and results to build trust quickly.",
+        psychologyTrigger: "Social validation"
+      },
+      {
+        id: "angle-3",
+        name: "Curiosity Gap",
+        hook: "The one thing most people don't know about...",
+        description: "Create intrigue that compels the viewer to learn more.",
+        psychologyTrigger: "Curiosity"
+      }];
+
 
       // Create strategy
       const strategyInsert = {
@@ -446,14 +446,14 @@ export default function Create() {
         offer_name: selectedOffer?.name || null,
         offer_url: selectedOffer?.url || null,
         offer_price: selectedOffer?.price_point || null,
-        offer_description: selectedOffer?.description || null,
+        offer_description: selectedOffer?.description || null
       };
 
-      const { data: strategy, error: strategyError } = await supabase
-        .from("strategies")
-        .insert(strategyInsert)
-        .select()
-        .single();
+      const { data: strategy, error: strategyError } = await supabase.
+      from("strategies").
+      insert(strategyInsert).
+      select().
+      single();
 
       if (strategyError) throw strategyError;
 
@@ -475,21 +475,21 @@ export default function Create() {
           selectedAngleIds: [], // Let user select in Creative Studio
           selectedCreativeTemplates: [],
           phase1Flow: true,
-          ...(isLocalStrategy ? { localStrategy: true, locationSlug: LOCAL_STRATEGY_SLUG_MAP[selectedOfferId] } : {}),
-        } as any,
+          ...(isLocalStrategy ? { localStrategy: true, locationSlug: LOCAL_STRATEGY_SLUG_MAP[selectedOfferId] } : {})
+        } as any
       };
 
-      const { data: workspace, error: workspaceError } = await supabase
-        .from("campaign_workspaces")
-        .insert([workspaceInsert])
-        .select()
-        .single();
+      const { data: workspace, error: workspaceError } = await supabase.
+      from("campaign_workspaces").
+      insert([workspaceInsert]).
+      select().
+      single();
 
       if (workspaceError) throw workspaceError;
 
       // Clear saved progress on successful completion
       clearSavedProgress();
-      
+
       toast.success("Angles generated! Let's build your creative.");
       navigate(`/creative-studio?workspace=${workspace.id}`);
     } catch (error: any) {
@@ -521,11 +521,11 @@ export default function Create() {
 
   const generateCreativeAngles = async () => {
     if (!selectedOfferId || !selectedTemplateId) return;
-    
+
     setIsGeneratingAngles(true);
     try {
-      const selectedOffer = offers.find(o => o.id === selectedOfferId);
-      const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+      const selectedOffer = offers.find((o) => o.id === selectedOfferId);
+      const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
         body: {
@@ -536,8 +536,8 @@ export default function Create() {
             name: selectedOffer?.name,
             description: selectedOffer?.description,
             price: selectedOffer?.price_point,
-            product_psychology: selectedOffer?.product_psychology,
-          },
+            product_psychology: selectedOffer?.product_psychology
+          }
         }
       });
 
@@ -545,7 +545,7 @@ export default function Create() {
 
       const angles = data.angles || [];
       setGeneratedAngles(angles);
-      
+
       // Auto-select the first (recommended) angle
       if (angles.length > 0) {
         setSelectedAngle(angles[0]);
@@ -554,28 +554,28 @@ export default function Create() {
       console.error("Error generating angles:", error);
       // Generate fallback angles if API fails
       const fallbackAngles: CreativeAngle[] = [
-        {
-          id: "angle-1",
-          name: "Problem-Solution",
-          hook: "Struggling with [pain point]? Here's the fix.",
-          description: "Lead with the pain your audience feels, then present your offer as the solution.",
-          psychologyTrigger: "Pain avoidance",
-        },
-        {
-          id: "angle-2", 
-          name: "Social Proof",
-          hook: "See why [X] people chose this...",
-          description: "Leverage testimonials and results to build trust quickly.",
-          psychologyTrigger: "Social validation",
-        },
-        {
-          id: "angle-3",
-          name: "Curiosity Gap",
-          hook: "The one thing most people don't know about...",
-          description: "Create intrigue that compels the viewer to learn more.",
-          psychologyTrigger: "Curiosity",
-        },
-      ];
+      {
+        id: "angle-1",
+        name: "Problem-Solution",
+        hook: "Struggling with [pain point]? Here's the fix.",
+        description: "Lead with the pain your audience feels, then present your offer as the solution.",
+        psychologyTrigger: "Pain avoidance"
+      },
+      {
+        id: "angle-2",
+        name: "Social Proof",
+        hook: "See why [X] people chose this...",
+        description: "Leverage testimonials and results to build trust quickly.",
+        psychologyTrigger: "Social validation"
+      },
+      {
+        id: "angle-3",
+        name: "Curiosity Gap",
+        hook: "The one thing most people don't know about...",
+        description: "Create intrigue that compels the viewer to learn more.",
+        psychologyTrigger: "Curiosity"
+      }];
+
       setGeneratedAngles(fallbackAngles);
       setSelectedAngle(fallbackAngles[0]);
       toast.error("Used fallback angles. Try regenerating later.");
@@ -586,9 +586,9 @@ export default function Create() {
 
   const canProceed = (): boolean => {
     switch (currentStep) {
-      case 1: return !!selectedOfferId;
-      case 2: return !!selectedTemplateId;
-      default: return false;
+      case 1:return !!selectedOfferId;
+      case 2:return !!selectedTemplateId;
+      default:return false;
     }
   };
 
@@ -603,8 +603,8 @@ export default function Create() {
         if (selectedGoal === "grow_social") return "Choose your creative";
         if (selectedGoal === "local") return "Choose your location strategy";
         return "Choose your offer";
-      case 2: return "Recommended strategy";
-      default: return "";
+      case 2:return "Recommended strategy";
+      default:return "";
     }
   };
 
@@ -615,12 +615,12 @@ export default function Create() {
         if (selectedGoal === "grow_social") return "Select the posts you'd like to promote";
         if (selectedGoal === "local") return "LUMI will match the right approach";
         return "What are we promoting?";
-      case 2: return isLocalStrategy 
-        ? "Lumi matched this location-based strategy for you"
-        : isSocialGrowth 
-          ? "Lumi's recommendation for your strategy" 
-          : "Lumi picked the best approach for your offer";
-      default: return "";
+      case 2:return isLocalStrategy ?
+        "Lumi matched this location-based strategy for you" :
+        isSocialGrowth ?
+        "Lumi's recommendation for your strategy" :
+        "Lumi picked the best approach for your offer";
+      default:return "";
     }
   };
 
@@ -633,8 +633,8 @@ export default function Create() {
     return (
       <DashboardLayout>
         <PageShimmer />
-      </DashboardLayout>
-    );
+      </DashboardLayout>);
+
   }
 
   return (
@@ -642,23 +642,23 @@ export default function Create() {
       <div className="max-w-2xl mx-auto">
         {/* Resume Progress Prompt - Enhanced with preview */}
         <AnimatePresence>
-          {showResumePrompt && savedProgress && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-4"
-            >
+          {showResumePrompt && savedProgress &&
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-4">
+            
               <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/10 overflow-hidden">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0">
                       <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <img 
-                          src={lumiLogo} 
-                          alt="Lumi" 
-                          className="h-8 w-8"
-                        />
+                        <img
+                        src={lumiLogo}
+                        alt="Lumi"
+                        className="h-8 w-8" />
+                      
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -668,17 +668,17 @@ export default function Create() {
                       <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border/50">
                         <div className="flex items-center gap-2 mb-2">
                           <div className="flex -space-x-1">
-                            {Array.from({ length: totalSteps }).map((_, i) => (
-                              <div 
-                                key={i}
-                                className={cn(
-                                  "h-2 w-2 rounded-full border border-background",
-                                  i < savedProgress.currentStep 
-                                    ? "bg-primary" 
-                                    : "bg-muted-foreground/30"
-                                )}
-                              />
-                            ))}
+                            {Array.from({ length: totalSteps }).map((_, i) =>
+                          <div
+                            key={i}
+                            className={cn(
+                              "h-2 w-2 rounded-full border border-background",
+                              i < savedProgress.currentStep ?
+                              "bg-primary" :
+                              "bg-muted-foreground/30"
+                            )} />
+
+                          )}
                           </div>
                           <span className="text-xs text-muted-foreground">
                             Step {savedProgress.currentStep} of {totalSteps}
@@ -687,41 +687,41 @@ export default function Create() {
                         
                         {/* Show what was selected */}
                         <div className="space-y-1.5 text-xs">
-                          {savedProgress.selectedOfferId && (
-                            <div className="flex items-center gap-1.5">
+                          {savedProgress.selectedOfferId &&
+                        <div className="flex items-center gap-1.5">
                               <CheckCircle2 className="h-3 w-3 text-green-500" />
                               <span className="text-muted-foreground">Offer:</span>
                               <span className="font-medium truncate">
-                                {offers.find(o => o.id === savedProgress.selectedOfferId)?.name || "Selected"}
+                                {offers.find((o) => o.id === savedProgress.selectedOfferId)?.name || "Selected"}
                               </span>
                             </div>
-                          )}
-                          {savedProgress.selectedTemplateId && (
-                            <div className="flex items-center gap-1.5">
+                        }
+                          {savedProgress.selectedTemplateId &&
+                        <div className="flex items-center gap-1.5">
                               <CheckCircle2 className="h-3 w-3 text-green-500" />
                               <span className="text-muted-foreground">Strategy:</span>
                               <span className="font-medium truncate">
-                                {templates.find(t => t.id === savedProgress.selectedTemplateId)?.name || "Selected"}
+                                {templates.find((t) => t.id === savedProgress.selectedTemplateId)?.name || "Selected"}
                               </span>
                             </div>
-                          )}
+                        }
                         </div>
                       </div>
 
                       <div className="flex gap-2 mt-3">
-                        <Button 
-                          size="sm" 
-                          onClick={restoreProgress}
-                          className="gap-1.5"
-                        >
+                        <Button
+                        size="sm"
+                        onClick={restoreProgress}
+                        className="gap-1.5">
+                        
                           <ArrowRight className="h-3.5 w-3.5" />
                           Continue
                         </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={clearSavedProgress}
-                        >
+                        <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={clearSavedProgress}>
+                        
                           Start fresh
                         </Button>
                       </div>
@@ -730,17 +730,17 @@ export default function Create() {
                 </CardContent>
               </Card>
             </motion.div>
-          )}
+          }
         </AnimatePresence>
 
         {/* Entry Step: Choose flow */}
-        {currentStep === 0 && (
-          <motion.div
-            key="step-entry"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6 py-8"
-          >
+        {currentStep === 0 &&
+        <motion.div
+          key="step-entry"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6 py-8">
+          
             <div className="text-center space-y-2 mb-8">
               <h1 className="text-2xl font-heading font-bold text-foreground">What would you like to do?</h1>
               <p className="text-muted-foreground">Choose how you'd like to get started</p>
@@ -749,9 +749,9 @@ export default function Create() {
             <div className="grid gap-4">
               {/* New Campaign */}
               <button
-                onClick={() => setCurrentStep(1)}
-                className="group text-left w-full"
-              >
+              onClick={() => setCurrentStep(1)}
+              className="group text-left w-full">
+              
                 <Card variant="glow" className="p-6 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50">
                   <div className="flex items-start gap-4">
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
@@ -770,9 +770,9 @@ export default function Create() {
 
               {/* Existing Campaign */}
               <button
-                onClick={() => navigate("/advanced-build")}
-                className="group text-left w-full"
-              >
+              onClick={() => navigate("/advanced-build")}
+              className="group text-left w-full">
+              
                 <Card variant="glow" className="p-6 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50">
                   <div className="flex items-start gap-4">
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-lumi-purple-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
@@ -790,9 +790,9 @@ export default function Create() {
               </button>
             </div>
           </motion.div>
-        )}
+        }
 
-        {currentStep >= 1 && (
+        {currentStep >= 1 &&
         <MobileStepWizard
           currentStep={currentStep}
           totalSteps={totalSteps}
@@ -807,94 +807,94 @@ export default function Create() {
           saveStatus={saveStatus}
           completeLabel="Create My Ad"
           showBackOnFirstStep={true}
-          hideFooter={showSocialGrowthFlow && currentStep === 1}
-        >
+          hideFooter={showSocialGrowthFlow && currentStep === 1}>
+          
           <AnimatePresence mode="wait">
             {/* Step 1: Goal-first Selection */}
-            {currentStep === 1 && (
-              <motion.div
-                key="step-1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4"
-              >
+            {currentStep === 1 &&
+            <motion.div
+              key="step-1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-4">
+              
                 {/* Stage A: Goal Selection */}
-                {!selectedGoal && (
-                  <div className="space-y-3">
+                {!selectedGoal &&
+              <div className="space-y-3">
                     <StepOption
-                      selected={false}
-                      onSelect={() => setSelectedGoal("promote_offer")}
-                      icon={<Package className="h-5 w-5" />}
-                      title="Promote an offer or landing page"
-                      description="A webinar, course, coaching program, lead magnet, or any page you want traffic to"
-                    />
+                  selected={false}
+                  onSelect={() => setSelectedGoal("promote_offer")}
+                  icon={<Package className="h-5 w-5" />}
+                  title="Promote an offer or landing page"
+                  description="A webinar, course, coaching program, lead magnet, or any page you want traffic to" />
+                
                     <StepOption
-                      selected={false}
-                      onSelect={() => setSelectedGoal("get_leads")}
-                      icon={<Users className="h-5 w-5" />}
-                      title="Grow my email list or get leads"
-                      description="Drive people to a freebie, checklist, or lead magnet to collect emails"
-                    />
+                  selected={false}
+                  onSelect={() => setSelectedGoal("get_leads")}
+                  icon={<Users className="h-5 w-5" />}
+                  title="Grow my email list or get leads"
+                  description="Drive people to a freebie, checklist, or lead magnet to collect emails" />
+                
                     <StepOption
-                      selected={false}
-                      onSelect={() => setSelectedGoal("book_calls")}
-                      icon={<MessageCircle className="h-5 w-5" />}
-                      title="Get people to book a call with me"
-                      description="Fill your calendar with discovery calls or consultations"
-                    />
+                  selected={false}
+                  onSelect={() => setSelectedGoal("book_calls")}
+                  icon={<MessageCircle className="h-5 w-5" />}
+                  title="Get people to book a call with me"
+                  description="Fill your calendar with discovery calls or consultations" />
+                
                     <StepOption
-                      selected={false}
-                      onSelect={() => setSelectedGoal("grow_social")}
-                      icon={<Instagram className="h-5 w-5" />}
-                      title="Grow my social presence"
-                      description="Get more followers, video views, comments, or traffic to my profile"
-                    />
+                  selected={false}
+                  onSelect={() => setSelectedGoal("grow_social")}
+                  icon={<Instagram className="h-5 w-5" />}
+                  title="Grow my social presence"
+                  description="Get more followers, video views, comments, or traffic to my profile" />
+                
                     <StepOption
-                      selected={false}
-                      onSelect={() => setSelectedGoal("local")}
-                      icon={<MapPin className="h-5 w-5" />}
-                      title="Reach people in a specific location"
-                      description="Local business, event targeting, or regional campaigns"
-                    />
+                  selected={false}
+                  onSelect={() => setSelectedGoal("local")}
+                  icon={<MapPin className="h-5 w-5" />}
+                  title="Reach people near my location"
+                  description="Local business, event targeting, or regional campaigns" />
+                
                   </div>
-                )}
+              }
 
                 {/* Stage B: Contextual Selection based on goal */}
 
                 {/* Offer-based goals: promote_offer, get_leads, book_calls */}
-                {(selectedGoal === "promote_offer" || selectedGoal === "get_leads" || selectedGoal === "book_calls") && !showSocialGrowthFlow && (
-                  <div className="space-y-3">
-                    {offers.length > 0 ? (
-                      <>
+                {(selectedGoal === "promote_offer" || selectedGoal === "get_leads" || selectedGoal === "book_calls") && !showSocialGrowthFlow &&
+              <div className="space-y-3">
+                    {offers.length > 0 ?
+                <>
                         <p className="text-sm text-muted-foreground italic">
                           {selectedGoal === "promote_offer" && "Which offer are you promoting?"}
                           {selectedGoal === "get_leads" && "Which lead magnet or freebie?"}
                           {selectedGoal === "book_calls" && "Which offer are discovery calls for?"}
                         </p>
-                        {offers.map((offer) => (
-                          <StepOption
-                            key={offer.id}
-                            selected={selectedOfferId === offer.id}
-                            onSelect={() => setSelectedOfferId(offer.id)}
-                            icon={<Package className="h-5 w-5" />}
-                            title={offer.name}
-                            description={offer.price_point || offer.url || "No details added"}
-                          />
-                        ))}
+                        {offers.map((offer) =>
+                  <StepOption
+                    key={offer.id}
+                    selected={selectedOfferId === offer.id}
+                    onSelect={() => setSelectedOfferId(offer.id)}
+                    icon={<Package className="h-5 w-5" />}
+                    title={offer.name}
+                    description={offer.price_point || offer.url || "No details added"} />
+
+                  )}
                         <div className="pt-2">
                           <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => setShowOfferDialog(true)}
-                          >
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setShowOfferDialog(true)}>
+                      
                             <Plus className="h-4 w-4 mr-2" />
                             Add a new offer
                           </Button>
                         </div>
-                      </>
-                    ) : (
-                      <Card className="border-dashed">
+                      </> :
+
+                <Card className="border-dashed">
                         <CardContent className="p-6 text-center space-y-4">
                           <Package className="h-12 w-12 mx-auto text-muted-foreground" />
                           <div>
@@ -904,9 +904,9 @@ export default function Create() {
                             </p>
                           </div>
                           <Button
-                            variant="lumi"
-                            onClick={() => setShowOfferDialog(true)}
-                          >
+                      variant="lumi"
+                      onClick={() => setShowOfferDialog(true)}>
+                      
                             <Plus className="h-4 w-4 mr-2" />
                             Set Up My First Offer
                           </Button>
@@ -915,245 +915,245 @@ export default function Create() {
                           </p>
                         </CardContent>
                       </Card>
-                    )}
+                }
                   </div>
-                )}
+              }
 
                 {/* Social growth goal */}
-                {selectedGoal === "grow_social" && (
-                  <>
-                    {showSocialGrowthFlow ? (
-                      <SocialGrowthFlow
-                        brandId={brand.id}
-                        brandName={brand.name}
-                        instagramAccountId={brand.instagram_account_id}
-                        instagramAccountName={brand.instagram_account_name}
-                        audiencePsychology={brand.audience_psychology}
-                        fixedObjective={
-                          selectedOfferId === COMMENT_DM_OFFER_ID ? "engagement" 
-                          : selectedOfferId === TRAFFIC_IG_OFFER_ID ? "traffic"
-                          : selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "video_views"
-                          : undefined
-                        }
-                        headerText={
-                          selectedOfferId === COMMENT_DM_OFFER_ID ? "Pick the posts that drive comments & DMs 💬" 
-                          : selectedOfferId === TRAFFIC_IG_OFFER_ID ? "Pick posts to drive traffic to your profile 🔗"
-                          : selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "Pick your best videos to promote 🎬"
-                          : undefined
-                        }
-                        headerSubtext={
-                          selectedOfferId === COMMENT_DM_OFFER_ID ? "Select up to 6 posts with autoresponder triggers. We'll put them in front of a broad audience to maximize conversations." 
-                          : selectedOfferId === TRAFFIC_IG_OFFER_ID ? "Select up to 6 posts to promote. We'll drive cold traffic to your Instagram profile."
-                          : selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "Select up to 6 videos to get more views. We'll optimize for maximum video engagement."
-                          : undefined
-                        }
-                        onComplete={async (data) => {
-                          try {
-                            setIsCreatingCampaign(true);
-                            
-                            const isCommentDm = selectedOfferId === COMMENT_DM_OFFER_ID;
-                            const isTrafficIg = selectedOfferId === TRAFFIC_IG_OFFER_ID;
-                            const isVideoViews = selectedOfferId === VIDEO_VIEWS_OFFER_ID;
-                            
-                            const templateSlug = isCommentDm 
-                              ? "comment-dm-engagement"
-                              : (isVideoViews || data.objective === "video_views") ? "video-views" 
-                              : "social-traffic";
-                            const matchedTemplate = templates.find(t => t.slug === templateSlug) || templates[0];
-                            
-                            const campaignName = isCommentDm 
-                              ? "Increase Comments/DMs"
-                              : isTrafficIg 
-                              ? "Traffic to Instagram"
-                              : isVideoViews
-                              ? "Video Views Campaign"
-                              : `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic to Instagram"}`;
-                            
-                            const campaignType = isCommentDm ? "comment_dm" : "social_growth";
-                            
-                            const { data: strategy, error: strategyError } = await supabase
-                              .from("strategies")
-                              .insert({
-                                brand_id: brand.id,
-                                template_id: matchedTemplate?.id,
-                                name: campaignName,
-                                campaign_type: campaignType,
-                                status: "active",
-                              })
-                              .select()
-                              .single();
+                {selectedGoal === "grow_social" &&
+              <>
+                    {showSocialGrowthFlow ?
+                <SocialGrowthFlow
+                  brandId={brand.id}
+                  brandName={brand.name}
+                  instagramAccountId={brand.instagram_account_id}
+                  instagramAccountName={brand.instagram_account_name}
+                  audiencePsychology={brand.audience_psychology}
+                  fixedObjective={
+                  selectedOfferId === COMMENT_DM_OFFER_ID ? "engagement" :
+                  selectedOfferId === TRAFFIC_IG_OFFER_ID ? "traffic" :
+                  selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "video_views" :
+                  undefined
+                  }
+                  headerText={
+                  selectedOfferId === COMMENT_DM_OFFER_ID ? "Pick the posts that drive comments & DMs 💬" :
+                  selectedOfferId === TRAFFIC_IG_OFFER_ID ? "Pick posts to drive traffic to your profile 🔗" :
+                  selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "Pick your best videos to promote 🎬" :
+                  undefined
+                  }
+                  headerSubtext={
+                  selectedOfferId === COMMENT_DM_OFFER_ID ? "Select up to 6 posts with autoresponder triggers. We'll put them in front of a broad audience to maximize conversations." :
+                  selectedOfferId === TRAFFIC_IG_OFFER_ID ? "Select up to 6 posts to promote. We'll drive cold traffic to your Instagram profile." :
+                  selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "Select up to 6 videos to get more views. We'll optimize for maximum video engagement." :
+                  undefined
+                  }
+                  onComplete={async (data) => {
+                    try {
+                      setIsCreatingCampaign(true);
 
-                            if (strategyError) throw strategyError;
+                      const isCommentDm = selectedOfferId === COMMENT_DM_OFFER_ID;
+                      const isTrafficIg = selectedOfferId === TRAFFIC_IG_OFFER_ID;
+                      const isVideoViews = selectedOfferId === VIDEO_VIEWS_OFFER_ID;
 
-                            const { data: workspace, error: workspaceError } = await supabase
-                              .from("campaign_workspaces")
-                              .insert({
-                                brand_id: brand.id,
-                                strategy_id: strategy.id,
-                                template_id: matchedTemplate?.id,
-                                name: campaignName,
-                                strategy_json: matchedTemplate?.strategy_template as any,
-                                progress_status: "ready_to_build",
-                                creative_json: {
-                                  ...(isCommentDm ? { commentDmCampaign: true } : { socialGrowth: true }),
-                                  objective: data.objective,
-                                  selectedPosts: data.selectedPosts.map(p => ({
-                                    id: p.id,
-                                    media_url: p.media_url,
-                                    thumbnail_url: p.thumbnail_url,
-                                    media_type: p.media_type,
-                                    permalink: p.permalink,
-                                    caption: p.caption,
-                                  })),
-                                } as any,
-                              })
-                              .select()
-                              .single();
+                      const templateSlug = isCommentDm ?
+                      "comment-dm-engagement" :
+                      isVideoViews || data.objective === "video_views" ? "video-views" :
+                      "social-traffic";
+                      const matchedTemplate = templates.find((t) => t.slug === templateSlug) || templates[0];
 
-                            if (workspaceError) throw workspaceError;
+                      const campaignName = isCommentDm ?
+                      "Increase Comments/DMs" :
+                      isTrafficIg ?
+                      "Traffic to Instagram" :
+                      isVideoViews ?
+                      "Video Views Campaign" :
+                      `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic to Instagram"}`;
 
-                            clearSavedProgress();
-                            toast.success(isCommentDm 
-                              ? "Posts selected! Let's build your engagement campaign." 
-                              : "Posts selected! Let's build your campaign.");
-                            navigate(`/campaigns/build?workspace=${workspace.id}`);
-                          } catch (error: any) {
-                            console.error("Error creating workspace:", error);
-                            toast.error(error.message || "Failed to create campaign");
-                          } finally {
-                            setIsCreatingCampaign(false);
-                          }
-                        }}
-                        onConnectInstagram={() => navigate("/settings/meta?returnTo=/create&socialGrowth=true")}
-                        onBack={() => {
-                          setShowSocialGrowthFlow(false);
-                          setSelectedOfferId("");
-                        }}
-                      />
-                    ) : (
-                      <div className="space-y-3">
+                      const campaignType = isCommentDm ? "comment_dm" : "social_growth";
+
+                      const { data: strategy, error: strategyError } = await supabase.
+                      from("strategies").
+                      insert({
+                        brand_id: brand.id,
+                        template_id: matchedTemplate?.id,
+                        name: campaignName,
+                        campaign_type: campaignType,
+                        status: "active"
+                      }).
+                      select().
+                      single();
+
+                      if (strategyError) throw strategyError;
+
+                      const { data: workspace, error: workspaceError } = await supabase.
+                      from("campaign_workspaces").
+                      insert({
+                        brand_id: brand.id,
+                        strategy_id: strategy.id,
+                        template_id: matchedTemplate?.id,
+                        name: campaignName,
+                        strategy_json: matchedTemplate?.strategy_template as any,
+                        progress_status: "ready_to_build",
+                        creative_json: {
+                          ...(isCommentDm ? { commentDmCampaign: true } : { socialGrowth: true }),
+                          objective: data.objective,
+                          selectedPosts: data.selectedPosts.map((p) => ({
+                            id: p.id,
+                            media_url: p.media_url,
+                            thumbnail_url: p.thumbnail_url,
+                            media_type: p.media_type,
+                            permalink: p.permalink,
+                            caption: p.caption
+                          }))
+                        } as any
+                      }).
+                      select().
+                      single();
+
+                      if (workspaceError) throw workspaceError;
+
+                      clearSavedProgress();
+                      toast.success(isCommentDm ?
+                      "Posts selected! Let's build your engagement campaign." :
+                      "Posts selected! Let's build your campaign.");
+                      navigate(`/campaigns/build?workspace=${workspace.id}`);
+                    } catch (error: any) {
+                      console.error("Error creating workspace:", error);
+                      toast.error(error.message || "Failed to create campaign");
+                    } finally {
+                      setIsCreatingCampaign(false);
+                    }
+                  }}
+                  onConnectInstagram={() => navigate("/settings/meta?returnTo=/create&socialGrowth=true")}
+                  onBack={() => {
+                    setShowSocialGrowthFlow(false);
+                    setSelectedOfferId("");
+                  }} /> :
+
+
+                <div className="space-y-3">
                         <StepOption
-                          selected={selectedOfferId === SOCIAL_GROWTH_OFFER_ID}
-                          onSelect={() => {
-                            setSelectedOfferId(SOCIAL_GROWTH_OFFER_ID);
-                            setShowSocialGrowthFlow(true);
-                          }}
-                          icon={<Instagram className="h-5 w-5" />}
-                          title="Grow my Instagram following"
-                          description="Get more followers with strategic content promotion"
-                          badge="Popular"
-                        />
+                    selected={selectedOfferId === SOCIAL_GROWTH_OFFER_ID}
+                    onSelect={() => {
+                      setSelectedOfferId(SOCIAL_GROWTH_OFFER_ID);
+                      setShowSocialGrowthFlow(true);
+                    }}
+                    icon={<Instagram className="h-5 w-5" />}
+                    title="Grow my Instagram following"
+                    description="Get more followers with strategic content promotion"
+                    badge="Popular" />
+                  
                         <StepOption
-                          selected={selectedOfferId === COMMENT_DM_OFFER_ID}
-                          onSelect={() => {
-                            setSelectedOfferId(COMMENT_DM_OFFER_ID);
-                            setShowSocialGrowthFlow(true);
-                          }}
-                          icon={<MessageCircle className="h-5 w-5" />}
-                          title="Increase Comments/DMs"
-                          description="Drive comments and DMs using your existing posts + autoresponder"
-                          badge="ManyChat"
-                        />
+                    selected={selectedOfferId === COMMENT_DM_OFFER_ID}
+                    onSelect={() => {
+                      setSelectedOfferId(COMMENT_DM_OFFER_ID);
+                      setShowSocialGrowthFlow(true);
+                    }}
+                    icon={<MessageCircle className="h-5 w-5" />}
+                    title="Increase Comments/DMs"
+                    description="Drive comments and DMs using your existing posts + autoresponder"
+                    badge="ManyChat" />
+                  
+                        
+
+
+
+
+
+
+
+
+                  
                         <StepOption
-                          selected={selectedOfferId === TRAFFIC_IG_OFFER_ID}
-                          onSelect={() => {
-                            setSelectedOfferId(TRAFFIC_IG_OFFER_ID);
-                            setShowSocialGrowthFlow(true);
-                          }}
-                          icon={<Globe className="h-5 w-5" />}
-                          title="Traffic to Instagram/Facebook"
-                          description="Send people directly to your social profile"
-                        />
-                        <StepOption
-                          selected={selectedOfferId === VIDEO_VIEWS_OFFER_ID}
-                          onSelect={() => {
-                            setSelectedOfferId(VIDEO_VIEWS_OFFER_ID);
-                            setShowSocialGrowthFlow(true);
-                          }}
-                          icon={<Play className="h-5 w-5" />}
-                          title="Video Views Campaign"
-                          description="Get more eyes on your Reels and video content"
-                        />
+                    selected={selectedOfferId === VIDEO_VIEWS_OFFER_ID}
+                    onSelect={() => {
+                      setSelectedOfferId(VIDEO_VIEWS_OFFER_ID);
+                      setShowSocialGrowthFlow(true);
+                    }}
+                    icon={<Play className="h-5 w-5" />}
+                    title="Video Views Campaign"
+                    description="Get more eyes on your Reels and video content" />
+                  
                       </div>
-                    )}
+                }
                   </>
-                )}
+              }
 
                 {/* Local goal */}
-                {selectedGoal === "local" && (
-                  <div className="space-y-3">
+                {selectedGoal === "local" &&
+              <div className="space-y-3">
                     <StepOption
-                      selected={selectedOfferId === EVENT_LOCATION_OFFER_ID}
-                      onSelect={() => {
-                        setSelectedOfferId(EVENT_LOCATION_OFFER_ID);
-                        setShowSocialGrowthFlow(false);
-                        const matched = templates.find(t => t.slug === "event-location");
-                        if (matched) {
-                          setSelectedTemplateId(matched.id);
-                          setRecommendedTemplate(matched);
-                        }
-                        setCurrentStep(2);
-                      }}
-                      icon={<MapPin className="h-5 w-5" />}
-                      title="Event & Location Targeting"
-                      description="Get in front of people at conferences, trade shows, or high-traffic locations"
-                    />
+                  selected={selectedOfferId === EVENT_LOCATION_OFFER_ID}
+                  onSelect={() => {
+                    setSelectedOfferId(EVENT_LOCATION_OFFER_ID);
+                    setShowSocialGrowthFlow(false);
+                    const matched = templates.find((t) => t.slug === "event-location");
+                    if (matched) {
+                      setSelectedTemplateId(matched.id);
+                      setRecommendedTemplate(matched);
+                    }
+                    setCurrentStep(2);
+                  }}
+                  icon={<MapPin className="h-5 w-5" />}
+                  title="Event & Location Targeting"
+                  description="Get in front of people at conferences, trade shows, or high-traffic locations" />
+                
                     <StepOption
-                      selected={selectedOfferId === LOCAL_NEARBY_OFFER_ID}
-                      onSelect={() => {
-                        setSelectedOfferId(LOCAL_NEARBY_OFFER_ID);
-                        setShowSocialGrowthFlow(false);
-                        const matched = templates.find(t => t.slug === "local-nearby");
-                        if (matched) {
-                          setSelectedTemplateId(matched.id);
-                          setRecommendedTemplate(matched);
-                        }
-                        setCurrentStep(2);
-                      }}
-                      icon={<MapPin className="h-5 w-5" />}
-                      title="Local Business — Nearby"
-                      description="Attract nearby customers to your storefront or location"
-                    />
+                  selected={selectedOfferId === LOCAL_NEARBY_OFFER_ID}
+                  onSelect={() => {
+                    setSelectedOfferId(LOCAL_NEARBY_OFFER_ID);
+                    setShowSocialGrowthFlow(false);
+                    const matched = templates.find((t) => t.slug === "local-nearby");
+                    if (matched) {
+                      setSelectedTemplateId(matched.id);
+                      setRecommendedTemplate(matched);
+                    }
+                    setCurrentStep(2);
+                  }}
+                  icon={<MapPin className="h-5 w-5" />}
+                  title="Local Business — Nearby"
+                  description="Attract nearby customers to your storefront or location" />
+                
                     <StepOption
-                      selected={selectedOfferId === LOCAL_REGIONAL_OFFER_ID}
-                      onSelect={() => {
-                        setSelectedOfferId(LOCAL_REGIONAL_OFFER_ID);
-                        setShowSocialGrowthFlow(false);
-                        const matched = templates.find(t => t.slug === "local-regional");
-                        if (matched) {
-                          setSelectedTemplateId(matched.id);
-                          setRecommendedTemplate(matched);
-                        }
-                        setCurrentStep(2);
-                      }}
-                      icon={<MapPin className="h-5 w-5" />}
-                      title="Local Business — Regional"
-                      description="Reach customers across your service area"
-                    />
+                  selected={selectedOfferId === LOCAL_REGIONAL_OFFER_ID}
+                  onSelect={() => {
+                    setSelectedOfferId(LOCAL_REGIONAL_OFFER_ID);
+                    setShowSocialGrowthFlow(false);
+                    const matched = templates.find((t) => t.slug === "local-regional");
+                    if (matched) {
+                      setSelectedTemplateId(matched.id);
+                      setRecommendedTemplate(matched);
+                    }
+                    setCurrentStep(2);
+                  }}
+                  icon={<MapPin className="h-5 w-5" />}
+                  title="Local Business — Regional"
+                  description="Reach customers across your service area" />
+                
                   </div>
-                )}
+              }
               </motion.div>
-            )}
+            }
 
             {/* Step 2: Strategy Recommendation */}
-            {currentStep === 2 && (
-              <motion.div
-                key="step-2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4"
-              >
+            {currentStep === 2 &&
+            <motion.div
+              key="step-2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-4">
+              
                 {/* Lumi recommendation card */}
                 <Card className="border-2 border-primary bg-primary/5 overflow-hidden">
                   <CardContent className="p-5">
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0">
-                        <img 
-                          src={lumiLogo} 
-                          alt="Lumi" 
-                          className="h-10 w-10 rounded-full"
-                        />
+                        <img
+                        src={lumiLogo}
+                        alt="Lumi"
+                        className="h-10 w-10 rounded-full" />
+                      
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
@@ -1163,8 +1163,8 @@ export default function Create() {
                             Best fit
                           </Badge>
                         </div>
-                        {recommendedTemplate && (
-                          <>
+                        {recommendedTemplate &&
+                      <>
                             <h3 className="text-lg font-bold mb-1">
                               {recommendedTemplate.name}
                             </h3>
@@ -1177,26 +1177,26 @@ export default function Create() {
                               <span className="text-muted-foreground">{recommendedTemplate.use_case}</span>
                             </div>
                           </>
-                        )}
+                      }
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Event strategy education card */}
-                {selectedOfferId === EVENT_LOCATION_OFFER_ID && (
-                  <LumiEducationCard
-                    cardId="event-location-strategy"
-                    headline="How Event Targeting Works (2 Phases)"
-                    body="Phase 1: Run awareness ads at the event location to get people interacting with your content. Phase 2: Later, retarget those people with your offer ads (lead magnet or purchase). Make sure you also have an offer campaign set up so you can retarget these warm leads!"
-                  />
-                )}
+                {selectedOfferId === EVENT_LOCATION_OFFER_ID &&
+              <LumiEducationCard
+                cardId="event-location-strategy"
+                headline="How Event Targeting Works (2 Phases)"
+                body="Phase 1: Run awareness ads at the event location to get people interacting with your content. Phase 2: Later, retarget those people with your offer ads (lead magnet or purchase). Make sure you also have an offer campaign set up so you can retarget these warm leads!" />
+
+              }
 
                 {/* Campaign structure collapsible */}
                 {(() => {
-                  const template = templates.find(t => t.id === selectedTemplateId);
-                  return template ? (
-                    <div className="pt-1">
+                const template = templates.find((t) => t.id === selectedTemplateId);
+                return template ?
+                <div className="pt-1">
                       <details className="group">
                         <summary className="flex items-center justify-between cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
                           <span>See campaign structure</span>
@@ -1217,9 +1217,9 @@ export default function Create() {
                           </div>
                         </div>
                       </details>
-                    </div>
-                  ) : null;
-                })()}
+                    </div> :
+                null;
+              })()}
 
                 {/* Override option */}
                 <div className="pt-2">
@@ -1229,17 +1229,17 @@ export default function Create() {
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                     </summary>
                     <div className="mt-4 space-y-2">
-                      {templates.filter(t => t.id !== recommendedTemplate?.id).map((template) => (
-                        <StepOption
-                          key={template.id}
-                          selected={selectedTemplateId === template.id}
-                          onSelect={() => setSelectedTemplateId(template.id)}
-                          icon={<Target className="h-5 w-5" />}
-                          title={template.name}
-                          description={template.description}
-                          badge={template.objective}
-                        />
-                      ))}
+                      {templates.filter((t) => t.id !== recommendedTemplate?.id).map((template) =>
+                    <StepOption
+                      key={template.id}
+                      selected={selectedTemplateId === template.id}
+                      onSelect={() => setSelectedTemplateId(template.id)}
+                      icon={<Target className="h-5 w-5" />}
+                      title={template.name}
+                      description={template.description}
+                      badge={template.objective} />
+
+                    )}
                     </div>
                   </details>
                 </div>
@@ -1267,67 +1267,67 @@ export default function Create() {
                     </summary>
                     <div className="mt-3">
                       <Button
-                        variant="outline"
-                        className="w-full"
-                        disabled={isGeneratingAngles || isCreatingCampaign}
-                        onClick={async () => {
-                          if (!selectedOfferId || !selectedTemplateId) {
-                            toast.error("Please select an offer and strategy first");
-                            return;
-                          }
-                          setIsCreatingCampaign(true);
-                          try {
-                            const selectedOffer = offers.find(o => o.id === selectedOfferId);
-                            const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
-                            if (!selectedOffer || !selectedTemplate) throw new Error("Missing selection");
+                      variant="outline"
+                      className="w-full"
+                      disabled={isGeneratingAngles || isCreatingCampaign}
+                      onClick={async () => {
+                        if (!selectedOfferId || !selectedTemplateId) {
+                          toast.error("Please select an offer and strategy first");
+                          return;
+                        }
+                        setIsCreatingCampaign(true);
+                        try {
+                          const selectedOffer = offers.find((o) => o.id === selectedOfferId);
+                          const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+                          if (!selectedOffer || !selectedTemplate) throw new Error("Missing selection");
 
-                            const { data: strategy, error: sErr } = await supabase
-                              .from("strategies")
-                              .insert({
-                                brand_id: brand.id,
-                                template_id: selectedTemplate.id,
-                                name: `Advanced Build - ${selectedOffer.name}`,
-                                campaign_type: selectedTemplate.strategy_template?.campaign_type || "cold",
-                                status: "active",
-                                offer_name: selectedOffer.name,
-                                offer_url: selectedOffer.url,
-                                offer_price: selectedOffer.price_point,
-                                offer_description: selectedOffer.description,
-                              })
-                              .select()
-                              .single();
-                            if (sErr) throw sErr;
+                          const { data: strategy, error: sErr } = await supabase.
+                          from("strategies").
+                          insert({
+                            brand_id: brand.id,
+                            template_id: selectedTemplate.id,
+                            name: `Advanced Build - ${selectedOffer.name}`,
+                            campaign_type: selectedTemplate.strategy_template?.campaign_type || "cold",
+                            status: "active",
+                            offer_name: selectedOffer.name,
+                            offer_url: selectedOffer.url,
+                            offer_price: selectedOffer.price_point,
+                            offer_description: selectedOffer.description
+                          }).
+                          select().
+                          single();
+                          if (sErr) throw sErr;
 
-                            const { data: ws, error: wErr } = await supabase
-                              .from("campaign_workspaces")
-                              .insert([{
-                                brand_id: brand.id,
-                                strategy_id: strategy.id,
-                                template_id: selectedTemplate.id,
-                                name: `Advanced Build - ${selectedOffer.name}`,
-                                strategy_json: selectedTemplate.strategy_template as any,
-                                progress_status: "draft",
-                                offer_id: selectedOffer.id,
-                                offer_name: selectedOffer.name,
-                                offer_url: selectedOffer.url,
-                                offer_price: selectedOffer.price_point,
-                                offer_description: selectedOffer.description,
-                                campaign_builder_answers: { advancedBuild: true } as any,
-                              }])
-                              .select()
-                              .single();
-                            if (wErr) throw wErr;
+                          const { data: ws, error: wErr } = await supabase.
+                          from("campaign_workspaces").
+                          insert([{
+                            brand_id: brand.id,
+                            strategy_id: strategy.id,
+                            template_id: selectedTemplate.id,
+                            name: `Advanced Build - ${selectedOffer.name}`,
+                            strategy_json: selectedTemplate.strategy_template as any,
+                            progress_status: "draft",
+                            offer_id: selectedOffer.id,
+                            offer_name: selectedOffer.name,
+                            offer_url: selectedOffer.url,
+                            offer_price: selectedOffer.price_point,
+                            offer_description: selectedOffer.description,
+                            campaign_builder_answers: { advancedBuild: true } as any
+                          }]).
+                          select().
+                          single();
+                          if (wErr) throw wErr;
 
-                            clearSavedProgress();
-                            navigate(`/advanced-build?workspace=${ws.id}`);
-                          } catch (err: any) {
-                            console.error(err);
-                            toast.error(err.message || "Failed to create workspace");
-                          } finally {
-                            setIsCreatingCampaign(false);
-                          }
-                        }}
-                      >
+                          clearSavedProgress();
+                          navigate(`/advanced-build?workspace=${ws.id}`);
+                        } catch (err: any) {
+                          console.error(err);
+                          toast.error(err.message || "Failed to create workspace");
+                        } finally {
+                          setIsCreatingCampaign(false);
+                        }
+                      }}>
+                      
                         <Upload className="h-4 w-4 mr-2" />
                         Advanced Build — Upload & Go
                       </Button>
@@ -1338,19 +1338,19 @@ export default function Create() {
                   </details>
                 </div>
               </motion.div>
-            )}
+            }
 
             {/* Step 4: Creative Angle */}
-            {currentStep === 4 && (
-              <motion.div
-                key="step-4"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4"
-              >
-                {isGeneratingAngles ? (
-                  <div className="text-center py-12">
+            {currentStep === 4 &&
+            <motion.div
+              key="step-4"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-4">
+              
+                {isGeneratingAngles ?
+              <div className="text-center py-12">
                     <div className="h-12 w-12 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                       <Wand2 className="h-6 w-6 text-primary animate-pulse" />
                     </div>
@@ -1358,19 +1358,19 @@ export default function Create() {
                     <p className="text-sm text-muted-foreground mt-1">
                       Lumi is analyzing your offer and audience psychology
                     </p>
-                  </div>
-                ) : generatedAngles.length > 0 ? (
-                  <>
+                  </div> :
+              generatedAngles.length > 0 ?
+              <>
                     {/* Recommended angle */}
                     <Card className="border-2 border-primary bg-primary/5 overflow-hidden">
                       <CardContent className="p-5">
                         <div className="flex items-start gap-4">
                           <div className="flex-shrink-0">
-                            <img 
-                              src={lumiLogo} 
-                              alt="Lumi" 
-                              className="h-10 w-10 rounded-full"
-                            />
+                            <img
+                          src={lumiLogo}
+                          alt="Lumi"
+                          className="h-10 w-10 rounded-full" />
+                        
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
@@ -1410,76 +1410,76 @@ export default function Create() {
                     </div>
 
                     {/* Override options */}
-                    {generatedAngles.length > 1 && (
-                      <details className="group">
+                    {generatedAngles.length > 1 &&
+                <details className="group">
                         <summary className="flex items-center justify-between cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
                           <span>Try a different angle</span>
                           <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                         </summary>
                         <div className="mt-4 space-y-2">
-                          {generatedAngles.slice(1).map((angle) => (
-                            <StepOption
-                              key={angle.id}
-                              selected={selectedAngle?.id === angle.id}
-                              onSelect={() => setSelectedAngle(angle)}
-                              icon={<Lightbulb className="h-5 w-5" />}
-                              title={angle.name}
-                              description={angle.hook}
-                              badge={angle.psychologyTrigger}
-                            />
-                          ))}
+                          {generatedAngles.slice(1).map((angle) =>
+                    <StepOption
+                      key={angle.id}
+                      selected={selectedAngle?.id === angle.id}
+                      onSelect={() => setSelectedAngle(angle)}
+                      icon={<Lightbulb className="h-5 w-5" />}
+                      title={angle.name}
+                      description={angle.hook}
+                      badge={angle.psychologyTrigger} />
+
+                    )}
                         </div>
                       </details>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center py-8">
+                }
+                  </> :
+
+              <div className="text-center py-8">
                     <p className="text-muted-foreground">No angles generated yet</p>
                   </div>
-                )}
+              }
               </motion.div>
-            )}
+            }
 
             {/* Step 5: Creative Templates */}
-            {currentStep === 5 && (
-              <motion.div
-                key="step-5"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4"
-              >
+            {currentStep === 5 &&
+            <motion.div
+              key="step-5"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-4">
+              
                 <p className="text-sm text-muted-foreground text-center mb-4">
                   Each template links to a Canva design you can customize
                 </p>
 
-                {CREATIVE_TEMPLATES.map((template) => (
-                  <div
-                    key={template.id}
-                    onClick={() => {
-                      setSelectedCreativeTemplates(prev => 
-                        prev.includes(template.id) 
-                          ? prev.filter(id => id !== template.id)
-                          : [...prev, template.id]
-                      );
-                    }}
-                    className={cn(
-                      "p-4 rounded-xl border-2 cursor-pointer transition-all",
-                      selectedCreativeTemplates.includes(template.id)
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
+                {CREATIVE_TEMPLATES.map((template) =>
+              <div
+                key={template.id}
+                onClick={() => {
+                  setSelectedCreativeTemplates((prev) =>
+                  prev.includes(template.id) ?
+                  prev.filter((id) => id !== template.id) :
+                  [...prev, template.id]
+                  );
+                }}
+                className={cn(
+                  "p-4 rounded-xl border-2 cursor-pointer transition-all",
+                  selectedCreativeTemplates.includes(template.id) ?
+                  "border-primary bg-primary/5" :
+                  "border-border hover:border-primary/50"
+                )}>
+                
                     <div className="flex items-start gap-4">
                       <div className={cn(
-                        "flex-shrink-0 h-12 w-12 rounded-lg flex items-center justify-center",
-                        template.type === "video" ? "bg-blue-500/10 text-blue-500" :
-                        template.type === "graphic" ? "bg-green-500/10 text-green-500" :
-                        "bg-purple-500/10 text-purple-500"
-                      )}>
+                    "flex-shrink-0 h-12 w-12 rounded-lg flex items-center justify-center",
+                    template.type === "video" ? "bg-blue-500/10 text-blue-500" :
+                    template.type === "graphic" ? "bg-green-500/10 text-green-500" :
+                    "bg-purple-500/10 text-purple-500"
+                  )}>
                         {template.type === "video" ? <Video className="h-6 w-6" /> :
-                         template.type === "graphic" ? <Image className="h-6 w-6" /> :
-                         <Layers className="h-6 w-6" />}
+                    template.type === "graphic" ? <Image className="h-6 w-6" /> :
+                    <Layers className="h-6 w-6" />}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -1492,31 +1492,31 @@ export default function Create() {
                           {template.description}
                         </p>
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          className="mt-2 h-8 text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(template.canvaUrl, "_blank");
-                          }}
-                        >
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-8 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(template.canvaUrl, "_blank");
+                      }}>
+                      
                           <ExternalLink className="h-3 w-3 mr-1" />
                           Open in Canva
                         </Button>
                       </div>
                       <div className={cn(
-                        "flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center",
-                        selectedCreativeTemplates.includes(template.id)
-                          ? "border-primary bg-primary"
-                          : "border-muted-foreground/30"
-                      )}>
-                        {selectedCreativeTemplates.includes(template.id) && (
-                          <CheckCircle2 className="h-4 w-4 text-primary-foreground" />
-                        )}
+                    "flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center",
+                    selectedCreativeTemplates.includes(template.id) ?
+                    "border-primary bg-primary" :
+                    "border-muted-foreground/30"
+                  )}>
+                        {selectedCreativeTemplates.includes(template.id) &&
+                    <CheckCircle2 className="h-4 w-4 text-primary-foreground" />
+                    }
                       </div>
                     </div>
                   </div>
-                ))}
+              )}
 
                 <div className="p-4 rounded-lg bg-muted/50 border border-border mt-4">
                   <div className="flex items-start gap-3">
@@ -1527,10 +1527,10 @@ export default function Create() {
                   </div>
                 </div>
               </motion.div>
-            )}
+            }
           </AnimatePresence>
         </MobileStepWizard>
-        )}
+        }
       </div>
 
       {/* Offer Dialog */}
@@ -1538,8 +1538,8 @@ export default function Create() {
         open={showOfferDialog}
         onOpenChange={setShowOfferDialog}
         brandId={brand?.id || ""}
-        onSuccess={handleOfferCreated}
-      />
-    </DashboardLayout>
-  );
+        onSuccess={handleOfferCreated} />
+      
+    </DashboardLayout>);
+
 }
