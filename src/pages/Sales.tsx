@@ -91,7 +91,7 @@ const Sales = () => {
             <Badge variant="outline" className="mb-6 text-xs sm:text-sm px-4 py-1.5 border-primary/30 bg-primary/5">✨ Built for coaches, course creators &amp; service providers</Badge>
           </FadeUp>
           <FadeUp delay={0.1}>
-             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1.1] mb-6 max-w-4xl mx-auto">
+             <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] leading-[1.1] mb-6 max-w-4xl mx-auto">
                You built something worth promoting.<br />LUMI makes sure the right people see it.
              </h1>
           </FadeUp>
