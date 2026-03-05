@@ -14,7 +14,6 @@ import {
   AlertCircle,
   Eye,
   AlertTriangle,
-  Play,
   Pause,
   Upload,
   FileText,
@@ -40,7 +39,6 @@ interface CampaignReviewProps {
 
 export function CampaignReview({ workspace, answers, onBack, onPublish }: CampaignReviewProps) {
   const [confirmRepublish, setConfirmRepublish] = useState(false);
-  const [launchAsActive, setLaunchAsActive] = useState(false);
   const [saveToBench, setSaveToBench] = useState(false);
   const [pixelStatus, setPixelStatus] = useState<'ready' | 'warning' | 'error' | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -92,12 +90,14 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   const brandName = workspace.brand?.name || "Your Brand";
   const websiteUrl = workspace.offer_url;
 
+  const launchActive = answers.launchActive ?? true;
+
   const handlePublishClick = () => {
     if (isAlreadyPublished && !confirmRepublish) {
       setConfirmRepublish(true);
       return;
     }
-    onPublish(launchAsActive ? 'active' : 'paused');
+    onPublish(launchActive ? 'active' : 'paused');
   };
 
   const creativeCount = isSocialGrowth ? selectedPosts.length : readyConcepts.length;
@@ -217,26 +217,6 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
             </div>
           </div>
 
-          {/* ── Launch Status Toggle ── */}
-          {!saveToBench && (
-            <div className="p-4 rounded-lg border bg-muted/30">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label htmlFor="launch-status" className="font-medium flex items-center gap-2">
-                    {launchAsActive ? <Play className="h-4 w-4 text-green-500" /> : <Pause className="h-4 w-4 text-amber-500" />}
-                    Launch as {launchAsActive ? 'Active (Live)' : 'Paused'}
-                  </Label>
-                  <p className="text-xs text-muted-foreground max-w-md">
-                    {launchAsActive 
-                      ? "Ads will start delivering after Meta approves them (~15-30 min)."
-                      : "Campaign will be created in Paused status. Activate it later."
-                    }
-                  </p>
-                </div>
-                <Switch id="launch-status" checked={launchAsActive} onCheckedChange={setLaunchAsActive} />
-              </div>
-            </div>
-          )}
 
           <Separator />
 
