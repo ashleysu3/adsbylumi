@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import lumiLogo from "@/assets/lumi-logo.png";
+import foundersPhoto from "@/assets/founders.jpg";
 
 /* ─── Fade-up on scroll wrapper ─── */
 const FadeUp = ({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
@@ -378,6 +379,7 @@ const Sales = () => {
           {/* Founder credibility block */}
           <FadeUp delay={0.2}>
             <div className="max-w-[680px] mx-auto text-center mb-12">
+              <img src={foundersPhoto} alt="LUMI founders" className="w-40 h-40 sm:w-48 sm:h-48 rounded-full object-cover object-top mx-auto mb-6 border-4 border-primary/20 shadow-lumi" />
               <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground mb-3">Built by ad managers. Not just engineers.</p>
               <h3 className="font-display text-2xl sm:text-3xl mb-5">LUMI isn't a chatbot that learned about ads from the&nbsp;internet.</h3>
               <p className="text-muted-foreground leading-relaxed mb-4">It's built on the same frameworks, strategies, and hard-won experience that power a real Meta ads agency — one that has managed millions of dollars in ad spend across dozens of industries and is actively running campaigns for clients right now.</p>
