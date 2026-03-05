@@ -41,24 +41,15 @@ serve(async (req) => {
     } = await req.json();
 
     console.log('QA Preflight Check started');
+    console.log('productionItems count:', productionItems?.length || 0);
+    console.log('creativeJson keys:', creativeJson ? Object.keys(creativeJson) : 'null');
     const results: CheckResult[] = [];
 
-    // Check 1: Meta Connection
     results.push(checkMetaConnection(brand));
-
-    // Check 2: Budget
     results.push(checkBudget(answers));
-
-    // Check 3: Schedule
     results.push(checkSchedule(answers));
-
-    // Check 4: Landing Page URL
     results.push(await checkLandingPage(offerUrl));
-
-    // Check 5: Event Tracking
     results.push(checkEventTracking(brand, template));
-
-    // Check 6: Spelling & Grammar (AI-powered)
     results.push(await checkSpellingGrammar(creativeJson, productionItems));
 
     const summary = {
@@ -85,8 +76,6 @@ serve(async (req) => {
   }
 });
 
-// --- Check functions ---
-
 function checkMetaConnection(brand: any): CheckResult {
   const hasAdAccount = !!brand?.meta_account_id;
   const hasPage = !!brand?.page_id;
@@ -107,7 +96,7 @@ function checkMetaConnection(brand: any): CheckResult {
   return {
     id: 'meta', name: 'Meta Connection', status: 'failed',
     message: 'Meta Ads not connected',
-    details: 'Connect your Meta Ads account in Brand Settings',
+    details: 'Connect your Meta Ads account to publish ads',
   };
 }
 
@@ -196,7 +185,6 @@ async function checkLandingPage(url: string | undefined): Promise<CheckResult> {
 }
 
 function checkEventTracking(brand: any, template: any): CheckResult {
-  // Determine required event from template
   const objective = template?.objective?.toLowerCase() || '';
   const optimizationEvent = template?.optimization_event || '';
   
@@ -213,7 +201,6 @@ function checkEventTracking(brand: any, template: any): CheckResult {
     requiredEvent = 'Lead';
     campaignGoal = 'leads';
   } else {
-    // For awareness/traffic campaigns, no conversion event needed
     return {
       id: 'tracking', name: 'Event Tracking', status: 'passed',
       message: 'No conversion event required',
@@ -233,7 +220,6 @@ function checkEventTracking(brand: any, template: any): CheckResult {
     };
   }
 
-  // Check if the required event has been verified
   const eventVerified = pixelEvents[requiredEvent] || pixelEvents[requiredEvent.toLowerCase()];
   
   if (eventVerified) {
@@ -257,11 +243,63 @@ async function checkSpellingGrammar(creativeJson: any, productionItems: any[]): 
   try {
     const copyToCheck: { field: string; text: string; location: string }[] = [];
 
-    // Support both camelCase and snake_case keys
+    // 1. From production items — this is where the actual ad copy lives
+    if (productionItems && Array.isArray(productionItems)) {
+      productionItems.forEach((item: any, idx: number) => {
+        const label = item.angleName || `Concept ${idx + 1}`;
+        const format = item.format || '';
+
+        // Hooks
+        if (item.hook) {
+          copyToCheck.push({ field: 'hook', text: item.hook, location: `${label} (${format})` });
+        }
+        if (item.written_hook || item.writtenHook) {
+          copyToCheck.push({ field: 'written_hook', text: item.written_hook || item.writtenHook, location: `${label} (${format})` });
+        }
+        if (item.verbal_hook || item.verbalHook) {
+          copyToCheck.push({ field: 'verbal_hook', text: item.verbal_hook || item.verbalHook, location: `${label} (${format})` });
+        }
+
+        // Script lines
+        const scriptLines = item.script_lines || item.scriptLines || [];
+        if (Array.isArray(scriptLines)) {
+          scriptLines.forEach((line: string, li: number) => {
+            if (line && typeof line === 'string') {
+              copyToCheck.push({ field: `script_line_${li + 1}`, text: line, location: `${label} (${format})` });
+            }
+          });
+        }
+
+        // Text overlays
+        const overlays = item.text_overlays || item.textOverlays || [];
+        if (Array.isArray(overlays)) {
+          overlays.forEach((overlay: any, oi: number) => {
+            const text = typeof overlay === 'string' ? overlay : overlay?.text;
+            if (text) {
+              copyToCheck.push({ field: `text_overlay_${oi + 1}`, text, location: `${label} (${format})` });
+            }
+          });
+        }
+
+        // Guidance text (for graphics)
+        if (item.guidance && format === 'graphic') {
+          copyToCheck.push({ field: 'graphic_guidance', text: item.guidance, location: `${label} (graphic)` });
+        }
+
+        // Final copy (if user has finalized)
+        const finalCopy = item.finalCopy || item.final_copy;
+        if (finalCopy) {
+          if (finalCopy.headline) copyToCheck.push({ field: 'headline', text: finalCopy.headline, location: `${label} - Final` });
+          if (finalCopy.description) copyToCheck.push({ field: 'description', text: finalCopy.description, location: `${label} - Final` });
+          if (finalCopy.primaryText || finalCopy.primary_text) copyToCheck.push({ field: 'primary_text', text: finalCopy.primaryText || finalCopy.primary_text, location: `${label} - Final` });
+        }
+      });
+    }
+
+    // 2. From angle_copy / angleCopy in creative_json (legacy support)
     const angleCopy = creativeJson?.angleCopy || creativeJson?.angle_copy || {};
     for (const [angleName, data] of Object.entries(angleCopy)) {
       const angleData = data as any;
-      
       if (angleData.headlines) {
         angleData.headlines.forEach((h: any, i: number) => {
           if (h?.text) copyToCheck.push({ field: `headline_${i + 1}`, text: h.text, location: `Angle: ${angleName}` });
@@ -279,8 +317,8 @@ async function checkSpellingGrammar(creativeJson: any, productionItems: any[]): 
       }
     }
 
-    // Also check copy_selections / copySelections
-    const copySelections = creativeJson?.copy_selections || creativeJson?.copySelections || {};
+    // 3. From selected_copy / copySelections
+    const copySelections = creativeJson?.copy_selections || creativeJson?.copySelections || creativeJson?.selected_copy || {};
     for (const [key, val] of Object.entries(copySelections)) {
       if (typeof val === 'string' && val.trim()) {
         copyToCheck.push({ field: key, text: val, location: 'Selected Copy' });
@@ -289,17 +327,7 @@ async function checkSpellingGrammar(creativeJson: any, productionItems: any[]): 
       }
     }
 
-    // From production items final copy
-    if (productionItems) {
-      productionItems.forEach((item: any, idx: number) => {
-        const finalCopy = item.finalCopy || item.final_copy;
-        if (finalCopy) {
-          if (finalCopy.headline) copyToCheck.push({ field: 'headline', text: finalCopy.headline, location: `Concept ${idx + 1}` });
-          if (finalCopy.description) copyToCheck.push({ field: 'description', text: finalCopy.description, location: `Concept ${idx + 1}` });
-          if (finalCopy.primaryText || finalCopy.primary_text) copyToCheck.push({ field: 'primary_text', text: finalCopy.primaryText || finalCopy.primary_text, location: `Concept ${idx + 1}` });
-        }
-      });
-    }
+    console.log(`Spelling check: found ${copyToCheck.length} copy items to check`);
 
     if (copyToCheck.length === 0) {
       return { id: 'spelling', name: 'Spelling & Grammar', status: 'warning', message: 'No copy to check', details: 'Generate ad copy before publishing' };
