@@ -8,6 +8,7 @@ import { ResumeWorkspaceBanner } from "@/components/ResumeWorkspaceBanner";
 import { GridShimmer } from "@/components/GradientShimmer";
 import { LumiEducationCard } from "@/components/LumiEducationCard";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 
 export default function Campaigns() {
@@ -17,6 +18,20 @@ export default function Campaigns() {
   
 
   const isAddCreativeMode = searchParams.get("addCreative") === "true";
+
+  const { data: hasLiveCampaign } = useQuery({
+    queryKey: ["has-live-campaign", activeBrand?.id],
+    queryFn: async () => {
+      if (!activeBrand?.id) return false;
+      const { count } = await supabase
+        .from("campaign_workspaces")
+        .select("id", { count: "exact", head: true })
+        .eq("brand_id", activeBrand.id)
+        .not("published_at", "is", null);
+      return (count ?? 0) > 0;
+    },
+    enabled: !!activeBrand?.id,
+  });
 
   useEffect(() => {
     if (!brandLoading && !activeBrand) {
@@ -87,12 +102,14 @@ export default function Campaigns() {
           <ResumeWorkspaceBanner brandId={activeBrand.id} />
         )}
 
-        {/* First live campaign education card */}
-        <LumiEducationCard
-          cardId="first-live-tip"
-          headline="Your ad is live! 🎉"
-          body="Give it 3–5 days before drawing conclusions. Meta's algorithm needs time to find the right people."
-        />
+        {/* First live campaign education card — only show when a campaign is actually live */}
+        {hasLiveCampaign && (
+          <LumiEducationCard
+            cardId="first-live-tip"
+            headline="Your ad is live! 🎉"
+            body="Give it 3–5 days before drawing conclusions. Meta's algorithm needs time to find the right people."
+          />
+        )}
 
         <CampaignsList 
           brandId={activeBrand.id} 
