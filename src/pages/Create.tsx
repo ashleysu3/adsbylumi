@@ -160,6 +160,7 @@ export default function Create() {
   const [templates, setTemplates] = useState<CampaignTemplate[]>([]);
 
   // Wizard state
+  const [selectedGoal, setSelectedGoal] = useState<string>("");
   const [selectedOfferId, setSelectedOfferId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [recommendedTemplate, setRecommendedTemplate] = useState<CampaignTemplate | null>(null);
@@ -234,6 +235,7 @@ export default function Create() {
 
   // Reset state when brand changes
   useEffect(() => {
+    setSelectedGoal("");
     setSelectedOfferId("");
     setSelectedTemplateId("");
     setSelectedAngle(null);
@@ -501,6 +503,10 @@ export default function Create() {
   const handleBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+    } else if (currentStep === 1 && selectedGoal) {
+      setSelectedGoal("");
+      setSelectedOfferId("");
+      setShowSocialGrowthFlow(false);
     } else if (currentStep === 1) {
       setCurrentStep(0); // Go back to entry choice
     } else {
@@ -592,7 +598,11 @@ export default function Create() {
 
   const getStepTitle = (): string => {
     switch (currentStep) {
-      case 1: return isSocialGrowth ? "Choose your creative" : "Choose your offer";
+      case 1:
+        if (!selectedGoal) return "What's your goal?";
+        if (selectedGoal === "grow_social") return "Choose your creative";
+        if (selectedGoal === "local") return "Choose your location strategy";
+        return "Choose your offer";
       case 2: return "Recommended strategy";
       default: return "";
     }
@@ -600,7 +610,11 @@ export default function Create() {
 
   const getStepSubtitle = (): string => {
     switch (currentStep) {
-      case 1: return isSocialGrowth ? "Select the posts you'd like to promote" : "What are we promoting?";
+      case 1:
+        if (!selectedGoal) return "Tell LUMI what you're trying to accomplish";
+        if (selectedGoal === "grow_social") return "Select the posts you'd like to promote";
+        if (selectedGoal === "local") return "LUMI will match the right approach";
+        return "What are we promoting?";
       case 2: return isLocalStrategy 
         ? "Lumi matched this location-based strategy for you"
         : isSocialGrowth 
@@ -796,7 +810,7 @@ export default function Create() {
           hideFooter={showSocialGrowthFlow && currentStep === 1}
         >
           <AnimatePresence mode="wait">
-            {/* Step 1: Offer Selection */}
+            {/* Step 1: Goal-first Selection */}
             {currentStep === 1 && (
               <motion.div
                 key="step-1"
@@ -805,179 +819,269 @@ export default function Create() {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-4"
               >
-                {/* Social Growth Flow */}
-                {showSocialGrowthFlow ? (
-                  (() => { console.log('[SocialGrowthFlow] brand:', brand?.name, 'instagram_account_id:', brand?.instagram_account_id); return null; })() ||
-                  <SocialGrowthFlow
-                    brandId={brand.id}
-                    brandName={brand.name}
-                    instagramAccountId={brand.instagram_account_id}
-                    instagramAccountName={brand.instagram_account_name}
-                    audiencePsychology={brand.audience_psychology}
-                    fixedObjective={
-                      selectedOfferId === COMMENT_DM_OFFER_ID ? "engagement" 
-                      : selectedOfferId === TRAFFIC_IG_OFFER_ID ? "traffic"
-                      : selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "video_views"
-                      : undefined
-                    }
-                    headerText={
-                      selectedOfferId === COMMENT_DM_OFFER_ID ? "Pick the posts that drive comments & DMs 💬" 
-                      : selectedOfferId === TRAFFIC_IG_OFFER_ID ? "Pick posts to drive traffic to your profile 🔗"
-                      : selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "Pick your best videos to promote 🎬"
-                      : undefined
-                    }
-                    headerSubtext={
-                      selectedOfferId === COMMENT_DM_OFFER_ID ? "Select up to 6 posts with autoresponder triggers. We'll put them in front of a broad audience to maximize conversations." 
-                      : selectedOfferId === TRAFFIC_IG_OFFER_ID ? "Select up to 6 posts to promote. We'll drive cold traffic to your Instagram profile."
-                      : selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "Select up to 6 videos to get more views. We'll optimize for maximum video engagement."
-                      : undefined
-                    }
-                    onComplete={async (data) => {
-                      try {
-                        setIsCreatingCampaign(true);
-                        
-                        const isCommentDm = selectedOfferId === COMMENT_DM_OFFER_ID;
-                        const isTrafficIg = selectedOfferId === TRAFFIC_IG_OFFER_ID;
-                        const isVideoViews = selectedOfferId === VIDEO_VIEWS_OFFER_ID;
-                        
-                        // Find the matching template
-                        const templateSlug = isCommentDm 
-                          ? "comment-dm-engagement"
-                          : (isVideoViews || data.objective === "video_views") ? "video-views" 
-                          : "social-traffic";
-                        const matchedTemplate = templates.find(t => t.slug === templateSlug) || templates[0];
-                        
-                        const campaignName = isCommentDm 
-                          ? "Increase Comments/DMs"
-                          : isTrafficIg 
-                          ? "Traffic to Instagram"
-                          : isVideoViews
-                          ? "Video Views Campaign"
-                          : `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic to Instagram"}`;
-                        
-                        const campaignType = isCommentDm ? "comment_dm" : "social_growth";
-                        
-                        // Create strategy
-                        const { data: strategy, error: strategyError } = await supabase
-                          .from("strategies")
-                          .insert({
-                            brand_id: brand.id,
-                            template_id: matchedTemplate?.id,
-                            name: campaignName,
-                            campaign_type: campaignType,
-                            status: "active",
-                          })
-                          .select()
-                          .single();
-
-                        if (strategyError) throw strategyError;
-
-                        // Create workspace with selected posts directly
-                        const { data: workspace, error: workspaceError } = await supabase
-                          .from("campaign_workspaces")
-                          .insert({
-                            brand_id: brand.id,
-                            strategy_id: strategy.id,
-                            template_id: matchedTemplate?.id,
-                            name: campaignName,
-                            strategy_json: matchedTemplate?.strategy_template as any,
-                            progress_status: "ready_to_build",
-                            creative_json: {
-                              ...(isCommentDm ? { commentDmCampaign: true } : { socialGrowth: true }),
-                              objective: data.objective,
-                              selectedPosts: data.selectedPosts.map(p => ({
-                                id: p.id,
-                                media_url: p.media_url,
-                                thumbnail_url: p.thumbnail_url,
-                                media_type: p.media_type,
-                                permalink: p.permalink,
-                                caption: p.caption,
-                              })),
-                            } as any,
-                          })
-                          .select()
-                          .single();
-
-                        if (workspaceError) throw workspaceError;
-
-                        clearSavedProgress();
-                        toast.success(isCommentDm 
-                          ? "Posts selected! Let's build your engagement campaign." 
-                          : "Posts selected! Let's build your campaign.");
-                        navigate(`/campaigns/build?workspace=${workspace.id}`);
-                      } catch (error: any) {
-                        console.error("Error creating workspace:", error);
-                        toast.error(error.message || "Failed to create campaign");
-                      } finally {
-                        setIsCreatingCampaign(false);
-                      }
-                    }}
-                    onConnectInstagram={() => navigate("/settings/meta?returnTo=/create&socialGrowth=true")}
-                    onBack={() => {
-                      setShowSocialGrowthFlow(false);
-                      setSelectedOfferId("");
-                    }}
-                  />
-                ) : offers.length > 0 || true ? (
-                  <>
-                    {/* System offer: Grow Social Following */}
+                {/* Stage A: Goal Selection */}
+                {!selectedGoal && (
+                  <div className="space-y-3">
                     <StepOption
-                      selected={selectedOfferId === SOCIAL_GROWTH_OFFER_ID}
-                      onSelect={() => {
-                        setSelectedOfferId(SOCIAL_GROWTH_OFFER_ID);
-                        setShowSocialGrowthFlow(true);
-                      }}
-                      icon={<Instagram className="h-5 w-5" />}
-                      title="Grow my Instagram following"
-                      description="Get more followers with strategic content promotion"
-                      badge="Popular"
+                      selected={false}
+                      onSelect={() => setSelectedGoal("promote_offer")}
+                      icon={<Package className="h-5 w-5" />}
+                      title="Promote something I sell"
+                      description="A webinar, course, coaching program, lead magnet, or any offer with a landing page"
                     />
-
-                    {/* System offer: Increase Comments/DMs */}
                     <StepOption
-                      selected={selectedOfferId === COMMENT_DM_OFFER_ID}
-                      onSelect={() => {
-                        setSelectedOfferId(COMMENT_DM_OFFER_ID);
-                        setShowSocialGrowthFlow(true);
-                      }}
+                      selected={false}
+                      onSelect={() => setSelectedGoal("get_leads")}
+                      icon={<Users className="h-5 w-5" />}
+                      title="Grow my email list or get leads"
+                      description="Drive people to a freebie, checklist, or lead magnet to collect emails"
+                    />
+                    <StepOption
+                      selected={false}
+                      onSelect={() => setSelectedGoal("book_calls")}
                       icon={<MessageCircle className="h-5 w-5" />}
-                      title="Increase Comments/DMs"
-                      description="Drive comments and DMs using your existing posts + autoresponder"
-                      badge="ManyChat"
+                      title="Get people to book a call with me"
+                      description="Fill your calendar with discovery calls or consultations"
                     />
-
-                    {/* System offer: Traffic to Instagram */}
                     <StepOption
-                      selected={selectedOfferId === TRAFFIC_IG_OFFER_ID}
-                      onSelect={() => {
-                        setSelectedOfferId(TRAFFIC_IG_OFFER_ID);
-                        setShowSocialGrowthFlow(true);
-                      }}
-                      icon={<Globe className="h-5 w-5" />}
-                      title="Traffic to Instagram/Facebook"
-                      description="Send people directly to your social profile"
+                      selected={false}
+                      onSelect={() => setSelectedGoal("grow_social")}
+                      icon={<Instagram className="h-5 w-5" />}
+                      title="Grow my social presence"
+                      description="Get more followers, video views, comments, or traffic to my profile"
                     />
-
-                    {/* System offer: Video Views */}
                     <StepOption
-                      selected={selectedOfferId === VIDEO_VIEWS_OFFER_ID}
-                      onSelect={() => {
-                        setSelectedOfferId(VIDEO_VIEWS_OFFER_ID);
-                        setShowSocialGrowthFlow(true);
-                      }}
-                      icon={<Play className="h-5 w-5" />}
-                      title="Video Views Campaign"
-                      description="Get more eyes on your Reels and video content"
+                      selected={false}
+                      onSelect={() => setSelectedGoal("local")}
+                      icon={<MapPin className="h-5 w-5" />}
+                      title="Reach people near my location"
+                      description="Local business, event targeting, or regional campaigns"
                     />
+                  </div>
+                )}
 
-                    {/* Local Strategy Divider */}
-                    <div className="flex items-center gap-3 py-2">
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-xs text-muted-foreground">or grow locally</span>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
+                {/* Stage B: Contextual Selection based on goal */}
 
-                    {/* System offer: Event & Location Targeting */}
+                {/* Offer-based goals: promote_offer, get_leads, book_calls */}
+                {(selectedGoal === "promote_offer" || selectedGoal === "get_leads" || selectedGoal === "book_calls") && !showSocialGrowthFlow && (
+                  <div className="space-y-3">
+                    {offers.length > 0 ? (
+                      <>
+                        <p className="text-sm text-muted-foreground italic">
+                          {selectedGoal === "promote_offer" && "Which offer are you promoting?"}
+                          {selectedGoal === "get_leads" && "Which lead magnet or freebie?"}
+                          {selectedGoal === "book_calls" && "Which offer are discovery calls for?"}
+                        </p>
+                        {offers.map((offer) => (
+                          <StepOption
+                            key={offer.id}
+                            selected={selectedOfferId === offer.id}
+                            onSelect={() => setSelectedOfferId(offer.id)}
+                            icon={<Package className="h-5 w-5" />}
+                            title={offer.name}
+                            description={offer.price_point || offer.url || "No details added"}
+                          />
+                        ))}
+                        <div className="pt-2">
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => setShowOfferDialog(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add a new offer
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <Card className="border-dashed">
+                        <CardContent className="p-6 text-center space-y-4">
+                          <Package className="h-12 w-12 mx-auto text-muted-foreground" />
+                          <div>
+                            <p className="font-semibold text-lg">First, let's set up your offer</p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              An "offer" in LUMI is anything you want to promote — your webinar, your freebie, your coaching program, your course. LUMI uses your offer details to build a campaign that actually sells it.
+                            </p>
+                          </div>
+                          <Button
+                            variant="lumi"
+                            onClick={() => setShowOfferDialog(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Set Up My First Offer
+                          </Button>
+                          <p className="text-xs text-muted-foreground">
+                            Takes about 2 minutes. You only need to do this once per offer.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                {/* Social growth goal */}
+                {selectedGoal === "grow_social" && (
+                  <>
+                    {showSocialGrowthFlow ? (
+                      <SocialGrowthFlow
+                        brandId={brand.id}
+                        brandName={brand.name}
+                        instagramAccountId={brand.instagram_account_id}
+                        instagramAccountName={brand.instagram_account_name}
+                        audiencePsychology={brand.audience_psychology}
+                        fixedObjective={
+                          selectedOfferId === COMMENT_DM_OFFER_ID ? "engagement" 
+                          : selectedOfferId === TRAFFIC_IG_OFFER_ID ? "traffic"
+                          : selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "video_views"
+                          : undefined
+                        }
+                        headerText={
+                          selectedOfferId === COMMENT_DM_OFFER_ID ? "Pick the posts that drive comments & DMs 💬" 
+                          : selectedOfferId === TRAFFIC_IG_OFFER_ID ? "Pick posts to drive traffic to your profile 🔗"
+                          : selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "Pick your best videos to promote 🎬"
+                          : undefined
+                        }
+                        headerSubtext={
+                          selectedOfferId === COMMENT_DM_OFFER_ID ? "Select up to 6 posts with autoresponder triggers. We'll put them in front of a broad audience to maximize conversations." 
+                          : selectedOfferId === TRAFFIC_IG_OFFER_ID ? "Select up to 6 posts to promote. We'll drive cold traffic to your Instagram profile."
+                          : selectedOfferId === VIDEO_VIEWS_OFFER_ID ? "Select up to 6 videos to get more views. We'll optimize for maximum video engagement."
+                          : undefined
+                        }
+                        onComplete={async (data) => {
+                          try {
+                            setIsCreatingCampaign(true);
+                            
+                            const isCommentDm = selectedOfferId === COMMENT_DM_OFFER_ID;
+                            const isTrafficIg = selectedOfferId === TRAFFIC_IG_OFFER_ID;
+                            const isVideoViews = selectedOfferId === VIDEO_VIEWS_OFFER_ID;
+                            
+                            const templateSlug = isCommentDm 
+                              ? "comment-dm-engagement"
+                              : (isVideoViews || data.objective === "video_views") ? "video-views" 
+                              : "social-traffic";
+                            const matchedTemplate = templates.find(t => t.slug === templateSlug) || templates[0];
+                            
+                            const campaignName = isCommentDm 
+                              ? "Increase Comments/DMs"
+                              : isTrafficIg 
+                              ? "Traffic to Instagram"
+                              : isVideoViews
+                              ? "Video Views Campaign"
+                              : `Grow Following - ${data.objective === "video_views" ? "Video Views" : "Traffic to Instagram"}`;
+                            
+                            const campaignType = isCommentDm ? "comment_dm" : "social_growth";
+                            
+                            const { data: strategy, error: strategyError } = await supabase
+                              .from("strategies")
+                              .insert({
+                                brand_id: brand.id,
+                                template_id: matchedTemplate?.id,
+                                name: campaignName,
+                                campaign_type: campaignType,
+                                status: "active",
+                              })
+                              .select()
+                              .single();
+
+                            if (strategyError) throw strategyError;
+
+                            const { data: workspace, error: workspaceError } = await supabase
+                              .from("campaign_workspaces")
+                              .insert({
+                                brand_id: brand.id,
+                                strategy_id: strategy.id,
+                                template_id: matchedTemplate?.id,
+                                name: campaignName,
+                                strategy_json: matchedTemplate?.strategy_template as any,
+                                progress_status: "ready_to_build",
+                                creative_json: {
+                                  ...(isCommentDm ? { commentDmCampaign: true } : { socialGrowth: true }),
+                                  objective: data.objective,
+                                  selectedPosts: data.selectedPosts.map(p => ({
+                                    id: p.id,
+                                    media_url: p.media_url,
+                                    thumbnail_url: p.thumbnail_url,
+                                    media_type: p.media_type,
+                                    permalink: p.permalink,
+                                    caption: p.caption,
+                                  })),
+                                } as any,
+                              })
+                              .select()
+                              .single();
+
+                            if (workspaceError) throw workspaceError;
+
+                            clearSavedProgress();
+                            toast.success(isCommentDm 
+                              ? "Posts selected! Let's build your engagement campaign." 
+                              : "Posts selected! Let's build your campaign.");
+                            navigate(`/campaigns/build?workspace=${workspace.id}`);
+                          } catch (error: any) {
+                            console.error("Error creating workspace:", error);
+                            toast.error(error.message || "Failed to create campaign");
+                          } finally {
+                            setIsCreatingCampaign(false);
+                          }
+                        }}
+                        onConnectInstagram={() => navigate("/settings/meta?returnTo=/create&socialGrowth=true")}
+                        onBack={() => {
+                          setShowSocialGrowthFlow(false);
+                          setSelectedOfferId("");
+                        }}
+                      />
+                    ) : (
+                      <div className="space-y-3">
+                        <StepOption
+                          selected={selectedOfferId === SOCIAL_GROWTH_OFFER_ID}
+                          onSelect={() => {
+                            setSelectedOfferId(SOCIAL_GROWTH_OFFER_ID);
+                            setShowSocialGrowthFlow(true);
+                          }}
+                          icon={<Instagram className="h-5 w-5" />}
+                          title="Grow my Instagram following"
+                          description="Get more followers with strategic content promotion"
+                          badge="Popular"
+                        />
+                        <StepOption
+                          selected={selectedOfferId === COMMENT_DM_OFFER_ID}
+                          onSelect={() => {
+                            setSelectedOfferId(COMMENT_DM_OFFER_ID);
+                            setShowSocialGrowthFlow(true);
+                          }}
+                          icon={<MessageCircle className="h-5 w-5" />}
+                          title="Increase Comments/DMs"
+                          description="Drive comments and DMs using your existing posts + autoresponder"
+                          badge="ManyChat"
+                        />
+                        <StepOption
+                          selected={selectedOfferId === TRAFFIC_IG_OFFER_ID}
+                          onSelect={() => {
+                            setSelectedOfferId(TRAFFIC_IG_OFFER_ID);
+                            setShowSocialGrowthFlow(true);
+                          }}
+                          icon={<Globe className="h-5 w-5" />}
+                          title="Traffic to Instagram/Facebook"
+                          description="Send people directly to your social profile"
+                        />
+                        <StepOption
+                          selected={selectedOfferId === VIDEO_VIEWS_OFFER_ID}
+                          onSelect={() => {
+                            setSelectedOfferId(VIDEO_VIEWS_OFFER_ID);
+                            setShowSocialGrowthFlow(true);
+                          }}
+                          icon={<Play className="h-5 w-5" />}
+                          title="Video Views Campaign"
+                          description="Get more eyes on your Reels and video content"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Local goal */}
+                {selectedGoal === "local" && (
+                  <div className="space-y-3">
                     <StepOption
                       selected={selectedOfferId === EVENT_LOCATION_OFFER_ID}
                       onSelect={() => {
@@ -994,8 +1098,6 @@ export default function Create() {
                       title="Event & Location Targeting"
                       description="Get in front of people at conferences, trade shows, or high-traffic locations"
                     />
-
-                    {/* System offer: Local Business — Nearby */}
                     <StepOption
                       selected={selectedOfferId === LOCAL_NEARBY_OFFER_ID}
                       onSelect={() => {
@@ -1012,8 +1114,6 @@ export default function Create() {
                       title="Local Business — Nearby"
                       description="Attract nearby customers to your storefront or location"
                     />
-
-                    {/* System offer: Local Business — Regional */}
                     <StepOption
                       selected={selectedOfferId === LOCAL_REGIONAL_OFFER_ID}
                       onSelect={() => {
@@ -1030,54 +1130,6 @@ export default function Create() {
                       title="Local Business — Regional"
                       description="Reach customers across your service area"
                     />
-                    
-                    {/* Offer Divider */}
-                    {offers.length > 0 && (
-                      <div className="flex items-center gap-3 py-2">
-                        <div className="flex-1 h-px bg-border" />
-                        <span className="text-xs text-muted-foreground">or promote an offer</span>
-                        <div className="flex-1 h-px bg-border" />
-                      </div>
-                    )}
-                    
-                    {/* User's offers */}
-                    {offers.map((offer) => (
-                      <StepOption
-                        key={offer.id}
-                        selected={selectedOfferId === offer.id}
-                        onSelect={() => setSelectedOfferId(offer.id)}
-                        icon={<Package className="h-5 w-5" />}
-                        title={offer.name}
-                        description={offer.price_point || offer.url || "No details added"}
-                      />
-                    ))}
-                    <div className="pt-2">
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => setShowOfferDialog(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add a new offer
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8 space-y-4">
-                    <Package className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">No offers yet</p>
-                      <p className="text-sm text-muted-foreground">
-                        Create your first offer to start building ads
-                      </p>
-                    </div>
-                    <Button
-                      variant="lumi"
-                      onClick={() => setShowOfferDialog(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create your first offer
-                    </Button>
                   </div>
                 )}
               </motion.div>
