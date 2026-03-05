@@ -82,8 +82,7 @@ export default function Start() {
     if (brandLoading) return;
     if (!activeBrand) {
       supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) navigate("/onboarding");
-        else navigate("/auth");
+        if (!user) navigate("/auth");
       });
       return;
     }
@@ -327,6 +326,23 @@ export default function Start() {
     warning: "text-yellow-600",
     info: "text-primary",
   };
+
+  if (!brand) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-md mx-auto px-4 py-20 text-center space-y-6">
+          <div className="h-14 w-14 mx-auto rounded-full bg-gradient-to-br from-lumi-orange-1/20 via-lumi-pink-1/20 to-lumi-purple-1/20 flex items-center justify-center">
+            <Zap className="h-7 w-7 text-primary" />
+          </div>
+          <h1 className="text-2xl font-display font-bold">Welcome back!</h1>
+          <p className="text-muted-foreground">Set up your brand to get started with your first campaign.</p>
+          <Button onClick={() => navigate("/onboarding")} className="gap-2">
+            <PlusCircle className="h-4 w-4" /> Set Up Your Brand <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
