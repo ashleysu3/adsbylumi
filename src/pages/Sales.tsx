@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { X, Menu, DollarSign, Clock, BookOpen, Check, ChevronDown, Target, PenTool, Clapperboard, BarChart3, Lightbulb, Mail, ArrowRight } from "lucide-react";
+import { X, Menu, DollarSign, Clock, BookOpen, Check, ChevronDown, Target, PenTool, Clapperboard, BarChart3, Lightbulb, Mail, ArrowRight, TrendingUp, RefreshCw, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -248,7 +248,93 @@ const Sales = () => {
         </div>
       </section>
 
-      {/* ═══════ SECTION 6 — PRICING ═══════ */}
+      {/* ═══════ SECTION 5.5 — WHY NOT CHATGPT ═══════ */}
+      <section className="py-16 sm:py-24 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <FadeUp>
+            <Badge variant="outline" className="mx-auto mb-4 block w-fit text-xs px-4 py-1.5 border-primary/30 bg-primary/5">The difference that actually matters</Badge>
+          </FadeUp>
+          <FadeUp delay={0.05}>
+            <h2 className="font-display text-3xl sm:text-4xl text-center mb-4 max-w-3xl mx-auto">ChatGPT doesn't know what's working on Meta right now. LUMI&nbsp;does.</h2>
+          </FadeUp>
+          <FadeUp delay={0.1}>
+            <p className="text-center text-muted-foreground max-w-[620px] mx-auto mb-12 leading-relaxed">Any AI can write an ad. Not every AI has spent years managing millions of dollars in real ad spend across dozens of industries — and is still actively running campaigns today.</p>
+          </FadeUp>
+
+          {/* Comparison table */}
+          <FadeUp delay={0.15}>
+            <Card variant="gradient" className="max-w-4xl mx-auto overflow-hidden mb-16">
+              <CardContent className="p-0">
+                {/* Header row */}
+                <div className="grid grid-cols-2">
+                  <div className="p-4 sm:p-5 border-b border-border border-r border-border">
+                    <p className="text-sm font-medium text-muted-foreground line-through decoration-destructive/50">Generic AI (ChatGPT, Claude, etc.)</p>
+                  </div>
+                  <div className="p-4 sm:p-5 border-b border-border">
+                    <p className="text-sm font-semibold bg-gradient-lumi bg-clip-text text-transparent">LUMI ✨</p>
+                  </div>
+                </div>
+                {/* Data rows */}
+                {[
+                  ["Writes ads based on general knowledge", "Built on strategies proven to convert for coaches and course creators"],
+                  ["No idea what Meta's algorithm rewards right now", "Trained on what's actually working on Meta today"],
+                  ["Can't build anything in Ads Manager", "Builds and launches your campaign directly in Meta"],
+                  ["Doesn't know if your results are good or bad", "Monitors your performance against real benchmarks"],
+                  ["Gives you a starting point — you do the rest", "Does the whole job, start to finish"],
+                  ["No strategy — just content", "Real campaign strategy, not just words on a screen"],
+                  ["Same advice for everyone", "Built around your specific offer, audience, and goals"],
+                ].map(([left, right], i) => (
+                  <div key={i} className="grid grid-cols-2">
+                    <div className="p-4 sm:p-5 border-b border-border border-r border-border flex items-start gap-2 text-sm text-muted-foreground">
+                      <span className="flex-shrink-0">❌</span><span>{left}</span>
+                    </div>
+                    <div className="p-4 sm:p-5 border-b border-border flex items-start gap-2 text-sm font-medium text-foreground">
+                      <span className="flex-shrink-0">✅</span><span>{right}</span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </FadeUp>
+
+          {/* Founder credibility block */}
+          <FadeUp delay={0.2}>
+            <div className="max-w-[680px] mx-auto text-center mb-12">
+              <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground mb-3">Built by ad managers. Not just engineers.</p>
+              <h3 className="font-display text-2xl sm:text-3xl mb-5">LUMI isn't a chatbot that learned about ads from the&nbsp;internet.</h3>
+              <p className="text-muted-foreground leading-relaxed mb-4">It's built on the same frameworks, strategies, and hard-won experience that power a real Meta ads agency — one that has managed millions of dollars in ad spend across dozens of industries and is actively running campaigns for clients right now.</p>
+              <p className="text-muted-foreground leading-relaxed mb-6">The difference between a generic AI writing your ads and LUMI building your campaign is the same difference between asking a stranger on the street for directions and hiring a guide who's walked that exact road hundreds of times. The words might look similar. The results won't be.</p>
+              <p className="text-xs text-muted-foreground">After Organic · Meta Ads Agency · Est. 2016 · Actively managing campaigns</p>
+            </div>
+          </FadeUp>
+
+          {/* Three callout pills */}
+          <FadeUp delay={0.25}>
+            <div className="grid sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-12">
+              {[
+                { Icon: TrendingUp, title: "Millions managed", desc: "Real ad spend. Real results. Real industries." },
+                { Icon: RefreshCw, title: "Updated constantly", desc: "Strategies reflect what's working on Meta right now — not last year." },
+                { Icon: Shield, title: "Proven frameworks", desc: "Every campaign structure is built the way a senior ads manager would build it." },
+              ].map(({ Icon, title, desc }, i) => (
+                <Card key={i} className="border-border">
+                  <CardContent className="p-4 sm:p-5 flex items-start gap-3">
+                    <Icon className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-heading text-sm font-semibold mb-0.5">{title}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </FadeUp>
+
+          <FadeUp delay={0.3}>
+            <p className="text-center text-base sm:text-lg font-semibold max-w-xl mx-auto">You're not getting AI that read about ads. You're getting AI that runs&nbsp;them.</p>
+          </FadeUp>
+        </div>
+      </section>
+
       <section className="py-16 sm:py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <FadeUp><h2 className="font-display text-3xl sm:text-4xl text-center mb-10">Simple pricing. Serious&nbsp;results.</h2></FadeUp>
