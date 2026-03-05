@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent orphan words in text */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+}
+p, li, span, blockquote {
+  text-wrap: pretty;
+}
+
 /* Lumi Brand Design System
    All colors MUST be HSL.
    Brand: Warm, playful, confident, strategic, friendly
