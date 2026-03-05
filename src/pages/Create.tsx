@@ -854,7 +854,7 @@ export default function Create() {
                       selected={false}
                       onSelect={() => setSelectedGoal("local")}
                       icon={<MapPin className="h-5 w-5" />}
-                      title="Reach people near my location"
+                      title="Reach people in a specific location"
                       description="Local business, event targeting, or regional campaigns"
                     />
                   </div>
