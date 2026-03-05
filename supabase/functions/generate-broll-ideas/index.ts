@@ -98,13 +98,16 @@ Make the ideas feel personal to their world as a ${industry || "business"} owner
     // Parse JSON from the response
     let ideas;
     try {
-      const cleaned = rawContent
-        .replace(/```json\s*/gi, "")
-        .replace(/```\s*/g, "")
-        .trim();
+      // Extract JSON from response, handling markdown code fences
+      let cleaned = rawContent.trim();
+      // Remove ```json ... ``` wrapping
+      const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        cleaned = jsonMatch[1].trim();
+      }
       const parsed = JSON.parse(cleaned);
       ideas = parsed.ideas || parsed;
-    } catch {
+    } catch (parseErr) {
       console.error("Failed to parse AI response:", rawContent);
       throw new Error("Failed to parse B-roll ideas from AI response");
     }
