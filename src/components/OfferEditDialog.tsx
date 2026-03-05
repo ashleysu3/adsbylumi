@@ -125,14 +125,51 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-outcome">Target Outcome</Label>
-            <Input
-              id="edit-outcome"
-              value={formData.target_outcome}
-              onChange={(e) => setFormData((prev) => ({ ...prev, target_outcome: e.target.value }))}
-              placeholder="What transformation does this deliver?"
-            />
+          <div className="space-y-3">
+            <div>
+              <Label>Before & After</Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Lumi uses this to write ads that speak to your audience's real experience</p>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <Label htmlFor="edit-before" className="text-xs">😩 Before</Label>
+                <Textarea
+                  id="edit-before"
+                  rows={2}
+                  value={(() => {
+                    const match = formData.target_outcome?.match(/^Before:\s*(.*?)(?:\.\s*After:|$)/s);
+                    return match ? match[1].trim() : (formData.target_outcome && !formData.target_outcome.startsWith("Before:") ? formData.target_outcome : "");
+                  })()}
+                  onChange={(e) => {
+                    const afterMatch = formData.target_outcome?.match(/After:\s*(.*?)\.?\s*$/s);
+                    const after = afterMatch ? afterMatch[1].trim() : "";
+                    const before = e.target.value;
+                    setFormData(prev => ({ ...prev, target_outcome: `Before: ${before}. After: ${after}.` }));
+                  }}
+                  placeholder="What are they struggling with right now?"
+                  className="min-h-[60px]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-after" className="text-xs">✨ After</Label>
+                <Textarea
+                  id="edit-after"
+                  rows={2}
+                  value={(() => {
+                    const match = formData.target_outcome?.match(/After:\s*(.*?)\.?\s*$/s);
+                    return match ? match[1].trim() : "";
+                  })()}
+                  onChange={(e) => {
+                    const beforeMatch = formData.target_outcome?.match(/^Before:\s*(.*?)(?:\.\s*After:|$)/s);
+                    const before = beforeMatch ? beforeMatch[1].trim() : "";
+                    const after = e.target.value;
+                    setFormData(prev => ({ ...prev, target_outcome: `Before: ${before}. After: ${after}.` }));
+                  }}
+                  placeholder="What does life look like after they buy?"
+                  className="min-h-[60px]"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
