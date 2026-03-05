@@ -829,12 +829,12 @@ export default function Create() {
                   title="Promote an offer or landing page"
                   description="A webinar, course, coaching program, lead magnet, or any page you want traffic to" />
                 
-                    <StepOption
-                  selected={false}
-                  onSelect={() => setSelectedGoal("get_leads")}
-                  icon={<Users className="h-5 w-5" />}
-                  title="Grow my email list or get leads"
-                  description="Drive people to a freebie, checklist, or lead magnet to collect emails" />
+                    
+
+
+
+
+                
                 
                     <StepOption
                   selected={false}
