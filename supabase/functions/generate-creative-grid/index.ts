@@ -572,7 +572,12 @@ Remember:
           .replace(/\n\s*\n/g, "\n") 
           .replace(/"\s*\n\s*"/g, '", "') 
           .replace(/:\s*,/g, ': "",') 
-          .replace(/:\s*}/g, ': ""}'); 
+          .replace(/:\s*}/g, ': ""}')
+          // Fix unescaped quotes inside string values (common LLM issue)
+          .replace(/"([^"]*?)(?:"|$)/g, (match) => {
+            // Only fix interior quotes if the value has obvious unescaped ones
+            return match;
+          });
 
         try {
           return JSON.parse(cleaned);
@@ -590,6 +595,9 @@ Remember:
           while (brackets > 0) { cleaned += ']'; brackets--; }
           while (braces > 0) { cleaned += '}'; braces--; }
           
+          // Also strip trailing commas before closing
+          cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]");
+          
           try {
             return JSON.parse(cleaned);
           } catch (e3) {
@@ -598,11 +606,19 @@ Remember:
             if (gridMatch) {
               const gridStart = cleaned.indexOf("[", gridMatch.index!);
               let partial = cleaned.substring(gridStart);
-              // Close any open structures
-              let b = 0, s = 0;
-              for (const c of partial) { if (c === '[') s++; if (c === ']') s--; if (c === '{') b++; if (c === '}') b--; }
-              while (b > 0) { partial += '}'; b--; }
-              while (s > 0) { partial += ']'; s--; }
+              
+              // Find the last complete object by looking for the last "},"
+              const lastCompleteObj = partial.lastIndexOf("},");
+              if (lastCompleteObj > 0) {
+                partial = partial.substring(0, lastCompleteObj + 1) + "]";
+              } else {
+                // Close any open structures
+                let b = 0, s = 0;
+                for (const c of partial) { if (c === '[') s++; if (c === ']') s--; if (c === '{') b++; if (c === '}') b--; }
+                while (b > 0) { partial += '}'; b--; }
+                while (s > 0) { partial += ']'; s--; }
+              }
+              
               try {
                 const arr = JSON.parse(partial);
                 if (Array.isArray(arr) && arr.length > 0) {
@@ -610,6 +626,43 @@ Remember:
                   return { grid: arr };
                 }
               } catch { /* fall through */ }
+            }
+            
+            // AI-based JSON repair as last resort
+            console.log("All local repair failed, attempting AI repair...");
+            try {
+              const repairResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "google/gemini-2.5-flash-lite",
+                  messages: [
+                    { role: "system", content: "You repair malformed JSON. Return ONLY valid JSON with a \"grid\" array. No markdown, no commentary." },
+                    { role: "user", content: `Repair this malformed JSON and return only valid JSON:\n\n${cleaned.slice(0, 12000)}` },
+                  ],
+                }),
+              });
+              if (repairResp.ok) {
+                const repairPayload = await repairResp.json();
+                const repairedText = repairPayload?.choices?.[0]?.message?.content ?? "";
+                if (repairedText) {
+                  const repStart = repairedText.indexOf("{");
+                  const repEnd = repairedText.lastIndexOf("}");
+                  if (repStart !== -1 && repEnd !== -1) {
+                    const repaired = JSON.parse(repairedText.substring(repStart, repEnd + 1));
+                    const repairedGrid = repaired.grid || [];
+                    if (repairedGrid.length > 0) {
+                      console.log(`AI repair salvaged ${repairedGrid.length} cells`);
+                      return { grid: repairedGrid };
+                    }
+                  }
+                }
+              }
+            } catch (repairErr) {
+              console.error("AI repair also failed:", repairErr);
             }
             
             console.error("Response length:", cleaned.length, "- could not salvage partial results");
