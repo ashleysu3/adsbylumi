@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignBuilderForm } from "@/components/CampaignBuilderForm";
 import { MobileCampaignBuilder } from "@/components/MobileCampaignBuilder";
-import { CampaignReview } from "@/components/CampaignReview";
 import { CampaignSuccess } from "@/components/CampaignSuccess";
 import { QACheckScreen } from "@/components/QACheckScreen";
 import { Button } from "@/components/ui/button";
@@ -14,16 +13,15 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Stage = "configure" | "review" | "qa-check" | "publishing" | "success";
+type Stage = "configure" | "qa-check" | "publishing" | "success";
 
 const STEPS = [
   { key: "configure", label: "Configure" },
-  { key: "review", label: "Review" },
   { key: "qa-check", label: "QA Check" },
 ] as const;
 
 function getStepState(stepKey: string, currentStage: Stage) {
-  const order = ["configure", "review", "qa-check", "publishing", "success"];
+  const order = ["configure", "qa-check", "publishing", "success"];
   const stepIdx = order.indexOf(stepKey);
   const currentIdx = order.indexOf(currentStage);
   if (stepIdx < currentIdx) return "done";
@@ -101,10 +99,8 @@ export default function CampaignBuilder() {
     }
   };
 
-  const handleReview = () => setStage('review');
+  const handleReview = () => setStage('qa-check');
   const handleBackToConfigure = () => setStage('configure');
-  const handleStartQACheck = () => setStage('qa-check');
-  const handleBackToReview = () => setStage('review');
 
   const handleQAComplete = () => {
     handlePublish(answers.launchActive ? 'active' : 'paused');
@@ -162,7 +158,7 @@ export default function CampaignBuilder() {
         .update({ meta_errors: { timestamp: new Date().toISOString(), error: error.message, stage: 'publishing' } })
         .eq('id', workspaceId);
       toast.error(error.message || "Failed to publish campaign");
-      setStage('review');
+      setStage('configure');
     } finally {
       setPublishing(false);
     }
@@ -215,11 +211,8 @@ export default function CampaignBuilder() {
           {stage === 'configure' && (
             <MobileCampaignBuilder workspace={workspace} answers={answers} onAnswerUpdate={handleAnswerUpdate} onComplete={handleReview} />
           )}
-          {stage === 'review' && (
-            <CampaignReview workspace={workspace} answers={answers} onBack={handleBackToConfigure} onPublish={handleStartQACheck} />
-          )}
           {stage === 'qa-check' && (
-            <QACheckScreen workspace={workspace} answers={answers} onBack={handleBackToReview} onProceed={handleQAComplete} />
+            <QACheckScreen workspace={workspace} answers={answers} onBack={handleBackToConfigure} onProceed={handleQAComplete} />
           )}
           {stage === 'publishing' && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -299,11 +292,8 @@ export default function CampaignBuilder() {
               onComplete={handleReview}
             />
           )}
-          {stage === 'review' && (
-            <CampaignReview workspace={workspace} answers={answers} onBack={handleBackToConfigure} onPublish={handleStartQACheck} />
-          )}
           {stage === 'qa-check' && (
-            <QACheckScreen workspace={workspace} answers={answers} onBack={handleBackToReview} onProceed={handleQAComplete} />
+            <QACheckScreen workspace={workspace} answers={answers} onBack={handleBackToConfigure} onProceed={handleQAComplete} />
           )}
           {stage === 'publishing' && (
             <div className="bg-card rounded-lg border p-12 text-center max-w-lg mx-auto">
