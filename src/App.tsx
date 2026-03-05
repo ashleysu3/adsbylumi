@@ -52,6 +52,9 @@ import AdvancedBuild from "./pages/AdvancedBuild";
 import BetaFeedback from "./pages/BetaFeedback";
 import PerformanceHistory from "./pages/PerformanceHistory";
 import PastReports from "./pages/PastReports";
+import Partners from "./pages/Partners";
+import Refer from "./pages/Refer";
+import AdminAffiliates from "./pages/admin/Affiliates";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -116,7 +119,10 @@ const App = () => {
                   <Route path="/beta-feedback" element={<BetaFeedback />} />
                   <Route path="/performance-history" element={<PerformanceHistory />} />
                   <Route path="/past-reports" element={<PastReports />} />
+                  <Route path="/partners" element={<Partners />} />
+                  <Route path="/refer" element={<Refer />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
+                  <Route path="/admin/affiliates" element={<AdminAffiliates />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/templates" element={<AdminTemplates />} />
                   <Route path="/admin/invite-codes" element={<AdminInviteCodes />} />

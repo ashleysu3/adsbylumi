@@ -179,3 +179,15 @@ verify_jwt = false
 
 [functions.send-cancellation-email]
 verify_jwt = false
+
+[functions.create-affiliate]
+verify_jwt = false
+
+[functions.submit-partner-application]
+verify_jwt = false
+
+[functions.get-affiliate-data]
+verify_jwt = false
+
+[functions.admin-get-affiliates]
+verify_jwt = false
