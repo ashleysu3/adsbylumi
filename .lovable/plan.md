@@ -1,46 +1,34 @@
 
 
-## Plan: Improve Report Modal + Add Reports & Performance History to My Brand
+## Plan: Redesign the "Target Outcome" field in OfferDialog and OfferEditDialog
 
-### Part 1: Fix Report Modal (ClientReportModal.tsx)
+### Problem
+The current "Target Outcome" field is a single-line text input with vague labeling. Users don't understand what it means or why it matters for ad creation. The data often ends up as one long run-on sentence.
 
-**Problem**: Report text is cramped in a small `max-h-[50vh]` scroll area, displayed as raw `<pre>` text with the legend embedded inline.
+### Solution
+Replace the single input with a structured two-field layout using a clear, intuitive label and helper text that connects it to the ad creation process.
 
-**Changes to `src/components/insights/ClientReportModal.tsx`**:
+### Changes
 
-1. **Make modal larger and fully scrollable**: Change `max-w-2xl` to `max-w-4xl` and `max-h-[85vh]` to `max-h-[90vh]`. Remove the inner `max-h-[50vh]` constraint on the ScrollArea so the report fills the available space.
+**1. OfferDialog.tsx (lines 641-665) — New offer creation**
 
-2. **Parse and format the report text**: Instead of rendering raw `<pre>` text, parse the report sections (lines starting with `===`) into styled cards/sections with proper headings, spacing, and visual hierarchy. Detect section headers like `=== WEEKLY OVERVIEW ===`, `=== WHAT WORKED ===`, etc. and render them as styled section titles.
+Replace the single "Target Outcome" `Input` with:
 
-3. **Extract legend to top**: Parse emoji status indicators (green/yellow/red meanings) and campaign status emojis from the report text and render them as a sticky legend bar at the top of the report view, outside the scrollable content area.
+- **New label**: "Before & After" (with a small helper line: "This powers your ad copy — what's life like before and after your offer?")
+- **Two stacked `Textarea` fields**:
+  - **"Before"** — placeholder: "What are they struggling with right now?" (2 rows)
+  - **"After"** — placeholder: "What does life look like after they buy?" (2 rows)
+- On save, concatenate as `"Before: {before}. After: {after}."` into the existing `target_outcome` column (no DB change needed)
+- On load (when auto-filled from crawler), parse the existing `"Before: ... After: ..."` format back into the two fields
 
-4. **Sticky action bar**: Keep the Copy Report / New Report buttons in a sticky footer so they're always accessible while scrolling.
+**2. OfferEditDialog.tsx (lines ~125-135) — Edit existing offer**
 
-### Part 2: Add Past Reports & Weekly Performance Dashboard to My Brand (Dashboard.tsx)
+Same two-field layout. Parse the stored `target_outcome` string on load into before/after fields.
 
-**Changes to `src/pages/Dashboard.tsx`**:
+**3. No database changes** — the `target_outcome` column remains a text field; we just structure the UI input and format the stored string consistently.
 
-1. **Add a "Performance History" card** after the existing brand sections that:
-   - Fetches `weekly_reports` for the active brand
-   - Shows a Recharts `LineChart` plotting key metrics (spend, CPL/CPP, CTR, ROAS) week-over-week using `metrics_snapshot` from each report row
-   - X-axis: week ending date, Y-axis: metric values
-   - Toggle between metrics via small tabs/buttons
-
-2. **Add a "Past Reports" card** below the chart that:
-   - Lists all past reports from `weekly_reports` table
-   - Each row shows date range, campaign status emojis
-   - Clicking a report opens a read-only version of the `ClientReportModal` (reuse the component with a `viewingPast` prop pre-set)
-
-**New imports needed in Dashboard.tsx**: `FileText`, `BarChart3` from lucide-react, `LineChart`/`Line`/`XAxis`/`YAxis`/`Tooltip`/`ResponsiveContainer` from recharts, `ClientReportModal`.
-
-### Technical Details
-
-- The `weekly_reports` table already has `metrics_snapshot` (jsonb), `report_text`, `date_range_start`, `date_range_end`, and `campaign_statuses` columns -- all needed data is available
-- Report text parsing uses simple string splitting on `=== SECTION ===` patterns
-- No database changes needed
-- No new edge functions needed
-
-### Files Modified
-- `src/components/insights/ClientReportModal.tsx` — modal sizing, report formatting, legend extraction
-- `src/pages/Dashboard.tsx` — add Performance History chart + Past Reports section
+### UI Details
+- Small muted hint below the label: *"Lumi uses this to write ads that speak to your audience's real experience"*
+- Each textarea gets a subtle emoji prefix in the label: "😩 Before" / "✨ After"
+- Keeps the auto-filled badge and "Needs info" badge logic intact
 
