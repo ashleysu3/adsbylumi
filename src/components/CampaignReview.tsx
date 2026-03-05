@@ -6,17 +6,13 @@ import { Instagram as InstagramIcon } from "lucide-react";
 import { 
   ArrowLeft, 
   Rocket, 
-  Calendar, 
-  DollarSign, 
   Target, 
   Image,
   Zap,
   AlertCircle,
   Eye,
   AlertTriangle,
-  Pause,
   Upload,
-  FileText,
   CheckCircle2,
   ChevronDown
 } from "lucide-react";
@@ -25,8 +21,6 @@ import { AdPreview } from "./AdPreview";
 import { PreBuildCopySummary } from "./PreBuildCopySummary";
 import { PixelPreflightCheck } from "./PixelPreflightCheck";
 import { useState } from "react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getReadinessSummary, isItemReadyForCampaign } from "@/lib/sync-production-assets";
 
@@ -39,7 +33,6 @@ interface CampaignReviewProps {
 
 export function CampaignReview({ workspace, answers, onBack, onPublish }: CampaignReviewProps) {
   const [confirmRepublish, setConfirmRepublish] = useState(false);
-  const [saveToBench, setSaveToBench] = useState(false);
   const [pixelStatus, setPixelStatus] = useState<'ready' | 'warning' | 'error' | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   
@@ -194,26 +187,6 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                   <span className="text-muted-foreground"> ({incompleteConcepts.length} incomplete)</span>
                 )}
               </p>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* ── Destination Toggle ── */}
-          <div className="p-4 rounded-lg border bg-muted/30">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label htmlFor="bench-toggle" className="font-medium">
-                  Save to Bench (for later rotation)
-                </Label>
-                <p className="text-xs text-muted-foreground max-w-md">
-                  {saveToBench 
-                    ? "Creative will be saved to your bench — ready for auto-rotation when fatigue is detected."
-                    : "Creative will be uploaded to Meta and go through the normal campaign build."
-                  }
-                </p>
-              </div>
-              <Switch id="bench-toggle" checked={saveToBench} onCheckedChange={setSaveToBench} />
             </div>
           </div>
 
