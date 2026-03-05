@@ -967,6 +967,57 @@ export type Database = {
           },
         ]
       }
+      partner_applications: {
+        Row: {
+          application_type: string
+          audience_description: string | null
+          created_at: string | null
+          email: string
+          first_name: string
+          how_will_you_share: string | null
+          id: string
+          last_name: string
+          notes: string | null
+          promotion_plan: string | null
+          rewardful_affiliate_id: string | null
+          status: string
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          application_type: string
+          audience_description?: string | null
+          created_at?: string | null
+          email: string
+          first_name: string
+          how_will_you_share?: string | null
+          id?: string
+          last_name: string
+          notes?: string | null
+          promotion_plan?: string | null
+          rewardful_affiliate_id?: string | null
+          status?: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          application_type?: string
+          audience_description?: string | null
+          created_at?: string | null
+          email?: string
+          first_name?: string
+          how_will_you_share?: string | null
+          id?: string
+          last_name?: string
+          notes?: string | null
+          promotion_plan?: string | null
+          rewardful_affiliate_id?: string | null
+          status?: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           archived: boolean | null

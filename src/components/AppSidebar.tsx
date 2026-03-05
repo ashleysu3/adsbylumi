@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, TrendingUp, FileText } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, TrendingUp, FileText, Gift } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
@@ -269,6 +269,19 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   >
                     <LifeBuoy className="h-4 w-4" />
                     {!collapsed && <span>Troubleshooting</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Share LUMI and earn $40 per referral">
+                  <NavLink
+                    to="/refer"
+                    end
+                    className="transition-all duration-200"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <Gift className="h-4 w-4" />
+                    {!collapsed && <span>Refer & Earn</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
