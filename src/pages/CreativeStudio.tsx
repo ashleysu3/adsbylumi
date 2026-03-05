@@ -539,6 +539,21 @@ export default function CreativeStudio() {
       // Fetch intelligence in parallel with setting up
       const intelligence = await fetchCreativeIntelligence();
       
+      // Fetch product + offer-audience psychology for angles
+      let productPsychologyForAngles = null;
+      let offerAudiencePsychologyForAngles = null;
+      if (workspace.offer_id) {
+        const { data: offerPsych } = await supabase
+          .from('offers')
+          .select('product_psychology, offer_audience_psychology')
+          .eq('id', workspace.offer_id)
+          .single();
+        if (offerPsych) {
+          productPsychologyForAngles = offerPsych.product_psychology;
+          offerAudiencePsychologyForAngles = offerPsych.offer_audience_psychology;
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
          body: { 
            brandName: workspace.brands?.name, 
@@ -548,6 +563,8 @@ export default function CreativeStudio() {
            preGenerationContext: context,
            conversationInsights: (workspace.creative_json as Record<string, any>)?.conversationInsights,
            creativeIntelligence: intelligence,
+           productPsychology: productPsychologyForAngles,
+           offerAudiencePsychology: offerAudiencePsychologyForAngles,
          }
       });
       if (error) throw error;
@@ -587,17 +604,19 @@ export default function CreativeStudio() {
       // Get offer data for messaging guidelines and product psychology
       let messagingGuidelines = null;
       let productPsychology = null;
+      let offerAudiencePsychology = null;
       
       if (workspace.offer_id) {
         const { data: offerData } = await supabase
           .from('offers')
-          .select('messaging_guidelines, product_psychology')
+          .select('messaging_guidelines, product_psychology, offer_audience_psychology')
           .eq('id', workspace.offer_id)
           .single();
         
         if (offerData) {
           messagingGuidelines = offerData.messaging_guidelines;
           productPsychology = offerData.product_psychology;
+          offerAudiencePsychology = offerData.offer_audience_psychology;
         }
       }
       
@@ -616,6 +635,7 @@ export default function CreativeStudio() {
           brandVoice: workspace.brands?.brand_voice,
           messagingGuidelines,
           productPsychology,
+          offerAudiencePsychology,
           nicheContext: workspace.brands?.industry,
           creativeIntelligence,
         }
