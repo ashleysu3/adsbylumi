@@ -169,7 +169,9 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const subscription = allSubs[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      subscriptionEnd = subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null;
       cancelAtPeriodEnd = subscription.cancel_at_period_end;
       isTrial = subscription.status === 'trialing';
       logStep("Active/trial subscription found", { 
