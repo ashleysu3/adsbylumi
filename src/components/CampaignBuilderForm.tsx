@@ -158,7 +158,29 @@ export function CampaignBuilderForm({
             </p>
           </div>
 
-          {/* Budget Display */}
+          {/* Lumi budget recommendation */}
+          {template?.budget_suggestion && (
+            <div className="p-4 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+              <div className="flex items-start gap-3">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-sm">Lumi's recommendation: {template.budget_suggestion}</h4>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {template.objective === "OUTCOME_SALES" || template.objective === "sales"
+                      ? "Sales campaigns need enough budget for Meta to find buyers. Too low and you'll stay stuck in the learning phase."
+                      : template.objective === "OUTCOME_LEADS" || template.objective === "leads"
+                      ? "Lead campaigns need enough daily spend to exit Meta's learning phase — usually 1–2x your target cost per lead."
+                      : template.objective === "OUTCOME_TRAFFIC" || template.objective === "traffic"
+                      ? "Traffic campaigns are cost-efficient, but still need enough budget for Meta to optimize delivery."
+                      : "This budget range gives Meta enough data to optimize your results without overspending while you learn what works."}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="text-center">
             <div className="inline-flex items-baseline gap-1">
               <span className="text-4xl font-bold">${budget}</span>
