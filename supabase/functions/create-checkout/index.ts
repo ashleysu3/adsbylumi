@@ -23,9 +23,9 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { priceId, promoCode } = await req.json();
+    const { priceId, promoCode, rewardful_referral } = await req.json();
     if (!priceId) throw new Error("Price ID is required");
-    logStep("Price ID received", { priceId, promoCode: promoCode || "none" });
+    logStep("Price ID received", { priceId, promoCode: promoCode || "none", rewardful_referral: rewardful_referral || "none" });
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -54,6 +54,7 @@ serve(async (req) => {
     const sessionOptions: any = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
+      client_reference_id: rewardful_referral || undefined,
       line_items: [
         {
           price: priceId,
@@ -66,7 +67,7 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
       },
-      allow_promotion_codes: true, // Let Stripe handle promo codes on checkout page
+      allow_promotion_codes: true,
     };
 
     const session = await stripe.checkout.sessions.create(sessionOptions);
