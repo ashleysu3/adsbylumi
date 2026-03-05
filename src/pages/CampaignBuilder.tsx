@@ -9,18 +9,7 @@ import { CampaignSuccess } from "@/components/CampaignSuccess";
 import { QACheckScreen } from "@/components/QACheckScreen";
 import { Button } from "@/components/ui/button";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { ArrowLeft, Loader2, RotateCcw, Save, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -138,19 +127,6 @@ export default function CampaignBuilder() {
     }
   };
 
-  const handleRestart = async () => {
-    try {
-      await supabase
-        .from('campaign_workspaces')
-        .update({ chat_history: [], campaign_builder_answers: {}, updated_at: new Date().toISOString() })
-        .eq('id', workspaceId);
-      setAnswers({});
-      setStage('configure');
-      toast.success("Campaign builder restarted");
-    } catch {
-      toast.error("Failed to restart");
-    }
-  };
 
   const handlePublish = async (launchStatus: 'active' | 'paused' = 'paused') => {
     setStage('publishing');
@@ -234,9 +210,6 @@ export default function CampaignBuilder() {
                 )}
               </div>
             </div>
-            {(stage === 'configure' || stage === 'review') && (
-              <RestartDialog onSaveAsDraft={handleSaveAsDraft} onRestart={handleRestart} />
-            )}
           </div>
 
           {stage === 'configure' && (
@@ -285,9 +258,6 @@ export default function CampaignBuilder() {
                 )}
               </div>
             </div>
-            {(stage === 'configure' || stage === 'review') && (
-              <RestartDialog onSaveAsDraft={handleSaveAsDraft} onRestart={handleRestart} />
-            )}
           </div>
 
           {/* 3-Step Progress */}
@@ -351,33 +321,3 @@ export default function CampaignBuilder() {
   );
 }
 
-function RestartDialog({ onSaveAsDraft, onRestart }: { onSaveAsDraft: () => void; onRestart: () => void }) {
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <RotateCcw className="h-4 w-4" />
-          <span className="hidden sm:inline">Restart</span>
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Restart Campaign Builder?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Save your progress as a draft, or start completely fresh.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button variant="outline" onClick={onSaveAsDraft} className="gap-2">
-            <Save className="h-4 w-4" />
-            Save as Draft
-          </Button>
-          <AlertDialogAction onClick={onRestart} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Start Fresh
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
