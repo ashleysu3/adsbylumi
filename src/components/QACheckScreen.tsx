@@ -21,6 +21,8 @@ import {
   Zap,
   Settings,
   HelpCircle,
+  Copy,
+  Code,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +56,7 @@ interface CheckResult {
   details?: string;
   requiredEvent?: string;
   pixelId?: string | null;
+  pixelNotInstalled?: boolean;
   campaignGoal?: string;
 }
 
@@ -270,10 +273,32 @@ export function QACheckScreen({
     );
   };
 
+  const handleCopyPixelCode = (pixelId: string) => {
+    const code = `<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '${pixelId}');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->`;
+    navigator.clipboard.writeText(code);
+    toast.success("Pixel code copied!");
+  };
+
   const renderLandingPageExpanded = (check: CheckResult) => {
     const url = check.message;
     return (
-      <div className="ml-10 mr-3 mb-3 space-y-2">
+      <div className="ml-10 mr-3 mb-3 space-y-3">
         {url && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground truncate max-w-[280px]" title={url}>
@@ -292,6 +317,57 @@ export function QACheckScreen({
         )}
         {check.details && (
           <p className="text-xs text-muted-foreground">{check.details}</p>
+        )}
+
+        {/* Pixel not installed — show install instructions */}
+        {check.pixelNotInstalled && check.pixelId && (
+          <div className="mt-2 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 space-y-3">
+            <div className="flex items-center gap-2">
+              <Code className="h-4 w-4 text-amber-600" />
+              <p className="text-sm font-medium text-amber-700">Install your Meta Pixel</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Paste this code in the <code className="bg-muted px-1 py-0.5 rounded text-[11px]">&lt;head&gt;</code> section of your landing page so Meta can track conversions.
+            </p>
+
+            {/* Copyable code block */}
+            <div className="relative">
+              <pre className="p-3 rounded-lg bg-muted/80 border text-[11px] font-mono overflow-x-auto max-h-32 whitespace-pre-wrap break-all text-muted-foreground">
+{`<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;...
+fbq('init', '${check.pixelId}');
+fbq('track', 'PageView');
+</script>`}
+              </pre>
+              <Button
+                size="sm"
+                variant="outline"
+                className="absolute top-2 right-2 h-7 gap-1.5 text-xs"
+                onClick={() => handleCopyPixelCode(check.pixelId!)}
+              >
+                <Copy className="h-3 w-3" />
+                Copy Full Code
+              </Button>
+            </div>
+
+            {/* Platform guides */}
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-1.5 text-xs text-primary hover:underline">
+                  <HelpCircle className="h-3 w-3" />
+                  Platform-specific instructions
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground space-y-2">
+                  <p><strong>Shopify:</strong> Go to Online Store → Preferences → paste your Pixel ID ({check.pixelId}) in the Facebook Pixel field.</p>
+                  <p><strong>WordPress:</strong> Install the "PixelYourSite" or "Insert Headers and Footers" plugin, then paste the full code in the header section.</p>
+                  <p><strong>Kajabi:</strong> Go to Settings → Site Details → Header Code, then paste the full code.</p>
+                  <p><strong>Other platforms:</strong> Look for a "Custom Code" or "Header Scripts" setting and paste the code there.</p>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         )}
       </div>
     );
