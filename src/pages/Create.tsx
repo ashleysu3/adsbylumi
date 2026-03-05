@@ -135,7 +135,7 @@ export default function Create() {
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0); // 0 = entry choice
-  const totalSteps = 3;
+  const totalSteps = 2;
 
   // Data
   const [brand, setBrand] = useState<any>(null);
@@ -325,8 +325,8 @@ export default function Create() {
   }, [selectedOfferId, offers, templates]);
 
   const handleNext = async () => {
-    if (currentStep === 3) {
-      // After campaign structure, generate angles and go directly to Creative Studio
+    if (currentStep === 2) {
+      // After strategy, generate angles and go directly to Creative Studio
       await handleGenerateAndNavigate();
       return; // Don't increment step, we're navigating away
     }
@@ -547,7 +547,6 @@ export default function Create() {
     switch (currentStep) {
       case 1: return !!selectedOfferId;
       case 2: return !!selectedTemplateId;
-      case 3: return !!selectedTemplateId;
       default: return false;
     }
   };
@@ -558,7 +557,6 @@ export default function Create() {
     switch (currentStep) {
       case 1: return isSystemOffer ? "Choose your creative" : "Choose your offer";
       case 2: return "Recommended strategy";
-      case 3: return "Campaign structure";
       default: return "";
     }
   };
@@ -566,8 +564,7 @@ export default function Create() {
   const getStepSubtitle = (): string => {
     switch (currentStep) {
       case 1: return isSystemOffer ? "Select the posts you'd like to promote" : "What are we promoting?";
-      case 2: return isSystemOffer ? "Lumi's recommendation for your strategy" : "Lumi's recommendation based on your offer";
-      case 3: return "How we'll structure your campaign";
+      case 2: return isSystemOffer ? "Lumi's recommendation for your strategy" : "Lumi picked the best approach for your offer";
       default: return "";
     }
   };
@@ -751,7 +748,7 @@ export default function Create() {
           onComplete={handleComplete}
           canProceed={canProceed()}
           isLoading={isGeneratingAngles || isCreatingCampaign}
-          nextLabel={currentStep === 3 ? "Generate Angles" : "Continue"}
+          nextLabel={currentStep === 2 ? "Generate Angles" : "Continue"}
           saveStatus={saveStatus}
           completeLabel="Create My Ad"
           showBackOnFirstStep={true}
@@ -1032,11 +1029,40 @@ export default function Create() {
                   </CardContent>
                 </Card>
 
+                {/* Campaign structure collapsible */}
+                {(() => {
+                  const template = templates.find(t => t.id === selectedTemplateId);
+                  return template ? (
+                    <div className="pt-1">
+                      <details className="group">
+                        <summary className="flex items-center justify-between cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                          <span>See campaign structure</span>
+                          <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                        </summary>
+                        <div className="mt-3 p-4 rounded-lg bg-muted/50 border border-border space-y-3">
+                          <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                              Structure
+                            </Label>
+                            <p className="text-sm mt-1">{template.campaign_structure}</p>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                              Best For
+                            </Label>
+                            <p className="text-sm mt-1">{template.use_case}</p>
+                          </div>
+                        </div>
+                      </details>
+                    </div>
+                  ) : null;
+                })()}
+
                 {/* Override option */}
-                <div className="pt-4">
+                <div className="pt-2">
                   <details className="group">
                     <summary className="flex items-center justify-between cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      <span>Want to try a different strategy?</span>
+                      <span>See all strategies (advanced)</span>
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
                     </summary>
                     <div className="mt-4 space-y-2">
@@ -1054,145 +1080,100 @@ export default function Create() {
                     </div>
                   </details>
                 </div>
-              </motion.div>
-            )}
 
-            {/* Step 3: Campaign Structure Preview */}
-            {currentStep === 3 && (
-              <motion.div
-                key="step-3"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-4"
-              >
-                {(() => {
-                  const template = templates.find(t => t.id === selectedTemplateId);
-                  return template ? (
-                    <>
-                      <Card className="border-2 border-border">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Rocket className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-base">{template.name}</CardTitle>
-                              <p className="text-sm text-muted-foreground">{template.objective}</p>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div>
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                              Campaign Structure
-                            </Label>
-                            <p className="text-sm mt-1">{template.campaign_structure}</p>
-                          </div>
-                          <div>
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                              Best For
-                            </Label>
-                            <p className="text-sm mt-1">{template.use_case}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
+                {/* What happens next */}
+                <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                  <div className="flex items-start gap-3">
+                    <Lightbulb className="h-5 w-5 text-lumi-orange-1 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">What happens next?</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Lumi will generate psychology-driven creative angles tailored to your offer, 
+                        then help you pick the perfect template to bring it to life.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                      <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                        <div className="flex items-start gap-3">
-                          <Lightbulb className="h-5 w-5 text-lumi-orange-1 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-medium">What happens next?</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Lumi will generate psychology-driven creative angles tailored to your offer, 
-                              then help you pick the perfect template to bring it to life.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                {/* Advanced Build Option */}
+                <div className="pt-2">
+                  <details className="group">
+                    <summary className="flex items-center justify-between cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
+                      <span>Already have finished creative?</span>
+                      <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
+                    </summary>
+                    <div className="mt-3">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        disabled={isGeneratingAngles || isCreatingCampaign}
+                        onClick={async () => {
+                          if (!selectedOfferId || !selectedTemplateId) {
+                            toast.error("Please select an offer and strategy first");
+                            return;
+                          }
+                          setIsCreatingCampaign(true);
+                          try {
+                            const selectedOffer = offers.find(o => o.id === selectedOfferId);
+                            const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
+                            if (!selectedOffer || !selectedTemplate) throw new Error("Missing selection");
 
-                      {/* Advanced Build Option */}
-                      <div className="pt-2">
-                        <details className="group">
-                          <summary className="flex items-center justify-between cursor-pointer text-sm text-muted-foreground hover:text-foreground transition-colors">
-                            <span>Already have finished creative?</span>
-                            <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" />
-                          </summary>
-                          <div className="mt-3">
-                            <Button
-                              variant="outline"
-                              className="w-full"
-                              disabled={isGeneratingAngles || isCreatingCampaign}
-                              onClick={async () => {
-                                if (!selectedOfferId || !selectedTemplateId) {
-                                  toast.error("Please select an offer and strategy first");
-                                  return;
-                                }
-                                setIsCreatingCampaign(true);
-                                try {
-                                  const selectedOffer = offers.find(o => o.id === selectedOfferId);
-                                  const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
-                                  if (!selectedOffer || !selectedTemplate) throw new Error("Missing selection");
+                            const { data: strategy, error: sErr } = await supabase
+                              .from("strategies")
+                              .insert({
+                                brand_id: brand.id,
+                                template_id: selectedTemplate.id,
+                                name: `Advanced Build - ${selectedOffer.name}`,
+                                campaign_type: selectedTemplate.strategy_template?.campaign_type || "cold",
+                                status: "active",
+                                offer_name: selectedOffer.name,
+                                offer_url: selectedOffer.url,
+                                offer_price: selectedOffer.price_point,
+                                offer_description: selectedOffer.description,
+                              })
+                              .select()
+                              .single();
+                            if (sErr) throw sErr;
 
-                                  const { data: strategy, error: sErr } = await supabase
-                                    .from("strategies")
-                                    .insert({
-                                      brand_id: brand.id,
-                                      template_id: selectedTemplate.id,
-                                      name: `Advanced Build - ${selectedOffer.name}`,
-                                      campaign_type: selectedTemplate.strategy_template?.campaign_type || "cold",
-                                      status: "active",
-                                      offer_name: selectedOffer.name,
-                                      offer_url: selectedOffer.url,
-                                      offer_price: selectedOffer.price_point,
-                                      offer_description: selectedOffer.description,
-                                    })
-                                    .select()
-                                    .single();
-                                  if (sErr) throw sErr;
+                            const { data: ws, error: wErr } = await supabase
+                              .from("campaign_workspaces")
+                              .insert([{
+                                brand_id: brand.id,
+                                strategy_id: strategy.id,
+                                template_id: selectedTemplate.id,
+                                name: `Advanced Build - ${selectedOffer.name}`,
+                                strategy_json: selectedTemplate.strategy_template as any,
+                                progress_status: "draft",
+                                offer_id: selectedOffer.id,
+                                offer_name: selectedOffer.name,
+                                offer_url: selectedOffer.url,
+                                offer_price: selectedOffer.price_point,
+                                offer_description: selectedOffer.description,
+                                campaign_builder_answers: { advancedBuild: true } as any,
+                              }])
+                              .select()
+                              .single();
+                            if (wErr) throw wErr;
 
-                                  const { data: ws, error: wErr } = await supabase
-                                    .from("campaign_workspaces")
-                                    .insert([{
-                                      brand_id: brand.id,
-                                      strategy_id: strategy.id,
-                                      template_id: selectedTemplate.id,
-                                      name: `Advanced Build - ${selectedOffer.name}`,
-                                      strategy_json: selectedTemplate.strategy_template as any,
-                                      progress_status: "draft",
-                                      offer_id: selectedOffer.id,
-                                      offer_name: selectedOffer.name,
-                                      offer_url: selectedOffer.url,
-                                      offer_price: selectedOffer.price_point,
-                                      offer_description: selectedOffer.description,
-                                      campaign_builder_answers: { advancedBuild: true } as any,
-                                    }])
-                                    .select()
-                                    .single();
-                                  if (wErr) throw wErr;
-
-                                  clearSavedProgress();
-                                  navigate(`/advanced-build?workspace=${ws.id}`);
-                                } catch (err: any) {
-                                  console.error(err);
-                                  toast.error(err.message || "Failed to create workspace");
-                                } finally {
-                                  setIsCreatingCampaign(false);
-                                }
-                              }}
-                            >
-                              <Upload className="h-4 w-4 mr-2" />
-                              Advanced Build — Upload & Go
-                            </Button>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Upload your own videos/images and Lumi will write the copy.
-                            </p>
-                          </div>
-                        </details>
-                      </div>
-                    </>
-                  ) : null;
-                })()}
+                            clearSavedProgress();
+                            navigate(`/advanced-build?workspace=${ws.id}`);
+                          } catch (err: any) {
+                            console.error(err);
+                            toast.error(err.message || "Failed to create workspace");
+                          } finally {
+                            setIsCreatingCampaign(false);
+                          }
+                        }}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Advanced Build — Upload & Go
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Upload your own videos/images and Lumi will write the copy.
+                      </p>
+                    </div>
+                  </details>
+                </div>
               </motion.div>
             )}
 
