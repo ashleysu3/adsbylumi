@@ -1,47 +1,36 @@
 
 
-## Plan: Fix Spelling & Grammar Check for Ad Copy Context
+## Plan: Pixel Verification on Landing Page + Install Instructions
 
-### Problem
+### What We're Adding
 
-Two related issues:
-
-1. **QA prompt is wrong for ad copy** — The spelling/grammar AI prompt treats copy like formal writing. In ads, numbers should NOT be spelled out ("7 days" not "seven days"), sentence fragments are intentional, and casual/punchy style is expected. The current prompt flags these as errors, making Lumi look like it's correcting its own work.
-
-2. **Generation functions lack ad-copy conventions** — The copy generation prompts (generate-angle-copy, generate-creative-grid, generate-copy-variations) don't explicitly instruct the AI to use ad-copy best practices like using digits instead of spelled-out numbers. Adding a brief rule set to generation will reduce QA issues at the source.
+When the QA check runs, after verifying the landing page URL is reachable, we also check whether the Meta Pixel is installed on that page. If it's not detected, we show the user their pixel code and instructions to install it.
 
 ### Changes
 
-#### 1. Rewrite QA spelling prompt — `supabase/functions/qa-preflight-check/index.ts`
+#### 1. Landing page check now includes pixel detection — `supabase/functions/qa-preflight-check/index.ts`
 
-Replace the current generic "copy editor" prompt with an ad-copy-aware prompt that:
-- Explicitly allows numbers as digits (never flag "7" vs "seven")
-- Allows sentence fragments, one-word sentences, mid-sentence starts
-- Allows informal punctuation (ellipsis, dashes, no Oxford comma)
-- Allows ALL CAPS for emphasis words
-- Only flags genuine typos (misspelled words), broken grammar that would confuse readers, and missing/wrong punctuation that changes meaning
-- Frames itself as "checking readability for a social media feed audience" not "formal proofreading"
+- Update `checkLandingPage` to also accept `brand` data (needs `meta_pixel_id`, `meta_access_token` or the pixel ID).
+- After confirming the page is reachable, fetch the page HTML (GET instead of HEAD) and scan for the pixel base code (`fbq('init', 'PIXEL_ID')` and `connect.facebook.net/en_US/fbevents.js`).
+- If pixel is found and matches the brand's `meta_pixel_id`: status stays `passed`, message notes "Pixel active".
+- If pixel is found but doesn't match: `warning` — "Pixel found but doesn't match your ad account".
+- If no pixel found: `warning` — "Meta Pixel not detected on your landing page". Include `pixelId` and `pixelNotInstalled: true` in the result so the client can render install instructions.
 
-The threshold should be high — only flag things that would make the brand look unprofessional or confuse the reader.
+#### 2. Show pixel install code in QA UI — `src/components/QACheckScreen.tsx`
 
-#### 2. Add ad-copy conventions to generation prompts
+- Update `renderLandingPageExpanded` to check for `pixelNotInstalled` flag on the check result.
+- When pixel is missing, render a section below the URL with:
+  - A warning message: "Your Meta Pixel isn't installed on this page yet"
+  - The pixel base code snippet (using the brand's `meta_pixel_id`) in a copyable code block
+  - Brief instructions: "Paste this in the `<head>` of your landing page" with a copy button
+  - A collapsible "Platform-specific guides" section reusing simplified platform hints (Shopify, WordPress, Kajabi, manual)
+- Add the `pixelNotInstalled` and `pixelId` fields to the `CheckResult` interface.
 
-Add a small, consistent rules block to these three edge functions:
-- `supabase/functions/generate-angle-copy/index.ts`
-- `supabase/functions/generate-creative-grid/index.ts`  
-- `supabase/functions/generate-copy-variations/index.ts`
+#### 3. Pass brand data to landing page check — `supabase/functions/qa-preflight-check/index.ts`
 
-The rules block:
-- Always use digits for numbers (7 not seven, $997 not $nine hundred ninety-seven)
-- Keep sentences punchy and scannable
-- No filler words
-- Double-check spelling of common words
-
-This ensures copy is generated correctly from the start, so QA finds minimal issues.
+- Update the `checkLandingPage` call to pass `brand` so it has access to `meta_pixel_id`.
 
 ### Files Modified
-- `supabase/functions/qa-preflight-check/index.ts` — rewrite spelling prompt
-- `supabase/functions/generate-angle-copy/index.ts` — add ad-copy conventions
-- `supabase/functions/generate-creative-grid/index.ts` — add ad-copy conventions
-- `supabase/functions/generate-copy-variations/index.ts` — add ad-copy conventions
+- `supabase/functions/qa-preflight-check/index.ts` — landing page pixel scan, pass brand
+- `src/components/QACheckScreen.tsx` — pixel install UI in landing page expanded section
 
