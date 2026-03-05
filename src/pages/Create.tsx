@@ -1064,15 +1064,15 @@ export default function Create() {
 
 
                   
-                        <StepOption
-                    selected={selectedOfferId === VIDEO_VIEWS_OFFER_ID}
-                    onSelect={() => {
-                      setSelectedOfferId(VIDEO_VIEWS_OFFER_ID);
-                      setShowSocialGrowthFlow(true);
-                    }}
-                    icon={<Play className="h-5 w-5" />}
-                    title="Video Views Campaign"
-                    description="Get more eyes on your Reels and video content" />
+                        
+
+
+
+
+
+
+
+                  
                   
                       </div>
                 }
