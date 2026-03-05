@@ -51,7 +51,7 @@ const Sales = () => {
         {!bannerDismissed && (
           <motion.div initial={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3 }} className="bg-gradient-warm text-primary-foreground relative z-[60]">
             <div className="container mx-auto flex items-center justify-center gap-2 px-4 py-2.5 text-center text-xs sm:text-sm font-medium">
-              <span>🎉 Founders Pricing — Use code <strong>LUMIBETA</strong> for 50% off your first month!</span>
+              <span>🎉 Founders Pricing — Use code <strong>LUMIBETA</strong> for 50% off forever!</span>
               <button onClick={dismissBanner} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-primary-foreground/20 transition"><X className="w-4 h-4" /></button>
             </div>
           </motion.div>
@@ -109,7 +109,7 @@ const Sales = () => {
               <Button variant="lumi" size="lg" onClick={goAuth} className="w-full sm:w-auto">Start for $48.50/mo <ArrowRight className="w-4 h-4 ml-1" /></Button>
               <Button variant="outline" size="lg" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })} className="w-full sm:w-auto">See How It Works</Button>
             </div>
-            <p className="text-xs text-muted-foreground">Use code <strong>LUMIBETA</strong> for 50% off · Founders pricing $97/mo · Cancel anytime</p>
+            <p className="text-xs text-muted-foreground">Use code <strong>LUMIBETA</strong> for 50% off forever · Founders pricing $48.50/mo · Cancel anytime</p>
             {/* #4 — Post-click clarity */}
             <p className="text-[11px] text-muted-foreground mt-1">You'll create your account, enter code LUMIBETA, and be inside LUMI in under 2 minutes.</p>
             {/* #8 — Support reassurance */}
