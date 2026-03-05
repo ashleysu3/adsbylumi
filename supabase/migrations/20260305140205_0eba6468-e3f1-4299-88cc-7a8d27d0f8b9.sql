@@ -1,0 +1,1 @@
+UPDATE campaign_templates SET budget_suggestion = '$30-75/day' WHERE slug = 'sell-offer';
