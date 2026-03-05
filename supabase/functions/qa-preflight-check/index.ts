@@ -22,6 +22,7 @@ interface CheckResult {
   details?: string;
   requiredEvent?: string;
   pixelId?: string | null;
+  pixelNotInstalled?: boolean;
   campaignGoal?: string;
 }
 
@@ -48,7 +49,7 @@ serve(async (req) => {
     results.push(checkMetaConnection(brand));
     results.push(checkBudget(answers));
     results.push(checkSchedule(answers));
-    results.push(await checkLandingPage(offerUrl));
+    results.push(await checkLandingPage(offerUrl, brand));
     results.push(checkEventTracking(brand, template));
     results.push(await checkSpellingGrammar(creativeJson, productionItems));
 
@@ -148,33 +149,66 @@ function checkSchedule(answers: any): CheckResult {
   return { id: 'schedule', name: 'Schedule', status: 'passed', message: scheduleStr, details: endDate ? 'Fixed duration campaign' : 'Runs until manually paused' };
 }
 
-async function checkLandingPage(url: string | undefined): Promise<CheckResult> {
+async function checkLandingPage(url: string | undefined, brand: any): Promise<CheckResult> {
   if (!url) {
     return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: 'No landing page URL set', details: 'Add a URL to track conversions properly' };
   }
+
+  const pixelId = brand?.meta_pixel_id || null;
 
   try {
     const fullUrl = url.startsWith('http') ? url : `https://${url}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+    // Use GET to fetch HTML so we can scan for pixel code
     const response = await fetch(fullUrl, {
-      method: 'HEAD',
+      method: 'GET',
       signal: controller.signal,
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; YourAdAssistant/1.0)' },
     });
 
     clearTimeout(timeoutId);
 
-    if (response.ok) {
-      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'This is the URL people will land on when they click your ad' };
-    } else if (response.status >= 300 && response.status < 400) {
-      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page loads with a redirect — make sure it lands where you expect' };
-    } else if (response.status === 403 || response.status === 405) {
-      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Server blocked our verification, but the URL looks valid' };
-    } else {
+    if (!response.ok) {
+      if (response.status === 403 || response.status === 405) {
+        return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Server blocked our verification, but the URL looks valid' };
+      }
+      if (response.status >= 300 && response.status < 400) {
+        return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page loads with a redirect — make sure it lands where you expect' };
+      }
       return { id: 'landing_page', name: 'Landing Page', status: 'failed', message: fullUrl, details: `Page returned a ${response.status} error — check that this URL is correct` };
     }
+
+    // Page is reachable — now scan HTML for pixel
+    const html = await response.text();
+    const hasFbEvents = html.includes('connect.facebook.net') && html.includes('fbevents.js');
+    const fbqInitMatch = html.match(/fbq\s*\(\s*['"]init['"]\s*,\s*['"](\d+)['"]/);
+
+    if (!pixelId) {
+      // No pixel configured on brand — just report page is reachable
+      if (hasFbEvents && fbqInitMatch) {
+        return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'Page is live and has a Meta Pixel installed' };
+      }
+      return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: 'This is the URL people will land on when they click your ad' };
+    }
+
+    // Pixel is configured — check if it's on the page
+    if (hasFbEvents && fbqInitMatch) {
+      const foundPixelId = fbqInitMatch[1];
+      if (foundPixelId === pixelId) {
+        return { id: 'landing_page', name: 'Landing Page', status: 'passed', message: fullUrl, details: `Page is live and your Meta Pixel (${pixelId.slice(-6)}) is active`, pixelId };
+      } else {
+        return { id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl, details: `A Meta Pixel was found but it doesn't match your ad account's pixel. Found: ...${foundPixelId.slice(-6)}, Expected: ...${pixelId.slice(-6)}`, pixelId, pixelNotInstalled: false };
+      }
+    }
+
+    // Pixel not found on page
+    return {
+      id: 'landing_page', name: 'Landing Page', status: 'warning', message: fullUrl,
+      details: 'Your Meta Pixel isn\'t installed on this page yet. Install it so Meta can track conversions.',
+      pixelId, pixelNotInstalled: true,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     if (errorMessage.includes('abort')) {
