@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { X, ChevronRight, ChevronLeft, Sparkles, Home, Target, Palette, BarChart3, CheckCircle2 } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, Sparkles, Home, Palette, BarChart3, CheckCircle2, FolderKanban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -11,56 +11,55 @@ interface TourStep {
   description: string;
   icon: React.ReactNode;
   targetSelector?: string;
-  highlight?: "bottom-nav" | "fab" | "header" | "content";
+  position?: "top" | "bottom" | "center";
 }
 
 const defaultTourSteps: TourStep[] = [
   {
     id: "welcome",
-    title: "Welcome to Your Ad Assistant!",
-    description: "Let's take a quick tour to help you get started with creating amazing Meta ads.",
+    title: "Welcome to LUMI!",
+    description: "Let's take a quick tour so you know where everything lives. It'll only take a moment.",
     icon: <Sparkles className="h-6 w-6" />,
-    highlight: "content",
+    position: "center",
   },
   {
-    id: "dashboard",
-    title: "Your Dashboard",
-    description: "This is your home base. See your campaigns, performance, and quick actions all in one place.",
+    id: "start",
+    title: "Start Here",
+    description: "This is your home base. You'll see your progress, next steps, and quick actions here.",
     icon: <Home className="h-6 w-6" />,
-    targetSelector: "[data-tour='dashboard']",
-    highlight: "bottom-nav",
+    targetSelector: "[data-tour='start']",
+    position: "top",
   },
   {
-    id: "planning",
-    title: "Plan Your Campaign",
-    description: "Start here to set your goals, choose your offer, and let Lumi guide your strategy.",
-    icon: <Target className="h-6 w-6" />,
-    targetSelector: "[data-tour='planning']",
-    highlight: "bottom-nav",
+    id: "campaigns",
+    title: "My Campaigns",
+    description: "All your ad campaigns live here. Track progress and manage everything in one place.",
+    icon: <FolderKanban className="h-6 w-6" />,
+    targetSelector: "[data-tour='campaigns']",
+    position: "top",
   },
   {
     id: "creative",
-    title: "Create Your Ads",
-    description: "Get smart scripts, copy, and creative direction tailored to your audience.",
+    title: "Creative Studio",
+    description: "This is where you build your ads — scripts, copy, hooks, and creative direction.",
     icon: <Palette className="h-6 w-6" />,
     targetSelector: "[data-tour='creative']",
-    highlight: "bottom-nav",
+    position: "top",
   },
   {
-    id: "insights",
-    title: "Track Results",
-    description: "See how your ads are performing with clear metrics and Lumi's recommendations.",
+    id: "results",
+    title: "Ad Performance",
+    description: "Once your ads are running, check how they're doing with clear metrics and recommendations.",
     icon: <BarChart3 className="h-6 w-6" />,
-    targetSelector: "[data-tour='insights']",
-    highlight: "bottom-nav",
+    targetSelector: "[data-tour='results']",
+    position: "top",
   },
   {
-    id: "new-campaign",
-    title: "Start a New Campaign",
-    description: "Tap this button anytime to create a new ad campaign with step-by-step guidance.",
-    icon: <Sparkles className="h-6 w-6" />,
-    targetSelector: "[data-tour='new-campaign']",
-    highlight: "fab",
+    id: "done",
+    title: "You're all set!",
+    description: "Start by adding your brand details and your first offer — LUMI will guide you from there.",
+    icon: <CheckCircle2 className="h-6 w-6" />,
+    position: "center",
   },
 ];
 
@@ -78,19 +77,32 @@ export function MobileOnboardingTour({
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Animate in
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
-  // Haptic feedback
-  const triggerHaptic = useCallback(() => {
-    if ("vibrate" in navigator) {
-      navigator.vibrate(15);
+  // Find and highlight target element
+  useEffect(() => {
+    const step = steps[currentStep];
+    if (step.targetSelector) {
+      const el = document.querySelector(step.targetSelector);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        setTargetRect(rect);
+      } else {
+        setTargetRect(null);
+      }
+    } else {
+      setTargetRect(null);
     }
+  }, [currentStep, steps]);
+
+  const triggerHaptic = useCallback(() => {
+    if ("vibrate" in navigator) navigator.vibrate(15);
   }, []);
 
   const goToNext = useCallback(() => {
@@ -104,9 +116,7 @@ export function MobileOnboardingTour({
 
   const goToPrevious = useCallback(() => {
     triggerHaptic();
-    if (currentStep > 0) {
-      setCurrentStep((prev) => prev - 1);
-    }
+    if (currentStep > 0) setCurrentStep((prev) => prev - 1);
   }, [currentStep, triggerHaptic]);
 
   const handleComplete = () => {
@@ -122,39 +132,31 @@ export function MobileOnboardingTour({
     }, 300);
   };
 
-  // Swipe handling
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStartX(e.touches[0].clientX);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX - touchEndX;
-    const minSwipe = 50;
-
-    if (diff > minSwipe) {
-      goToNext();
-    } else if (diff < -minSwipe) {
-      goToPrevious();
-    }
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (diff > 50) goToNext();
+    else if (diff < -50) goToPrevious();
   };
 
   const step = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
   const isFirstStep = currentStep === 0;
 
-  // Get highlight position
-  const getHighlightStyle = () => {
-    switch (step.highlight) {
-      case "bottom-nav":
-        return "bottom-20 left-4 right-4";
-      case "fab":
-        return "bottom-28 left-4 right-4";
-      case "header":
-        return "top-20 left-4 right-4";
-      default:
-        return "top-1/2 left-4 right-4 -translate-y-1/2";
+  // Card position: if we have a target, show card above or below it
+  const getCardPosition = (): string => {
+    if (targetRect) {
+      // Target is in the bottom nav area — show card above
+      if (targetRect.top > window.innerHeight / 2) {
+        return "bottom-24 left-4 right-4";
+      }
+      return "top-20 left-4 right-4";
     }
+    if (step.position === "top") return "bottom-24 left-4 right-4";
+    return "top-1/2 left-4 right-4 -translate-y-1/2";
   };
 
   if (!isMobile) return null;
@@ -166,86 +168,99 @@ export function MobileOnboardingTour({
         isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
       )}
     >
-      {/* Backdrop */}
+      {/* Backdrop with cutout for target */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
 
-      {/* Spotlight overlay for specific highlights */}
-      {step.highlight === "bottom-nav" && (
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-primary/20 to-transparent pointer-events-none animate-pulse" />
+      {/* Highlight ring around target element */}
+      {targetRect && (
+        <div
+          className="absolute z-[201] rounded-xl border-2 border-primary shadow-[0_0_20px_hsl(var(--primary)/0.4)] pointer-events-none animate-pulse transition-all duration-300"
+          style={{
+            top: targetRect.top - 4,
+            left: targetRect.left - 4,
+            width: targetRect.width + 8,
+            height: targetRect.height + 8,
+          }}
+        />
       )}
-      {step.highlight === "fab" && (
-        <div className="absolute bottom-16 right-4 w-16 h-16 rounded-full border-4 border-primary shadow-[0_0_30px_hsl(var(--primary)/0.5)] pointer-events-none animate-pulse" />
+
+      {/* Arrow pointing to target */}
+      {targetRect && (
+        <div
+          className="absolute z-[202] pointer-events-none"
+          style={{
+            top: targetRect.top - 12,
+            left: targetRect.left + targetRect.width / 2 - 8,
+          }}
+        >
+          <div className="w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-primary/60" 
+            style={{ transform: targetRect.top > window.innerHeight / 2 ? "rotate(180deg)" : "rotate(0deg)", transformOrigin: "center" }}
+          />
+        </div>
       )}
 
       {/* Tour Card */}
       <div
         className={cn(
-          "absolute transition-all duration-300 ease-out",
-          getHighlightStyle(),
+          "absolute z-[203] transition-all duration-300 ease-out",
+          getCardPosition(),
           isVisible ? "scale-100" : "scale-95"
         )}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="bg-card rounded-2xl shadow-2xl border-2 border-primary/20 overflow-hidden">
-          {/* Header with gradient */}
-          <div className="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 p-4">
+        <div className="bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white">
                   {step.icon}
                 </div>
                 <div>
-                  <p className="text-xs text-white/80 font-medium">
+                  <p className="text-[11px] text-white/80 font-medium">
                     Step {currentStep + 1} of {steps.length}
                   </p>
-                  <h3 className="text-lg font-bold text-white">{step.title}</h3>
+                  <h3 className="text-base font-bold text-white leading-tight">{step.title}</h3>
                 </div>
               </div>
               <button
                 onClick={handleSkip}
-                className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+                className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
 
           {/* Content */}
-          <div className="p-5">
+          <div className="p-4">
             <p className="text-muted-foreground text-sm leading-relaxed">
               {step.description}
             </p>
 
             {/* Progress dots */}
-            <div className="flex justify-center gap-2 my-4">
+            <div className="flex justify-center gap-1.5 my-3">
               {steps.map((_, idx) => (
                 <button
                   key={idx}
-                  onClick={() => {
-                    triggerHaptic();
-                    setCurrentStep(idx);
-                  }}
+                  onClick={() => { triggerHaptic(); setCurrentStep(idx); }}
                   className={cn(
-                    "w-2 h-2 rounded-full transition-all duration-300",
+                    "h-1.5 rounded-full transition-all duration-300",
                     idx === currentStep
-                      ? "w-6 bg-primary"
+                      ? "w-5 bg-primary"
                       : idx < currentStep
-                      ? "bg-primary/50"
-                      : "bg-muted"
+                      ? "w-1.5 bg-primary/50"
+                      : "w-1.5 bg-muted"
                   )}
                 />
               ))}
             </div>
 
-            {/* Navigation buttons */}
-            <div className="flex gap-3">
+            {/* Navigation */}
+            <div className="flex gap-2">
               {!isFirstStep && (
-                <Button
-                  variant="outline"
-                  onClick={goToPrevious}
-                  className="flex-1 h-12 rounded-xl touch-target"
-                >
+                <Button variant="outline" onClick={goToPrevious} className="flex-1 h-11 rounded-xl touch-target">
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Back
                 </Button>
@@ -253,9 +268,8 @@ export function MobileOnboardingTour({
               <Button
                 onClick={goToNext}
                 className={cn(
-                  "flex-1 h-12 rounded-xl touch-target font-semibold",
-                  isLastStep &&
-                    "bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:opacity-90"
+                  "flex-1 h-11 rounded-xl touch-target font-semibold",
+                  isLastStep && "bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:opacity-90"
                 )}
               >
                 {isLastStep ? (
@@ -271,11 +285,6 @@ export function MobileOnboardingTour({
                 )}
               </Button>
             </div>
-
-            {/* Swipe hint */}
-            <p className="text-center text-xs text-muted-foreground mt-3">
-              Swipe left or right to navigate
-            </p>
           </div>
         </div>
       </div>
@@ -291,9 +300,7 @@ export function useMobileOnboardingTour() {
     return localStorage.getItem("mobile-tour-completed") === "true";
   });
 
-  const startTour = useCallback(() => {
-    setShowTour(true);
-  }, []);
+  const startTour = useCallback(() => setShowTour(true), []);
 
   const completeTour = useCallback(() => {
     setShowTour(false);
@@ -306,11 +313,5 @@ export function useMobileOnboardingTour() {
     setHasSeenTour(false);
   }, []);
 
-  return {
-    showTour,
-    hasSeenTour,
-    startTour,
-    completeTour,
-    resetTour,
-  };
+  return { showTour, hasSeenTour, startTour, completeTour, resetTour };
 }
