@@ -17,7 +17,8 @@ import {
   Plus,
   Wand2,
   ArrowRight,
-  FileText } from
+  FileText,
+  TrendingUp } from
 'lucide-react';
 import { ClientReportModal } from './ClientReportModal';
 import {
