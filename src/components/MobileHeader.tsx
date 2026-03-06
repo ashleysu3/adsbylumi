@@ -2,9 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
- import { Shield, LogOut, Library, Settings, Building2, BookOpen, Home } from "lucide-react";
+import { Shield, LogOut, Library, Settings, Building2, BookOpen, Home, Link2, Gift, Package } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { BrandSelector } from "@/components/BrandSelector";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 interface MobileHeaderProps {
@@ -34,16 +35,20 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
           onClick={() => navigate("/start")}
         />
 
-        <div className="flex items-center gap-2">
-          {/* Admin Button - Only visible to admins */}
+        {/* Brand Selector (agency users) + User Menu */}
+        <div className="flex items-center gap-1.5">
+          {/* Brand Selector for agency users — compact mode */}
+          <BrandSelector compact />
+
+          {/* Admin Button */}
           {isAdmin && (
             <Button
               variant="outline"
               size="icon"
               onClick={() => navigate("/admin/users")}
-              className="h-10 w-10 rounded-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+              className="h-9 w-9 rounded-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
             >
-              <Shield className="h-5 w-5" />
+              <Shield className="h-4 w-4" />
             </Button>
           )}
 
@@ -74,9 +79,17 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
               <Building2 className="mr-3 h-4 w-4" />
               My Brand
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/offers")} className="min-h-[44px]">
+              <Package className="mr-3 h-4 w-4" />
+              What I'm Promoting
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/meta-settings")} className="min-h-[44px]">
+              <Link2 className="mr-3 h-4 w-4" />
+              Meta Connection
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/content-library")} className="min-h-[44px]">
               <Library className="mr-3 h-4 w-4" />
-              Saved for Later
+              Concept Library
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/settings")} className="min-h-[44px]">
@@ -86,6 +99,10 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
             <DropdownMenuItem onClick={() => navigate("/glossary")} className="min-h-[44px]">
               <BookOpen className="mr-3 h-4 w-4" />
               Ads Glossary
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/refer")} className="min-h-[44px]">
+              <Gift className="mr-3 h-4 w-4" />
+              Refer & Earn
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="min-h-[44px] text-destructive">

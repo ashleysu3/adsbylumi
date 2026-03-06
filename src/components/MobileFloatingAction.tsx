@@ -13,9 +13,9 @@ export function MobileFloatingAction({ onClick, label = "New Ad", className }: M
       onClick={onClick}
       data-tour="new-campaign"
       className={cn(
-        "fixed right-4 bottom-20 z-40 md:hidden",
+        "fixed right-4 bottom-[5.5rem] z-40 md:hidden",
         "flex items-center justify-center gap-2",
-        "h-14 min-w-14 px-4 rounded-full",
+        "h-12 min-w-12 px-4 rounded-full",
         "bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1",
         "text-white font-semibold text-sm",
         "shadow-lg shadow-lumi-pink-1/30",
