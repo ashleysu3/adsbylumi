@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit, RefreshCw, Loader2, Package } from "lucide-react";
+import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit, RefreshCw, Loader2, Package, PenTool, BarChart2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdsEmptyState } from "./AdsEmptyState";
 import { CampaignDetailDrawer } from "./CampaignDetailDrawer";
@@ -61,6 +61,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
   const [postPickerCampaign, setPostPickerCampaign] = useState<Campaign | null>(null);
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
+  const [actionDialogCampaign, setActionDialogCampaign] = useState<Campaign | null>(null);
 
   useEffect(() => {
     fetchCampaigns();
@@ -172,6 +173,10 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     }
     if (['draft', 'creative_in_progress', 'waiting_for_assets'].includes(campaign.progress_status)) {
       navigate(`/creative-studio?workspace=${campaign.id}`);
+      return;
+    }
+    if (isLive(campaign.progress_status, campaign.meta_campaign_status)) {
+      setActionDialogCampaign(campaign);
       return;
     }
     setSelectedCampaignId(campaign.id);
@@ -659,6 +664,43 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Live campaign action dialog */}
+      <Dialog open={!!actionDialogCampaign} onOpenChange={(open) => { if (!open) setActionDialogCampaign(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>What would you like to do?</DialogTitle>
+            <DialogDescription className="truncate">{actionDialogCampaign?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              onClick={() => {
+                navigate(`/creative-studio?workspace=${actionDialogCampaign?.id}`);
+                setActionDialogCampaign(null);
+              }}
+              className="flex flex-col items-center gap-2 rounded-xl border border-border p-5 hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
+            >
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <PenTool className="h-5 w-5 text-primary" />
+              </div>
+              <span className="font-semibold text-sm">Update Creative</span>
+              <span className="text-xs text-muted-foreground">Add or swap ad creative</span>
+            </button>
+            <button
+              onClick={() => {
+                navigate('/performance');
+                setActionDialogCampaign(null);
+              }}
+              className="flex flex-col items-center gap-2 rounded-xl border border-border p-5 hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
+            >
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <BarChart2 className="h-5 w-5 text-primary" />
+              </div>
+              <span className="font-semibold text-sm">See Results</span>
+              <span className="text-xs text-muted-foreground">View performance</span>
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </Card>
