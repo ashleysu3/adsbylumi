@@ -155,6 +155,8 @@ export default function AdPerformance() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportLastUpdated, setReportLastUpdated] = useState<string | null>(null);
   const [reportAutoRunning, setReportAutoRunning] = useState(false);
+  const [reportPreviewOpen, setReportPreviewOpen] = useState(false);
+  const [sendingDigestEmail, setSendingDigestEmail] = useState(false);
 
   // Digest settings
   const [digestOpen, setDigestOpen] = useState(false);
