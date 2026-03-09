@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (brandError || !brand) throw new Error('Brand not found');
+    console.log('[run-optimization-report] Brand found:', brand.name, 'meta_account_id:', brand.meta_account_id);
     if (brand.user_id !== userId) {
       return new Response(JSON.stringify({ error: 'Access denied' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403,
@@ -61,6 +62,7 @@ Deno.serve(async (req) => {
     }
 
     if (!brand.meta_account_id || !brand.meta_access_token) {
+      console.error('[run-optimization-report] Meta not connected for brand:', brand.name);
       throw new Error('Meta account not connected');
     }
 
