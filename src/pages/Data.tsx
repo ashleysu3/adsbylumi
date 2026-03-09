@@ -875,16 +875,6 @@ export default function AdPerformance() {
           </div>
         )}
 
-        {/* CPL education card */}
-        {campaigns.some(c => c.metrics && (c.metrics as any).leads > 0) && (
-          <div className="mb-4">
-            <LumiEducationCard
-              cardId="cpl-tip"
-              headline="What's a good Cost Per Lead?"
-              body="For coaches and course creators, $3–$15 per lead is typically healthy. Higher-ticket offers can sustain higher CPLs."
-            />
-          </div>
-        )}
 
         {/* ─── Page Header ─── */}
         <div className="mb-4 sm:mb-6 space-y-2">
