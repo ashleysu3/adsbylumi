@@ -418,6 +418,7 @@ export default function AdPerformance() {
         setOptimizationReport(data.report);
         setReportLastUpdated(format(new Date(), 'MMM d, h:mm a'));
         toast.success('Performance report updated');
+        setReportPreviewOpen(true);
       }
     } catch (e: any) {
       toast.error(e.message || 'Failed to generate report');
