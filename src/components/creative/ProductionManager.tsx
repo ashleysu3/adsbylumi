@@ -494,6 +494,37 @@ export function ProductionManager({
               )}
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Bulk Selection Bar */}
+              {bulkSelectMode && (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
+                    >
+                      {selectedIds.size === productionItems.length ? (
+                        <CheckSquare className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Square className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {selectedIds.size === productionItems.length ? "Deselect All" : "Select All"}
+                    </button>
+                    <span className="text-sm text-muted-foreground">
+                      {selectedIds.size} of {productionItems.length} selected
+                    </span>
+                  </div>
+                  <Button
+                    variant="lumi"
+                    size="sm"
+                    disabled={selectedIds.size === 0 || bulkMoving}
+                    onClick={handleBulkMoveToLibrary}
+                    className="gap-1.5"
+                  >
+                    {bulkMoving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Library className="h-3.5 w-3.5" />}
+                    Move {selectedIds.size > 0 ? `(${selectedIds.size})` : ""} to Library
+                  </Button>
+                </div>
+              )}
               {/* Current Round Label */}
               {currentRound && previousRoundItems.length > 0 && (
                 <div className="flex items-center gap-2">
