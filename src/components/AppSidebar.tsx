@@ -29,6 +29,7 @@ const createNav = [
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio", tooltip: "Build your ad angles, copy, and creative briefs" },
   { path: "/content-library", icon: Library, label: "Concept Library", tooltip: "Browse your saved ad concepts" },
   { path: "/creative-toolkit", icon: Wrench, label: "Creative Toolkit", tooltip: "Templates, B-roll ideas, music, and production tools" },
+  { path: "/trend-translator", icon: TrendingUp, label: "Trend Translator", tooltip: "Turn trending content into ads for your brand" },
 ];
 
 const brandNav = [
