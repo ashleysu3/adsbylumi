@@ -1424,6 +1424,48 @@ export default function AdminUsers() {
                     </CardContent>
                   </Card>
 
+                  {/* Resend Welcome / Login Info */}
+                  <Card className="border-blue-500/30 bg-blue-500/5">
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Send className="w-4 h-4 text-blue-600" /> Resend Login Info
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+                        Resend the beta welcome email with login link and 1:1 call booking to this user.
+                      </p>
+                      <Button
+                        variant="outline"
+                        className="w-full border-blue-500/50 text-blue-600 hover:bg-blue-500/10 h-10 sm:h-11"
+                        disabled={actionLoading === "resend_welcome"}
+                        onClick={async () => {
+                          if (!selectedUser || !userDetails?.profile?.email) return;
+                          setActionLoading("resend_welcome");
+                          try {
+                            const { error } = await supabase.functions.invoke("send-beta-welcome-email", {
+                              body: {
+                                email: userDetails.profile.email,
+                                fullName: userDetails.profile.full_name || "",
+                              },
+                            });
+                            if (error) throw error;
+                            toast.success(`Welcome email resent to ${userDetails.profile.email}`);
+                          } catch (err: any) {
+                            toast.error(err.message || "Failed to resend welcome email");
+                          }
+                          setActionLoading(null);
+                        }}
+                      >
+                        {actionLoading === "resend_welcome" ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
+                        ) : (
+                          <><Send className="w-4 h-4 mr-2" /> Resend Welcome Email</>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
                   {/* Archive / Unarchive */}
                   <Card className="border-border">
                     <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
