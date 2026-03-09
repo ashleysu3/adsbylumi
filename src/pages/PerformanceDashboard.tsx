@@ -273,21 +273,21 @@ export default function PerformanceDashboard() {
 
         {/* Summary Row */}
         {report && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold">{summary.total}</div>
+              <div className="text-2xl font-bold text-foreground">{summary.total}</div>
               <div className="text-xs text-muted-foreground">Active campaigns</div>
             </CardContent></Card>
-            <Card><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">{summary.green}</div>
+            <Card className="border-green-200 dark:border-green-800"><CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-foreground">{summary.green}</div>
               <div className="text-xs text-muted-foreground">🟢 Green</div>
             </CardContent></Card>
-            <Card><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-amber-500">{summary.yellow}</div>
+            <Card className="border-amber-200 dark:border-amber-800"><CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-foreground">{summary.yellow}</div>
               <div className="text-xs text-muted-foreground">🟡 Yellow</div>
             </CardContent></Card>
-            <Card><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-red-500">{summary.red}</div>
+            <Card className="border-red-200 dark:border-red-800"><CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-foreground">{summary.red}</div>
               <div className="text-xs text-muted-foreground">🔴 Need attention</div>
             </CardContent></Card>
           </div>

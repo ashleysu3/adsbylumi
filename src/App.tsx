@@ -120,8 +120,10 @@ const App = () => {
                   <Route path="/advanced-build" element={<AdvancedBuild />} />
                   <Route path="/beta-feedback" element={<BetaFeedback />} />
                   <Route path="/performance-history" element={<PerformanceHistory />} />
+                  <Route path="/performance" element={<PerformanceDashboard />} />
                   <Route path="/past-reports" element={<PastReports />} />
                   <Route path="/partners" element={<Partners />} />
+                  <Route path="/report/:shareToken" element={<SharedReport />} />
                   <Route path="/refer" element={<Refer />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
