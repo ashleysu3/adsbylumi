@@ -20,6 +20,7 @@ import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
 import { ExportChecklistModal } from "./ExportChecklistModal";
 import { format } from "date-fns";
+import { printCreativeBrief } from "@/lib/print-creative-brief";
 
 interface RankedItem extends ProductionItem {
   rank: number;
@@ -324,7 +325,18 @@ export function ProductionManager({
                     variant="lumi"
                     size="sm"
                     className="gap-1.5"
-                    onClick={() => window.print()}
+                    onClick={() => printCreativeBrief({
+                      brandName: workspace?.brands?.name || "",
+                      offerName: workspace?.offer_name || undefined,
+                      offerDescription: workspace?.offer_description || undefined,
+                      offerPrice: workspace?.offer_price || undefined,
+                      offerUrl: workspace?.offer_url || undefined,
+                      productPsychology: workspace?.creative_json?.product_psychology,
+                      audiencePsychology: workspace?.brands?.audience_psychology,
+                      angles: angles.filter(a => selectedAngleIds.includes(a.id)),
+                      productionItems,
+                      angleCopy,
+                    })}
                   >
                     <Download className="h-3.5 w-3.5" />
                     Export Brief as PDF
@@ -333,7 +345,18 @@ export function ProductionManager({
                     variant="outline"
                     size="sm"
                     className="gap-1.5"
-                    onClick={() => window.print()}
+                    onClick={() => printCreativeBrief({
+                      brandName: workspace?.brands?.name || "",
+                      offerName: workspace?.offer_name || undefined,
+                      offerDescription: workspace?.offer_description || undefined,
+                      offerPrice: workspace?.offer_price || undefined,
+                      offerUrl: workspace?.offer_url || undefined,
+                      productPsychology: workspace?.creative_json?.product_psychology,
+                      audiencePsychology: workspace?.brands?.audience_psychology,
+                      angles: angles.filter(a => selectedAngleIds.includes(a.id)),
+                      productionItems,
+                      angleCopy,
+                    })}
                   >
                     <Printer className="h-3.5 w-3.5" />
                     Print Brief

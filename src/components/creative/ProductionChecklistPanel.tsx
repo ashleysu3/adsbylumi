@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LumiThinking } from "@/components/LumiThinking";
+import { printCreativeBrief } from "@/lib/print-creative-brief";
 
 const hookTechniqueLabels: Record<string, { label: string; color: string }> = {
   mid_sentence: { label: "Mid-Sentence Start", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
@@ -248,7 +249,12 @@ export function ProductionChecklistPanel({
               variant="lumi"
               size="sm"
               className="gap-1.5"
-              onClick={() => window.print()}
+              onClick={() => printCreativeBrief({
+                brandName: "",
+                angles: [],
+                productionItems: items,
+                angleCopy: {},
+              })}
             >
               <Download className="h-3.5 w-3.5" />
               Export Brief as PDF
@@ -257,7 +263,12 @@ export function ProductionChecklistPanel({
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={() => window.print()}
+              onClick={() => printCreativeBrief({
+                brandName: "",
+                angles: [],
+                productionItems: items,
+                angleCopy: {},
+              })}
             >
               <Printer className="h-3.5 w-3.5" />
               Print Brief

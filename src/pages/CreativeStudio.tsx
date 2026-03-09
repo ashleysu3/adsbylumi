@@ -13,6 +13,7 @@ import {
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
   X, Check, FileDown, Printer, BarChart3
 } from "lucide-react";
+import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -1276,7 +1277,20 @@ export default function CreativeStudio() {
           <SheetHeader className="p-6 pb-0">
             <SheetTitle className="flex items-center justify-between">
               <span>Creative Brief</span>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+                printCreativeBrief({
+                  brandName: workspace?.brands?.name || activeBrand?.name || "",
+                  offerName: workspace?.offer_name || undefined,
+                  offerDescription: workspace?.offer_description || undefined,
+                  offerPrice: workspace?.offer_price || undefined,
+                  offerUrl: workspace?.offer_url || undefined,
+                  productPsychology: offerPsychology,
+                  audiencePsychology: offerAudiencePsychology || workspace?.brands?.audience_psychology,
+                  angles: availableAngles,
+                  productionItems: productionItems,
+                  angleCopy: angleCopy,
+                });
+              }}>
                 <Printer className="h-4 w-4" />
                 Print / PDF
               </Button>
