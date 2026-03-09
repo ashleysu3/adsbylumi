@@ -502,18 +502,6 @@ export function InsightsHome({
             Generate Report
           </Button>
         )}
-        {brandId && (
-          <div className="flex items-center gap-3">
-            <a href="/performance-history" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <TrendingUp className="h-3 w-3" />
-              Performance History
-            </a>
-            <a href="/past-reports" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <FileText className="h-3 w-3" />
-              Past Reports
-            </a>
-          </div>
-        )}
       </div>
 
       {/* Account Overview */}
