@@ -436,14 +436,14 @@ function diagnoseCampaign(
   if (status === 'red' && ctr >= 0.01) {
     recommendations.push({
       type: 'ad_level_review', priority: 'high',
-      action: "CTR is decent but cost per result is too high — people are clicking but not converting. Drill into ad-level breakdown and pause underperformers.",
+      action: "CTR is decent but cost per result is too high. Drill into ad-level breakdown, pause underperformers, and test new audiences or targeting adjustments.",
       icon: '🔍',
     });
   }
   if (goals.secondaryKpi === 'roas' && secondaryKpiValue !== undefined && primaryMet && !secondaryMet) {
     recommendations.push({
-      type: 'downstream', priority: 'medium',
-      action: "Leads are coming in at goal but purchases aren't closing. This is downstream of the ads — the ad itself is working.",
+      type: 'roas_gap', priority: 'medium',
+      action: "Your CPL is at goal but ROAS isn't — the ads are doing their job. Consider testing a purchase-optimized campaign or adjusting your audience to reach higher-intent buyers.",
       icon: '💡',
     });
   }
