@@ -973,6 +973,7 @@ export type Database = {
           id: string
           last_sent_at: string | null
           send_day: string
+          send_days: string[] | null
           send_time: string
           timezone: string
         }
@@ -985,6 +986,7 @@ export type Database = {
           id?: string
           last_sent_at?: string | null
           send_day?: string
+          send_days?: string[] | null
           send_time?: string
           timezone?: string
         }
@@ -997,6 +999,7 @@ export type Database = {
           id?: string
           last_sent_at?: string | null
           send_day?: string
+          send_days?: string[] | null
           send_time?: string
           timezone?: string
         }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { LumiEducationCard } from '@/components/LumiEducationCard';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -6,10 +6,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { format, subDays, startOfDay, endOfDay, startOfYesterday, endOfYesterday } from 'date-fns';
-import { RefreshCw, Link2Off, AlertTriangle, Link2, Calendar } from 'lucide-react';
+import { RefreshCw, Link2Off, AlertTriangle, Link2, Calendar, BarChart2, Settings, Share2, Copy, ExternalLink, Loader2, Target } from 'lucide-react';
 import { DateRangePicker } from '@/components/insights/DateRangePicker';
 import { InsightsHome } from '@/components/insights/InsightsHome';
 import { CampaignInsightDetail } from '@/components/insights/CampaignInsightDetail';
@@ -18,6 +25,8 @@ import { useLumiAssistant } from '@/components/LumiAssistant';
 import { MetaConnectionAlert, MetaConnectionBanner } from '@/components/MetaConnectionAlert';
 import { ImportCampaignsModal } from '@/components/insights/ImportCampaignsModal';
 import { useBrand } from '@/contexts/BrandContext';
+import { CampaignDetailDrawer } from '@/components/CampaignDetailDrawer';
+import lumiLogo from '@/assets/lumi-logo.png';
 
 interface PerformanceAnalysis {
   kpi_evaluation?: Record<string, {
@@ -77,7 +86,7 @@ interface AccountMetrics {
   roas: number | null;
 }
 
-export default function Data() {
+export default function AdPerformance() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const workspaceIdFromUrl = searchParams.get('workspace');
@@ -720,142 +729,724 @@ export default function Data() {
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        {/* CPL education card */}
-        {campaigns.some(c => c.metrics && (c.metrics as any).leads > 0) && (
-          <div className="mb-4">
-            <LumiEducationCard
-              cardId="cpl-tip"
-              headline="What's a good Cost Per Lead?"
-              body="For coaches and course creators, $3–$15 per lead is typically healthy. Higher-ticket offers can sustain higher CPLs."
-            />
-          </div>
-        )}
-        {/* Page Header */}
-        <div className="mb-4 sm:mb-6 space-y-2">
-          {/* Row 1: Title + Detail Toggle */}
-          
+        <Tabs defaultValue="live" className="space-y-4">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="live">Live Performance</TabsTrigger>
+            <TabsTrigger value="checkin">Weekly Check-In</TabsTrigger>
+          </TabsList>
 
+          <TabsContent value="live" className="space-y-4">
+            {/* CPL education card */}
+            {campaigns.some(c => c.metrics && (c.metrics as any).leads > 0) && (
+              <div className="mb-4">
+                <LumiEducationCard
+                  cardId="cpl-tip"
+                  headline="What's a good Cost Per Lead?"
+                  body="For coaches and course creators, $3–$15 per lead is typically healthy. Higher-ticket offers can sustain higher CPLs."
+                />
+              </div>
+            )}
+            {/* Page Header */}
+            <div className="mb-4 sm:mb-6 space-y-2">
+              {/* Row 2: Reconnect warning OR Refresh button */}
+              <div className="flex items-center justify-end gap-2">
+                  {metaConnected && metaTokenExpired &&
+                  <button
+                    onClick={() => navigate("/dashboard")}
+                    className="inline-flex items-center gap-1 text-xs text-destructive hover:underline">
+                      <AlertTriangle className="h-3 w-3" />
+                      Reconnect Meta
+                    </button>
+                  }
+                  {!metaConnected && !loading &&
+                  <button
+                    onClick={() => navigate("/dashboard")}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline">
+                      <Link2 className="h-3 w-3" />
+                      Connect Meta
+                    </button>
+                  }
 
+                {metaConnected && !metaTokenExpired && brandId && metaAccountId &&
+                <button
+                  onClick={() => setImportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <RefreshCw className="h-3 w-3" />
+                    <span className="hidden sm:inline">Refresh Ad Results</span>
+                    <span className="sm:hidden">Refresh</span>
+                  </button>
+                }
+              </div>
+            </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          
-
-          {/* Row 2: Reconnect warning OR Refresh button */}
-          <div className="flex items-center justify-end gap-2">
-              {metaConnected && metaTokenExpired &&
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="inline-flex items-center gap-1 text-xs text-destructive hover:underline">
-                
-                  <AlertTriangle className="h-3 w-3" />
-                  Reconnect Meta
-                </button>
-              }
-              {!metaConnected && !loading &&
-              <button
-                onClick={() => navigate("/dashboard")}
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline">
-                
-                  <Link2 className="h-3 w-3" />
-                  Connect Meta
-                </button>
-              }
-
-            {metaConnected && !metaTokenExpired && brandId && metaAccountId &&
-            <button
-              onClick={() => setImportModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              
-                <RefreshCw className="h-3 w-3" />
-                <span className="hidden sm:inline">Refresh Ad Results</span>
-                <span className="sm:hidden">Refresh</span>
-              </button>
+            {/* Meta Token Expired - Modal popup */}
+            {metaTokenExpired &&
+            <MetaConnectionAlert
+              type="expired"
+              onDismiss={() => setMetaTokenExpired(false)} />
             }
-          </div>
-        </div>
 
-        {/* Meta Token Expired - Modal popup */}
-        {metaTokenExpired &&
-        <MetaConnectionAlert
-          type="expired"
-          onDismiss={() => setMetaTokenExpired(false)} />
+            {/* Main Content */}
+            {!metaConnected && !loading ?
+            <ResultsEmptyState /> :
+            view === 'home' ?
+            <InsightsHome
+              campaigns={campaigns}
+              dateRange={globalDateRange}
+              customDateRange={customDateRange}
+              onDateRangeChange={handleDateRangeChange}
+              onCustomDateRangeChange={handleCustomDateRangeChange}
+              onViewInsights={handleViewInsights}
+              onUpdateGoal={handleUpdateGoal}
+              isLoading={loading || syncing}
+              accountMetrics={accountMetrics}
+              accountMetricsLoading={accountMetricsLoading}
+              onOfferLinked={() => fetchCampaigns()}
+              onCampaignStatusChange={handleCampaignStatusChange}
+              brandId={brandId || undefined}
+              dateRangeStart={format(getDateRange(globalDateRange, customDateRange).from, 'yyyy-MM-dd')}
+              dateRangeEnd={format(getDateRange(globalDateRange, customDateRange).to, 'yyyy-MM-dd')} /> :
 
-        }
+            selectedCampaign ?
+            <CampaignInsightDetail
+              campaign={selectedCampaign}
+              analysis={analysis}
+              globalDateRange={globalDateRange}
+              onBack={handleBackToHome}
+              onUpdateGoal={(goal) => handleUpdateGoal(selectedCampaign.id, goal)}
+              onDateRangeChange={handleDetailDateRangeChange}
+              onOfferLinked={() => {
+                fetchCampaigns();
+              }}
+              isLoading={syncing}
+              dateRangeStart={format(getDateRange(detailDateRange, customDateRange).from, 'yyyy-MM-dd')}
+              dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
+              detailLevel={detailLevel} /> :
 
-        {/* Main Content */}
-        {!metaConnected && !loading ?
-        <ResultsEmptyState /> :
-        view === 'home' ?
-        <InsightsHome
-          campaigns={campaigns}
-          dateRange={globalDateRange}
-          customDateRange={customDateRange}
-          onDateRangeChange={handleDateRangeChange}
-          onCustomDateRangeChange={handleCustomDateRangeChange}
-          onViewInsights={handleViewInsights}
-          onUpdateGoal={handleUpdateGoal}
-          isLoading={loading || syncing}
-          accountMetrics={accountMetrics}
-          accountMetricsLoading={accountMetricsLoading}
-          onOfferLinked={() => fetchCampaigns()}
-          onCampaignStatusChange={handleCampaignStatusChange}
-          brandId={brandId || undefined}
-          dateRangeStart={format(getDateRange(globalDateRange, customDateRange).from, 'yyyy-MM-dd')}
-          dateRangeEnd={format(getDateRange(globalDateRange, customDateRange).to, 'yyyy-MM-dd')} /> :
+            <div className="text-center py-12">
+                <p className="text-muted-foreground">Campaign not found</p>
+                <Button onClick={handleBackToHome} className="mt-4">
+                  Back to Overview
+                </Button>
+              </div>
+            }
 
-        selectedCampaign ?
-        <CampaignInsightDetail
-          campaign={selectedCampaign}
-          analysis={analysis}
-          globalDateRange={globalDateRange}
-          onBack={handleBackToHome}
-          onUpdateGoal={(goal) => handleUpdateGoal(selectedCampaign.id, goal)}
-          onDateRangeChange={handleDetailDateRangeChange}
-          onOfferLinked={() => {
-            fetchCampaigns();
-          }}
-          isLoading={syncing}
-          dateRangeStart={format(getDateRange(detailDateRange, customDateRange).from, 'yyyy-MM-dd')}
-          dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
-          detailLevel={detailLevel} /> :
+            {/* Import Campaigns Modal */}
+            {brandId && metaAccountId &&
+            <ImportCampaignsModal
+              open={importModalOpen}
+              onOpenChange={setImportModalOpen}
+              brandId={brandId}
+              metaAccountId={metaAccountId}
+              dateRangeStart={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).from, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.from, 'yyyy-MM-dd') : undefined}
+              dateRangeEnd={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).to, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.to, 'yyyy-MM-dd') : undefined}
+              onImportComplete={fetchCampaigns} />
+            }
+          </TabsContent>
 
-
-        <div className="text-center py-12">
-            <p className="text-muted-foreground">Campaign not found</p>
-            <Button onClick={handleBackToHome} className="mt-4">
-              Back to Overview
-            </Button>
-          </div>
-        }
-
-        {/* Import Campaigns Modal */}
-        {brandId && metaAccountId &&
-        <ImportCampaignsModal
-          open={importModalOpen}
-          onOpenChange={setImportModalOpen}
-          brandId={brandId}
-          metaAccountId={metaAccountId}
-          dateRangeStart={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).from, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.from, 'yyyy-MM-dd') : undefined}
-          dateRangeEnd={globalDateRange !== 'custom' ? format(getDateRange(globalDateRange).to, 'yyyy-MM-dd') : customDateRange ? format(customDateRange.to, 'yyyy-MM-dd') : undefined}
-          onImportComplete={fetchCampaigns} />
-
-        }
+          <TabsContent value="checkin">
+            <WeeklyCheckInTab brandId={activeBrand?.id || null} />
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>);
+}
 
+// ─── Weekly Check-In Tab (embedded from PerformanceDashboard) ───
+
+const KPI_OPTIONS = [
+  { value: 'cplpv', label: 'Cost per Landing Page View (CPLPV)', goalType: 'less_than', format: 'currency' },
+  { value: 'cpc', label: 'Cost per Click (CPC)', goalType: 'less_than', format: 'currency' },
+  { value: 'cpl', label: 'Cost per Lead (CPL)', goalType: 'less_than', format: 'currency' },
+  { value: 'cppv', label: 'Cost per Profile Visit (CPPV)', goalType: 'less_than', format: 'currency' },
+  { value: 'cp2sc', label: 'Cost per 2-Second Continuous View (CP2SC)', goalType: 'less_than', format: 'currency' },
+  { value: 'roas', label: 'Return on Ad Spend (ROAS)', goalType: 'greater_than', format: 'multiplier' },
+  { value: 'ctr', label: 'Click-Through Rate (CTR)', goalType: 'greater_than', format: 'percentage' },
+  { value: 'cpm', label: 'Cost per 1,000 Impressions (CPM)', goalType: 'less_than', format: 'currency' },
+  { value: 'purchases', label: 'Purchases (weekly count)', goalType: 'greater_than', format: 'number' },
+];
+
+function formatKpiValue(value: number, kpi: string) {
+  if (['cpl', 'cpc', 'cplpv', 'cppv', 'cp2sc', 'cpm'].includes(kpi)) return `$${value.toFixed(2)}`;
+  if (kpi === 'roas') return `${value.toFixed(1)}x`;
+  if (kpi === 'ctr') return `${(value * 100).toFixed(1)}%`;
+  return String(Math.round(value));
+}
+
+const DATE_RANGES = [
+  { label: 'Last 3 days', days: 3 },
+  { label: 'Last 7 days', days: 7 },
+  { label: 'Last 14 days', days: 14 },
+];
+
+const ALL_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+
+function WeeklyCheckInTab({ brandId }: { brandId: string | null }) {
+  const navigate = useNavigate();
+  const [dateRange, setDateRange] = useState(7);
+  const [report, setReport] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [digestOpen, setDigestOpen] = useState(false);
+  const [digestSettings, setDigestSettings] = useState({
+    send_days: ['monday'] as string[],
+    send_day: 'monday',
+    send_time: '08:00',
+    timezone: 'America/New_York',
+    date_range_days: 7,
+    additional_emails: [] as string[],
+    enabled: true,
+  });
+  const [digestLoading, setDigestLoading] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const loadCachedReport = useCallback(async () => {
+    if (!brandId) return;
+    const endDate = format(new Date(), 'yyyy-MM-dd');
+    const startDate = format(subDays(new Date(), dateRange), 'yyyy-MM-dd');
+
+    const { data } = await supabase
+      .from('optimization_reports')
+      .select('*')
+      .eq('brand_id', brandId)
+      .eq('date_range_start', startDate)
+      .eq('date_range_end', endDate)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (data) {
+      const createdAt = new Date(data.created_at);
+      const hoursDiff = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+      if (hoursDiff < 3) {
+        setReport(data);
+        setLastUpdated(format(createdAt, 'MMM d, h:mm a'));
+        return;
+      }
+    }
+
+    const { data: latest } = await supabase
+      .from('optimization_reports')
+      .select('*')
+      .eq('brand_id', brandId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (latest) {
+      setReport(latest);
+      setLastUpdated(format(new Date(latest.created_at), 'MMM d, h:mm a'));
+    }
+  }, [brandId, dateRange]);
+
+  useEffect(() => { loadCachedReport(); }, [loadCachedReport]);
+
+  useEffect(() => {
+    if (!brandId) return;
+    supabase
+      .from('digest_settings')
+      .select('*')
+      .eq('brand_id', brandId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          const sendDays = (data as any).send_days?.length > 0 
+            ? (data as any).send_days 
+            : [data.send_day];
+          setDigestSettings({
+            send_days: sendDays,
+            send_day: data.send_day,
+            send_time: data.send_time,
+            timezone: data.timezone,
+            date_range_days: data.date_range_days,
+            additional_emails: data.additional_emails || [],
+            enabled: data.enabled ?? true,
+          });
+        }
+      });
+  }, [brandId]);
+
+  const runReport = async () => {
+    if (!brandId) return;
+    setLoading(true);
+    try {
+      const endDate = format(new Date(), 'yyyy-MM-dd');
+      const startDate = format(subDays(new Date(), dateRange), 'yyyy-MM-dd');
+
+      const { data, error } = await supabase.functions.invoke('run-optimization-report', {
+        body: { brandId, dateRangeStart: startDate, dateRangeEnd: endDate },
+      });
+
+      if (error) throw error;
+      if (data?.report) {
+        setReport(data.report);
+        setLastUpdated(format(new Date(), 'MMM d, h:mm a'));
+        toast.success('Performance report updated');
+      }
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to generate report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleDay = (day: string) => {
+    setDigestSettings(p => {
+      const current = p.send_days;
+      if (current.includes(day)) {
+        if (current.length <= 1) return p; // must keep at least 1
+        return { ...p, send_days: current.filter(d => d !== day), send_day: current.filter(d => d !== day)[0] };
+      }
+      if (current.length >= 3) return p; // max 3
+      const next = [...current, day];
+      return { ...p, send_days: next, send_day: next[0] };
+    });
+  };
+
+  const saveDigestSettings = async () => {
+    if (!brandId) return;
+    setDigestLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('digest_settings')
+        .upsert({
+          brand_id: brandId,
+          created_by: user.id,
+          send_day: digestSettings.send_days[0] || digestSettings.send_day,
+          send_days: digestSettings.send_days,
+          send_time: digestSettings.send_time,
+          timezone: digestSettings.timezone,
+          date_range_days: digestSettings.date_range_days,
+          additional_emails: digestSettings.additional_emails,
+          enabled: digestSettings.enabled,
+        } as any, { onConflict: 'brand_id' });
+
+      if (error) throw error;
+      toast.success('Digest settings saved');
+      setDigestOpen(false);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to save settings');
+    } finally {
+      setDigestLoading(false);
+    }
+  };
+
+  const reportData = (report?.report_data || []) as any[];
+  const summary = (report?.summary || { green: 0, yellow: 0, red: 0, unconfigured: 0, total: 0 }) as any;
+
+  const configuredCampaigns = reportData.filter(c => c.has_goals && !['unconfigured', 'error', 'no_data'].includes(c.status));
+  const unconfiguredCampaigns = reportData.filter(c => !c.has_goals || c.status === 'unconfigured');
+
+  const sortedCampaigns = [...configuredCampaigns].sort((a, b) => {
+    const order: Record<string, number> = { red: 0, yellow: 1, green: 2 };
+    return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+  });
+
+  const statusDotClass = (status: string) => {
+    if (status === 'green') return 'bg-green-500 animate-pulse';
+    if (status === 'yellow') return 'bg-amber-400 animate-pulse';
+    if (status === 'red') return 'bg-red-500 animate-pulse';
+    return 'bg-muted-foreground/30';
+  };
+
+  const kpiStatusIcon = (value: number, threshold: number, goalType: string) => {
+    const met = goalType === 'less_than' ? value <= threshold : value >= threshold;
+    const close = goalType === 'less_than' ? value <= threshold * 1.25 : value >= threshold * 0.75;
+    if (met) return '✅';
+    if (close) return '🟡';
+    return '🔴';
+  };
+
+  const openDrawer = (workspaceId: string) => {
+    setSelectedCampaignId(workspaceId);
+    setDrawerOpen(true);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold text-foreground flex items-center gap-2">
+            <BarChart2 className="h-5 w-5 text-primary" />
+            Weekly Check-In
+          </h2>
+          <p className="text-muted-foreground text-sm mt-1">Campaign health across your active ads</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Share2 className="h-4 w-4 mr-1" /> Share
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              {report?.share_token ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">Shareable Report Link</p>
+                  <div className="flex gap-2">
+                    <Input readOnly value={`${window.location.origin}/report/${report.share_token}`} className="text-xs" />
+                    <Button size="sm" variant="outline" onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/report/${report.share_token}`);
+                      toast.success('Link copied');
+                    }}>
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">This link shows a read-only snapshot. Anyone with the link can view it.</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Run a report first to generate a shareable link.</p>
+              )}
+            </PopoverContent>
+          </Popover>
+          <Button variant="ghost" size="sm" onClick={() => setDigestOpen(true)}>
+            <Settings className="h-4 w-4" />
+          </Button>
+          <Button onClick={runReport} disabled={loading} size="sm" variant="outline">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+            {loading ? 'Pulling Meta data...' : 'Run Report Now'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Date Range */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {DATE_RANGES.map(r => (
+          <Button
+            key={r.days}
+            variant={dateRange === r.days ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDateRange(r.days)}
+          >
+            {r.label}
+          </Button>
+        ))}
+        {lastUpdated && (
+          <span className="text-xs text-muted-foreground ml-auto">
+            Last updated: {lastUpdated} · <button className="underline" onClick={runReport}>Refresh</button>
+          </span>
+        )}
+      </div>
+
+      {/* Summary Row */}
+      {report && (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-foreground">{summary.total}</div>
+            <div className="text-xs text-muted-foreground">Active campaigns</div>
+          </CardContent></Card>
+          <Card className="border-green-200 dark:border-green-800"><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-foreground">{summary.green}</div>
+            <div className="text-xs text-muted-foreground">🟢 Green</div>
+          </CardContent></Card>
+          <Card className="border-amber-200 dark:border-amber-800"><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-foreground">{summary.yellow}</div>
+            <div className="text-xs text-muted-foreground">🟡 Yellow</div>
+          </CardContent></Card>
+          <Card className="border-red-200 dark:border-red-800"><CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-foreground">{summary.red}</div>
+            <div className="text-xs text-muted-foreground">🔴 Need attention</div>
+          </CardContent></Card>
+        </div>
+      )}
+
+      {/* Campaign Cards */}
+      {sortedCampaigns.length > 0 && (
+        <div className="space-y-4">
+          {sortedCampaigns.map((c, i) => (
+            <Card key={i} className="overflow-hidden">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-3 w-3 rounded-full ${statusDotClass(c.status)}`} />
+                    <CardTitle className="text-lg">{c.workspace_name}</CardTitle>
+                  </div>
+                  <Badge variant="outline" className="text-xs">LIVE</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {c.goals && (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">{c.goals.primary_kpi_label}</span>
+                      <span>
+                        <span className="font-semibold">{formatKpiValue(c.primary_kpi_value, c.goals.primary_kpi)}</span>
+                        <span className="text-muted-foreground ml-2">
+                          Goal: {c.goals.primary_kpi_goal_type === 'less_than' ? '<' : '>'}{formatKpiValue(c.goals.primary_kpi_threshold, c.goals.primary_kpi)}
+                        </span>
+                        <span className="ml-2">{kpiStatusIcon(c.primary_kpi_value, c.goals.primary_kpi_threshold, c.goals.primary_kpi_goal_type)}</span>
+                      </span>
+                    </div>
+                    {c.goals.secondary_kpi && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">{c.goals.secondary_kpi_label}</span>
+                        <span>
+                          <span className="font-semibold">{formatKpiValue(c.secondary_kpi_value || 0, c.goals.secondary_kpi)}</span>
+                          <span className="text-muted-foreground ml-2">
+                            Goal: {c.goals.secondary_kpi_goal_type === 'less_than' ? '<' : '>'}{formatKpiValue(c.goals.secondary_kpi_threshold, c.goals.secondary_kpi)}
+                          </span>
+                          <span className="ml-2">{kpiStatusIcon(c.secondary_kpi_value || 0, c.goals.secondary_kpi_threshold, c.goals.secondary_kpi_goal_type)}</span>
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Frequency</span>
+                      <span>
+                        <span className="font-semibold">{c.metrics?.frequency?.toFixed(1) || '0'}</span>
+                        <span className="text-muted-foreground ml-2">Goal: &lt;{c.goals.frequency_threshold || 4}</span>
+                        <span className="ml-2">{(c.metrics?.frequency || 0) < (c.goals.frequency_threshold || 4) ? '✅' : '⚠️'}</span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {c.recommendations?.length > 0 && (
+                  <div className="border-t pt-3">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                      <img src={lumiLogo} className="h-4 w-4" alt="" /> LUMI RECOMMENDS
+                    </div>
+                    {c.recommendations.map((r: any, ri: number) => (
+                      <div key={ri} className="text-sm flex gap-2 mb-1">
+                        <span>{r.icon}</span>
+                        <span>{r.action}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {c.budget_hogs?.length > 0 && (
+                  <div className="bg-amber-50 dark:bg-amber-950/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+                    {c.budget_hogs.map((h: any, hi: number) => (
+                      <div key={hi} className="text-sm text-amber-800 dark:text-amber-200">
+                        ⚠️ "{h.name}" spending {((h.spend / (c.metrics?.spend || 1)) * 100).toFixed(0)}% of budget at ${h.costPerResult.toFixed(2)} CPR
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-2">
+                  <Button variant="ghost" size="sm" onClick={() => openDrawer(c.workspace_id)}>
+                    View Campaign <ExternalLink className="h-3 w-3 ml-1" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Unconfigured Campaigns */}
+      {unconfiguredCampaigns.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">Unconfigured</h3>
+          {unconfiguredCampaigns.map((c, i) => (
+            <Card key={i} className="bg-muted/30">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-3 w-3 rounded-full bg-muted-foreground/30" />
+                    <span className="font-medium">{c.workspace_name}</span>
+                    <Badge variant="outline" className="text-xs">LIVE</Badge>
+                  </div>
+                </div>
+
+                {c.metrics && c.metrics.spend > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground text-xs">Spend</span>
+                      <div className="font-semibold">${c.metrics.spend?.toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">CTR</span>
+                      <div className="font-semibold">{(c.metrics.ctr * 100)?.toFixed(2)}%</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">CPC</span>
+                      <div className="font-semibold">${c.metrics.cpc?.toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Frequency</span>
+                      <div className="font-semibold">{c.metrics.frequency?.toFixed(1)}</div>
+                    </div>
+                    {c.metrics.leads > 0 && (
+                      <div>
+                        <span className="text-muted-foreground text-xs">Leads</span>
+                        <div className="font-semibold">{c.metrics.leads}</div>
+                      </div>
+                    )}
+                    {c.metrics.cpl > 0 && (
+                      <div>
+                        <span className="text-muted-foreground text-xs">CPL</span>
+                        <div className="font-semibold">${c.metrics.cpl?.toFixed(2)}</div>
+                      </div>
+                    )}
+                    {c.metrics.roas > 0 && (
+                      <div>
+                        <span className="text-muted-foreground text-xs">ROAS</span>
+                        <div className="font-semibold">{c.metrics.roas?.toFixed(1)}x</div>
+                      </div>
+                    )}
+                    {c.metrics.reach > 0 && (
+                      <div>
+                        <span className="text-muted-foreground text-xs">Reach</span>
+                        <div className="font-semibold">{c.metrics.reach?.toLocaleString()}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-sm text-muted-foreground mt-3">
+                  {c.metrics && c.metrics.spend > 0
+                    ? 'Set performance goals so LUMI can diagnose this campaign and give you recommendations.'
+                    : 'No performance goals set for this campaign. LUMI can\'t track performance without a target.'}
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <Button size="sm" variant="outline" onClick={() => openDrawer(c.workspace_id)}>
+                    <Target className="h-3 w-3 mr-1" /> Set Goals →
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => openDrawer(c.workspace_id)}>View Campaign →</Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!report && !loading && (
+        <Card>
+          <CardContent className="p-12 text-center">
+            <BarChart2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No report yet</h3>
+            <p className="text-muted-foreground text-sm mb-2">
+              Run your first report to see how your active campaigns are performing.
+            </p>
+            <p className="text-muted-foreground text-xs mb-6">
+              Make sure your campaigns have performance goals set — open any live campaign and go to the Goals tab.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <Button onClick={runReport} disabled={loading}>
+                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                {loading ? 'Pulling Meta data...' : 'Run Report Now'}
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/campaigns')}>
+                Set Up Campaign Goals →
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Digest Settings Dialog */}
+      <Dialog open={digestOpen} onOpenChange={setDigestOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Digest Settings</DialogTitle>
+            <DialogDescription>Configure your performance check-in emails.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm">Send check-in on</Label>
+              <p className="text-xs text-muted-foreground mb-2">Pick 1–3 days. LUMI will check your accounts and email you each selected day.</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {ALL_DAYS.map(day => (
+                  <Button key={day} size="sm" variant={digestSettings.send_days.includes(day) ? 'default' : 'outline'}
+                    onClick={() => toggleDay(day)}>
+                    {day.slice(0, 3).charAt(0).toUpperCase() + day.slice(1, 3)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm">Send time</Label>
+              <Select value={digestSettings.send_time} onValueChange={v => setDigestSettings(p => ({ ...p, send_time: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 24 }, (_, i) => {
+                    const h = String(i).padStart(2, '0');
+                    const label = i === 0 ? '12:00 AM' : i < 12 ? `${i}:00 AM` : i === 12 ? '12:00 PM' : `${i - 12}:00 PM`;
+                    return <SelectItem key={h} value={`${h}:00`}>{label}</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm">Timezone</Label>
+              <Select value={digestSettings.timezone} onValueChange={v => setDigestSettings(p => ({ ...p, timezone: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {['America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Anchorage','Pacific/Honolulu','UTC','Europe/London'].map(tz => (
+                    <SelectItem key={tz} value={tz}>{tz.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm">Review the last</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input type="number" min={1} max={30} value={digestSettings.date_range_days}
+                  onChange={e => setDigestSettings(p => ({ ...p, date_range_days: parseInt(e.target.value) || 7 }))}
+                  className="w-20" />
+                <span className="text-sm text-muted-foreground">days</span>
+              </div>
+            </div>
+            <div>
+              <Label className="text-sm">Additional recipients</Label>
+              <div className="flex gap-2 mt-1">
+                <Input placeholder="email@example.com" value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && newEmail.includes('@')) {
+                      setDigestSettings(p => ({ ...p, additional_emails: [...p.additional_emails, newEmail] }));
+                      setNewEmail('');
+                    }
+                  }} />
+                <Button size="sm" variant="outline" onClick={() => {
+                  if (newEmail.includes('@')) {
+                    setDigestSettings(p => ({ ...p, additional_emails: [...p.additional_emails, newEmail] }));
+                    setNewEmail('');
+                  }
+                }}>Add</Button>
+              </div>
+              {digestSettings.additional_emails.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {digestSettings.additional_emails.map((e, i) => (
+                    <Badge key={i} variant="secondary" className="cursor-pointer"
+                      onClick={() => setDigestSettings(p => ({
+                        ...p,
+                        additional_emails: p.additional_emails.filter((_, idx) => idx !== i)
+                      }))}>
+                      {e} ×
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Enable digest</Label>
+              <Switch checked={digestSettings.enabled}
+                onCheckedChange={v => setDigestSettings(p => ({ ...p, enabled: v }))} />
+            </div>
+            <Button onClick={saveDigestSettings} disabled={digestLoading} className="w-full">
+              {digestLoading ? 'Saving...' : 'Save Settings'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Campaign Detail Drawer */}
+      <CampaignDetailDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        campaignId={selectedCampaignId}
+        onUpdate={loadCachedReport}
+      />
+    </div>
+  );
 }
