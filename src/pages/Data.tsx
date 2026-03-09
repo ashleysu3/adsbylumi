@@ -1211,6 +1211,135 @@ export default function AdPerformance() {
           />
         }
 
+        {/* ─── Report Preview Dialog ─── */}
+        <Dialog open={reportPreviewOpen} onOpenChange={setReportPreviewOpen}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <img src={lumiLogo} className="h-5 w-5" alt="" />
+                Performance Report Preview
+              </DialogTitle>
+              <DialogDescription>
+                {optimizationReport?.date_range_start} — {optimizationReport?.date_range_end}
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Summary bar */}
+            {reportSummary && (
+              <div className="flex gap-3 text-sm flex-wrap">
+                <span>🟢 {reportSummary.green || 0} on track</span>
+                <span>🟡 {reportSummary.yellow || 0} need attention</span>
+                <span>🔴 {reportSummary.red || 0} need action</span>
+              </div>
+            )}
+
+            {/* Campaign cards */}
+            <div className="space-y-4">
+              {sortedReportCampaigns.map((c, i) => (
+                <Card key={i}>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`h-3 w-3 rounded-full ${statusDotClass(c.status)}`} />
+                      <span className="font-semibold">{c.workspace_name}</span>
+                    </div>
+
+                    {c.goals && (
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">{c.goals.primary_kpi_label}</span>
+                          <span>
+                            <span className="font-semibold">{formatKpiValue(c.primary_kpi_value, c.goals.primary_kpi)}</span>
+                            <span className="text-muted-foreground ml-2">
+                              Goal: {c.goals.primary_kpi_goal_type === 'less_than' ? '<' : '>'}{formatKpiValue(c.goals.primary_kpi_threshold, c.goals.primary_kpi)}
+                            </span>
+                            <span className="ml-2">{kpiStatusIcon(c.primary_kpi_value, c.goals.primary_kpi_threshold, c.goals.primary_kpi_goal_type)}</span>
+                          </span>
+                        </div>
+                        {c.goals.secondary_kpi && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">{c.goals.secondary_kpi_label}</span>
+                            <span>
+                              <span className="font-semibold">{formatKpiValue(c.secondary_kpi_value || 0, c.goals.secondary_kpi)}</span>
+                              <span className="text-muted-foreground ml-2">
+                                Goal: {c.goals.secondary_kpi_goal_type === 'less_than' ? '<' : '>'}{formatKpiValue(c.goals.secondary_kpi_threshold, c.goals.secondary_kpi)}
+                              </span>
+                              <span className="ml-2">{kpiStatusIcon(c.secondary_kpi_value || 0, c.goals.secondary_kpi_threshold, c.goals.secondary_kpi_goal_type)}</span>
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Frequency</span>
+                          <span>
+                            <span className="font-semibold">{c.metrics?.frequency?.toFixed(1) || '0'}</span>
+                            <span className="text-muted-foreground ml-2">Goal: &lt;{c.goals.frequency_threshold || 4}</span>
+                            <span className="ml-2">{(c.metrics?.frequency || 0) < (c.goals.frequency_threshold || 4) ? '✅' : '⚠️'}</span>
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {c.recommendations?.length > 0 && (
+                      <div className="border-t pt-2">
+                        <div className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                          <img src={lumiLogo} className="h-3.5 w-3.5" alt="" /> LUMI RECOMMENDS
+                        </div>
+                        {c.recommendations.map((r: any, ri: number) => (
+                          <div key={ri} className="text-sm flex gap-2 mb-1">
+                            <span>{r.icon}</span>
+                            <span>{r.action}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {c.budget_hogs?.length > 0 && (
+                      <div className="bg-amber-50 dark:bg-amber-950/20 p-2 rounded-lg border border-amber-200 dark:border-amber-800 text-sm">
+                        {c.budget_hogs.map((h: any, hi: number) => (
+                          <div key={hi} className="text-amber-800 dark:text-amber-200">
+                            ⚠️ "{h.name}" at ${h.costPerResult.toFixed(2)} CPR
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+
+              {unconfiguredReportCampaigns.length > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  + {unconfiguredReportCampaigns.length} campaign{unconfiguredReportCampaigns.length > 1 ? 's' : ''} without goals configured
+                </div>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            <div className="flex justify-between pt-2 border-t">
+              <Button variant="outline" onClick={() => setReportPreviewOpen(false)}>Close</Button>
+              <Button
+                disabled={sendingDigestEmail}
+                onClick={async () => {
+                  if (!brandId || !optimizationReport?.id) return;
+                  setSendingDigestEmail(true);
+                  try {
+                    const { error } = await supabase.functions.invoke('send-optimization-digest', {
+                      body: { brandId, reportId: optimizationReport.id },
+                    });
+                    if (error) throw error;
+                    toast.success('Report sent to your email');
+                  } catch (e: any) {
+                    toast.error(e.message || 'Failed to send email');
+                  } finally {
+                    setSendingDigestEmail(false);
+                  }
+                }}
+              >
+                {sendingDigestEmail ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                Send via Email
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* ─── Digest Settings Dialog ─── */}
         <Dialog open={digestOpen} onOpenChange={setDigestOpen}>
           <DialogContent className="max-w-md">
