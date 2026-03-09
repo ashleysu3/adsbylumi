@@ -666,6 +666,43 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
           )}
         </DialogContent>
       </Dialog>
+      {/* Live campaign action dialog */}
+      <Dialog open={!!actionDialogCampaign} onOpenChange={(open) => { if (!open) setActionDialogCampaign(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>What would you like to do?</DialogTitle>
+            <DialogDescription className="truncate">{actionDialogCampaign?.name}</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <button
+              onClick={() => {
+                navigate(`/creative-studio?workspace=${actionDialogCampaign?.id}`);
+                setActionDialogCampaign(null);
+              }}
+              className="flex flex-col items-center gap-2 rounded-xl border border-border p-5 hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
+            >
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <PenTool className="h-5 w-5 text-primary" />
+              </div>
+              <span className="font-semibold text-sm">Update Creative</span>
+              <span className="text-xs text-muted-foreground">Add or swap ad creative</span>
+            </button>
+            <button
+              onClick={() => {
+                navigate('/performance');
+                setActionDialogCampaign(null);
+              }}
+              className="flex flex-col items-center gap-2 rounded-xl border border-border p-5 hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
+            >
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                <BarChart2 className="h-5 w-5 text-primary" />
+              </div>
+              <span className="font-semibold text-sm">See Results</span>
+              <span className="text-xs text-muted-foreground">View performance</span>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
