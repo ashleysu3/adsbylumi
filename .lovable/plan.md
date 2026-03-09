@@ -1,56 +1,65 @@
 
 
-## Trend Translator for LUMI
+## Plan: Add Local & Event Targeting Strategies to the Create Wizard
 
-Build a "Trend Translator" feature that lets users paste an Instagram/TikTok link, have LUMI analyze the trend using the brand's existing context (offers, audience psychology, brand voice), and output a translated ad concept they can push into a campaign.
+### Problem
+Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
 
-### Architecture
+### What Changes
 
-**New page**: `/trend-translator` — accessible from the Creative Toolkit sidebar nav item area (add as a dedicated link in the Create section of the sidebar, under Creative Toolkit).
+**1. Add system offer IDs for the three local strategies**
 
-**New edge function**: `supabase/functions/translate-trend/index.ts` — adapted from the Trend Transformer project's `analyze-trend` function, but enhanced to pull brand/offer context from the database instead of requiring manual input.
+In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
 
-**New component**: `src/pages/TrendTranslator.tsx` — the page UI.
+```
+LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
+LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
+EVENT_LOCATION_OFFER_ID = "system-event-location"
+```
 
-### How It Works
+Add these to `SYSTEM_OFFER_IDS`.
 
-1. User pastes an Instagram or TikTok URL (or describes a trend in text)
-2. LUMI auto-fills context from the active brand (offer, audience, brand voice, audience psychology) — no manual entry needed
-3. Edge function scrapes the post content (oEmbed, meta tags, Firecrawl if available, direct fetch), then sends it to Lovable AI with brand context for analysis
-4. Output displays: Why it works, Format Blueprint, Hook Variations (written for their niche), Filming Tips, Ready-to-Post Caption, and a full Ad Concept
-5. User can "Use This in a Campaign" which navigates to `/create` with the translated angle pre-loaded, or save the concept to their Concept Library
+**2. Add the options to Step 1 (offer selection)**
 
-### Changes
+Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
 
-#### 1. New page: `src/pages/TrendTranslator.tsx`
-- Wrapped in `DashboardLayout`
-- Simple form: URL/text input field + optional offer selector (defaults to first active offer)
-- Uses `useBrand()` context to auto-populate brand voice, audience, industry
-- Fetches active offers from DB to let user pick which offer to translate against
-- Calls `translate-trend` edge function
-- Displays results using sections similar to Trend Transformer's `AnalysisOutput`: Why It Works, Format Blueprint, Hook Variations, Filming Tips, Caption, Ad Concept
-- Action buttons: "Save to Concept Library" (inserts into `content_ideas` table), "Use in Campaign" (navigates to `/create` with pre-seeded data)
+- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
+- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
+- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
 
-#### 2. New edge function: `supabase/functions/translate-trend/index.ts`
-- Ported from Trend Transformer's `analyze-trend/index.ts` with these adaptations:
-  - Accepts `brandId` and `offerId` instead of manual offer/audience/brandVoice fields
-  - Fetches brand data (name, industry, brand_voice, target_audience, audience_psychology) and offer data (name, description, price_point, target_outcome, product_psychology) from DB using service role key
-  - Builds a richer prompt using LUMI's existing knowledge about the brand
-  - Keeps all scraping strategies (oEmbed, meta tags, embed page, direct fetch) — skips Firecrawl/RapidAPI since those keys aren't configured in this project
-  - Uses `google/gemini-2.5-flash` model via Lovable AI gateway
-  - Uses tool calling for structured JSON output (per project standards) instead of raw JSON parsing
-  - Handles 429/402 errors properly
+**3. Handle selection → skip to strategy step automatically**
 
-#### 3. Route: `src/App.tsx`
-- Add route: `<Route path="/trend-translator" element={<TrendTranslator />} />`
+When a user selects a local strategy, it should:
+- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
+- Set `selectedTemplateId` to the matched template
+- Skip directly to Step 2 (strategy recommendation) since the template is already determined
+- The strategy recommendation step already works — it shows the selected template with structure details
 
-#### 4. Sidebar: `src/components/AppSidebar.tsx`
-- Add `{ path: "/trend-translator", icon: Sparkles, label: "Trend Translator", tooltip: "Turn trending content into ads for your brand" }` to the `createNav` array, after Creative Toolkit
+**4. Wire the flow through to workspace creation**
 
-#### 5. Config: `supabase/config.toml`
-- Add `[functions.translate-trend]` with `verify_jwt = false`
+The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
+- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
+- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
 
-### No database changes needed
-- Saving to Concept Library uses existing `content_ideas` table
-- All brand/offer data already exists in `brands` and `offers` tables
+**5. Add educational context for the Event strategy**
+
+For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
+- Phase 1: "Awareness ads at the event location to get people to interact with your content"
+- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
+- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
+
+### What Does NOT Change
+- `CampaignBuilderForm.tsx` — already handles location targeting UI
+- Campaign templates in DB — already configured with `location_type`, radius settings
+- Edge functions — no changes needed
+- Creative Studio flow — works as-is since these are standard templates
+
+### Technical Details
+
+The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
+
+The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
+
+### Files to Edit
+- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
 

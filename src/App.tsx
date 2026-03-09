@@ -50,6 +50,7 @@ import BetaFeedback from "./pages/BetaFeedback";
 import Partners from "./pages/Partners";
 import Refer from "./pages/Refer";
 import CreativeToolkit from "./pages/CreativeToolkit";
+import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
@@ -117,6 +118,7 @@ const App = () => {
                   <Route path="/creative-studio" element={<CreativeStudio />} />
                   <Route path="/glossary" element={<Glossary />} />
                   <Route path="/creative-toolkit" element={<CreativeToolkit />} />
+                  <Route path="/trend-translator" element={<TrendTranslator />} />
                   <Route path="/advanced-build" element={<AdvancedBuild />} />
                   <Route path="/beta-feedback" element={<BetaFeedback />} />
                   <Route path="/partners" element={<Partners />} />
