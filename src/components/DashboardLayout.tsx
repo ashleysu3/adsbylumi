@@ -125,6 +125,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           isAdmin={isAdmin}
           onShowWalkthrough={() => startTour()}
         />
+        <SubscriptionBanner />
         <main className="px-4 py-4">{children}</main>
         <MobileBottomNav />
 
