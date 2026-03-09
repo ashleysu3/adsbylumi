@@ -375,6 +375,25 @@ export function ProductionManager({
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  {/* Move to Concept Library */}
+                  {onSaveToLibrary && (
+                    <Button
+                      variant={bulkSelectMode ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        if (bulkSelectMode) {
+                          setBulkSelectMode(false);
+                          setSelectedIds(new Set());
+                        } else {
+                          setBulkSelectMode(true);
+                        }
+                      }}
+                      className="gap-1"
+                    >
+                      <Library className="h-3 w-3" />
+                      {bulkSelectMode ? "Cancel" : "Move to Concept Library"}
+                    </Button>
+                  )}
                   {hasRankedItems && (
                     <>
                       <Button
