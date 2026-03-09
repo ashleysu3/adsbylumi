@@ -37,6 +37,8 @@ export default function Refer() {
       });
       if (!error && data?.exists) {
         setAffiliateData(data);
+      } else if (error) {
+        console.error('get-affiliate-data error:', error);
       }
     } catch (err) {
       console.error(err);
