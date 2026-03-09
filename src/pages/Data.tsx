@@ -902,12 +902,6 @@ export default function AdPerformance() {
 
             {metaConnected && !metaTokenExpired && brandId && metaAccountId && (
               <>
-                <button onClick={() => setImportModalOpen(true)} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  <RefreshCw className="h-3 w-3" />
-                  <span className="hidden sm:inline">Refresh Ad Results</span>
-                  <span className="sm:hidden">Refresh</span>
-                </button>
-
                 {/* Report actions */}
                 <Popover>
                   <PopoverTrigger asChild>
@@ -931,7 +925,7 @@ export default function AdPerformance() {
                         <p className="text-xs text-muted-foreground">This link shows a read-only snapshot. Anyone with the link can view it.</p>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Run a report first to generate a shareable link.</p>
+                      <p className="text-sm text-muted-foreground">Generate a report first to get a shareable link.</p>
                     )}
                   </PopoverContent>
                 </Popover>
@@ -940,17 +934,22 @@ export default function AdPerformance() {
                   <Settings className="h-3 w-3" />
                 </Button>
 
-                <Button onClick={runReport} disabled={reportLoading} size="sm" variant="outline" className="h-7 text-xs">
-                  {reportLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-                  {reportLoading ? 'Checking...' : 'Run Report'}
+                <Button
+                  onClick={() => {
+                    if (optimizationReport && !reportLoading) {
+                      setReportPreviewOpen(true);
+                    } else {
+                      runReport();
+                    }
+                  }}
+                  disabled={reportLoading}
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                >
+                  {reportLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <BarChart2 className="h-3 w-3 mr-1" />}
+                  {reportLoading ? 'Generating...' : optimizationReport ? 'View Report' : 'Generate Report'}
                 </Button>
-
-                {optimizationReport && (
-                  <Button onClick={() => setReportPreviewOpen(true)} size="sm" variant="outline" className="h-7 text-xs">
-                    <BarChart2 className="h-3 w-3 mr-1" />
-                    Preview Report
-                  </Button>
-                )}
               </>
             )}
           </div>
@@ -1211,30 +1210,43 @@ export default function AdPerformance() {
           />
         }
 
+        {/* ─── Sync from Meta (subtle, at bottom) ─── */}
+        {metaConnected && !metaTokenExpired && brandId && metaAccountId && view === 'home' && (
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={() => setImportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Sync latest from Meta
+            </button>
+          </div>
+        )}
+
         {/* ─── Report Preview Dialog ─── */}
         <Dialog open={reportPreviewOpen} onOpenChange={setReportPreviewOpen}>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
+          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0">
+            <DialogHeader className="p-6 pb-3 shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 <img src={lumiLogo} className="h-5 w-5" alt="" />
-                Performance Report Preview
+                Performance Report
               </DialogTitle>
               <DialogDescription>
                 {optimizationReport?.date_range_start} — {optimizationReport?.date_range_end}
               </DialogDescription>
             </DialogHeader>
 
-            {/* Summary bar */}
-            {reportSummary && (
-              <div className="flex gap-3 text-sm flex-wrap">
-                <span>🟢 {reportSummary.green || 0} on track</span>
-                <span>🟡 {reportSummary.yellow || 0} need attention</span>
-                <span>🔴 {reportSummary.red || 0} need action</span>
-              </div>
-            )}
+            <div className="flex-1 overflow-y-auto px-6 space-y-4">
+              {/* Summary bar */}
+              {reportSummary && (
+                <div className="flex gap-3 text-sm flex-wrap">
+                  <span>🟢 {reportSummary.green || 0} on track</span>
+                  <span>🟡 {reportSummary.yellow || 0} need attention</span>
+                  <span>🔴 {reportSummary.red || 0} need action</span>
+                </div>
+              )}
 
-            {/* Campaign cards */}
-            <div className="space-y-4">
+              {/* Campaign cards */}
               {sortedReportCampaigns.map((c, i) => (
                 <Card key={i}>
                   <CardContent className="p-4 space-y-3">
@@ -1312,30 +1324,42 @@ export default function AdPerformance() {
               )}
             </div>
 
-            {/* Footer actions */}
-            <div className="flex justify-between pt-2 border-t">
-              <Button variant="outline" onClick={() => setReportPreviewOpen(false)}>Close</Button>
+            {/* Fixed footer */}
+            <div className="flex items-center justify-between p-6 pt-3 border-t shrink-0">
               <Button
-                disabled={sendingDigestEmail}
-                onClick={async () => {
-                  if (!brandId || !optimizationReport?.id) return;
-                  setSendingDigestEmail(true);
-                  try {
-                    const { error } = await supabase.functions.invoke('send-optimization-digest', {
-                      body: { brandId, reportId: optimizationReport.id },
-                    });
-                    if (error) throw error;
-                    toast.success('Report sent to your email');
-                  } catch (e: any) {
-                    toast.error(e.message || 'Failed to send email');
-                  } finally {
-                    setSendingDigestEmail(false);
-                  }
-                }}
+                variant="ghost"
+                size="sm"
+                onClick={runReport}
+                disabled={reportLoading}
+                className="text-xs"
               >
-                {sendingDigestEmail ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                Send via Email
+                {reportLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                Refresh Report
               </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setReportPreviewOpen(false)}>Close</Button>
+                <Button
+                  disabled={sendingDigestEmail}
+                  onClick={async () => {
+                    if (!brandId || !optimizationReport?.id) return;
+                    setSendingDigestEmail(true);
+                    try {
+                      const { error } = await supabase.functions.invoke('send-optimization-digest', {
+                        body: { brandId, reportId: optimizationReport.id },
+                      });
+                      if (error) throw error;
+                      toast.success('Report sent to your email');
+                    } catch (e: any) {
+                      toast.error(e.message || 'Failed to send email');
+                    } finally {
+                      setSendingDigestEmail(false);
+                    }
+                  }}
+                >
+                  {sendingDigestEmail ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  Send via Email
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
