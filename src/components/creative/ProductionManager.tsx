@@ -593,6 +593,8 @@ export function ProductionManager({
                               rank={rank}
                               rationale={rationale}
                               onRefineScript={onRefineScript}
+                              selected={bulkSelectMode ? selectedIds.has(item.id) : undefined}
+                              onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
                             />
                           );
                         })}
