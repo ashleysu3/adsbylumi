@@ -111,9 +111,9 @@ const Sales = () => {
           <a href="/"><img src={lumiLogo} alt="LUMI" className="h-8 sm:h-10" /></a>
           <div className="hidden md:flex items-center gap-4">
             <button onClick={goAuth} className="text-sm font-medium text-muted-foreground hover:text-foreground transition">Sign In</button>
-            <CheckoutButton size="sm">Start Free</CheckoutButton>
-          </div>
-          <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}><Menu className="w-6 h-6" /></button>
+            <CheckoutButton size="sm">Get Started</CheckoutButton>
+           </div>
+           <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}><Menu className="w-6 h-6" /></button>
         </div>
         <AnimatePresence>
           {mobileMenuOpen && (
