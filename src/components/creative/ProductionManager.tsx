@@ -559,6 +559,8 @@ export function ProductionManager({
                           rationale={rankedItem.rationale}
                           showAngleBadge
                           onRefineScript={onRefineScript}
+                          selected={bulkSelectMode ? selectedIds.has(item.id) : undefined}
+                          onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
                         />
                       );
                     })}
