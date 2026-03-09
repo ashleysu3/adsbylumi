@@ -11,7 +11,7 @@ export const SUBSCRIPTION_TIERS = {
     limits: {
       brands: 1,
       adAccounts: 1,
-      adSpendCap: 3000, // $3,000/month in managed ad spend
+      adSpendCap: -1, // unlimited
     },
     features: [
       "Up to $3,000/mo in managed ad spend",
