@@ -944,6 +944,13 @@ export default function AdPerformance() {
                   {reportLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
                   {reportLoading ? 'Checking...' : 'Run Report'}
                 </Button>
+
+                {optimizationReport && (
+                  <Button onClick={() => setReportPreviewOpen(true)} size="sm" variant="outline" className="h-7 text-xs">
+                    <BarChart2 className="h-3 w-3 mr-1" />
+                    Preview Report
+                  </Button>
+                )}
               </>
             )}
           </div>
