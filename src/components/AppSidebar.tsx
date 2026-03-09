@@ -316,19 +316,6 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Troubleshooting and help">
-                  <NavLink
-                    to="/glossary"
-                    end
-                    className="transition-all duration-200"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <LifeBuoy className="h-4 w-4" />
-                    {!collapsed && <span>Troubleshooting</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Share LUMI and earn $40 per referral">
                   <NavLink
                     to="/refer"
