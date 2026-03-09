@@ -79,17 +79,34 @@ Deno.serve(async (req) => {
     const frequencyThreshold = goals?.frequency_threshold ? parseFloat(String(goals.frequency_threshold)) : defaultFrequencyThreshold;
 
     // Map KPI names to actual metric values
+    // Build comprehensive KPI value map — must cover every possible goal KPI
+    const clicks = m.clicks || m.linkClicks || 0;
+    const leads = m.leads || 0;
+    const purchases = m.purchases || 0;
+    const landingPageViews = m.landingPageViews || 0;
+    const videoViews = m.videoViews || 0;
+    const conversations = m.conversations || 0;
+
     const kpiValueMap: Record<string, number> = {
       cpl: m.cpl || 0,
-      cpc: m.cpc || 0,
-      cplpv: m.spend > 0 && m.landingPageViews > 0 ? m.spend / m.landingPageViews : 0,
-      cppv: 0,
-      cp2sc: m.costPerThruPlay || 0,
+      cpc: m.cpc || (m.spend > 0 && clicks > 0 ? m.spend / clicks : 0),
+      cplpv: m.spend > 0 && landingPageViews > 0 ? m.spend / landingPageViews : 0,
+      cppv: m.cppv || 0,
+      cp2sc: m.costPerThruPlay || m.cp2sc || 0,
       roas: m.roas || 0,
       ctr: m.ctr || 0,
       cpm: m.cpm || 0,
-      purchases: m.purchases || 0,
+      purchases: purchases,
+      // Aliases used in campaign goal configs
+      cpl_cpp: m.cpl || m.cpp || m.costPerResult || 0,
+      linkClicks: clicks,
+      videoViews: videoViews,
+      conversations: conversations,
+      frequency: m.frequency || 0,
     };
+
+    // Track whether the campaign has ANY meaningful activity
+    const hasAnyResults = clicks > 0 || leads > 0 || purchases > 0 || landingPageViews > 0 || videoViews > 0 || conversations > 0;
 
     const primaryValue = kpiValueMap[primaryKpi] ?? 0;
     const secondaryValue = secondaryKpi ? (kpiValueMap[secondaryKpi] ?? 0) : null;
@@ -291,13 +308,13 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Budget burning with no results
-      if (spend > 50 && primaryValue === 0 && hasEnoughData) {
+      // Budget burning with truly no results (no clicks, no leads, no purchases, nothing)
+      if (spend > 50 && !hasAnyResults && hasEnoughData) {
         recommendations.push({
           id: `no-results-${workspaceId}`,
           type: 'budget_decrease',
           title: 'Spending with zero results — pause and investigate',
-          description: `You've spent $${spend.toFixed(2)} with no ${primaryKpi.toUpperCase()} recorded. This usually means pixel tracking isn't firing correctly, or the landing page has a technical issue. Check your pixel events before spending more.`,
+          description: `You've spent $${spend.toFixed(2)} with no clicks, leads, or conversions recorded. This usually means pixel tracking isn't firing correctly, or there's a technical issue. Check your pixel events before spending more.`,
           impact: 'Stop burning budget on untracked spend',
           confidence: 'high',
           requiresDoubleApproval: false,
