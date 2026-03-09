@@ -19,15 +19,18 @@ export default function Campaigns() {
 
   const isAddCreativeMode = searchParams.get("addCreative") === "true";
 
-  const { data: hasLiveCampaign } = useQuery({
-    queryKey: ["has-live-campaign", activeBrand?.id],
+  const { data: hasRecentlyLaunchedCampaign } = useQuery({
+    queryKey: ["recently-launched-campaign", activeBrand?.id],
     queryFn: async () => {
       if (!activeBrand?.id) return false;
+      // Only show if a campaign was published in the last 5 days
+      const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
       const { count } = await supabase
         .from("campaign_workspaces")
         .select("id", { count: "exact", head: true })
         .eq("brand_id", activeBrand.id)
-        .not("published_at", "is", null);
+        .not("published_at", "is", null)
+        .gte("published_at", fiveDaysAgo);
       return (count ?? 0) > 0;
     },
     enabled: !!activeBrand?.id,
@@ -103,7 +106,7 @@ export default function Campaigns() {
         )}
 
         {/* First live campaign education card — only show when a campaign is actually live */}
-        {hasLiveCampaign && (
+        {hasRecentlyLaunchedCampaign && (
           <LumiEducationCard
             cardId="first-live-tip"
             headline="Your ad is live! 🎉"
