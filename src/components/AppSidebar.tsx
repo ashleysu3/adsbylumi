@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, BarChart2, Library, Building2, BookOpen, Settings, Shield, LogOut, Zap, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
@@ -27,9 +27,9 @@ import {
 const createNav = [
   { path: "/campaigns", icon: FolderKanban, label: "My Campaigns", tooltip: "See and manage all your ads" },
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio", tooltip: "Build your ad angles, copy, and creative briefs" },
-  { path: "/performance", icon: BarChart2, label: "Performance", tooltip: "Weekly campaign health and optimization" },
   { path: "/content-library", icon: Library, label: "Concept Library", tooltip: "Browse your saved ad concepts" },
   { path: "/creative-toolkit", icon: Wrench, label: "Creative Toolkit", tooltip: "Templates, B-roll ideas, music, and production tools" },
+  { path: "/ad-performance", icon: BarChart3, label: "Ad Performance", tooltip: "Live campaign metrics, LUMI recommendations, and weekly check-ins" },
 ];
 
 const brandNav = [
@@ -51,6 +51,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   const { activeBrand } = useBrand();
   const [hasCampaigns, setHasCampaigns] = useState(false);
   const [metaStatus, setMetaStatus] = useState<'connected' | 'expired' | 'disconnected'>('disconnected');
+  const [hasRedAlert, setHasRedAlert] = useState(false);
 
   // Lightweight check for campaign count
   useEffect(() => {
@@ -87,6 +88,49 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
       });
   }, [brandId, activeBrand]);
 
+  // Check for red-status campaigns in latest report
+  useEffect(() => {
+    const effectiveBrandId = activeBrand?.id || brandId;
+    if (!effectiveBrandId) return;
+
+    supabase
+      .from("optimization_reports")
+      .select("id, report_data")
+      .eq("brand_id", effectiveBrandId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (!data) { setHasRedAlert(false); return; }
+        const reportData = (data.report_data || []) as any[];
+        const hasRed = reportData.some((c: any) => c.status === 'red');
+        if (!hasRed) { setHasRedAlert(false); return; }
+        const reviewedKey = `lumi_last_reviewed_report_${effectiveBrandId}`;
+        const lastReviewed = localStorage.getItem(reviewedKey);
+        setHasRedAlert(lastReviewed !== data.id);
+      });
+  }, [brandId, activeBrand]);
+
+  // Mark as reviewed when visiting ad-performance
+  useEffect(() => {
+    const effectiveBrandId = activeBrand?.id || brandId;
+    if (location.pathname === '/ad-performance' && effectiveBrandId && hasRedAlert) {
+      supabase
+        .from("optimization_reports")
+        .select("id")
+        .eq("brand_id", effectiveBrandId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            localStorage.setItem(`lumi_last_reviewed_report_${effectiveBrandId}`, data.id);
+            setHasRedAlert(false);
+          }
+        });
+    }
+  }, [location.pathname, activeBrand, brandId, hasRedAlert]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     toast.success("Signed out successfully");
@@ -122,7 +166,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
           )}
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Button */}
         <div className="mt-3 space-y-2">
           <button
             onClick={() => navigate("/create")}
@@ -133,17 +177,6 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
             <span className="relative flex items-center justify-center gap-2 py-2.5 px-3 text-white font-semibold text-sm">
               <Plus className="h-4 w-4" />
               {!collapsed && <span>Create a New Ad</span>}
-            </span>
-          </button>
-
-          <button
-            onClick={() => navigate("/data")}
-            className="w-full rounded-xl border-2 border-primary/30 hover:border-primary/60 bg-card hover:bg-primary/5 transition-all"
-            title="See how your ads are performing"
-          >
-            <span className="flex items-center justify-center gap-2 py-2 px-3 text-foreground font-medium text-sm">
-              <BarChart3 className="h-4 w-4 text-primary" />
-              {!collapsed && <span>Ad Performance</span>}
             </span>
           </button>
         </div>
@@ -166,7 +199,12 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                       className="transition-all duration-200"
                       activeClassName="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-md shadow-lumi-pink-1/20 font-semibold [&>svg]:text-white"
                     >
-                      <item.icon className="h-4 w-4" />
+                      <div className="relative">
+                        <item.icon className="h-4 w-4" />
+                        {item.path === '/ad-performance' && hasRedAlert && (
+                          <span className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                        )}
+                      </div>
                       {!collapsed && <span>{item.label}</span>}
                     </NavLink>
                   </SidebarMenuButton>

@@ -21,7 +21,7 @@ import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Start from "./pages/Start";
 import Create from "./pages/Create";
-import Data from "./pages/Data";
+import AdPerformance from "./pages/Data";
 import WorkspaceRedirect from "./pages/WorkspaceRedirect";
 import CampaignBuilder from "./pages/CampaignBuilder";
 
@@ -47,14 +47,11 @@ import Glossary from "./pages/Glossary";
 import NotFound from "./pages/NotFound";
 import AdvancedBuild from "./pages/AdvancedBuild";
 import BetaFeedback from "./pages/BetaFeedback";
-import PerformanceHistory from "./pages/PerformanceHistory";
-import PastReports from "./pages/PastReports";
 import Partners from "./pages/Partners";
 import Refer from "./pages/Refer";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import ClientPortal from "./pages/ClientPortal";
-import PerformanceDashboard from "./pages/PerformanceDashboard";
 import SharedReport from "./pages/SharedReport";
 
 function CreativeRedirect() {
@@ -67,7 +64,6 @@ const App = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    // Show splash for 2 seconds on initial load
     const timer = setTimeout(() => {
       setShowSplash(false);
     }, 2000);
@@ -101,7 +97,11 @@ const App = () => {
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/creative" element={<CreativeRedirect />} />
-                  <Route path="/data" element={<Data />} />
+                  <Route path="/ad-performance" element={<AdPerformance />} />
+                  <Route path="/data" element={<Navigate to="/ad-performance" replace />} />
+                  <Route path="/performance" element={<Navigate to="/ad-performance" replace />} />
+                  <Route path="/performance-history" element={<Navigate to="/ad-performance" replace />} />
+                  <Route path="/past-reports" element={<Navigate to="/ad-performance" replace />} />
                   <Route path="/production" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/campaigns" element={<Campaigns />} />
                   <Route path="/workspace/:workspaceId" element={<WorkspaceRedirect />} />
@@ -119,9 +119,6 @@ const App = () => {
                   <Route path="/creative-toolkit" element={<CreativeToolkit />} />
                   <Route path="/advanced-build" element={<AdvancedBuild />} />
                   <Route path="/beta-feedback" element={<BetaFeedback />} />
-                  <Route path="/performance-history" element={<PerformanceHistory />} />
-                  <Route path="/performance" element={<PerformanceDashboard />} />
-                  <Route path="/past-reports" element={<PastReports />} />
                   <Route path="/partners" element={<Partners />} />
                   <Route path="/report/:shareToken" element={<SharedReport />} />
                   <Route path="/refer" element={<Refer />} />
