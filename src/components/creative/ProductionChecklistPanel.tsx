@@ -12,7 +12,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { LumiThinking } from "@/components/LumiThinking";
-import { printCreativeBrief } from "@/lib/print-creative-brief";
 
 const hookTechniqueLabels: Record<string, { label: string; color: string }> = {
   mid_sentence: { label: "Mid-Sentence Start", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },

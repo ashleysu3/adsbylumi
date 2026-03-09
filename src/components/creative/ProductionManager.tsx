@@ -20,7 +20,6 @@ import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
 import { ExportChecklistModal } from "./ExportChecklistModal";
 import { format } from "date-fns";
-import { printCreativeBrief } from "@/lib/print-creative-brief";
 
 interface RankedItem extends ProductionItem {
   rank: number;
