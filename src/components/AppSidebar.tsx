@@ -178,6 +178,23 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
               {!collapsed && <span>Create a New Ad</span>}
             </span>
           </button>
+
+          <button
+            onClick={() => navigate("/ad-performance")}
+            className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              isActive("/ad-performance")
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <span className="relative">
+              <BarChart3 className="h-4 w-4" />
+              {hasRedAlert && (
+                <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
+              )}
+            </span>
+            {!collapsed && <span>Ad Performance</span>}
+          </button>
         </div>
       </SidebarHeader>
 
