@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Eye, 
   Play, 
@@ -26,11 +28,71 @@ import {
   Check,
   X,
   Lightbulb,
-  Package
+  Package,
+  Target
 } from "lucide-react";
 import { getStatusLabel } from "@/lib/campaign-status-labels";
 import { toast } from "sonner";
 import { CreativeFlowModal } from "@/components/creative/CreativeFlowModal";
+import lumiLogo from "@/assets/lumi-logo.png";
+
+const KPI_OPTIONS = [
+  { value: 'cplpv', label: 'Cost per Landing Page View (CPLPV)', goalType: 'less_than' },
+  { value: 'cpc', label: 'Cost per Click (CPC)', goalType: 'less_than' },
+  { value: 'cpl', label: 'Cost per Lead (CPL)', goalType: 'less_than' },
+  { value: 'cppv', label: 'Cost per Profile Visit (CPPV)', goalType: 'less_than' },
+  { value: 'cp2sc', label: 'Cost per 2-Sec View (CP2SC)', goalType: 'less_than' },
+  { value: 'roas', label: 'Return on Ad Spend (ROAS)', goalType: 'greater_than' },
+  { value: 'ctr', label: 'Click-Through Rate (CTR)', goalType: 'greater_than' },
+  { value: 'cpm', label: 'Cost per 1,000 Impressions (CPM)', goalType: 'less_than' },
+  { value: 'purchases', label: 'Purchases (weekly count)', goalType: 'greater_than' },
+];
+
+function suggestGoals(offerPrice: string | null, templateSlug: string | null) {
+  const price = parseFloat((offerPrice || '0').replace(/[^0-9.]/g, ''));
+  const slug = templateSlug || '';
+
+  if (slug.includes('video-views')) return {
+    primary: { kpi: 'cp2sc', threshold: 0.01, label: 'Cost per 2-Sec View', goalType: 'less_than' },
+    secondary: null,
+    note: 'Video view campaigns are about reach and warm-up. Keep cost per view low.'
+  };
+  if (slug.includes('webinar') || slug.includes('challenge')) return {
+    primary: { kpi: 'cpl', threshold: 18, label: 'Cost per Lead', goalType: 'less_than' },
+    secondary: null,
+    note: 'Multi-day challenges and webinars have a higher ask — CPL naturally runs higher.'
+  };
+  if (slug.includes('discovery') || slug.includes('booking')) return {
+    primary: { kpi: 'cpl', threshold: 50, label: 'Cost per Lead', goalType: 'less_than' },
+    secondary: null,
+    note: 'Discovery call campaigns vary. Set CPL at roughly 10–20% of your offer value.'
+  };
+  if (slug.includes('lead') && price === 0) return {
+    primary: { kpi: 'cpl', threshold: 5, label: 'Cost per Lead', goalType: 'less_than' },
+    secondary: null,
+    note: 'Free lead magnets typically convert well. If CPL climbs above $8, investigate your creative.'
+  };
+  if (price > 0 && price <= 50) return {
+    primary: { kpi: 'cpl', threshold: Math.round(price * 0.3), label: 'Cost per Lead', goalType: 'less_than' },
+    secondary: { kpi: 'roas', threshold: 1.5, label: 'ROAS', goalType: 'greater_than' },
+    note: `For a $${price} offer, aim for CPL under $${Math.round(price * 0.3)} and ROAS above 1.5x.`
+  };
+  if (price > 50 && price <= 500) return {
+    primary: { kpi: 'cpl', threshold: Math.round(price * 0.15), label: 'Cost per Lead', goalType: 'less_than' },
+    secondary: { kpi: 'roas', threshold: 2, label: 'ROAS', goalType: 'greater_than' },
+    note: `For a $${price} offer, CPL under $${Math.round(price * 0.15)} keeps acquisition cost healthy.`
+  };
+  if (price > 500) return {
+    primary: { kpi: 'cpl', threshold: Math.round(price * 0.10), label: 'Cost per Lead', goalType: 'less_than' },
+    secondary: { kpi: 'roas', threshold: 2, label: 'ROAS', goalType: 'greater_than' },
+    note: `High-ticket offers can sustain higher CPL. Up to $${Math.round(price * 0.10)} per lead can still be profitable depending on your close rate.`
+  };
+  return {
+    primary: { kpi: 'cpl', threshold: 20, label: 'Cost per Lead', goalType: 'less_than' },
+    secondary: null,
+    note: 'Starting point suggestion — adjust based on your actual margins and conversion rates.'
+  };
+}
 
 interface CampaignDetailDrawerProps {
   open: boolean;
@@ -45,12 +107,30 @@ interface WorkspaceData {
   progress_status: string;
   offer_name: string | null;
   offer_url: string | null;
+  offer_price: string | null;
   creative_json: any;
   selected_copy: any;
   production_checklist: any;
   meta_campaign_status: string | null;
   created_at: string;
   updated_at: string;
+  template_id: string | null;
+  brand_id: string;
+  campaign_templates?: { slug: string; name: string } | null;
+}
+
+interface GoalsData {
+  id: string;
+  primary_kpi: string;
+  primary_kpi_label: string;
+  primary_kpi_goal_type: string;
+  primary_kpi_threshold: number;
+  secondary_kpi: string | null;
+  secondary_kpi_label: string | null;
+  secondary_kpi_goal_type: string | null;
+  secondary_kpi_threshold: number | null;
+  frequency_threshold: number | null;
+  check_frequency_at: string | null;
 }
 
 export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate }: CampaignDetailDrawerProps) {
@@ -69,14 +149,29 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
   // Creative flow modal
   const [showCreativeModal, setShowCreativeModal] = useState(false);
 
+  // Goals state
+  const [existingGoals, setExistingGoals] = useState<GoalsData | null>(null);
+  const [goalsLoading, setGoalsLoading] = useState(false);
+  const [isEditingGoals, setIsEditingGoals] = useState(false);
+  const [goalForm, setGoalForm] = useState({
+    primary_kpi: '',
+    primary_kpi_threshold: '',
+    secondary_kpi: '',
+    secondary_kpi_threshold: '',
+    frequency_threshold: '4',
+    show_secondary: false,
+  });
+  const [goalsSaving, setGoalsSaving] = useState(false);
+
   useEffect(() => {
     if (open && campaignId) {
       fetchWorkspace();
+      fetchGoals();
     }
-    // Reset editing states when drawer closes
     if (!open) {
       setIsEditingName(false);
       setIsEditingOffer(false);
+      setIsEditingGoals(false);
     }
   }, [open, campaignId]);
 
@@ -87,12 +182,12 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
     try {
       const { data, error } = await supabase
         .from("campaign_workspaces")
-        .select("*")
+        .select("*, campaign_templates(slug, name)")
         .eq("id", campaignId)
         .single();
 
       if (error) throw error;
-      setWorkspace(data);
+      setWorkspace(data as any);
       setEditName(data.name);
       setEditOfferName(data.offer_name || "");
       setEditOfferUrl(data.offer_url || "");
@@ -102,6 +197,108 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchGoals = async () => {
+    if (!campaignId) return;
+    setGoalsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("campaign_goals")
+        .select("*")
+        .eq("workspace_id", campaignId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setExistingGoals(data as GoalsData);
+        setGoalForm({
+          primary_kpi: data.primary_kpi,
+          primary_kpi_threshold: String(data.primary_kpi_threshold),
+          secondary_kpi: data.secondary_kpi || '',
+          secondary_kpi_threshold: data.secondary_kpi_threshold ? String(data.secondary_kpi_threshold) : '',
+          frequency_threshold: String(data.frequency_threshold || 4),
+          show_secondary: !!data.secondary_kpi,
+        });
+      } else {
+        setExistingGoals(null);
+      }
+    } catch (error) {
+      console.error("Error fetching goals:", error);
+    } finally {
+      setGoalsLoading(false);
+    }
+  };
+
+  const handleSaveGoals = async () => {
+    if (!workspace || !goalForm.primary_kpi || !goalForm.primary_kpi_threshold) {
+      toast.error("Please set a primary KPI and threshold");
+      return;
+    }
+
+    setGoalsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const primaryOption = KPI_OPTIONS.find(o => o.value === goalForm.primary_kpi);
+      const secondaryOption = goalForm.show_secondary && goalForm.secondary_kpi 
+        ? KPI_OPTIONS.find(o => o.value === goalForm.secondary_kpi) 
+        : null;
+
+      const goalData = {
+        workspace_id: workspace.id,
+        brand_id: workspace.brand_id,
+        created_by: user.id,
+        primary_kpi: goalForm.primary_kpi,
+        primary_kpi_label: primaryOption?.label || goalForm.primary_kpi,
+        primary_kpi_goal_type: primaryOption?.goalType || 'less_than',
+        primary_kpi_threshold: parseFloat(goalForm.primary_kpi_threshold),
+        secondary_kpi: secondaryOption ? goalForm.secondary_kpi : null,
+        secondary_kpi_label: secondaryOption?.label || null,
+        secondary_kpi_goal_type: secondaryOption?.goalType || null,
+        secondary_kpi_threshold: secondaryOption && goalForm.secondary_kpi_threshold 
+          ? parseFloat(goalForm.secondary_kpi_threshold) : null,
+        frequency_threshold: parseFloat(goalForm.frequency_threshold) || 4,
+        check_frequency_at: 'campaign',
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existingGoals) {
+        const { error } = await supabase
+          .from("campaign_goals")
+          .update(goalData)
+          .eq("id", existingGoals.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("campaign_goals")
+          .insert(goalData);
+        if (error) throw error;
+      }
+
+      toast.success("Performance goals saved");
+      setIsEditingGoals(false);
+      await fetchGoals();
+      onUpdate?.();
+    } catch (error: any) {
+      console.error("Error saving goals:", error);
+      toast.error(error.message || "Failed to save goals");
+    } finally {
+      setGoalsSaving(false);
+    }
+  };
+
+  const applySuggestions = (suggestion: ReturnType<typeof suggestGoals>) => {
+    setGoalForm({
+      primary_kpi: suggestion.primary.kpi,
+      primary_kpi_threshold: String(suggestion.primary.threshold),
+      secondary_kpi: suggestion.secondary?.kpi || '',
+      secondary_kpi_threshold: suggestion.secondary ? String(suggestion.secondary.threshold) : '',
+      frequency_threshold: '4',
+      show_secondary: !!suggestion.secondary,
+    });
+    setIsEditingGoals(true);
   };
 
   const handleSaveName = async () => {
@@ -215,6 +412,12 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
         icon: <CheckCircle2 className="h-4 w-4" />,
         nextStep: "View final results"
       },
+      imported: {
+        label: "Imported",
+        color: "bg-blue-50 text-blue-700 border-blue-200",
+        icon: <CheckCircle2 className="h-4 w-4" />,
+        nextStep: "Set performance goals to track this campaign"
+      },
     };
     return statusMap[status] || statusMap.draft;
   };
@@ -259,6 +462,30 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
   const statusInfo = workspace ? getStatusInfo(workspace.progress_status) : null;
   const creativePreview = getCreativePreview();
   const copyPreview = getCopyPreview();
+
+  const templateSlug = (workspace?.campaign_templates as any)?.slug || null;
+  const suggestion = workspace ? suggestGoals(workspace.offer_price, templateSlug) : null;
+
+  const getGoalTypeLabel = (kpi: string) => {
+    const opt = KPI_OPTIONS.find(o => o.value === kpi);
+    if (!opt) return 'less than';
+    return opt.goalType === 'less_than' ? 'less than' : 'greater than';
+  };
+
+  const getThresholdPrefix = (kpi: string) => {
+    const opt = KPI_OPTIONS.find(o => o.value === kpi);
+    if (!opt) return '$';
+    if (kpi === 'roas') return '';
+    if (kpi === 'ctr') return '';
+    if (kpi === 'purchases') return '';
+    return '$';
+  };
+
+  const getThresholdSuffix = (kpi: string) => {
+    if (kpi === 'roas') return 'x';
+    if (kpi === 'ctr') return '%';
+    return '';
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -413,11 +640,12 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
                 </CardContent>
               </Card>
 
-              {/* Tabs for Creative / Copy / Details */}
+              {/* Tabs for Creative / Copy / Goals / Details */}
               <Tabs defaultValue="creative" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="creative" className="text-xs">Creative</TabsTrigger>
                   <TabsTrigger value="copy" className="text-xs">Copy</TabsTrigger>
+                  <TabsTrigger value="goals" className="text-xs">Goals</TabsTrigger>
                   <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
                 </TabsList>
 
@@ -493,6 +721,196 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
                       <FileText className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
                       <p className="text-sm text-muted-foreground">No copy selected yet</p>
                       <p className="text-xs text-muted-foreground mt-1">Continue setup to select copy</p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Goals Tab */}
+                <TabsContent value="goals" className="mt-4 space-y-4">
+                  {goalsLoading ? (
+                    <div className="space-y-3">
+                      <Skeleton className="h-20 w-full" />
+                      <Skeleton className="h-32 w-full" />
+                    </div>
+                  ) : existingGoals && !isEditingGoals ? (
+                    /* Saved goals summary */
+                    <div className="space-y-3">
+                      <Card className="border-green-200 dark:border-green-800">
+                        <CardContent className="p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium flex items-center gap-2">
+                              <Target className="h-4 w-4 text-primary" /> Performance Goals
+                            </p>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setIsEditingGoals(true)}>
+                              <Pencil className="h-3 w-3 mr-1" /> Edit
+                            </Button>
+                          </div>
+                          <div className="text-sm space-y-1">
+                            <p>
+                              <span className="text-muted-foreground">Primary:</span>{' '}
+                              <span className="font-medium">{existingGoals.primary_kpi_label}</span>{' '}
+                              — {existingGoals.primary_kpi_goal_type === 'less_than' ? 'less than' : 'greater than'}{' '}
+                              {getThresholdPrefix(existingGoals.primary_kpi)}{existingGoals.primary_kpi_threshold}{getThresholdSuffix(existingGoals.primary_kpi)}
+                            </p>
+                            {existingGoals.secondary_kpi && (
+                              <p>
+                                <span className="text-muted-foreground">Secondary:</span>{' '}
+                                <span className="font-medium">{existingGoals.secondary_kpi_label}</span>{' '}
+                                — {existingGoals.secondary_kpi_goal_type === 'less_than' ? 'less than' : 'greater than'}{' '}
+                                {getThresholdPrefix(existingGoals.secondary_kpi)}{existingGoals.secondary_kpi_threshold}{getThresholdSuffix(existingGoals.secondary_kpi)}
+                              </p>
+                            )}
+                            <p>
+                              <span className="text-muted-foreground">Frequency:</span>{' '}
+                              flag above {existingGoals.frequency_threshold || 4}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3 space-y-1">
+                        <p>✅ Green if {existingGoals.primary_kpi_label} is {existingGoals.primary_kpi_goal_type === 'less_than' ? 'less than' : 'greater than'} {getThresholdPrefix(existingGoals.primary_kpi)}{existingGoals.primary_kpi_threshold}{getThresholdSuffix(existingGoals.primary_kpi)}{existingGoals.secondary_kpi ? ` and ${existingGoals.secondary_kpi_label} meets goal` : ''}</p>
+                        <p>🟡 Yellow if within 25% of goal</p>
+                        <p>🔴 Red if outside goal threshold</p>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Goal configuration form */
+                    <div className="space-y-4">
+                      {/* LUMI suggestion card — only show if no existing goals and not editing */}
+                      {!existingGoals && !isEditingGoals && suggestion && (
+                        <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
+                          <CardContent className="p-4 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <img src={lumiLogo} className="h-5 w-5" alt="" />
+                              <span className="text-sm font-semibold">LUMI suggests for this campaign:</span>
+                            </div>
+                            <div className="text-sm space-y-1">
+                              <p>
+                                <span className="font-medium">Primary KPI:</span> {suggestion.primary.label} — goal: {suggestion.primary.goalType === 'less_than' ? 'less than' : 'greater than'} {getThresholdPrefix(suggestion.primary.kpi)}{suggestion.primary.threshold}{getThresholdSuffix(suggestion.primary.kpi)}
+                              </p>
+                              {suggestion.secondary && (
+                                <p>
+                                  <span className="font-medium">Secondary KPI:</span> {suggestion.secondary.label} — goal: {suggestion.secondary.goalType === 'less_than' ? 'less than' : 'greater than'} {getThresholdPrefix(suggestion.secondary.kpi)}{suggestion.secondary.threshold}{getThresholdSuffix(suggestion.secondary.kpi)}
+                                </p>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground italic">{suggestion.note}</p>
+                            <p className="text-xs text-muted-foreground">These are starting points based on your offer type and price point. Adjust them as you gather real data.</p>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => applySuggestions(suggestion)}>Use these suggestions</Button>
+                              <Button size="sm" variant="ghost" onClick={() => setIsEditingGoals(true)}>Set manually</Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Form — show when editing or when suggestion was applied */}
+                      {(isEditingGoals) && (
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-sm">Primary KPI</Label>
+                            <Select value={goalForm.primary_kpi} onValueChange={v => setGoalForm(p => ({ ...p, primary_kpi: v }))}>
+                              <SelectTrigger className="mt-1"><SelectValue placeholder="Select KPI..." /></SelectTrigger>
+                              <SelectContent>
+                                {KPI_OPTIONS.map(o => (
+                                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {goalForm.primary_kpi && (
+                            <div>
+                              <Label className="text-sm">
+                                Goal: {getGoalTypeLabel(goalForm.primary_kpi)} {getThresholdPrefix(goalForm.primary_kpi)}____{getThresholdSuffix(goalForm.primary_kpi)}
+                              </Label>
+                              <Input
+                                type="number"
+                                step="any"
+                                className="mt-1"
+                                value={goalForm.primary_kpi_threshold}
+                                onChange={e => setGoalForm(p => ({ ...p, primary_kpi_threshold: e.target.value }))}
+                                placeholder="Enter threshold"
+                              />
+                            </div>
+                          )}
+
+                          {!goalForm.show_secondary ? (
+                            <button
+                              className="text-xs text-primary hover:underline"
+                              onClick={() => setGoalForm(p => ({ ...p, show_secondary: true }))}
+                            >
+                              + Add secondary KPI
+                            </button>
+                          ) : (
+                            <>
+                              <div>
+                                <Label className="text-sm">Secondary KPI (optional)</Label>
+                                <Select value={goalForm.secondary_kpi} onValueChange={v => setGoalForm(p => ({ ...p, secondary_kpi: v }))}>
+                                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select KPI..." /></SelectTrigger>
+                                  <SelectContent>
+                                    {KPI_OPTIONS.filter(o => o.value !== goalForm.primary_kpi).map(o => (
+                                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              {goalForm.secondary_kpi && (
+                                <div>
+                                  <Label className="text-sm">
+                                    Goal: {getGoalTypeLabel(goalForm.secondary_kpi)} {getThresholdPrefix(goalForm.secondary_kpi)}____{getThresholdSuffix(goalForm.secondary_kpi)}
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    step="any"
+                                    className="mt-1"
+                                    value={goalForm.secondary_kpi_threshold}
+                                    onChange={e => setGoalForm(p => ({ ...p, secondary_kpi_threshold: e.target.value }))}
+                                    placeholder="Enter threshold"
+                                  />
+                                </div>
+                              )}
+                              <button
+                                className="text-xs text-muted-foreground hover:underline"
+                                onClick={() => setGoalForm(p => ({ ...p, show_secondary: false, secondary_kpi: '', secondary_kpi_threshold: '' }))}
+                              >
+                                Remove secondary KPI
+                              </button>
+                            </>
+                          )}
+
+                          <div>
+                            <Label className="text-sm">Flag when frequency exceeds</Label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              className="mt-1 w-24"
+                              value={goalForm.frequency_threshold}
+                              onChange={e => setGoalForm(p => ({ ...p, frequency_threshold: e.target.value }))}
+                            />
+                          </div>
+
+                          {/* Preview */}
+                          {goalForm.primary_kpi && goalForm.primary_kpi_threshold && (
+                            <div className="text-xs text-muted-foreground bg-muted/30 rounded-lg p-3 space-y-1">
+                              <p className="font-medium text-foreground text-sm mb-1">Your campaign will be reviewed as:</p>
+                              <p>✅ Green if {KPI_OPTIONS.find(o => o.value === goalForm.primary_kpi)?.label} is {getGoalTypeLabel(goalForm.primary_kpi)} {getThresholdPrefix(goalForm.primary_kpi)}{goalForm.primary_kpi_threshold}{getThresholdSuffix(goalForm.primary_kpi)}</p>
+                              <p>🟡 Yellow if within 25% of goal</p>
+                              <p>🔴 Red if outside goal threshold</p>
+                            </div>
+                          )}
+
+                          <div className="flex gap-2">
+                            <Button onClick={handleSaveGoals} disabled={goalsSaving} className="flex-1">
+                              {goalsSaving ? 'Saving...' : 'Save Goals'}
+                            </Button>
+                            {existingGoals && (
+                              <Button variant="ghost" onClick={() => setIsEditingGoals(false)}>Cancel</Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </TabsContent>
