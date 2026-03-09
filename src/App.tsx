@@ -54,6 +54,8 @@ import Refer from "./pages/Refer";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import ClientPortal from "./pages/ClientPortal";
+import PerformanceDashboard from "./pages/PerformanceDashboard";
+import SharedReport from "./pages/SharedReport";
 
 function CreativeRedirect() {
   const location = useLocation();
