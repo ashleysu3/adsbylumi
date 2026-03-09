@@ -341,11 +341,30 @@ export function InsightsHome({
     try {
       const allRecs: any[] = [];
       for (const campaign of campaignsWithMetrics.slice(0, 5)) {
+        // Fetch campaign goals
+        const { data: goalsData } = await supabase
+          .from('campaign_goals')
+          .select('*')
+          .eq('workspace_id', campaign.id)
+          .maybeSingle();
+
+        // Fetch ad-level metrics from performance_history
+        const { data: workspaceData } = await supabase
+          .from('campaign_workspaces')
+          .select('performance_history')
+          .eq('id', campaign.id)
+          .single();
+
+        const latestSnapshot = (workspaceData?.performance_history as any[])?.slice(-1)[0];
+        const adMetrics = latestSnapshot?.adMetrics || [];
+
         const { data, error } = await supabase.functions.invoke('generate-recommendations', {
           body: {
             workspaceId: campaign.id,
             brandId: campaign.brandId,
-            metrics: { ...campaign.metrics, dailyBudget: campaign.dailyBudget }
+            metrics: { ...campaign.metrics, dailyBudget: campaign.dailyBudget },
+            ads: adMetrics,
+            goals: goalsData || null
           }
         });
 
@@ -355,6 +374,37 @@ export function InsightsHome({
             campaignName: campaign.name,
             campaignId: campaign.id
           })));
+        }
+
+        // Pull in any existing AI-analyzed next_steps from analyze-performance
+        const { data: wsReport } = await supabase
+          .from('campaign_workspaces')
+          .select('performance_report_latest')
+          .eq('id', campaign.id)
+          .single();
+
+        const nextSteps = (wsReport?.performance_report_latest as any)?.next_steps;
+        if (Array.isArray(nextSteps) && nextSteps.length > 0) {
+          const existingRecs = allRecs.filter((r: any) => r.campaignId === campaign.id);
+          if (existingRecs.length < 2) {
+            nextSteps.slice(0, 2).forEach((step: string, i: number) => {
+              allRecs.push({
+                id: `ai-step-${campaign.id}-${i}`,
+                type: 'keep_running',
+                title: `Recommended action`,
+                description: step,
+                impact: 'Based on your latest performance analysis',
+                confidence: 'medium',
+                requiresDoubleApproval: false,
+                actionPayload: {},
+                priority: 60 + i,
+                userAction: true,
+                actionUrl: `/data`,
+                campaignName: campaign.name,
+                campaignId: campaign.id,
+              });
+            });
+          }
         }
       }
 
