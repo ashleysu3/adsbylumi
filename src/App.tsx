@@ -50,6 +50,7 @@ import BetaFeedback from "./pages/BetaFeedback";
 import Partners from "./pages/Partners";
 import Refer from "./pages/Refer";
 import CreativeToolkit from "./pages/CreativeToolkit";
+import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
