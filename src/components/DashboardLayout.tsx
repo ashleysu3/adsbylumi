@@ -16,6 +16,7 @@ import { useLumiAssistant } from "@/components/LumiAssistant";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ArrowRight, X } from "lucide-react";
+import { SubscriptionBanner } from "@/components/SubscriptionGate";
 
 interface DashboardLayoutProps {
   children: ReactNode;
