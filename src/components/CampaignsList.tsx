@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit, RefreshCw, Loader2, Package } from "lucide-react";
+import { ArrowRight, Plus, MoreVertical, Archive, ArchiveRestore, ImagePlus, Upload, Merge, Radio, FileEdit, RefreshCw, Loader2, Package, PenTool, BarChart2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdsEmptyState } from "./AdsEmptyState";
 import { CampaignDetailDrawer } from "./CampaignDetailDrawer";
