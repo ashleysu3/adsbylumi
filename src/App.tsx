@@ -53,6 +53,7 @@ import Partners from "./pages/Partners";
 import Refer from "./pages/Refer";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import AdminAffiliates from "./pages/admin/Affiliates";
+import ClientPortal from "./pages/ClientPortal";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -130,6 +131,7 @@ const App = () => {
                   <Route path="/admin/users" element={<AdminUsers />} />
                   <Route path="/admin/settings" element={<AdminSettings />} />
                   <Route path="/admin/team" element={<AdminTeam />} />
+                  <Route path="/client-portal/:portalId" element={<ClientPortal />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

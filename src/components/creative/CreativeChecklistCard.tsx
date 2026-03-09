@@ -170,6 +170,16 @@ export function CreativeChecklistCard({
                       Top 5
                     </Badge>
                   )}
+                  {(item as any).approval_status === 'approved' && (
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 text-xs">
+                      Approved ✅
+                    </Badge>
+                  )}
+                  {(item as any).approval_status === 'changes_requested' && (
+                    <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-xs">
+                      Changes Requested 🔄
+                    </Badge>
+                  )}
                   {hasAsset && (
                     <CheckCircle2 className="h-4 w-4 text-green-500 ml-auto flex-shrink-0" />
                   )}

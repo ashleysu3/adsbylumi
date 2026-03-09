@@ -9,7 +9,8 @@ import {
   Rocket, Upload, CheckCircle2, AlertCircle, 
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
-  Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle
+  Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
+  Share2
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,8 @@ import { CreativeChecklistCard } from "./CreativeChecklistCard";
 import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
 import { ExportChecklistModal } from "./ExportChecklistModal";
+import { ShareWithClientDialog } from "./ShareWithClientDialog";
+import { ClientActivityFeed } from "./ClientActivityFeed";
 import { format } from "date-fns";
 
 interface RankedItem extends ProductionItem {
@@ -75,6 +78,7 @@ export function ProductionManager({
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkMoving, setBulkMoving] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
@@ -356,6 +360,18 @@ export function ProductionManager({
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-lg">Production Checklist</CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Share with Client */}
+                  {productionItems.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShareDialogOpen(true)}
+                      className="gap-1"
+                    >
+                      <Share2 className="h-3 w-3" />
+                      Share with Client
+                    </Button>
+                  )}
                   {/* Export Button */}
                   <TooltipProvider>
                     <Tooltip>
@@ -714,6 +730,9 @@ export function ProductionManager({
               </div>
             </CardContent>
           </Card>
+
+          {/* Client Activity Feed */}
+          <ClientActivityFeed workspaceId={workspace.id} />
         </div>
       </div>
       
@@ -765,6 +784,15 @@ export function ProductionManager({
         angleCopy={angleCopy}
         brandName={workspace?.brands?.name}
         offerName={workspace?.offer_name}
+      />
+
+      {/* Share with Client Dialog */}
+      <ShareWithClientDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        workspace={workspace}
+        productionItems={productionItems}
+        brandId={brandId}
       />
     </>
   );
