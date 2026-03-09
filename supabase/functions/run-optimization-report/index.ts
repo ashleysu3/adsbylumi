@@ -10,7 +10,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandId, dateRangeStart, dateRangeEnd } = await req.json();
+    console.log('[run-optimization-report] Request received');
+    const body = await req.json();
+    const { brandId, dateRangeStart, dateRangeEnd } = body;
+    console.log('[run-optimization-report] Params:', { brandId, dateRangeStart, dateRangeEnd });
     if (!brandId || !dateRangeStart || !dateRangeEnd) {
       throw new Error('brandId, dateRangeStart, and dateRangeEnd are required');
     }
