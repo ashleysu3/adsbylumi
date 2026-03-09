@@ -215,12 +215,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                       className="transition-all duration-200"
                       activeClassName="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-md shadow-lumi-pink-1/20 font-semibold [&>svg]:text-white"
                     >
-                      <div className="relative">
-                        <item.icon className="h-4 w-4" />
-                        {item.path === '/ad-performance' && hasRedAlert && (
-                          <span className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                        )}
-                      </div>
+                      <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.label}</span>}
                     </NavLink>
                   </SidebarMenuButton>
