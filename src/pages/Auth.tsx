@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { SparkleIcon } from "@/components/SparkleIcon";
+import { SUBSCRIPTION_TIERS } from "@/lib/subscription-tiers";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 const REMEMBERED_EMAIL_KEY = "lumi_remembered_email";
@@ -104,8 +105,39 @@ export default function Auth() {
         }
 
         if (data.user && data.session) {
-          toast.success("Account created! Let's get you set up.");
-          navigate("/onboarding");
+          toast.success("Account created! Redirecting to checkout...");
+          
+          // Auto-trigger Stripe checkout for Solo monthly plan
+          try {
+            const priceId = SUBSCRIPTION_TIERS.solo.monthlyPriceId;
+            
+            // Capture Rewardful referral ID if available
+            let rewardful_referral = '';
+            try {
+              if ((window as any).rewardful) {
+                rewardful_referral = await new Promise<string>((resolve) => {
+                  (window as any).rewardful('ready', function() {
+                    resolve((window as any).Rewardful?.referral || '');
+                  });
+                });
+              }
+            } catch { /* ignore */ }
+
+            const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke("create-checkout", {
+              body: { priceId, rewardful_referral },
+            });
+
+            if (checkoutError) throw checkoutError;
+
+            if (checkoutData?.url) {
+              window.location.href = checkoutData.url;
+              return;
+            }
+          } catch (checkoutErr: any) {
+            console.error("Checkout error:", checkoutErr);
+            toast.error("Could not start checkout. You can subscribe from Settings.");
+            navigate("/onboarding");
+          }
         } else if (data.user && !data.session) {
           toast.success("Account created! Please check your email to confirm.");
         }
