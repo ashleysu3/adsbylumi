@@ -171,14 +171,14 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
         {/* Action Button */}
         <div className="mt-3 space-y-2">
           <button
-            onClick={() => navigate("/create")}
+            onClick={() => !subLoading && isSubscribed ? navigate("/create") : navigate("/pricing")}
             className="w-full relative group overflow-hidden rounded-xl"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 opacity-90 group-hover:opacity-100 transition-opacity" />
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out" />
             <span className="relative flex items-center justify-center gap-2 py-2.5 px-3 text-white font-semibold text-sm">
-              <Plus className="h-4 w-4" />
-              {!collapsed && <span>Create a New Ad</span>}
+              {!subLoading && !isSubscribed ? <Lock className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {!collapsed && <span>{!subLoading && !isSubscribed ? "Upgrade to Create" : "Create a New Ad"}</span>}
             </span>
           </button>
 
