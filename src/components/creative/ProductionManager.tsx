@@ -9,7 +9,8 @@ import {
   Rocket, Upload, CheckCircle2, AlertCircle, 
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
-  Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle
+  Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
+  Share2
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,8 @@ import { CreativeChecklistCard } from "./CreativeChecklistCard";
 import { CreativeAngle } from "./AngleSelector";
 import { AdPreviewModal } from "./AdPreviewModal";
 import { ExportChecklistModal } from "./ExportChecklistModal";
+import { ShareWithClientDialog } from "./ShareWithClientDialog";
+import { ClientActivityFeed } from "./ClientActivityFeed";
 import { format } from "date-fns";
 
 interface RankedItem extends ProductionItem {
