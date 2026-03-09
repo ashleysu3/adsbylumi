@@ -39,6 +39,8 @@ interface AngleCopyEditorProps {
   onSave: () => void;
   productionItemCount: number;
   autoGenerate?: boolean;
+  brandId?: string;
+  offerId?: string;
 }
 
 export function AngleCopyEditor({

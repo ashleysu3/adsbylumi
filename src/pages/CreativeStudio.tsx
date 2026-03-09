@@ -1182,6 +1182,8 @@ export default function CreativeStudio() {
                   onSave={handleSaveCopy}
                   productionItemCount={productionItems.length}
                   autoGenerate={shouldAutoGenerateCopy}
+                  brandId={brandId}
+                  offerId={workspace?.offer_id}
                 />
                 
                 <div className="flex justify-end">
