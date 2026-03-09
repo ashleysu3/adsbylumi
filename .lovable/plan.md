@@ -1,65 +1,126 @@
 
 
-## Plan: Add Local & Event Targeting Strategies to the Create Wizard
+## Client Approval Portal — Implementation Plan
 
-### Problem
-Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
+This is a large feature with 7 distinct deliverables: 2 database tables, 3 edge functions, 1 public page, and frontend integration (share dialog + activity feed).
 
-### What Changes
+---
 
-**1. Add system offer IDs for the three local strategies**
+### 1. Database Migration
 
-In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
+**Table: `client_portals`**
+- Columns as specified (id, workspace_id, brand_id, created_by, access_code_hash, portal_name, client_name, status, agency_branding, items_included, expires_at, created_at)
+- Foreign keys to campaign_workspaces, brands
+- RLS: owner (created_by = auth.uid()) can SELECT/INSERT/UPDATE/DELETE
+- Security definer function `validate_portal_access(portal_id uuid)` for public lookups (used by edge functions only)
 
+**Table: `client_portal_activity`**
+- Columns as specified (id, portal_id, production_item_id, action, comment, client_name, created_at)
+- Foreign key to client_portals
+- RLS: owner can SELECT via join to client_portals.created_by; no direct public INSERT (service role only)
+- Use validation trigger instead of CHECK constraint for action values
+
+---
+
+### 2. Edge Functions
+
+**`client-portal-auth`** (verify_jwt = false)
+- Accepts `{ portalId, accessCode }`
+- Uses service role to fetch portal by ID
+- SHA-256 hash comparison for access code
+- On success: returns portal metadata + production items from campaign_workspaces (fetched via workspace_id)
+- On failure: 401
+
+**`client-portal-actions`** (verify_jwt = false)
+- Accepts `{ portalId, accessCode, action, productionItemId, comment?, clientName? }`
+- Re-validates access code (stateless)
+- Inserts into `client_portal_activity`
+- Updates `campaign_workspaces.production_items` JSONB — finds matching item by ID, sets `approval_status` and `approval_comment`
+- Fire-and-forget call to `send-portal-notification`
+- Returns `{ success: true }`
+
+**`send-portal-notification`** (verify_jwt = false)
+- Accepts portal context
+- Fetches creator email via service role
+- Sends email via Resend (matching existing pattern from `send-welcome-email`)
+- Wrapped in try/catch, never throws
+
+---
+
+### 3. Client Portal Page
+
+**New file: `src/pages/ClientPortal.tsx`**
+
+Public route at `/client-portal/:portalId` — no DashboardLayout, no sidebar.
+
+**Screen 1 — Password Gate:**
+- Clean centered layout with agency logo/name
+- Portal name heading
+- Text input for access code (styled as individual character boxes using existing `input-otp` package)
+- Calls `client-portal-auth` on submit
+- Stores `{ portalId, accessCode }` in sessionStorage on success
+
+**Screen 2 — Portal Content:**
+- Header with agency branding (logo or name, optional "Powered by LUMI" badge)
+- Progress bar showing approved count / total
+- Items grouped by format (Talking Head, B-Roll, Graphic, Copy) with section headers
+- Each item card shows format-specific content (hook, script_lines, delivery_style, text_overlays, etc.)
+- "Approve" button — optimistic UI update, calls `client-portal-actions`
+- "Request Changes" button — expands textarea for optional comment, then submits
+- 100% approved state: confetti + banner
+- Footer note about file handoff via Slack/email
+
+---
+
+### 4. Share with Client Dialog
+
+Added to `ProductionManager.tsx`:
+- "Share with Client" button (Share2 icon), visible when productionItems.length > 0
+- Two-step dialog:
+  - **Step 1 — Configure:** Portal name (pre-filled), client name, access code (with generate button), item selection checklist, collapsible branding section (agency name, logo URL, primary color, powered-by toggle)
+  - **Step 2 — Share:** Shows generated link + access code with copy buttons, done button
+- Hashes access code via SubtleCrypto before inserting into `client_portals`
+
+---
+
+### 5. Activity Feed
+
+In `ProductionManager.tsx`, below the Share button:
+- If a portal exists for this workspace, show an "Client Activity" card
+- Fetches from `client_portal_activity` ordered by created_at desc
+- Each row: action icon + item name + relative timestamp + optional comment
+- Polls every 30 seconds via setInterval
+- Empty state message when no activity
+
+---
+
+### 6. Approval Status Badges on Production Items
+
+Update `CreativeChecklistCard.tsx` to accept and display `approval_status`:
+- `approved` → green badge
+- `changes_requested` → amber badge
+- No field → no badge (clean default)
+
+Read from `production_items` JSONB (fields added by edge function, no schema migration needed).
+
+---
+
+### 7. Routing
+
+Add to `App.tsx`:
 ```
-LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
-LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
-EVENT_LOCATION_OFFER_ID = "system-event-location"
+<Route path="/client-portal/:portalId" element={<ClientPortal />} />
 ```
+Placed outside any auth guard, renders with zero app chrome.
 
-Add these to `SYSTEM_OFFER_IDS`.
+---
 
-**2. Add the options to Step 1 (offer selection)**
+### Implementation Order
 
-Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
-
-- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
-- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
-- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
-
-**3. Handle selection → skip to strategy step automatically**
-
-When a user selects a local strategy, it should:
-- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
-- Set `selectedTemplateId` to the matched template
-- Skip directly to Step 2 (strategy recommendation) since the template is already determined
-- The strategy recommendation step already works — it shows the selected template with structure details
-
-**4. Wire the flow through to workspace creation**
-
-The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
-- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
-- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
-
-**5. Add educational context for the Event strategy**
-
-For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
-- Phase 1: "Awareness ads at the event location to get people to interact with your content"
-- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
-- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
-
-### What Does NOT Change
-- `CampaignBuilderForm.tsx` — already handles location targeting UI
-- Campaign templates in DB — already configured with `location_type`, radius settings
-- Edge functions — no changes needed
-- Creative Studio flow — works as-is since these are standard templates
-
-### Technical Details
-
-The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
-
-The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
-
-### Files to Edit
-- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
+1. Database migration (both tables + RLS + security definer function)
+2. Edge functions (client-portal-auth, client-portal-actions, send-portal-notification)
+3. ClientPortal.tsx page + route in App.tsx
+4. Share with Client dialog in ProductionManager
+5. Activity feed in ProductionManager
+6. Approval status badges on CreativeChecklistCard
 
