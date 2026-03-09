@@ -195,7 +195,41 @@ export function ProductionManager({
       setSavingToLibrary(null);
     }
   };
-  
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === productionItems.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(productionItems.map(i => i.id)));
+    }
+  };
+
+  const handleBulkMoveToLibrary = async () => {
+    if (!onSaveToLibrary || selectedIds.size === 0) return;
+    setBulkMoving(true);
+    try {
+      const itemsToMove = productionItems.filter(i => selectedIds.has(i.id));
+      for (const item of itemsToMove) {
+        await onSaveToLibrary(item);
+      }
+      toast.success(`Moved ${itemsToMove.length} concept${itemsToMove.length !== 1 ? "s" : ""} to library`);
+      setSelectedIds(new Set());
+      setBulkSelectMode(false);
+    } catch (error: any) {
+      toast.error("Failed to move some items: " + error.message);
+    } finally {
+      setBulkMoving(false);
+    }
+  };
+
   // Handle file selection for a specific item
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
     const files = event.target.files;
