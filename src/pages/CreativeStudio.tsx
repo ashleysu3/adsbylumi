@@ -613,6 +613,8 @@ export default function CreativeStudio() {
            productPsychology: productPsychologyForAngles,
            offerAudiencePsychology: offerAudiencePsychologyForAngles,
            previouslyUsedAngles,
+           brandId,
+           offerId: workspace.offer_id,
          }
       });
       if (error) throw error;
@@ -686,6 +688,8 @@ export default function CreativeStudio() {
           offerAudiencePsychology,
           nicheContext: workspace.brands?.industry,
           creativeIntelligence,
+          brandId,
+          offerId: workspace.offer_id,
         }
       });
       if (error) throw error;
@@ -1178,6 +1182,8 @@ export default function CreativeStudio() {
                   onSave={handleSaveCopy}
                   productionItemCount={productionItems.length}
                   autoGenerate={shouldAutoGenerateCopy}
+                  brandId={brandId}
+                  offerId={workspace?.offer_id}
                 />
                 
                 <div className="flex justify-end">

@@ -39,6 +39,8 @@ interface AngleCopyEditorProps {
   onSave: () => void;
   productionItemCount: number;
   autoGenerate?: boolean;
+  brandId?: string;
+  offerId?: string;
 }
 
 export function AngleCopyEditor({
@@ -52,6 +54,8 @@ export function AngleCopyEditor({
   onSave,
   productionItemCount,
   autoGenerate = false,
+  brandId,
+  offerId,
 }: AngleCopyEditorProps) {
   const [activeAngle, setActiveAngle] = useState(selectedAngleIds[0] || "");
   const [generating, setGenerating] = useState(false);
@@ -120,6 +124,8 @@ export function AngleCopyEditor({
           audiencePsychology,
           feedback: feedback || undefined,
           neverUseWords: brandInfo?.never_use_words || [],
+          brandId,
+          offerId,
         },
       });
       
@@ -151,6 +157,8 @@ export function AngleCopyEditor({
           audiencePsychology,
           feedback: feedback || undefined,
           neverUseWords: brandInfo?.never_use_words || [],
+          brandId,
+          offerId,
         },
       });
       
