@@ -730,6 +730,9 @@ export function ProductionManager({
               </div>
             </CardContent>
           </Card>
+
+          {/* Client Activity Feed */}
+          <ClientActivityFeed workspaceId={workspace.id} />
         </div>
       </div>
       
