@@ -234,23 +234,21 @@ export function CampaignInsightDetail({
     if (!campaign.metrics) return;
     setRecsLoading(true);
     try {
-      // Also fetch bench items for swap recommendations
-      let benchItems: any[] = [];
-      if (campaign.brandId) {
-        const { data: bench } = await supabase
-          .from('creative_bench')
-          .select('*')
-          .eq('workspace_id', campaign.id)
-          .eq('status', 'bench');
-        benchItems = bench || [];
-      }
+      // Fetch bench items and goals in parallel
+      const [benchResult, goalsResult] = await Promise.all([
+        campaign.brandId
+          ? supabase.from('creative_bench').select('*').eq('workspace_id', campaign.id).eq('status', 'bench')
+          : Promise.resolve({ data: [] }),
+        supabase.from('campaign_goals').select('*').eq('workspace_id', campaign.id).maybeSingle(),
+      ]);
 
       const { data, error } = await supabase.functions.invoke('generate-recommendations', {
         body: {
           workspaceId: campaign.id,
           brandId: campaign.brandId,
           metrics: campaign.metrics,
-          benchItems,
+          benchItems: benchResult.data || [],
+          goals: goalsResult.data || null,
         },
       });
       if (!error && data?.recommendations) {
