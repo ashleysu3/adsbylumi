@@ -16,6 +16,7 @@ import { useLumiAssistant } from "@/components/LumiAssistant";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ArrowRight, X } from "lucide-react";
+import { SubscriptionBanner } from "@/components/SubscriptionGate";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -124,6 +125,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           isAdmin={isAdmin}
           onShowWalkthrough={() => startTour()}
         />
+        <SubscriptionBanner />
         <main className="px-4 py-4">{children}</main>
         <MobileBottomNav />
 
@@ -188,6 +190,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           )}
 
+          <SubscriptionBanner />
           <main className="flex-1 container mx-auto px-4 md:px-6 py-4 md:py-6">
             {children}
           </main>
