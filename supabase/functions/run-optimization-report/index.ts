@@ -117,10 +117,27 @@ Deno.serve(async (req) => {
       }
 
       let campaignId = metaCampaignIds.campaignId;
+
       if (typeof campaignId === 'string' && campaignId.includes('_')) {
         const parts = campaignId.split('_');
-        campaignId = parts[parts.length - 1];
+        const numericPart = parts[parts.length - 1];
+        const timestamp = parseInt(numericPart);
+        const now = Date.now();
+        const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
+        if (timestamp > oneYearAgo && timestamp <= now) {
+          unconfiguredCount++;
+          campaignResults.push({
+            workspace_id: workspace.id,
+            workspace_name: workspace.name,
+            status: 'unconfigured',
+            has_goals: !!goals,
+            message: 'Campaign uses a placeholder ID — not yet published to Meta.',
+          });
+          continue;
+        }
+        campaignId = numericPart;
       }
+
       if (!campaignId || !/^\d+$/.test(campaignId)) {
         unconfiguredCount++;
         campaignResults.push({
@@ -135,7 +152,7 @@ Deno.serve(async (req) => {
 
       // Fetch Meta campaign insights
       try {
-        const insightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach&time_range={"since":"${dateRangeStart}","until":"${dateRangeEnd}"}&access_token=${brand.meta_access_token}`;
+        const insightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&access_token=${brand.meta_access_token}`;
         const insightsRes = await fetch(insightsUrl);
         const insightsData = await insightsRes.json();
 

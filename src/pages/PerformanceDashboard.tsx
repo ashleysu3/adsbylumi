@@ -4,19 +4,19 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { BarChart2, RefreshCw, Settings, Share2, Copy, ExternalLink, Loader2 } from "lucide-react";
+import { BarChart2, RefreshCw, Settings, Share2, Copy, ExternalLink, Loader2, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
 import lumiLogo from "@/assets/lumi-logo.png";
+import { CampaignDetailDrawer } from "@/components/CampaignDetailDrawer";
 
 const KPI_OPTIONS = [
   { value: 'cplpv', label: 'Cost per Landing Page View (CPLPV)', goalType: 'less_than', format: 'currency' },
@@ -61,6 +61,10 @@ export default function PerformanceDashboard() {
   });
   const [digestLoading, setDigestLoading] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+
+  // Drawer state
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Load cached report
   const loadCachedReport = useCallback(async () => {
@@ -201,6 +205,11 @@ export default function PerformanceDashboard() {
     if (met) return '✅';
     if (close) return '🟡';
     return '🔴';
+  };
+
+  const openDrawer = (workspaceId: string) => {
+    setSelectedCampaignId(workspaceId);
+    setDrawerOpen(true);
   };
 
   return (
@@ -371,7 +380,7 @@ export default function PerformanceDashboard() {
                   )}
 
                   <div className="flex justify-end pt-2">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/campaigns`)}>
+                    <Button variant="ghost" size="sm" onClick={() => openDrawer(c.workspace_id)}>
                       View Campaign <ExternalLink className="h-3 w-3 ml-1" />
                     </Button>
                   </div>
@@ -397,8 +406,10 @@ export default function PerformanceDashboard() {
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">No performance goals set for this campaign. LUMI can't track performance without a target.</p>
                   <div className="flex gap-2 mt-3">
-                    <Button size="sm" variant="outline" onClick={() => navigate('/campaigns')}>Set Goals →</Button>
-                    <Button size="sm" variant="ghost" onClick={() => navigate('/campaigns')}>View Campaign →</Button>
+                    <Button size="sm" variant="outline" onClick={() => openDrawer(c.workspace_id)}>
+                      <Target className="h-3 w-3 mr-1" /> Set Goals →
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => openDrawer(c.workspace_id)}>View Campaign →</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -411,9 +422,22 @@ export default function PerformanceDashboard() {
           <Card>
             <CardContent className="p-12 text-center">
               <BarChart2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No active campaigns yet</h3>
-              <p className="text-muted-foreground text-sm mb-4">Once your campaigns are live, LUMI will track their performance here.</p>
-              <Button onClick={() => navigate('/campaigns')}>Go to Campaigns →</Button>
+              <h3 className="text-lg font-semibold mb-2">No report yet</h3>
+              <p className="text-muted-foreground text-sm mb-2">
+                Run your first report to see how your active campaigns are performing.
+              </p>
+              <p className="text-muted-foreground text-xs mb-6">
+                Make sure your campaigns have performance goals set — open any live campaign and go to the Goals tab.
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <Button onClick={runReport} disabled={loading}>
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                  {loading ? 'Pulling Meta data...' : 'Run Report Now'}
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/campaigns')}>
+                  Set Up Campaign Goals →
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -513,6 +537,14 @@ export default function PerformanceDashboard() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Campaign Detail Drawer */}
+        <CampaignDetailDrawer
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+          campaignId={selectedCampaignId}
+          onUpdate={loadCachedReport}
+        />
       </div>
     </DashboardLayout>
   );
