@@ -9,7 +9,7 @@ import {
   Rocket, Upload, CheckCircle2, AlertCircle, 
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
-  Archive, Trash2, ChevronDown, Star, Printer
+  Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -72,6 +72,9 @@ export function ProductionManager({
   const [previousOpen, setPreviousOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkMoving, setBulkMoving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
@@ -192,7 +195,41 @@ export function ProductionManager({
       setSavingToLibrary(null);
     }
   };
-  
+
+  const toggleSelectItem = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === productionItems.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(productionItems.map(i => i.id)));
+    }
+  };
+
+  const handleBulkMoveToLibrary = async () => {
+    if (!onSaveToLibrary || selectedIds.size === 0) return;
+    setBulkMoving(true);
+    try {
+      const itemsToMove = productionItems.filter(i => selectedIds.has(i.id));
+      for (const item of itemsToMove) {
+        await onSaveToLibrary(item);
+      }
+      toast.success(`Moved ${itemsToMove.length} concept${itemsToMove.length !== 1 ? "s" : ""} to library`);
+      setSelectedIds(new Set());
+      setBulkSelectMode(false);
+    } catch (error: any) {
+      toast.error("Failed to move some items: " + error.message);
+    } finally {
+      setBulkMoving(false);
+    }
+  };
+
   // Handle file selection for a specific item
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
     const files = event.target.files;
@@ -338,6 +375,25 @@ export function ProductionManager({
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                  {/* Move to Concept Library */}
+                  {onSaveToLibrary && (
+                    <Button
+                      variant={bulkSelectMode ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        if (bulkSelectMode) {
+                          setBulkSelectMode(false);
+                          setSelectedIds(new Set());
+                        } else {
+                          setBulkSelectMode(true);
+                        }
+                      }}
+                      className="gap-1"
+                    >
+                      <Library className="h-3 w-3" />
+                      {bulkSelectMode ? "Cancel" : "Move to Concept Library"}
+                    </Button>
+                  )}
                   {hasRankedItems && (
                     <>
                       <Button
@@ -438,6 +494,37 @@ export function ProductionManager({
               )}
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Bulk Selection Bar */}
+              {bulkSelectMode && (
+                <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={toggleSelectAll}
+                      className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
+                    >
+                      {selectedIds.size === productionItems.length ? (
+                        <CheckSquare className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Square className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {selectedIds.size === productionItems.length ? "Deselect All" : "Select All"}
+                    </button>
+                    <span className="text-sm text-muted-foreground">
+                      {selectedIds.size} of {productionItems.length} selected
+                    </span>
+                  </div>
+                  <Button
+                    variant="lumi"
+                    size="sm"
+                    disabled={selectedIds.size === 0 || bulkMoving}
+                    onClick={handleBulkMoveToLibrary}
+                    className="gap-1.5"
+                  >
+                    {bulkMoving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Library className="h-3.5 w-3.5" />}
+                    Move {selectedIds.size > 0 ? `(${selectedIds.size})` : ""} to Library
+                  </Button>
+                </div>
+              )}
               {/* Current Round Label */}
               {currentRound && previousRoundItems.length > 0 && (
                 <div className="flex items-center gap-2">
@@ -472,6 +559,8 @@ export function ProductionManager({
                           rationale={rankedItem.rationale}
                           showAngleBadge
                           onRefineScript={onRefineScript}
+                          selected={bulkSelectMode ? selectedIds.has(item.id) : undefined}
+                          onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
                         />
                       );
                     })}
@@ -504,6 +593,8 @@ export function ProductionManager({
                               rank={rank}
                               rationale={rationale}
                               onRefineScript={onRefineScript}
+                              selected={bulkSelectMode ? selectedIds.has(item.id) : undefined}
+                              onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
                             />
                           );
                         })}

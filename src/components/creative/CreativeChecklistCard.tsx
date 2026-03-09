@@ -54,6 +54,8 @@ interface CreativeChecklistCardProps {
   rationale?: string;
   showAngleBadge?: boolean;
   onRefineScript?: (itemId: string, feedback: string) => Promise<void>;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 export function CreativeChecklistCard({ 
@@ -68,7 +70,9 @@ export function CreativeChecklistCard({
   rank,
   rationale,
   showAngleBadge = false,
-  onRefineScript
+  onRefineScript,
+  selected,
+  onToggleSelect,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
@@ -119,6 +123,19 @@ export function CreativeChecklistCard({
         <CollapsibleTrigger asChild>
           <CardContent className="pt-4 pb-4 cursor-pointer hover:bg-muted/30 transition-colors">
             <div className="flex items-start gap-3">
+              {/* Bulk Select Checkbox */}
+              {onToggleSelect && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+                  className="mt-2 flex-shrink-0"
+                >
+                  {selected ? (
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                  ) : (
+                    <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/40" />
+                  )}
+                </button>
+              )}
               {/* Rank Badge or Format Icon */}
               {isRanked ? (
                 <Tooltip>
