@@ -106,7 +106,7 @@ export default function Campaigns() {
         )}
 
         {/* First live campaign education card — only show when a campaign is actually live */}
-        {hasLiveCampaign && (
+        {hasRecentlyLaunchedCampaign && (
           <LumiEducationCard
             cardId="first-live-tip"
             headline="Your ad is live! 🎉"
