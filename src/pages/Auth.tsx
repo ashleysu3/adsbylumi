@@ -39,6 +39,15 @@ export default function Auth() {
     }
   }, []);
 
+  // Redirect already-authenticated users away from auth page
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate(safeReturnTo || "/start", { replace: true });
+      }
+    });
+  }, [navigate, safeReturnTo]);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -95,8 +104,8 @@ export default function Auth() {
         }
 
         if (data.user && data.session) {
-          toast.success("Account created! Let's choose your plan.");
-          navigate("/pricing");
+          toast.success("Account created! Let's get you set up.");
+          navigate("/onboarding");
         } else if (data.user && !data.session) {
           toast.success("Account created! Please check your email to confirm.");
         }

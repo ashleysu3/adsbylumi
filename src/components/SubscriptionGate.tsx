@@ -47,7 +47,7 @@ export function SubscriptionBanner() {
         size="sm"
         variant="secondary"
         className="shrink-0 font-semibold"
-        onClick={() => navigate("/pricing")}
+        onClick={() => navigate("/auth")}
       >
         Choose a Plan
       </Button>
