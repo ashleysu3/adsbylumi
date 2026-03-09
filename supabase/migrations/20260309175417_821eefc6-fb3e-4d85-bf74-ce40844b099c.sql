@@ -1,0 +1,1 @@
+ALTER TABLE public.digest_settings ADD COLUMN IF NOT EXISTS alert_on_red boolean DEFAULT true;
