@@ -53,6 +53,7 @@ import Partners from "./pages/Partners";
 import Refer from "./pages/Refer";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import AdminAffiliates from "./pages/admin/Affiliates";
+import ClientPortal from "./pages/ClientPortal";
 
 function CreativeRedirect() {
   const location = useLocation();
