@@ -159,9 +159,11 @@ Deno.serve(async (req) => {
 
       // Fetch Meta campaign insights
       try {
+        console.log('[run-optimization-report] Fetching Meta insights for campaign:', campaignId);
         const insightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&access_token=${brand.meta_access_token}`;
         const insightsRes = await fetch(insightsUrl);
         const insightsData = await insightsRes.json();
+        console.log('[run-optimization-report] Meta response for', campaignId, ':', JSON.stringify(insightsData).slice(0, 500));
 
         if (insightsData.error) {
           console.error('Meta insights error for campaign', campaignId, insightsData.error);
