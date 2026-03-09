@@ -45,7 +45,6 @@ Deno.serve(async (req) => {
         const currentHour = `${String(userTime.getHours()).padStart(2, '0')}:00`;
 
         // Check if it's the right day and hour
-        // Support both new send_days array and legacy send_day string
         const activeDays = (setting as any).send_days?.length > 0 
           ? (setting as any).send_days 
           : [setting.send_day];
@@ -56,7 +55,7 @@ Deno.serve(async (req) => {
         if (setting.last_sent_at) {
           const lastSent = new Date(setting.last_sent_at);
           const hoursDiff = (now.getTime() - lastSent.getTime()) / (1000 * 60 * 60);
-          if (hoursDiff < 20) continue; // Skip if sent within last 20 hours
+          if (hoursDiff < 20) continue;
         }
 
         const brandId = setting.brand_id;
@@ -68,8 +67,6 @@ Deno.serve(async (req) => {
         const dateRangeStart = startDate.toISOString().split('T')[0];
         const dateRangeEnd = endDate.toISOString().split('T')[0];
 
-        // Get the brand owner's auth token — we need to call run-optimization-report
-        // Since this is a cron job, we use service role to create the report directly
         const brand = (setting as any).brands;
 
         // Fetch workspaces for this brand
@@ -82,9 +79,7 @@ Deno.serve(async (req) => {
 
         if (!workspaces || workspaces.length === 0) continue;
 
-        // Call run-optimization-report via HTTP (uses service role context)
-        // Since we can't pass user auth in cron, we insert the report directly
-        // For simplicity, create a minimal report entry and trigger digest
+        // Try to run the optimization report
         const reportRes = await fetch(
           `${Deno.env.get('SUPABASE_URL')}/functions/v1/run-optimization-report`,
           {
@@ -97,9 +92,9 @@ Deno.serve(async (req) => {
           }
         );
 
-        // Note: This will fail auth since cron has no user token.
-        // For cron, we should insert directly. Let's do that instead:
-        // We'll create a simple report and send digest
+        let reportId: string | null = null;
+        let reportData: any = null;
+
         if (!reportRes.ok) {
           console.log(`Skipping brand ${brandId} — cannot run report in cron context`);
           // Create report directly with service role
@@ -117,35 +112,69 @@ Deno.serve(async (req) => {
             .single();
 
           if (report) {
-            // Send digest
-            await fetch(
-              `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-optimization-digest`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
-                },
-                body: JSON.stringify({ brandId, reportId: report.id }),
-              }
-            );
+            reportId = report.id;
+            reportData = report;
           }
         } else {
           const reportResult = await reportRes.json();
           if (reportResult.report?.id) {
+            reportId = reportResult.report.id;
+            reportData = reportResult.report;
+          }
+        }
+
+        // Send the digest email
+        if (reportId) {
+          await fetch(
+            `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-optimization-digest`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+              },
+              body: JSON.stringify({ brandId, reportId }),
+            }
+          );
+        }
+
+        // ─── Red-alert check: send critical alerts if any campaigns are red ───
+        const alertOnRed = (setting as any).alert_on_red ?? true;
+        if (alertOnRed && reportData) {
+          const summary = reportData.summary || {};
+          const redCount = summary.red || 0;
+
+          if (redCount > 0) {
+            const redCampaigns = (reportData.report_data || []).filter(
+              (c: any) => c.status === 'red'
+            );
+
+            console.log(`Brand ${brandId} has ${redCount} red campaigns — sending critical alert`);
+
             await fetch(
-              `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-optimization-digest`,
+              `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-critical-alerts`,
               {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
                 },
-                body: JSON.stringify({ brandId, reportId: reportResult.report.id }),
+                body: JSON.stringify({
+                  brandId,
+                  userId: brand.user_id,
+                  redCampaigns,
+                  reportId,
+                }),
               }
             );
           }
         }
+
+        // Update last_sent_at
+        await supabase
+          .from('digest_settings')
+          .update({ last_sent_at: now.toISOString() })
+          .eq('id', setting.id);
 
         processed++;
         console.log(`Processed digest for brand ${brandId}`);
