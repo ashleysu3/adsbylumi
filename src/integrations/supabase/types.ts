@@ -966,6 +966,7 @@ export type Database = {
       digest_settings: {
         Row: {
           additional_emails: string[] | null
+          alert_on_red: boolean | null
           brand_id: string | null
           created_by: string
           date_range_days: number
@@ -979,6 +980,7 @@ export type Database = {
         }
         Insert: {
           additional_emails?: string[] | null
+          alert_on_red?: boolean | null
           brand_id?: string | null
           created_by: string
           date_range_days?: number
@@ -992,6 +994,7 @@ export type Database = {
         }
         Update: {
           additional_emails?: string[] | null
+          alert_on_red?: boolean | null
           brand_id?: string | null
           created_by?: string
           date_range_days?: number
