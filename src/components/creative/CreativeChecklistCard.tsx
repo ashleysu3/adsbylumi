@@ -54,6 +54,8 @@ interface CreativeChecklistCardProps {
   rationale?: string;
   showAngleBadge?: boolean;
   onRefineScript?: (itemId: string, feedback: string) => Promise<void>;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 export function CreativeChecklistCard({ 
@@ -68,7 +70,9 @@ export function CreativeChecklistCard({
   rank,
   rationale,
   showAngleBadge = false,
-  onRefineScript
+  onRefineScript,
+  selected,
+  onToggleSelect,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
