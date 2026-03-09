@@ -122,8 +122,8 @@ export function ExportChecklistModal({
             >
               <Users className="h-4 w-4 text-primary shrink-0" />
               <div>
-                <p className="text-sm font-medium">Creative Brief</p>
-                <p className="text-[11px] text-muted-foreground">For your team</p>
+                <p className="text-sm font-medium">Team Brief</p>
+                <p className="text-[11px] text-muted-foreground">Hooks, scripts, direction & copy — clean handoff for your team or contractor</p>
               </div>
             </button>
             <button
@@ -136,8 +136,8 @@ export function ExportChecklistModal({
             >
               <ClipboardList className="h-4 w-4 text-primary shrink-0" />
               <div>
-                <p className="text-sm font-medium">Full Checklist</p>
-                <p className="text-[11px] text-muted-foreground">All details</p>
+                <p className="text-sm font-medium">Detailed Checklist</p>
+                <p className="text-[11px] text-muted-foreground">Customizable columns with psychology notes & status tracking</p>
               </div>
             </button>
           </div>

@@ -243,37 +243,6 @@ export function ProductionChecklistPanel({
               )}
             </Badge>
           </div>
-          {/* Export / Print buttons */}
-          <div className="flex items-center gap-2 mt-2">
-            <Button
-              variant="lumi"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => printCreativeBrief({
-                brandName: "",
-                angles: [],
-                productionItems: items,
-                angleCopy: {},
-              })}
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export Brief as PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => printCreativeBrief({
-                brandName: "",
-                angles: [],
-                productionItems: items,
-                angleCopy: {},
-              })}
-            >
-              <Printer className="h-3.5 w-3.5" />
-              Print Brief
-            </Button>
-          </div>
           {!hasMinimumItems && (
             <p className="text-xs text-muted-foreground mt-1">
               Add {itemsNeeded} more concept{itemsNeeded !== 1 ? 's' : ''} to unlock Production
