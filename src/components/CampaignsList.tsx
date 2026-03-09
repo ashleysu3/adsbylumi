@@ -61,6 +61,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
   const [postPickerCampaign, setPostPickerCampaign] = useState<Campaign | null>(null);
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
+  const [actionDialogCampaign, setActionDialogCampaign] = useState<Campaign | null>(null);
 
   useEffect(() => {
     fetchCampaigns();
