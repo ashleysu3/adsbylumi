@@ -275,6 +275,7 @@ Generate exactly 11 creative angles that would resonate with this audience and o
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
+        response_format: { type: "json_object" },
       }),
     });
 
