@@ -404,6 +404,78 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_goals: {
+        Row: {
+          brand_id: string | null
+          check_frequency_at: string | null
+          created_at: string | null
+          created_by: string
+          frequency_threshold: number | null
+          id: string
+          primary_kpi: string
+          primary_kpi_goal_type: string
+          primary_kpi_label: string
+          primary_kpi_threshold: number
+          secondary_kpi: string | null
+          secondary_kpi_goal_type: string | null
+          secondary_kpi_label: string | null
+          secondary_kpi_threshold: number | null
+          updated_at: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          brand_id?: string | null
+          check_frequency_at?: string | null
+          created_at?: string | null
+          created_by: string
+          frequency_threshold?: number | null
+          id?: string
+          primary_kpi: string
+          primary_kpi_goal_type: string
+          primary_kpi_label: string
+          primary_kpi_threshold: number
+          secondary_kpi?: string | null
+          secondary_kpi_goal_type?: string | null
+          secondary_kpi_label?: string | null
+          secondary_kpi_threshold?: number | null
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          brand_id?: string | null
+          check_frequency_at?: string | null
+          created_at?: string | null
+          created_by?: string
+          frequency_threshold?: number | null
+          id?: string
+          primary_kpi?: string
+          primary_kpi_goal_type?: string
+          primary_kpi_label?: string
+          primary_kpi_threshold?: number
+          secondary_kpi?: string | null
+          secondary_kpi_goal_type?: string | null
+          secondary_kpi_label?: string | null
+          secondary_kpi_threshold?: number | null
+          updated_at?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_goals_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_goals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_templates: {
         Row: {
           active: boolean | null
@@ -891,6 +963,53 @@ export type Database = {
           },
         ]
       }
+      digest_settings: {
+        Row: {
+          additional_emails: string[] | null
+          brand_id: string | null
+          created_by: string
+          date_range_days: number
+          enabled: boolean | null
+          id: string
+          last_sent_at: string | null
+          send_day: string
+          send_time: string
+          timezone: string
+        }
+        Insert: {
+          additional_emails?: string[] | null
+          brand_id?: string | null
+          created_by: string
+          date_range_days?: number
+          enabled?: boolean | null
+          id?: string
+          last_sent_at?: string | null
+          send_day?: string
+          send_time?: string
+          timezone?: string
+        }
+        Update: {
+          additional_emails?: string[] | null
+          brand_id?: string | null
+          created_by?: string
+          date_range_days?: number
+          enabled?: boolean | null
+          id?: string
+          last_sent_at?: string | null
+          send_day?: string
+          send_time?: string
+          timezone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digest_settings_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invite_codes: {
         Row: {
           active: boolean | null
@@ -1061,6 +1180,53 @@ export type Database = {
             columns: ["recommended_template_id"]
             isOneToOne: false
             referencedRelation: "campaign_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      optimization_reports: {
+        Row: {
+          brand_id: string | null
+          created_at: string | null
+          created_by: string
+          date_range_end: string
+          date_range_start: string
+          id: string
+          report_data: Json
+          share_token: string | null
+          status: string | null
+          summary: Json | null
+        }
+        Insert: {
+          brand_id?: string | null
+          created_at?: string | null
+          created_by: string
+          date_range_end: string
+          date_range_start: string
+          id?: string
+          report_data?: Json
+          share_token?: string | null
+          status?: string | null
+          summary?: Json | null
+        }
+        Update: {
+          brand_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          date_range_end?: string
+          date_range_start?: string
+          id?: string
+          report_data?: Json
+          share_token?: string | null
+          status?: string | null
+          summary?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "optimization_reports_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
             referencedColumns: ["id"]
           },
         ]
@@ -1452,6 +1618,7 @@ export type Database = {
       claim_invite_code: { Args: { code_input: string }; Returns: boolean }
       delete_meta_token: { Args: { p_brand_id: string }; Returns: boolean }
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
+      get_shared_report: { Args: { p_share_token: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
