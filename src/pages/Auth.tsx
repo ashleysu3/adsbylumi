@@ -39,6 +39,15 @@ export default function Auth() {
     }
   }, []);
 
+  // Redirect already-authenticated users away from auth page
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate(safeReturnTo || "/start", { replace: true });
+      }
+    });
+  }, [navigate, safeReturnTo]);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
