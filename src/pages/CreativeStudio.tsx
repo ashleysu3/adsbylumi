@@ -613,6 +613,8 @@ export default function CreativeStudio() {
            productPsychology: productPsychologyForAngles,
            offerAudiencePsychology: offerAudiencePsychologyForAngles,
            previouslyUsedAngles,
+           brandId,
+           offerId: workspace.offer_id,
          }
       });
       if (error) throw error;
