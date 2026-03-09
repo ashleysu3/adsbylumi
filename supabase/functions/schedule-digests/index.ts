@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
           ? (setting as any).send_days 
           : [setting.send_day];
         if (!activeDays.includes(currentDay)) continue;
+        if (currentHour !== setting.send_time) continue;
 
         // Check if already sent today
         if (setting.last_sent_at) {
