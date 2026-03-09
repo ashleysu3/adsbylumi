@@ -1276,7 +1276,20 @@ export default function CreativeStudio() {
           <SheetHeader className="p-6 pb-0">
             <SheetTitle className="flex items-center justify-between">
               <span>Creative Brief</span>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => window.print()}>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+                printCreativeBrief({
+                  brandName: workspace?.brands?.name || activeBrand?.name || "",
+                  offerName: workspace?.offer_name || undefined,
+                  offerDescription: workspace?.offer_description || undefined,
+                  offerPrice: workspace?.offer_price || undefined,
+                  offerUrl: workspace?.offer_url || undefined,
+                  productPsychology: offerPsychology,
+                  audiencePsychology: offerAudiencePsychology || workspace?.brands?.audience_psychology,
+                  angles: availableAngles,
+                  productionItems: productionItems,
+                  angleCopy: angleCopy,
+                });
+              }}>
                 <Printer className="h-4 w-4" />
                 Print / PDF
               </Button>
