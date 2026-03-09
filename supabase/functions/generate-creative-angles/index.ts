@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -161,6 +161,9 @@ Deno.serve(async (req) => {
       if (creativeIntelligence.topFormats?.length) {
         intelligenceContext += `Top formats: ${creativeIntelligence.topFormats.join(', ')}\n`;
       }
+      if (creativeIntelligence.topCopyAngles?.length) {
+        intelligenceContext += `Top copy angles that WORK: ${creativeIntelligence.topCopyAngles.join(', ')}\n`;
+      }
       if (creativeIntelligence.keyPatterns?.length) {
         intelligenceContext += `Key patterns:\n${creativeIntelligence.keyPatterns.map((p: string) => `- ${p}`).join('\n')}\n`;
       }
@@ -173,6 +176,17 @@ Deno.serve(async (req) => {
       intelligenceContext += "This is the user's first campaign or they have no historical data. Generate a balanced mix of formats and angles to TEST what resonates with their audience. Include a diversity of talking head, b-roll, and graphic concepts.\n";
     }
 
+    // Build previously used angles context to avoid repetition
+    let previousAnglesContext = "";
+    if (previouslyUsedAngles?.length > 0) {
+      previousAnglesContext = "\n\n=== PREVIOUSLY USED ANGLES (DO NOT REPEAT) ===\n";
+      previousAnglesContext += "The following angle names have ALREADY been generated for this offer in previous rounds. You MUST NOT reuse these names or generate angles that are essentially the same idea reworded:\n\n";
+      previouslyUsedAngles.forEach((name: string) => {
+        previousAnglesContext += `- "${name}"\n`;
+      });
+      previousAnglesContext += "\nCRITICAL: Every angle you generate must be meaningfully DIFFERENT from the above list. Do not simply rephrase or slightly rename a previously used angle. Explore entirely new psychological territories, emotional triggers, or messaging frameworks that were NOT covered before. If you find yourself generating something similar to an angle above, STOP and think of a genuinely new direction.\n";
+    }
+
     const systemPrompt = `You are Lumi's Creative Engine. Your job is to generate creative angle recommendations for Meta ads campaigns.
 
 KNOWLEDGE BASE:
@@ -182,6 +196,7 @@ ${insightsContext}
 ${offerAudienceContext}
 ${preGenContext}
 ${intelligenceContext}
+${previousAnglesContext}
 
 RULES:
 - Generate exactly 11 creative angles
@@ -193,6 +208,7 @@ RULES:
 ${conversationInsights?.length > 0 ? "- PRIORITIZE angles that address the specific insights shared by the user in previous conversations" : ""}
 ${preGenerationContext ? "- PRIORITIZE the user's specific direction for this creative round" : ""}
 ${creativeIntelligence?.hasData ? "- PRIORITIZE angles aligned with the user's proven top-performing creative patterns, while including 1-2 fresh test angles" : "- Generate a balanced TEST MIX of diverse angle types since there's no historical data"}
+${previouslyUsedAngles?.length > 0 ? "- CRITICAL: Do NOT repeat or rephrase any angle from the PREVIOUSLY USED ANGLES list. Every angle must be a genuinely new direction." : ""}
 
 ANGLE TYPES TO CONSIDER (but don't expose these labels to the user):
 - The Moment They Realized (built from moment_they_realize — name the exact scenario)
