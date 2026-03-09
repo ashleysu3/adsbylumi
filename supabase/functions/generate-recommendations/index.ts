@@ -226,14 +226,14 @@ Deno.serve(async (req) => {
         }
       }
 
-      // ROAS vs CPL mismatch (downstream issue)
+      // ROAS vs CPL mismatch
       if (hasGoals && secondaryKpi === 'roas' && primaryMet === true && secondaryMet === false && secondaryValue !== null) {
         recommendations.push({
-          id: `downstream-${workspaceId}`,
+          id: `roas-gap-${workspaceId}`,
           type: 'keep_running',
-          title: 'Leads are coming in — but purchases aren\'t closing',
-          description: `Your CPL is at goal (${formatKpiValue('cpl', primaryValue)}) but ROAS is ${secondaryValue.toFixed(1)}x vs. your goal of ${secondaryThreshold}x. The ads are working — the issue is downstream. Check your sales process, follow-up sequence, or offer page.`,
-          impact: 'This is not an ads problem — optimizing the funnel after the click will move ROAS',
+          title: 'CPL is on target — ROAS needs work',
+          description: `Your CPL is at goal (${formatKpiValue('cpl', primaryValue)}) but ROAS is ${secondaryValue.toFixed(1)}x vs. your goal of ${secondaryThreshold}x. Your ads are generating leads efficiently. Consider testing a purchase-optimized campaign or adjusting your audience to reach higher-intent buyers.`,
+          impact: 'Testing purchase optimization can improve ROAS without changing your lead campaigns',
           confidence: 'high',
           requiresDoubleApproval: false,
           actionPayload: {},
