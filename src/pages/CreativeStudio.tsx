@@ -554,6 +554,53 @@ export default function CreativeStudio() {
         }
       }
 
+      // Collect previously used angles from this workspace + sibling workspaces for the same offer
+      let previouslyUsedAngles: string[] = [];
+      try {
+        // Current workspace past angles
+        const curCreative = (workspace.creative_json || {}) as Record<string, any>;
+        if (curCreative.angles?.length) {
+          previouslyUsedAngles.push(
+            ...curCreative.angles
+              .filter((a: any) => a.id !== 'direct_from_page')
+              .map((a: any) => a.name)
+          );
+        }
+        // Also check archived rounds
+        if (curCreative.archivedProductionItems?.length) {
+          const archivedAngleNames = curCreative.archivedProductionItems
+            .map((i: any) => i.angleName)
+            .filter(Boolean);
+          previouslyUsedAngles.push(...archivedAngleNames);
+        }
+        
+        // Sibling workspaces for the same offer
+        if (workspace.offer_id && brandId) {
+          const { data: siblings } = await supabase
+            .from('campaign_workspaces')
+            .select('creative_json')
+            .eq('brand_id', brandId)
+            .eq('offer_id', workspace.offer_id)
+            .neq('id', workspace.id)
+            .eq('archived', false);
+          
+          for (const sib of siblings || []) {
+            const sibCreative = (sib.creative_json || {}) as Record<string, any>;
+            if (sibCreative.angles?.length) {
+              previouslyUsedAngles.push(
+                ...sibCreative.angles
+                  .filter((a: any) => a.id !== 'direct_from_page')
+                  .map((a: any) => a.name)
+              );
+            }
+          }
+        }
+        // Deduplicate
+        previouslyUsedAngles = [...new Set(previouslyUsedAngles)];
+      } catch (e) {
+        console.warn("Could not fetch previous angles:", e);
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
          body: { 
            brandName: workspace.brands?.name, 
@@ -565,6 +612,7 @@ export default function CreativeStudio() {
            creativeIntelligence: intelligence,
            productPsychology: productPsychologyForAngles,
            offerAudiencePsychology: offerAudiencePsychologyForAngles,
+           previouslyUsedAngles,
          }
       });
       if (error) throw error;
