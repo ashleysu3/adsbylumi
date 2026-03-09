@@ -9,7 +9,7 @@ import {
   Rocket, Upload, CheckCircle2, AlertCircle, 
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
-  Archive, Trash2, ChevronDown, Star, Printer
+  Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
