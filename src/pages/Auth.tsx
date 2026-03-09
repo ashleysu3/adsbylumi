@@ -92,7 +92,7 @@ export default function Auth() {
                 segment: 'active' 
               }
             }),
-            supabase.functions.invoke('send-welcome-email', {
+            supabase.functions.invoke('send-beta-welcome-email', {
               body: {
                 email: email.toLowerCase().trim(),
                 fullName: fullName.trim(),
