@@ -161,6 +161,9 @@ Deno.serve(async (req) => {
       if (creativeIntelligence.topFormats?.length) {
         intelligenceContext += `Top formats: ${creativeIntelligence.topFormats.join(', ')}\n`;
       }
+      if (creativeIntelligence.topCopyAngles?.length) {
+        intelligenceContext += `Top copy angles that WORK: ${creativeIntelligence.topCopyAngles.join(', ')}\n`;
+      }
       if (creativeIntelligence.keyPatterns?.length) {
         intelligenceContext += `Key patterns:\n${creativeIntelligence.keyPatterns.map((p: string) => `- ${p}`).join('\n')}\n`;
       }
@@ -171,6 +174,17 @@ Deno.serve(async (req) => {
     } else {
       intelligenceContext = "\n\n=== FIRST CAMPAIGN / NO HISTORICAL DATA ===\n";
       intelligenceContext += "This is the user's first campaign or they have no historical data. Generate a balanced mix of formats and angles to TEST what resonates with their audience. Include a diversity of talking head, b-roll, and graphic concepts.\n";
+    }
+
+    // Build previously used angles context to avoid repetition
+    let previousAnglesContext = "";
+    if (previouslyUsedAngles?.length > 0) {
+      previousAnglesContext = "\n\n=== PREVIOUSLY USED ANGLES (DO NOT REPEAT) ===\n";
+      previousAnglesContext += "The following angle names have ALREADY been generated for this offer in previous rounds. You MUST NOT reuse these names or generate angles that are essentially the same idea reworded:\n\n";
+      previouslyUsedAngles.forEach((name: string) => {
+        previousAnglesContext += `- "${name}"\n`;
+      });
+      previousAnglesContext += "\nCRITICAL: Every angle you generate must be meaningfully DIFFERENT from the above list. Do not simply rephrase or slightly rename a previously used angle. Explore entirely new psychological territories, emotional triggers, or messaging frameworks that were NOT covered before. If you find yourself generating something similar to an angle above, STOP and think of a genuinely new direction.\n";
     }
 
     const systemPrompt = `You are Lumi's Creative Engine. Your job is to generate creative angle recommendations for Meta ads campaigns.
