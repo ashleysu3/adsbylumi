@@ -182,7 +182,7 @@ const Sales = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm">
               <span className="text-muted-foreground font-medium">Built for people who are done with:</span>
               <div className="flex flex-wrap justify-center gap-2">
-                {["$3,000/mo agency retainers", "40-hour ad courses that don't run your ads", "Ads Manager overwhelm"].map((t, i) => (
+                {["Expensive agency retainers", "40-hour ad courses that don't run your ads", "Ads Manager overwhelm"].map((t, i) => (
                   <span key={i} className="inline-flex items-center gap-1 bg-destructive/10 text-destructive rounded-full px-3 py-1 text-xs font-medium line-through decoration-destructive/60">❌ {t}</span>
                 ))}
               </div>

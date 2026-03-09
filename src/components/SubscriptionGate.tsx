@@ -81,7 +81,7 @@ export function LockedFeature({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        navigate("/pricing");
+        navigate("/auth");
       }}
     >
       <div className="pointer-events-none select-none opacity-50 blur-[1px] transition-all">

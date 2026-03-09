@@ -1,28 +1,65 @@
 
 
-## Plan: Remove ad spend limit references and simplify signup flow
+## Plan: Add Local & Event Targeting Strategies to the Create Wizard
 
-### What changes
+### Problem
+Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
 
-**1. Remove "$3,000 ad spend" references**
+### What Changes
 
-- **`src/lib/subscription-tiers.ts`**: Remove "Up to $3,000/mo in managed ad spend" from `solo.features` array. Remove/update `adSpendCap` limit (set to -1 or remove).
-- **`src/pages/Sales.tsx`**: Remove the "$3,000/mo agency retainers" pill from the "done with" section (line ~185). No other ad-spend-cap-specific references on this page need changing.
-- **`src/pages/Pricing.tsx`**: Remove the entire "Ad Spend Cap" callout box (lines 196-207) that says "Up to $3,000/mo in ad spend". The features list auto-renders from `SUBSCRIPTION_TIERS.solo.features`, so removing it there handles that too.
+**1. Add system offer IDs for the three local strategies**
 
-**2. Eliminate the separate Pricing page — redirect to Auth**
+In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
 
-The Sales page already has a full pricing section. Instead of maintaining a separate `/pricing` page, redirect `/pricing` to `/auth` so users go straight to signup.
+```
+LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
+LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
+EVENT_LOCATION_OFFER_ID = "system-event-location"
+```
 
-- **`src/App.tsx`**: Change the `/pricing` route from `<Pricing />` to `<Navigate to="/auth" replace />`. Remove the Pricing import.
-- **`src/components/SubscriptionGate.tsx`**: Change `navigate("/pricing")` calls to `navigate("/auth")` (banner + locked feature).
-- **`src/components/AppSidebar.tsx`**: Change the locked "Create" button from `/pricing` to `/auth`.
-- **`src/pages/Settings.tsx`**: Change "View All Plans" / "View Plans" buttons from `/pricing` to `/auth`.
-- **`supabase/functions/create-checkout/index.ts`**: Update `cancel_url` from `/pricing?checkout=canceled` to `/auth`.
+Add these to `SYSTEM_OFFER_IDS`.
 
-The `Pricing.tsx` file can be kept (it's still imported by the redirect) or removed — redirecting is sufficient.
+**2. Add the options to Step 1 (offer selection)**
 
-### Summary
+Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
 
-Two changes: (1) strip all "$3,000 ad spend cap" messaging from tiers config, Sales page, and Pricing page; (2) redirect `/pricing` → `/auth` everywhere so users go straight to signup instead of a separate pricing page.
+- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
+- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
+- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
+
+**3. Handle selection → skip to strategy step automatically**
+
+When a user selects a local strategy, it should:
+- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
+- Set `selectedTemplateId` to the matched template
+- Skip directly to Step 2 (strategy recommendation) since the template is already determined
+- The strategy recommendation step already works — it shows the selected template with structure details
+
+**4. Wire the flow through to workspace creation**
+
+The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
+- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
+- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
+
+**5. Add educational context for the Event strategy**
+
+For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
+- Phase 1: "Awareness ads at the event location to get people to interact with your content"
+- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
+- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
+
+### What Does NOT Change
+- `CampaignBuilderForm.tsx` — already handles location targeting UI
+- Campaign templates in DB — already configured with `location_type`, radius settings
+- Edge functions — no changes needed
+- Creative Studio flow — works as-is since these are standard templates
+
+### Technical Details
+
+The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
+
+The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
+
+### Files to Edit
+- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
 

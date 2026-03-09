@@ -193,18 +193,6 @@ export default function Pricing() {
                       )}
                     </div>
 
-                    {/* Ad Spend Cap - Key Selling Point */}
-                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <DollarSign className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="text-left">
-                          <p className="font-semibold text-foreground">Up to $3,000/mo in ad spend</p>
-                          <p className="text-sm text-muted-foreground">We manage your campaigns, you focus on your business</p>
-                        </div>
-                      </div>
-                    </div>
 
                     {/* CTA */}
                     <div className="space-y-3">
