@@ -194,3 +194,15 @@ verify_jwt = false
 
 [functions.generate-broll-ideas]
 verify_jwt = false
+
+[functions.run-optimization-report]
+verify_jwt = false
+
+[functions.send-optimization-digest]
+verify_jwt = false
+
+[functions.schedule-digests]
+verify_jwt = false
+
+[functions.get-shared-report]
+verify_jwt = false
