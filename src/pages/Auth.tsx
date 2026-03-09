@@ -110,7 +110,6 @@ export default function Auth() {
         } else if (data.user && !data.session) {
           toast.success("Account created! Please check your email to confirm.");
         }
-        }
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred");
