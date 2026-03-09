@@ -1,16 +1,17 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wrench } from "lucide-react";
+import { Wrench, Lock } from "lucide-react";
 import { TemplatesTab } from "@/components/creative-toolkit/TemplatesTab";
 import { BRollTab } from "@/components/creative-toolkit/BRollTab";
 import { MusicToolsTab } from "@/components/creative-toolkit/MusicToolsTab";
 import { MarketplaceTab } from "@/components/creative-toolkit/MarketplaceTab";
+import { Badge } from "@/components/ui/badge";
 
 export default function CreativeToolkit() {
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 relative">
         {/* Page Header */}
         <div className="flex items-start gap-4">
           <div className="h-12 w-12 rounded-2xl bg-[image:var(--gradient-lumi)] flex items-center justify-center flex-shrink-0">
@@ -48,6 +49,20 @@ export default function CreativeToolkit() {
             <MarketplaceTab />
           </TabsContent>
         </Tabs>
+
+        {/* Coming Soon Overlay */}
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-[2px] rounded-2xl">
+          <div className="flex flex-col items-center gap-3 text-center px-6 py-10 rounded-2xl bg-card border shadow-lg max-w-sm">
+            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Lock className="h-5 w-5 text-primary" />
+            </div>
+            <Badge variant="secondary" className="text-xs font-medium">Coming Soon</Badge>
+            <h2 className="text-lg font-bold font-display text-foreground">We're building this for you</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Templates, B-roll ideas, music sources, and designer packs — all in one place. Stay tuned!
+            </p>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );
