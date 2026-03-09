@@ -1,5 +1,18 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3, delay = 1000): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fetch(url, options);
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      console.log(`Fetch attempt ${i + 1} failed, retrying in ${delay}ms...`);
+      await new Promise(r => setTimeout(r, delay));
+      delay *= 2;
+    }
+  }
+  throw new Error('All retries exhausted');
+}
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -26,7 +39,7 @@ Deno.serve(async (req) => {
 
     const authHeader = 'Basic ' + btoa(apiSecret + ':');
 
-    const res = await fetch('https://api.rewardful.com/v1/affiliates', {
+    const res = await fetchWithRetry('https://api.rewardful.com/v1/affiliates', {
       method: 'POST',
       headers: {
         'Authorization': authHeader,
