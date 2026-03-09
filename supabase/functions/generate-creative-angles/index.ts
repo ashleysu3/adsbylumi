@@ -311,15 +311,26 @@ Generate exactly 11 creative angles that would resonate with this audience and o
         const codeBlock = input.match(/```(?:json)?\s*([\s\S]*?)```/i);
         let raw = (codeBlock?.[1] ?? input).trim();
 
-        // Find the outermost JSON object by tracking brace depth
-        const first = raw.indexOf("{");
-        if (first === -1) throw new Error("No JSON object found");
+        // Find the outermost JSON structure — either { or [
+        const firstBrace = raw.indexOf("{");
+        const firstBracket = raw.indexOf("[");
+        
+        // Determine which comes first
+        let first = -1;
+        let openChar = "{";
+        let closeChar = "}";
+        
+        if (firstBrace === -1 && firstBracket === -1) throw new Error("No JSON found");
+        if (firstBrace === -1) { first = firstBracket; openChar = "["; closeChar = "]"; }
+        else if (firstBracket === -1) { first = firstBrace; }
+        else if (firstBracket < firstBrace) { first = firstBracket; openChar = "["; closeChar = "]"; }
+        else { first = firstBrace; }
         
         let depth = 0;
         let endIdx = -1;
         for (let i = first; i < raw.length; i++) {
-          if (raw[i] === '{') depth++;
-          else if (raw[i] === '}') { depth--; if (depth === 0) { endIdx = i; break; } }
+          if (raw[i] === openChar) depth++;
+          else if (raw[i] === closeChar) { depth--; if (depth === 0) { endIdx = i; break; } }
         }
         if (endIdx !== -1) {
           raw = raw.slice(first, endIdx + 1);
@@ -337,7 +348,6 @@ Generate exactly 11 creative angles that would resonate with this audience and o
         try {
           return JSON.parse(raw);
         } catch {
-          // Brace/bracket balancing fallback (for truncated JSON)
           let repaired = raw;
 
           const openBraces = (repaired.match(/{/g) || []).length;
