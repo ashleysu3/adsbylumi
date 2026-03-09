@@ -1106,7 +1106,7 @@ export default function Settings() {
                   <p className="text-sm text-muted-foreground">
                     Choose a plan to get started with smart ad creation, psychology-driven copy, and automated campaign management.
                   </p>
-                  <Button onClick={() => navigate('/pricing')} variant="lumi" className="gap-2">
+                  <Button onClick={() => navigate('/auth')} variant="lumi" className="gap-2">
                     <Crown className="h-4 w-4" />
                     View Plans
                   </Button>

@@ -171,7 +171,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
         {/* Action Button */}
         <div className="mt-3 space-y-2">
           <button
-            onClick={() => !subLoading && isSubscribed ? navigate("/create") : navigate("/pricing")}
+            onClick={() => !subLoading && isSubscribed ? navigate("/create") : navigate("/auth")}
             className="w-full relative group overflow-hidden rounded-xl"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 opacity-90 group-hover:opacity-100 transition-opacity" />

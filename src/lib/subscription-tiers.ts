@@ -14,7 +14,6 @@ export const SUBSCRIPTION_TIERS = {
       adSpendCap: -1, // unlimited
     },
     features: [
-      "Up to $3,000/mo in managed ad spend",
       "Smart campaign strategy",
       "Psychology-driven ad copy",
       "Smart audience targeting",

@@ -39,7 +39,7 @@ import AdminTeam from "./pages/admin/Team";
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
-import Pricing from "./pages/Pricing";
+
 import Offers from "./pages/Offers";
 import ContentLibrary from "./pages/ContentLibrary";
 import CreativeStudio from "./pages/CreativeStudio";
