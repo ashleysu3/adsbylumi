@@ -311,9 +311,21 @@ Generate exactly 11 creative angles that would resonate with this audience and o
         const codeBlock = input.match(/```(?:json)?\s*([\s\S]*?)```/i);
         let raw = (codeBlock?.[1] ?? input).trim();
 
+        // Find the outermost JSON object by tracking brace depth
         const first = raw.indexOf("{");
-        const last = raw.lastIndexOf("}");
-        if (first !== -1 && last !== -1) raw = raw.slice(first, last + 1);
+        if (first === -1) throw new Error("No JSON object found");
+        
+        let depth = 0;
+        let endIdx = -1;
+        for (let i = first; i < raw.length; i++) {
+          if (raw[i] === '{') depth++;
+          else if (raw[i] === '}') { depth--; if (depth === 0) { endIdx = i; break; } }
+        }
+        if (endIdx !== -1) {
+          raw = raw.slice(first, endIdx + 1);
+        } else {
+          raw = raw.slice(first);
+        }
 
         raw = raw
           .replace(/^\uFEFF/, "")
