@@ -45,8 +45,11 @@ Deno.serve(async (req) => {
         const currentHour = `${String(userTime.getHours()).padStart(2, '0')}:00`;
 
         // Check if it's the right day and hour
-        if (currentDay !== setting.send_day) continue;
-        if (currentHour !== setting.send_time) continue;
+        // Support both new send_days array and legacy send_day string
+        const activeDays = (setting as any).send_days?.length > 0 
+          ? (setting as any).send_days 
+          : [setting.send_day];
+        if (!activeDays.includes(currentDay)) continue;
 
         // Check if already sent today
         if (setting.last_sent_at) {
