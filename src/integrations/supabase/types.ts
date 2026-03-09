@@ -631,6 +631,104 @@ export type Database = {
           },
         ]
       }
+      client_portal_activity: {
+        Row: {
+          action: string
+          client_name: string | null
+          comment: string | null
+          created_at: string | null
+          id: string
+          portal_id: string | null
+          production_item_id: string
+        }
+        Insert: {
+          action: string
+          client_name?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          portal_id?: string | null
+          production_item_id: string
+        }
+        Update: {
+          action?: string
+          client_name?: string | null
+          comment?: string | null
+          created_at?: string | null
+          id?: string
+          portal_id?: string | null
+          production_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_activity_portal_id_fkey"
+            columns: ["portal_id"]
+            isOneToOne: false
+            referencedRelation: "client_portals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_portals: {
+        Row: {
+          access_code_hash: string
+          agency_branding: Json | null
+          brand_id: string | null
+          client_name: string | null
+          created_at: string | null
+          created_by: string
+          expires_at: string | null
+          id: string
+          items_included: Json | null
+          portal_name: string
+          status: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          access_code_hash: string
+          agency_branding?: Json | null
+          brand_id?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          items_included?: Json | null
+          portal_name: string
+          status?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          access_code_hash?: string
+          agency_branding?: Json | null
+          brand_id?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          items_included?: Json | null
+          portal_name?: string
+          status?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portals_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_portals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_ideas: {
         Row: {
           brand_id: string
@@ -1365,6 +1463,7 @@ export type Database = {
         Args: { p_brand_id: string; p_token: string }
         Returns: string
       }
+      validate_portal_access: { Args: { p_portal_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "user" | "moderator"
