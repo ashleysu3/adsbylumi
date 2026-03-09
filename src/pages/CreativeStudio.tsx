@@ -13,6 +13,7 @@ import {
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
   X, Check, FileDown, Printer, BarChart3
 } from "lucide-react";
+import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
