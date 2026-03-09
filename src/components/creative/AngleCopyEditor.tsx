@@ -124,6 +124,8 @@ export function AngleCopyEditor({
           audiencePsychology,
           feedback: feedback || undefined,
           neverUseWords: brandInfo?.never_use_words || [],
+          brandId,
+          offerId,
         },
       });
       
