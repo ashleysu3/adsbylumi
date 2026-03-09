@@ -72,6 +72,9 @@ export function ProductionManager({
   const [previousOpen, setPreviousOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkMoving, setBulkMoving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
