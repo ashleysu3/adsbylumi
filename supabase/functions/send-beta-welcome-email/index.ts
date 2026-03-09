@@ -101,6 +101,22 @@ function buildBetaWelcomeHtml(firstName: string): string {
                 <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #831843;">
                   <strong>🐛 There might be bugs</strong> — That's expected! Things may break or feel a little rough around the edges. That's what this phase is for.
                 </p>
+          </div>
+
+              <!-- 1:1 Campaign Build Call -->
+              <div style="background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border-radius: 12px; padding: 20px; margin-top: 14px; border-left: 4px solid #93C5FD;">
+                <p style="margin: 0 0 10px 0; font-size: 15px; font-weight: 700; color: #1E40AF;">One more thing — I'm doing something special for the first 25 people. 👇</p>
+                <p style="margin: 0 0 10px 0; font-size: 14px; line-height: 1.7; color: #1E3A8A;">
+                  I'm personally offering <strong>25 free 15-minute campaign build calls</strong>. You book a time, we hop on Zoom, and I help you build your first LUMI campaign live together. You walk away with a real, ready-to-launch campaign — not a plan, not homework, an actual campaign.
+                </p>
+                <p style="margin: 0 0 14px 0; font-size: 14px; line-height: 1.7; color: #1E3A8A;">
+                  This is a call with me. The person who built LUMI, ran the agency, and has seen firsthand what makes these campaigns fly (and what makes them flop). First come, first served, and I genuinely mean it when I say these will go fast.
+                </p>
+                <p style="margin: 0; text-align: center;">
+                  <a href="https://tidycal.com/thepaidadacademy/1-1-lumi-setup" style="display: inline-block; background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 4px 14px rgba(30, 64, 175, 0.3);">
+                    Book your free campaign build call → 25 spots only
+                  </a>
+                </p>
               </div>
 
               <div style="background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); border-radius: 12px; padding: 20px; border-left: 4px solid #F97316;">
