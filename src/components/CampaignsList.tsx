@@ -175,6 +175,10 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
       navigate(`/creative-studio?workspace=${campaign.id}`);
       return;
     }
+    if (isLive(campaign.progress_status, campaign.meta_campaign_status)) {
+      setActionDialogCampaign(campaign);
+      return;
+    }
     setSelectedCampaignId(campaign.id);
     setDetailDrawerOpen(true);
   };
