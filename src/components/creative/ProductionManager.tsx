@@ -360,6 +360,18 @@ export function ProductionManager({
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <CardTitle className="text-lg">Production Checklist</CardTitle>
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Share with Client */}
+                  {productionItems.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShareDialogOpen(true)}
+                      className="gap-1"
+                    >
+                      <Share2 className="h-3 w-3" />
+                      Share with Client
+                    </Button>
+                  )}
                   {/* Export Button */}
                   <TooltipProvider>
                     <Tooltip>
