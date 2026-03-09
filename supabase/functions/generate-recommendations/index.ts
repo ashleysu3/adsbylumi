@@ -308,13 +308,13 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Budget burning with no results
-      if (spend > 50 && primaryValue === 0 && hasEnoughData) {
+      // Budget burning with truly no results (no clicks, no leads, no purchases, nothing)
+      if (spend > 50 && !hasAnyResults && hasEnoughData) {
         recommendations.push({
           id: `no-results-${workspaceId}`,
           type: 'budget_decrease',
           title: 'Spending with zero results — pause and investigate',
-          description: `You've spent $${spend.toFixed(2)} with no ${primaryKpi.toUpperCase()} recorded. This usually means pixel tracking isn't firing correctly, or the landing page has a technical issue. Check your pixel events before spending more.`,
+          description: `You've spent $${spend.toFixed(2)} with no clicks, leads, or conversions recorded. This usually means pixel tracking isn't firing correctly, or there's a technical issue. Check your pixel events before spending more.`,
           impact: 'Stop burning budget on untracked spend',
           confidence: 'high',
           requiresDoubleApproval: false,
