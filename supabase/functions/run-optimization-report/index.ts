@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
       .in('progress_status', ['live', 'ready_to_publish'])
       .eq('archived', false);
 
+    console.log('[run-optimization-report] Found', workspaces?.length || 0, 'active workspaces');
     if (!workspaces || workspaces.length === 0) {
       // No active campaigns — save empty report
       const { data: report } = await supabase
