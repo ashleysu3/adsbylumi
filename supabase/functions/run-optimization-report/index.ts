@@ -38,6 +38,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401,
       });
     }
+    const userId = user.id;
     console.log('[run-optimization-report] Authenticated user:', userId);
 
     const supabase = createClient(
