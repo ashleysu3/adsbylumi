@@ -785,6 +785,15 @@ export function ProductionManager({
         brandName={workspace?.brands?.name}
         offerName={workspace?.offer_name}
       />
+
+      {/* Share with Client Dialog */}
+      <ShareWithClientDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        workspace={workspace}
+        productionItems={productionItems}
+        brandId={brandId}
+      />
     </>
   );
 }
