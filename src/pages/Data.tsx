@@ -77,7 +77,7 @@ interface AccountMetrics {
   roas: number | null;
 }
 
-export default function Data() {
+export default function AdPerformance() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const workspaceIdFromUrl = searchParams.get('workspace');
