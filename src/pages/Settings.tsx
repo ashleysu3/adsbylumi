@@ -1025,7 +1025,7 @@ export default function Settings() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex flex-wrap gap-3">
-                      <Button onClick={() => navigate('/pricing')} variant="lumi" className="gap-2">
+                      <Button onClick={() => navigate('/auth')} variant="lumi" className="gap-2">
                         <Crown className="h-4 w-4" />
                         View All Plans
                       </Button>
