@@ -10,7 +10,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandId, dateRangeStart, dateRangeEnd } = await req.json();
+    console.log('[run-optimization-report] Request received');
+    const body = await req.json();
+    const { brandId, dateRangeStart, dateRangeEnd } = body;
+    console.log('[run-optimization-report] Params:', { brandId, dateRangeStart, dateRangeEnd });
     if (!brandId || !dateRangeStart || !dateRangeEnd) {
       throw new Error('brandId, dateRangeStart, and dateRangeEnd are required');
     }
@@ -36,6 +39,7 @@ Deno.serve(async (req) => {
       });
     }
     const userId = user.id;
+    console.log('[run-optimization-report] Authenticated user:', userId);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -50,6 +54,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (brandError || !brand) throw new Error('Brand not found');
+    console.log('[run-optimization-report] Brand found:', brand.name, 'meta_account_id:', brand.meta_account_id);
     if (brand.user_id !== userId) {
       return new Response(JSON.stringify({ error: 'Access denied' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403,
@@ -57,6 +62,7 @@ Deno.serve(async (req) => {
     }
 
     if (!brand.meta_account_id || !brand.meta_access_token) {
+      console.error('[run-optimization-report] Meta not connected for brand:', brand.name);
       throw new Error('Meta account not connected');
     }
 
@@ -68,6 +74,7 @@ Deno.serve(async (req) => {
       .in('progress_status', ['live', 'ready_to_publish'])
       .eq('archived', false);
 
+    console.log('[run-optimization-report] Found', workspaces?.length || 0, 'active workspaces');
     if (!workspaces || workspaces.length === 0) {
       // No active campaigns — save empty report
       const { data: report } = await supabase
@@ -152,9 +159,11 @@ Deno.serve(async (req) => {
 
       // Fetch Meta campaign insights
       try {
+        console.log('[run-optimization-report] Fetching Meta insights for campaign:', campaignId);
         const insightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&access_token=${brand.meta_access_token}`;
         const insightsRes = await fetch(insightsUrl);
         const insightsData = await insightsRes.json();
+        console.log('[run-optimization-report] Meta response for', campaignId, ':', JSON.stringify(insightsData).slice(0, 500));
 
         if (insightsData.error) {
           console.error('Meta insights error for campaign', campaignId, insightsData.error);

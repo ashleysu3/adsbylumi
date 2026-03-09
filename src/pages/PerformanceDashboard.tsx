@@ -404,7 +404,58 @@ export default function PerformanceDashboard() {
                       <Badge variant="outline" className="text-xs">LIVE</Badge>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">No performance goals set for this campaign. LUMI can't track performance without a target.</p>
+
+                  {/* Show metrics if available */}
+                  {c.metrics && c.metrics.spend > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground text-xs">Spend</span>
+                        <div className="font-semibold">${c.metrics.spend?.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">CTR</span>
+                        <div className="font-semibold">{(c.metrics.ctr * 100)?.toFixed(2)}%</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">CPC</span>
+                        <div className="font-semibold">${c.metrics.cpc?.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">Frequency</span>
+                        <div className="font-semibold">{c.metrics.frequency?.toFixed(1)}</div>
+                      </div>
+                      {c.metrics.leads > 0 && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">Leads</span>
+                          <div className="font-semibold">{c.metrics.leads}</div>
+                        </div>
+                      )}
+                      {c.metrics.cpl > 0 && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">CPL</span>
+                          <div className="font-semibold">${c.metrics.cpl?.toFixed(2)}</div>
+                        </div>
+                      )}
+                      {c.metrics.roas > 0 && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">ROAS</span>
+                          <div className="font-semibold">{c.metrics.roas?.toFixed(1)}x</div>
+                        </div>
+                      )}
+                      {c.metrics.reach > 0 && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">Reach</span>
+                          <div className="font-semibold">{c.metrics.reach?.toLocaleString()}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-sm text-muted-foreground mt-3">
+                    {c.metrics && c.metrics.spend > 0
+                      ? 'Set performance goals so LUMI can diagnose this campaign and give you recommendations.'
+                      : 'No performance goals set for this campaign. LUMI can\'t track performance without a target.'}
+                  </p>
                   <div className="flex gap-2 mt-3">
                     <Button size="sm" variant="outline" onClick={() => openDrawer(c.workspace_id)}>
                       <Target className="h-3 w-3 mr-1" /> Set Goals →
