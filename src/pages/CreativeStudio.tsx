@@ -688,6 +688,8 @@ export default function CreativeStudio() {
           offerAudiencePsychology,
           nicheContext: workspace.brands?.industry,
           creativeIntelligence,
+          brandId,
+          offerId: workspace.offer_id,
         }
       });
       if (error) throw error;
