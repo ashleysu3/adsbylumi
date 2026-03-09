@@ -500,20 +500,6 @@ export function InsightsHome({
 
   return (
     <div className="space-y-8">
-      {/* What Lumi Sees summary */}
-      {lumiSummary && (
-        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5 rounded-2xl">
-          <CardContent className="p-5 flex items-start gap-3">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-lumi-orange-1/20 via-lumi-pink-1/20 to-lumi-purple-1/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-foreground mb-1">What Lumi Sees</h3>
-              <p className="text-sm text-muted-foreground">{lumiSummary}</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Header */}
       <div className="text-center space-y-3">
