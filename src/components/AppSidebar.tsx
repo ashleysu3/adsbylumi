@@ -29,7 +29,6 @@ const createNav = [
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio", tooltip: "Build your ad angles, copy, and creative briefs" },
   { path: "/content-library", icon: Library, label: "Concept Library", tooltip: "Browse your saved ad concepts" },
   { path: "/creative-toolkit", icon: Wrench, label: "Creative Toolkit", tooltip: "Templates, B-roll ideas, music, and production tools" },
-  { path: "/ad-performance", icon: BarChart3, label: "Ad Performance", tooltip: "Live campaign metrics, LUMI recommendations, and weekly check-ins" },
 ];
 
 const brandNav = [
@@ -179,6 +178,23 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
               {!collapsed && <span>Create a New Ad</span>}
             </span>
           </button>
+
+          <button
+            onClick={() => navigate("/ad-performance")}
+            className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              isActive("/ad-performance")
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <span className="relative">
+              <BarChart3 className="h-4 w-4" />
+              {hasRedAlert && (
+                <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
+              )}
+            </span>
+            {!collapsed && <span>Ad Performance</span>}
+          </button>
         </div>
       </SidebarHeader>
 
@@ -199,12 +215,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                       className="transition-all duration-200"
                       activeClassName="bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 text-white shadow-md shadow-lumi-pink-1/20 font-semibold [&>svg]:text-white"
                     >
-                      <div className="relative">
-                        <item.icon className="h-4 w-4" />
-                        {item.path === '/ad-performance' && hasRedAlert && (
-                          <span className="absolute -top-1 -right-1 h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                        )}
-                      </div>
+                      <item.icon className="h-4 w-4" />
                       {!collapsed && <span>{item.label}</span>}
                     </NavLink>
                   </SidebarMenuButton>
