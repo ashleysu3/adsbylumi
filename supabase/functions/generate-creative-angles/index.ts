@@ -196,6 +196,7 @@ ${insightsContext}
 ${offerAudienceContext}
 ${preGenContext}
 ${intelligenceContext}
+${previousAnglesContext}
 
 RULES:
 - Generate exactly 11 creative angles
@@ -207,6 +208,7 @@ RULES:
 ${conversationInsights?.length > 0 ? "- PRIORITIZE angles that address the specific insights shared by the user in previous conversations" : ""}
 ${preGenerationContext ? "- PRIORITIZE the user's specific direction for this creative round" : ""}
 ${creativeIntelligence?.hasData ? "- PRIORITIZE angles aligned with the user's proven top-performing creative patterns, while including 1-2 fresh test angles" : "- Generate a balanced TEST MIX of diverse angle types since there's no historical data"}
+${previouslyUsedAngles?.length > 0 ? "- CRITICAL: Do NOT repeat or rephrase any angle from the PREVIOUSLY USED ANGLES list. Every angle must be a genuinely new direction." : ""}
 
 ANGLE TYPES TO CONSIDER (but don't expose these labels to the user):
 - The Moment They Realized (built from moment_they_realize — name the exact scenario)
