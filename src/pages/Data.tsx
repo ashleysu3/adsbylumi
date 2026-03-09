@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { LumiEducationCard } from '@/components/LumiEducationCard';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -6,10 +6,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { format, subDays, startOfDay, endOfDay, startOfYesterday, endOfYesterday } from 'date-fns';
-import { RefreshCw, Link2Off, AlertTriangle, Link2, Calendar } from 'lucide-react';
+import { RefreshCw, Link2Off, AlertTriangle, Link2, Calendar, BarChart2, Settings, Share2, Copy, ExternalLink, Loader2, Target } from 'lucide-react';
 import { DateRangePicker } from '@/components/insights/DateRangePicker';
 import { InsightsHome } from '@/components/insights/InsightsHome';
 import { CampaignInsightDetail } from '@/components/insights/CampaignInsightDetail';
@@ -18,6 +25,8 @@ import { useLumiAssistant } from '@/components/LumiAssistant';
 import { MetaConnectionAlert, MetaConnectionBanner } from '@/components/MetaConnectionAlert';
 import { ImportCampaignsModal } from '@/components/insights/ImportCampaignsModal';
 import { useBrand } from '@/contexts/BrandContext';
+import { CampaignDetailDrawer } from '@/components/CampaignDetailDrawer';
+import lumiLogo from '@/assets/lumi-logo.png';
 
 interface PerformanceAnalysis {
   kpi_evaluation?: Record<string, {
