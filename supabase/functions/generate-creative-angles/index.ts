@@ -405,9 +405,36 @@ Generate exactly 11 creative angles that would resonate with this audience and o
 
     const parsed = await extractJson(rawContent);
 
-    console.log("[generate-creative-angles] Success - generated", parsed.angles?.length || 0, "angles");
+    // Normalize: AI may return angles under different keys
+    let angles = parsed.angles || parsed.creative_angles || parsed.data?.angles || [];
+    
+    // If parsed is an array itself, treat it as angles
+    if (Array.isArray(parsed)) {
+      angles = parsed;
+    }
 
-    return new Response(JSON.stringify(parsed), {
+    // If we still have no angles, look for any array property that contains objects with 'name' and 'description'
+    if (!angles.length && typeof parsed === 'object') {
+      for (const key of Object.keys(parsed)) {
+        const val = parsed[key];
+        if (Array.isArray(val) && val.length > 0 && val[0]?.name && val[0]?.description) {
+          angles = val;
+          console.log(`[generate-creative-angles] Found angles under key "${key}" instead of "angles"`);
+          break;
+        }
+      }
+    }
+
+    console.log("[generate-creative-angles] Success - generated", angles?.length || 0, "angles");
+    
+    // Log first angle name for debugging
+    if (angles?.length > 0) {
+      console.log("[generate-creative-angles] First angle:", angles[0]?.name);
+    } else {
+      console.error("[generate-creative-angles] WARNING: 0 angles generated. Raw content preview:", rawContent.substring(0, 500));
+    }
+
+    return new Response(JSON.stringify({ angles }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
