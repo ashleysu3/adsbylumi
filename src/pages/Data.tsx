@@ -902,12 +902,6 @@ export default function AdPerformance() {
 
             {metaConnected && !metaTokenExpired && brandId && metaAccountId && (
               <>
-                <button onClick={() => setImportModalOpen(true)} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                  <RefreshCw className="h-3 w-3" />
-                  <span className="hidden sm:inline">Refresh Ad Results</span>
-                  <span className="sm:hidden">Refresh</span>
-                </button>
-
                 {/* Report actions */}
                 <Popover>
                   <PopoverTrigger asChild>
@@ -931,7 +925,7 @@ export default function AdPerformance() {
                         <p className="text-xs text-muted-foreground">This link shows a read-only snapshot. Anyone with the link can view it.</p>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Run a report first to generate a shareable link.</p>
+                      <p className="text-sm text-muted-foreground">Generate a report first to get a shareable link.</p>
                     )}
                   </PopoverContent>
                 </Popover>
@@ -940,17 +934,22 @@ export default function AdPerformance() {
                   <Settings className="h-3 w-3" />
                 </Button>
 
-                <Button onClick={runReport} disabled={reportLoading} size="sm" variant="outline" className="h-7 text-xs">
-                  {reportLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-                  {reportLoading ? 'Checking...' : 'Run Report'}
+                <Button
+                  onClick={() => {
+                    if (optimizationReport && !reportLoading) {
+                      setReportPreviewOpen(true);
+                    } else {
+                      runReport();
+                    }
+                  }}
+                  disabled={reportLoading}
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                >
+                  {reportLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <BarChart2 className="h-3 w-3 mr-1" />}
+                  {reportLoading ? 'Generating...' : optimizationReport ? 'View Report' : 'Generate Report'}
                 </Button>
-
-                {optimizationReport && (
-                  <Button onClick={() => setReportPreviewOpen(true)} size="sm" variant="outline" className="h-7 text-xs">
-                    <BarChart2 className="h-3 w-3 mr-1" />
-                    Preview Report
-                  </Button>
-                )}
               </>
             )}
           </div>
