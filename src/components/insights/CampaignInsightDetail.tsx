@@ -152,7 +152,11 @@ const dateRangeOptions = [
   { value: '14', label: 'Last 14 days' },
 ];
 
-function getBudgetVerdict(status: string): { label: string; icon: React.ReactNode; colorClass: string } {
+function getBudgetVerdict(status: string, frequency?: number): { label: string; icon: React.ReactNode; colorClass: string } {
+  // If frequency is high, the issue is creative fatigue — not overspending
+  if (frequency != null && frequency >= 3.5 && (status === 'critical' || status === 'attention')) {
+    return { label: 'Refresh your creative first', icon: <RefreshCw className="h-4 w-4" />, colorClass: 'text-amber-700 bg-amber-50 border-amber-200' };
+  }
   switch (status) {
     case 'healthy': return { label: 'Increase spend', icon: <TrendingUp className="h-4 w-4" />, colorClass: 'text-green-700 bg-green-50 border-green-200' };
     case 'attention': return { label: 'Keep spend the same', icon: <DollarSign className="h-4 w-4" />, colorClass: 'text-amber-700 bg-amber-50 border-amber-200' };
@@ -285,7 +289,8 @@ export function CampaignInsightDetail({
   const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
   const statusColorClass = getLumiStatusColor(status);
   const statusLabel = getLumiStatusLabel(status);
-  const budgetVerdict = getBudgetVerdict(status);
+  const frequency = campaign.metrics?.frequency as number | undefined;
+  const budgetVerdict = getBudgetVerdict(status, frequency);
 
   const handleDateRangeChange = (value: string) => {
     setLocalDateRange(value);
@@ -463,8 +468,10 @@ export function CampaignInsightDetail({
                   </ul>
                 ) : status === 'critical' || status === 'attention' ? (
                   <p className="text-sm text-amber-800">• Your {kpiConfig.primaryLabel.toLowerCase()} needs improvement</p>
+                ) : frequency != null && frequency >= 3.5 ? (
+                  <p className="text-sm text-amber-800">• Your frequency is getting high — time for fresh creative</p>
                 ) : (
-                  <p className="text-sm text-green-700">Everything looks great! 🎉</p>
+                  <p className="text-sm text-green-700">Nothing to flag right now 👍</p>
                 )}
               </CardContent>
             </Card>
@@ -485,7 +492,7 @@ export function CampaignInsightDetail({
                   )}
                 </div>
                 {nextSteps.length > 0 || recommendations.length > 0 ? (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-sm text-muted-foreground">
                     {nextSteps[0] || recommendations[0]?.title || 'Tap to see recommendations'}
                   </p>
                 ) : (
