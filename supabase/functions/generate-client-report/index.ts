@@ -96,7 +96,8 @@ Deno.serve(async (req) => {
       let campaignId = metaCampaignIds?.campaignId;
       const finalAnswers = ws.final_answers as any;
       const template = ws.campaign_templates as any;
-      const objective = template?.objective || 'unknown';
+      // Check saved userObjective first, then template, then fallback
+      const objective = finalAnswers?.userObjective || template?.objective || 'unknown';
       const templateName = template?.name || '';
       const builderAnswers = ws.campaign_builder_answers as any;
 
