@@ -704,9 +704,8 @@ export function InsightsHome({
 
                     {/* Row 2: Budget + Spend + Sync */}
                     <div className="flex flex-wrap items-center gap-2 pl-5">
-                      {campaign.dailyBudget != null && campaign.dailyBudget > 0 ?
+                    {campaign.dailyBudget != null && campaign.dailyBudget > 0 ?
                     <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                          <DollarSign className="h-3 w-3" />
                           ${campaign.dailyBudget.toFixed(2)}/day
                           {campaign.budgetLevel === 'adset' && <span className="text-[10px] opacity-60">(ad sets)</span>}
                         </span> :
