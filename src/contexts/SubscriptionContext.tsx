@@ -66,6 +66,15 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         return;
       }
 
+      // Check if user is an agency user — auto-grant agency tier
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('is_agency_user')
+        .eq('id', session.user.id)
+        .single();
+
+      const isAgencyUser = profileData?.is_agency_user ?? false;
+
       const { data, error } = await supabase.functions.invoke('check-subscription');
       
       if (error) {
@@ -75,14 +84,19 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       }
 
       // Prefer explicit tier (code-based subscriptions), otherwise derive from Stripe ids
-      const tier =
+      let tier =
         normalizeTierKey(data.tier) ??
         getTierFromProductId(data.product_id) ??
         getTierFromPriceId(data.price_id);
+
+      // Auto-grant agency tier for agency users
+      if (isAgencyUser && tier !== 'agency') {
+        tier = 'agency';
+      }
       
       setState({
         isLoading: false,
-        isSubscribed: data.subscribed,
+        isSubscribed: isAgencyUser ? true : data.subscribed,
         tier: tier as TierKey | null,
         isAnnual: isAnnualPrice(data.price_id),
         subscriptionEnd: data.subscription_end,
