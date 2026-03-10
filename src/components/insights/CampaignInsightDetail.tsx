@@ -313,10 +313,14 @@ export function CampaignInsightDetail({
         .slice(0, 2)
     : [];
 
+  // Only show KPI alerts relevant to this campaign's objective
+  const relevantKPIKeys = new Set([kpiConfig.primary, 'ctr', 'frequency']);
+  // Also include secondary keys from campaign-kpi-config if available
   const needsAttention = analysis?.kpi_evaluation
     ? Object.entries(analysis.kpi_evaluation)
         .filter(([key, kpi]) => {
           if (kpi.status === 'tracking_only' || kpi.status === 'not_applicable') return false;
+          if (!relevantKPIKeys.has(key)) return false; // Filter out irrelevant KPIs like CPM on lead gen
           return kpi.status === 'needs attention' || kpi.status === 'critical' || kpi.status === 'needs_attention';
         })
         .map(([key, kpi]) => kpi.reason)
@@ -457,6 +461,8 @@ export function CampaignInsightDetail({
                       <li key={i} className="text-sm text-amber-800">• {item}</li>
                     ))}
                   </ul>
+                ) : status === 'critical' || status === 'attention' ? (
+                  <p className="text-sm text-amber-800">• Your {kpiConfig.primaryLabel.toLowerCase()} needs improvement</p>
                 ) : (
                   <p className="text-sm text-green-700">Everything looks great! 🎉</p>
                 )}
@@ -478,9 +484,9 @@ export function CampaignInsightDetail({
                     </Badge>
                   )}
                 </div>
-                {nextSteps.length > 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {nextSteps.length + recommendations.length} actionable recommendation{nextSteps.length + recommendations.length !== 1 ? 's' : ''} — tap to view
+                {nextSteps.length > 0 || recommendations.length > 0 ? (
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {nextSteps[0] || recommendations[0]?.title || 'Tap to see recommendations'}
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">Check back soon for recommendations</p>
@@ -578,6 +584,8 @@ export function CampaignInsightDetail({
             workspaceId={campaign.id} 
             dateRangeStart={dateRangeStart}
             dateRangeEnd={dateRangeEnd}
+            objective={campaign.objective}
+            primaryKPI={kpiConfig.primary}
           />
 
           {/* Creative Bench */}
