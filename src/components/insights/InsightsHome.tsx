@@ -24,8 +24,7 @@ import { ClientReportModal } from './ClientReportModal';
 import {
   getLumiKPIConfig,
   getLumiKPIStatus,
-  getLumiStatusDot,
-  getObjectiveMetrics } from
+  getLumiStatusDot } from
 '@/lib/lumi-kpi-config';
 import { CampaignGoalRow } from './CampaignGoalRow';
 import { CampaignKPISummary } from './CampaignKPISummary';
