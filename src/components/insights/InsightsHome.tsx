@@ -194,12 +194,31 @@ export function InsightsHome({
   const [recsLoading, setRecsLoading] = useState(false);
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [goalsMap, setGoalsMap] = useState<Record<string, any>>({});
 
   // Post picker state
   const [postPickerOpen, setPostPickerOpen] = useState(false);
   const [postPickerCampaignId, setPostPickerCampaignId] = useState<string | null>(null);
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
+
+  // Fetch campaign goals for all campaigns
+  useEffect(() => {
+    const fetchGoals = async () => {
+      const wsIds = campaigns.map(c => c.id).filter(Boolean);
+      if (wsIds.length === 0) return;
+      const { data } = await supabase
+        .from('campaign_goals')
+        .select('*')
+        .in('workspace_id', wsIds);
+      if (data) {
+        const map: Record<string, any> = {};
+        data.forEach((g: any) => { if (g.workspace_id) map[g.workspace_id] = g; });
+        setGoalsMap(map);
+      }
+    };
+    if (campaigns.length > 0) fetchGoals();
+  }, [campaigns]);
 
   const [linkOfferModal, setLinkOfferModal] = useState<{
     open: boolean;
