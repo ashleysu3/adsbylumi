@@ -491,13 +491,18 @@ export function CampaignInsightDetail({
                     </Badge>
                   )}
                 </div>
-                {nextSteps.length > 0 || recommendations.length > 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {nextSteps[0] || recommendations[0]?.title || 'Tap to see recommendations'}
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Check back soon for recommendations</p>
-                )}
+                {(() => {
+                  const rawText = nextSteps[0] || recommendations[0]?.title || '';
+                  if (!rawText) return <p className="text-sm text-muted-foreground">Check back soon for recommendations</p>;
+                  // Strip markdown bold, internal slugs like 'snake_case_id', and trim
+                  const cleaned = rawText
+                    .replace(/\*\*/g, '')
+                    .replace(/'[a-z][a-z0-9_]+'|'[a-z][a-z0-9_]+'/g, '')
+                    .replace(/\s{2,}/g, ' ')
+                    .trim();
+                  const display = cleaned.length > 120 ? cleaned.slice(0, 117) + '...' : cleaned;
+                  return <p className="text-sm text-muted-foreground">{display}</p>;
+                })()}
               </CardContent>
             </Card>
           </div>
