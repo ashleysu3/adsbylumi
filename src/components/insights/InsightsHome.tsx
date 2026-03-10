@@ -391,11 +391,10 @@ export function InsightsHome({
 
         if (!error && data?.recommendations) {
           // Deduplicate: skip recs whose description already exists in allRecs
-          const existingDescs = new Set(allRecs.map((r: any) => (r.description || '').toLowerCase().trim()));
           data.recommendations.forEach((r: any) => {
-            const desc = (r.description || '').toLowerCase().trim();
-            if (!existingDescs.has(desc)) {
-              existingDescs.add(desc);
+            const desc = normalizeDesc(r.description || '');
+            if (desc && !globalDedup.has(desc)) {
+              globalDedup.add(desc);
               allRecs.push({ ...r, campaignName: campaign.name, campaignId: campaign.id });
             }
           });
