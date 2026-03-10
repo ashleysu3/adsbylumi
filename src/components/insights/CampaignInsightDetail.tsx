@@ -772,43 +772,23 @@ export function CampaignInsightDetail({
                 );
               })()}
 
-              {/* Creative Fatigue */}
-              <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <RefreshCw className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
-                    Creative Warmth & Fatigue
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {analysis?.creative_diagnosis?.problem ? (
-                    <>
-                      <Alert className="rounded-xl border-amber-200 bg-amber-50">
-                        <AlertTriangle className="h-4 w-4 text-amber-600" />
-                        <AlertDescription className="text-amber-800">{analysis.creative_diagnosis.problem}</AlertDescription>
-                      </Alert>
-                      {analysis.creative_diagnosis.recommended_creatives_to_refresh?.length > 0 && (
-                        <div>
-                          <p className="text-sm font-medium mb-2">Consider refreshing:</p>
-                          <ul className="space-y-2">
-                            {analysis.creative_diagnosis.recommended_creatives_to_refresh.slice(0, 2).map((item, i) => (
-                              <li key={i} className="text-sm flex items-start gap-2 p-2 rounded-lg bg-muted/50">
-                                <RefreshCw className="h-4 w-4 text-[hsl(var(--lumi-orange-1))] shrink-0 mt-0.5" />
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  ) : (
+              {/* Creative Fatigue card moved above — only show "fresh" state here if no problem */}
+              {!analysis?.creative_diagnosis?.problem && (
+                <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <RefreshCw className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
+                      Creative Warmth & Fatigue
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <div className="p-4 rounded-xl bg-green-50/50 border border-green-100 text-center">
                       <CheckCircle2 className="h-6 w-6 text-green-600 mx-auto mb-2" />
                       <p className="text-sm text-green-800">Your creative is fresh and performing well!</p>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Budget Adjustment Panel */}
               <BudgetAdjustmentPanel
