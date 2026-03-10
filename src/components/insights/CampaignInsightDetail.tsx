@@ -492,7 +492,7 @@ export function CampaignInsightDetail({
                   )}
                 </div>
                 {nextSteps.length > 0 || recommendations.length > 0 ? (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-sm text-muted-foreground">
                     {nextSteps[0] || recommendations[0]?.title || 'Tap to see recommendations'}
                   </p>
                 ) : (
