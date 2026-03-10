@@ -632,6 +632,7 @@ export function CampaignInsightDetail({
               brandId={campaign.brandId}
               autoRotateEnabled={autoRotateEnabled}
               onAutoRotateChange={handleAutoRotateChange}
+              workspace={workspaceData}
             />
           )}
 
