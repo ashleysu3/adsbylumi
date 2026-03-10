@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Heart, HeartOff, Copy, Check, Video, FileText, Layers, Image as ImageIcon, Target, Zap, TrendingUp, Star, Type } from "lucide-react";
+import { Heart, HeartOff, Copy, Check, Video, FileText, Layers, Image as ImageIcon, Target, Zap, TrendingUp, Star } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
