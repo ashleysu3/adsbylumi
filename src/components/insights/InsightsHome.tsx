@@ -622,7 +622,7 @@ export function InsightsHome({
           const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
           const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
           const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
-          const statusDot = getLumiStatusDot(status);
+          const statusDot = status === 'no-data' ? 'bg-amber-500' : getLumiStatusDot(status);
           const actionRec = getActionRecommendation(status);
           const isActive = campaign.status === 'active' || campaign.status === 'live';
           const isToggling = togglingCampaign === campaign.id;
