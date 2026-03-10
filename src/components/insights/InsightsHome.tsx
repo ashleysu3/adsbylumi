@@ -687,11 +687,7 @@ export function InsightsHome({
                           ${campaign.dailyBudget.toFixed(2)}/day
                           {campaign.budgetLevel === 'adset' && <span className="text-[10px] opacity-60">(ad sets)</span>}
                         </span> :
-                      campaign.dailyBudget === undefined && campaign.lastSyncedAt ?
-                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground/50">
-                          <DollarSign className="h-3 w-3" />
-                          —
-                        </span> : null
+                      null
                     }
                       {campaign.metrics?.spend != null && Number(campaign.metrics.spend) > 0 &&
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
