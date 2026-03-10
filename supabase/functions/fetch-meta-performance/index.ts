@@ -149,12 +149,19 @@ Deno.serve(async (req) => {
 
     console.log('Fetching Meta performance for campaign:', campaignId);
 
+    // Safe JSON parser for Meta API responses
+    const safeJson = async (response: Response): Promise<any> => {
+      const text = await response.text();
+      if (!text || !text.trim()) return {};
+      try { return JSON.parse(text); } catch { console.error('Failed to parse Meta response:', text.substring(0, 200)); return {}; }
+    };
+
     // ============================================
     // STEP 1: Fetch real-time campaign status from Meta
     // ============================================
     const statusUrl = `https://graph.facebook.com/v18.0/${campaignId}?fields=status,effective_status,daily_budget,lifetime_budget&access_token=${metaAccessToken}`;
     const statusResponse = await fetch(statusUrl);
-    const statusData = await statusResponse.json();
+    const statusData = await safeJson(statusResponse);
 
     if (statusData.error) {
       console.error('Meta API status error:', statusData.error);
