@@ -49,7 +49,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { openChat, unreadCount } = useLumiAssistant();
-  const { activeBrand } = useBrand();
+  const { activeBrand, isAgencyUser } = useBrand();
   const { isSubscribed, isLoading: subLoading } = useSubscription();
   const [hasCampaigns, setHasCampaigns] = useState(false);
   const [metaStatus, setMetaStatus] = useState<'connected' | 'expired' | 'disconnected'>('disconnected');
