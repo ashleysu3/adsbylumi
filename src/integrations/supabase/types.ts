@@ -973,9 +973,11 @@ export type Database = {
           enabled: boolean | null
           id: string
           last_sent_at: string | null
+          report_auto_send: boolean | null
           send_day: string
           send_days: string[] | null
           send_time: string
+          slack_channel_id: string | null
           timezone: string
         }
         Insert: {
@@ -987,9 +989,11 @@ export type Database = {
           enabled?: boolean | null
           id?: string
           last_sent_at?: string | null
+          report_auto_send?: boolean | null
           send_day?: string
           send_days?: string[] | null
           send_time?: string
+          slack_channel_id?: string | null
           timezone?: string
         }
         Update: {
@@ -1001,9 +1005,11 @@ export type Database = {
           enabled?: boolean | null
           id?: string
           last_sent_at?: string | null
+          report_auto_send?: boolean | null
           send_day?: string
           send_days?: string[] | null
           send_time?: string
+          slack_channel_id?: string | null
           timezone?: string
         }
         Relationships: [
