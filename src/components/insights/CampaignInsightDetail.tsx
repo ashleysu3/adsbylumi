@@ -152,7 +152,11 @@ const dateRangeOptions = [
   { value: '14', label: 'Last 14 days' },
 ];
 
-function getBudgetVerdict(status: string): { label: string; icon: React.ReactNode; colorClass: string } {
+function getBudgetVerdict(status: string, frequency?: number): { label: string; icon: React.ReactNode; colorClass: string } {
+  // If frequency is high, the issue is creative fatigue — not overspending
+  if (frequency != null && frequency >= 3.5 && (status === 'critical' || status === 'attention')) {
+    return { label: 'Refresh your creative first', icon: <RefreshCw className="h-4 w-4" />, colorClass: 'text-amber-700 bg-amber-50 border-amber-200' };
+  }
   switch (status) {
     case 'healthy': return { label: 'Increase spend', icon: <TrendingUp className="h-4 w-4" />, colorClass: 'text-green-700 bg-green-50 border-green-200' };
     case 'attention': return { label: 'Keep spend the same', icon: <DollarSign className="h-4 w-4" />, colorClass: 'text-amber-700 bg-amber-50 border-amber-200' };
