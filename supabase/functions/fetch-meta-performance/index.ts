@@ -370,8 +370,20 @@ Deno.serve(async (req) => {
       // Calculate cost per thruplay
       costPerThruPlay: videoThruPlays > 0 ? spend / videoThruPlays : 0,
       
-      // ROAS calculation
-      roas: campaignMetrics.purchase_roas ? extractMetric(campaignMetrics, 'purchase_roas') : null,
+      // ROAS calculation — purchase_roas is an array like [{action_type: "omni_purchase", value: "2.5"}]
+      roas: (() => {
+        const roasArr = campaignMetrics.purchase_roas;
+        if (Array.isArray(roasArr) && roasArr.length > 0) {
+          return parseFloat(roasArr[0].value) || null;
+        }
+        // Fallback: compute from purchase value / spend
+        const purchaseValue = extractAction(campaignMetrics.actions, 'omni_purchase') || extractAction(campaignMetrics.actions, 'purchase');
+        const costPerPurchase = extractCostPerAction(campaignMetrics.cost_per_action_type, 'purchase');
+        if (purchaseValue > 0 && spend > 0) {
+          return purchaseValue / spend;
+        }
+        return null;
+      })(),
     };
 
     // ============================================
