@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
     // Fetch Campaign-level insights - including video_p100_watched_actions for thruplay data
     // (safeJson helper defined above)
 
-    const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions&${timeRange}&access_token=${metaAccessToken}`;
+    const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions,purchase_roas&${timeRange}&access_token=${metaAccessToken}`;
     
     const campaignResponse = await fetch(campaignInsightsUrl);
     const campaignData = await safeJson(campaignResponse);
@@ -370,8 +370,20 @@ Deno.serve(async (req) => {
       // Calculate cost per thruplay
       costPerThruPlay: videoThruPlays > 0 ? spend / videoThruPlays : 0,
       
-      // ROAS calculation
-      roas: campaignMetrics.purchase_roas ? extractMetric(campaignMetrics, 'purchase_roas') : null,
+      // ROAS calculation — purchase_roas is an array like [{action_type: "omni_purchase", value: "2.5"}]
+      roas: (() => {
+        const roasArr = campaignMetrics.purchase_roas;
+        if (Array.isArray(roasArr) && roasArr.length > 0) {
+          return parseFloat(roasArr[0].value) || null;
+        }
+        // Fallback: compute from purchase value / spend
+        const purchaseValue = extractAction(campaignMetrics.actions, 'omni_purchase') || extractAction(campaignMetrics.actions, 'purchase');
+        const costPerPurchase = extractCostPerAction(campaignMetrics.cost_per_action_type, 'purchase');
+        if (purchaseValue > 0 && spend > 0) {
+          return purchaseValue / spend;
+        }
+        return null;
+      })(),
     };
 
     // ============================================
