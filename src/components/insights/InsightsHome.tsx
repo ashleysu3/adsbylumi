@@ -146,14 +146,6 @@ function hasLiveConversions(campaign: Campaign): boolean {
   return false;
 }
 
-function getVerdict(status: string): {label: string;colorClass: string;} {
-  switch (status) {
-    case 'healthy':return { label: 'Above benchmark', colorClass: 'text-green-700' };
-    case 'attention':return { label: 'Right at benchmark', colorClass: 'text-amber-700' };
-    case 'critical':return { label: 'Below benchmark', colorClass: 'text-red-700' };
-    default:return { label: 'Gathering data', colorClass: 'text-muted-foreground' };
-  }
-}
 
 function getActionRecommendation(status: string): string {
   switch (status) {
