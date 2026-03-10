@@ -28,6 +28,7 @@ import {
   getObjectiveMetrics } from
 '@/lib/lumi-kpi-config';
 import { CampaignGoalRow } from './CampaignGoalRow';
+import { CampaignKPISummary } from './CampaignKPISummary';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
 import { DateRangePicker } from './DateRangePicker';
