@@ -461,6 +461,8 @@ export function CampaignInsightDetail({
                       <li key={i} className="text-sm text-amber-800">• {item}</li>
                     ))}
                   </ul>
+                ) : status === 'critical' || status === 'attention' ? (
+                  <p className="text-sm text-amber-800">• Your {kpiConfig.primaryLabel.toLowerCase()} needs improvement</p>
                 ) : (
                   <p className="text-sm text-green-700">Everything looks great! 🎉</p>
                 )}
