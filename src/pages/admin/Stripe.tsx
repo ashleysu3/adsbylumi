@@ -157,7 +157,7 @@ export default function AdminStripe() {
                 {activeSub ? (
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <Badge variant="default" className="bg-green-600">Active</Badge>
+                      <Badge className="bg-primary text-primary-foreground">Active</Badge>
                       <span className="text-sm text-muted-foreground">Renews {new Date(activeSub.current_period_end).toLocaleDateString()}</span>
                     </div>
                     <p className="text-xs text-muted-foreground font-mono">Price: {activeSub.plan} · Product: {activeSub.product}</p>

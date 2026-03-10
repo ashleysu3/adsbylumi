@@ -136,6 +136,7 @@ const App = () => {
                   <Route path="/admin/users" element={<AdminUsers />} />
                   <Route path="/admin/settings" element={<AdminSettings />} />
                   <Route path="/admin/team" element={<AdminTeam />} />
+                  <Route path="/admin/stripe" element={<AdminStripe />} />
                   <Route path="/client-portal/:portalId" element={<ClientPortal />} />
                   <Route path="/agency-settings" element={<AgencySettings />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
