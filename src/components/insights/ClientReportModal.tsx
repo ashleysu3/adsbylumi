@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Copy, Check, FileText, Calendar, ChevronRight, Lock, Settings2, Hash, Send, ChevronDown, AlertCircle } from 'lucide-react';
+import { Loader2, Copy, Check, FileText, Calendar, ChevronRight, Lock, Settings2, Hash, Send, ChevronDown, AlertCircle, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { parseReportSections, ReportSectionRenderer } from './ReportSectionRenderer';
@@ -103,6 +103,7 @@ export function ClientReportModal({
   const [sendDays, setSendDays] = useState<string[]>([]);
   const [savingDelivery, setSavingDelivery] = useState(false);
   const [testingSend, setTestingSend] = useState(false);
+  const [sendingToSlack, setSendingToSlack] = useState(false);
 
   useEffect(() => {
     if (open && brandId) {
@@ -546,10 +547,41 @@ export function ClientReportModal({
                       <FileText className="h-3.5 w-3.5 mr-1" /> New Report
                     </Button>
                   )}
-                  <div className="flex-1" />
-                  <Button variant="outline" size="sm" onClick={() => copyToClipboard(rawReport!)} className="rounded-xl gap-1.5">
-                    {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy Report</>}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(rawReport!)} className="rounded-xl gap-1.5">
+                      {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy Report</>}
+                    </Button>
+                    {isAgency && slackChannel && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl gap-1.5"
+                        disabled={sendingToSlack}
+                        onClick={async () => {
+                          setSendingToSlack(true);
+                          try {
+                            const { error } = await supabase.functions.invoke('send-client-report-slack', {
+                              body: {
+                                channel: slackChannel,
+                                reportText: rawReport,
+                                brandName: '',
+                                dateRange: `${dateRangeStart} – ${dateRangeEnd}`,
+                              },
+                            });
+                            if (error) throw error;
+                            toast.success('Report sent to Slack!');
+                          } catch (err: any) {
+                            toast.error(err.message || 'Failed to send to Slack');
+                          } finally {
+                            setSendingToSlack(false);
+                          }
+                        }}
+                      >
+                        {sendingToSlack ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquare className="h-3.5 w-3.5" />}
+                        Send to Slack
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Delivery settings — agency only */}

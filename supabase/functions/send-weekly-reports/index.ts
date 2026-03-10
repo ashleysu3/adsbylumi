@@ -175,15 +175,53 @@ Deno.serve(async (req) => {
         const campaignName = workspace.offer_name || workspace.name || 'Your Campaign';
         const frequencyLabel = reportFrequency === 'daily' ? 'Daily' : 'Weekly';
 
-        // Build HTML email
-        const emailHtml = buildEmailHtml({
-          userName,
-          campaignName,
-          metrics,
-          report,
-          brandName: brand.name,
-          frequencyLabel,
-        });
+        // Try to generate a rich AI report using generate-client-report in self-serve mode
+        let emailHtml = '';
+        try {
+          const reportResponse = await fetch(`${supabaseUrl}/functions/v1/generate-client-report`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            },
+            body: JSON.stringify({
+              brandId: brand.id,
+              mode: 'self-serve',
+              dateRangeStart: new Date(Date.now() - (reportFrequency === 'daily' ? 1 : 7) * 86400000).toISOString().split('T')[0],
+              dateRangeEnd: new Date().toISOString().split('T')[0],
+            }),
+          });
+
+          // The generate-client-report function requires user auth, so for the cron
+          // we fall back to the built-in HTML template if it fails
+          if (reportResponse.ok) {
+            const reportData = await reportResponse.json();
+            if (reportData.report) {
+              // Convert markdown report to beautiful HTML email
+              emailHtml = buildRichEmailHtml({
+                userName,
+                campaignName,
+                brandName: brand.name,
+                frequencyLabel,
+                reportMarkdown: reportData.report,
+              });
+            }
+          }
+        } catch (aiErr) {
+          console.log(`AI report generation failed for ${workspace.id}, using fallback template:`, aiErr);
+        }
+
+        // Fallback to basic template if AI report failed
+        if (!emailHtml) {
+          emailHtml = buildEmailHtml({
+            userName,
+            campaignName,
+            metrics,
+            report,
+            brandName: brand.name,
+            frequencyLabel,
+          });
+        }
 
         // Send email via Resend
         const { error: emailError } = await resend.emails.send({
@@ -490,6 +528,126 @@ function buildEmailHtml(params: {
           </tr>
 
           <!-- Footer -->
+          <tr>
+            <td style="background: #FAF9F6; padding: 22px 40px; text-align: center; border-top: 1px solid #F5F3EE;">
+              <p style="margin: 0; color: #a0aec0; font-size: 11px; line-height: 1.6;">
+                Lumi by Ads by Lumi · Meta Ads, Simplified<br/>
+                This is an automated ${frequencyLabel.toLowerCase()} report. Manage preferences in your dashboard settings.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+function buildRichEmailHtml(params: {
+  userName: string;
+  campaignName: string;
+  brandName: string;
+  frequencyLabel: string;
+  reportMarkdown: string;
+}): string {
+  const { userName, campaignName, brandName, frequencyLabel, reportMarkdown } = params;
+
+  // Convert markdown to styled HTML
+  const convertMarkdownToHtml = (md: string): string => {
+    let html = md;
+
+    // H3 headers → styled headers
+    html = html.replace(/^### (.+)$/gm, '<h2 style="margin: 28px 0 12px 0; color: #111111; font-size: 18px; font-weight: 800; font-family: \'Red Hat Display\', sans-serif;">$1</h2>');
+
+    // H4 headers
+    html = html.replace(/^#### (.+)$/gm, '<h3 style="margin: 20px 0 8px 0; color: #333; font-size: 15px; font-weight: 700;">$1</h3>');
+
+    // Bold text
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong style="font-weight: 700; color: #111;">$1</strong>');
+
+    // Horizontal rules
+    html = html.replace(/^---$/gm, '<hr style="border: none; border-top: 1px solid #F5F3EE; margin: 20px 0;">');
+
+    // Checklist items
+    html = html.replace(/^- \[ \] (.+)$/gm, '<div style="margin: 6px 0; padding: 8px 12px; background: #F8FAFC; border-radius: 8px; font-size: 13px; color: #333;">☐ $1</div>');
+    html = html.replace(/^- \[x\] (.+)$/gm, '<div style="margin: 6px 0; padding: 8px 12px; background: #F0FDF4; border-radius: 8px; font-size: 13px; color: #166534;">☑️ $1</div>');
+
+    // Bullet points
+    html = html.replace(/^- (.+)$/gm, '<div style="margin: 4px 0; padding-left: 16px; font-size: 13px; color: #4a5568; line-height: 1.7;">• $1</div>');
+
+    // Tables
+    html = html.replace(/\|(.+)\|\n\|[-|\s:]+\|\n((?:\|.+\|\n?)+)/g, (_, header, rows) => {
+      const headerCells = header.split('|').map((c: string) => c.trim()).filter(Boolean);
+      const dataRows = rows.trim().split('\n').map((row: string) =>
+        row.split('|').map((c: string) => c.trim()).filter(Boolean)
+      );
+      let table = '<table style="width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px;">';
+      table += '<tr>' + headerCells.map((h: string) => `<th style="text-align: left; padding: 8px 12px; background: #F8FAFC; border-bottom: 2px solid #E2E8F0; color: #64748B; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${h.replace(/\*\*/g, '')}</th>`).join('') + '</tr>';
+      for (const row of dataRows) {
+        table += '<tr>' + row.map((c: string) => `<td style="padding: 8px 12px; border-bottom: 1px solid #F1F5F9; color: #333;">${c}</td>`).join('') + '</tr>';
+      }
+      table += '</table>';
+      return table;
+    });
+
+    // Paragraphs (lines that aren't already HTML)
+    html = html.replace(/^(?!<[a-z])((?!\s*$).+)$/gm, (match) => {
+      if (match.trim().startsWith('<')) return match;
+      return `<p style="margin: 8px 0; color: #4a5568; font-size: 14px; line-height: 1.7;">${match}</p>`;
+    });
+
+    return html;
+  };
+
+  const bodyHtml = convertMarkdownToHtml(reportMarkdown);
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${frequencyLabel} Ad Report</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700;800&display=swap');
+  </style>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Red Hat Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #FAF9F6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAF9F6; padding: 30px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);">
+          <tr>
+            <td style="background: linear-gradient(135deg, #F97316 0%, #EC4899 40%, #A78BFA 70%, #93C5FD 100%); padding: 35px 40px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">📊 ${frequencyLabel} Performance Report</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 15px; font-weight: 500;">${brandName}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 35px 40px 20px 40px;">
+              <p style="margin: 0; color: #111111; font-size: 17px; font-weight: 600;">Hey ${userName} 👋</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              ${bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 40px 35px 40px; text-align: center;">
+              <a href="https://adsbylumi.com/data" style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EC4899 50%, #A78BFA 100%); color: #ffffff; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 6px 20px rgba(236, 72, 153, 0.3);">View Full Dashboard →</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 40px 30px 40px;">
+              <p style="margin: 0; color: #111111; font-size: 14px; font-weight: 600;">
+                Keep going — you're doing amazing 💜<br/>
+                <span style="font-weight: 700;">— Lumi</span>
+              </p>
+            </td>
+          </tr>
           <tr>
             <td style="background: #FAF9F6; padding: 22px 40px; text-align: center; border-top: 1px solid #F5F3EE;">
               <p style="margin: 0; color: #a0aec0; font-size: 11px; line-height: 1.6;">

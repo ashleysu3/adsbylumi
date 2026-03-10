@@ -26,7 +26,8 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) throw new Error('Unauthorized');
 
-    const { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds } = await req.json();
+    const { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds, mode } = await req.json();
+    const reportMode = mode === 'self-serve' ? 'self-serve' : 'agency';
     if (!brandId) throw new Error('brandId is required');
 
     const { data: brand, error: brandError } = await supabase
@@ -387,8 +388,9 @@ ${wowContext ? 'If previous period data exists, show "+X%" or "-X%" deltas next 
 **What's Happening:**
 [2-4 sentences in plain language. What's working, what isn't, and why. Name specific ad creatives when available.]
 
-**What We're Doing About It:**
-[Concrete action with a specific date. E.g. "We'll swap the creative by March 14" not "we'll optimize".]
+${reportMode === 'self-serve' ? `**✦ LUMI Recommends:**
+[Concrete recommendation with a specific date. E.g. "Refresh your hook creative by March 14" not "optimize".]` : `**What We're Doing About It:**
+[Concrete action with a specific date. E.g. "We'll swap the creative by March 14" not "we'll optimize".]`}
 
 ---
 
@@ -406,7 +408,21 @@ After all campaigns:
 
 ---
 
-### 📋 Agency Action Items
+${reportMode === 'self-serve' ? `### 📋 Your To-Do List
+[List creative tasks the user should do themselves. Format as a checklist:]
+- [ ] Record a new hook video for [Campaign] — by [Date]
+- [ ] Refresh creative assets for [Campaign]
+- [ ] Write new ad copy angles for [Campaign]
+If no creative tasks, write "No creative tasks this period — your content is performing well! ✅"
+
+---
+
+### 🤝 Approve These Changes
+[List actions that LUMI can execute once the user approves. Budget changes, pausing/enabling ads, swapping bench creative. Format:]
+- [ ] Approve budget increase for [Campaign] from $X/day → $X/day
+- [ ] Approve pausing underperforming ad "[Ad Name]" in [Campaign]
+- [ ] Approve swapping in bench creative for [Campaign]
+If nothing needs approval, write "No changes pending your approval this week ✅"` : `### 📋 Agency Action Items
 [List every commitment your team made above with a specific date. Format as a checklist:]
 - [ ] [Action] — by [Date]
 - [ ] [Action] — by [Date]
@@ -419,7 +435,7 @@ If no date-specific actions, write "No scheduled action items this period."
 - [ ] Approve budget increase for [Campaign] from $X/day → $X/day
 - [ ] Send updated creative assets for [Campaign]
 - [ ] Confirm [specific thing]
-If nothing is needed, write "Nothing needed from you this week — we're on it! ✅"
+If nothing is needed, write "Nothing needed from you this week — we're on it! ✅"`}
 
 DECISION TREE FOR EACH CAMPAIGN:
 1. **MEETING TARGET**: State clearly this is performing well. Recommend scaling 15-20%. Cite specific metric vs target.
