@@ -4,12 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
   Zap, PauseCircle, Play, RefreshCw, RotateCcw,
-  ChevronDown, Clock, TrendingUp, Loader2, Sparkles
+  ChevronDown, Clock, TrendingUp, Loader2, Sparkles,
+  Plus, Video, Layers, Image as ImageIcon, FileText, Target, Trash2,
 } from 'lucide-react';
 
 interface BenchItem {
@@ -38,6 +44,30 @@ interface CreativeBenchPanelProps {
   brandId: string;
   autoRotateEnabled: boolean;
   onAutoRotateChange: (enabled: boolean) => void;
+  workspace?: any;
+}
+
+const formatIcons: Record<string, React.ElementType> = {
+  talking_head: Video,
+  b_roll: Video,
+  carousel: Layers,
+  static: ImageIcon,
+};
+
+const stageColors: Record<string, string> = {
+  grow: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  nurture: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  convert: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+};
+
+function getBenchItemName(item: BenchItem): string {
+  const snap = item.performance_snapshot;
+  if (snap?.name) return snap.name;
+  if (snap?.title) return snap.title;
+  if (snap?.hook) return snap.hook.substring(0, 60) + (snap.hook.length > 60 ? '…' : '');
+  if (item.meta_ad_id) return item.meta_ad_id;
+  if (item.production_item_id) return item.production_item_id;
+  return 'Untitled';
 }
 
 export function CreativeBenchPanel({
@@ -45,12 +75,16 @@ export function CreativeBenchPanel({
   brandId,
   autoRotateEnabled,
   onAutoRotateChange,
+  workspace,
 }: CreativeBenchPanelProps) {
   const [benchItems, setBenchItems] = useState<BenchItem[]>([]);
   const [rotationLogs, setRotationLogs] = useState<RotationLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [rotating, setRotating] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedConcepts, setSelectedConcepts] = useState<string[]>([]);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     fetchBenchData();
@@ -77,15 +111,81 @@ export function CreativeBenchPanel({
     setLoading(false);
   };
 
+  // Parse concepts from workspace
+  const getAvailableConcepts = () => {
+    if (!workspace) return [];
+    const creative = workspace.creative_json || {};
+    const creativeMix = creative.creative_mix || creative.customer_journey || {};
+    const concepts: any[] = [];
+
+    const existingIds = new Set(benchItems.map(i => i.production_item_id));
+
+    ['grow', 'nurture', 'convert'].forEach(stage => {
+      const stageItems = creativeMix[stage] || creativeMix[stage === 'grow' ? 'tofu' : stage === 'nurture' ? 'mofu' : 'bofu'] || [];
+      stageItems.forEach((c: any, idx: number) => {
+        const conceptId = `${stage}-${idx}`;
+        if (!existingIds.has(conceptId)) {
+          concepts.push({ ...c, stage, conceptId });
+        }
+      });
+    });
+
+    return concepts;
+  };
+
+  const handleAddToBench = async () => {
+    if (selectedConcepts.length === 0) return;
+    setAdding(true);
+    const concepts = getAvailableConcepts();
+    const toAdd = concepts.filter(c => selectedConcepts.includes(c.conceptId));
+
+    const inserts = toAdd.map(c => ({
+      workspace_id: workspaceId,
+      brand_id: brandId,
+      production_item_id: c.conceptId,
+      status: 'bench',
+      performance_snapshot: {
+        name: c.title || c.name || c.hook,
+        hook: c.hook,
+        script: c.script,
+        format: c.format,
+        stage: c.stage,
+        angle: c.angle_name || c.hook_type,
+        type: 'concept_library',
+      },
+      auto_rotate_approved: false,
+    }));
+
+    const { error } = await supabase.from('creative_bench').insert(inserts);
+    if (error) {
+      toast.error('Failed to add concepts to bench');
+    } else {
+      toast.success(`Added ${toAdd.length} concept${toAdd.length > 1 ? 's' : ''} to bench`);
+      setPickerOpen(false);
+      setSelectedConcepts([]);
+      fetchBenchData();
+    }
+    setAdding(false);
+  };
+
+  const handleRemoveFromBench = async (itemId: string) => {
+    const { error } = await supabase.from('creative_bench').delete().eq('id', itemId);
+    if (error) {
+      toast.error('Failed to remove');
+    } else {
+      setBenchItems(prev => prev.filter(i => i.id !== itemId));
+      toast.success('Removed from bench');
+    }
+  };
+
   const liveItems = benchItems.filter(i => i.status === 'live');
   const onBench = benchItems.filter(i => i.status === 'bench');
   const pausedItems = benchItems.filter(i => i.status === 'paused');
-  const retesting = benchItems.filter(i => i.status === 'retesting');
 
   const handleSwapNow = async (fatigueAdId: string, benchAdId: string) => {
     setRotating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('rotate-creative', {
+      const { error } = await supabase.functions.invoke('rotate-creative', {
         body: { workspaceId, brandId, fatigueAdId, benchAdId, reason: 'Manual swap', isAutoRotation: false },
       });
       if (error) throw error;
@@ -93,7 +193,6 @@ export function CreativeBenchPanel({
       fetchBenchData();
     } catch (err: any) {
       toast.error('Failed to rotate creative');
-      console.error(err);
     } finally {
       setRotating(false);
     }
@@ -134,21 +233,7 @@ export function CreativeBenchPanel({
     );
   }
 
-  if (benchItems.length === 0) {
-    return (
-      <Card className="rounded-2xl border-dashed">
-        <CardContent className="p-8 text-center">
-          <Sparkles className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-          <h3 className="font-semibold text-sm mb-1">No Creative Tracked Yet</h3>
-          <p className="text-sm text-muted-foreground">
-            Published ads will appear here once they're live. Bench creative will be ready for auto-rotation.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Detect fatigued live ads (frequency >= 4 or low CTR)
+  // Detect fatigued live ads
   const fatiguedLive = liveItems.filter(item => {
     const snap = item.performance_snapshot;
     if (!snap) return false;
@@ -160,13 +245,11 @@ export function CreativeBenchPanel({
     if (fatiguedLive.length === 0 || readyBench.length === 0) return;
     setRotating(true);
     try {
-      // Swap each fatigued ad with a bench ad (up to available bench items)
       const swapCount = Math.min(fatiguedLive.length, readyBench.length);
       for (let i = 0; i < swapCount; i++) {
         await supabase.functions.invoke('rotate-creative', {
           body: {
-            workspaceId,
-            brandId,
+            workspaceId, brandId,
             fatigueAdId: fatiguedLive[i].meta_ad_id,
             benchAdId: readyBench[i].meta_ad_id,
             reason: 'Bulk fatigue refresh',
@@ -176,13 +259,14 @@ export function CreativeBenchPanel({
       }
       toast.success(`Swapped ${swapCount} fatigued ad${swapCount > 1 ? 's' : ''} with bench creative!`);
       fetchBenchData();
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to refresh creative');
-      console.error(err);
     } finally {
       setRotating(false);
     }
   };
+
+  const availableConcepts = getAvailableConcepts();
 
   return (
     <div className="space-y-4">
@@ -204,12 +288,8 @@ export function CreativeBenchPanel({
                   </p>
                 </div>
               </div>
-              <Button
-                size="sm"
-                onClick={handleBulkRefresh}
-                disabled={rotating}
-                className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white"
-              >
+              <Button size="sm" onClick={handleBulkRefresh} disabled={rotating}
+                className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white">
                 {rotating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
                 Swap Now
               </Button>
@@ -236,6 +316,85 @@ export function CreativeBenchPanel({
         </CardContent>
       </Card>
 
+      {/* Bench Creative Section */}
+      <Card className="rounded-2xl border-blue-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Play className="h-4 w-4 text-blue-600" />
+              Bench Creative ({onBench.length})
+            </CardTitle>
+            {workspace && (
+              <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5"
+                onClick={() => { setSelectedConcepts([]); setPickerOpen(true); }}>
+                <Plus className="h-3.5 w-3.5" />
+                Add from Concepts
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {onBench.length === 0 ? (
+            <div className="text-center py-6">
+              <Sparkles className="h-7 w-7 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm font-medium mb-1">No bench creative yet</p>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                Add concepts here so Lumi can swap them in when creative fatigue is detected.
+              </p>
+            </div>
+          ) : (
+            onBench.map(item => {
+              const snap = item.performance_snapshot || {};
+              const FormatIcon = formatIcons[snap.format] || FileText;
+              return (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-medium truncate">{getBenchItemName(item)}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {snap.stage && (
+                          <Badge className={`text-[10px] px-1.5 py-0 ${stageColors[snap.stage] || ''}`}>
+                            {snap.stage.charAt(0).toUpperCase() + snap.stage.slice(1)}
+                          </Badge>
+                        )}
+                        {snap.format && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+                            <FormatIcon className="h-2.5 w-2.5" />
+                            {snap.format.replace('_', ' ')}
+                          </Badge>
+                        )}
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <input type="checkbox" checked={item.auto_rotate_approved}
+                            onChange={(e) => handleApproveForRotation(item.id, e.target.checked)}
+                            className="rounded" />
+                          Auto-swap
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {liveItems.length > 0 && item.meta_ad_id && (
+                      <Button size="sm" variant="outline"
+                        onClick={() => handleSwapNow(liveItems[0].meta_ad_id!, item.meta_ad_id!)}
+                        disabled={rotating} className="rounded-xl text-xs">
+                        {rotating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                        Swap In
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleRemoveFromBench(item.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
       {/* Live Creative */}
       {liveItems.length > 0 && (
         <Card className="rounded-2xl border-green-200">
@@ -249,7 +408,7 @@ export function CreativeBenchPanel({
             {liveItems.map(item => (
               <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-green-50/50 border border-green-100">
                 <div>
-                  <p className="text-sm font-medium">{item.meta_ad_id || item.production_item_id || 'Untitled'}</p>
+                  <p className="text-sm font-medium">{getBenchItemName(item)}</p>
                   {item.performance_snapshot?.ctr !== undefined && (
                     <p className="text-xs text-muted-foreground">
                       CTR: {(item.performance_snapshot.ctr).toFixed(2)}% · Freq: {(item.performance_snapshot.frequency || 0).toFixed(1)}
@@ -257,55 +416,6 @@ export function CreativeBenchPanel({
                   )}
                 </div>
                 {getStatusBadge(item.status)}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* On the Bench */}
-      {onBench.length > 0 && (
-        <Card className="rounded-2xl border-blue-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Play className="h-4 w-4 text-blue-600" />
-              On the Bench ({onBench.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {onBench.map(item => (
-              <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-blue-50/50 border border-blue-100">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <p className="text-sm font-medium">{item.production_item_id || 'Untitled'}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <input
-                          type="checkbox"
-                          checked={item.auto_rotate_approved}
-                          onChange={(e) => handleApproveForRotation(item.id, e.target.checked)}
-                          className="rounded"
-                        />
-                        Auto-swap approved
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {liveItems.length > 0 && item.meta_ad_id && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleSwapNow(liveItems[0].meta_ad_id!, item.meta_ad_id!)}
-                      disabled={rotating}
-                      className="rounded-xl text-xs"
-                    >
-                      {rotating ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-                      Swap In
-                    </Button>
-                  )}
-                  {getStatusBadge(item.status)}
-                </div>
               </div>
             ))}
           </CardContent>
@@ -325,7 +435,7 @@ export function CreativeBenchPanel({
             {pausedItems.map(item => (
               <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border">
                 <div>
-                  <p className="text-sm font-medium">{item.meta_ad_id || item.production_item_id || 'Untitled'}</p>
+                  <p className="text-sm font-medium">{getBenchItemName(item)}</p>
                   {item.paused_at && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -363,6 +473,73 @@ export function CreativeBenchPanel({
           </CollapsibleContent>
         </Collapsible>
       )}
+
+      {/* Concept Picker Dialog */}
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Concepts to Bench</DialogTitle>
+            <DialogDescription>
+              Select concepts from your library to add to the creative bench.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px] pr-2">
+            {availableConcepts.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No concepts available to add. Generate creative concepts first.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {availableConcepts.map((concept: any) => {
+                  const FormatIcon = formatIcons[concept.format] || FileText;
+                  const isSelected = selectedConcepts.includes(concept.conceptId);
+                  return (
+                    <div key={concept.conceptId}
+                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                        isSelected ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => {
+                        setSelectedConcepts(prev =>
+                          prev.includes(concept.conceptId)
+                            ? prev.filter(id => id !== concept.conceptId)
+                            : [...prev, concept.conceptId]
+                        );
+                      }}>
+                      <Checkbox checked={isSelected} className="mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{concept.title || concept.name || concept.hook}</p>
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <Badge className={`text-[10px] px-1.5 py-0 ${stageColors[concept.stage] || ''}`}>
+                            {concept.stage.charAt(0).toUpperCase() + concept.stage.slice(1)}
+                          </Badge>
+                          {concept.format && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+                              <FormatIcon className="h-2.5 w-2.5" />
+                              {concept.format.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </div>
+                        {concept.hook && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{concept.hook}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+          {availableConcepts.length > 0 && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPickerOpen(false)}>Cancel</Button>
+              <Button onClick={handleAddToBench} disabled={selectedConcepts.length === 0 || adding}>
+                {adding ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+                Add {selectedConcepts.length > 0 ? `(${selectedConcepts.length})` : ''} to Bench
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
