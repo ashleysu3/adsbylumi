@@ -263,10 +263,17 @@ Deno.serve(async (req) => {
       : `date_preset=last_7d`;
 
     // Fetch Campaign-level insights - including video_p100_watched_actions for thruplay data
+    // Safe JSON parser for Meta API responses
+    const safeJson = async (response: Response): Promise<any> => {
+      const text = await response.text();
+      if (!text || !text.trim()) return {};
+      try { return JSON.parse(text); } catch { console.error('Failed to parse Meta response:', text.substring(0, 200)); return {}; }
+    };
+
     const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions&${timeRange}&access_token=${metaAccessToken}`;
     
     const campaignResponse = await fetch(campaignInsightsUrl);
-    const campaignData = await campaignResponse.json();
+    const campaignData = await safeJson(campaignResponse);
 
     if (campaignData.error) {
       console.error('Meta API error:', campaignData.error);
@@ -278,31 +285,27 @@ Deno.serve(async (req) => {
     // Fetch Ad Set-level insights
     const adSetMetrics = [];
     for (const adSetId of adSetIds) {
-      const adSetUrl = `https://graph.facebook.com/v18.0/${adSetId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
-      const adSetResponse = await fetch(adSetUrl);
-      const adSetData = await adSetResponse.json();
-      
-      if (adSetData.data?.[0]) {
-        adSetMetrics.push({
-          adSetId,
-          ...adSetData.data[0]
-        });
-      }
+      try {
+        const adSetUrl = `https://graph.facebook.com/v18.0/${adSetId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
+        const adSetResponse = await fetch(adSetUrl);
+        const adSetData = await safeJson(adSetResponse);
+        if (adSetData.data?.[0]) {
+          adSetMetrics.push({ adSetId, ...adSetData.data[0] });
+        }
+      } catch (e) { console.error(`Error fetching ad set ${adSetId}:`, e); }
     }
 
     // Fetch Ad-level insights
     const adMetrics = [];
     for (const adId of adIds) {
-      const adUrl = `https://graph.facebook.com/v18.0/${adId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
-      const adResponse = await fetch(adUrl);
-      const adData = await adResponse.json();
-      
-      if (adData.data?.[0]) {
-        adMetrics.push({
-          adId,
-          ...adData.data[0]
-        });
-      }
+      try {
+        const adUrl = `https://graph.facebook.com/v18.0/${adId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
+        const adResponse = await fetch(adUrl);
+        const adData = await safeJson(adResponse);
+        if (adData.data?.[0]) {
+          adMetrics.push({ adId, ...adData.data[0] });
+        }
+      } catch (e) { console.error(`Error fetching ad ${adId}:`, e); }
     }
 
     // Extract key metrics with safe parsing
