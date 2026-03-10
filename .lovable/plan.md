@@ -1,65 +1,51 @@
 
 
-## Plan: Add Local & Event Targeting Strategies to the Create Wizard
+## Plan: Show Top 3 KPIs with Goals and Color-Coded Status on Campaign Cards
 
-### Problem
-Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
+### Current State
+Each campaign card in the Ad Performance page shows a single status dot and a verdict ("Above benchmark" / "Below benchmark") based on the primary KPI. The actual KPI values are shown as small pills without color coding. Goals are shown in a separate row for only the primary KPI.
 
-### What Changes
+### What We'll Build
+Replace the current verdict row and objective-metric pills with a clear **KPI summary strip** showing the top 3 KPIs per campaign, each with:
+- KPI label (e.g., "CPL", "CTR", "Frequency")
+- Actual value from the selected date range
+- Goal/benchmark threshold
+- Green / Yellow / Red background coloring based on performance vs goal
 
-**1. Add system offer IDs for the three local strategies**
+### Implementation
 
-In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
+**1. Create `CampaignKPISummary` component** (`src/components/insights/CampaignKPISummary.tsx`)
+- Accepts campaign metrics, campaign_goals data (from DB), and the kpiConfig
+- Determines top 3 KPIs: primary KPI from goals → secondary KPI from goals → fallback to CTR or Frequency from kpiConfig
+- For each KPI, evaluates status using `getLumiKPIStatus` logic (green = healthy, yellow/amber = attention, red = critical)
+- Renders 3 compact KPI cells in a row, each color-coded
 
+**2. Fetch campaign_goals in InsightsHome** (`src/components/insights/InsightsHome.tsx`)
+- On mount, batch-fetch `campaign_goals` for all visible campaign workspace IDs
+- Store in a `goalsMap: Record<workspaceId, GoalData>` 
+- Pass each campaign's goals into the new `CampaignKPISummary` component
+
+**3. Update campaign card layout** (`src/components/insights/InsightsHome.tsx`)
+- Replace the current Row 2 objective-metric pills and Row 3 verdict with the new KPI summary strip
+- Keep spend and daily budget as a subtle line above the KPIs
+- Remove the existing `CampaignGoalRow` since goals are now integrated into the KPI summary
+- Keep the status dot on the campaign name row (derived from primary KPI status)
+
+### KPI Priority Logic
 ```
-LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
-LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
-EVENT_LOCATION_OFFER_ID = "system-event-location"
+1. Primary KPI from campaign_goals table (user-configured)
+2. Secondary KPI from campaign_goals table (user-configured)  
+3. Fallback: CTR or Frequency (whichever is most actionable)
 ```
 
-Add these to `SYSTEM_OFFER_IDS`.
+### Color Logic per KPI
+- **Green**: Value meets or beats goal/benchmark
+- **Yellow/Amber**: Within 20-30% of goal threshold
+- **Red**: Significantly missing goal
 
-**2. Add the options to Step 1 (offer selection)**
+Uses existing `getLumiKPIStatus` for benchmark-based evaluation, and goal-based evaluation for user-set thresholds from `campaign_goals`.
 
-Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
-
-- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
-- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
-- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
-
-**3. Handle selection → skip to strategy step automatically**
-
-When a user selects a local strategy, it should:
-- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
-- Set `selectedTemplateId` to the matched template
-- Skip directly to Step 2 (strategy recommendation) since the template is already determined
-- The strategy recommendation step already works — it shows the selected template with structure details
-
-**4. Wire the flow through to workspace creation**
-
-The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
-- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
-- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
-
-**5. Add educational context for the Event strategy**
-
-For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
-- Phase 1: "Awareness ads at the event location to get people to interact with your content"
-- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
-- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
-
-### What Does NOT Change
-- `CampaignBuilderForm.tsx` — already handles location targeting UI
-- Campaign templates in DB — already configured with `location_type`, radius settings
-- Edge functions — no changes needed
-- Creative Studio flow — works as-is since these are standard templates
-
-### Technical Details
-
-The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
-
-The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
-
-### Files to Edit
-- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
+### Files to Create/Edit
+- **Create**: `src/components/insights/CampaignKPISummary.tsx`
+- **Edit**: `src/components/insights/InsightsHome.tsx` — fetch goals, replace metric pills + verdict with KPI summary
 
