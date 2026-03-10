@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
 
       const { data: brand } = await supabase
         .from('brands')
-        .select('meta_pixel_id, meta_account_id')
+        .select('meta_pixel_id, meta_account_id, meta_access_token')
         .eq('id', brandId)
         .single();
 
@@ -153,8 +153,8 @@ Deno.serve(async (req) => {
 
       // If we have an access token, try to fetch pixels to compare
       if (!matchesBrand && brand?.meta_account_id) {
-        // Get access token from Vault
-        const { data: accessToken } = await supabase.rpc('get_meta_token', { p_brand_id: brandId });
+        // Read token directly (service-role context lacks auth.uid() for vault RPC)
+        const accessToken = brand.meta_access_token;
         
         if (accessToken) {
           const adAccountId = brand.meta_account_id.startsWith('act_') 
