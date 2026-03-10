@@ -299,7 +299,44 @@ export function PixelVerificationCard({
         {/* Pixel Status */}
         {pixelData ? (
           <div className="space-y-4">
-            {/* Pixel Info */}
+            {/* Pixel Selector - show if multiple pixels found */}
+            {allPixels.length > 1 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-medium uppercase">
+                  {allPixels.length} pixels found — select the one to use:
+                </p>
+                <div className="space-y-2">
+                  {allPixels.map((pixel) => (
+                    <button
+                      key={pixel.id}
+                      onClick={() => handleSelectPixel(pixel)}
+                      className={cn(
+                        "w-full p-3 rounded-lg border text-left transition-colors",
+                        pixel.id === pixelData.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground/50 bg-muted/20"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-sm">{pixel.name}</p>
+                          <p className="font-mono text-xs text-muted-foreground">{pixel.id}</p>
+                        </div>
+                        {pixel.id === pixelData.id && (
+                          <Badge variant="default" className="bg-green-500/10 text-green-500 border-green-500/30">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Selected
+                          </Badge>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Single pixel info (when only 1 pixel) */}
+            {allPixels.length <= 1 && (
             <div className="p-4 bg-muted/30 rounded-lg flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground uppercase mb-1">Connected Pixel</p>
@@ -311,6 +348,7 @@ export function PixelVerificationCard({
                 Active
               </Badge>
             </div>
+            )}
 
             {/* Event Status Table */}
             <div className="space-y-3">
