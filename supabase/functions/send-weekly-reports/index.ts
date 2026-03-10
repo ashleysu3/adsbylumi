@@ -175,15 +175,53 @@ Deno.serve(async (req) => {
         const campaignName = workspace.offer_name || workspace.name || 'Your Campaign';
         const frequencyLabel = reportFrequency === 'daily' ? 'Daily' : 'Weekly';
 
-        // Build HTML email
-        const emailHtml = buildEmailHtml({
-          userName,
-          campaignName,
-          metrics,
-          report,
-          brandName: brand.name,
-          frequencyLabel,
-        });
+        // Try to generate a rich AI report using generate-client-report in self-serve mode
+        let emailHtml = '';
+        try {
+          const reportResponse = await fetch(`${supabaseUrl}/functions/v1/generate-client-report`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            },
+            body: JSON.stringify({
+              brandId: brand.id,
+              mode: 'self-serve',
+              dateRangeStart: new Date(Date.now() - (reportFrequency === 'daily' ? 1 : 7) * 86400000).toISOString().split('T')[0],
+              dateRangeEnd: new Date().toISOString().split('T')[0],
+            }),
+          });
+
+          // The generate-client-report function requires user auth, so for the cron
+          // we fall back to the built-in HTML template if it fails
+          if (reportResponse.ok) {
+            const reportData = await reportResponse.json();
+            if (reportData.report) {
+              // Convert markdown report to beautiful HTML email
+              emailHtml = buildRichEmailHtml({
+                userName,
+                campaignName,
+                brandName: brand.name,
+                frequencyLabel,
+                reportMarkdown: reportData.report,
+              });
+            }
+          }
+        } catch (aiErr) {
+          console.log(`AI report generation failed for ${workspace.id}, using fallback template:`, aiErr);
+        }
+
+        // Fallback to basic template if AI report failed
+        if (!emailHtml) {
+          emailHtml = buildEmailHtml({
+            userName,
+            campaignName,
+            metrics,
+            report,
+            brandName: brand.name,
+            frequencyLabel,
+          });
+        }
 
         // Send email via Resend
         const { error: emailError } = await resend.emails.send({
