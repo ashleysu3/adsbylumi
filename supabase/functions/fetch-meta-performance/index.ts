@@ -270,12 +270,7 @@ Deno.serve(async (req) => {
       : `date_preset=last_7d`;
 
     // Fetch Campaign-level insights - including video_p100_watched_actions for thruplay data
-    // Safe JSON parser for Meta API responses
-    const safeJson = async (response: Response): Promise<any> => {
-      const text = await response.text();
-      if (!text || !text.trim()) return {};
-      try { return JSON.parse(text); } catch { console.error('Failed to parse Meta response:', text.substring(0, 200)); return {}; }
-    };
+    // (safeJson helper defined above)
 
     const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions&${timeRange}&access_token=${metaAccessToken}`;
     
