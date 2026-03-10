@@ -54,6 +54,7 @@ import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
+import AgencySettings from "./pages/AgencySettings";
 
 function CreativeRedirect() {
   const location = useLocation();
