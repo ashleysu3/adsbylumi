@@ -110,7 +110,8 @@ Every variation MUST demonstrate application of:
 ${messagingGuidelines.core_message ? `Core Message: ${messagingGuidelines.core_message}` : ''}
 ${keyBenefits.length ? `Key Benefits:\n${keyBenefits.map((b: string) => `- ${b}`).join('\n')}` : ''}
 ${messagingGuidelines.tone_notes ? `Tone Notes: ${messagingGuidelines.tone_notes}` : ''}
-${dontSay.length ? `\n⚠️ NEVER USE:\n${dontSay.map((d: string) => `- "${d}"`).join('\n')}` : ''}
+${dontSay.length ? `\n⚠️ NEVER USE (from offer messaging):\n${dontSay.map((d: string) => `- "${d}"`).join('\n')}` : ''}
+${Array.isArray(brandInfo?.never_use_words) && brandInfo.never_use_words.length > 0 ? `\n🚫 BANNED WORDS (from brand settings — strictly forbidden):\n${brandInfo.never_use_words.map((w: string) => `- "${w}"`).join('\n')}\nDo NOT include any of these words in any generated copy. Find alternative phrasing.` : ''}
 ${alwaysInclude.length ? `\n✅ ALWAYS INCLUDE:\n${alwaysInclude.map((a: string) => `- ${a}`).join('\n')}` : ''}
 ${approvedExamples.length ? `\n📝 Approved Examples:\n${approvedExamples.map((ex: any) => typeof ex === 'object' ? `- [${ex.type}] "${ex.text}"` : `- ${ex}`).join('\n')}` : ''}
 

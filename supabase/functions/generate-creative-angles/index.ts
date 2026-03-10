@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -197,6 +197,7 @@ ${offerAudienceContext}
 ${preGenContext}
 ${intelligenceContext}
 ${previousAnglesContext}
+${Array.isArray(neverUseWords) && neverUseWords.length > 0 ? `\n🚫 BANNED WORDS/PHRASES (strictly forbidden in all output):\n${neverUseWords.map((w: string) => `- "${w}"`).join('\n')}\nDo NOT use any of these words in angle names, descriptions, or any generated text. Find alternative phrasing.\n` : ''}
 
 RULES:
 - Generate exactly 11 creative angles
