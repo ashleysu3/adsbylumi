@@ -289,6 +289,21 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
           <SidebarGroupLabel>Account</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {isAgencyUser && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Customize agency branding for client materials">
+                    <NavLink
+                      to="/agency-settings"
+                      end
+                      className="transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <Palette className="h-4 w-4" />
+                      {!collapsed && <span>Agency Settings</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Settings">
                   <NavLink
