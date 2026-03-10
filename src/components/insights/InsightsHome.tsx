@@ -409,12 +409,15 @@ export function InsightsHome({
 
         const nextSteps = (wsReport?.performance_report_latest as any)?.next_steps;
         if (Array.isArray(nextSteps) && nextSteps.length > 0) {
-          const existingRecs = allRecs.filter((r: any) => r.campaignId === campaign.id);
-          if (existingRecs.length < 2) {
-            const existingDescriptions = new Set(existingRecs.map((r: any) => (r.description || '').toLowerCase().trim()));
-            const slotsLeft = 2 - existingRecs.length;
-            const uniqueSteps = nextSteps.filter((step: string) => !existingDescriptions.has(step.toLowerCase().trim()));
+          const campaignRecCount = allRecs.filter((r: any) => r.campaignId === campaign.id).length;
+          if (campaignRecCount < 2) {
+            const slotsLeft = 2 - campaignRecCount;
+            const uniqueSteps = nextSteps.filter((step: string) => {
+              const norm = normalizeDesc(step);
+              return norm && !globalDedup.has(norm);
+            });
             uniqueSteps.slice(0, slotsLeft).forEach((step: string, i: number) => {
+              globalDedup.add(normalizeDesc(step));
               allRecs.push({
                 id: `ai-step-${campaign.id}-${i}`,
                 type: 'keep_running',
