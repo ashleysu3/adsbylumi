@@ -547,10 +547,41 @@ export function ClientReportModal({
                       <FileText className="h-3.5 w-3.5 mr-1" /> New Report
                     </Button>
                   )}
-                  <div className="flex-1" />
-                  <Button variant="outline" size="sm" onClick={() => copyToClipboard(rawReport!)} className="rounded-xl gap-1.5">
-                    {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy Report</>}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(rawReport!)} className="rounded-xl gap-1.5">
+                      {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy Report</>}
+                    </Button>
+                    {isAgency && slackChannel && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl gap-1.5"
+                        disabled={sendingToSlack}
+                        onClick={async () => {
+                          setSendingToSlack(true);
+                          try {
+                            const { error } = await supabase.functions.invoke('send-client-report-slack', {
+                              body: {
+                                channel: slackChannel,
+                                reportText: rawReport,
+                                brandName: '',
+                                dateRange: `${dateRangeStart} – ${dateRangeEnd}`,
+                              },
+                            });
+                            if (error) throw error;
+                            toast.success('Report sent to Slack!');
+                          } catch (err: any) {
+                            toast.error(err.message || 'Failed to send to Slack');
+                          } finally {
+                            setSendingToSlack(false);
+                          }
+                        }}
+                      >
+                        {sendingToSlack ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageSquare className="h-3.5 w-3.5" />}
+                        Send to Slack
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Delivery settings — agency only */}
