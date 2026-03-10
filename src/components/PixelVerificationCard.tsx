@@ -137,6 +137,7 @@ export function PixelVerificationCard({
   const [loading, setLoading] = useState(false);
   const [verifyingUrl, setVerifyingUrl] = useState(false);
   const [pixelData, setPixelData] = useState<PixelData | null>(initialPixelData || null);
+  const [allPixels, setAllPixels] = useState<PixelData[]>([]);
   const [landingPageUrl, setLandingPageUrl] = useState('');
   const [landingPageResult, setLandingPageResult] = useState<LandingPageResult | null>(null);
 
@@ -151,10 +152,15 @@ export function PixelVerificationCard({
 
       if (error) throw error;
 
-      if (data.success && data.primaryPixel) {
-        setPixelData(data.primaryPixel);
-        onPixelVerified?.(data.primaryPixel);
-        toast.success('Pixel status updated');
+      if (data.success && data.pixels?.length > 0) {
+        setAllPixels(data.pixels);
+        // Use existing selection or default to first
+        const currentPixelId = pixelData?.id;
+        const matchingPixel = currentPixelId ? data.pixels.find((p: PixelData) => p.id === currentPixelId) : null;
+        const selectedPixel = matchingPixel || data.pixels[0];
+        setPixelData(selectedPixel);
+        onPixelVerified?.(selectedPixel);
+        toast.success(`Found ${data.pixels.length} pixel${data.pixels.length !== 1 ? 's' : ''}`);
       } else if (data.needsConnection) {
         toast.error('Please connect your Meta account first');
       } else {
@@ -165,6 +171,30 @@ export function PixelVerificationCard({
       toast.error('Failed to check pixel status');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectPixel = async (pixel: PixelData) => {
+    setPixelData(pixel);
+    onPixelVerified?.(pixel);
+    
+    // Update the brand's selected pixel in the database
+    try {
+      const { error } = await supabase
+        .from('brands')
+        .update({
+          meta_pixel_id: pixel.id,
+          meta_pixel_name: pixel.name,
+          meta_pixel_events: pixel.events as any,
+          meta_pixel_verified_at: new Date().toISOString()
+        })
+        .eq('id', brandId);
+      
+      if (error) throw error;
+      toast.success(`Switched to pixel: ${pixel.name}`);
+    } catch (error) {
+      console.error('Error updating pixel selection:', error);
+      toast.error('Failed to save pixel selection');
     }
   };
 
