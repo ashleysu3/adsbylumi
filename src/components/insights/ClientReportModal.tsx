@@ -243,9 +243,8 @@ export function ClientReportModal({
         const missingObjective = cs.objective === 'unknown';
         const missingGoal = cs.userGoal === null;
         if (missingObjective || missingGoal) {
-          const matchedCampaign = campaigns.find(c => c.name === cs.name);
           missing.push({
-            workspaceId: matchedCampaign?.id || '',
+            workspaceId: cs.workspaceId || '',
             campaignName: cs.name,
             missingObjective,
             missingGoal,
