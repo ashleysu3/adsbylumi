@@ -631,11 +631,9 @@ export function InsightsHome({
           const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
           const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
           const statusDot = getLumiStatusDot(status);
-          const verdict = getVerdict(status);
           const actionRec = getActionRecommendation(status);
           const isActive = campaign.status === 'active' || campaign.status === 'live';
           const isToggling = togglingCampaign === campaign.id;
-          const objMetrics = getObjectiveMetrics(campaign.metrics, kpiConfig);
           const recCount = recCountsByWorkspace[campaign.id] || 0;
 
           return (
