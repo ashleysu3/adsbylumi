@@ -271,6 +271,7 @@ Deno.serve(async (req) => {
       if (metrics.ctr && metrics.ctr < 0.8) fatigueSignals.push(`CTR at ${metrics.ctr.toFixed(2)}% (below 0.8% floor)`);
 
       campaignSummaries.push({
+        workspaceId: ws.id,
         name: ws.name,
         objective,
         templateName,
