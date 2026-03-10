@@ -21,6 +21,7 @@ import {
   Sparkle,
   Info,
   Package,
+  PauseCircle,
   PlusCircle,
   ArrowRight,
   ChevronDown,
