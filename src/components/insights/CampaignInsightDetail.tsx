@@ -484,9 +484,9 @@ export function CampaignInsightDetail({
                     </Badge>
                   )}
                 </div>
-                {nextSteps.length > 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {nextSteps.length + recommendations.length} actionable recommendation{nextSteps.length + recommendations.length !== 1 ? 's' : ''} — tap to view
+                {nextSteps.length > 0 || recommendations.length > 0 ? (
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {nextSteps[0] || recommendations[0]?.title || 'Tap to see recommendations'}
                   </p>
                 ) : (
                   <p className="text-sm text-muted-foreground">Check back soon for recommendations</p>
