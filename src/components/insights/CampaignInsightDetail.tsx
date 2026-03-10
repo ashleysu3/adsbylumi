@@ -313,10 +313,14 @@ export function CampaignInsightDetail({
         .slice(0, 2)
     : [];
 
+  // Only show KPI alerts relevant to this campaign's objective
+  const relevantKPIKeys = new Set([kpiConfig.primary, 'ctr', 'frequency']);
+  // Also include secondary keys from campaign-kpi-config if available
   const needsAttention = analysis?.kpi_evaluation
     ? Object.entries(analysis.kpi_evaluation)
         .filter(([key, kpi]) => {
           if (kpi.status === 'tracking_only' || kpi.status === 'not_applicable') return false;
+          if (!relevantKPIKeys.has(key)) return false; // Filter out irrelevant KPIs like CPM on lead gen
           return kpi.status === 'needs attention' || kpi.status === 'critical' || kpi.status === 'needs_attention';
         })
         .map(([key, kpi]) => kpi.reason)
