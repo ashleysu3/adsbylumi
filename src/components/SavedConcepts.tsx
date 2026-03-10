@@ -217,27 +217,65 @@ export function SavedConcepts({ workspace, type, onUpdate }: SavedConceptsProps)
                       <p className="text-sm bg-muted p-2 rounded line-clamp-4">{concept.script}</p>
                     </div>
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => copyToClipboard(
-                      concept.script || concept.hook || concept.name || concept.title,
-                      concept.conceptId
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => copyToClipboard(
+                        concept.script || concept.hook || concept.name || concept.title,
+                        concept.conceptId
+                      )}
+                    >
+                      {copiedId === concept.conceptId ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2 text-green-600" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy Content
+                        </>
+                      )}
+                    </Button>
+                    {workspace?.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          const { error } = await supabase.from('creative_bench').insert({
+                            workspace_id: workspace.id,
+                            brand_id: workspace.brand_id,
+                            production_item_id: concept.conceptId,
+                            status: 'bench',
+                            performance_snapshot: {
+                              name: concept.title || concept.name || concept.hook,
+                              hook: concept.hook,
+                              script: concept.script,
+                              format: concept.format,
+                              stage: concept.stage,
+                              angle: concept.angle_name || concept.hook_type,
+                              type: 'concept_library',
+                            },
+                            auto_rotate_approved: false,
+                          });
+                          if (error) {
+                            if (error.code === '23505') {
+                              toast.error('Already on the bench');
+                            } else {
+                              toast.error('Failed to add to bench');
+                            }
+                          } else {
+                            toast.success('Added to bench!');
+                          }
+                        }}
+                      >
+                        <Zap className="h-4 w-4 mr-1" />
+                        Bench
+                      </Button>
                     )}
-                  >
-                    {copiedId === concept.conceptId ? (
-                      <>
-                        <Check className="h-4 w-4 mr-2 text-green-600" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy Content
-                      </>
-                    )}
-                  </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
