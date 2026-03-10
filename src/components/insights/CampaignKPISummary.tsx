@@ -37,14 +37,14 @@ const STATUS_STYLES: Record<string, string> = {
   healthy: 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800',
   attention: 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800',
   critical: 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800',
-  'no-data': 'bg-muted border-border',
+  'no-data': 'bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800',
 };
 
 const STATUS_VALUE_COLORS: Record<string, string> = {
   healthy: 'text-green-700 dark:text-green-400',
   attention: 'text-amber-700 dark:text-amber-400',
   critical: 'text-red-700 dark:text-red-400',
-  'no-data': 'text-muted-foreground',
+  'no-data': 'text-amber-700 dark:text-amber-400',
 };
 
 function getGoalStatus(
