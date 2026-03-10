@@ -1,65 +1,47 @@
 
 
-## Plan: Add Local & Event Targeting Strategies to the Create Wizard
+## Plan: Email/Slack Report with LUMI Recommends + Rich Slack Formatting
 
-### Problem
-Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
+### Two Changes
 
-### What Changes
+#### 1. Dual-Mode Report: Agency vs Self-Serve
 
-**1. Add system offer IDs for the three local strategies**
+The `generate-client-report` edge function currently generates reports for **agency users** sending to clients. You want the same report format reused for **self-serve email reports**, but with two key changes:
 
-In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
+- **"What We're Doing About It"** → **"LUMI Recommends"**
+- **Action items** split into:
+  - Things the user does themselves (refresh creative, create new ads)
+  - Things that need user approval for LUMI to execute (budget changes, pausing/enabling ads, swapping bench creative)
 
-```
-LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
-LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
-EVENT_LOCATION_OFFER_ID = "system-event-location"
-```
+**Implementation:** Add a `mode` parameter to the edge function (`agency` vs `self-serve`). When `mode === 'self-serve'`:
+- Replace "What We're Doing About It" with "LUMI Recommends"
+- Replace "Agency Action Items" with "Your To-Do List" (creative tasks)
+- Replace "What We Need From You" with "Approve These Changes" (budget/ad management actions LUMI can execute with approval)
 
-Add these to `SYSTEM_OFFER_IDS`.
+The `send-weekly-reports` function will call `generate-client-report` with `mode: 'self-serve'` instead of using its own basic HTML template, so email recipients get the same beautiful AI-generated report.
 
-**2. Add the options to Step 1 (offer selection)**
+#### 2. Rich Slack Formatting with Block Kit
 
-Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
+Slack doesn't support HTML or markdown tables. Plain text loses all formatting. The solution is **Slack Block Kit** — Slack's native rich formatting system that supports headers, bold, bullet lists, dividers, and structured layouts.
 
-- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
-- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
-- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
+**Implementation:** Add a `send-client-report-slack` edge function (or extend existing `send-optimization-digest`) that:
+1. Takes the generated report text
+2. Converts markdown sections into Slack Block Kit blocks:
+   - `### Title` → `header` block
+   - Tables → `section` blocks with `fields` (two-column key/value pairs)
+   - Bullet lists → `section` with `mrkdwn`
+   - `---` → `divider` block
+   - Checklist items → formatted with ☐/☑ emoji
+3. Sends via the Slack connector gateway using `chat.postMessage` with `blocks`
 
-**3. Handle selection → skip to strategy step automatically**
-
-When a user selects a local strategy, it should:
-- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
-- Set `selectedTemplateId` to the matched template
-- Skip directly to Step 2 (strategy recommendation) since the template is already determined
-- The strategy recommendation step already works — it shows the selected template with structure details
-
-**4. Wire the flow through to workspace creation**
-
-The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
-- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
-- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
-
-**5. Add educational context for the Event strategy**
-
-For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
-- Phase 1: "Awareness ads at the event location to get people to interact with your content"
-- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
-- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
-
-### What Does NOT Change
-- `CampaignBuilderForm.tsx` — already handles location targeting UI
-- Campaign templates in DB — already configured with `location_type`, radius settings
-- Edge functions — no changes needed
-- Creative Studio flow — works as-is since these are standard templates
-
-### Technical Details
-
-The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
-
-The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
+Add a "Send to Slack" button in the `ClientReportModal` that converts and sends the current report.
 
 ### Files to Edit
-- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
+
+| File | Change |
+|------|--------|
+| `supabase/functions/generate-client-report/index.ts` | Accept `mode` param; swap section headers for self-serve |
+| `supabase/functions/send-weekly-reports/index.ts` | Call `generate-client-report` with `mode: 'self-serve'` instead of building basic HTML |
+| `supabase/functions/send-optimization-digest/index.ts` | Update `buildSlackMessage` to use Block Kit conversion for rich formatting |
+| `src/components/insights/ClientReportModal.tsx` | Add "Send to Slack" button that sends the rendered report via the digest function |
 
