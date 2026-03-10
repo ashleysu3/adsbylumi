@@ -4,6 +4,7 @@ import {
   getLumiKPIStatus,
   formatLumiKPIValue,
 } from '@/lib/lumi-kpi-config';
+import { Pencil } from 'lucide-react';
 
 interface CampaignGoal {
   primary_kpi: string;
@@ -31,6 +32,7 @@ interface CampaignKPISummaryProps {
   kpiConfig: LumiKPIConfig;
   goals?: CampaignGoal | null;
   className?: string;
+  onEditGoals?: () => void;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -73,6 +75,13 @@ function getMetricValue(metrics: Record<string, number | null | undefined> | nul
   if (!metrics) return null;
   // Direct match
   if (key in metrics && metrics[key] != null) return metrics[key] as number;
+  // Computed ROAS fallback: if roas is null/0 but revenue and spend exist
+  if (key === 'roas') {
+    const revenue = metrics.revenue || metrics.purchaseValue || metrics.purchase_roas_value || 0;
+    const spend = metrics.spend || 0;
+    if (revenue > 0 && spend > 0) return revenue / spend;
+    return null;
+  }
   // Computed CTR
   if (key === 'ctr') {
     const impressions = metrics.impressions || 0;
@@ -95,7 +104,7 @@ function formatGoal(value: number, kpiKey: string): string {
   return value.toFixed(2);
 }
 
-export function CampaignKPISummary({ metrics, kpiConfig, goals, className }: CampaignKPISummaryProps) {
+export function CampaignKPISummary({ metrics, kpiConfig, goals, className, onEditGoals }: CampaignKPISummaryProps) {
   const cells: KPICell[] = [];
 
   // 1. Primary KPI from goals or kpiConfig
@@ -163,30 +172,41 @@ export function CampaignKPISummary({ metrics, kpiConfig, goals, className }: Cam
   }
 
   return (
-    <div className={cn('grid grid-cols-3 gap-2 pl-5', className)}>
-      {cells.slice(0, 3).map((cell) => (
-        <div
-          key={cell.key}
-          className={cn(
-            'rounded-xl border px-3 py-2 space-y-0.5 transition-colors',
-            STATUS_STYLES[cell.status]
-          )}
+    <div className={cn('relative group', className)}>
+      <div className="grid grid-cols-3 gap-2 pl-5">
+        {cells.slice(0, 3).map((cell) => (
+          <div
+            key={cell.key}
+            className={cn(
+              'rounded-xl border px-3 py-2 space-y-0.5 transition-colors',
+              STATUS_STYLES[cell.status]
+            )}
+          >
+            <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide truncate">
+              {cell.label}
+            </div>
+            <div className={cn('text-sm font-bold tabular-nums', STATUS_VALUE_COLORS[cell.status])}>
+              {cell.key === 'ctr'
+                ? (cell.value != null ? `${cell.value.toFixed(1)}%` : '—')
+                : cell.key === 'frequency'
+                ? (cell.value != null ? cell.value.toFixed(1) : '—')
+                : formatLumiKPIValue(cell.value ?? null, cell.key)}
+            </div>
+            <div className="text-[10px] text-muted-foreground truncate">
+              {cell.goalLabel}
+            </div>
+          </div>
+        ))}
+      </div>
+      {onEditGoals && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onEditGoals(); }}
+          className="absolute -right-1 top-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-muted"
+          title="Edit goals"
         >
-          <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide truncate">
-            {cell.label}
-          </div>
-          <div className={cn('text-sm font-bold tabular-nums', STATUS_VALUE_COLORS[cell.status])}>
-            {cell.key === 'ctr'
-              ? (cell.value != null ? `${cell.value.toFixed(1)}%` : '—')
-              : cell.key === 'frequency'
-              ? (cell.value != null ? cell.value.toFixed(1) : '—')
-              : formatLumiKPIValue(cell.value ?? null, cell.key)}
-          </div>
-          <div className="text-[10px] text-muted-foreground truncate">
-            {cell.goalLabel}
-          </div>
-        </div>
-      ))}
+          <Pencil className="h-3 w-3 text-muted-foreground" />
+        </button>
+      )}
     </div>
   );
 }
