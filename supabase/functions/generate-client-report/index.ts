@@ -551,7 +551,7 @@ Generate ONLY the report text. No preamble.`;
     if (insertError) console.error('Failed to save report:', insertError);
 
     return new Response(
-      JSON.stringify({ success: true, report: reportText }),
+      JSON.stringify({ success: true, report: reportText, campaignSummaries }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );
   } catch (error: any) {
