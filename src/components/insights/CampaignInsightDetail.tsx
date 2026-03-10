@@ -21,6 +21,7 @@ import {
   Sparkle,
   Info,
   Package,
+  PauseCircle,
   PlusCircle,
   ArrowRight,
   ChevronDown,
@@ -46,6 +47,53 @@ import { SocialGrowthFlow } from '@/components/SocialGrowthFlow';
 import { toast } from 'sonner';
 
 const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_ad', 'resume_ad', 'swap_creative']);
+
+function FatigueAdRow({ adName, workspaceId }: { adName: string; workspaceId: string }) {
+  const [toggling, setToggling] = useState(false);
+  const [paused, setPaused] = useState(false);
+
+  const handlePause = async () => {
+    setToggling(true);
+    try {
+      // Use the ad name as entity identifier — the edge function resolves it
+      const { data, error } = await supabase.functions.invoke('check-campaign-status', {
+        body: { workspaceId, action: 'pause', entityId: adName, entityType: 'ad' },
+      });
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Failed to pause ad');
+      }
+      setPaused(true);
+      toast.success(`"${adName}" paused`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to pause ad');
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  return (
+    <li className="text-sm flex items-center justify-between gap-2 p-3 rounded-xl bg-muted/50 border">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <RefreshCw className="h-4 w-4 text-[hsl(var(--lumi-orange-1))] shrink-0" />
+        <span className="truncate">{adName}</span>
+      </div>
+      {paused ? (
+        <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs shrink-0">Paused</Badge>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="rounded-xl text-xs shrink-0 border-amber-200 text-amber-700 hover:bg-amber-50"
+          disabled={toggling}
+          onClick={handlePause}
+        >
+          {toggling ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <PauseCircle className="h-3 w-3 mr-1" />}
+          Pause Ad
+        </Button>
+      )}
+    </li>
+  );
+}
 
 function getUserActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode; type: 'navigate' | 'add_posts' } {
   const title = (rec.title || '').toLowerCase();
@@ -625,6 +673,34 @@ export function CampaignInsightDetail({
             primaryKPI={kpiConfig.primary}
           />
 
+          {/* Creative Warmth & Fatigue - moved here, under ad breakdown */}
+          {analysis?.creative_diagnosis?.problem && (
+            <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <RefreshCw className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
+                  Creative Warmth & Fatigue
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert className="rounded-xl border-amber-200 bg-amber-50">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800">{analysis.creative_diagnosis.problem}</AlertDescription>
+                </Alert>
+                {analysis.creative_diagnosis.recommended_creatives_to_refresh?.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Consider refreshing:</p>
+                    <ul className="space-y-2">
+                      {analysis.creative_diagnosis.recommended_creatives_to_refresh.slice(0, 4).map((item: string, i: number) => (
+                        <FatigueAdRow key={i} adName={item} workspaceId={campaign.id} />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Creative Bench */}
           {campaign.brandId && (
             <CreativeBenchPanel
@@ -697,43 +773,23 @@ export function CampaignInsightDetail({
                 );
               })()}
 
-              {/* Creative Fatigue */}
-              <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <RefreshCw className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
-                    Creative Warmth & Fatigue
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {analysis?.creative_diagnosis?.problem ? (
-                    <>
-                      <Alert className="rounded-xl border-amber-200 bg-amber-50">
-                        <AlertTriangle className="h-4 w-4 text-amber-600" />
-                        <AlertDescription className="text-amber-800">{analysis.creative_diagnosis.problem}</AlertDescription>
-                      </Alert>
-                      {analysis.creative_diagnosis.recommended_creatives_to_refresh?.length > 0 && (
-                        <div>
-                          <p className="text-sm font-medium mb-2">Consider refreshing:</p>
-                          <ul className="space-y-2">
-                            {analysis.creative_diagnosis.recommended_creatives_to_refresh.slice(0, 2).map((item, i) => (
-                              <li key={i} className="text-sm flex items-start gap-2 p-2 rounded-lg bg-muted/50">
-                                <RefreshCw className="h-4 w-4 text-[hsl(var(--lumi-orange-1))] shrink-0 mt-0.5" />
-                                <span>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </>
-                  ) : (
+              {/* Creative Fatigue card moved above — only show "fresh" state here if no problem */}
+              {!analysis?.creative_diagnosis?.problem && (
+                <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <RefreshCw className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
+                      Creative Warmth & Fatigue
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
                     <div className="p-4 rounded-xl bg-green-50/50 border border-green-100 text-center">
                       <CheckCircle2 className="h-6 w-6 text-green-600 mx-auto mb-2" />
                       <p className="text-sm text-green-800">Your creative is fresh and performing well!</p>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Budget Adjustment Panel */}
               <BudgetAdjustmentPanel
