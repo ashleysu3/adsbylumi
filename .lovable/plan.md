@@ -1,79 +1,65 @@
 
 
-## Plan: Improve Client Report Modal — Formatting, Scrolling, Gating, Slack + Scheduling
+## Plan: Add Local & Event Targeting Strategies to the Create Wizard
 
-### Problem Summary
-1. Report text looks messy / poorly formatted inside the modal
-2. Can't scroll through the full report
-3. No subscription gating — should be agency-only
-4. No Slack integration for pushing reports to client channels
-5. No scheduling with auto-send vs approval toggle
+### Problem
+Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
 
----
+### What Changes
 
-### 1. Fix Report Formatting (ReportSectionRenderer)
+**1. Add system offer IDs for the three local strategies**
 
-**File: `src/components/insights/ReportSectionRenderer.tsx`**
+In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
 
-Enhance the renderer to handle markdown-style formatting the AI returns:
-- Parse `**bold**` → `<strong>`
-- Parse `---` horizontal rules → `<hr>`
-- Parse bullet lines (`- ` or `• `) into styled list items with proper indentation
-- Parse metric lines (e.g., `CPL: $4.20`) into a key-value layout with the value highlighted
-- Add spacing between campaign sections
-- Style emoji status indicators (🟢🟡🔴) with subtle background badges
-
-### 2. Fix Scrolling in Report Modal
-
-**File: `src/components/insights/ClientReportModal.tsx`**
-
-The `ScrollArea` is already present (line 208) but may not expand properly. Fix:
-- Add explicit `overflow-y-auto` and a `max-h` constraint on the report body container
-- Ensure the `flex-1 min-h-0` pattern works by verifying parent has a fixed height (`max-h-[90vh]` is set but the inner flex layout needs `overflow-hidden` on the outer container)
-
-### 3. Gate to Agency Tier
-
-**File: `src/components/insights/ClientReportModal.tsx`**
-
-- Import `useSubscription` from `SubscriptionContext`
-- When `tier !== 'agency'`, show an upgrade prompt inside the modal instead of the campaign selector/generate button
-- Keep the modal openable so users can see what the feature looks like, but disable generation
-
-### 4. Slack Channel Integration + Scheduling
-
-**File: `src/components/insights/ClientReportModal.tsx`**
-
-Add a new "Delivery Settings" section below the report display:
-- **Slack Channel**: Text input for a Slack channel name/ID, stored in `digest_settings` (the table already has columns for this — will add a `slack_channel_id` and `report_auto_send` column)
-- **Schedule**: Reuse the existing `send_days` pattern from `digest_settings`
-- **Auto-send toggle**: A switch between "Auto-send" (report generates and sends automatically) vs "Review first" (report generates, user gets notified to approve before sending)
-- Store these settings in `digest_settings` table with new columns
-
-**Database migration** — add columns to `digest_settings`:
-```sql
-ALTER TABLE public.digest_settings 
-  ADD COLUMN IF NOT EXISTS slack_channel_id text,
-  ADD COLUMN IF NOT EXISTS report_auto_send boolean DEFAULT false;
+```
+LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
+LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
+EVENT_LOCATION_OFFER_ID = "system-event-location"
 ```
 
-**Edge function**: Extend `send-optimization-digest/index.ts` to also post to Slack when `slack_channel_id` is set, using the existing Slack connector gateway. When `report_auto_send` is false, skip sending and instead just mark the report as "pending_approval" for the user to review.
+Add these to `SYSTEM_OFFER_IDS`.
 
-### 5. Delivery Settings UI in Modal Footer
+**2. Add the options to Step 1 (offer selection)**
 
-After a report is generated, show a collapsible "Delivery Settings" panel:
-- Slack channel input (with a "Test" button to send a preview)
-- Schedule day picker (reuse existing pattern)
-- Toggle: "Auto-send to client" vs "Review before sending"
-- Save button that upserts to `digest_settings`
+Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
 
----
+- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
+- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
+- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
+
+**3. Handle selection → skip to strategy step automatically**
+
+When a user selects a local strategy, it should:
+- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
+- Set `selectedTemplateId` to the matched template
+- Skip directly to Step 2 (strategy recommendation) since the template is already determined
+- The strategy recommendation step already works — it shows the selected template with structure details
+
+**4. Wire the flow through to workspace creation**
+
+The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
+- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
+- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
+
+**5. Add educational context for the Event strategy**
+
+For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
+- Phase 1: "Awareness ads at the event location to get people to interact with your content"
+- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
+- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
+
+### What Does NOT Change
+- `CampaignBuilderForm.tsx` — already handles location targeting UI
+- Campaign templates in DB — already configured with `location_type`, radius settings
+- Edge functions — no changes needed
+- Creative Studio flow — works as-is since these are standard templates
+
+### Technical Details
+
+The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
+
+The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
 
 ### Files to Edit
-
-| File | Change |
-|------|--------|
-| `src/components/insights/ReportSectionRenderer.tsx` | Better formatting: markdown parsing, styled lists, metric highlights |
-| `src/components/insights/ClientReportModal.tsx` | Fix scroll, add agency gate, add delivery settings UI |
-| `supabase/functions/send-optimization-digest/index.ts` | Add Slack posting + auto-send vs approval logic |
-| Database migration | Add `slack_channel_id`, `report_auto_send` to `digest_settings` |
+- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
 

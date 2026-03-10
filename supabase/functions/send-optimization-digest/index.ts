@@ -3,6 +3,7 @@ import { Resend } from 'npm:resend@2.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -13,13 +14,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandId, reportId } = await req.json();
-    if (!brandId || !reportId) throw new Error('brandId and reportId required');
+    const { brandId, reportId, slackOnly, slackChannelOverride } = await req.json();
+    if (!brandId) throw new Error('brandId required');
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    // If slackOnly test, send a test message and return
+    if (slackOnly && slackChannelOverride) {
+      await sendSlackMessage(slackChannelOverride, '✅ Test message from LUMI — your Slack integration is working!');
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!reportId) throw new Error('reportId required');
 
     // Fetch report
     const { data: report } = await supabase
@@ -47,12 +58,24 @@ Deno.serve(async (req) => {
 
     if (!profile) throw new Error('Profile not found');
 
-    // Fetch digest settings for additional emails
+    // Fetch digest settings
     const { data: digestSettings } = await supabase
       .from('digest_settings')
-      .select('additional_emails')
+      .select('additional_emails, slack_channel_id, report_auto_send')
       .eq('brand_id', brandId)
       .single();
+
+    // Check auto-send setting — if false, mark as pending and skip sending
+    if (digestSettings && digestSettings.report_auto_send === false) {
+      await supabase
+        .from('optimization_reports')
+        .update({ status: 'pending_approval' })
+        .eq('id', reportId);
+
+      return new Response(JSON.stringify({ success: true, status: 'pending_approval' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const recipients = [profile.email];
     if (digestSettings?.additional_emails?.length) {
@@ -64,7 +87,7 @@ Deno.serve(async (req) => {
     const firstName = profile.full_name?.split(' ')[0] || 'there';
     const shareUrl = `https://adsbylumi.com/report/${report.share_token}`;
 
-    // Build email HTML
+    // Build & send email
     const emailHtml = buildDigestEmail(
       firstName,
       brand.name,
@@ -87,6 +110,18 @@ Deno.serve(async (req) => {
       throw new Error(emailError.message);
     }
 
+    // Send to Slack if configured
+    const slackChannel = slackChannelOverride || digestSettings?.slack_channel_id;
+    if (slackChannel) {
+      try {
+        const slackText = buildSlackMessage(brand.name, report.date_range_start, report.date_range_end, summary, shareUrl);
+        await sendSlackMessage(slackChannel, slackText);
+        console.log(`Slack message sent to #${slackChannel}`);
+      } catch (slackErr) {
+        console.error('Slack send failed (non-fatal):', slackErr);
+      }
+    }
+
     // Update last_sent_at
     await supabase
       .from('digest_settings')
@@ -105,6 +140,51 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function sendSlackMessage(channel: string, text: string) {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const SLACK_API_KEY = Deno.env.get('SLACK_API_KEY');
+
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+  if (!SLACK_API_KEY) throw new Error('SLACK_API_KEY not configured — connect Slack first');
+
+  const response = await fetch(`${GATEWAY_URL}/chat.postMessage`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'X-Connection-Api-Key': SLACK_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      channel,
+      text,
+      unfurl_links: false,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok || !data.ok) {
+    throw new Error(`Slack API error [${response.status}]: ${JSON.stringify(data)}`);
+  }
+  return data;
+}
+
+function buildSlackMessage(
+  brandName: string,
+  dateStart: string,
+  dateEnd: string,
+  summary: any,
+  shareUrl: string
+): string {
+  return [
+    `📊 *${brandName} — Weekly Ad Performance*`,
+    `_${dateStart} – ${dateEnd}_`,
+    '',
+    `🟢 ${summary?.green || 0} on track  ·  🟡 ${summary?.yellow || 0} need attention  ·  🔴 ${summary?.red || 0} need action`,
+    '',
+    `<${shareUrl}|View Full Report →>`,
+  ].join('\n');
+}
 
 function getStatusEmoji(status: string) {
   if (status === 'green') return '🟢';
