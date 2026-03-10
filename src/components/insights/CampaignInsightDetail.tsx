@@ -491,13 +491,18 @@ export function CampaignInsightDetail({
                     </Badge>
                   )}
                 </div>
-                {nextSteps.length > 0 || recommendations.length > 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {nextSteps[0] || recommendations[0]?.title || 'Tap to see recommendations'}
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Check back soon for recommendations</p>
-                )}
+                {(() => {
+                  const rawText = nextSteps[0] || recommendations[0]?.title || '';
+                  if (!rawText) return <p className="text-sm text-muted-foreground">Check back soon for recommendations</p>;
+                  // Strip markdown bold, internal slugs like 'snake_case_id', and trim
+                  const cleaned = rawText
+                    .replace(/\*\*/g, '')
+                    .replace(/'[a-z][a-z0-9_]+'|'[a-z][a-z0-9_]+'/g, '')
+                    .replace(/\s{2,}/g, ' ')
+                    .trim();
+                  const display = cleaned.length > 120 ? cleaned.slice(0, 117) + '...' : cleaned;
+                  return <p className="text-sm text-muted-foreground">{display}</p>;
+                })()}
               </CardContent>
             </Card>
           </div>
@@ -559,13 +564,26 @@ export function CampaignInsightDetail({
                 <div className="p-2 rounded-lg bg-white/50">
                   {budgetVerdict.icon}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm">Budget Recommendation</p>
                   <p className="text-sm">{budgetVerdict.label}</p>
                 </div>
-                <Badge variant="outline" className="ml-auto rounded-full text-xs">
-                  {statusLabel}
-                </Badge>
+                {budgetVerdict.label.toLowerCase().includes('creative') ? (
+                  <Button
+                    size="sm"
+                    variant="lumi"
+                    className="rounded-xl text-xs shrink-0 gap-1.5"
+                    onClick={() => navigate(`/creative-studio?workspace=${campaign.id}&refreshCreative=true`)}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Refresh Creative
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                ) : (
+                  <Badge variant="outline" className="ml-auto rounded-full text-xs shrink-0">
+                    {statusLabel}
+                  </Badge>
+                )}
               </div>
             </CardContent>
           </Card>
