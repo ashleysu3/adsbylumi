@@ -214,11 +214,10 @@ Deno.serve(async (req) => {
       throw new Error('Meta account not connected. Please connect your Meta ad account first.');
     }
 
-    // Get token securely from vault
-    const { data: metaAccessToken, error: tokenError } = await supabase
-      .rpc('get_meta_token', { p_brand_id: brand.id });
+    // Read token directly from brand record (service-role context lacks auth.uid() for vault RPC)
+    const metaAccessToken = brand.meta_access_token;
 
-    if (tokenError || !metaAccessToken) {
+    if (!metaAccessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 
