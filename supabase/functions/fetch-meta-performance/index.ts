@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
     // Fetch Campaign-level insights - including video_p100_watched_actions for thruplay data
     // (safeJson helper defined above)
 
-    const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions&${timeRange}&access_token=${metaAccessToken}`;
+    const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions,purchase_roas&${timeRange}&access_token=${metaAccessToken}`;
     
     const campaignResponse = await fetch(campaignInsightsUrl);
     const campaignData = await safeJson(campaignResponse);
