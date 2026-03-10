@@ -678,7 +678,7 @@ export function InsightsHome({
                       </div>
                     </div>
 
-                    {/* Row 2: Budget + Spend + Objective KPIs + Last Synced */}
+                    {/* Row 2: Budget + Spend + Sync */}
                     <div className="flex flex-wrap items-center gap-2 pl-5">
                       {campaign.dailyBudget != null && campaign.dailyBudget > 0 ?
                     <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
@@ -697,14 +697,9 @@ export function InsightsHome({
                           ${Number(campaign.metrics.spend).toFixed(2)} spent
                         </span>
                     }
-                      {objMetrics.map((m, i) =>
-                    <span key={i} className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                          {m.value} {m.label}
-                        </span>
-                    )}
                       {campaign.lastSyncedAt && (() => {
                         const syncAge = Date.now() - new Date(campaign.lastSyncedAt).getTime();
-                        const isStale = syncAge > 60 * 60 * 1000; // > 1 hour
+                        const isStale = syncAge > 60 * 60 * 1000;
                         const syncLabel = syncAge < 60000 ? 'Just now' :
                           syncAge < 3600000 ? `${Math.floor(syncAge / 60000)}m ago` :
                           `${Math.floor(syncAge / 3600000)}h ago`;
@@ -717,11 +712,15 @@ export function InsightsHome({
                       })()}
                     </div>
 
-                    {/* Row 3: Verdict + Action */}
+                    {/* Row 3: KPI Summary Strip */}
+                    <CampaignKPISummary
+                      metrics={campaign.metrics}
+                      kpiConfig={kpiConfig}
+                      goals={goalsMap[campaign.id] || null}
+                    />
+
+                    {/* Row 4: Action recommendation */}
                     <div className="flex items-center justify-between gap-2 pl-5">
-                      <span className={`text-sm font-medium ${verdict.colorClass}`}>
-                        {verdict.label}
-                      </span>
                       {isBudgetAction(actionRec) ?
                     <Popover>
                           <PopoverTrigger asChild>
@@ -760,7 +759,7 @@ export function InsightsHome({
                     }
                     </div>
 
-                    {/* Row 3.5: User-action recommendations inline */}
+                    {/* Row 5: User-action recommendations inline */}
                     {(() => {
                       const userRecs = recommendations.filter(
                         r => r.campaignId === campaign.id && !AUTOMATABLE_TYPES.has(r.type)
@@ -801,13 +800,6 @@ export function InsightsHome({
                         </div>
                       );
                     })()}
-
-                    {/* Row 3.5: Goal vs Actual */}
-                    <CampaignGoalRow
-                    kpiConfig={kpiConfig}
-                    currentValue={primaryValue}
-                    userGoal={campaign.userGoal ?? null}
-                    onUpdateGoal={(goal) => onUpdateGoal(campaign.id, goal)} />
                   
 
                     {/* Row 4: View button */}
