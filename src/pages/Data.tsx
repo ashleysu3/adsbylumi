@@ -939,7 +939,7 @@ export default function AdPerformance() {
                   className="h-7 text-xs"
                 >
                   {reportLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <BarChart2 className="h-3 w-3 mr-1" />}
-                  {reportLoading ? 'Generating...' : optimizationReport ? 'View Report' : 'Generate Report'}
+                  {reportLoading ? 'Generating...' : (optimizationReport && Array.isArray(optimizationReport.report_data) && (optimizationReport.report_data as any[]).length > 0) ? 'View Report' : 'Generate Report'}
                 </Button>
               </>
             )}
