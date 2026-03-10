@@ -8,11 +8,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Copy, Check, FileText, Calendar, ChevronRight, Lock, Settings2, Hash, Send, ChevronDown } from 'lucide-react';
+import { Loader2, Copy, Check, FileText, Calendar, ChevronRight, Lock, Settings2, Hash, Send, ChevronDown, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { parseReportSections, ReportLegendBar, ReportSectionRenderer } from './ReportSectionRenderer';
+import { parseReportSections, ReportSectionRenderer } from './ReportSectionRenderer';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
 interface CampaignOption {
@@ -41,7 +42,33 @@ interface PastReport {
   campaign_statuses: Record<string, string>;
 }
 
+interface CampaignSummary {
+  name: string;
+  objective: string;
+  userGoal: number | null;
+  primaryKPI: string;
+  workspaceId?: string;
+}
+
+interface MissingDataItem {
+  workspaceId: string;
+  campaignName: string;
+  missingObjective: boolean;
+  missingGoal: boolean;
+  selectedObjective?: string;
+  goalValue?: string;
+}
+
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+const OBJECTIVE_OPTIONS = [
+  { value: 'leads', label: 'Get Leads' },
+  { value: 'sales', label: 'Get Sales' },
+  { value: 'traffic', label: 'Drive Traffic' },
+  { value: 'video_views', label: 'Get Video Views' },
+  { value: 'awareness', label: 'Brand Awareness' },
+  { value: 'engagement', label: 'Engagement' },
+];
 
 export function ClientReportModal({
   open,
@@ -63,6 +90,12 @@ export function ClientReportModal({
   const [pastReportsLoading, setPastReportsLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // Missing data popup
+  const [missingDataItems, setMissingDataItems] = useState<MissingDataItem[]>([]);
+  const [showMissingDataPopup, setShowMissingDataPopup] = useState(false);
+  const [savingMissingData, setSavingMissingData] = useState(false);
+  const [pendingReport, setPendingReport] = useState<string | null>(null);
+
   // Delivery settings
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [slackChannel, setSlackChannel] = useState('');
@@ -83,6 +116,9 @@ export function ClientReportModal({
     if (!open) {
       setReport(null);
       setViewingPast(null);
+      setShowMissingDataPopup(false);
+      setMissingDataItems([]);
+      setPendingReport(null);
     }
   }, [open, brandId]);
 
@@ -199,13 +235,115 @@ export function ClientReportModal({
       });
       if (error) throw new Error(error.message || 'Failed to generate report');
       if (data?.error) throw new Error(data.error);
-      setReport(data.report);
+
+      // Check for missing data in campaignSummaries
+      const summaries: CampaignSummary[] = data.campaignSummaries || [];
+      const missing: MissingDataItem[] = [];
+      for (const cs of summaries) {
+        const missingObjective = cs.objective === 'unknown';
+        const missingGoal = cs.userGoal === null;
+        if (missingObjective || missingGoal) {
+          const matchedCampaign = campaigns.find(c => c.name === cs.name);
+          missing.push({
+            workspaceId: matchedCampaign?.id || '',
+            campaignName: cs.name,
+            missingObjective,
+            missingGoal,
+          });
+        }
+      }
+
+      if (missing.length > 0) {
+        setMissingDataItems(missing);
+        setPendingReport(data.report);
+        setShowMissingDataPopup(true);
+      } else {
+        setReport(data.report);
+      }
+
       fetchPastReports();
     } catch (err: any) {
       toast.error(err.message || 'Failed to generate report');
     } finally {
       setLoading(false);
     }
+  };
+
+  const saveMissingData = async () => {
+    setSavingMissingData(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      for (const item of missingDataItems) {
+        if (!item.workspaceId) continue;
+
+        // Save objective to workspace final_answers
+        if (item.missingObjective && item.selectedObjective) {
+          const { data: ws } = await supabase
+            .from('campaign_workspaces')
+            .select('final_answers')
+            .eq('id', item.workspaceId)
+            .single();
+          const existing = (ws?.final_answers as any) || {};
+          await supabase
+            .from('campaign_workspaces')
+            .update({ final_answers: { ...existing, userObjective: item.selectedObjective } })
+            .eq('id', item.workspaceId);
+        }
+
+        // Save goal to campaign_goals
+        if (item.missingGoal && item.goalValue) {
+          const goalNum = parseFloat(item.goalValue);
+          if (!isNaN(goalNum)) {
+            const kpiKey = item.selectedObjective?.includes('sale') ? 'cpp' : 'cpl';
+            const kpiLabel = kpiKey === 'cpp' ? 'Cost Per Sale' : 'Cost Per Lead';
+
+            // Upsert goal
+            const { data: existingGoal } = await supabase
+              .from('campaign_goals')
+              .select('id')
+              .eq('workspace_id', item.workspaceId)
+              .maybeSingle();
+
+            if (existingGoal) {
+              await supabase.from('campaign_goals').update({
+                primary_kpi: kpiKey,
+                primary_kpi_label: kpiLabel,
+                primary_kpi_threshold: goalNum,
+                primary_kpi_goal_type: 'less_than',
+              }).eq('id', existingGoal.id);
+            } else {
+              await supabase.from('campaign_goals').insert({
+                workspace_id: item.workspaceId,
+                brand_id: brandId,
+                created_by: session.user.id,
+                primary_kpi: kpiKey,
+                primary_kpi_label: kpiLabel,
+                primary_kpi_threshold: goalNum,
+                primary_kpi_goal_type: 'less_than',
+              });
+            }
+          }
+        }
+      }
+
+      toast.success('Campaign details saved — they\'ll be used in future reports');
+    } catch (err: any) {
+      console.error('Failed to save missing data:', err);
+      toast.error('Failed to save some details');
+    } finally {
+      setSavingMissingData(false);
+      setShowMissingDataPopup(false);
+      setReport(pendingReport);
+      setPendingReport(null);
+    }
+  };
+
+  const skipMissingData = () => {
+    setShowMissingDataPopup(false);
+    setReport(pendingReport);
+    setPendingReport(null);
   };
 
   const copyToClipboard = async (text: string) => {
@@ -247,7 +385,7 @@ export function ClientReportModal({
 
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Agency gate */}
-          {!isAgency && !rawReport && !loading && (
+          {!isAgency && !rawReport && !loading && !showMissingDataPopup && (
             <div className="px-6 pb-6 flex flex-col items-center justify-center gap-4 py-12">
               <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <Lock className="h-8 w-8 text-primary" />
@@ -264,8 +402,86 @@ export function ClientReportModal({
             </div>
           )}
 
+          {/* Missing data popup */}
+          {showMissingDataPopup && (
+            <div className="px-6 pb-6 space-y-4">
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold text-sm">Some campaigns are missing details</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Fill these in so future reports are more accurate. You can also skip for now.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {missingDataItems.map((item, idx) => (
+                  <div key={idx} className="p-4 rounded-xl border bg-card space-y-3">
+                    <p className="text-sm font-semibold">{item.campaignName}</p>
+
+                    {item.missingObjective && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">What's the goal of this campaign?</Label>
+                        <Select
+                          value={item.selectedObjective || ''}
+                          onValueChange={(val) => {
+                            setMissingDataItems(prev => prev.map((m, i) =>
+                              i === idx ? { ...m, selectedObjective: val } : m
+                            ));
+                          }}
+                        >
+                          <SelectTrigger className="h-9 rounded-xl text-sm">
+                            <SelectValue placeholder="Select a goal..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {OBJECTIVE_OPTIONS.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {item.missingGoal && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">What's your target cost per result? (e.g. $5)</Label>
+                        <Input
+                          placeholder="$5.00"
+                          value={item.goalValue || ''}
+                          onChange={(e) => {
+                            setMissingDataItems(prev => prev.map((m, i) =>
+                              i === idx ? { ...m, goalValue: e.target.value } : m
+                            ));
+                          }}
+                          className="h-9 rounded-xl text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" size="sm" className="rounded-xl flex-1" onClick={skipMissingData}>
+                  Skip for now
+                </Button>
+                <Button
+                  variant="lumi"
+                  size="sm"
+                  className="rounded-xl flex-1"
+                  onClick={saveMissingData}
+                  disabled={savingMissingData}
+                >
+                  {savingMissingData ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                  Save & View Report
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Campaign selection */}
-          {isAgency && !rawReport && !loading && (
+          {isAgency && !rawReport && !loading && !showMissingDataPopup && (
             <div className="px-6 pb-6 space-y-4">
               {campaigns.length > 0 && (
                 <div className="space-y-2">
@@ -307,14 +523,13 @@ export function ClientReportModal({
             </div>
           )}
 
-          {parsed && (
+          {parsed && !showMissingDataPopup && (
             <>
-              {/* Legend + back button */}
+              {/* Back button */}
               <div className="px-6 space-y-2 shrink-0">
                 {viewingPast && (
                   <Button variant="ghost" size="sm" onClick={() => setViewingPast(null)} className="text-xs -ml-2">← Back to current</Button>
                 )}
-                <ReportLegendBar items={parsed.legend} />
               </div>
 
               {/* Report body — scrollable */}
@@ -351,7 +566,6 @@ export function ClientReportModal({
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="space-y-4 pt-3">
-                      {/* Slack channel */}
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium flex items-center gap-1.5">
                           <Hash className="h-3.5 w-3.5 text-muted-foreground" />
@@ -377,7 +591,6 @@ export function ClientReportModal({
                         </div>
                       </div>
 
-                      {/* Schedule days */}
                       <div className="space-y-1.5">
                         <Label className="text-xs font-medium">Report Schedule</Label>
                         <div className="flex flex-wrap gap-1.5">
@@ -397,7 +610,6 @@ export function ClientReportModal({
                         </div>
                       </div>
 
-                      {/* Auto-send toggle */}
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
                           <Label className="text-xs font-medium">Auto-send to client</Label>
@@ -425,7 +637,7 @@ export function ClientReportModal({
           )}
 
           {/* Past Reports accordion */}
-          {pastReports.length > 0 && !rawReport && !loading && (
+          {pastReports.length > 0 && !rawReport && !loading && !showMissingDataPopup && (
             <div className="px-6 pb-6">
               <Accordion type="single" collapsible className="border-t pt-2">
                 <AccordionItem value="history" className="border-0">

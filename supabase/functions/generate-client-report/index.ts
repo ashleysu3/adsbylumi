@@ -492,7 +492,7 @@ Generate ONLY the report text. No preamble.`;
       for (const name of missingCampaigns) {
         const cs = campaignSummaries.find(c => c.name === name);
         if (cs) {
-          reportText += `\n#### 👀 ${name}\n**Status:** ${cs.status} | **Primary KPI (${cs.primaryKPI}):** ${cs.primaryValue ? `$${cs.primaryValue}` : 'Insufficient data'}\n\nData for this campaign is being collected. Actionable insights in the next reporting period.\n`;
+          reportText += `\n#### ⚠️ ${name}\n**Status:** ${cs.status} | **Key Metric (${cs.primaryKPI}):** ${cs.primaryValue ? `$${cs.primaryValue}` : 'Not enough data yet'}\n\nWe're collecting data for this campaign. We'll have actionable insights in the next report.\n`;
         }
       }
     }
