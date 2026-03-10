@@ -47,6 +47,53 @@ import { toast } from 'sonner';
 
 const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_ad', 'resume_ad', 'swap_creative']);
 
+function FatigueAdRow({ adName, workspaceId }: { adName: string; workspaceId: string }) {
+  const [toggling, setToggling] = useState(false);
+  const [paused, setPaused] = useState(false);
+
+  const handlePause = async () => {
+    setToggling(true);
+    try {
+      // Use the ad name as entity identifier — the edge function resolves it
+      const { data, error } = await supabase.functions.invoke('check-campaign-status', {
+        body: { workspaceId, action: 'pause', entityId: adName, entityType: 'ad' },
+      });
+      if (error || !data?.success) {
+        throw new Error(data?.error || error?.message || 'Failed to pause ad');
+      }
+      setPaused(true);
+      toast.success(`"${adName}" paused`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to pause ad');
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  return (
+    <li className="text-sm flex items-center justify-between gap-2 p-3 rounded-xl bg-muted/50 border">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <RefreshCw className="h-4 w-4 text-[hsl(var(--lumi-orange-1))] shrink-0" />
+        <span className="truncate">{adName}</span>
+      </div>
+      {paused ? (
+        <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs shrink-0">Paused</Badge>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          className="rounded-xl text-xs shrink-0 border-amber-200 text-amber-700 hover:bg-amber-50"
+          disabled={toggling}
+          onClick={handlePause}
+        >
+          {toggling ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <PauseCircle className="h-3 w-3 mr-1" />}
+          Pause Ad
+        </Button>
+      )}
+    </li>
+  );
+}
+
 function getUserActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode; type: 'navigate' | 'add_posts' } {
   const title = (rec.title || '').toLowerCase();
   if (title.includes('resonat') || title.includes('ctr') || title.includes('click')) {
