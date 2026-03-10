@@ -387,7 +387,10 @@ export function InsightsHome({
         if (Array.isArray(nextSteps) && nextSteps.length > 0) {
           const existingRecs = allRecs.filter((r: any) => r.campaignId === campaign.id);
           if (existingRecs.length < 2) {
-            nextSteps.slice(0, 2).forEach((step: string, i: number) => {
+            const existingDescriptions = new Set(existingRecs.map((r: any) => (r.description || '').toLowerCase().trim()));
+            const slotsLeft = 2 - existingRecs.length;
+            const uniqueSteps = nextSteps.filter((step: string) => !existingDescriptions.has(step.toLowerCase().trim()));
+            uniqueSteps.slice(0, slotsLeft).forEach((step: string, i: number) => {
               allRecs.push({
                 id: `ai-step-${campaign.id}-${i}`,
                 type: 'keep_running',
