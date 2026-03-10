@@ -28,6 +28,7 @@ import {
 '@/lib/lumi-kpi-config';
 import { CampaignGoalRow } from './CampaignGoalRow';
 import { CampaignKPISummary } from './CampaignKPISummary';
+import { CampaignKPIWithGoalEditor } from './CampaignKPIWithGoalEditor';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
 import { DateRangePicker } from './DateRangePicker';
@@ -147,12 +148,20 @@ function hasLiveConversions(campaign: Campaign): boolean {
 }
 
 
-function getActionRecommendation(status: string): string {
+function getActionRecommendation(status: string, metrics?: CampaignMetrics | null): string {
   switch (status) {
     case 'healthy':return 'Increase budget';
     case 'attention':return 'Keep spend the same';
     case 'critical':return 'Refresh creative or pause';
-    default:return 'Wait for more data';
+    default: {
+      // Check if campaign has meaningful delivery data
+      const spend = Number(metrics?.spend || 0);
+      const impressions = Number(metrics?.impressions || 0);
+      if (spend > 50 || impressions > 1000) {
+        return 'Try new angles';
+      }
+      return 'Wait for more data';
+    }
   }
 }
 
@@ -351,6 +360,8 @@ export function InsightsHome({
     setRecsLoading(true);
     try {
       const allRecs: any[] = [];
+      const globalDedup = new Set<string>();
+      const normalizeDesc = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
       for (const campaign of campaignsWithMetrics.slice(0, 5)) {
         // Fetch campaign goals
         const { data: goalsData } = await supabase
@@ -381,11 +392,10 @@ export function InsightsHome({
 
         if (!error && data?.recommendations) {
           // Deduplicate: skip recs whose description already exists in allRecs
-          const existingDescs = new Set(allRecs.map((r: any) => (r.description || '').toLowerCase().trim()));
           data.recommendations.forEach((r: any) => {
-            const desc = (r.description || '').toLowerCase().trim();
-            if (!existingDescs.has(desc)) {
-              existingDescs.add(desc);
+            const desc = normalizeDesc(r.description || '');
+            if (desc && !globalDedup.has(desc)) {
+              globalDedup.add(desc);
               allRecs.push({ ...r, campaignName: campaign.name, campaignId: campaign.id });
             }
           });
@@ -400,12 +410,15 @@ export function InsightsHome({
 
         const nextSteps = (wsReport?.performance_report_latest as any)?.next_steps;
         if (Array.isArray(nextSteps) && nextSteps.length > 0) {
-          const existingRecs = allRecs.filter((r: any) => r.campaignId === campaign.id);
-          if (existingRecs.length < 2) {
-            const existingDescriptions = new Set(existingRecs.map((r: any) => (r.description || '').toLowerCase().trim()));
-            const slotsLeft = 2 - existingRecs.length;
-            const uniqueSteps = nextSteps.filter((step: string) => !existingDescriptions.has(step.toLowerCase().trim()));
+          const campaignRecCount = allRecs.filter((r: any) => r.campaignId === campaign.id).length;
+          if (campaignRecCount < 2) {
+            const slotsLeft = 2 - campaignRecCount;
+            const uniqueSteps = nextSteps.filter((step: string) => {
+              const norm = normalizeDesc(step);
+              return norm && !globalDedup.has(norm);
+            });
             uniqueSteps.slice(0, slotsLeft).forEach((step: string, i: number) => {
+              globalDedup.add(normalizeDesc(step));
               allRecs.push({
                 id: `ai-step-${campaign.id}-${i}`,
                 type: 'keep_running',
@@ -627,7 +640,7 @@ export function InsightsHome({
           const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
           const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
           const statusDot = status === 'no-data' ? 'bg-amber-500' : getLumiStatusDot(status);
-          const actionRec = getActionRecommendation(status);
+          const actionRec = getActionRecommendation(status, campaign.metrics);
           const isActive = campaign.status === 'active' || campaign.status === 'live';
           const isToggling = togglingCampaign === campaign.id;
           const recCount = recCountsByWorkspace[campaign.id] || 0;
@@ -679,11 +692,7 @@ export function InsightsHome({
                           ${campaign.dailyBudget.toFixed(2)}/day
                           {campaign.budgetLevel === 'adset' && <span className="text-[10px] opacity-60">(ad sets)</span>}
                         </span> :
-                      campaign.dailyBudget === undefined && campaign.lastSyncedAt ?
-                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground/50">
-                          <DollarSign className="h-3 w-3" />
-                          —
-                        </span> : null
+                      null
                     }
                       {campaign.metrics?.spend != null && Number(campaign.metrics.spend) > 0 &&
                     <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
@@ -705,11 +714,15 @@ export function InsightsHome({
                       })()}
                     </div>
 
-                    {/* Row 3: KPI Summary Strip */}
-                    <CampaignKPISummary
-                      metrics={campaign.metrics}
+                    {/* Row 3: KPI Summary Strip with inline goal editing */}
+                    <CampaignKPIWithGoalEditor
+                      campaign={campaign}
                       kpiConfig={kpiConfig}
+                      primaryValue={primaryValue}
                       goals={goalsMap[campaign.id] || null}
+                      onGoalSaved={(refreshedGoal) => {
+                        setGoalsMap(prev => ({ ...prev, [campaign.id]: refreshedGoal }));
+                      }}
                     />
 
                     {/* Row 4: Action recommendation */}
