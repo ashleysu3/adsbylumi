@@ -314,6 +314,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
             voice: workspace?.brand_voice || strategyJson?.brand_voice,
             audience: workspace?.target_audience || strategyJson?.audience,
             value_proposition: strategyJson?.value_proposition,
+            never_use_words: workspace?.never_use_words || [],
             offer: {
               name: workspace?.offer_name,
               description: workspace?.offer_description,

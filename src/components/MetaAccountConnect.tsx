@@ -646,8 +646,19 @@ export function MetaAccountConnect({
               {instagramAccounts.length === 0 ? (
                 <Card className="p-4 border-amber-500/50 bg-amber-500/5">
                   <p className="text-sm text-amber-600 font-medium mb-2">No Instagram Accounts Found</p>
-                  <p className="text-xs text-muted-foreground">
-                    No Instagram Business accounts are linked to your Facebook Pages. You can still create ads, but they'll only appear on Facebook.
+                  <p className="text-xs text-muted-foreground mb-3">
+                    No Instagram Business or Creator accounts are linked to your Facebook Pages.
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    <strong>To fix this:</strong>
+                  </p>
+                  <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>Go to your Facebook Page → Settings → Linked Accounts</li>
+                    <li>Connect your Instagram account (must be a Business or Creator account)</li>
+                    <li>Come back here and reconnect Meta to see your Instagram account</li>
+                  </ol>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    You can still create ads without Instagram — they'll appear on Facebook only.
                   </p>
                 </Card>
               ) : (

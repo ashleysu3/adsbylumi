@@ -614,6 +614,7 @@ export default function CreativeStudio() {
            productPsychology: productPsychologyForAngles,
            offerAudiencePsychology: offerAudiencePsychologyForAngles,
            previouslyUsedAngles,
+           neverUseWords: (workspace.brands as any)?.never_use_words || [],
            brandId,
            offerId: workspace.offer_id,
          }
