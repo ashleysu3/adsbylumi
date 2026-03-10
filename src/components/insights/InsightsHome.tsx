@@ -147,12 +147,20 @@ function hasLiveConversions(campaign: Campaign): boolean {
 }
 
 
-function getActionRecommendation(status: string): string {
+function getActionRecommendation(status: string, metrics?: CampaignMetrics | null): string {
   switch (status) {
     case 'healthy':return 'Increase budget';
     case 'attention':return 'Keep spend the same';
     case 'critical':return 'Refresh creative or pause';
-    default:return 'Wait for more data';
+    default: {
+      // Check if campaign has meaningful delivery data
+      const spend = Number(metrics?.spend || 0);
+      const impressions = Number(metrics?.impressions || 0);
+      if (spend > 50 || impressions > 1000) {
+        return 'Try new angles';
+      }
+      return 'Wait for more data';
+    }
   }
 }
 
