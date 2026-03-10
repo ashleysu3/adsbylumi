@@ -80,6 +80,59 @@ export type Database = {
         }
         Relationships: []
       }
+      agency_branding: {
+        Row: {
+          accent_color: string | null
+          brand_id: string
+          company_name: string | null
+          created_at: string | null
+          custom_footer_text: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          updated_at: string | null
+          white_label_portal: boolean | null
+          white_label_reports: boolean | null
+        }
+        Insert: {
+          accent_color?: string | null
+          brand_id: string
+          company_name?: string | null
+          created_at?: string | null
+          custom_footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string | null
+          white_label_portal?: boolean | null
+          white_label_reports?: boolean | null
+        }
+        Update: {
+          accent_color?: string | null
+          brand_id?: string
+          company_name?: string | null
+          created_at?: string | null
+          custom_footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string | null
+          white_label_portal?: boolean | null
+          white_label_reports?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_branding_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audiences: {
         Row: {
           brand_id: string
