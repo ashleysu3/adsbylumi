@@ -174,21 +174,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
 
-          {/* In-progress campaign banner */}
-          {inProgressWorkspace && !progressBannerDismissed && (
-            <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-between text-sm">
-              <a
-                href={`/creative-studio?workspace=${inProgressWorkspace.id}`}
-                className="flex items-center gap-2 text-primary font-medium hover:underline"
-              >
-                📍 You have an ad in progress — Continue Building
-                <ArrowRight className="h-3.5 w-3.5" />
-              </a>
-              <button onClick={() => setProgressBannerDismissed(true)} className="text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
 
           <SubscriptionBanner />
           <main className="flex-1 container mx-auto px-4 md:px-6 py-4 md:py-6">
