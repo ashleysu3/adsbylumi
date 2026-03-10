@@ -468,8 +468,10 @@ export function CampaignInsightDetail({
                   </ul>
                 ) : status === 'critical' || status === 'attention' ? (
                   <p className="text-sm text-amber-800">• Your {kpiConfig.primaryLabel.toLowerCase()} needs improvement</p>
+                ) : frequency != null && frequency >= 3.5 ? (
+                  <p className="text-sm text-amber-800">• Your frequency is getting high — time for fresh creative</p>
                 ) : (
-                  <p className="text-sm text-green-700">Everything looks great! 🎉</p>
+                  <p className="text-sm text-green-700">Nothing to flag right now 👍</p>
                 )}
               </CardContent>
             </Card>
