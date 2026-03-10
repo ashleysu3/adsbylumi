@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
       try {
         const adSetsUrl = `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=daily_budget,lifetime_budget,status&limit=100&access_token=${metaAccessToken}`;
         const adSetsResponse = await fetch(adSetsUrl);
-        const adSetsData = await adSetsResponse.json();
+        const adSetsData = await safeJson(adSetsResponse);
 
         if (adSetsData.data && Array.isArray(adSetsData.data)) {
           let totalDailyBudget = 0;
