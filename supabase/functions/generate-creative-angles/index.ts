@@ -197,6 +197,7 @@ ${offerAudienceContext}
 ${preGenContext}
 ${intelligenceContext}
 ${previousAnglesContext}
+${Array.isArray(neverUseWords) && neverUseWords.length > 0 ? `\n🚫 BANNED WORDS/PHRASES (strictly forbidden in all output):\n${neverUseWords.map((w: string) => `- "${w}"`).join('\n')}\nDo NOT use any of these words in angle names, descriptions, or any generated text. Find alternative phrasing.\n` : ''}
 
 RULES:
 - Generate exactly 11 creative angles
