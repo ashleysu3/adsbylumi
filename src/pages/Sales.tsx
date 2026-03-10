@@ -214,6 +214,31 @@ const Sales = () => {
         </div>
       </section>
 
+      {/* ═══════ SECTION 4a — DEMO VIDEO ═══════ */}
+      <section className="py-16 sm:py-24">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <FadeUp>
+            <Badge variant="outline" className="mx-auto mb-4 block w-fit text-xs px-4 py-1.5 border-primary/30 bg-primary/5">See it in action</Badge>
+          </FadeUp>
+          <FadeUp delay={0.05}>
+            <h2 className="font-display text-3xl sm:text-4xl text-center mb-8">Watch LUMI build a campaign from&nbsp;scratch</h2>
+          </FadeUp>
+          <FadeUp delay={0.1}>
+            <div className="rounded-2xl overflow-hidden shadow-elevated border border-border">
+              <div style={{ position: "relative", paddingBottom: "55.42%", height: 0 }}>
+                <iframe
+                  src="https://www.loom.com/embed/7526d2b5983241978a53d28ce8040852"
+                  frameBorder="0"
+                  allowFullScreen
+                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}
+                  title="LUMI Demo"
+                />
+              </div>
+            </div>
+          </FadeUp>
+        </div>
+      </section>
+
       {/* ═══════ SECTION 4b — Feature deep-dives ═══════ */}
       <section className="py-16 sm:py-24">
         <div className="container mx-auto px-4 max-w-5xl">
