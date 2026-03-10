@@ -149,12 +149,19 @@ Deno.serve(async (req) => {
 
     console.log('Fetching Meta performance for campaign:', campaignId);
 
+    // Safe JSON parser for Meta API responses
+    const safeJson = async (response: Response): Promise<any> => {
+      const text = await response.text();
+      if (!text || !text.trim()) return {};
+      try { return JSON.parse(text); } catch { console.error('Failed to parse Meta response:', text.substring(0, 200)); return {}; }
+    };
+
     // ============================================
     // STEP 1: Fetch real-time campaign status from Meta
     // ============================================
     const statusUrl = `https://graph.facebook.com/v18.0/${campaignId}?fields=status,effective_status,daily_budget,lifetime_budget&access_token=${metaAccessToken}`;
     const statusResponse = await fetch(statusUrl);
-    const statusData = await statusResponse.json();
+    const statusData = await safeJson(statusResponse);
 
     if (statusData.error) {
       console.error('Meta API status error:', statusData.error);
@@ -185,7 +192,7 @@ Deno.serve(async (req) => {
       try {
         const adSetsUrl = `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=daily_budget,lifetime_budget,status&limit=100&access_token=${metaAccessToken}`;
         const adSetsResponse = await fetch(adSetsUrl);
-        const adSetsData = await adSetsResponse.json();
+        const adSetsData = await safeJson(adSetsResponse);
 
         if (adSetsData.data && Array.isArray(adSetsData.data)) {
           let totalDailyBudget = 0;
@@ -263,12 +270,7 @@ Deno.serve(async (req) => {
       : `date_preset=last_7d`;
 
     // Fetch Campaign-level insights - including video_p100_watched_actions for thruplay data
-    // Safe JSON parser for Meta API responses
-    const safeJson = async (response: Response): Promise<any> => {
-      const text = await response.text();
-      if (!text || !text.trim()) return {};
-      try { return JSON.parse(text); } catch { console.error('Failed to parse Meta response:', text.substring(0, 200)); return {}; }
-    };
+    // (safeJson helper defined above)
 
     const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions&${timeRange}&access_token=${metaAccessToken}`;
     
