@@ -877,74 +877,7 @@ export default function AdPerformance() {
 
 
         {/* ─── Page Header ─── */}
-        <div className="mb-4 sm:mb-6 space-y-2">
-          <div className="flex items-center justify-end gap-2">
-            {metaConnected && metaTokenExpired &&
-              <button onClick={() => navigate("/dashboard")} className="inline-flex items-center gap-1 text-xs text-destructive hover:underline">
-                <AlertTriangle className="h-3 w-3" /> Reconnect Meta
-              </button>
-            }
-            {!metaConnected && !loading &&
-              <button onClick={() => navigate("/dashboard")} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline">
-                <Link2 className="h-3 w-3" /> Connect Meta
-              </button>
-            }
-
-            {metaConnected && !metaTokenExpired && brandId && metaAccountId && (
-              <>
-                {/* Report actions */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 px-2">
-                      <Share2 className="h-3 w-3" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80">
-                    {optimizationReport?.share_token ? (
-                      <div className="space-y-3">
-                        <p className="text-sm font-medium">Shareable Report Link</p>
-                        <div className="flex gap-2">
-                          <Input readOnly value={`${window.location.origin}/report/${optimizationReport.share_token}`} className="text-xs" />
-                          <Button size="sm" variant="outline" onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/report/${optimizationReport.share_token}`);
-                            toast.success('Link copied');
-                          }}>
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">This link shows a read-only snapshot. Anyone with the link can view it.</p>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">Generate a report first to get a shareable link.</p>
-                    )}
-                  </PopoverContent>
-                </Popover>
-
-                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={() => setDigestOpen(true)}>
-                  <Settings className="h-3 w-3" />
-                </Button>
-
-                <Button
-                  onClick={() => {
-                    const hasData = optimizationReport && Array.isArray(optimizationReport.report_data) && (optimizationReport.report_data as any[]).length > 0;
-                    if (hasData && !reportLoading) {
-                      setReportPreviewOpen(true);
-                    } else {
-                      runReport();
-                    }
-                  }}
-                  disabled={reportLoading}
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs"
-                >
-                  {reportLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <BarChart2 className="h-3 w-3 mr-1" />}
-                  {reportLoading ? 'Generating...' : (optimizationReport && Array.isArray(optimizationReport.report_data) && (optimizationReport.report_data as any[]).length > 0) ? 'View Report' : 'Generate Report'}
-                </Button>
-              </>
-            )}
-          </div>
-
+        <div className="mb-4 sm:mb-6">
           {reportLastUpdated && view === 'home' && (
             <div className="text-xs text-muted-foreground text-right">
               LUMI last checked: {reportLastUpdated}
