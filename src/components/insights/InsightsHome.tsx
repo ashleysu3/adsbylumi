@@ -359,6 +359,8 @@ export function InsightsHome({
     setRecsLoading(true);
     try {
       const allRecs: any[] = [];
+      const globalDedup = new Set<string>();
+      const normalizeDesc = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
       for (const campaign of campaignsWithMetrics.slice(0, 5)) {
         // Fetch campaign goals
         const { data: goalsData } = await supabase
