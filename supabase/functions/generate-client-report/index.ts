@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('id, name, user_id')
+      .select('id, name, user_id, meta_account_id, meta_access_token')
       .eq('id', brandId)
       .single();
     if (brandError || !brand) throw new Error('Brand not found');
@@ -42,8 +42,8 @@ Deno.serve(async (req) => {
       .from('campaign_workspaces')
       .select(`
         id, name, meta_campaign_ids, meta_campaign_status,
-        final_answers, performance_history, performance_report_latest,
-        campaign_builder_answers, template_id, offer_name,
+        final_answers, campaign_builder_answers, template_id, offer_name,
+        published_at, performance_report_latest,
         campaign_templates!campaign_workspaces_template_id_fkey (name, objective)
       `)
       .eq('brand_id', brandId)
@@ -59,7 +59,6 @@ Deno.serve(async (req) => {
       return true;
     });
 
-    // If selectedWorkspaceIds provided, filter to only those
     if (selectedWorkspaceIds && Array.isArray(selectedWorkspaceIds) && selectedWorkspaceIds.length > 0) {
       campaigns = campaigns.filter((w: any) => selectedWorkspaceIds.includes(w.id));
     }
@@ -68,26 +67,167 @@ Deno.serve(async (req) => {
       throw new Error('No published campaigns found for the selected campaigns');
     }
 
-    // Build campaign data for the prompt
+    // ====================================================
+    // FETCH LIVE META DATA for each campaign (same as dashboard)
+    // ====================================================
+    const metaAccessToken = brand.meta_access_token;
+    const safeJson = async (response: Response): Promise<any> => {
+      const text = await response.text();
+      if (!text || !text.trim()) return {};
+      try { return JSON.parse(text); } catch { return {}; }
+    };
+
     const campaignSummaries: any[] = [];
     let totalSpend = 0;
     let totalRevenue = 0;
 
+    // Fetch campaign goals
+    const { data: goalsData } = await supabase
+      .from('campaign_goals')
+      .select('*')
+      .eq('brand_id', brandId);
+    const goalsMap: Record<string, any> = {};
+    (goalsData || []).forEach((g: any) => {
+      if (g.workspace_id) goalsMap[g.workspace_id] = g;
+    });
+
     for (const ws of campaigns) {
-      const history = (ws.performance_history as any[]) || [];
-      const latestSnapshot = history.length > 0 ? history[history.length - 1] : null;
-      const metrics = latestSnapshot?.metrics || {};
+      const metaCampaignIds = ws.meta_campaign_ids as any;
+      let campaignId = metaCampaignIds?.campaignId;
       const finalAnswers = ws.final_answers as any;
       const template = ws.campaign_templates as any;
       const objective = template?.objective || 'unknown';
       const templateName = template?.name || '';
-      const userGoal = finalAnswers?.userKpiGoal || null;
       const builderAnswers = ws.campaign_builder_answers as any;
-      const dailyBudget = builderAnswers?.budget || metrics?.dailyBudget || null;
-      const status = ((ws.meta_campaign_status || 'unknown') as string).toUpperCase();
 
+      // Get user goal from campaign_goals table
+      const goalRow = goalsMap[ws.id];
+      const userGoal = goalRow?.primary_kpi_threshold || finalAnswers?.userKpiGoal || null;
+
+      let liveMetrics: any = {};
+      let status = ((ws.meta_campaign_status || 'unknown') as string).toUpperCase();
+      let dailyBudget = builderAnswers?.budget || null;
+      let adBreakdown: any[] = [];
+
+      // Try fetching live data from Meta API
+      if (metaAccessToken && campaignId) {
+        // Clean campaign ID
+        if (typeof campaignId === 'string' && campaignId.includes('_')) {
+          const parts = campaignId.split('_');
+          const numericPart = parts[parts.length - 1];
+          const timestamp = parseInt(numericPart);
+          const now = Date.now();
+          const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
+          if (timestamp > oneYearAgo && timestamp <= now) {
+            campaignId = null; // placeholder ID
+          } else {
+            campaignId = numericPart;
+          }
+        }
+
+        if (campaignId && /^\d+$/.test(campaignId)) {
+          try {
+            // Fetch campaign status + budget
+            const statusUrl = `https://graph.facebook.com/v18.0/${campaignId}?fields=status,effective_status,daily_budget,lifetime_budget&access_token=${metaAccessToken}`;
+            const statusResp = await fetch(statusUrl);
+            const statusData = await safeJson(statusResp);
+            if (!statusData.error) {
+              status = (statusData.effective_status || statusData.status || status).toUpperCase();
+              if (statusData.daily_budget) dailyBudget = Number(statusData.daily_budget) / 100;
+            }
+
+            // Fetch insights for date range
+            const since = dateRangeStart || new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+            const until = dateRangeEnd || new Date().toISOString().split('T')[0];
+            const fields = 'spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,cost_per_action_type,purchase_roas';
+            const insightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=${fields}&time_range={"since":"${since}","until":"${until}"}&access_token=${metaAccessToken}`;
+            const insightsResp = await fetch(insightsUrl);
+            const insightsData = await safeJson(insightsResp);
+
+            if (insightsData.data && insightsData.data.length > 0) {
+              const d = insightsData.data[0];
+              const actions = d.actions || [];
+              const costPerAction = d.cost_per_action_type || [];
+
+              const getAction = (type: string) => {
+                const a = actions.find((a: any) => a.action_type === type);
+                return a ? Number(a.value) : 0;
+              };
+              const getCostPerAction = (type: string) => {
+                const c = costPerAction.find((c: any) => c.action_type === type);
+                return c ? Number(c.value) : null;
+              };
+
+              const leads = getAction('lead') || getAction('onsite_conversion.lead_grouped') || getAction('offsite_conversion.fb_pixel_lead');
+              const purchases = getAction('purchase') || getAction('offsite_conversion.fb_pixel_purchase');
+              const linkClicks = getAction('link_click');
+              const videoViews = getAction('video_view');
+              const thruPlays = getAction('onsite_conversion.messaging_first_reply') || getAction('video_view'); // approximation
+              const roas = d.purchase_roas?.[0]?.value ? Number(d.purchase_roas[0].value) : null;
+
+              liveMetrics = {
+                spend: Number(d.spend || 0),
+                impressions: Number(d.impressions || 0),
+                clicks: Number(d.clicks || 0),
+                ctr: Number(d.ctr || 0),
+                cpc: Number(d.cpc || 0),
+                reach: Number(d.reach || 0),
+                frequency: Number(d.frequency || 0),
+                leads,
+                purchases,
+                cpl: getCostPerAction('lead') || getCostPerAction('onsite_conversion.lead_grouped') || getCostPerAction('offsite_conversion.fb_pixel_lead'),
+                cpp: getCostPerAction('purchase') || getCostPerAction('offsite_conversion.fb_pixel_purchase'),
+                roas,
+                linkClicks,
+                videoViews,
+              };
+            }
+
+            // Fetch ad-level breakdown
+            const adFields = 'ad_name,ad_id,spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,purchase_roas';
+            const adUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=${adFields}&level=ad&time_range={"since":"${since}","until":"${until}"}&limit=20&access_token=${metaAccessToken}`;
+            const adResp = await fetch(adUrl);
+            const adData = await safeJson(adResp);
+            if (adData.data) {
+              adBreakdown = adData.data.map((ad: any) => {
+                const adActions = ad.actions || [];
+                const adCPA = ad.cost_per_action_type || [];
+                const getAdAction = (t: string) => { const a = adActions.find((a: any) => a.action_type === t); return a ? Number(a.value) : 0; };
+                const getAdCost = (t: string) => { const c = adCPA.find((c: any) => c.action_type === t); return c ? Number(c.value) : null; };
+                return {
+                  name: ad.ad_name,
+                  spend: Number(ad.spend || 0),
+                  impressions: Number(ad.impressions || 0),
+                  clicks: Number(ad.clicks || 0),
+                  ctr: Number(ad.ctr || 0),
+                  leads: getAdAction('lead') || getAdAction('onsite_conversion.lead_grouped'),
+                  purchases: getAdAction('purchase'),
+                  cpl: getAdCost('lead') || getAdCost('onsite_conversion.lead_grouped'),
+                  cpp: getAdCost('purchase'),
+                  roas: ad.purchase_roas?.[0]?.value ? Number(ad.purchase_roas[0].value) : null,
+                };
+              }).filter((ad: any) => ad.spend > 0).sort((a: any, b: any) => b.spend - a.spend);
+            }
+          } catch (metaErr) {
+            console.error(`Meta API error for ${ws.name}:`, metaErr);
+            // Fall back to stored data
+            const report = ws.performance_report_latest as any;
+            if (report?.metrics) liveMetrics = report.metrics;
+            if (report?.ad_breakdown) adBreakdown = report.ad_breakdown;
+          }
+        }
+      }
+
+      // If no live metrics, fall back to stored report
+      if (!liveMetrics.spend && liveMetrics.spend !== 0) {
+        const report = ws.performance_report_latest as any;
+        if (report?.metrics) liveMetrics = report.metrics;
+        if (report?.ad_breakdown) adBreakdown = report.ad_breakdown || [];
+      }
+
+      const metrics = liveMetrics;
       const spend = Number(metrics.spend || 0);
-      const revenue = Number(metrics.purchase_roas || 0) * spend;
+      const revenue = Number(metrics.roas || 0) * spend;
       totalSpend += spend;
       totalRevenue += revenue;
 
@@ -98,17 +238,14 @@ Deno.serve(async (req) => {
       const objLC = objective.toLowerCase();
 
       if (objLC.includes('sale') || objLC.includes('purchase') || nameLC.includes('sale')) {
-        primaryKPI = 'cpp';
-        primaryValue = metrics.cpp || null;
+        primaryKPI = 'cpp'; primaryValue = metrics.cpp || null;
       } else if (objLC.includes('lead') || nameLC.includes('lead')) {
-        primaryKPI = 'cpl';
-        primaryValue = metrics.cpl || null;
+        primaryKPI = 'cpl'; primaryValue = metrics.cpl || null;
       } else if (objLC.includes('video') || nameLC.includes('video')) {
-        primaryKPI = 'costPerThruPlay';
-        primaryValue = metrics.costPerThruPlay || null;
+        primaryKPI = 'costPerThruPlay'; primaryValue = metrics.costPerThruPlay || null;
       }
 
-      // Determine performance status for decision tree
+      // Determine performance status
       let performanceStatus = 'watching';
       if (status !== 'ACTIVE') {
         performanceStatus = 'paused';
@@ -127,23 +264,8 @@ Deno.serve(async (req) => {
         performanceStatus = 'no_conversions';
       }
 
-      // Week-over-week trend from history
-      let weekOverWeekTrend = null;
-      if (history.length >= 2) {
-        const prev = history[history.length - 2]?.metrics || {};
-        if (primaryKPI === 'cpl' && prev.cpl && metrics.cpl) {
-          weekOverWeekTrend = { metric: 'CPL', previous: prev.cpl, current: metrics.cpl, change: ((metrics.cpl - prev.cpl) / prev.cpl * 100).toFixed(1) };
-        } else if (primaryKPI === 'cpp' && prev.cpp && metrics.cpp) {
-          weekOverWeekTrend = { metric: 'CPP', previous: prev.cpp, current: metrics.cpp, change: ((metrics.cpp - prev.cpp) / prev.cpp * 100).toFixed(1) };
-        }
-      }
-
-      // Get ad-level breakdown from performance_report_latest
-      const report = ws.performance_report_latest as any;
-      const adBreakdown = report?.ad_breakdown || [];
-
       // Fatigue signals
-      const fatigueSignals = [];
+      const fatigueSignals: string[] = [];
       if (metrics.frequency && metrics.frequency >= 4) fatigueSignals.push(`Frequency at ${metrics.frequency.toFixed(1)} (threshold: 4)`);
       if (metrics.ctr && metrics.ctr < 0.8) fatigueSignals.push(`CTR at ${metrics.ctr.toFixed(2)}% (below 0.8% floor)`);
 
@@ -157,7 +279,6 @@ Deno.serve(async (req) => {
         primaryValue,
         userGoal,
         dailyBudget,
-        weekOverWeekTrend,
         fatigueSignals,
         daysSinceLaunch: ws.published_at ? Math.ceil((Date.now() - new Date(ws.published_at).getTime()) / 86400000) : null,
         metrics: {
@@ -175,7 +296,7 @@ Deno.serve(async (req) => {
           reach: metrics.reach,
         },
         topCreatives: adBreakdown.slice(0, 3).map((ad: any) => ({
-          name: ad.name || ad.ad_name,
+          name: ad.name,
           spend: ad.spend,
           results: ad.leads || ad.purchases || 0,
           cpl: ad.cpl,
@@ -184,11 +305,11 @@ Deno.serve(async (req) => {
           ctr: ad.ctr,
         })),
         underperformers: adBreakdown.filter((ad: any) => {
-          if (primaryKPI === 'cpl' && userGoal && ad.cpl > userGoal * 1.3) return true;
-          if (primaryKPI === 'cpp' && userGoal && ad.cpp > userGoal * 1.3) return true;
+          if (primaryKPI === 'cpl' && userGoal && ad.cpl && ad.cpl > userGoal * 1.3) return true;
+          if (primaryKPI === 'cpp' && userGoal && ad.cpp && ad.cpp > userGoal * 1.3) return true;
           return false;
         }).slice(0, 2).map((ad: any) => ({
-          name: ad.name || ad.ad_name,
+          name: ad.name,
           cpl: ad.cpl,
           cpp: ad.cpp,
           roas: ad.roas,
@@ -217,81 +338,84 @@ Deno.serve(async (req) => {
       }
       wowContext += '\nPREVIOUS RECOMMENDATIONS (report on whether these were followed and their outcome):\n';
       const prevRecs = (previousReport.recommendations_snapshot as any[]) || [];
-      prevRecs.forEach((r: any) => {
-        wowContext += `- ${r}\n`;
-      });
+      prevRecs.forEach((r: any) => { wowContext += `- ${r}\n`; });
     }
 
-    // Build the campaign names list for validation
     const campaignNames = campaignSummaries.map(c => c.name);
 
-    const prompt = `You are LUMI, an elite Meta Ads strategist who has managed over $50M in ad spend. You write weekly performance reports for clients with confidence, specificity, and warmth. You never hedge with "we'll look into it" — you always state what is happening, why, and exactly what you're doing about it.
+    const prompt = `You are LUMI, an elite Meta Ads strategist. You write weekly performance reports for clients with confidence, specificity, and warmth. You never hedge with "we'll look into it" — you state what is happening, why, and exactly what you're doing about it.
 
-CRITICAL RULES FOR EVERY CAMPAIGN SECTION:
-You MUST include a dedicated section for EVERY one of these campaigns: ${campaignNames.map(n => `"${n}"`).join(', ')}. Missing even one is unacceptable.
+IMPORTANT: This is LIVE data pulled directly from Meta's API for the period ${dateRangeStart || 'last 7 days'} to ${dateRangeEnd || 'today'}. Use the exact numbers provided — do NOT make up or estimate metrics.
 
-For each campaign, follow this decision tree to determine your diagnosis and recommendation:
+CRITICAL: You MUST include a section for EVERY one of these campaigns: ${campaignNames.map(n => `"${n}"`).join(', ')}.
 
-DECISION TREE:
-1. **MEETING GOAL (performanceStatus = "meeting_goal")**: State clearly this is performing well. Recommend scaling budget by 15-20% to capture more volume at this efficient cost. Cite the specific KPI and how it compares to goal. Example: "CPL is $3.42 against a $5.00 goal — this is strong. We recommend increasing daily budget from $XX to $XX to capture more leads at this efficient rate."
+FORMAT RULES (follow exactly — use markdown formatting):
 
-2. **SLIGHTLY ABOVE GOAL (performanceStatus = "slightly_above")**: Diagnose the likely cause with specificity (creative fatigue if frequency is high, audience saturation if reach is plateauing, seasonal shifts if it's a known period). State the concrete next step: "We are swapping in creative variant [name] / broadening the interest stack / adjusting the daily budget from $XX to $XX." Give a timeline: "We expect this to bring CPL back under goal within 3-5 days."
+**Weekly Performance Report**
+${dateRangeStart || 'Last 7 days'} – ${dateRangeEnd || 'Today'}
 
-3. **SIGNIFICANTLY ABOVE GOAL (performanceStatus = "significantly_above")**: Be direct but reassuring. If fatigue signals exist, say so and name the fix. If it's a newer campaign, explain the optimization window. Always state: "If we don't see improvement by [specific date], we will [specific fallback: pause and relaunch with new creative / restructure the audience / shift budget to the performing campaign]."
+---
 
-4. **NO CONVERSIONS YET (performanceStatus = "no_conversions")**: Explain this is normal in the first 3-7 days. Reference the supporting metrics: "CTR is X% which is [healthy/below threshold] and CPC is $X.XX which is [competitive/elevated]. These signals tell us [the creative is resonating but the landing page may need optimization / the algorithm is still learning / we need to give it more time]." Give a specific check-in date.
-
-5. **PAUSED/OFF (performanceStatus = "paused")**: State why it was paused (performance, budget reallocation, testing cycle). State the replacement plan.
-
-6. **WATCHING (performanceStatus = "watching")**: Not enough data to make a call. State what specific signals you're monitoring (CTR, CPC, frequency) and when you'll have enough data to act. Frame this as strategic patience, not uncertainty.
-
-FATIGUE SIGNALS: If a campaign has fatigueSignals, you MUST address them. High frequency means creative fatigue — name the specific creative swap or refresh plan. Low CTR means the message isn't landing — state what you'd change.
-
-WEEK-OVER-WEEK: If weekOverWeekTrend data exists, reference it: "CPL moved from $X.XX to $X.XX (+X%), which [is within normal fluctuation / signals we need to act]."
-
-PREVIOUS RECOMMENDATIONS: If previous recommendations are provided, report on their outcome. "Last week we recommended [X]. [This has been implemented and we're seeing Y / This is in progress / This needs to be prioritized this week]."
-
-REPORT FORMAT (follow exactly):
-
-Line 1: Weekly Report for ${dateRangeStart || 'the selected period'} – ${dateRangeEnd || ''}
-
-Legend:
-✅ Meeting or exceeding goal — scaling opportunity
-⚠️ Needs intervention — next steps listed below
-👀 Monitoring closely — specific check-in date listed
+**Status Key:**
+✅ Meeting/exceeding goal — scaling opportunity
+⚠️ Needs intervention — next steps listed
+👀 Monitoring closely — check-in date listed
 ❌ Paused — replacement plan noted
 
-Then for EACH campaign:
-[STATUS EMOJI] [Objective] – [Campaign Name]
+---
 
-[Primary KPI]: $X.XX (Goal: <$X or Xx)
-Total [Leads/Purchases/etc]: XX
+Then for EACH campaign, use this exact structure:
 
-Analysis:
-[2-4 sentences with specific diagnosis following the decision tree above]
-[Name specific creatives when available — "The top performer is [creative name] at $X.XX CPL"]
-[Concrete next step with timeline — never "we'll look into it"]
+### [STATUS EMOJI] [Campaign Name]
+**Objective:** [Objective] | **Template:** [Template Name]
+
+| Metric | Value |
+|--------|-------|
+| **Spend** | $X,XXX.XX |
+| **[Primary KPI]** | $X.XX (Goal: $X.XX) |
+| **Results** | XX [leads/purchases/views] |
+| **CTR** | X.XX% |
+| **CPC** | $X.XX |
+| **Frequency** | X.X |
+| **Reach** | XX,XXX |
+| **Daily Budget** | ~$XX/day |
+
+**Analysis:**
+[2-4 sentences with specific diagnosis. Name specific creatives when available.]
+
+**Next Step:**
+[Concrete action with timeline — never "we'll look into it"]
+
+---
 
 After all campaigns:
 
---- Daily Budgets ---
-[Campaign Name]: ~$XX/day
-...
-Total: ~$XXX/day
+### 💰 Budget Summary
 
-Total Ad Spend: ~$X,XXX.XX
-Total Revenue: ~$X,XXX.XX
+| Campaign | Daily Budget |
+|----------|-------------|
+| [Name] | ~$XX/day |
+| **Total** | **~$XXX/day** |
 
-Strategic Summary:
-[3-4 sentences of high-level account health. What's the overall trajectory? What's the #1 priority this week? Frame wins confidently and challenges as solvable with a clear plan.]
+**Total Ad Spend:** $X,XXX.XX
+**Total Revenue:** $X,XXX.XX
 
-TONE RULES:
-- Write as someone who has seen thousands of ad accounts — confident, warm, direct
-- When recommending patience, always pair it with the specific signals you're watching and the date you'll reassess
-- Never use: "we'll look into it", "we'll keep an eye on", "hoping to see", "fingers crossed"
-- Instead use: "we're monitoring CTR and CPC daily", "if X doesn't improve by [date], we will Y", "our next move is"
-- Celebrate wins genuinely: "This is exactly what we want to see" / "This campaign is doing the heavy lifting"
-- Frame challenges as expertise: "This is a common pattern at this stage — here's how we address it"
+---
+
+### 📊 Strategic Summary
+[3-4 sentences of high-level account health. What's the trajectory? What's the #1 priority? Frame wins confidently.]
+
+DECISION TREE FOR EACH CAMPAIGN:
+1. **MEETING GOAL**: State clearly this is performing well. Recommend scaling 15-20%. Cite specific KPI vs goal.
+2. **SLIGHTLY ABOVE GOAL**: Diagnose likely cause with specificity. State concrete next step with timeline.
+3. **SIGNIFICANTLY ABOVE GOAL**: Be direct but reassuring. If fatigue signals exist, name the fix. Give specific fallback date.
+4. **NO CONVERSIONS**: Explain this is normal in first 3-7 days. Reference supporting metrics. Give check-in date.
+5. **PAUSED**: State why. State replacement plan.
+6. **WATCHING**: State what signals you're monitoring and when you'll have enough data.
+
+FATIGUE: If fatigueSignals exist, address them directly.
+
+TONE: Confident, warm, direct. Never say "we'll look into it" or "hoping to see". Say "we're monitoring X daily" and "if X doesn't improve by [date], we will Y".
 
 CAMPAIGN DATA:
 ${JSON.stringify(campaignSummaries, null, 2)}
@@ -300,7 +424,7 @@ Total Spend: $${totalSpend.toFixed(2)}
 Total Revenue: $${totalRevenue.toFixed(2)}
 ${wowContext}
 
-Generate ONLY the report text, nothing else. No preamble — just the report itself.`;
+Generate ONLY the report text. No preamble.`;
 
     // Call Lovable AI
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -321,7 +445,7 @@ Generate ONLY the report text, nothing else. No preamble — just the report its
           body: JSON.stringify({
             model: 'google/gemini-2.5-flash',
             messages: [
-              { role: 'system', content: 'You are LUMI, an elite Meta Ads strategist. You write with confidence, specificity, and warmth. Every recommendation includes the exact action, metric, and timeline. You never hedge.' },
+              { role: 'system', content: 'You are LUMI, an elite Meta Ads strategist. Write with confidence, specificity, and warmth. Use markdown formatting for structure. Every recommendation includes exact action, metric, and timeline.' },
               { role: 'user', content: prompt },
             ],
           }),
@@ -348,14 +472,14 @@ Generate ONLY the report text, nothing else. No preamble — just the report its
 
     if (!reportText) throw new Error('Failed to generate report');
 
-    // Post-generation validation: check every selected campaign appears
+    // Post-generation validation
     const missingCampaigns = campaignNames.filter(name => !reportText.includes(name));
     if (missingCampaigns.length > 0) {
-      reportText += `\n\n--- Additional Campaigns ---\n`;
+      reportText += `\n\n---\n\n### Additional Campaigns\n`;
       for (const name of missingCampaigns) {
         const cs = campaignSummaries.find(c => c.name === name);
         if (cs) {
-          reportText += `\n👀 ${cs.objective} – ${name}\nStatus: ${cs.status} | Primary KPI (${cs.primaryKPI}): ${cs.primaryValue ? `$${cs.primaryValue}` : 'Insufficient data'}\nNote: Data for this campaign is being collected. We will have actionable insights in the next reporting period.\n`;
+          reportText += `\n#### 👀 ${name}\n**Status:** ${cs.status} | **Primary KPI (${cs.primaryKPI}):** ${cs.primaryValue ? `$${cs.primaryValue}` : 'Insufficient data'}\n\nData for this campaign is being collected. Actionable insights in the next reporting period.\n`;
         }
       }
     }
@@ -384,7 +508,6 @@ Generate ONLY the report text, nothing else. No preamble — just the report its
       }
     }
 
-    // Extract recommendations from report text
     const lines = reportText.split('\n');
     for (const line of lines) {
       const trimmed = line.trim();
