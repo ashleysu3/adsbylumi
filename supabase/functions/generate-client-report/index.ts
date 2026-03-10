@@ -26,7 +26,8 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) throw new Error('Unauthorized');
 
-    const { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds } = await req.json();
+    const { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds, mode } = await req.json();
+    const reportMode = mode === 'self-serve' ? 'self-serve' : 'agency';
     if (!brandId) throw new Error('brandId is required');
 
     const { data: brand, error: brandError } = await supabase
