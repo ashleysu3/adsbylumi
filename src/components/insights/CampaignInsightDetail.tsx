@@ -186,10 +186,22 @@ export function CampaignInsightDetail({
   const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
+  const [workspaceData, setWorkspaceData] = useState<any>(null);
   // Post picker state
   const [postPickerOpen, setPostPickerOpen] = useState(false);
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
+
+  useEffect(() => {
+    if (campaign.id) {
+      supabase
+        .from('campaign_workspaces')
+        .select('id, brand_id, creative_json, loved_concepts')
+        .eq('id', campaign.id)
+        .single()
+        .then(({ data }) => { if (data) setWorkspaceData(data); });
+    }
+  }, [campaign.id]);
 
   const openPostPicker = async () => {
     setPostPickerOpen(true);
