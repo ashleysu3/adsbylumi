@@ -33,10 +33,10 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch brand with Meta credentials (without token - get from vault)
+    // Fetch brand with Meta credentials
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('id, name, meta_account_id')
+      .select('id, name, meta_account_id, meta_access_token')
       .eq('id', brandId)
       .single();
 
@@ -46,11 +46,10 @@ Deno.serve(async (req) => {
       throw new Error('Meta account not connected');
     }
 
-    // Get token securely from vault
-    const { data: accessToken, error: tokenError } = await supabase
-      .rpc('get_meta_token', { p_brand_id: brandId });
+    // Read token directly (service-role context lacks auth.uid() for vault RPC)
+    const accessToken = brand.meta_access_token;
 
-    if (tokenError || !accessToken) {
+    if (!accessToken) {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 

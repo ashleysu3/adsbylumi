@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     // Get brand data including pixel and access token via Vault
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('meta_pixel_id')
+      .select('meta_pixel_id, meta_access_token')
       .eq('id', brandId)
       .single();
 
@@ -139,8 +139,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get access token from Vault
-    const { data: accessToken, error: tokenError } = await supabase.rpc('get_meta_token', { p_brand_id: brandId });
+    // Read token directly (service-role context lacks auth.uid() for vault RPC)
+    const accessToken = brand.meta_access_token;
 
     if (!brand.meta_pixel_id || !accessToken) {
       return new Response(
