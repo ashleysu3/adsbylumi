@@ -510,14 +510,10 @@ Generate ONLY the report text. No preamble.`;
         userGoal: cs.userGoal, primaryKPI: cs.primaryKPI, primaryValue: cs.primaryValue,
       };
 
-      if (cs.status !== 'ACTIVE') {
-        campaignStatuses[cs.name] = '❌';
-      } else if (cs.performanceStatus === 'meeting_goal') {
+      if (cs.performanceStatus === 'meeting_goal') {
         campaignStatuses[cs.name] = '✅';
-      } else if (cs.performanceStatus === 'slightly_above') {
-        campaignStatuses[cs.name] = '⚠️';
       } else {
-        campaignStatuses[cs.name] = '👀';
+        campaignStatuses[cs.name] = '⚠️';
       }
     }
 
