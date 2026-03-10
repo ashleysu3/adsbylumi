@@ -1,56 +1,65 @@
 
 
-## Plan: Improve Client Report Quality & Add Interactive Features
+## Plan: Add Local & Event Targeting Strategies to the Create Wizard
 
-### Changes
+### Problem
+Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
 
-#### 1. Simplify Status Key (ReportSectionRenderer)
-- Keep only ✅ (on track) and ⚠️ (needs attention) in the legend
-- Remove 👀 and ❌ from legend parsing — map 👀 → ⚠️ and ❌ → ⚠️ in the renderer
-- Remove the `ReportLegendBar` rendering entirely from `ClientReportModal.tsx`
+### What Changes
 
-#### 2. Unknown Objective/Goal Popups (ClientReportModal)
-- After report generation, scan `campaignSummaries` (returned from edge function) for campaigns with `objective === 'unknown'` or `userGoal === null`
-- Show a dialog/popover prompting the user to fill in missing objectives and goals before displaying the report
-- Save responses: objectives → `campaign_workspaces.final_answers`, goals → `campaign_goals` table
+**1. Add system offer IDs for the three local strategies**
 
-**Edge function change**: Return `campaignSummaries` alongside `report` in the response so the frontend knows which campaigns have missing data.
+In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
 
-#### 3. Simplify Language in AI Prompt (Edge Function)
-Update the system prompt and format rules:
-- Replace "Objective" with "Campaign Goal"
-- Replace "Primary KPI" with "Key Metric"
-- Replace jargon like "CPL", "CTR", "CPC" with plain labels on first use: "Cost Per Lead (CPL)", "Click-Through Rate", etc.
-- Add instruction: "Write as if explaining to a business owner, not a marketer. Avoid acronyms without definitions. Use plain, confident language."
-
-#### 4. Add "Agency Action Items" Section (Edge Function Prompt)
-Add to the prompt format:
 ```
-### 📋 Agency Action Items
-[List every commitment with a date. E.g. "Swap creative for Campaign X by March 14"]
+LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
+LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
+EVENT_LOCATION_OFFER_ID = "system-event-location"
 ```
-The AI will extract any promise with a date and list them as actionable tasks.
 
-#### 5. Add "What We Need From You" Section (Edge Function Prompt)
-Add to the prompt format:
-```
-### 🤝 What We Need From You
-[List items needing client approval — budget changes, creative approvals, access requests. Keep it short and clear.]
-```
-Instruct the AI: "Any budget increase/decrease recommendation MUST appear here as a client approval item."
+Add these to `SYSTEM_OFFER_IDS`.
 
-#### 6. Additional Improvements
-- **Week-over-week deltas**: Instruct AI to show "+X%" or "-X%" comparisons when previous report data exists
-- **Executive summary first**: Move the strategic summary to the TOP of the report instead of bottom, so busy clients see the headline immediately
-- **Color-coded metric values in renderer**: Green for metrics meeting goals, amber for close, red for far off — enhance `parseInlineFormatting` to detect goal comparisons
+**2. Add the options to Step 1 (offer selection)**
 
----
+Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
+
+- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
+- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
+- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
+
+**3. Handle selection → skip to strategy step automatically**
+
+When a user selects a local strategy, it should:
+- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
+- Set `selectedTemplateId` to the matched template
+- Skip directly to Step 2 (strategy recommendation) since the template is already determined
+- The strategy recommendation step already works — it shows the selected template with structure details
+
+**4. Wire the flow through to workspace creation**
+
+The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
+- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
+- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
+
+**5. Add educational context for the Event strategy**
+
+For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
+- Phase 1: "Awareness ads at the event location to get people to interact with your content"
+- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
+- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
+
+### What Does NOT Change
+- `CampaignBuilderForm.tsx` — already handles location targeting UI
+- Campaign templates in DB — already configured with `location_type`, radius settings
+- Edge functions — no changes needed
+- Creative Studio flow — works as-is since these are standard templates
+
+### Technical Details
+
+The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
+
+The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
 
 ### Files to Edit
-
-| File | Change |
-|------|--------|
-| `supabase/functions/generate-client-report/index.ts` | Rewrite prompt: plain language, add Agency Action Items + What We Need From You sections, return campaignSummaries, executive summary first |
-| `src/components/insights/ReportSectionRenderer.tsx` | Remove 👀/❌ from legend, simplify to ✅/⚠️ only, remove legend bar |
-| `src/components/insights/ClientReportModal.tsx` | Remove legend bar, add missing-data popup for unknown objectives/goals, handle new response shape |
+- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
 

@@ -1,32 +1,28 @@
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
 
 interface ReportSection {
   title: string;
   content: string;
 }
 
-interface LegendItem {
-  emoji: string;
-  label: string;
-}
-
-export function parseReportSections(text: string): { legend: LegendItem[]; sections: ReportSection[] } {
+export function parseReportSections(text: string): { sections: ReportSection[] } {
   const lines = text.split('\n');
-  const legend: LegendItem[] = [];
   const sections: ReportSection[] = [];
   let currentTitle = '';
   let currentLines: string[] = [];
 
-  const legendPatterns = [
-    { pattern: /[✅🟢]\s*[-–=]?\s*(.+)/i, emoji: '✅' },
-    { pattern: /[⚠️🟡]\s*[-–=]?\s*(.+)/i, emoji: '⚠️' },
-    { pattern: /[❌🔴]\s*[-–=]?\s*(.+)/i, emoji: '❌' },
-    { pattern: /[👀⚪]\s*[-–=]?\s*(.+)/i, emoji: '👀' },
-  ];
+  // Strip any status-key blocks from the output
+  let skipLegend = false;
 
   for (const line of lines) {
-    // Match markdown headings: ## or ### or ====
+    // Skip legend/status-key lines
+    if (/^\*?\*?Status Key/i.test(line.trim())) { skipLegend = true; continue; }
+    if (skipLegend) {
+      if (line.trim() === '---' || line.trim() === '') { skipLegend = false; }
+      continue;
+    }
+
+    // Match markdown headings
     const h2Match = line.match(/^#{2,3}\s+(.+)$/);
     const sectionMatch = line.match(/^={2,}\s*(.+?)\s*={2,}$/);
     const heading = h2Match?.[1] || sectionMatch?.[1];
@@ -40,45 +36,14 @@ export function parseReportSections(text: string): { legend: LegendItem[]; secti
       continue;
     }
 
-    // Check for legend lines (status key)
-    let isLegend = false;
-    for (const lp of legendPatterns) {
-      const m = line.match(lp.pattern);
-      if (m && m[1].length < 80) {
-        const label = m[1].replace(/^[-–=]\s*/, '').trim();
-        if (!legend.find(l => l.emoji === lp.emoji)) {
-          legend.push({ emoji: lp.emoji, label });
-          isLegend = true;
-        }
-        break;
-      }
-    }
-
-    if (!isLegend) {
-      currentLines.push(line);
-    }
+    currentLines.push(line);
   }
 
   if (currentTitle || currentLines.length > 0) {
     sections.push({ title: currentTitle, content: currentLines.join('\n').trim() });
   }
 
-  return { legend, sections };
-}
-
-export function ReportLegendBar({ items }: { items: LegendItem[] }) {
-  if (items.length === 0) return null;
-  return (
-    <div className="flex flex-wrap gap-2 p-3 bg-muted/40 rounded-xl border mb-1">
-      <span className="text-xs font-medium text-muted-foreground mr-1 self-center">Legend:</span>
-      {items.map((item) => (
-        <Badge key={item.emoji} variant="secondary" className="text-xs gap-1 px-2 py-0.5 font-normal">
-          <span>{item.emoji}</span>
-          {item.label}
-        </Badge>
-      ))}
-    </div>
-  );
+  return { sections };
 }
 
 /** Render a table from markdown-like pipe syntax */
@@ -88,7 +53,6 @@ function renderTable(rows: string[], startIdx: number): { element: React.ReactNo
   while (i < rows.length) {
     const line = rows[i].trim();
     if (!line.startsWith('|')) break;
-    // Skip separator rows (|---|---|)
     if (/^\|[-:\s|]+\|$/.test(line)) { i++; continue; }
     const cells = line.split('|').filter(Boolean).map(c => c.trim());
     tableRows.push(cells);
@@ -120,7 +84,7 @@ function renderTable(rows: string[], startIdx: number): { element: React.ReactNo
             {bodyRows.map((row, ri) => (
               <tr key={ri} className={ri % 2 === 1 ? 'bg-muted/20' : ''}>
                 {row.map((cell, ci) => (
-                  <td key={ci} className="px-4 py-2 text-foreground/90 border-t border-border/30">
+                  <td key={ci} className={`px-4 py-2 border-t border-border/30 ${getMetricColor(cell)}`}>
                     {parseInlineFormatting(cell)}
                   </td>
                 ))}
@@ -134,14 +98,20 @@ function renderTable(rows: string[], startIdx: number): { element: React.ReactNo
   };
 }
 
+/** Detect color hints in metric values */
+function getMetricColor(cell: string): string {
+  // Check for delta indicators
+  if (/[+]\d+.*%/.test(cell) || /↑/.test(cell)) return 'text-emerald-600 dark:text-emerald-400 font-medium';
+  if (/[-−]\d+.*%/.test(cell) || /↓/.test(cell)) return 'text-amber-600 dark:text-amber-400 font-medium';
+  return 'text-foreground/90';
+}
+
 /** Render inline markdown: **bold**, metrics like "CPL: $4.20" */
 function renderFormattedLine(line: string, idx: number) {
-  // Horizontal rule
   if (/^-{3,}$/.test(line.trim()) || /^\*{3,}$/.test(line.trim())) {
     return <hr key={idx} className="border-border/40 my-4" />;
   }
 
-  // Empty line
   if (!line.trim()) return <div key={idx} className="h-2" />;
 
   // H4 subheading
@@ -151,6 +121,20 @@ function renderFormattedLine(line: string, idx: number) {
       <h4 key={idx} className="text-sm font-bold text-foreground mt-3 mb-1 flex items-center gap-1.5">
         {parseInlineFormatting(h4Match[1])}
       </h4>
+    );
+  }
+
+  // Checklist items: - [ ] or - [x]
+  const checklistMatch = line.match(/^(\s*)[-*]\s*\[([ x])\]\s*(.*)$/i);
+  if (checklistMatch) {
+    const checked = checklistMatch[2].toLowerCase() === 'x';
+    return (
+      <div key={idx} className="flex items-start gap-2.5 py-1" style={{ paddingLeft: `${Math.floor((checklistMatch[1]?.length || 0) / 2) * 16}px` }}>
+        <span className={`mt-0.5 text-sm shrink-0 ${checked ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+          {checked ? '☑' : '☐'}
+        </span>
+        <span className="text-sm leading-relaxed text-foreground/85">{parseInlineFormatting(checklistMatch[3])}</span>
+      </div>
     );
   }
 
@@ -194,14 +178,12 @@ function renderFormattedLine(line: string, idx: number) {
 }
 
 function parseInlineFormatting(text: string): React.ReactNode {
-  // Split by **bold** markers
   const segments = text.split(/(\*\*[^*]+\*\*)/g);
   return segments.map((seg, i) => {
     const boldMatch = seg.match(/^\*\*(.+)\*\*$/);
     if (boldMatch) {
       return <strong key={i} className="font-semibold text-foreground">{boldMatch[1]}</strong>;
     }
-    // Highlight dollar amounts and percentages
     if (/\$[\d,.]+/.test(seg) || /[\d.]+%/.test(seg) || /[\d.]+x\b/i.test(seg)) {
       return <span key={i} className="font-medium">{seg}</span>;
     }
@@ -213,11 +195,17 @@ export function ReportSectionRenderer({ sections }: { sections: ReportSection[] 
   return (
     <div className="space-y-6">
       {sections.map((section, i) => {
-        // Determine if this is a campaign section (has status emoji in title)
-        const isCampaignSection = /[✅⚠️❌👀💰📊🟢🟡🔴]/.test(section.title);
+        const isCampaignSection = /[✅⚠️💰📊📋🤝]/.test(section.title);
+        const isActionSection = /Agency Action|What We Need/i.test(section.title);
 
         return (
-          <div key={i} className={`${isCampaignSection ? 'bg-card rounded-2xl border p-4 shadow-sm' : ''}`}>
+          <div key={i} className={`${
+            isActionSection
+              ? 'bg-primary/5 rounded-2xl border-2 border-primary/20 p-4'
+              : isCampaignSection
+                ? 'bg-card rounded-2xl border p-4 shadow-sm'
+                : ''
+          }`}>
             {section.title && (
               <h3 className={`font-bold mb-3 ${
                 isCampaignSection
@@ -247,7 +235,6 @@ function renderContentWithTables(content: string): React.ReactNode[] {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Check if this starts a table
     if (line.trim().startsWith('|')) {
       const { element, endIdx } = renderTable(lines, i);
       if (element) {
