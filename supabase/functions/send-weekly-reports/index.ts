@@ -603,13 +603,13 @@ function buildRichEmailHtml(params: {
 
   const bodyHtml = convertMarkdownToHtml(reportMarkdown);
 
-  return \`
+  return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>\${frequencyLabel} Ad Report</title>
+  <title>${frequencyLabel} Ad Report</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700;800&display=swap');
   </style>
@@ -621,18 +621,18 @@ function buildRichEmailHtml(params: {
         <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);">
           <tr>
             <td style="background: linear-gradient(135deg, #F97316 0%, #EC4899 40%, #A78BFA 70%, #93C5FD 100%); padding: 35px 40px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">📊 \${frequencyLabel} Performance Report</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 15px; font-weight: 500;">\${brandName}</p>
+              <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">📊 ${frequencyLabel} Performance Report</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 15px; font-weight: 500;">${brandName}</p>
             </td>
           </tr>
           <tr>
             <td style="padding: 35px 40px 20px 40px;">
-              <p style="margin: 0; color: #111111; font-size: 17px; font-weight: 600;">Hey \${userName} 👋</p>
+              <p style="margin: 0; color: #111111; font-size: 17px; font-weight: 600;">Hey ${userName} 👋</p>
             </td>
           </tr>
           <tr>
             <td style="padding: 0 40px 30px 40px;">
-              \${bodyHtml}
+              ${bodyHtml}
             </td>
           </tr>
           <tr>
@@ -652,7 +652,7 @@ function buildRichEmailHtml(params: {
             <td style="background: #FAF9F6; padding: 22px 40px; text-align: center; border-top: 1px solid #F5F3EE;">
               <p style="margin: 0; color: #a0aec0; font-size: 11px; line-height: 1.6;">
                 Lumi by Ads by Lumi · Meta Ads, Simplified<br/>
-                This is an automated \${frequencyLabel.toLowerCase()} report. Manage preferences in your dashboard settings.
+                This is an automated ${frequencyLabel.toLowerCase()} report. Manage preferences in your dashboard settings.
               </p>
             </td>
           </tr>
@@ -662,5 +662,5 @@ function buildRichEmailHtml(params: {
   </table>
 </body>
 </html>
-  \`;
+  `;
 }
