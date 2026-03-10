@@ -709,12 +709,62 @@ export function InsightsHome({
                       })()}
                     </div>
 
-                    {/* Row 3: KPI Summary Strip */}
-                    <CampaignKPISummary
-                      metrics={campaign.metrics}
-                      kpiConfig={kpiConfig}
-                      goals={goalsMap[campaign.id] || null}
-                    />
+                    {/* Row 3: KPI Summary Strip with inline goal editing */}
+                    {(() => {
+                      const [goalEditorOpen, setGoalEditorOpen] = useState(false);
+                      return (
+                        <Popover open={goalEditorOpen} onOpenChange={setGoalEditorOpen}>
+                          <div className="relative">
+                            <CampaignKPISummary
+                              metrics={campaign.metrics}
+                              kpiConfig={kpiConfig}
+                              goals={goalsMap[campaign.id] || null}
+                              onEditGoals={() => setGoalEditorOpen(true)}
+                            />
+                            <PopoverTrigger asChild>
+                              <span className="sr-only">Edit goals</span>
+                            </PopoverTrigger>
+                          </div>
+                          <PopoverContent className="w-80 p-4" align="start">
+                            <CampaignGoalRow
+                              kpiConfig={kpiConfig}
+                              currentValue={primaryValue}
+                              userGoal={goalsMap[campaign.id]?.primary_kpi_threshold ?? null}
+                              onUpdateGoal={async (goal) => {
+                                const { data: { user } } = await supabase.auth.getUser();
+                                if (!user) return;
+                                const goalData = {
+                                  workspace_id: campaign.id,
+                                  brand_id: campaign.brandId,
+                                  created_by: user.id,
+                                  primary_kpi: kpiConfig.primary,
+                                  primary_kpi_label: kpiConfig.primaryLabel,
+                                  primary_kpi_threshold: goal,
+                                  primary_kpi_goal_type: kpiConfig.primary === 'roas' ? 'greater_than' : 'less_than',
+                                };
+                                const existing = goalsMap[campaign.id];
+                                if (existing?.id) {
+                                  await supabase.from('campaign_goals').update({ primary_kpi_threshold: goal }).eq('id', existing.id);
+                                } else {
+                                  await supabase.from('campaign_goals').insert(goalData);
+                                }
+                                // Refresh goals
+                                const { data: refreshed } = await supabase
+                                  .from('campaign_goals')
+                                  .select('*')
+                                  .eq('workspace_id', campaign.id)
+                                  .maybeSingle();
+                                if (refreshed) {
+                                  setGoalsMap(prev => ({ ...prev, [campaign.id]: refreshed }));
+                                }
+                                setGoalEditorOpen(false);
+                                toast.success('Goal updated!');
+                              }}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      );
+                    })()}
 
                     {/* Row 4: Action recommendation */}
                     <div className="flex items-center justify-between gap-2 pl-5">
