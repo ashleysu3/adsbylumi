@@ -24,10 +24,10 @@ import { ClientReportModal } from './ClientReportModal';
 import {
   getLumiKPIConfig,
   getLumiKPIStatus,
-  getLumiStatusDot,
-  getObjectiveMetrics } from
+  getLumiStatusDot } from
 '@/lib/lumi-kpi-config';
 import { CampaignGoalRow } from './CampaignGoalRow';
+import { CampaignKPISummary } from './CampaignKPISummary';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
 import { DateRangePicker } from './DateRangePicker';
@@ -146,14 +146,6 @@ function hasLiveConversions(campaign: Campaign): boolean {
   return false;
 }
 
-function getVerdict(status: string): {label: string;colorClass: string;} {
-  switch (status) {
-    case 'healthy':return { label: 'Above benchmark', colorClass: 'text-green-700' };
-    case 'attention':return { label: 'Right at benchmark', colorClass: 'text-amber-700' };
-    case 'critical':return { label: 'Below benchmark', colorClass: 'text-red-700' };
-    default:return { label: 'Gathering data', colorClass: 'text-muted-foreground' };
-  }
-}
 
 function getActionRecommendation(status: string): string {
   switch (status) {
@@ -193,12 +185,31 @@ export function InsightsHome({
   const [recsLoading, setRecsLoading] = useState(false);
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [goalsMap, setGoalsMap] = useState<Record<string, any>>({});
 
   // Post picker state
   const [postPickerOpen, setPostPickerOpen] = useState(false);
   const [postPickerCampaignId, setPostPickerCampaignId] = useState<string | null>(null);
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
+
+  // Fetch campaign goals for all campaigns
+  useEffect(() => {
+    const fetchGoals = async () => {
+      const wsIds = campaigns.map(c => c.id).filter(Boolean);
+      if (wsIds.length === 0) return;
+      const { data } = await supabase
+        .from('campaign_goals')
+        .select('*')
+        .in('workspace_id', wsIds);
+      if (data) {
+        const map: Record<string, any> = {};
+        data.forEach((g: any) => { if (g.workspace_id) map[g.workspace_id] = g; });
+        setGoalsMap(map);
+      }
+    };
+    if (campaigns.length > 0) fetchGoals();
+  }, [campaigns]);
 
   const [linkOfferModal, setLinkOfferModal] = useState<{
     open: boolean;
@@ -612,11 +623,9 @@ export function InsightsHome({
           const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
           const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
           const statusDot = getLumiStatusDot(status);
-          const verdict = getVerdict(status);
           const actionRec = getActionRecommendation(status);
           const isActive = campaign.status === 'active' || campaign.status === 'live';
           const isToggling = togglingCampaign === campaign.id;
-          const objMetrics = getObjectiveMetrics(campaign.metrics, kpiConfig);
           const recCount = recCountsByWorkspace[campaign.id] || 0;
 
           return (
@@ -658,7 +667,7 @@ export function InsightsHome({
                       </div>
                     </div>
 
-                    {/* Row 2: Budget + Spend + Objective KPIs + Last Synced */}
+                    {/* Row 2: Budget + Spend + Sync */}
                     <div className="flex flex-wrap items-center gap-2 pl-5">
                       {campaign.dailyBudget != null && campaign.dailyBudget > 0 ?
                     <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
@@ -677,14 +686,9 @@ export function InsightsHome({
                           ${Number(campaign.metrics.spend).toFixed(2)} spent
                         </span>
                     }
-                      {objMetrics.map((m, i) =>
-                    <span key={i} className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                          {m.value} {m.label}
-                        </span>
-                    )}
                       {campaign.lastSyncedAt && (() => {
                         const syncAge = Date.now() - new Date(campaign.lastSyncedAt).getTime();
-                        const isStale = syncAge > 60 * 60 * 1000; // > 1 hour
+                        const isStale = syncAge > 60 * 60 * 1000;
                         const syncLabel = syncAge < 60000 ? 'Just now' :
                           syncAge < 3600000 ? `${Math.floor(syncAge / 60000)}m ago` :
                           `${Math.floor(syncAge / 3600000)}h ago`;
@@ -697,11 +701,15 @@ export function InsightsHome({
                       })()}
                     </div>
 
-                    {/* Row 3: Verdict + Action */}
+                    {/* Row 3: KPI Summary Strip */}
+                    <CampaignKPISummary
+                      metrics={campaign.metrics}
+                      kpiConfig={kpiConfig}
+                      goals={goalsMap[campaign.id] || null}
+                    />
+
+                    {/* Row 4: Action recommendation */}
                     <div className="flex items-center justify-between gap-2 pl-5">
-                      <span className={`text-sm font-medium ${verdict.colorClass}`}>
-                        {verdict.label}
-                      </span>
                       {isBudgetAction(actionRec) ?
                     <Popover>
                           <PopoverTrigger asChild>
@@ -740,7 +748,7 @@ export function InsightsHome({
                     }
                     </div>
 
-                    {/* Row 3.5: User-action recommendations inline */}
+                    {/* Row 5: User-action recommendations inline */}
                     {(() => {
                       const userRecs = recommendations.filter(
                         r => r.campaignId === campaign.id && !AUTOMATABLE_TYPES.has(r.type)
@@ -781,13 +789,6 @@ export function InsightsHome({
                         </div>
                       );
                     })()}
-
-                    {/* Row 3.5: Goal vs Actual */}
-                    <CampaignGoalRow
-                    kpiConfig={kpiConfig}
-                    currentValue={primaryValue}
-                    userGoal={campaign.userGoal ?? null}
-                    onUpdateGoal={(goal) => onUpdateGoal(campaign.id, goal)} />
                   
 
                     {/* Row 4: View button */}
