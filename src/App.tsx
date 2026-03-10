@@ -36,6 +36,7 @@ import AdminBugReports from "./pages/admin/BugReports";
 import AdminUsers from "./pages/admin/Users";
 import AdminSettings from "./pages/admin/Settings";
 import AdminTeam from "./pages/admin/Team";
+import AdminStripe from "./pages/admin/Stripe";
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
