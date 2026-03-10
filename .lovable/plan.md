@@ -1,65 +1,52 @@
 
 
-## Plan: Add Local & Event Targeting Strategies to the Create Wizard
+## Plan: Fix Campaign Card Issues (Goals Editing, $ Badge, Recommendations, Data)
 
-### Problem
-Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
+### Issues Identified
 
-### What Changes
+**1. Rogue `$ —` badge** (lines 682-686 in InsightsHome.tsx)
+When `dailyBudget` is `undefined` but `lastSyncedAt` exists, a pill showing `$ —` renders. This is useless UI noise. Remove this fallback entirely — only show the budget pill when there's an actual budget value.
 
-**1. Add system offer IDs for the three local strategies**
+**2. No way to edit goals from campaign cards**
+Currently goals can only be edited from the detail view (CampaignInsightDetail). The KPI summary cells on the campaign cards should be tappable to open a quick goal editor. Add a small edit affordance on the KPI summary that opens a popover with the existing `CampaignGoalRow` component, allowing inline goal editing. When goals are saved, refresh the `goalsMap` state.
 
-In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
+**3. KPI data not pulling (ROAS showing "—")**
+The `getMetricValue` function checks `metrics[key] != null`, but ROAS values of `0` pass this check yet get treated as "no data" by the status logic. The real issue is that the ROAS metric from Meta may be stored under a different key or not computed. The component already handles `roas` in the metrics object, but the campaign's `metrics.roas` may actually be `null` or `0`. For campaigns with purchases and spend, we should compute ROAS on the fly: `revenue / spend`. Will add a computed ROAS fallback in `getMetricValue`.
 
+**4. Duplicate recommendations**
+The deduplication in `fetchRecommendations` only deduplicates by exact description match. The `next_steps` from `performance_report_latest` are being added even when generate-recommendations already returned similar advice. Additionally, the global deduplication `Set` tracks descriptions across campaigns but the `next_steps` section uses a per-campaign filter. Fix: use a single global deduplication set for ALL recommendation descriptions, and also deduplicate by semantic similarity (normalize descriptions before comparing).
+
+**5. Poor recommendation quality ("Wait for more data" on mature campaigns)**
+The `getActionRecommendation` function (line 150-157) returns "Wait for more data" when status is `no-data`. But for ROAS campaigns, a `0` ROAS triggers `no-data` even when the campaign has plenty of spend/clicks data. Fix: check if the campaign has meaningful delivery data (spend > $50, impressions > 1000) before defaulting to "Wait for more data". For mature campaigns with delivery but missing conversion data, recommend "Try new angles" or "Check tracking" instead.
+
+### Implementation
+
+**File: `src/components/insights/InsightsHome.tsx`**
+- Remove the `$ —` fallback badge (lines 682-686)
+- Update `getActionRecommendation` to accept campaign metrics and distinguish between truly new campaigns vs campaigns with delivery but no conversion tracking
+- Fix global deduplication: use a single `Set` across all recommendation sources, normalize strings
+- Add a goals edit popover on each campaign card (small pencil icon next to KPI summary) that opens inline goal editing via `CampaignGoalRow`, with a callback to refetch/update `goalsMap`
+
+**File: `src/components/insights/CampaignKPISummary.tsx`**
+- Add an optional `onEditGoals` callback prop
+- Add a subtle tap/click affordance (pencil icon or "Edit" link) on the KPI strip that triggers the callback
+- Add ROAS computation fallback in `getMetricValue`: if `roas` is null/0 but `revenue` and `spend` exist, compute it
+
+**File: `src/components/insights/CampaignGoalRow.tsx`** (no changes needed, reuse as-is)
+
+### Key Logic Changes
+
+**Smarter action recommendations:**
 ```
-LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
-LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
-EVENT_LOCATION_OFFER_ID = "system-event-location"
+if status == 'no-data':
+  if spend > 50 or impressions > 1000:
+    → "Check tracking" or "Try new angles" 
+  else:
+    → "Wait for more data"
 ```
 
-Add these to `SYSTEM_OFFER_IDS`.
-
-**2. Add the options to Step 1 (offer selection)**
-
-Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
-
-- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
-- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
-- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
-
-**3. Handle selection → skip to strategy step automatically**
-
-When a user selects a local strategy, it should:
-- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
-- Set `selectedTemplateId` to the matched template
-- Skip directly to Step 2 (strategy recommendation) since the template is already determined
-- The strategy recommendation step already works — it shows the selected template with structure details
-
-**4. Wire the flow through to workspace creation**
-
-The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
-- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
-- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
-
-**5. Add educational context for the Event strategy**
-
-For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
-- Phase 1: "Awareness ads at the event location to get people to interact with your content"
-- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
-- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
-
-### What Does NOT Change
-- `CampaignBuilderForm.tsx` — already handles location targeting UI
-- Campaign templates in DB — already configured with `location_type`, radius settings
-- Edge functions — no changes needed
-- Creative Studio flow — works as-is since these are standard templates
-
-### Technical Details
-
-The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
-
-The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
-
-### Files to Edit
-- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
+**Goal editing flow:**
+- Pencil icon on KPI strip → opens Popover with goal editor
+- On save → upsert to `campaign_goals` table → update local `goalsMap` state
+- KPI cells re-render with new goal thresholds and colors
 
