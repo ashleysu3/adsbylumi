@@ -368,7 +368,7 @@ FORMAT RULES (follow exactly — use markdown formatting):
 Then for EACH campaign, use this exact structure:
 
 ### [STATUS EMOJI] [Campaign Name]
-**Campaign Goal:** [Goal in plain words] | **Strategy:** [Template Name]
+**Campaign Goal:** [Goal in plain words]
 
 | Metric | This Week |
 |--------|-----------|
