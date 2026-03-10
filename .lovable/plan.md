@@ -1,38 +1,65 @@
 
 
-## Plan: Lumi Summary Card, Simple View, and Double $ Fix
+## Plan: Add Local & Event Targeting Strategies to the Create Wizard
 
-### Issues
+### Problem
+Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
 
-1. **Double `$` on budget badge** — Line 691-692: A `<DollarSign>` icon AND a literal `$` in the template string produce `$ $30.00/day`. Remove the icon.
+### What Changes
 
-2. **Lumi Recommendations card should become a high-level summary** — Replace the current automatable-actions card at the top with a warm, conversational summary of the user's ad performance (using the existing `lumiSummary` logic that's already computed but not displayed). Kind, optimistic, plain-language — tells the user what's happening and what to do next. No jargon.
+**1. Add system offer IDs for the three local strategies**
 
-3. **Simple vs Detailed view toggle** — Add a toggle (e.g., "Simple / Detailed") that switches between:
-   - **Simple view**: Campaign cards show plain-language status ("Your ads are doing great!", "Needs attention", "Not performing well"), total spend, and a single recommended action button. No KPI strips, no CTR/ROAS/Frequency numbers.
-   - **Detailed view**: Current layout with KPI strips, goal editing, metrics, and inline recommendations (what exists now).
+In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
 
-### Implementation
+```
+LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
+LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
+EVENT_LOCATION_OFFER_ID = "system-event-location"
+```
 
-**File: `src/components/insights/InsightsHome.tsx`**
+Add these to `SYSTEM_OFFER_IDS`.
 
-1. **Fix double `$`** (line 691-692): Remove `<DollarSign className="h-3 w-3" />` icon, keep the `$` in the text string.
+**2. Add the options to Step 1 (offer selection)**
 
-2. **Replace Lumi Recommendations section** (lines 595-608): Instead of `<LumiRecommendations>` with automatable actions, render a friendly summary card:
-   - Uses the existing `lumiSummary` string (already computed at line 493)
-   - Shows a Sparkles icon, "Here's what Lumi sees" header, and the conversational summary text
-   - Warm gradient border, rounded card, simple and inviting
+Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
 
-3. **Add Simple/Detailed view toggle**:
-   - New state: `const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple')`
-   - Render a small toggle near the status filter area
-   - **Simple mode campaign card**: Shows campaign name, status dot, live/paused toggle, spend amount, and a single plain-language verdict badge (maps green→"Doing great", amber→"Keep an eye on this", red→"Needs a refresh", no-data→"Still warming up"). Plus one action button. No KPI strip, no inline recs.
-   - **Detailed mode campaign card**: Exactly what exists now (KPI strip, goal editor, action rec, inline recs)
+- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
+- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
+- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
 
-### Key Design Decisions
+**3. Handle selection → skip to strategy step automatically**
 
-- Default to **simple** view to align with the non-expert creator audience
-- The summary card replaces the `LumiRecommendations` component at the top — per-campaign recs stay on each card in detailed view
-- Simple view verdicts use warm, encouraging language per the conversational style memory
-- The toggle persists in component state only (no localStorage needed for now)
+When a user selects a local strategy, it should:
+- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
+- Set `selectedTemplateId` to the matched template
+- Skip directly to Step 2 (strategy recommendation) since the template is already determined
+- The strategy recommendation step already works — it shows the selected template with structure details
+
+**4. Wire the flow through to workspace creation**
+
+The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
+- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
+- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
+
+**5. Add educational context for the Event strategy**
+
+For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
+- Phase 1: "Awareness ads at the event location to get people to interact with your content"
+- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
+- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
+
+### What Does NOT Change
+- `CampaignBuilderForm.tsx` — already handles location targeting UI
+- Campaign templates in DB — already configured with `location_type`, radius settings
+- Edge functions — no changes needed
+- Creative Studio flow — works as-is since these are standard templates
+
+### Technical Details
+
+The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
+
+The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
+
+### Files to Edit
+- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
 

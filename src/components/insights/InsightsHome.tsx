@@ -11,7 +11,7 @@ import {
   Calendar,
   Package,
   Loader2,
-  DollarSign,
+  
   AlertTriangle,
   RefreshCw,
   Plus,
@@ -195,6 +195,7 @@ export function InsightsHome({
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [goalsMap, setGoalsMap] = useState<Record<string, any>>({});
+  const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
 
   // Post picker state
   const [postPickerOpen, setPostPickerOpen] = useState(false);
@@ -583,29 +584,46 @@ export function InsightsHome({
         onLinkOffer={(campaign) => setLinkOfferModal({ open: true, campaign })} />
       
 
-      {/* Status Filter */}
-      {campaigns.length > 0 &&
-      <StatusFilter
-        selectedStatuses={selectedStatuses}
-        onStatusChange={setSelectedStatuses}
-        statusCounts={statusCounts} />
+      {/* Status Filter + View Toggle */}
+      {campaigns.length > 0 && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <StatusFilter
+            selectedStatuses={selectedStatuses}
+            onStatusChange={setSelectedStatuses}
+            statusCounts={statusCounts} />
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              onClick={() => setViewMode('simple')}
+              className={`px-3 py-1.5 rounded-full font-medium transition-colors ${viewMode === 'simple' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            >
+              Simple
+            </button>
+            <button
+              onClick={() => setViewMode('detailed')}
+              className={`px-3 py-1.5 rounded-full font-medium transition-colors ${viewMode === 'detailed' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            >
+              Detailed
+            </button>
+          </div>
+        </div>
+      )}
 
-      }
-
-      {/* Lumi Recommendations — only automatable actions */}
-      {(() => {
-        const automatableRecs = recommendations.filter(r => AUTOMATABLE_TYPES.has(r.type));
-        if (automatableRecs.length === 0 && !recsLoading) return null;
-        return (
-          <LumiRecommendations
-            recommendations={automatableRecs}
-            loading={recsLoading}
-            onRefresh={fetchRecommendations}
-            onRecommendationExecuted={fetchRecommendations}
-            compact
-            maxItems={4} />
-        );
-      })()}
+      {/* Lumi Summary Card */}
+      {lumiSummary && (
+        <Card className="rounded-2xl border-primary/20 bg-gradient-to-r from-lumi-orange-1/5 via-lumi-pink-1/5 to-lumi-purple-1/5">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground">Here's what Lumi sees</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{lumiSummary}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Campaign Cards */}
       {isLoading ?
@@ -658,11 +676,10 @@ export function InsightsHome({
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${statusDot}`} />
                         <h3 className="font-display font-semibold text-sm sm:text-base truncate">{campaign.name}</h3>
-                        {recCount > 0 &&
+                        {viewMode === 'detailed' && recCount > 0 &&
                       <button
                         onClick={(e) => {e.stopPropagation();onViewInsights(campaign.id);}}
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white bg-gradient-lumi shrink-0 hover:opacity-90 transition-opacity shadow-glow animate-sparkle-pulse">
-                        
                             <Sparkles className="h-3 w-3" />
                             {recCount}
                           </button>
@@ -674,169 +691,197 @@ export function InsightsHome({
                         </span>
                         {isToggling ?
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> :
-
                       <Switch
                         checked={isActive}
                         onCheckedChange={() => toggleCampaignStatus(campaign)}
                         aria-label={`Toggle ${campaign.name}`} />
-
                       }
                       </div>
                     </div>
 
-                    {/* Row 2: Budget + Spend + Sync */}
-                    <div className="flex flex-wrap items-center gap-2 pl-5">
-                      {campaign.dailyBudget != null && campaign.dailyBudget > 0 ?
-                    <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                          <DollarSign className="h-3 w-3" />
-                          ${campaign.dailyBudget.toFixed(2)}/day
-                          {campaign.budgetLevel === 'adset' && <span className="text-[10px] opacity-60">(ad sets)</span>}
-                        </span> :
-                      null
-                    }
-                      {campaign.metrics?.spend != null && Number(campaign.metrics.spend) > 0 &&
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                          ${Number(campaign.metrics.spend).toFixed(2)} spent
-                        </span>
-                    }
-                      {campaign.lastSyncedAt && (() => {
-                        const syncAge = Date.now() - new Date(campaign.lastSyncedAt).getTime();
-                        const isStale = syncAge > 60 * 60 * 1000;
-                        const syncLabel = syncAge < 60000 ? 'Just now' :
-                          syncAge < 3600000 ? `${Math.floor(syncAge / 60000)}m ago` :
-                          `${Math.floor(syncAge / 3600000)}h ago`;
-                        return (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isStale ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground/60'}`}>
-                            {isStale && <AlertTriangle className="h-2.5 w-2.5 inline mr-0.5" />}
-                            Synced {syncLabel}
-                          </span>
-                        );
-                      })()}
-                    </div>
+                    {viewMode === 'simple' ? (
+                      <>
+                        {/* Simple view: verdict + spend + one action */}
+                        <div className="flex flex-wrap items-center gap-2 pl-5">
+                          <Badge
+                            variant="outline"
+                            className={`text-xs rounded-full ${
+                              status === 'healthy' ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800' :
+                              status === 'attention' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800' :
+                              status === 'critical' ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800' :
+                              'bg-muted text-muted-foreground border-border'
+                            }`}
+                          >
+                            {status === 'healthy' ? '✨ Doing great' :
+                             status === 'attention' ? '👀 Keep an eye on this' :
+                             status === 'critical' ? '🔄 Needs a refresh' :
+                             '⏳ Still warming up'}
+                          </Badge>
+                          {campaign.metrics?.spend != null && Number(campaign.metrics.spend) > 0 &&
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                              ${Number(campaign.metrics.spend).toFixed(2)} spent
+                            </span>
+                          }
+                        </div>
+                        {/* Single action button */}
+                        <div className="flex items-center gap-2 pl-5">
+                          <Button
+                            onClick={() => onViewInsights(campaign.id)}
+                            variant="lumi"
+                            size="sm"
+                            className="rounded-xl text-xs">
+                            <Eye className="h-3.5 w-3.5 mr-1" />
+                            View Details
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Detailed view: full KPI strip + recs */}
+                        {/* Row 2: Budget + Spend + Sync */}
+                        <div className="flex flex-wrap items-center gap-2 pl-5">
+                          {campaign.dailyBudget != null && campaign.dailyBudget > 0 ?
+                            <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                              ${campaign.dailyBudget.toFixed(2)}/day
+                              {campaign.budgetLevel === 'adset' && <span className="text-[10px] opacity-60">(ad sets)</span>}
+                            </span> : null
+                          }
+                          {campaign.metrics?.spend != null && Number(campaign.metrics.spend) > 0 &&
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                              ${Number(campaign.metrics.spend).toFixed(2)} spent
+                            </span>
+                          }
+                          {campaign.lastSyncedAt && (() => {
+                            const syncAge = Date.now() - new Date(campaign.lastSyncedAt).getTime();
+                            const isStale = syncAge > 60 * 60 * 1000;
+                            const syncLabel = syncAge < 60000 ? 'Just now' :
+                              syncAge < 3600000 ? `${Math.floor(syncAge / 60000)}m ago` :
+                              `${Math.floor(syncAge / 3600000)}h ago`;
+                            return (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isStale ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground/60'}`}>
+                                {isStale && <AlertTriangle className="h-2.5 w-2.5 inline mr-0.5" />}
+                                Synced {syncLabel}
+                              </span>
+                            );
+                          })()}
+                        </div>
 
-                    {/* Row 3: KPI Summary Strip with inline goal editing */}
-                    <CampaignKPIWithGoalEditor
-                      campaign={campaign}
-                      kpiConfig={kpiConfig}
-                      primaryValue={primaryValue}
-                      goals={goalsMap[campaign.id] || null}
-                      onGoalSaved={(refreshedGoal) => {
-                        setGoalsMap(prev => ({ ...prev, [campaign.id]: refreshedGoal }));
-                      }}
-                    />
+                        {/* Row 3: KPI Summary Strip with inline goal editing */}
+                        <CampaignKPIWithGoalEditor
+                          campaign={campaign}
+                          kpiConfig={kpiConfig}
+                          primaryValue={primaryValue}
+                          goals={goalsMap[campaign.id] || null}
+                          onGoalSaved={(refreshedGoal) => {
+                            setGoalsMap(prev => ({ ...prev, [campaign.id]: refreshedGoal }));
+                          }}
+                        />
 
-                    {/* Row 4: Action recommendation */}
-                    <div className="flex items-center justify-between gap-2 pl-5">
-                      {isBudgetAction(actionRec) ?
-                    <Popover>
-                          <PopoverTrigger asChild>
+                        {/* Row 4: Action recommendation */}
+                        <div className="flex items-center justify-between gap-2 pl-5">
+                          {isBudgetAction(actionRec) ?
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Badge variant="outline" className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors">
+                                  {actionRec}
+                                </Badge>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-80 p-0" align="end">
+                                <BudgetAdjustmentPanel
+                                  workspaceId={campaign.id}
+                                  workspaceName={campaign.name}
+                                  currentBudget={campaign.dailyBudget || 25}
+                                  metrics={{
+                                    roas: campaign.metrics?.roas,
+                                    cpl: campaign.metrics?.cpl,
+                                    cpp: campaign.metrics?.cpp,
+                                    ctr: campaign.metrics?.cpc ? undefined : undefined,
+                                    frequency: undefined,
+                                    spend: campaign.metrics?.spend
+                                  }}
+                                  inline />
+                              </PopoverContent>
+                            </Popover> :
                             <Badge
-                          variant="outline"
-                          className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors">
-                          
+                              variant="outline"
+                              className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors"
+                              onClick={() => onViewInsights(campaign.id)}>
                               {actionRec}
                             </Badge>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 p-0" align="end">
-                            <BudgetAdjustmentPanel
-                          workspaceId={campaign.id}
-                          workspaceName={campaign.name}
-                          currentBudget={campaign.dailyBudget || 25}
-                          metrics={{
-                            roas: campaign.metrics?.roas,
-                            cpl: campaign.metrics?.cpl,
-                            cpp: campaign.metrics?.cpp,
-                            ctr: campaign.metrics?.cpc ? undefined : undefined,
-                            frequency: undefined,
-                            spend: campaign.metrics?.spend
-                          }}
-                          inline />
-                        
-                          </PopoverContent>
-                        </Popover> :
-
-                    <Badge
-                      variant="outline"
-                      className="text-xs rounded-full cursor-pointer hover:bg-primary/10 transition-colors"
-                      onClick={() => onViewInsights(campaign.id)}>
-                      
-                          {actionRec}
-                        </Badge>
-                    }
-                    </div>
-
-                    {/* Row 5: User-action recommendations inline */}
-                    {(() => {
-                      const userRecs = recommendations.filter(
-                        r => r.campaignId === campaign.id && !AUTOMATABLE_TYPES.has(r.type)
-                      );
-                      if (userRecs.length === 0) return null;
-                      return (
-                        <div className="space-y-1.5 pl-5">
-                          {userRecs.slice(0, 2).map((rec: any) => {
-                            const action = getActionButton(rec, campaign.id);
-                            return (
-                              <div
-                                key={rec.id}
-                                className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[hsl(var(--lumi-orange-1)/0.06)] border border-[hsl(var(--lumi-orange-1)/0.15)]"
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0" />
-                                  <span className="text-xs font-medium truncate">{rec.title}</span>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="lumi"
-                                  className="rounded-xl text-xs shrink-0 gap-1 h-7 px-2.5"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (action.type === 'add_posts') {
-                                      openPostPicker(campaign.id);
-                                    } else {
-                                      navigate(action.url);
-                                    }
-                                  }}
-                                >
-                                  {action.icon}
-                                  {action.label}
-                                </Button>
-                              </div>
-                            );
-                          })}
+                          }
                         </div>
-                      );
-                    })()}
-                  
 
-                    {/* Row 4: View button */}
-                    <div className="flex items-center gap-2 pt-1 pl-5">
-                      <Button
-                      onClick={() => onViewInsights(campaign.id)}
-                      variant="lumi"
-                      size="sm"
-                      className="rounded-xl text-xs">
-                      
-                        <Eye className="h-3.5 w-3.5 mr-1" />
-                        View Details
-                      </Button>
-                      {!campaign.offerId &&
-                    <Button
-                      onClick={() => setLinkOfferModal({ open: true, campaign })}
-                      variant="outline"
-                      size="sm"
-                      className="rounded-xl text-xs">
-                      
-                          <Package className="h-3.5 w-3.5 mr-1" />
-                          Link Offer
-                        </Button>
-                    }
-                      {campaign.trackingVerified === false && !hasLiveConversions(campaign) &&
-                    <Badge variant="outline" className="text-xs rounded-full text-amber-600 border-amber-500/30 gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Tracking not verified
-                        </Badge>
-                    }
-                    </div>
+                        {/* Row 5: User-action recommendations inline */}
+                        {(() => {
+                          const userRecs = recommendations.filter(
+                            r => r.campaignId === campaign.id && !AUTOMATABLE_TYPES.has(r.type)
+                          );
+                          if (userRecs.length === 0) return null;
+                          return (
+                            <div className="space-y-1.5 pl-5">
+                              {userRecs.slice(0, 2).map((rec: any) => {
+                                const action = getActionButton(rec, campaign.id);
+                                return (
+                                  <div
+                                    key={rec.id}
+                                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[hsl(var(--lumi-orange-1)/0.06)] border border-[hsl(var(--lumi-orange-1)/0.15)]"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0" />
+                                      <span className="text-xs font-medium truncate">{rec.title}</span>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="lumi"
+                                      className="rounded-xl text-xs shrink-0 gap-1 h-7 px-2.5"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (action.type === 'add_posts') {
+                                          openPostPicker(campaign.id);
+                                        } else {
+                                          navigate(action.url);
+                                        }
+                                      }}
+                                    >
+                                      {action.icon}
+                                      {action.label}
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+
+                        {/* View button row */}
+                        <div className="flex items-center gap-2 pt-1 pl-5">
+                          <Button
+                            onClick={() => onViewInsights(campaign.id)}
+                            variant="lumi"
+                            size="sm"
+                            className="rounded-xl text-xs">
+                            <Eye className="h-3.5 w-3.5 mr-1" />
+                            View Details
+                          </Button>
+                          {!campaign.offerId &&
+                            <Button
+                              onClick={() => setLinkOfferModal({ open: true, campaign })}
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl text-xs">
+                              <Package className="h-3.5 w-3.5 mr-1" />
+                              Link Offer
+                            </Button>
+                          }
+                          {campaign.trackingVerified === false && !hasLiveConversions(campaign) &&
+                            <Badge variant="outline" className="text-xs rounded-full text-amber-600 border-amber-500/30 gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Tracking not verified
+                            </Badge>
+                          }
+                        </div>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>);
