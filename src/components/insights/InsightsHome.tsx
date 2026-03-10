@@ -195,6 +195,7 @@ export function InsightsHome({
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [goalsMap, setGoalsMap] = useState<Record<string, any>>({});
+  const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
 
   // Post picker state
   const [postPickerOpen, setPostPickerOpen] = useState(false);
