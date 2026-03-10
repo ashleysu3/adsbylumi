@@ -926,7 +926,8 @@ export default function AdPerformance() {
 
                 <Button
                   onClick={() => {
-                    if (optimizationReport && !reportLoading) {
+                    const hasData = optimizationReport && Array.isArray(optimizationReport.report_data) && (optimizationReport.report_data as any[]).length > 0;
+                    if (hasData && !reportLoading) {
                       setReportPreviewOpen(true);
                     } else {
                       runReport();
