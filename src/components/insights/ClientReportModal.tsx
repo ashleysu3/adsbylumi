@@ -103,6 +103,7 @@ export function ClientReportModal({
   const [sendDays, setSendDays] = useState<string[]>([]);
   const [savingDelivery, setSavingDelivery] = useState(false);
   const [testingSend, setTestingSend] = useState(false);
+  const [sendingToSlack, setSendingToSlack] = useState(false);
 
   useEffect(() => {
     if (open && brandId) {
