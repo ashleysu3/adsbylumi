@@ -216,17 +216,7 @@ export function LumiRecommendations({
   }
 
   if (allRecommendations.length === 0) {
-    return (
-      <div ref={recsRef}>
-        <Card className="rounded-2xl border-green-200 bg-green-50/30">
-          <CardContent className="p-6 text-center">
-            <ShieldCheck className="h-8 w-8 text-green-600 mx-auto mb-2" />
-            <p className="text-sm font-medium text-green-800">Everything looks good!</p>
-            <p className="text-xs text-green-600 mt-1">No action needed right now. Lumi is watching.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <div ref={recsRef} />;
   }
 
   return (

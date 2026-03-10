@@ -564,13 +564,26 @@ export function CampaignInsightDetail({
                 <div className="p-2 rounded-lg bg-white/50">
                   {budgetVerdict.icon}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm">Budget Recommendation</p>
                   <p className="text-sm">{budgetVerdict.label}</p>
                 </div>
-                <Badge variant="outline" className="ml-auto rounded-full text-xs">
-                  {statusLabel}
-                </Badge>
+                {budgetVerdict.label.toLowerCase().includes('creative') ? (
+                  <Button
+                    size="sm"
+                    variant="lumi"
+                    className="rounded-xl text-xs shrink-0 gap-1.5"
+                    onClick={() => navigate(`/creative-studio?workspace=${campaign.id}&refreshCreative=true`)}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Refresh Creative
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                ) : (
+                  <Badge variant="outline" className="ml-auto rounded-full text-xs shrink-0">
+                    {statusLabel}
+                  </Badge>
+                )}
               </div>
             </CardContent>
           </Card>
