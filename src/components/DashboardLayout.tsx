@@ -164,11 +164,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <SidebarTrigger />
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[200px]">
-                {profile?.full_name || user?.email}
+                {isAgencyUser && activeBrand ? activeBrand.name : (profile?.full_name || user?.email)}
               </span>
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase()}
+                  {isAgencyUser && activeBrand ? activeBrand.name.charAt(0).toUpperCase() : (profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase())}
                 </AvatarFallback>
               </Avatar>
             </div>
