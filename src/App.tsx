@@ -54,6 +54,7 @@ import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
+import AgencySettings from "./pages/AgencySettings";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -135,6 +136,7 @@ const App = () => {
                   <Route path="/admin/settings" element={<AdminSettings />} />
                   <Route path="/admin/team" element={<AdminTeam />} />
                   <Route path="/client-portal/:portalId" element={<ClientPortal />} />
+                  <Route path="/agency-settings" element={<AgencySettings />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

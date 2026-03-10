@@ -1,3 +1,4 @@
+import React from 'react';
 import { Badge } from '@/components/ui/badge';
 
 interface ReportSection {
@@ -18,28 +19,33 @@ export function parseReportSections(text: string): { legend: LegendItem[]; secti
   let currentLines: string[] = [];
 
   const legendPatterns = [
-    { pattern: /🟢\s*[=–-]?\s*(.+)/i, emoji: '🟢' },
-    { pattern: /🟡\s*[=–-]?\s*(.+)/i, emoji: '🟡' },
-    { pattern: /🔴\s*[=–-]?\s*(.+)/i, emoji: '🔴' },
-    { pattern: /⚪\s*[=–-]?\s*(.+)/i, emoji: '⚪' },
+    { pattern: /[✅🟢]\s*[-–=]?\s*(.+)/i, emoji: '✅' },
+    { pattern: /[⚠️🟡]\s*[-–=]?\s*(.+)/i, emoji: '⚠️' },
+    { pattern: /[❌🔴]\s*[-–=]?\s*(.+)/i, emoji: '❌' },
+    { pattern: /[👀⚪]\s*[-–=]?\s*(.+)/i, emoji: '👀' },
   ];
 
   for (const line of lines) {
+    // Match markdown headings: ## or ### or ====
+    const h2Match = line.match(/^#{2,3}\s+(.+)$/);
     const sectionMatch = line.match(/^={2,}\s*(.+?)\s*={2,}$/);
-    if (sectionMatch) {
+    const heading = h2Match?.[1] || sectionMatch?.[1];
+
+    if (heading) {
       if (currentTitle || currentLines.length > 0) {
         sections.push({ title: currentTitle, content: currentLines.join('\n').trim() });
       }
-      currentTitle = sectionMatch[1].trim();
+      currentTitle = heading.trim();
       currentLines = [];
       continue;
     }
 
+    // Check for legend lines (status key)
     let isLegend = false;
     for (const lp of legendPatterns) {
       const m = line.match(lp.pattern);
-      if (m && m[1].length < 60) {
-        const label = m[1].replace(/^[=–-]\s*/, '').trim();
+      if (m && m[1].length < 80) {
+        const label = m[1].replace(/^[-–=]\s*/, '').trim();
         if (!legend.find(l => l.emoji === lp.emoji)) {
           legend.push({ emoji: lp.emoji, label });
           isLegend = true;
@@ -75,47 +81,113 @@ export function ReportLegendBar({ items }: { items: LegendItem[] }) {
   );
 }
 
+/** Render a table from markdown-like pipe syntax */
+function renderTable(rows: string[], startIdx: number): { element: React.ReactNode; endIdx: number } {
+  const tableRows: string[][] = [];
+  let i = startIdx;
+  while (i < rows.length) {
+    const line = rows[i].trim();
+    if (!line.startsWith('|')) break;
+    // Skip separator rows (|---|---|)
+    if (/^\|[-:\s|]+\|$/.test(line)) { i++; continue; }
+    const cells = line.split('|').filter(Boolean).map(c => c.trim());
+    tableRows.push(cells);
+    i++;
+  }
+
+  if (tableRows.length === 0) return { element: null, endIdx: startIdx };
+
+  const isHeader = tableRows.length > 1;
+  const headerRow = isHeader ? tableRows[0] : null;
+  const bodyRows = isHeader ? tableRows.slice(1) : tableRows;
+
+  return {
+    element: (
+      <div className="overflow-x-auto rounded-xl border bg-card my-3">
+        <table className="w-full text-sm">
+          {headerRow && (
+            <thead>
+              <tr className="border-b bg-muted/40">
+                {headerRow.map((cell, ci) => (
+                  <th key={ci} className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {parseInlineFormatting(cell)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            {bodyRows.map((row, ri) => (
+              <tr key={ri} className={ri % 2 === 1 ? 'bg-muted/20' : ''}>
+                {row.map((cell, ci) => (
+                  <td key={ci} className="px-4 py-2 text-foreground/90 border-t border-border/30">
+                    {parseInlineFormatting(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ),
+    endIdx: i,
+  };
+}
+
 /** Render inline markdown: **bold**, metrics like "CPL: $4.20" */
 function renderFormattedLine(line: string, idx: number) {
   // Horizontal rule
-  if (/^-{3,}$/.test(line.trim())) {
-    return <hr key={idx} className="border-border/50 my-3" />;
+  if (/^-{3,}$/.test(line.trim()) || /^\*{3,}$/.test(line.trim())) {
+    return <hr key={idx} className="border-border/40 my-4" />;
   }
 
   // Empty line
   if (!line.trim()) return <div key={idx} className="h-2" />;
 
+  // H4 subheading
+  const h4Match = line.match(/^####\s+(.+)$/);
+  if (h4Match) {
+    return (
+      <h4 key={idx} className="text-sm font-bold text-foreground mt-3 mb-1 flex items-center gap-1.5">
+        {parseInlineFormatting(h4Match[1])}
+      </h4>
+    );
+  }
+
   // Bullet lines
-  const bulletMatch = line.match(/^(\s*)([-•▸→]|\d+\.)\s+(.*)$/);
+  const bulletMatch = line.match(/^(\s*)([-•▸→*]|\d+\.)\s+(.*)$/);
   const isBullet = !!bulletMatch;
   const bulletContent = bulletMatch ? bulletMatch[3] : line;
   const indent = bulletMatch ? Math.floor((bulletMatch[1]?.length || 0) / 2) : 0;
 
-  // Parse inline formatting
   const parts = parseInlineFormatting(isBullet ? bulletContent : line);
 
   if (isBullet) {
     return (
-      <div key={idx} className="flex items-start gap-2 py-0.5" style={{ paddingLeft: `${indent * 16}px` }}>
-        <span className="text-primary/60 mt-0.5 text-xs shrink-0">•</span>
-        <span className="text-sm leading-relaxed text-foreground/90">{parts}</span>
+      <div key={idx} className="flex items-start gap-2.5 py-0.5" style={{ paddingLeft: `${indent * 16}px` }}>
+        <span className="text-primary/50 mt-1 text-[8px] shrink-0">●</span>
+        <span className="text-sm leading-relaxed text-foreground/85">{parts}</span>
       </div>
     );
   }
 
-  // Check if this is a metric line like "CPL: $4.20" or "ROAS: 3.2x"
-  const metricMatch = line.match(/^([A-Z][A-Za-z/ ]+):\s*(.+)$/);
+  // Metric line: "Key: Value"
+  const metricMatch = line.match(/^\*?\*?([A-Z][A-Za-z /&]+)\*?\*?:\s*(.+)$/);
   if (metricMatch) {
     return (
-      <div key={idx} className="flex items-baseline gap-2 py-0.5">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground shrink-0">{metricMatch[1]}:</span>
-        <span className="text-sm font-semibold text-foreground">{parseInlineFormatting(metricMatch[2])}</span>
+      <div key={idx} className="flex items-baseline justify-between gap-3 py-1 px-1">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground shrink-0">
+          {parseInlineFormatting(metricMatch[1])}
+        </span>
+        <span className="text-sm font-semibold text-foreground text-right">
+          {parseInlineFormatting(metricMatch[2])}
+        </span>
       </div>
     );
   }
 
   return (
-    <div key={idx} className="text-sm leading-relaxed text-foreground/90 py-0.5">
+    <div key={idx} className="text-sm leading-relaxed text-foreground/85 py-0.5">
       {parts}
     </div>
   );
@@ -129,33 +201,65 @@ function parseInlineFormatting(text: string): React.ReactNode {
     if (boldMatch) {
       return <strong key={i} className="font-semibold text-foreground">{boldMatch[1]}</strong>;
     }
-    // Highlight emoji status indicators
-    if (/^[🟢🟡🔴⚪]/.test(seg)) {
-      return <span key={i}>{seg}</span>;
+    // Highlight dollar amounts and percentages
+    if (/\$[\d,.]+/.test(seg) || /[\d.]+%/.test(seg) || /[\d.]+x\b/i.test(seg)) {
+      return <span key={i} className="font-medium">{seg}</span>;
     }
     return <span key={i}>{seg}</span>;
   });
 }
 
-import React from 'react';
-
 export function ReportSectionRenderer({ sections }: { sections: ReportSection[] }) {
   return (
     <div className="space-y-6">
-      {sections.map((section, i) => (
-        <div key={i} className="space-y-1.5">
-          {section.title && (
-            <h3 className="text-sm font-bold uppercase tracking-wide text-primary border-b border-primary/20 pb-1.5 mb-2">
-              {section.title}
-            </h3>
-          )}
-          {section.content && (
-            <div className="space-y-0.5">
-              {section.content.split('\n').map((line, li) => renderFormattedLine(line, li))}
-            </div>
-          )}
-        </div>
-      ))}
+      {sections.map((section, i) => {
+        // Determine if this is a campaign section (has status emoji in title)
+        const isCampaignSection = /[✅⚠️❌👀💰📊🟢🟡🔴]/.test(section.title);
+
+        return (
+          <div key={i} className={`${isCampaignSection ? 'bg-card rounded-2xl border p-4 shadow-sm' : ''}`}>
+            {section.title && (
+              <h3 className={`font-bold mb-3 ${
+                isCampaignSection
+                  ? 'text-base font-display text-foreground'
+                  : 'text-sm uppercase tracking-wide text-primary border-b border-primary/20 pb-1.5'
+              }`}>
+                {parseInlineFormatting(section.title)}
+              </h3>
+            )}
+            {section.content && (
+              <div className="space-y-0.5">
+                {renderContentWithTables(section.content)}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
+}
+
+function renderContentWithTables(content: string): React.ReactNode[] {
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Check if this starts a table
+    if (line.trim().startsWith('|')) {
+      const { element, endIdx } = renderTable(lines, i);
+      if (element) {
+        elements.push(<React.Fragment key={`table-${i}`}>{element}</React.Fragment>);
+        i = endIdx;
+        continue;
+      }
+    }
+
+    elements.push(renderFormattedLine(line, i));
+    i++;
+  }
+
+  return elements;
 }

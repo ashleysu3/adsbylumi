@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench, TrendingUp, Lock } from "lucide-react";
+import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench, TrendingUp, Lock, Palette } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
@@ -49,7 +49,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { openChat, unreadCount } = useLumiAssistant();
-  const { activeBrand } = useBrand();
+  const { activeBrand, isAgencyUser } = useBrand();
   const { isSubscribed, isLoading: subLoading } = useSubscription();
   const [hasCampaigns, setHasCampaigns] = useState(false);
   const [metaStatus, setMetaStatus] = useState<'connected' | 'expired' | 'disconnected'>('disconnected');
@@ -289,6 +289,21 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
           <SidebarGroupLabel>Account</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {isAgencyUser && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Customize agency branding for client materials">
+                    <NavLink
+                      to="/agency-settings"
+                      end
+                      className="transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    >
+                      <Palette className="h-4 w-4" />
+                      {!collapsed && <span>Agency Settings</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Settings">
                   <NavLink
