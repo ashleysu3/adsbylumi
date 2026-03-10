@@ -24,14 +24,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get brand's Meta token
-    const { data: tokenData, error: tokenErr } = await supabaseAdmin.rpc('get_meta_token', { p_brand_id: brandId });
-    if (tokenErr || !tokenData) {
+    // Get brand's Meta token directly (service-role context lacks auth.uid() for vault RPC)
+    const { data: brand, error: brandErr } = await supabaseAdmin
+      .from('brands')
+      .select('meta_access_token')
+      .eq('id', brandId)
+      .single();
+    if (brandErr || !brand?.meta_access_token) {
       return new Response(JSON.stringify({ error: 'Meta access token not found' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const metaToken = tokenData;
+    const metaToken = brand.meta_access_token;
 
     const actions: string[] = [];
 
