@@ -289,7 +289,8 @@ export function CampaignInsightDetail({
   const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
   const statusColorClass = getLumiStatusColor(status);
   const statusLabel = getLumiStatusLabel(status);
-  const budgetVerdict = getBudgetVerdict(status);
+  const frequency = campaign.metrics?.frequency as number | undefined;
+  const budgetVerdict = getBudgetVerdict(status, frequency);
 
   const handleDateRangeChange = (value: string) => {
     setLocalDateRange(value);
