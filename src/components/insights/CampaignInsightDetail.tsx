@@ -625,6 +625,34 @@ export function CampaignInsightDetail({
             primaryKPI={kpiConfig.primary}
           />
 
+          {/* Creative Warmth & Fatigue - moved here, under ad breakdown */}
+          {analysis?.creative_diagnosis?.problem && (
+            <Card className="rounded-2xl border-[hsl(var(--fog-grey))] bg-white shadow-[var(--shadow-card)]">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <RefreshCw className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
+                  Creative Warmth & Fatigue
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert className="rounded-xl border-amber-200 bg-amber-50">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800">{analysis.creative_diagnosis.problem}</AlertDescription>
+                </Alert>
+                {analysis.creative_diagnosis.recommended_creatives_to_refresh?.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Consider refreshing:</p>
+                    <ul className="space-y-2">
+                      {analysis.creative_diagnosis.recommended_creatives_to_refresh.slice(0, 4).map((item: string, i: number) => (
+                        <FatigueAdRow key={i} adName={item} workspaceId={campaign.id} />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Creative Bench */}
           {campaign.brandId && (
             <CreativeBenchPanel
