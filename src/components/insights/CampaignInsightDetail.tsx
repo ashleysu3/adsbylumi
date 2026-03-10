@@ -584,6 +584,8 @@ export function CampaignInsightDetail({
             workspaceId={campaign.id} 
             dateRangeStart={dateRangeStart}
             dateRangeEnd={dateRangeEnd}
+            objective={campaign.objective}
+            primaryKPI={kpiConfig.primary}
           />
 
           {/* Creative Bench */}

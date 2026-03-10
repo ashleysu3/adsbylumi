@@ -25,42 +25,119 @@ interface AdMetrics {
   roas: number | null;
   reach?: number;
   created_time?: string;
+  linkClicks?: number;
 }
 
 interface AdBreakdownProps {
   workspaceId: string;
   dateRangeStart?: string;
   dateRangeEnd?: string;
+  objective?: string | null;
+  primaryKPI?: string;
 }
 
-function getAdRecommendation(ad: AdMetrics): { label: string; color: string; action: string } | null {
+interface MetricColumn {
+  key: string;
+  label: string;
+  format: (ad: AdMetrics) => string;
+}
+
+function getMetricColumns(objective: string | null | undefined, primaryKPI?: string): MetricColumn[] {
+  const fmt = (v: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(v);
+  const num = (v: number) => v.toLocaleString();
+
+  const obj = (objective || '').toLowerCase();
+
+  // Lead gen campaigns
+  if (obj.includes('lead') || primaryKPI === 'cpl') {
+    return [
+      { key: 'spend', label: 'Spend', format: (ad) => fmt(ad.spend) },
+      { key: 'leads', label: 'Leads', format: (ad) => num(ad.leads) },
+      { key: 'cpl', label: 'CPL', format: (ad) => ad.leads > 0 ? fmt(ad.cpl) : '—' },
+      { key: 'ctr', label: 'CTR', format: (ad) => `${ad.ctr.toFixed(2)}%` },
+    ];
+  }
+
+  // Sales campaigns
+  if (obj.includes('sale') || obj.includes('purchase') || obj.includes('conversion') || primaryKPI === 'roas' || primaryKPI === 'cpp') {
+    return [
+      { key: 'spend', label: 'Spend', format: (ad) => fmt(ad.spend) },
+      { key: 'purchases', label: 'Purchases', format: (ad) => num(ad.purchases) },
+      { key: 'roas', label: 'ROAS', format: (ad) => ad.roas != null ? `${ad.roas.toFixed(2)}x` : '—' },
+      { key: 'cpc', label: 'CPC', format: (ad) => fmt(ad.cpc) },
+    ];
+  }
+
+  // Traffic campaigns
+  if (obj.includes('traffic') || obj.includes('link_click') || primaryKPI === 'cpc') {
+    return [
+      { key: 'spend', label: 'Spend', format: (ad) => fmt(ad.spend) },
+      { key: 'clicks', label: 'Clicks', format: (ad) => num(ad.linkClicks || ad.clicks) },
+      { key: 'cpc', label: 'CPC', format: (ad) => fmt(ad.cpc) },
+      { key: 'ctr', label: 'CTR', format: (ad) => `${ad.ctr.toFixed(2)}%` },
+    ];
+  }
+
+  // Default
+  return [
+    { key: 'spend', label: 'Spend', format: (ad) => fmt(ad.spend) },
+    { key: 'clicks', label: 'Clicks', format: (ad) => num(ad.clicks) },
+    { key: 'ctr', label: 'CTR', format: (ad) => `${ad.ctr.toFixed(2)}%` },
+    { key: 'cpc', label: 'CPC', format: (ad) => fmt(ad.cpc) },
+  ];
+}
+
+function getAdRecommendation(ad: AdMetrics, primaryKPI?: string): { label: string; color: string; action: string } | null {
   const reach = ad.reach || ad.impressions || 0;
   const age = ad.created_time 
     ? Math.floor((Date.now() - new Date(ad.created_time).getTime()) / (1000 * 60 * 60 * 24))
-    : 7; // assume 7 days if unknown
+    : 7;
 
   if (reach < 1000 || age < 3) {
     return { label: 'Still learning', color: 'bg-muted text-muted-foreground', action: '' };
   }
 
+  // Check primary KPI first
+  if (primaryKPI === 'cpl' || primaryKPI === 'cpp') {
+    const costPerResult = primaryKPI === 'cpl' ? ad.cpl : ad.cpp;
+    if (ad.leads === 0 && ad.purchases === 0 && ad.spend > 20) {
+      return { label: 'Consider pausing', color: 'bg-red-50 text-red-700 border-red-200', action: 'No results yet — creative may need a refresh' };
+    }
+    if (costPerResult > 0 && ad.ctr >= 1.0) {
+      return { label: 'Keep running', color: 'bg-green-50 text-green-700 border-green-200', action: 'Generating results' };
+    }
+  }
+
+  if (primaryKPI === 'roas') {
+    if (ad.roas && ad.roas >= 3) {
+      return { label: 'Consider scaling', color: 'bg-green-50 text-green-700 border-green-200', action: 'Strong return — increase budget' };
+    }
+    if (ad.roas != null && ad.roas < 1 && ad.spend > 20) {
+      return { label: 'Consider pausing', color: 'bg-red-50 text-red-700 border-red-200', action: 'Spending more than earning' };
+    }
+  }
+
+  // Fallback to CTR check
   if (ad.ctr < 0.8) {
     return { label: 'Consider pausing', color: 'bg-red-50 text-red-700 border-red-200', action: 'Low engagement — creative may need a refresh' };
   }
 
-  if (ad.ctr >= 1.5 || (ad.roas && ad.roas >= 3)) {
+  if (ad.ctr >= 1.5) {
     return { label: 'Consider scaling', color: 'bg-green-50 text-green-700 border-green-200', action: 'Strong performance — increase budget' };
   }
 
   return { label: 'Keep running', color: 'bg-green-50 text-green-700 border-green-200', action: 'On track' };
 }
 
-export function AdBreakdown({ workspaceId, dateRangeStart, dateRangeEnd }: AdBreakdownProps) {
+export function AdBreakdown({ workspaceId, dateRangeStart, dateRangeEnd, objective, primaryKPI }: AdBreakdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ads, setAds] = useState<AdMetrics[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
   const [togglingAd, setTogglingAd] = useState<string | null>(null);
+
+  const metricColumns = getMetricColumns(objective, primaryKPI);
 
   useEffect(() => {
     if (isOpen && !hasFetched) {
@@ -113,11 +190,6 @@ export function AdBreakdown({ workspaceId, dateRangeStart, dateRangeEnd }: AdBre
     }
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(value);
-
-  const formatNumber = (value: number) => value.toLocaleString();
-
   return (
     <Card className="rounded-2xl border-muted">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -165,7 +237,7 @@ export function AdBreakdown({ workspaceId, dateRangeStart, dateRangeEnd }: AdBre
             ) : (
               <div className="space-y-2">
                 {ads.map((ad, index) => {
-                  const recommendation = getAdRecommendation(ad);
+                  const recommendation = getAdRecommendation(ad, primaryKPI);
                   const isTop = index === 0 && ads.length > 1;
                   const isBottom = index === ads.length - 1 && ads.length > 1;
                   const isToggling = togglingAd === ad.id;
@@ -213,24 +285,14 @@ export function AdBreakdown({ workspaceId, dateRangeStart, dateRangeEnd }: AdBre
                           )}
                         </div>
 
-                        {/* Metrics Grid */}
+                        {/* Dynamic Metrics Grid */}
                         <div className="grid grid-cols-4 gap-4 text-center">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Spend</p>
-                            <p className="font-semibold text-sm">{formatCurrency(ad.spend)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">Clicks</p>
-                            <p className="font-semibold text-sm">{formatNumber(ad.clicks)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">CTR</p>
-                            <p className="font-semibold text-sm">{ad.ctr.toFixed(2)}%</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground">CPC</p>
-                            <p className="font-semibold text-sm">{formatCurrency(ad.cpc)}</p>
-                          </div>
+                          {metricColumns.map((col) => (
+                            <div key={col.key}>
+                              <p className="text-xs text-muted-foreground">{col.label}</p>
+                              <p className="font-semibold text-sm">{col.format(ad)}</p>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
