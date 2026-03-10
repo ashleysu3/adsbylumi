@@ -380,11 +380,15 @@ export function InsightsHome({
         });
 
         if (!error && data?.recommendations) {
-          allRecs.push(...data.recommendations.map((r: any) => ({
-            ...r,
-            campaignName: campaign.name,
-            campaignId: campaign.id
-          })));
+          // Deduplicate: skip recs whose description already exists in allRecs
+          const existingDescs = new Set(allRecs.map((r: any) => (r.description || '').toLowerCase().trim()));
+          data.recommendations.forEach((r: any) => {
+            const desc = (r.description || '').toLowerCase().trim();
+            if (!existingDescs.has(desc)) {
+              existingDescs.add(desc);
+              allRecs.push({ ...r, campaignName: campaign.name, campaignId: campaign.id });
+            }
+          });
         }
 
         // Pull in any existing AI-analyzed next_steps from analyze-performance
