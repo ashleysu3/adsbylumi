@@ -584,29 +584,46 @@ export function InsightsHome({
         onLinkOffer={(campaign) => setLinkOfferModal({ open: true, campaign })} />
       
 
-      {/* Status Filter */}
-      {campaigns.length > 0 &&
-      <StatusFilter
-        selectedStatuses={selectedStatuses}
-        onStatusChange={setSelectedStatuses}
-        statusCounts={statusCounts} />
+      {/* Status Filter + View Toggle */}
+      {campaigns.length > 0 && (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <StatusFilter
+            selectedStatuses={selectedStatuses}
+            onStatusChange={setSelectedStatuses}
+            statusCounts={statusCounts} />
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              onClick={() => setViewMode('simple')}
+              className={`px-3 py-1.5 rounded-full font-medium transition-colors ${viewMode === 'simple' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            >
+              Simple
+            </button>
+            <button
+              onClick={() => setViewMode('detailed')}
+              className={`px-3 py-1.5 rounded-full font-medium transition-colors ${viewMode === 'detailed' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            >
+              Detailed
+            </button>
+          </div>
+        </div>
+      )}
 
-      }
-
-      {/* Lumi Recommendations — only automatable actions */}
-      {(() => {
-        const automatableRecs = recommendations.filter(r => AUTOMATABLE_TYPES.has(r.type));
-        if (automatableRecs.length === 0 && !recsLoading) return null;
-        return (
-          <LumiRecommendations
-            recommendations={automatableRecs}
-            loading={recsLoading}
-            onRefresh={fetchRecommendations}
-            onRecommendationExecuted={fetchRecommendations}
-            compact
-            maxItems={4} />
-        );
-      })()}
+      {/* Lumi Summary Card */}
+      {lumiSummary && (
+        <Card className="rounded-2xl border-primary/20 bg-gradient-to-r from-lumi-orange-1/5 via-lumi-pink-1/5 to-lumi-purple-1/5">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground">Here's what Lumi sees</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{lumiSummary}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Campaign Cards */}
       {isLoading ?
