@@ -643,7 +643,7 @@ export function ClientReportModal({
 
                       <div className="flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <Label className="text-xs font-medium">Auto-send to client</Label>
+                          <Label className="text-xs font-medium">Auto-send to client <span className={`text-[10px] font-semibold ${autoSend ? 'text-emerald-600' : 'text-muted-foreground'}`}>({autoSend ? 'on' : 'off'})</span></Label>
                           <p className="text-[10px] text-muted-foreground">
                             {autoSend ? 'Reports send automatically on scheduled days' : 'You\'ll review and approve before sending'}
                           </p>
