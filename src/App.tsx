@@ -118,7 +118,7 @@ const App = () => {
                   <Route path="/creative-studio" element={<CreativeStudio />} />
                   <Route path="/glossary" element={<Glossary />} />
                   <Route path="/creative-toolkit" element={<CreativeToolkit />} />
-                  <Route path="/trend-translator" element={<TrendTranslator />} />
+                  
                   <Route path="/advanced-build" element={<AdvancedBuild />} />
                   <Route path="/beta-feedback" element={<BetaFeedback />} />
                   <Route path="/partners" element={<Partners />} />
