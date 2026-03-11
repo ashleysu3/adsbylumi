@@ -50,6 +50,7 @@ import AdvancedBuild from "./pages/AdvancedBuild";
 import BetaFeedback from "./pages/BetaFeedback";
 import Partners from "./pages/Partners";
 import Refer from "./pages/Refer";
+import PartnerDashboard from "./pages/PartnerDashboard";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
