@@ -206,3 +206,6 @@ verify_jwt = false
 
 [functions.get-shared-report]
 verify_jwt = false
+
+[functions.handle-cancellation]
+verify_jwt = false
