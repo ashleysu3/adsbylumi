@@ -35,7 +35,9 @@ Deno.serve(async (req) => {
     const apiSecret = Deno.env.get('REWARDFUL_API_SECRET');
     if (!apiSecret) throw new Error('REWARDFUL_API_SECRET not configured');
 
-    const effectiveCampaignId = campaignId || Deno.env.get('REWARDFUL_STANDARD_CAMPAIGN_ID');
+    const effectiveCampaignId = campaignId === 'partner'
+      ? Deno.env.get('REWARDFUL_PARTNER_CAMPAIGN_ID')
+      : (campaignId || Deno.env.get('REWARDFUL_STANDARD_CAMPAIGN_ID'));
 
     const authHeader = 'Basic ' + btoa(apiSecret + ':');
 
