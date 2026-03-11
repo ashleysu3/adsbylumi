@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     if (!apiSecret) throw new Error('REWARDFUL_API_SECRET not configured');
 
     const authHeader = 'Basic ' + btoa(apiSecret + ':');
-    const url = `https://api.rewardful.com/v1/affiliates?expand[]=links&email=${encodeURIComponent(email)}`;
+    const url = `https://api.getrewardful.com/v1/affiliates?expand[]=links&email=${encodeURIComponent(email)}`;
 
     const res = await fetchWithRetry(url, {
       headers: { 'Authorization': authHeader },
