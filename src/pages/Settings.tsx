@@ -253,7 +253,7 @@ export default function Settings() {
   };
 
   const handleCancelCodeSubscription = async () => {
-    if (!confirm('Are you sure you want to cancel? This will end your access immediately.')) {
+    if (!confirm('Are you sure you want to cancel? This will end your access immediately. Your active ads will be paused.')) {
       return;
     }
     
@@ -261,6 +261,20 @@ export default function Settings() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Get profile and subscription info for the cancellation email
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', user.id)
+        .single();
+
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('tier, current_period_end')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trial'])
+        .single();
 
       const { error } = await supabase
         .from('subscriptions')
@@ -273,7 +287,22 @@ export default function Settings() {
 
       if (error) throw error;
 
-      toast.success('Subscription cancelled');
+      // Pause ads and send cancellation email
+      try {
+        await supabase.functions.invoke('handle-cancellation', {
+          body: {
+            userId: user.id,
+            userEmail: profile?.email || user.email,
+            fullName: profile?.full_name || '',
+            tierName: sub?.tier || '',
+            periodEnd: sub?.current_period_end || null,
+          },
+        });
+      } catch (cancelErr) {
+        console.error('Error calling handle-cancellation:', cancelErr);
+      }
+
+      toast.success('Subscription cancelled. Your ads have been paused.');
       refreshSubscription();
     } catch (error: any) {
       console.error('Error cancelling subscription:', error);
