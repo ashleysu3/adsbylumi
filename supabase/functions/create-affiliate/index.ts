@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
 
     const authHeader = 'Basic ' + btoa(apiSecret + ':');
 
-    const res = await fetchWithRetry('https://api.rewardful.com/v1/affiliates', {
+    const res = await fetchWithRetry('https://api.getrewardful.com/v1/affiliates', {
       method: 'POST',
       headers: {
         'Authorization': authHeader,

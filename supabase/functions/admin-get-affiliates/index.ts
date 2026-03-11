@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const authBasic = 'Basic ' + btoa(apiSecret + ':');
 
     const rewardfulRes = await fetch(
-      'https://api.rewardful.com/v1/affiliates?expand[]=links&expand[]=conversions&per_page=100',
+      'https://api.getrewardful.com/v1/affiliates?expand[]=links&expand[]=conversions&per_page=100',
       { headers: { 'Authorization': authBasic } }
     );
 
