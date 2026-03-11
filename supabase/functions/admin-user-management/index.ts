@@ -316,6 +316,54 @@ Deno.serve(async (req) => {
       }
 
       logStep("Subscription cancelled", { subscriptionId: cancelled.id });
+
+      // Get user profile for email details
+      let fullName = "";
+      let tierName = "";
+      let periodEnd = cancelled.current_period_end
+        ? new Date(cancelled.current_period_end * 1000).toISOString()
+        : null;
+
+      if (userId) {
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("full_name")
+          .eq("id", userId)
+          .single();
+        fullName = profile?.full_name || "";
+
+        const { data: sub } = await supabaseAdmin
+          .from("subscriptions")
+          .select("tier")
+          .eq("user_id", userId)
+          .single();
+        tierName = sub?.tier || "";
+      }
+
+      // Pause ads and send cancellation email
+      try {
+        const cancellationRes = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/handle-cancellation`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+            },
+            body: JSON.stringify({
+              userId,
+              userEmail,
+              fullName,
+              tierName,
+              periodEnd,
+            }),
+          }
+        );
+        const cancellationData = await cancellationRes.json();
+        logStep("Handle-cancellation result", cancellationData);
+      } catch (cancelErr) {
+        logStep("Error calling handle-cancellation", { error: cancelErr });
+      }
       
       await logAdminAction(userId || null, userEmail, "Subscription cancelled", "subscription", {
         subscription_id: cancelled.id,
@@ -323,7 +371,7 @@ Deno.serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true,
-        message: `Subscription cancelled for ${userEmail}`,
+        message: `Subscription cancelled for ${userEmail}. Ads have been paused.`,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
