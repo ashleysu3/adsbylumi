@@ -50,6 +50,7 @@ import AdvancedBuild from "./pages/AdvancedBuild";
 import BetaFeedback from "./pages/BetaFeedback";
 import Partners from "./pages/Partners";
 import Refer from "./pages/Refer";
+import PartnerDashboard from "./pages/PartnerDashboard";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
@@ -126,6 +127,7 @@ const App = () => {
                   <Route path="/partners" element={<Partners />} />
                   <Route path="/report/:shareToken" element={<SharedReport />} />
                   <Route path="/refer" element={<Refer />} />
+                  <Route path="/partner-dashboard" element={<PartnerDashboard />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />

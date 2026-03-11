@@ -59,28 +59,53 @@ export default function AdminAffiliates() {
   const handleApprove = async (app: any) => {
     setActionLoading(app.id);
     try {
-      const partnerCampaignId = ''; // Will use REWARDFUL_PARTNER_CAMPAIGN_ID from env
+      // Create affiliate in Rewardful under partner campaign
       const { data, error } = await supabase.functions.invoke('create-affiliate', {
         body: {
           email: app.email,
           firstName: app.first_name,
           lastName: app.last_name,
-          campaignId: 'partner', // signal to use partner campaign
+          campaignId: 'partner',
         }
       });
+
+      if (error) throw error;
+
+      const referralLink = data?.referralLink || '';
+      const referralCode = data?.referralCode || '';
+      const affiliateId = data?.id || null;
 
       // Update application status
       const { error: updateErr } = await supabase
         .from('partner_applications')
         .update({
           status: 'approved',
-          rewardful_affiliate_id: data?.id || null,
+          rewardful_affiliate_id: affiliateId,
           updated_at: new Date().toISOString()
         })
         .eq('id', app.id);
 
       if (updateErr) throw updateErr;
-      toast.success("Approved! They'll receive an email from Rewardful with their link.");
+
+      // Send branded approval email with dashboard link
+      const { error: emailErr } = await supabase.functions.invoke('send-partner-approval', {
+        body: {
+          email: app.email,
+          firstName: app.first_name,
+          lastName: app.last_name,
+          referralLink,
+          referralCode,
+          rewardfulAffiliateId: affiliateId,
+        }
+      });
+
+      if (emailErr) {
+        console.error('Approval email failed:', emailErr);
+        toast.success("Approved! (Email may have failed to send)");
+      } else {
+        toast.success("Approved & welcome email sent! 🎉");
+      }
+
       await loadData();
     } catch (err: any) {
       toast.error("Failed to approve: " + (err.message || 'Unknown error'));

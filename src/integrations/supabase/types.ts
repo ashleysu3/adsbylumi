@@ -1296,6 +1296,33 @@ export type Database = {
           },
         ]
       }
+      partner_access_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string | null
+          id: string
+          rewardful_affiliate_id: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          id?: string
+          rewardful_affiliate_id?: string | null
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          id?: string
+          rewardful_affiliate_id?: string | null
+          token?: string
+        }
+        Relationships: []
+      }
       partner_applications: {
         Row: {
           application_type: string
