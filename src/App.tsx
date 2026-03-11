@@ -127,6 +127,7 @@ const App = () => {
                   <Route path="/partners" element={<Partners />} />
                   <Route path="/report/:shareToken" element={<SharedReport />} />
                   <Route path="/refer" element={<Refer />} />
+                  <Route path="/partner-dashboard" element={<PartnerDashboard />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
