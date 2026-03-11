@@ -209,3 +209,6 @@ verify_jwt = false
 
 [functions.handle-cancellation]
 verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
