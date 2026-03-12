@@ -52,15 +52,18 @@ const Sales = () => {
     try {
       const priceId = SUBSCRIPTION_TIERS.solo.monthlyPriceId;
 
-      // Capture Rewardful referral ID if available
+      // Capture Rewardful referral ID if available (with timeout to prevent hanging)
       let rewardful_referral = '';
       try {
         if ((window as any).rewardful) {
-          rewardful_referral = await new Promise<string>((resolve) => {
-            (window as any).rewardful('ready', function() {
-              resolve((window as any).Rewardful?.referral || '');
-            });
-          });
+          rewardful_referral = await Promise.race([
+            new Promise<string>((resolve) => {
+              (window as any).rewardful('ready', function() {
+                resolve((window as any).Rewardful?.referral || '');
+              });
+            }),
+            new Promise<string>((resolve) => setTimeout(() => resolve(''), 3000)),
+          ]);
         }
       } catch { /* ignore */ }
 

@@ -31,16 +31,19 @@ export default function Pricing() {
       const tier = SUBSCRIPTION_TIERS[tierKey];
       const priceId = isAnnual ? tier.annualPriceId : tier.monthlyPriceId;
 
-      // Capture Rewardful referral ID
-      const rewardful_referral = await new Promise<string>((resolve) => {
-        if ((window as any).rewardful) {
-          (window as any).rewardful('ready', function() {
-            resolve((window as any).Rewardful?.referral || '');
-          });
-        } else {
-          resolve('');
-        }
-      });
+      // Capture Rewardful referral ID (with timeout to prevent hanging)
+      const rewardful_referral = await Promise.race([
+        new Promise<string>((resolve) => {
+          if ((window as any).rewardful) {
+            (window as any).rewardful('ready', function() {
+              resolve((window as any).Rewardful?.referral || '');
+            });
+          } else {
+            resolve('');
+          }
+        }),
+        new Promise<string>((resolve) => setTimeout(() => resolve(''), 3000)),
+      ]);
 
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { priceId, rewardful_referral },
