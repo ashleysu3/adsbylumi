@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
+import PartnerApplicationDrawer from "@/components/admin/PartnerApplicationDrawer";
 
 export default function AdminAffiliates() {
   const [loading, setLoading] = useState(true);
@@ -25,6 +26,7 @@ export default function AdminAffiliates() {
   const [emailBody, setEmailBody] = useState('');
   const [declineModal, setDeclineModal] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedApp, setSelectedApp] = useState<any | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -56,10 +58,9 @@ export default function AdminAffiliates() {
 
   const totalConversions = affiliates.reduce((sum, a) => sum + (a.conversions_count || 0), 0);
 
-  const handleApprove = async (app: any) => {
+  const handleApprove = async (app: any, customMessage?: string) => {
     setActionLoading(app.id);
     try {
-      // Create affiliate in Rewardful under partner campaign
       const { data, error } = await supabase.functions.invoke('create-affiliate', {
         body: {
           email: app.email,
@@ -75,7 +76,6 @@ export default function AdminAffiliates() {
       const referralCode = data?.referralCode || '';
       const affiliateId = data?.id || null;
 
-      // Update application status
       const { error: updateErr } = await supabase
         .from('partner_applications')
         .update({
@@ -87,7 +87,6 @@ export default function AdminAffiliates() {
 
       if (updateErr) throw updateErr;
 
-      // Send branded approval email with dashboard link
       const { error: emailErr } = await supabase.functions.invoke('send-partner-approval', {
         body: {
           email: app.email,
@@ -96,6 +95,7 @@ export default function AdminAffiliates() {
           referralLink,
           referralCode,
           rewardfulAffiliateId: affiliateId,
+          customMessage: customMessage || undefined,
         }
       });
 
@@ -106,6 +106,7 @@ export default function AdminAffiliates() {
         toast.success("Approved & welcome email sent! 🎉");
       }
 
+      setSelectedApp(null);
       await loadData();
     } catch (err: any) {
       toast.error("Failed to approve: " + (err.message || 'Unknown error'));
@@ -123,6 +124,7 @@ export default function AdminAffiliates() {
       if (error) throw error;
       toast.success("Application declined.");
       setDeclineModal(null);
+      setSelectedApp(null);
       await loadData();
     } catch (err: any) {
       toast.error("Failed to decline");
@@ -304,7 +306,7 @@ export default function AdminAffiliates() {
                       </TableHeader>
                       <TableBody>
                         {filteredApps.map(app => (
-                          <TableRow key={app.id}>
+                          <TableRow key={app.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedApp(app)}>
                             <TableCell>
                               <p className="font-medium text-sm">{app.first_name} {app.last_name}</p>
                               <p className="text-xs text-muted-foreground">{app.email}</p>
@@ -424,6 +426,17 @@ export default function AdminAffiliates() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* Partner Application Drawer */}
+        <PartnerApplicationDrawer
+          application={selectedApp}
+          open={!!selectedApp}
+          onOpenChange={(open) => !open && setSelectedApp(null)}
+          onApprove={handleApprove}
+          onDecline={handleDecline}
+          onReconsider={handleReconsider}
+          onNoteSave={handleNoteSave}
+          actionLoading={actionLoading}
+        />
       </div>
     </DashboardLayout>
   );
