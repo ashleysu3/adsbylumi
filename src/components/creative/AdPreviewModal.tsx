@@ -60,12 +60,20 @@ export function AdPreviewModal({
   const [editValue, setEditValue] = useState("");
   
   // Try multiple sources for the asset URL
-  const assetUrl = asset?.file_url || (item as any).uploaded_asset_url || null;
-  const isVideo = asset?.file_type?.startsWith("video/") || assetUrl?.includes('.mp4') || assetUrl?.includes('.mov');
+  const assetUrl = asset?.file_url 
+    || (item as any).uploaded_asset_url 
+    || (item as any).linkedAsset?.url 
+    || null;
+  const isVideo = asset?.file_type?.startsWith("video/") 
+    || (item as any).linkedAsset?.type?.startsWith("video")
+    || assetUrl?.includes('.mp4') 
+    || assetUrl?.includes('.mov');
   
-  const headlines = angleCopy?.headlines || [];
-  const descriptions = angleCopy?.descriptions || [];
-  const primaryCopy = angleCopy?.primary_copy || [];
+  // Try angleCopy first, then fall back to item's finalCopy/final_copy
+  const itemCopy = (item as any).finalCopy || (item as any).final_copy;
+  const headlines = angleCopy?.headlines || (itemCopy?.headline ? [{ text: itemCopy.headline }] : []);
+  const descriptions = angleCopy?.descriptions || (itemCopy?.description ? [{ text: itemCopy.description }] : []);
+  const primaryCopy = angleCopy?.primary_copy || (itemCopy?.primary_text || itemCopy?.primaryText ? [{ text: itemCopy.primary_text || itemCopy.primaryText }] : []);
   
   const currentHeadline = headlines[selectedHeadline]?.text || "Your Headline Here";
   const currentDescription = descriptions[selectedDescription]?.text || "";
