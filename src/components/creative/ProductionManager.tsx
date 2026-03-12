@@ -773,6 +773,19 @@ export function ProductionManager({
           angleCopy={getCopyForItem(adPreviewItem)}
           brandName={workspace?.brands?.name}
           websiteUrl={workspace?.offer_url || workspace?.brands?.website_url}
+          onCopyChange={(updatedCopy) => {
+            const angle = angles.find(a => a.name === adPreviewItem.angleName);
+            if (angle && angleCopyProp) {
+              // Propagate copy change up through the existing onUpdateWorkspace
+              const updatedAngleCopy = { ...angleCopy, [angle.id]: updatedCopy };
+              onUpdateWorkspace({
+                creative_json: {
+                  ...(workspace?.creative_json || {}),
+                  angle_copy: updatedAngleCopy,
+                },
+              });
+            }
+          }}
         />
       )}
 

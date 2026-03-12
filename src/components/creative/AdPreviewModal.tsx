@@ -2,13 +2,15 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Image, Video, Smartphone, Monitor, MoreHorizontal, 
   ThumbsUp, MessageCircle, Share2, ExternalLink, 
-  Heart, Bookmark, Send, X, ChevronLeft, ChevronRight
+  Heart, Bookmark, Send, ChevronLeft, ChevronRight,
+  Link2, Pencil, Check, Globe
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductionItem } from "./ProductionChecklistPanel";
@@ -37,6 +39,7 @@ interface AdPreviewModalProps {
   angleCopy?: AngleCopyData;
   brandName?: string;
   websiteUrl?: string;
+  onCopyChange?: (updatedCopy: AngleCopyData) => void;
 }
 
 export function AdPreviewModal({
@@ -47,13 +50,19 @@ export function AdPreviewModal({
   angleCopy,
   brandName = "Your Brand",
   websiteUrl,
+  onCopyChange,
 }: AdPreviewModalProps) {
   const [platform, setPlatform] = useState<"feed" | "stories" | "reels" | "instagram">("feed");
   const [selectedHeadline, setSelectedHeadline] = useState(0);
   const [selectedDescription, setSelectedDescription] = useState(0);
   const [selectedPrimary, setSelectedPrimary] = useState(0);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
   
-  const isVideo = asset?.file_type?.startsWith("video/");
+  // Try multiple sources for the asset URL
+  const assetUrl = asset?.file_url || (item as any).uploaded_asset_url || null;
+  const isVideo = asset?.file_type?.startsWith("video/") || assetUrl?.includes('.mp4') || assetUrl?.includes('.mov');
+  
   const headlines = angleCopy?.headlines || [];
   const descriptions = angleCopy?.descriptions || [];
   const primaryCopy = angleCopy?.primary_copy || [];
@@ -78,6 +87,63 @@ export function AdPreviewModal({
     } else {
       setter((current - 1 + length) % length);
     }
+  };
+
+  const startEditing = (field: string, value: string) => {
+    setEditingField(field);
+    setEditValue(value);
+  };
+
+  const saveEdit = () => {
+    if (!editingField || !onCopyChange || !angleCopy) {
+      setEditingField(null);
+      return;
+    }
+
+    const updated = { ...angleCopy };
+
+    if (editingField === "headline" && updated.headlines?.[selectedHeadline]) {
+      updated.headlines = [...updated.headlines];
+      updated.headlines[selectedHeadline] = { ...updated.headlines[selectedHeadline], text: editValue };
+    } else if (editingField === "description" && updated.descriptions?.[selectedDescription]) {
+      updated.descriptions = [...updated.descriptions];
+      updated.descriptions[selectedDescription] = { ...updated.descriptions[selectedDescription], text: editValue };
+    } else if (editingField === "primary" && updated.primary_copy?.[selectedPrimary]) {
+      updated.primary_copy = [...updated.primary_copy];
+      updated.primary_copy[selectedPrimary] = { ...updated.primary_copy[selectedPrimary], text: editValue };
+    }
+
+    onCopyChange(updated);
+    setEditingField(null);
+  };
+
+  const renderMedia = (className?: string) => {
+    if (assetUrl) {
+      return isVideo ? (
+        <video 
+          src={assetUrl} 
+          className={cn("w-full h-full object-cover", className)}
+          controls
+          muted
+          playsInline
+        />
+      ) : (
+        <img 
+          src={assetUrl} 
+          alt="Ad creative"
+          className={cn("w-full h-full object-cover", className)}
+        />
+      );
+    }
+    return (
+      <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-gradient-to-br from-muted to-muted/50">
+        <div className="text-center">
+          <Image className="h-16 w-16 mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-medium">Upload your creative</p>
+          <p className="text-xs mt-1">to see the preview</p>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -144,31 +210,7 @@ export function AdPreviewModal({
                     
                     {/* Media */}
                     <AspectRatio ratio={1} className="bg-muted">
-                      {asset?.file_url ? (
-                        isVideo ? (
-                          <video 
-                            src={asset.file_url} 
-                            className="w-full h-full object-cover"
-                            controls
-                            muted
-                            playsInline
-                          />
-                        ) : (
-                          <img 
-                            src={asset.file_url} 
-                            alt="Ad creative"
-                            className="w-full h-full object-cover"
-                          />
-                        )
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-gradient-to-br from-muted to-muted/50">
-                          <div className="text-center">
-                            <Image className="h-16 w-16 mx-auto mb-3 opacity-40" />
-                            <p className="text-sm font-medium">Upload your creative</p>
-                            <p className="text-xs mt-1">to see the preview</p>
-                          </div>
-                        </div>
-                      )}
+                      {renderMedia()}
                     </AspectRatio>
                     
                     {/* Link Preview */}
@@ -206,31 +248,7 @@ export function AdPreviewModal({
                 <TabsContent value="stories" className="mt-0">
                   <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
                     <AspectRatio ratio={9/16}>
-                      {asset?.file_url ? (
-                        isVideo ? (
-                          <video 
-                            src={asset.file_url} 
-                            className="w-full h-full object-cover"
-                            muted
-                            playsInline
-                            autoPlay
-                            loop
-                          />
-                        ) : (
-                          <img 
-                            src={asset.file_url} 
-                            alt="Ad creative"
-                            className="w-full h-full object-cover"
-                          />
-                        )
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-primary/40 to-primary/20">
-                          <div className="text-center text-white">
-                            <Image className="h-12 w-12 mx-auto mb-2 opacity-70" />
-                            <p className="text-sm">Your creative here</p>
-                          </div>
-                        </div>
-                      )}
+                      {renderMedia()}
                       
                       {/* Overlay */}
                       <div className="absolute inset-0 flex flex-col pointer-events-none">
@@ -269,31 +287,7 @@ export function AdPreviewModal({
                 <TabsContent value="reels" className="mt-0">
                   <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
                     <AspectRatio ratio={9/16}>
-                      {asset?.file_url ? (
-                        isVideo ? (
-                          <video 
-                            src={asset.file_url} 
-                            className="w-full h-full object-cover"
-                            muted
-                            playsInline
-                            autoPlay
-                            loop
-                          />
-                        ) : (
-                          <img 
-                            src={asset.file_url} 
-                            alt="Ad creative"
-                            className="w-full h-full object-cover"
-                          />
-                        )
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-primary/40 to-primary/20">
-                          <div className="text-center text-white">
-                            <Video className="h-12 w-12 mx-auto mb-2 opacity-70" />
-                            <p className="text-sm">Your video here</p>
-                          </div>
-                        </div>
-                      )}
+                      {renderMedia()}
                       
                       {/* Overlay */}
                       <div className="absolute inset-0 flex pointer-events-none">
@@ -361,30 +355,7 @@ export function AdPreviewModal({
                     
                     {/* Media */}
                     <AspectRatio ratio={1} className="bg-muted">
-                      {asset?.file_url ? (
-                        isVideo ? (
-                          <video 
-                            src={asset.file_url} 
-                            className="w-full h-full object-cover"
-                            controls
-                            muted
-                            playsInline
-                          />
-                        ) : (
-                          <img 
-                            src={asset.file_url} 
-                            alt="Ad creative"
-                            className="w-full h-full object-cover"
-                          />
-                        )
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-gradient-to-br from-muted to-muted/50">
-                          <div className="text-center">
-                            <Image className="h-16 w-16 mx-auto mb-3 opacity-40" />
-                            <p className="text-sm font-medium">Upload your creative</p>
-                          </div>
-                        </div>
-                      )}
+                      {renderMedia()}
                     </AspectRatio>
                     
                     {/* Actions */}
@@ -419,12 +390,38 @@ export function AdPreviewModal({
             </Tabs>
           </div>
           
-          {/* Right: Copy Selector */}
-          <div className="w-80 border-l bg-background p-4 space-y-6 overflow-y-auto">
+          {/* Right: Copy Editor & Info */}
+          <div className="w-80 border-l bg-background p-4 space-y-5 overflow-y-auto">
+            {/* Destination URL */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Destination URL</span>
+              </div>
+              {websiteUrl ? (
+                <a
+                  href={websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 p-2.5 bg-muted rounded-lg text-sm text-primary hover:underline break-all"
+                >
+                  <Link2 className="h-4 w-4 shrink-0" />
+                  {websiteUrl}
+                </a>
+              ) : (
+                <div className="p-2.5 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
+                  <p className="text-sm text-muted-foreground italic">No destination URL set</p>
+                  <p className="text-xs text-muted-foreground mt-1">Set this in your offer or brand settings.</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="h-px bg-border" />
+            
             <div>
-              <h4 className="text-sm font-semibold mb-3">Select Copy Variations</h4>
+              <h4 className="text-sm font-semibold mb-1">Copy Variations</h4>
               <p className="text-xs text-muted-foreground mb-4">
-                Use the arrows to preview different copy combinations.
+                Click <Pencil className="h-3 w-3 inline" /> to edit copy. Use arrows to preview variations.
               </p>
             </div>
             
@@ -446,7 +443,35 @@ export function AdPreviewModal({
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <div className="flex-1 p-2 bg-muted rounded-lg">
-                    <p className="text-sm line-clamp-2">{currentHeadline}</p>
+                    {editingField === "headline" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="h-7 text-sm"
+                          maxLength={40}
+                          autoFocus
+                          onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={saveEdit}>
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-sm line-clamp-2 flex-1">{currentHeadline}</p>
+                        {onCopyChange && (
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                            onClick={() => startEditing("headline", currentHeadline)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <Button 
                     size="icon" 
@@ -479,7 +504,35 @@ export function AdPreviewModal({
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   <div className="flex-1 p-2 bg-muted rounded-lg">
-                    <p className="text-sm line-clamp-2">{currentDescription || "No description"}</p>
+                    {editingField === "description" ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="h-7 text-sm"
+                          maxLength={30}
+                          autoFocus
+                          onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={saveEdit}>
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-sm line-clamp-2 flex-1">{currentDescription || "No description"}</p>
+                        {onCopyChange && (
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                            onClick={() => startEditing("description", currentDescription)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <Button 
                     size="icon" 
@@ -511,8 +564,38 @@ export function AdPreviewModal({
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <div className="flex-1 p-2 bg-muted rounded-lg max-h-32 overflow-y-auto">
-                    <p className="text-sm whitespace-pre-wrap">{currentPrimary}</p>
+                  <div className="flex-1 p-2 bg-muted rounded-lg">
+                    {editingField === "primary" ? (
+                      <div className="space-y-1">
+                        <Textarea
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="text-sm min-h-[100px] resize-y"
+                          autoFocus
+                        />
+                        <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={saveEdit}>
+                          <Check className="h-3.5 w-3.5" />
+                          Save
+                        </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="max-h-32 overflow-y-auto">
+                          <p className="text-sm whitespace-pre-wrap">{currentPrimary}</p>
+                        </div>
+                        {onCopyChange && (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-6 mt-1 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                            onClick={() => startEditing("primary", currentPrimary)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Edit
+                          </Button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <Button 
                     size="icon" 
