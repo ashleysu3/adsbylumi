@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Resend } from 'npm:resend@2.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { logEmail } from '../_shared/log-email.ts';
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
@@ -278,6 +279,16 @@ Deno.serve(async (req) => {
 </body>
 </html>
       `,
+    });
+
+    await logEmail({
+      recipient_email: email,
+      recipient_name: `${firstName} ${lastName || ''}`.trim(),
+      email_type: 'partner_approval',
+      subject: `You're in! Welcome to the LUMI Partner Program, ${firstName} ✨`,
+      status: 'sent',
+      edge_function: 'send-partner-approval',
+      metadata: { referral_link: referralLink, referral_code: referralCode },
     });
 
     return new Response(

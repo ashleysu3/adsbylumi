@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, LayoutTemplate, Ticket, BarChart3, CreditCard, Bug, Users, Settings, Shield, Gift, DollarSign } from "lucide-react";
+import { BookOpen, LayoutTemplate, Ticket, BarChart3, CreditCard, Bug, Users, Settings, Shield, Gift, DollarSign, Mail } from "lucide-react";
 
 const adminTabs = [
   { path: "/admin/users", label: "Users", icon: Users },
@@ -9,6 +9,7 @@ const adminTabs = [
   { path: "/admin/stripe", label: "Stripe", icon: DollarSign },
   { path: "/admin/bug-reports", label: "Bug Reports", icon: Bug },
   { path: "/admin/affiliates", label: "Affiliates", icon: Gift },
+  { path: "/admin/email-logs", label: "Email Logs", icon: Mail },
   { path: "/admin/knowledge", label: "Knowledge", icon: BookOpen },
   { path: "/admin/templates", label: "Templates", icon: LayoutTemplate },
   { path: "/admin/invite-codes", label: "Invite Codes", icon: Ticket },

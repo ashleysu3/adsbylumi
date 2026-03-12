@@ -1,5 +1,6 @@
 import { Resend } from 'npm:resend@2.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { logEmail } from '../_shared/log-email.ts';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
@@ -31,6 +32,15 @@ Deno.serve(async (req) => {
       console.error('Beta welcome email send error:', emailError);
       throw new Error(emailError.message);
     }
+
+    await logEmail({
+      recipient_email: email,
+      recipient_name: fullName || null,
+      email_type: 'beta_welcome',
+      subject: `Welcome to the Lumi Beta, ${firstName} 🧪✨`,
+      status: 'sent',
+      edge_function: 'send-beta-welcome-email',
+    });
 
     console.log(`Beta welcome email sent to ${email}`);
 
