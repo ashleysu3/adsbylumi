@@ -87,8 +87,28 @@ Deno.serve(async (req) => {
 
         if (emailError) {
           console.error(`Failed to send step ${nextStep} email to ${user.email}:`, emailError);
+          await logEmail({
+            recipient_email: user.email,
+            recipient_name: user.full_name || null,
+            email_type: 'onboarding_drip',
+            subject: emailContent.subject,
+            status: 'failed',
+            error_message: emailError.message,
+            edge_function: 'send-onboarding-drip',
+            metadata: { step: nextStep },
+          });
           continue;
         }
+
+        await logEmail({
+          recipient_email: user.email,
+          recipient_name: user.full_name || null,
+          email_type: 'onboarding_drip',
+          subject: emailContent.subject,
+          status: 'sent',
+          edge_function: 'send-onboarding-drip',
+          metadata: { step: nextStep },
+        });
 
         // Update the step
         await supabase
