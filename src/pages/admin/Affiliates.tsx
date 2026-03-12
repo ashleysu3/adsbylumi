@@ -26,6 +26,7 @@ export default function AdminAffiliates() {
   const [emailBody, setEmailBody] = useState('');
   const [declineModal, setDeclineModal] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedApp, setSelectedApp] = useState<any | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
