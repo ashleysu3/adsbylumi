@@ -124,6 +124,7 @@ export default function AdminAffiliates() {
       if (error) throw error;
       toast.success("Application declined.");
       setDeclineModal(null);
+      setSelectedApp(null);
       await loadData();
     } catch (err: any) {
       toast.error("Failed to decline");
