@@ -1,6 +1,7 @@
 import { Resend } from 'npm:resend@2.0.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { logEmail } from '../_shared/log-email.ts';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
