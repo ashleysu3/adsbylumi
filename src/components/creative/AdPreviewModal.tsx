@@ -615,9 +615,9 @@ export function AdPreviewModal({
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-                {primaryCopy[selectedPrimary]?.length && (
+                {(primaryCopy[selectedPrimary] as any)?.length && (
                   <Badge variant="outline" className="text-xs capitalize">
-                    {primaryCopy[selectedPrimary].length}
+                    {(primaryCopy[selectedPrimary] as any).length}
                   </Badge>
                 )}
               </div>
