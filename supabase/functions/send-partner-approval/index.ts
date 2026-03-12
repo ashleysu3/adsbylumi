@@ -94,11 +94,20 @@ Deno.serve(async (req) => {
           <!-- Welcome Message -->
           <tr>
             <td style="padding: 16px 40px 0;">
-              <h1 style="margin: 0 0 8px; font-size: 26px; font-weight: 800; color: #111111; line-height: 1.3;">
-                Welcome to the team, ${firstName}! 🎉
-              </h1>
-              <p style="margin: 0 0 24px; font-size: 15px; color: #555555; line-height: 1.7;">
-                Your application to the LUMI Partner Program has been approved. You now earn <strong style="color: #111111;">30% recurring monthly commission</strong> on every subscription you refer — for as long as they stay subscribed.
+               <h1 style="margin: 0 0 8px; font-size: 26px; font-weight: 800; color: #111111; line-height: 1.3;">
+                 Welcome to the team, ${firstName}! 🎉
+               </h1>
+               ${customMessage ? `
+               <div style="margin: 0 0 20px; padding: 16px 20px; background-color: #FFF7ED; border-radius: 10px; border-left: 4px solid #F97316;">
+                 <p style="margin: 0; font-size: 14px; color: #333333; line-height: 1.7; font-style: italic;">
+                   "${customMessage}"
+                 </p>
+                 <p style="margin: 8px 0 0; font-size: 12px; color: #999999;">— The LUMI Team</p>
+               </div>
+               ` : ''}
+               <p style="margin: 0 0 24px; font-size: 15px; color: #555555; line-height: 1.7;">
+                 Your application to the LUMI Partner Program has been approved. You now earn <strong style="color: #111111;">30% recurring monthly commission</strong> on every subscription you refer — for as long as they stay subscribed.
+               </p>
               </p>
             </td>
           </tr>

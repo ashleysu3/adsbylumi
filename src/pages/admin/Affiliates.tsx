@@ -426,6 +426,17 @@ export default function AdminAffiliates() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* Partner Application Drawer */}
+        <PartnerApplicationDrawer
+          application={selectedApp}
+          open={!!selectedApp}
+          onOpenChange={(open) => !open && setSelectedApp(null)}
+          onApprove={handleApprove}
+          onDecline={handleDecline}
+          onReconsider={handleReconsider}
+          onNoteSave={handleNoteSave}
+          actionLoading={actionLoading}
+        />
       </div>
     </DashboardLayout>
   );
