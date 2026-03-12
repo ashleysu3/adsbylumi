@@ -281,6 +281,16 @@ Deno.serve(async (req) => {
       `,
     });
 
+    await logEmail({
+      recipient_email: email,
+      recipient_name: `${firstName} ${lastName || ''}`.trim(),
+      email_type: 'partner_approval',
+      subject: `You're in! Welcome to the LUMI Partner Program, ${firstName} ✨`,
+      status: 'sent',
+      edge_function: 'send-partner-approval',
+      metadata: { referral_link: referralLink, referral_code: referralCode },
+    });
+
     return new Response(
       JSON.stringify({ success: true, dashboardUrl }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

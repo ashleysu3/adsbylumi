@@ -33,6 +33,15 @@ Deno.serve(async (req) => {
       throw new Error(emailError.message);
     }
 
+    await logEmail({
+      recipient_email: email,
+      recipient_name: fullName || null,
+      email_type: 'beta_welcome',
+      subject: `Welcome to the Lumi Beta, ${firstName} 🧪✨`,
+      status: 'sent',
+      edge_function: 'send-beta-welcome-email',
+    });
+
     console.log(`Beta welcome email sent to ${email}`);
 
     return new Response(

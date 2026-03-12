@@ -1,5 +1,6 @@
 import { Resend } from 'npm:resend@2.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { logEmail } from '../_shared/log-email.ts';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
@@ -19,18 +20,37 @@ Deno.serve(async (req) => {
     }
 
     const firstName = fullName?.split(' ')[0] || 'there';
+    const subject = `${firstName}, your ads era starts now ✨`;
 
     const { error: emailError } = await resend.emails.send({
       from: 'Lumi <hello@adsbylumi.com>',
       to: [email],
-      subject: `${firstName}, your ads era starts now ✨`,
+      subject,
       html: buildWelcomeEmailHtml(firstName),
     });
 
     if (emailError) {
       console.error('Welcome email send error:', emailError);
+      await logEmail({
+        recipient_email: email,
+        recipient_name: fullName || null,
+        email_type: 'welcome',
+        subject,
+        status: 'failed',
+        error_message: emailError.message,
+        edge_function: 'send-welcome-email',
+      });
       throw new Error(emailError.message);
     }
+
+    await logEmail({
+      recipient_email: email,
+      recipient_name: fullName || null,
+      email_type: 'welcome',
+      subject,
+      status: 'sent',
+      edge_function: 'send-welcome-email',
+    });
 
     console.log(`Welcome email sent to ${email}`);
 

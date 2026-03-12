@@ -1,5 +1,6 @@
 import { Resend } from 'npm:resend@2.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { logEmail } from '../_shared/log-email.ts';
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 
@@ -22,18 +23,38 @@ Deno.serve(async (req) => {
     const endDate = periodEnd
       ? new Date(periodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : 'the end of your billing period';
+    const subject = `We'll miss you, ${firstName} 💜`;
 
     const { error: emailError } = await resend.emails.send({
       from: 'Lumi <hello@adsbylumi.com>',
       to: [email],
-      subject: `We'll miss you, ${firstName} 💜`,
+      subject,
       html: buildCancellationEmailHtml(firstName, tierName || 'your plan', endDate),
     });
 
     if (emailError) {
       console.error('Cancellation email send error:', emailError);
+      await logEmail({
+        recipient_email: email,
+        recipient_name: fullName || null,
+        email_type: 'cancellation',
+        subject,
+        status: 'failed',
+        error_message: emailError.message,
+        edge_function: 'send-cancellation-email',
+      });
       throw new Error(emailError.message);
     }
+
+    await logEmail({
+      recipient_email: email,
+      recipient_name: fullName || null,
+      email_type: 'cancellation',
+      subject,
+      status: 'sent',
+      edge_function: 'send-cancellation-email',
+      metadata: { tier: tierName, period_end: periodEnd },
+    });
 
     console.log(`Cancellation email sent to ${email}`);
 
