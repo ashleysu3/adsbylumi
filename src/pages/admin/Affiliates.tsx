@@ -306,7 +306,7 @@ export default function AdminAffiliates() {
                       </TableHeader>
                       <TableBody>
                         {filteredApps.map(app => (
-                          <TableRow key={app.id}>
+                          <TableRow key={app.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedApp(app)}>
                             <TableCell>
                               <p className="font-medium text-sm">{app.first_name} {app.last_name}</p>
                               <p className="text-xs text-muted-foreground">{app.email}</p>
