@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, firstName, lastName, referralLink, referralCode, rewardfulAffiliateId } = await req.json();
+    const { email, firstName, lastName, referralLink, referralCode, rewardfulAffiliateId, customMessage } = await req.json();
 
     if (!email || !firstName || !referralLink) {
       return new Response(
