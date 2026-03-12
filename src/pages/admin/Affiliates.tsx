@@ -58,10 +58,9 @@ export default function AdminAffiliates() {
 
   const totalConversions = affiliates.reduce((sum, a) => sum + (a.conversions_count || 0), 0);
 
-  const handleApprove = async (app: any) => {
+  const handleApprove = async (app: any, customMessage?: string) => {
     setActionLoading(app.id);
     try {
-      // Create affiliate in Rewardful under partner campaign
       const { data, error } = await supabase.functions.invoke('create-affiliate', {
         body: {
           email: app.email,
@@ -77,7 +76,6 @@ export default function AdminAffiliates() {
       const referralCode = data?.referralCode || '';
       const affiliateId = data?.id || null;
 
-      // Update application status
       const { error: updateErr } = await supabase
         .from('partner_applications')
         .update({
@@ -89,7 +87,6 @@ export default function AdminAffiliates() {
 
       if (updateErr) throw updateErr;
 
-      // Send branded approval email with dashboard link
       const { error: emailErr } = await supabase.functions.invoke('send-partner-approval', {
         body: {
           email: app.email,
@@ -98,6 +95,7 @@ export default function AdminAffiliates() {
           referralLink,
           referralCode,
           rewardfulAffiliateId: affiliateId,
+          customMessage: customMessage || undefined,
         }
       });
 
@@ -108,6 +106,7 @@ export default function AdminAffiliates() {
         toast.success("Approved & welcome email sent! 🎉");
       }
 
+      setSelectedApp(null);
       await loadData();
     } catch (err: any) {
       toast.error("Failed to approve: " + (err.message || 'Unknown error'));
