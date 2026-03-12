@@ -54,6 +54,7 @@ import PartnerDashboard from "./pages/PartnerDashboard";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
+import AdminEmailLogs from "./pages/admin/EmailLogs";
 import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
 import AgencySettings from "./pages/AgencySettings";
