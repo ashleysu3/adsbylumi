@@ -154,7 +154,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   
   const canProceed = canPublish && (!isAlreadyPublished || confirmRepublish);
 
-  const brandName = workspace.brand?.name || "Your Brand";
+  const brandName = workspace.brands?.name || workspace.brand?.name || "Your Brand";
   const websiteUrl = workspace.offer_url;
 
   const launchActive = answers.launchActive ?? true;
