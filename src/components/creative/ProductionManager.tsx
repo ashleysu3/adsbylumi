@@ -128,17 +128,61 @@ export function ProductionManager({
     return items.filter(item => rankedIds.includes(item.id));
   };
   
-  // Get asset linked to a specific production item
-  const getAssetForItem = (itemId: string) => {
-    return uploadedAssets.find((a: any) => a.linked_concept_id === itemId);
+  const normalizeLookup = (value: unknown) =>
+    typeof value === "string" ? value.trim().toLowerCase() : "";
+
+  const normalizeUploadedAsset = (rawAsset: any) => {
+    if (!rawAsset) return null;
+    const fileUrl = rawAsset.file_url || rawAsset.url;
+    if (!fileUrl) return null;
+
+    return {
+      id: rawAsset.id || rawAsset.asset_id || fileUrl,
+      file_name: rawAsset.file_name || rawAsset.name || rawAsset.fileName || "Creative asset",
+      file_url: fileUrl,
+      file_type: rawAsset.file_type || rawAsset.type || "",
+    };
   };
-  
+
+  // Get asset linked to a specific production item (supports legacy + current shapes)
+  const getAssetForItem = (item: ProductionItem) => {
+    const itemAny = item as any;
+
+    const byLinkedConcept = uploadedAssets.find((asset: any) =>
+      [item.id, itemAny.concept_id].filter(Boolean).includes(asset?.linked_concept_id)
+    );
+
+    const byAssetId = uploadedAssets.find(
+      (asset: any) =>
+        asset?.id &&
+        [itemAny.uploaded_asset_id, itemAny.linkedAsset?.id].filter(Boolean).includes(asset.id)
+    );
+
+    const byAssetUrl = uploadedAssets.find(
+      (asset: any) =>
+        asset?.file_url &&
+        [itemAny.uploaded_asset_url, itemAny.linkedAsset?.url].filter(Boolean).includes(asset.file_url)
+    );
+
+    return (
+      normalizeUploadedAsset(byLinkedConcept) ||
+      normalizeUploadedAsset(byAssetId) ||
+      normalizeUploadedAsset(byAssetUrl) ||
+      normalizeUploadedAsset({
+        id: itemAny.linkedAsset?.id || itemAny.uploaded_asset_id,
+        file_name: itemAny.linkedAsset?.fileName,
+        file_url: itemAny.linkedAsset?.url || itemAny.uploaded_asset_url,
+        file_type: itemAny.linkedAsset?.type,
+      })
+    );
+  };
+
   // Count items with assets
-  const itemsWithAssets = productionItems.filter(item => getAssetForItem(item.id)).length;
-  
+  const itemsWithAssets = productionItems.filter(item => !!getAssetForItem(item)).length;
+
   // Check if at least one creative is uploaded
-  const hasAtLeastOneUpload = productionItems.some(item => getAssetForItem(item.id));
-  
+  const hasAtLeastOneUpload = productionItems.some(item => !!getAssetForItem(item));
+
   // Updated readiness check - needs 3+ concepts AND at least one upload
   const isReadyToBuild = productionItems.length >= 1 && hasAtLeastOneUpload;
   const hasAnyCopy = Object.keys(angleCopy).length > 0;
@@ -305,11 +349,28 @@ export function ProductionManager({
     fileInputRef.current?.click();
   };
   
-  // Get copy for item's angle
+  const getAngleCopyKeyForItem = (item: ProductionItem): string | null => {
+    const itemAny = item as any;
+    const directKeys = [itemAny.angleId, itemAny.angle, itemAny.angle_id].filter(Boolean) as string[];
+
+    const directMatch = directKeys.find((key) => !!angleCopy[key]);
+    if (directMatch) return directMatch;
+
+    const normalizedItemAngleName = normalizeLookup(item.angleName || itemAny.angle_name || itemAny.angle);
+    const matchedAngle = angles.find((angle) => normalizeLookup(angle.name) === normalizedItemAngleName);
+    if (matchedAngle?.id && angleCopy[matchedAngle.id]) return matchedAngle.id;
+
+    const nameKeyMatch = Object.keys(angleCopy).find(
+      (key) => normalizeLookup(key) === normalizedItemAngleName
+    );
+
+    return nameKeyMatch || matchedAngle?.id || null;
+  };
+
+  // Get copy for item's angle (supports id-keyed and name-keyed stores)
   const getCopyForItem = (item: ProductionItem) => {
-    const angle = angles.find(a => a.name === item.angleName);
-    if (!angle) return undefined;
-    return angleCopy[angle.id];
+    const key = getAngleCopyKeyForItem(item);
+    return key ? angleCopy[key] : undefined;
   };
   
   if (productionItems.length === 0) {
@@ -555,7 +616,7 @@ export function ProductionManager({
               {showTopOnly && hasRankedItems ? (
                 /* When showing Top 5, display in rank order with angle as badge */
                 <div className="space-y-2">
-                  {rankedItems
+                      {rankedItems
                     .sort((a, b) => a.rank - b.rank)
                     .map((rankedItem) => {
                       const item = productionItems.find(p => p.id === rankedItem.id);
@@ -564,7 +625,7 @@ export function ProductionManager({
                         <CreativeChecklistCard
                           key={item.id}
                           item={item}
-                          uploadedAsset={getAssetForItem(item.id)}
+                          uploadedAsset={getAssetForItem(item)}
                           onUploadClick={() => handleUploadClick(item.id)}
                           onRemove={() => onRemoveItem(item.id)}
                           onPreview={setPreviewAsset}
@@ -599,7 +660,7 @@ export function ProductionManager({
                             <CreativeChecklistCard
                               key={item.id}
                               item={item}
-                              uploadedAsset={getAssetForItem(item.id)}
+                              uploadedAsset={getAssetForItem(item)}
                               onUploadClick={() => handleUploadClick(item.id)}
                               onRemove={() => onRemoveItem(item.id)}
                               onPreview={setPreviewAsset}
@@ -655,7 +716,7 @@ export function ProductionManager({
                                 <CreativeChecklistCard
                                   key={item.id}
                                   item={item}
-                                  uploadedAsset={getAssetForItem(item.id)}
+                                  uploadedAsset={getAssetForItem(item)}
                                   onUploadClick={() => handleUploadClick(item.id)}
                                   onRemove={() => onRemoveItem(item.id)}
                                   onPreview={setPreviewAsset}
@@ -769,15 +830,14 @@ export function ProductionManager({
           open={!!adPreviewItem}
           onOpenChange={(open) => !open && setAdPreviewItem(null)}
           item={adPreviewItem}
-          asset={getAssetForItem(adPreviewItem.id)}
+          asset={getAssetForItem(adPreviewItem)}
           angleCopy={getCopyForItem(adPreviewItem)}
           brandName={workspace?.brands?.name}
           websiteUrl={workspace?.offer_url || workspace?.brands?.website_url}
           onCopyChange={(updatedCopy) => {
-            const angle = angles.find(a => a.name === adPreviewItem.angleName);
-            if (angle && angleCopyProp) {
-              // Propagate copy change up through the existing onUpdateWorkspace
-              const updatedAngleCopy = { ...angleCopy, [angle.id]: updatedCopy };
+            const copyKey = getAngleCopyKeyForItem(adPreviewItem);
+            if (copyKey) {
+              const updatedAngleCopy = { ...angleCopy, [copyKey]: updatedCopy };
               onUpdateWorkspace({
                 creative_json: {
                   ...(workspace?.creative_json || {}),

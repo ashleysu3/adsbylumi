@@ -22,7 +22,7 @@ import { PreBuildCopySummary } from "./PreBuildCopySummary";
 import { PixelPreflightCheck } from "./PixelPreflightCheck";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getReadinessSummary, isItemReadyForCampaign } from "@/lib/sync-production-assets";
+
 
 interface CampaignReviewProps {
   workspace: any;
@@ -48,31 +48,105 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   const hasFacebookPage = !!brand?.page_id;
   const isMetaReady = hasMetaAccount && hasFacebookPage;
   
-  const creativeJson = workspace.creative_json;
-  const angleCopy = creativeJson?.angleCopy || {};
-  
-  const approvedConcepts = workspace.production_items?.filter((item: any) => item.status === 'approved') || [];
-  const readyConcepts = approvedConcepts.filter((item: any) => {
-    const hasAsset = item.linkedAsset?.url || item.uploaded_asset_id;
-    const hasCopy = item.finalCopy?.headline || item.final_copy?.headline;
-    const hasAngleCopy = item.angle && angleCopy[item.angle] && (
-      angleCopy[item.angle].headlines?.length > 0 ||
-      angleCopy[item.angle].descriptions?.length > 0 ||
-      angleCopy[item.angle].primary_copy?.length > 0
+  const creativeJson = workspace.creative_json || {};
+  const angleCopy = creativeJson?.angle_copy || creativeJson?.angleCopy || {};
+  const uploadedAssets = workspace.user_uploaded_assets || [];
+  const angles = creativeJson?.angles || [];
+
+  const normalizeLookup = (value: unknown) =>
+    typeof value === "string" ? value.trim().toLowerCase() : "";
+
+  const getAngleKeyForItem = (item: any) => {
+    const directKeys = [item?.angleId, item?.angle, item?.angle_id].filter(Boolean) as string[];
+    const directKey = directKeys.find((key) => !!angleCopy[key]);
+    if (directKey) return directKey;
+
+    const normalizedAngleName = normalizeLookup(item?.angleName || item?.angle_name || item?.angle);
+    const matchedAngle = angles.find((angle: any) => normalizeLookup(angle?.name) === normalizedAngleName);
+    if (matchedAngle?.id && angleCopy[matchedAngle.id]) return matchedAngle.id;
+
+    return Object.keys(angleCopy).find((key) => normalizeLookup(key) === normalizedAngleName) || matchedAngle?.id || null;
+  };
+
+  const getAngleCopyForItem = (item: any) => {
+    const key = getAngleKeyForItem(item);
+    return key ? angleCopy[key] : null;
+  };
+
+  const getAssetForItem = (item: any) => {
+    const byLinkedConcept = uploadedAssets.find((asset: any) =>
+      [item?.id, item?.concept_id].filter(Boolean).includes(asset?.linked_concept_id)
     );
-    return hasAsset && (hasCopy || hasAngleCopy);
-  });
-  
-  const incompleteConcepts = approvedConcepts.filter((item: any) => {
-    const hasAsset = item.linkedAsset?.url || item.uploaded_asset_id;
-    const hasCopy = item.finalCopy?.headline || item.final_copy?.headline;
-    const hasAngleCopy = item.angle && angleCopy[item.angle] && (
-      angleCopy[item.angle].headlines?.length > 0 ||
-      angleCopy[item.angle].descriptions?.length > 0 ||
-      angleCopy[item.angle].primary_copy?.length > 0
+
+    const byAssetId = uploadedAssets.find(
+      (asset: any) => asset?.id && [item?.uploaded_asset_id, item?.linkedAsset?.id].filter(Boolean).includes(asset.id)
     );
-    return !hasAsset || (!hasCopy && !hasAngleCopy);
+
+    const byAssetUrl = uploadedAssets.find(
+      (asset: any) =>
+        asset?.file_url &&
+        [item?.uploaded_asset_url, item?.linkedAsset?.url].filter(Boolean).includes(asset.file_url)
+    );
+
+    const source = byLinkedConcept || byAssetId || byAssetUrl;
+    if (!source) return item?.linkedAsset || null;
+
+    return {
+      id: source.id || item?.uploaded_asset_id,
+      url: source.file_url || source.url || item?.linkedAsset?.url,
+      type: source.file_type || source.type || item?.linkedAsset?.type,
+      fileName: source.file_name || source.name || source.fileName || item?.linkedAsset?.fileName,
+    };
+  };
+
+  const getResolvedCopyForItem = (item: any, itemAngleCopy: any) => {
+    const existingCopy = item?.finalCopy || item?.final_copy || {};
+    const headline = existingCopy?.headline || itemAngleCopy?.headlines?.[0]?.text || "";
+    const description = existingCopy?.description || itemAngleCopy?.descriptions?.[0]?.text || "";
+    const primaryText =
+      existingCopy?.primaryText ||
+      existingCopy?.primary_text ||
+      itemAngleCopy?.primary_copy?.[0]?.text ||
+      "";
+
+    if (!headline && !description && !primaryText) return null;
+
+    return {
+      headline,
+      description,
+      primaryText,
+      primary_text: primaryText,
+      cta: existingCopy?.cta || "Learn More",
+    };
+  };
+
+  const approvedConcepts = workspace.production_items?.filter((item: any) => item.status === "approved") || [];
+
+  const reviewedConcepts = approvedConcepts.map((item: any) => {
+    const resolvedAsset = getAssetForItem(item);
+    const resolvedAngleCopy = getAngleCopyForItem(item);
+    const resolvedCopy = getResolvedCopyForItem(item, resolvedAngleCopy);
+
+    const hasAsset = !!(resolvedAsset?.url || item?.uploaded_asset_id);
+    const hasCopy = !!(
+      resolvedCopy?.headline ||
+      resolvedCopy?.primaryText ||
+      resolvedCopy?.primary_text ||
+      resolvedCopy?.description
+    );
+
+    return {
+      ...item,
+      linkedAsset: resolvedAsset || item?.linkedAsset,
+      finalCopy: resolvedCopy || item?.finalCopy,
+      final_copy: resolvedCopy || item?.final_copy,
+      _hasAsset: hasAsset,
+      _hasCopy: hasCopy,
+    };
   });
+
+  const readyConcepts = reviewedConcepts.filter((item: any) => item._hasAsset && item._hasCopy);
+  const incompleteConcepts = reviewedConcepts.filter((item: any) => !item._hasAsset || !item._hasCopy);
   
   const canPublish = isSocialGrowth 
     ? (selectedPosts.length >= 1 && answers.budget && answers.startDate && isMetaReady)
@@ -80,7 +154,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   
   const canProceed = canPublish && (!isAlreadyPublished || confirmRepublish);
 
-  const brandName = workspace.brand?.name || "Your Brand";
+  const brandName = workspace.brands?.name || workspace.brand?.name || "Your Brand";
   const websiteUrl = workspace.offer_url;
 
   const launchActive = answers.launchActive ?? true;
@@ -321,7 +395,8 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                       <div className="mt-3 space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Not ready ({incompleteConcepts.length}):</p>
                         {incompleteConcepts.slice(0, 3).map((item: any, index: number) => {
-                          const { hasAsset, hasCopy } = isItemReadyForCampaign(item, angleCopy);
+                          const hasAsset = !!item._hasAsset;
+                          const hasCopy = !!item._hasCopy;
                           return (
                             <div key={index} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg border border-dashed">
                               <div className="flex-1 min-w-0">
