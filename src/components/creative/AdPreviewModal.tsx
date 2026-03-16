@@ -59,25 +59,66 @@ export function AdPreviewModal({
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   
+  const toVariationArray = (value: unknown): CopyVariation[] => {
+    if (!value) return [];
+
+    if (Array.isArray(value)) {
+      return value
+        .map((entry) => {
+          if (typeof entry === "string") return { text: entry };
+          if (entry && typeof entry === "object" && typeof (entry as any).text === "string") {
+            return {
+              text: (entry as any).text,
+              framework: (entry as any).framework,
+              length: (entry as any).length,
+            } as CopyVariation;
+          }
+          return null;
+        })
+        .filter((entry): entry is CopyVariation => !!entry && !!entry.text?.trim());
+    }
+
+    if (typeof value === "string") {
+      return value.trim() ? [{ text: value.trim() }] : [];
+    }
+
+    return [];
+  };
+
+  const itemAny = item as any;
+
   // Try multiple sources for the asset URL
-  const assetUrl = asset?.file_url 
-    || (item as any).uploaded_asset_url 
-    || (item as any).linkedAsset?.url 
-    || null;
-  const isVideo = asset?.file_type?.startsWith("video/") 
-    || (item as any).linkedAsset?.type?.startsWith("video")
-    || assetUrl?.includes('.mp4') 
-    || assetUrl?.includes('.mov');
-  
+  const assetUrl = asset?.file_url || itemAny.uploaded_asset_url || itemAny.linkedAsset?.url || null;
+  const inferredFileType = asset?.file_type || itemAny.linkedAsset?.type || "";
+  const isVideo =
+    inferredFileType.startsWith("video") ||
+    /\.(mp4|mov|webm|m4v)$/i.test(assetUrl || "");
+
   // Try angleCopy first, then fall back to item's finalCopy/final_copy
-  const itemCopy = (item as any).finalCopy || (item as any).final_copy;
-  const headlines = angleCopy?.headlines || (itemCopy?.headline ? [{ text: itemCopy.headline }] : []);
-  const descriptions = angleCopy?.descriptions || (itemCopy?.description ? [{ text: itemCopy.description }] : []);
-  const primaryCopy = angleCopy?.primary_copy || (itemCopy?.primary_text || itemCopy?.primaryText ? [{ text: itemCopy.primary_text || itemCopy.primaryText }] : []);
-  
-  const currentHeadline = headlines[selectedHeadline]?.text || "Your Headline Here";
-  const currentDescription = descriptions[selectedDescription]?.text || "";
-  const currentPrimary = primaryCopy[selectedPrimary]?.text || item.hook || "Your ad copy will appear here...";
+  const itemCopy = itemAny.finalCopy || itemAny.final_copy || {};
+  const fallbackHeadlines = toVariationArray(itemCopy.headline || itemAny.headline);
+  const fallbackDescriptions = toVariationArray(itemCopy.description || itemAny.description);
+  const fallbackPrimaryCopy = toVariationArray(
+    itemCopy.primary_text || itemCopy.primaryText || itemCopy.primary_copy || itemAny.primary_text || itemAny.primaryText
+  );
+
+  const headlines = toVariationArray(angleCopy?.headlines).length > 0
+    ? toVariationArray(angleCopy?.headlines)
+    : fallbackHeadlines;
+  const descriptions = toVariationArray(angleCopy?.descriptions).length > 0
+    ? toVariationArray(angleCopy?.descriptions)
+    : fallbackDescriptions;
+  const primaryCopy = toVariationArray(angleCopy?.primary_copy).length > 0
+    ? toVariationArray(angleCopy?.primary_copy)
+    : fallbackPrimaryCopy;
+
+  const currentHeadline = headlines[selectedHeadline]?.text || fallbackHeadlines[0]?.text || "Your Headline Here";
+  const currentDescription = descriptions[selectedDescription]?.text || fallbackDescriptions[0]?.text || "";
+  const currentPrimary =
+    primaryCopy[selectedPrimary]?.text ||
+    fallbackPrimaryCopy[0]?.text ||
+    item.hook ||
+    "Your ad copy will appear here...";
   
   const domain = websiteUrl ? (() => {
     try { return new URL(websiteUrl).hostname.replace("www.", ""); } catch { return "yourwebsite.com"; }
