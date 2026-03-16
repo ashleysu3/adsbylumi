@@ -22,7 +22,7 @@ import { PreBuildCopySummary } from "./PreBuildCopySummary";
 import { PixelPreflightCheck } from "./PixelPreflightCheck";
 import { useState } from "react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getReadinessSummary, isItemReadyForCampaign } from "@/lib/sync-production-assets";
+
 
 interface CampaignReviewProps {
   workspace: any;

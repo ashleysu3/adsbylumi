@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Image, Video, Smartphone, Monitor, MoreHorizontal, ThumbsUp, MessageCircle, Share2, ExternalLink } from "lucide-react";
+import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 
 interface AdPreviewProps {
   concept: {
