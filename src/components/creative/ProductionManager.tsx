@@ -128,17 +128,61 @@ export function ProductionManager({
     return items.filter(item => rankedIds.includes(item.id));
   };
   
-  // Get asset linked to a specific production item
-  const getAssetForItem = (itemId: string) => {
-    return uploadedAssets.find((a: any) => a.linked_concept_id === itemId);
+  const normalizeLookup = (value: unknown) =>
+    typeof value === "string" ? value.trim().toLowerCase() : "";
+
+  const normalizeUploadedAsset = (rawAsset: any) => {
+    if (!rawAsset) return null;
+    const fileUrl = rawAsset.file_url || rawAsset.url;
+    if (!fileUrl) return null;
+
+    return {
+      id: rawAsset.id || rawAsset.asset_id || fileUrl,
+      file_name: rawAsset.file_name || rawAsset.name || rawAsset.fileName || "Creative asset",
+      file_url: fileUrl,
+      file_type: rawAsset.file_type || rawAsset.type || "",
+    };
   };
-  
+
+  // Get asset linked to a specific production item (supports legacy + current shapes)
+  const getAssetForItem = (item: ProductionItem) => {
+    const itemAny = item as any;
+
+    const byLinkedConcept = uploadedAssets.find((asset: any) =>
+      [item.id, itemAny.concept_id].filter(Boolean).includes(asset?.linked_concept_id)
+    );
+
+    const byAssetId = uploadedAssets.find(
+      (asset: any) =>
+        asset?.id &&
+        [itemAny.uploaded_asset_id, itemAny.linkedAsset?.id].filter(Boolean).includes(asset.id)
+    );
+
+    const byAssetUrl = uploadedAssets.find(
+      (asset: any) =>
+        asset?.file_url &&
+        [itemAny.uploaded_asset_url, itemAny.linkedAsset?.url].filter(Boolean).includes(asset.file_url)
+    );
+
+    return (
+      normalizeUploadedAsset(byLinkedConcept) ||
+      normalizeUploadedAsset(byAssetId) ||
+      normalizeUploadedAsset(byAssetUrl) ||
+      normalizeUploadedAsset({
+        id: itemAny.linkedAsset?.id || itemAny.uploaded_asset_id,
+        file_name: itemAny.linkedAsset?.fileName,
+        file_url: itemAny.linkedAsset?.url || itemAny.uploaded_asset_url,
+        file_type: itemAny.linkedAsset?.type,
+      })
+    );
+  };
+
   // Count items with assets
-  const itemsWithAssets = productionItems.filter(item => getAssetForItem(item.id)).length;
-  
+  const itemsWithAssets = productionItems.filter(item => !!getAssetForItem(item)).length;
+
   // Check if at least one creative is uploaded
-  const hasAtLeastOneUpload = productionItems.some(item => getAssetForItem(item.id));
-  
+  const hasAtLeastOneUpload = productionItems.some(item => !!getAssetForItem(item));
+
   // Updated readiness check - needs 3+ concepts AND at least one upload
   const isReadyToBuild = productionItems.length >= 1 && hasAtLeastOneUpload;
   const hasAnyCopy = Object.keys(angleCopy).length > 0;
