@@ -616,7 +616,7 @@ export function ProductionManager({
               {showTopOnly && hasRankedItems ? (
                 /* When showing Top 5, display in rank order with angle as badge */
                 <div className="space-y-2">
-                  {rankedItems
+                      {rankedItems
                     .sort((a, b) => a.rank - b.rank)
                     .map((rankedItem) => {
                       const item = productionItems.find(p => p.id === rankedItem.id);
@@ -625,7 +625,7 @@ export function ProductionManager({
                         <CreativeChecklistCard
                           key={item.id}
                           item={item}
-                          uploadedAsset={getAssetForItem(item.id)}
+                          uploadedAsset={getAssetForItem(item)}
                           onUploadClick={() => handleUploadClick(item.id)}
                           onRemove={() => onRemoveItem(item.id)}
                           onPreview={setPreviewAsset}
@@ -660,7 +660,7 @@ export function ProductionManager({
                             <CreativeChecklistCard
                               key={item.id}
                               item={item}
-                              uploadedAsset={getAssetForItem(item.id)}
+                              uploadedAsset={getAssetForItem(item)}
                               onUploadClick={() => handleUploadClick(item.id)}
                               onRemove={() => onRemoveItem(item.id)}
                               onPreview={setPreviewAsset}
@@ -716,7 +716,7 @@ export function ProductionManager({
                                 <CreativeChecklistCard
                                   key={item.id}
                                   item={item}
-                                  uploadedAsset={getAssetForItem(item.id)}
+                                  uploadedAsset={getAssetForItem(item)}
                                   onUploadClick={() => handleUploadClick(item.id)}
                                   onRemove={() => onRemoveItem(item.id)}
                                   onPreview={setPreviewAsset}
