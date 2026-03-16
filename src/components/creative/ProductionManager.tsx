@@ -349,11 +349,28 @@ export function ProductionManager({
     fileInputRef.current?.click();
   };
   
-  // Get copy for item's angle
+  const getAngleCopyKeyForItem = (item: ProductionItem): string | null => {
+    const itemAny = item as any;
+    const directKeys = [itemAny.angleId, itemAny.angle, itemAny.angle_id].filter(Boolean) as string[];
+
+    const directMatch = directKeys.find((key) => !!angleCopy[key]);
+    if (directMatch) return directMatch;
+
+    const normalizedItemAngleName = normalizeLookup(item.angleName || itemAny.angle_name || itemAny.angle);
+    const matchedAngle = angles.find((angle) => normalizeLookup(angle.name) === normalizedItemAngleName);
+    if (matchedAngle?.id && angleCopy[matchedAngle.id]) return matchedAngle.id;
+
+    const nameKeyMatch = Object.keys(angleCopy).find(
+      (key) => normalizeLookup(key) === normalizedItemAngleName
+    );
+
+    return nameKeyMatch || matchedAngle?.id || null;
+  };
+
+  // Get copy for item's angle (supports id-keyed and name-keyed stores)
   const getCopyForItem = (item: ProductionItem) => {
-    const angle = angles.find(a => a.name === item.angleName);
-    if (!angle) return undefined;
-    return angleCopy[angle.id];
+    const key = getAngleCopyKeyForItem(item);
+    return key ? angleCopy[key] : undefined;
   };
   
   if (productionItems.length === 0) {
