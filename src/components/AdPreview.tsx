@@ -33,19 +33,31 @@ interface AdPreviewProps {
 }
 
 export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdPreviewProps) {
-  const assetUrl = concept.linkedAsset?.url;
-  const assetType = concept.linkedAsset?.type || 'image';
-  const isVideo = assetType === 'video' || assetUrl?.includes('.mp4') || assetUrl?.includes('.mov');
+  const conceptData = concept as any;
+  const assetUrl = concept.linkedAsset?.url || conceptData.uploaded_asset_url || conceptData.asset_url || null;
+  const assetType = concept.linkedAsset?.type || conceptData.linkedAsset?.file_type || 'image';
+  const isVideo = assetType.includes('video') || /\.(mp4|mov|webm|m4v)$/i.test(assetUrl || '');
   
-  // Normalize copy fields (handle both naming conventions)
-  const copy = concept.finalCopy || concept.final_copy || {} as any;
+  // Normalize copy fields (handle both naming conventions + flattened shapes)
+  const copy = concept.finalCopy || concept.final_copy || {
+    headline: conceptData.headline,
+    primaryText: conceptData.primaryText || conceptData.primary_text,
+    description: conceptData.description,
+    cta: conceptData.cta,
+  } as any;
   const headline = copy.headline || "Your Headline";
   const primaryText = copy.primaryText || copy.primary_text || "Your ad copy will appear here...";
   const description = copy.description || "";
   const cta = copy.cta || "Learn More";
   
   // Extract domain from URL
-  const domain = websiteUrl ? new URL(websiteUrl).hostname.replace('www.', '') : 'yourwebsite.com';
+  const domain = websiteUrl ? (() => {
+    try {
+      return new URL(normalizeWebsiteUrl(websiteUrl)).hostname.replace('www.', '');
+    } catch {
+      return 'yourwebsite.com';
+    }
+  })() : 'yourwebsite.com';
 
   return (
     <Card className="overflow-hidden">

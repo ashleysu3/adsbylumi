@@ -124,6 +124,14 @@ export function AdPreviewModal({
     try { return new URL(websiteUrl).hostname.replace("www.", ""); } catch { return "yourwebsite.com"; }
   })() : "yourwebsite.com";
 
+  useEffect(() => {
+    if (!open) return;
+    setSelectedHeadline(0);
+    setSelectedDescription(0);
+    setSelectedPrimary(0);
+    setEditingField(null);
+  }, [open, item.id]);
+
   const cycleOption = (
     current: number, 
     length: number, 

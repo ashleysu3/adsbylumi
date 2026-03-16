@@ -395,7 +395,8 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                       <div className="mt-3 space-y-2">
                         <p className="text-xs font-medium text-muted-foreground">Not ready ({incompleteConcepts.length}):</p>
                         {incompleteConcepts.slice(0, 3).map((item: any, index: number) => {
-                          const { hasAsset, hasCopy } = isItemReadyForCampaign(item, angleCopy);
+                          const hasAsset = !!item._hasAsset;
+                          const hasCopy = !!item._hasCopy;
                           return (
                             <div key={index} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg border border-dashed">
                               <div className="flex-1 min-w-0">

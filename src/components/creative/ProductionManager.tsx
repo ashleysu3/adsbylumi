@@ -830,15 +830,14 @@ export function ProductionManager({
           open={!!adPreviewItem}
           onOpenChange={(open) => !open && setAdPreviewItem(null)}
           item={adPreviewItem}
-          asset={getAssetForItem(adPreviewItem.id)}
+          asset={getAssetForItem(adPreviewItem)}
           angleCopy={getCopyForItem(adPreviewItem)}
           brandName={workspace?.brands?.name}
           websiteUrl={workspace?.offer_url || workspace?.brands?.website_url}
           onCopyChange={(updatedCopy) => {
-            const angle = angles.find(a => a.name === adPreviewItem.angleName);
-            if (angle && angleCopyProp) {
-              // Propagate copy change up through the existing onUpdateWorkspace
-              const updatedAngleCopy = { ...angleCopy, [angle.id]: updatedCopy };
+            const copyKey = getAngleCopyKeyForItem(adPreviewItem);
+            if (copyKey) {
+              const updatedAngleCopy = { ...angleCopy, [copyKey]: updatedCopy };
               onUpdateWorkspace({
                 creative_json: {
                   ...(workspace?.creative_json || {}),
