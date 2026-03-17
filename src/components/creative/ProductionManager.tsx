@@ -117,7 +117,11 @@ export function ProductionManager({
 
       const mapped = storagePaths.reduce<Record<string, string>>((acc, path, index) => {
         const signedUrl = data?.[index]?.signedUrl;
-        if (signedUrl) acc[path] = signedUrl;
+        if (signedUrl) {
+          acc[path] = signedUrl.startsWith("http")
+            ? signedUrl
+            : `${import.meta.env.VITE_SUPABASE_URL}/storage/v1${signedUrl.startsWith("/") ? signedUrl : `/${signedUrl}`}`;
+        }
         return acc;
       }, {});
 
