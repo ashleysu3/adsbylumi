@@ -92,8 +92,8 @@ export function ProductionManager({
   useEffect(() => {
     let isCancelled = false;
 
-    const storagePaths = Array.from(
-      new Set(
+    const storagePaths: string[] = Array.from(
+      new Set<string>(
         uploadedAssets
           .map((asset: any) => asset?.storage_path || asset?.storagePath)
           .filter((path: unknown): path is string => typeof path === "string" && path.length > 0)
