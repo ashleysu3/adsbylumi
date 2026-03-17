@@ -698,6 +698,46 @@ export default function CreativeStudio() {
       };
       const allAngles = [DEFAULT_ANGLE, ...(data.angles || []).filter((a: any) => a.id !== "direct_from_page")];
       
+      // ===== Preserve existing angle_copy by remapping old angle names → new angle IDs =====
+      const oldAngles = (workspace.creative_json as Record<string, any>)?.angles || [];
+      const existingCopy = { ...angleCopy };
+      const newAngleIds = new Set(allAngles.map((a: any) => a.id));
+      const normalizeName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      // Build old ID → old name map
+      const oldIdToName = new Map<string, string>();
+      oldAngles.forEach((a: any) => oldIdToName.set(a.id, a.name));
+      
+      // Build new name → new ID map
+      const newNameToId = new Map<string, string>();
+      allAngles.forEach((a: any) => newNameToId.set(normalizeName(a.name), a.id));
+      
+      const preservedCopy: Record<string, any> = {};
+      let preservedCount = 0;
+      
+      for (const [oldKey, copyData] of Object.entries(existingCopy)) {
+        // If the key still exists in new angles, keep it directly
+        if (newAngleIds.has(oldKey)) {
+          preservedCopy[oldKey] = copyData;
+          preservedCount++;
+          continue;
+        }
+        // Try to match by angle name
+        const oldName = oldIdToName.get(oldKey) || oldKey.replace(/_/g, ' ');
+        const normalizedOldName = normalizeName(oldName);
+        const newId = newNameToId.get(normalizedOldName);
+        if (newId && !preservedCopy[newId]) {
+          console.log(`[CreativeStudio] Preserving copy: "${oldKey}" → "${newId}" (matched by name "${oldName}")`);
+          preservedCopy[newId] = copyData;
+          preservedCount++;
+        }
+      }
+      
+      if (preservedCount > 0) {
+        console.log(`[CreativeStudio] Preserved ${preservedCount} angle copy entries across regeneration`);
+        setAngleCopy(preservedCopy);
+      }
+      
       setAvailableAngles(allAngles);
       setSelectedAngleIds(["direct_from_page"]);
       setGridData([]);
@@ -708,6 +748,7 @@ export default function CreativeStudio() {
          gridData: [],
          preGenerationContext: context || null,
          currentRound: newRound,
+         ...(preservedCount > 0 ? { angle_copy: preservedCopy } : {}),
        });
       toast.success("Angles ready!");
       setActiveTab("angles");
