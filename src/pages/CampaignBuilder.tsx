@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { formatInvokeError } from "@/lib/formatInvokeError";
 import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignBuilderForm } from "@/components/CampaignBuilderForm";
 import { MobileCampaignBuilder } from "@/components/MobileCampaignBuilder";
