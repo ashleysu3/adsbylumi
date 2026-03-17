@@ -225,7 +225,7 @@ export function CreativeUploader({ workspace, onUpdate }: CreativeUploaderProps)
           Upload Final Creative Assets
         </CardTitle>
         <CardDescription>
-          Upload your finished videos, images, and graphics. Max 20MB per file.
+          Upload your finished videos, images, and graphics. Max 50MB per file.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

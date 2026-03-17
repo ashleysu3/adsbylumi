@@ -275,7 +275,7 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
           Upload Creative Assets
         </CardTitle>
         <CardDescription>
-          Drag and drop files or click to browse. Max 20MB per file.
+          Drag and drop files or click to browse. Max 50MB per file.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
