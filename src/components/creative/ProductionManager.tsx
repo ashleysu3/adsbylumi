@@ -79,11 +79,59 @@ export function ProductionManager({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkMoving, setBulkMoving] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [resolvedAssetUrls, setResolvedAssetUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
+  const uploadedAssetSignature = uploadedAssets
+    .map((asset: any) => `${asset?.id ?? ""}:${asset?.storage_path ?? asset?.storagePath ?? ""}`)
+    .join("|");
   const angleCopy = angleCopyProp || workspace?.creative_json?.angle_copy || {};
   const selectedCopy = workspace?.selected_copy || {};
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const storagePaths = Array.from(
+      new Set(
+        uploadedAssets
+          .map((asset: any) => asset?.storage_path || asset?.storagePath)
+          .filter((path: unknown): path is string => typeof path === "string" && path.length > 0)
+      )
+    );
+
+    if (storagePaths.length === 0) {
+      setResolvedAssetUrls({});
+      return;
+    }
+
+    const resolveSignedUrls = async () => {
+      const { data, error } = await supabase.storage
+        .from("creative-assets")
+        .createSignedUrls(storagePaths, 60 * 60 * 6);
+
+      if (error) {
+        console.error("Failed to resolve signed creative URLs:", error);
+        return;
+      }
+
+      const mapped = storagePaths.reduce<Record<string, string>>((acc, path, index) => {
+        const signedUrl = data?.[index]?.signedUrl;
+        if (signedUrl) acc[path] = signedUrl;
+        return acc;
+      }, {});
+
+      if (!isCancelled) {
+        setResolvedAssetUrls(mapped);
+      }
+    };
+
+    resolveSignedUrls();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [workspace?.id, uploadedAssetSignature]);
   
   // Split items by round
   const currentRoundItems = currentRound 
