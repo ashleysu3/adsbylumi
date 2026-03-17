@@ -37,6 +37,7 @@ interface AdPreviewModalProps {
     file_name: string;
   } | null;
   angleCopy?: AngleCopyData;
+  selectedCopy?: Record<string, any>;
   brandName?: string;
   websiteUrl?: string;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;

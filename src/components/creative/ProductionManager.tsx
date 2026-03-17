@@ -83,6 +83,7 @@ export function ProductionManager({
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
   const angleCopy = angleCopyProp || workspace?.creative_json?.angle_copy || {};
+  const selectedCopy = workspace?.selected_copy || {};
   
   // Split items by round
   const currentRoundItems = currentRound 
