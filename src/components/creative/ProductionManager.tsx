@@ -852,8 +852,9 @@ export function ProductionManager({
           open={!!adPreviewItem}
           onOpenChange={(open) => !open && setAdPreviewItem(null)}
           item={adPreviewItem}
-          asset={getAssetForItem(adPreviewItem)}
+          asset={getPreviewAssetForItem(adPreviewItem)}
           angleCopy={getCopyForItem(adPreviewItem)}
+          selectedCopy={selectedCopy}
           brandName={workspace?.brands?.name}
           websiteUrl={workspace?.offer_url || workspace?.brands?.website_url}
           onCopyChange={(updatedCopy) => {

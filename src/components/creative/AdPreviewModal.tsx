@@ -96,25 +96,57 @@ export function AdPreviewModal({
     inferredFileType.startsWith("video") ||
     /\.(mp4|mov|webm|m4v)$/i.test(assetUrl || "");
 
-  // Try angleCopy first, then fall back to item's finalCopy/final_copy
-  const itemCopy = itemAny.finalCopy || itemAny.final_copy || {};
-  const fallbackHeadlines = toVariationArray(itemCopy.headline || itemAny.headline);
-  const fallbackDescriptions = toVariationArray(itemCopy.description || itemAny.description);
-  const fallbackPrimaryCopy = toVariationArray(
-    itemCopy.primary_text || itemCopy.primaryText || itemCopy.primary_copy || itemAny.primary_text || itemAny.primaryText
+  const pickFirstNonEmpty = (...sets: CopyVariation[][]): CopyVariation[] => {
+    for (const set of sets) {
+      if (set.length > 0) return set;
+    }
+    return [];
+  };
+
+  const selectedCopyAny = selectedCopy as any;
+  const sharedVariations = Array.isArray(selectedCopyAny?.shared_variations)
+    ? selectedCopyAny.shared_variations
+    : [];
+
+  const selectedCopyHeadlines = pickFirstNonEmpty(
+    toVariationArray(selectedCopyAny?.headlines),
+    toVariationArray(sharedVariations.map((variation: any) => variation?.headline).filter(Boolean))
+  );
+  const selectedCopyDescriptions = pickFirstNonEmpty(
+    toVariationArray(selectedCopyAny?.descriptions),
+    toVariationArray(sharedVariations.map((variation: any) => variation?.description).filter(Boolean))
+  );
+  const selectedCopyPrimary = pickFirstNonEmpty(
+    toVariationArray(selectedCopyAny?.primary_copy),
+    toVariationArray(sharedVariations.map((variation: any) => variation?.primary_text).filter(Boolean))
   );
 
-  const headlines = toVariationArray(angleCopy?.headlines).length > 0
-    ? toVariationArray(angleCopy?.headlines)
-    : fallbackHeadlines;
-  const descriptions = toVariationArray(angleCopy?.descriptions).length > 0
-    ? toVariationArray(angleCopy?.descriptions)
-    : fallbackDescriptions;
-  const primaryCopy = toVariationArray(angleCopy?.primary_copy).length > 0
-    ? toVariationArray(angleCopy?.primary_copy)
-    : fallbackPrimaryCopy;
+  // Try angleCopy first, then item's saved copy, then selected_copy, then hook-level fallback
+  const itemCopy = itemAny.finalCopy || itemAny.final_copy || {};
+  const itemHeadlines = toVariationArray(itemCopy.headline || itemAny.headline || itemAny.written_hook);
+  const itemDescriptions = toVariationArray(itemCopy.description || itemAny.description);
+  const itemPrimaryCopy = toVariationArray(
+    itemCopy.primary_text ||
+      itemCopy.primaryText ||
+      itemCopy.primary_copy ||
+      itemAny.primary_text ||
+      itemAny.primaryText ||
+      itemAny.hook
+  );
 
-  const currentHeadline = headlines[selectedHeadline]?.text || fallbackHeadlines[0]?.text || "Your Headline Here";
+  const fallbackHeadlines = pickFirstNonEmpty(itemHeadlines, selectedCopyHeadlines, toVariationArray(item.hook));
+  const fallbackDescriptions = pickFirstNonEmpty(itemDescriptions, selectedCopyDescriptions);
+  const fallbackPrimaryCopy = pickFirstNonEmpty(itemPrimaryCopy, selectedCopyPrimary, toVariationArray(item.hook));
+
+  const angleHeadlines = toVariationArray(angleCopy?.headlines);
+  const angleDescriptions = toVariationArray(angleCopy?.descriptions);
+  const anglePrimary = toVariationArray(angleCopy?.primary_copy);
+
+  const headlines = pickFirstNonEmpty(angleHeadlines, fallbackHeadlines);
+  const descriptions = pickFirstNonEmpty(angleDescriptions, fallbackDescriptions);
+  const primaryCopy = pickFirstNonEmpty(anglePrimary, fallbackPrimaryCopy);
+
+  const currentHeadline = headlines[selectedHeadline]?.text || fallbackHeadlines[0]?.text || item.hook || "Your Headline Here";
   const currentDescription = descriptions[selectedDescription]?.text || fallbackDescriptions[0]?.text || "";
   const currentPrimary =
     primaryCopy[selectedPrimary]?.text ||
