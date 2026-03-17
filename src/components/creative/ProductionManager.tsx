@@ -145,7 +145,7 @@ export function ProductionManager({
     };
   };
 
-  // Get asset linked to a specific production item (supports legacy + current shapes)
+  // Get asset linked to a specific production item (strict mapping for status/checklist)
   const getAssetForItem = (item: ProductionItem) => {
     const itemAny = item as any;
 
@@ -176,6 +176,27 @@ export function ProductionManager({
         file_type: itemAny.linkedAsset?.type,
       })
     );
+  };
+
+  // Relaxed asset lookup for legacy data in Ad Preview only
+  const getPreviewAssetForItem = (item: ProductionItem) => {
+    const strictAsset = getAssetForItem(item);
+    if (strictAsset) return strictAsset;
+
+    const unlinkedLegacyAssets = uploadedAssets
+      .filter((asset: any) => !asset?.linked_concept_id)
+      .map((asset: any) => normalizeUploadedAsset(asset))
+      .filter((asset: any) => !!asset);
+
+    if (unlinkedLegacyAssets.length === 0) return null;
+    if (unlinkedLegacyAssets.length === 1) return unlinkedLegacyAssets[0];
+
+    const itemIndex = productionItems.findIndex((productionItem) => productionItem.id === item.id);
+    if (itemIndex >= 0 && itemIndex < unlinkedLegacyAssets.length) {
+      return unlinkedLegacyAssets[itemIndex];
+    }
+
+    return unlinkedLegacyAssets[0];
   };
 
   // Count items with assets
