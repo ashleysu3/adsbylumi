@@ -305,12 +305,80 @@ export default function CreativeStudio() {
       }
       const loadedAngleIds = new Set(loadedAngles.map((a: any) => a.id));
       
+      // ===== RECONCILE angle_copy keys with current angle IDs =====
+      let reconciledAngleCopy = { ...(c?.angle_copy || {}) };
+      const angleCopyKeys = Object.keys(reconciledAngleCopy);
+      const orphanedKeys = angleCopyKeys.filter(k => !loadedAngleIds.has(k));
+      
+      if (orphanedKeys.length > 0 && loadedAngles.length > 0) {
+        console.log("[CreativeStudio] Found orphaned angle_copy keys:", orphanedKeys);
+        const normalizeName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        // Build lookup from angle name → angle id
+        const angleNameToId = new Map<string, string>();
+        loadedAngles.forEach((a: any) => {
+          angleNameToId.set(normalizeName(a.name), a.id);
+        });
+        
+        let didRemap = false;
+        for (const orphanKey of orphanedKeys) {
+          // Try matching by name similarity: the orphan key slug vs angle names
+          const orphanNorm = normalizeName(orphanKey.replace(/_/g, ' '));
+          let bestMatch: string | null = null;
+          
+          for (const [angleName, angleId] of angleNameToId.entries()) {
+            // Check if the key is a slug of the angle name, or vice versa
+            if (angleName.includes(orphanNorm) || orphanNorm.includes(angleName) ||
+                // Also check if key directly matches after normalizing
+                normalizeName(angleId) === orphanNorm) {
+              // Don't overwrite if target already has copy
+              if (!reconciledAngleCopy[angleId] || 
+                  !(reconciledAngleCopy[angleId]?.headlines?.length > 0)) {
+                bestMatch = angleId;
+                break;
+              }
+            }
+          }
+          
+          if (bestMatch) {
+            console.log(`[CreativeStudio] Remapping orphaned copy: "${orphanKey}" → "${bestMatch}"`);
+            reconciledAngleCopy[bestMatch] = reconciledAngleCopy[orphanKey];
+            delete reconciledAngleCopy[orphanKey];
+            didRemap = true;
+          }
+        }
+        
+        // Persist the reconciliation so it doesn't happen again
+        if (didRemap && data?.id) {
+          console.log("[CreativeStudio] Persisting reconciled angle_copy to database");
+          supabase.from("campaign_workspaces").update({
+            creative_json: { ...c, angle_copy: reconciledAngleCopy },
+            updated_at: new Date().toISOString(),
+          }).eq("id", data.id).then(() => {
+            console.log("[CreativeStudio] Reconciled angle_copy saved");
+          });
+        }
+      }
+      
       // Validate selectedAngleIds - only keep IDs that exist in available angles
       const storedSelectedIds = c?.selectedAngleIds || [];
       let validSelectedIds = storedSelectedIds.filter((id: string) => loadedAngleIds.has(id));
       // Ensure default angle is always selected if angles exist
       if (loadedAngles.length > 0 && !validSelectedIds.includes("direct_from_page")) {
         validSelectedIds = ["direct_from_page", ...validSelectedIds];
+      }
+      
+      // Also ensure angles that have copy are selected (prevents orphan by deselection)
+      const anglesWithCopy = Object.keys(reconciledAngleCopy).filter(id => {
+        const copy = reconciledAngleCopy[id];
+        return loadedAngleIds.has(id) && copy && (
+          copy.headlines?.length > 0 || copy.descriptions?.length > 0 || copy.primary_copy?.length > 0
+        );
+      });
+      for (const id of anglesWithCopy) {
+        if (!validSelectedIds.includes(id)) {
+          validSelectedIds.push(id);
+        }
       }
       
       // Validate gridData - only keep cells whose angleId exists
@@ -328,9 +396,9 @@ export default function CreativeStudio() {
       });
       setProductionItems(loadedProductionItems);
 
-      // Load angle copy
-      if (c?.angle_copy) {
-        setAngleCopy(c.angle_copy);
+      // Load reconciled angle copy
+      if (Object.keys(reconciledAngleCopy).length > 0) {
+        setAngleCopy(reconciledAngleCopy);
       }
       
       // Load cached creative intelligence
@@ -630,6 +698,46 @@ export default function CreativeStudio() {
       };
       const allAngles = [DEFAULT_ANGLE, ...(data.angles || []).filter((a: any) => a.id !== "direct_from_page")];
       
+      // ===== Preserve existing angle_copy by remapping old angle names → new angle IDs =====
+      const oldAngles = (workspace.creative_json as Record<string, any>)?.angles || [];
+      const existingCopy = { ...angleCopy };
+      const newAngleIds = new Set(allAngles.map((a: any) => a.id));
+      const normalizeName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      
+      // Build old ID → old name map
+      const oldIdToName = new Map<string, string>();
+      oldAngles.forEach((a: any) => oldIdToName.set(a.id, a.name));
+      
+      // Build new name → new ID map
+      const newNameToId = new Map<string, string>();
+      allAngles.forEach((a: any) => newNameToId.set(normalizeName(a.name), a.id));
+      
+      const preservedCopy: Record<string, any> = {};
+      let preservedCount = 0;
+      
+      for (const [oldKey, copyData] of Object.entries(existingCopy)) {
+        // If the key still exists in new angles, keep it directly
+        if (newAngleIds.has(oldKey)) {
+          preservedCopy[oldKey] = copyData;
+          preservedCount++;
+          continue;
+        }
+        // Try to match by angle name
+        const oldName = oldIdToName.get(oldKey) || oldKey.replace(/_/g, ' ');
+        const normalizedOldName = normalizeName(oldName);
+        const newId = newNameToId.get(normalizedOldName);
+        if (newId && !preservedCopy[newId]) {
+          console.log(`[CreativeStudio] Preserving copy: "${oldKey}" → "${newId}" (matched by name "${oldName}")`);
+          preservedCopy[newId] = copyData;
+          preservedCount++;
+        }
+      }
+      
+      if (preservedCount > 0) {
+        console.log(`[CreativeStudio] Preserved ${preservedCount} angle copy entries across regeneration`);
+        setAngleCopy(preservedCopy);
+      }
+      
       setAvailableAngles(allAngles);
       setSelectedAngleIds(["direct_from_page"]);
       setGridData([]);
@@ -640,6 +748,7 @@ export default function CreativeStudio() {
          gridData: [],
          preGenerationContext: context || null,
          currentRound: newRound,
+         ...(preservedCount > 0 ? { angle_copy: preservedCopy } : {}),
        });
       toast.success("Angles ready!");
       setActiveTab("angles");
