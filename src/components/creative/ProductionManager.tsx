@@ -180,9 +180,16 @@ export function ProductionManager({
   const normalizeLookup = (value: unknown) =>
     typeof value === "string" ? value.trim().toLowerCase() : "";
 
+  const resolveAssetUrl = (rawAsset: any) => {
+    if (!rawAsset) return null;
+    const storagePath = rawAsset.storage_path || rawAsset.storagePath;
+    const signedUrl = storagePath ? resolvedAssetUrls[storagePath] : undefined;
+    return signedUrl || rawAsset.file_url || rawAsset.url || rawAsset.signed_url || null;
+  };
+
   const normalizeUploadedAsset = (rawAsset: any) => {
     if (!rawAsset) return null;
-    const fileUrl = rawAsset.file_url || rawAsset.url;
+    const fileUrl = resolveAssetUrl(rawAsset);
     if (!fileUrl) return null;
 
     return {
@@ -190,6 +197,7 @@ export function ProductionManager({
       file_name: rawAsset.file_name || rawAsset.name || rawAsset.fileName || "Creative asset",
       file_url: fileUrl,
       file_type: rawAsset.file_type || rawAsset.type || "",
+      storage_path: rawAsset.storage_path || rawAsset.storagePath,
     };
   };
 
@@ -207,21 +215,39 @@ export function ProductionManager({
         [itemAny.uploaded_asset_id, itemAny.linkedAsset?.id].filter(Boolean).includes(asset.id)
     );
 
-    const byAssetUrl = uploadedAssets.find(
-      (asset: any) =>
-        asset?.file_url &&
-        [itemAny.uploaded_asset_url, itemAny.linkedAsset?.url].filter(Boolean).includes(asset.file_url)
-    );
+    const byStoragePath = uploadedAssets.find((asset: any) => {
+      const candidatePath = asset?.storage_path || asset?.storagePath;
+      if (!candidatePath) return false;
+      return [
+        itemAny.storage_path,
+        itemAny.linkedAsset?.storagePath,
+        itemAny.linkedAsset?.storage_path,
+      ]
+        .filter(Boolean)
+        .includes(candidatePath);
+    });
+
+    const byAssetUrl = uploadedAssets.find((asset: any) => {
+      const candidateUrl = resolveAssetUrl(asset);
+      return (
+        !!candidateUrl &&
+        [itemAny.uploaded_asset_url, itemAny.linkedAsset?.url]
+          .filter(Boolean)
+          .includes(candidateUrl)
+      );
+    });
 
     return (
       normalizeUploadedAsset(byLinkedConcept) ||
       normalizeUploadedAsset(byAssetId) ||
+      normalizeUploadedAsset(byStoragePath) ||
       normalizeUploadedAsset(byAssetUrl) ||
       normalizeUploadedAsset({
         id: itemAny.linkedAsset?.id || itemAny.uploaded_asset_id,
         file_name: itemAny.linkedAsset?.fileName,
         file_url: itemAny.linkedAsset?.url || itemAny.uploaded_asset_url,
         file_type: itemAny.linkedAsset?.type,
+        storage_path: itemAny.linkedAsset?.storagePath || itemAny.linkedAsset?.storage_path || itemAny.storage_path,
       })
     );
   };
