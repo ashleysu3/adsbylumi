@@ -64,6 +64,22 @@ export function AngleSelector({
     }
   };
 
+  // Generate a descriptive slug ID from an angle name to keep keys stable and readable
+  const toSlugId = (name: string): string => {
+    const base = name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .slice(0, 40);
+    // Ensure uniqueness against existing angles
+    const existingIds = new Set(angles.map(a => a.id));
+    if (!existingIds.has(base) && base.length > 0) return base;
+    // Append a short suffix for uniqueness
+    const suffix = Date.now().toString(36).slice(-4);
+    return `${base || 'custom'}_${suffix}`;
+  };
+
   const handleCustomSubmit = async (inputText: string, clarification?: string) => {
     setCustomLoading(true);
     try {
@@ -84,7 +100,7 @@ export function AngleSelector({
         setClarificationAnswer("");
       } else if (data.angle) {
         const newAngle: CreativeAngle = {
-          id: `custom_${Date.now()}`,
+          id: toSlugId(data.angle.name),
           name: data.angle.name,
           description: data.angle.description,
           isCustom: true,
