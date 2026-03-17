@@ -68,8 +68,8 @@ export function CreativeUploader({ workspace, onUpdate }: CreativeUploaderProps)
         toast.error(`${file.name}: Unsupported file type`);
         return false;
       }
-      if (file.size > 20 * 1024 * 1024) {
-        toast.error(`${file.name}: File too large (max 20MB)`);
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error(`${file.name}: File too large (max 50MB)`);
         return false;
       }
       return true;
@@ -225,7 +225,7 @@ export function CreativeUploader({ workspace, onUpdate }: CreativeUploaderProps)
           Upload Final Creative Assets
         </CardTitle>
         <CardDescription>
-          Upload your finished videos, images, and graphics. Max 20MB per file.
+          Upload your finished videos, images, and graphics. Max 50MB per file.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

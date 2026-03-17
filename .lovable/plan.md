@@ -1,83 +1,65 @@
 
 
-## Bug Report Review & Fix Plan
+## Plan: Add Local & Event Targeting Strategies to the Create Wizard
 
-### Summary of Findings
+### Problem
+Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
 
-After investigating each bug, here is the status and proposed fix for each:
+### What Changes
 
----
+**1. Add system offer IDs for the three local strategies**
 
-### Bug 1: Video upload hitting 20MB size cap
-**Status:** Still present  
-**Root Cause:** Three upload components enforce a hard 20MB limit: `DragDropUploader.tsx` (line 26), `CreativeUploader.tsx` (line 71), and `ProductionManager.tsx` (line 387). The UI text in some places says "Max 50MB" but the validation rejects at 20MB.
+In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
 
-**Fix:**
-- Raise the file size limit to 50MB in all three components
-- Update validation messages to match
-- Note: Supabase Storage supports up to 50MB by default, so no backend change needed
+```
+LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
+LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
+EVENT_LOCATION_OFFER_ID = "system-event-location"
+```
 
----
+Add these to `SYSTEM_OFFER_IDS`.
 
-### Bug 2: Custom copy reverting to website-generated copy (HIGH PRIORITY)
-**Status:** Partially fixed by previous angle_copy reconciliation work, but root cause remains  
-**Root Cause:** `saveCreativeState` in `CreativeStudio.tsx` (line 501) reads from `workspace.creative_json` which is a **stale closure** — it captures the workspace state from initial load. When multiple saves happen in sequence (e.g., auto-save of `selectedAngleIds` at line 491 races with `handleSaveCopy` at line 530), the second save overwrites the first because both read from the same stale `workspace` object. The `workspace` state is never refreshed after saves.
+**2. Add the options to Step 1 (offer selection)**
 
-**Fix:**
-- Change `saveCreativeState` to use a ref that always holds the latest `creative_json` state, updated after each successful save
-- Same fix for `handleSaveCopy` — it should merge into the ref, not the stale `workspace` prop
-- Add an optimistic local update to `workspace` state after each save so subsequent saves see fresh data
+Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
 
----
+- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
+- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
+- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
 
-### Bug 3: Creative Studio edits not saving/persisting
-**Status:** Same root cause as Bug 2  
-**Root Cause:** Same stale closure issue. When a user edits production items or grid data and then switches tabs (triggering a `selectedAngleIds` auto-save), the auto-save overwrites the entire `creative_json` with stale data, reverting the user's edits.
+**3. Handle selection → skip to strategy step automatically**
 
-**Fix:** Same as Bug 2 — the ref-based approach will fix both issues together.
+When a user selects a local strategy, it should:
+- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
+- Set `selectedTemplateId` to the matched template
+- Skip directly to Step 2 (strategy recommendation) since the template is already determined
+- The strategy recommendation step already works — it shows the selected template with structure details
 
----
+**4. Wire the flow through to workspace creation**
 
-### Bug 4: Importing Meta campaigns — "Failed to send a request to edge function"
-**Status:** Still present  
-**Root Cause:** `sync-meta-campaigns/index.ts` has its own **inline CORS config** (lines 4-21) that:
-1. Is **missing `adsbylumi.com`** from allowed origins (only has `youradassistant.app`)
-2. Is **missing required Supabase client headers** (`x-supabase-client-platform`, `x-supabase-client-platform-version`, etc.)
+The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
+- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
+- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
 
-When users access via `adsbylumi.com`, the CORS preflight fails because the origin isn't allowed and the headers aren't permitted, causing the browser to block the request entirely.
+**5. Add educational context for the Event strategy**
 
-**Fix:**
-- Replace the inline CORS config with the shared `getCorsHeaders` from `_shared/cors.ts` (which already includes `adsbylumi.com` and all required headers)
-- Update the import from `esm.sh` to `npm:` for consistency
+For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
+- Phase 1: "Awareness ads at the event location to get people to interact with your content"
+- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
+- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
 
----
+### What Does NOT Change
+- `CampaignBuilderForm.tsx` — already handles location targeting UI
+- Campaign templates in DB — already configured with `location_type`, radius settings
+- Edge functions — no changes needed
+- Creative Studio flow — works as-is since these are standard templates
 
-### Bug 5 & 6: Campaign launch/publish — "Failed to send a request to Edge Function"
-**Status:** Needs investigation — likely same CORS root cause for some users  
-**Root Cause:** `build-meta-campaign` already uses the shared CORS module, so it should work from `adsbylumi.com`. However, the `customer-portal/index.ts` also has the same inline CORS problem. The "Failed to send a request" error for campaign publish could be caused by:
-1. The same CORS issue if any intermediate function call (like `sync-meta-campaigns`) is involved in the publish flow
-2. Edge function timeout or auth issues — the logs show "invalid claim: missing sub claim" errors for sync-meta-campaigns
+### Technical Details
 
-**Fix:**
-- Fix all edge functions with inline CORS configs to use the shared module (`sync-meta-campaigns`, `customer-portal`)
-- Add better error messages in `CampaignBuilder.tsx` to distinguish CORS failures from auth failures from function errors
-- Add `formatInvokeError` usage (already exists in codebase) to surface the actual error instead of the generic message
+The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
 
----
-
-### Implementation Order
-
-1. **Fix CORS on sync-meta-campaigns and customer-portal** — highest impact, affects multiple reported bugs (4, 5, 6)
-2. **Fix stale closure race condition in CreativeStudio** — fixes bugs 2 and 3 (data loss)
-3. **Raise upload size limit to 50MB** — quick fix for bug 1
-4. **Improve error messaging** for edge function failures
+The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
 
 ### Files to Edit
-- `supabase/functions/sync-meta-campaigns/index.ts` — replace inline CORS with shared module
-- `supabase/functions/customer-portal/index.ts` — replace inline CORS with shared module
-- `src/pages/CreativeStudio.tsx` — fix stale closure in `saveCreativeState` and `handleSaveCopy`
-- `src/components/DragDropUploader.tsx` — raise 20MB → 50MB
-- `src/components/CreativeUploader.tsx` — raise 20MB → 50MB
-- `src/components/creative/ProductionManager.tsx` — raise 20MB → 50MB
-- `src/pages/CampaignBuilder.tsx` — improve error messages with `formatInvokeError`
+- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
 

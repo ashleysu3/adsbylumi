@@ -494,12 +494,23 @@ export default function CreativeStudio() {
     return () => clearTimeout(timer);
   }, [selectedAngleIds, workspace?.id, availableAngles.length]);
 
+  // Ref to always hold the latest creative_json, preventing stale closure overwrites
+  const creativeJsonRef = useRef<Record<string, any>>({});
+  useEffect(() => {
+    if (workspace?.creative_json) {
+      creativeJsonRef.current = workspace.creative_json as Record<string, any>;
+    }
+  }, [workspace?.creative_json]);
+
   const saveCreativeState = useCallback(async (updates: any) => {
     if (!workspace) return;
     setSaveStatus("saving");
     try {
-      const cur = (workspace.creative_json || {}) as Record<string, any>;
-      await supabase.from("campaign_workspaces").update({ creative_json: { ...cur, ...updates }, updated_at: new Date().toISOString() }).eq("id", workspace.id);
+      const merged = { ...creativeJsonRef.current, ...updates };
+      creativeJsonRef.current = merged; // Update ref immediately so next save sees fresh data
+      await supabase.from("campaign_workspaces").update({ creative_json: merged, updated_at: new Date().toISOString() }).eq("id", workspace.id);
+      // Optimistically update local workspace state so other callbacks see fresh data
+      setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {
@@ -507,7 +518,7 @@ export default function CreativeStudio() {
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     }
-  }, [workspace]);
+  }, [workspace?.id]);
 
   const saveProductionItems = useCallback(async (items: ProductionItem[]) => {
     if (!workspace) return;
@@ -531,14 +542,17 @@ export default function CreativeStudio() {
     if (!workspace) return;
     setCopySaveStatus("saving");
     try {
-      const cur = (workspace.creative_json || {}) as Record<string, any>;
+      // Use the ref for latest state instead of stale workspace closure
+      const merged = { ...creativeJsonRef.current, angle_copy: angleCopy };
+      creativeJsonRef.current = merged;
       await supabase
         .from("campaign_workspaces")
         .update({
-          creative_json: { ...cur, angle_copy: angleCopy },
+          creative_json: merged,
           updated_at: new Date().toISOString(),
         })
         .eq("id", workspace.id);
+      setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
       setCopySaveStatus("saved");
       setTimeout(() => setCopySaveStatus("idle"), 2000);
       toast.success("Copy saved!");
@@ -548,7 +562,7 @@ export default function CreativeStudio() {
       setTimeout(() => setCopySaveStatus("idle"), 3000);
       toast.error("Failed to save copy");
     }
-  }, [workspace, angleCopy]);
+  }, [workspace?.id, angleCopy]);
 
   const handleAddCustomAngle = useCallback((newAngle: CreativeAngle) => {
     setAvailableAngles(prev => [...prev, newAngle]);

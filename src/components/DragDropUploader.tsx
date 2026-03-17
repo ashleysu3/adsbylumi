@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 // File validation schema
 const fileValidationSchema = z.object({
   name: z.string().max(255, "Filename too long"),
-  size: z.number().max(20 * 1024 * 1024, "File must be less than 20MB"),
+  size: z.number().max(50 * 1024 * 1024, "File must be less than 50MB"),
   type: z.string().refine(
     (type) => [
       'video/mp4', 'video/quicktime', 'video/x-msvideo',
@@ -275,7 +275,7 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
           Upload Creative Assets
         </CardTitle>
         <CardDescription>
-          Drag and drop files or click to browse. Max 20MB per file.
+          Drag and drop files or click to browse. Max 50MB per file.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

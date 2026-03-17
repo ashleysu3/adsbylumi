@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { formatInvokeError } from "@/lib/formatInvokeError";
 import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignBuilderForm } from "@/components/CampaignBuilderForm";
 import { MobileCampaignBuilder } from "@/components/MobileCampaignBuilder";
@@ -152,12 +153,13 @@ export default function CampaignBuilder() {
         throw new Error(data.error || 'Failed to publish campaign');
       }
     } catch (error: any) {
-      console.error('Error publishing campaign:', error);
+      const friendlyMsg = formatInvokeError(error);
+      console.error('Error publishing campaign:', friendlyMsg, error);
       await supabase
         .from('campaign_workspaces')
-        .update({ meta_errors: { timestamp: new Date().toISOString(), error: error.message, stage: 'publishing' } })
+        .update({ meta_errors: { timestamp: new Date().toISOString(), error: friendlyMsg, stage: 'publishing' } })
         .eq('id', workspaceId);
-      toast.error(error.message || "Failed to publish campaign");
+      toast.error(friendlyMsg || "Failed to publish campaign");
       setStage('configure');
     } finally {
       setPublishing(false);
