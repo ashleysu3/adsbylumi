@@ -58,6 +58,7 @@ import AdminEmailLogs from "./pages/admin/EmailLogs";
 import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
 import AgencySettings from "./pages/AgencySettings";
+import CancellationPolicy from "./pages/CancellationPolicy";
 
 function CreativeRedirect() {
   const location = useLocation();
