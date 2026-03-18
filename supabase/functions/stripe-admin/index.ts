@@ -167,6 +167,73 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "get_dispute_evidence": {
+        const customer = await findCustomer(email);
+        // Get ALL subscriptions (including canceled)
+        const allSubs = await stripe.subscriptions.list({ customer: customer.id, limit: 100, status: "all" });
+        // Get ALL charges
+        const allCharges = await stripe.charges.list({ customer: customer.id, limit: 100 });
+        // Get ALL invoices
+        const allInvoices = await stripe.invoices.list({ customer: customer.id, limit: 100 });
+        // Get disputes
+        const disputes = await stripe.disputes.list({ limit: 100 });
+        const customerDisputes = disputes.data.filter(
+          (d: any) => allCharges.data.some((c: any) => c.id === d.charge)
+        );
+
+        result = {
+          customer: {
+            id: customer.id,
+            email: customer.email,
+            name: customer.name,
+            created: new Date(customer.created * 1000).toISOString(),
+          },
+          subscriptions: allSubs.data.map((s: any) => ({
+            id: s.id,
+            status: s.status,
+            created: new Date(s.created * 1000).toISOString(),
+            current_period_start: new Date(s.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(s.current_period_end * 1000).toISOString(),
+            cancel_at_period_end: s.cancel_at_period_end,
+            canceled_at: s.canceled_at ? new Date(s.canceled_at * 1000).toISOString() : null,
+            ended_at: s.ended_at ? new Date(s.ended_at * 1000).toISOString() : null,
+            plan: s.items.data[0]?.price?.id,
+            product: s.items.data[0]?.price?.product,
+            amount: s.items.data[0]?.price?.unit_amount,
+            interval: s.items.data[0]?.price?.recurring?.interval,
+          })),
+          charges: allCharges.data.map((c: any) => ({
+            id: c.id,
+            amount: c.amount,
+            currency: c.currency,
+            status: c.status,
+            created: new Date(c.created * 1000).toISOString(),
+            description: c.description,
+            refunded: c.refunded,
+            amount_refunded: c.amount_refunded,
+            disputed: c.disputed,
+          })),
+          invoices: allInvoices.data.map((i: any) => ({
+            id: i.id,
+            status: i.status,
+            amount_due: i.amount_due,
+            amount_paid: i.amount_paid,
+            currency: i.currency,
+            created: new Date(i.created * 1000).toISOString(),
+            hosted_invoice_url: i.hosted_invoice_url,
+          })),
+          disputes: customerDisputes.map((d: any) => ({
+            id: d.id,
+            amount: d.amount,
+            currency: d.currency,
+            status: d.status,
+            reason: d.reason,
+            created: new Date(d.created * 1000).toISOString(),
+          })),
+        };
+        break;
+      }
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
