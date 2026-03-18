@@ -44,6 +44,7 @@ interface ProductionManagerProps {
   currentRound?: string;
   onArchivePrevious?: () => Promise<void>;
   onClearAll?: () => Promise<void>;
+  onUrlChange?: (url: string) => void;
 }
 
 export function ProductionManager({
@@ -61,6 +62,7 @@ export function ProductionManager({
   currentRound,
   onArchivePrevious,
   onClearAll,
+  onUrlChange,
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [previewAsset, setPreviewAsset] = useState<any>(null);
@@ -947,6 +949,7 @@ export function ProductionManager({
               });
             }
           }}
+          onUrlChange={onUrlChange}
         />
       )}
 
