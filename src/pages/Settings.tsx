@@ -16,6 +16,7 @@ import {
   Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen, RotateCcw,
   Smile, X
 } from 'lucide-react';
+import { CancelSubscriptionModal } from '@/components/CancelSubscriptionModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GlossaryTooltip } from '@/components/GlossaryTooltip';
 import { useNavigate } from 'react-router-dom';
@@ -80,6 +81,7 @@ export default function Settings() {
   const [bulletEmoji, setBulletEmoji] = useState('✅');
   const [newEmoji, setNewEmoji] = useState('');
   const [savingCopyStyle, setSavingCopyStyle] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
   
   const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status } = useSubscription();
 
@@ -249,66 +251,6 @@ export default function Settings() {
       toast.error('Failed to open billing portal. Please try again.');
     } finally {
       setPortalLoading(false);
-    }
-  };
-
-  const handleCancelCodeSubscription = async () => {
-    if (!confirm('Are you sure you want to cancel? This will end your access immediately. Your active ads will be paused.')) {
-      return;
-    }
-    
-    setSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Get profile and subscription info for the cancellation email
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', user.id)
-        .single();
-
-      const { data: sub } = await supabase
-        .from('subscriptions')
-        .select('tier, current_period_end')
-        .eq('user_id', user.id)
-        .in('status', ['active', 'trial'])
-        .single();
-
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({ 
-          status: 'cancelled',
-          cancel_at_period_end: true 
-        })
-        .eq('user_id', user.id)
-        .in('status', ['active', 'trial']);
-
-      if (error) throw error;
-
-      // Pause ads and send cancellation email
-      try {
-        await supabase.functions.invoke('handle-cancellation', {
-          body: {
-            userId: user.id,
-            userEmail: profile?.email || user.email,
-            fullName: profile?.full_name || '',
-            tierName: sub?.tier || '',
-            periodEnd: sub?.current_period_end || null,
-          },
-        });
-      } catch (cancelErr) {
-        console.error('Error calling handle-cancellation:', cancelErr);
-      }
-
-      toast.success('Subscription cancelled. Your ads have been paused.');
-      refreshSubscription();
-    } catch (error: any) {
-      console.error('Error cancelling subscription:', error);
-      toast.error('Failed to cancel subscription');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -1097,33 +1039,33 @@ export default function Settings() {
                           </Button>
                         )}
                       </div>
-                    ) : isCodeBased ? (
-                      <>
-                        <p className="text-sm text-muted-foreground">
-                          {isTrial 
-                            ? 'Cancel your trial to avoid being billed. Your access will end immediately upon cancellation.'
-                            : 'Cancel your complimentary access. Your data will be preserved but you\'ll need to subscribe to regain access.'
-                          }
-                        </p>
-                        <Button onClick={handleCancelCodeSubscription} disabled={saving} variant="destructive" className="gap-2">
-                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-                          {isTrial ? 'Cancel Trial' : 'Cancel Access'}
-                        </Button>
-                      </>
                     ) : (
                       <>
                         <p className="text-sm text-muted-foreground">
-                          If you cancel, you'll retain access to your current plan until the end of your billing period. 
-                          Your campaigns and data will be preserved.
+                          {isCodeBased
+                            ? isTrial
+                              ? 'Cancel your trial to avoid being billed. Your access will end immediately upon cancellation.'
+                              : 'Cancel your complimentary access. Your data will be preserved but you\'ll need to subscribe to regain access.'
+                            : 'If you cancel, you\'ll retain access to your current plan until the end of your billing period. Your campaigns and data will be preserved.'}
                         </p>
-                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="destructive" className="gap-2">
-                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-                          Cancel Subscription
+                        <Button onClick={() => setCancelModalOpen(true)} disabled={saving} variant="destructive" className="gap-2">
+                          <LogOut className="h-4 w-4" />
+                          {isTrial ? 'Cancel Trial' : 'Cancel Subscription'}
                         </Button>
                       </>
                     )}
                   </CardContent>
                 </Card>
+
+                <CancelSubscriptionModal
+                  open={cancelModalOpen}
+                  onOpenChange={setCancelModalOpen}
+                  subscriptionEnd={subscriptionEnd}
+                  isCodeBased={isCodeBased}
+                  isTrial={isTrial}
+                  tierName={currentTier.name}
+                  onCancelled={refreshSubscription}
+                />
               </>
             ) : (
               <Card variant="glow">

@@ -756,6 +756,42 @@ export type Database = {
           },
         ]
       }
+      cancellation_requests: {
+        Row: {
+          created_at: string
+          id: string
+          period_end: string | null
+          reason: string
+          stripe_subscription_id: string | null
+          tier_at_cancellation: string | null
+          user_email: string | null
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          period_end?: string | null
+          reason: string
+          stripe_subscription_id?: string | null
+          tier_at_cancellation?: string | null
+          user_email?: string | null
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          period_end?: string | null
+          reason?: string
+          stripe_subscription_id?: string | null
+          tier_at_cancellation?: string | null
+          user_email?: string | null
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       client_portal_activity: {
         Row: {
           action: string

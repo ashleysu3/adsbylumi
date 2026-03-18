@@ -55,6 +55,7 @@ import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import AdminEmailLogs from "./pages/admin/EmailLogs";
+import AdminCancellations from "./pages/admin/Cancellations";
 import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
 import AgencySettings from "./pages/AgencySettings";
@@ -142,6 +143,7 @@ const App = () => {
                   <Route path="/admin/team" element={<AdminTeam />} />
                   <Route path="/admin/stripe" element={<AdminStripe />} />
                   <Route path="/admin/email-logs" element={<AdminEmailLogs />} />
+                  <Route path="/admin/cancellations" element={<AdminCancellations />} />
                   <Route path="/client-portal/:portalId" element={<ClientPortal />} />
                   <Route path="/agency-settings" element={<AgencySettings />} />
                   <Route path="/cancellation-policy" element={<CancellationPolicy />} />
