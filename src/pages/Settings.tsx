@@ -81,6 +81,7 @@ export default function Settings() {
   const [bulletEmoji, setBulletEmoji] = useState('✅');
   const [newEmoji, setNewEmoji] = useState('');
   const [savingCopyStyle, setSavingCopyStyle] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
   
   const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status } = useSubscription();
 
