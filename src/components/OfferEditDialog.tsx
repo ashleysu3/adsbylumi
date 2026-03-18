@@ -63,6 +63,16 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
 
       if (error) throw error;
 
+      // Sync URL change to any unpublished campaign workspaces referencing this offer
+      // so pre-flight QA check reflects the latest destination URL
+      if (formData.url !== offer.url) {
+        await supabase
+          .from("campaign_workspaces")
+          .update({ offer_url: formData.url || null })
+          .eq("offer_name", offer.name)
+          .is("published_at", null);
+      }
+
       toast.success("Offer updated");
       onSuccess();
       onOpenChange(false);
