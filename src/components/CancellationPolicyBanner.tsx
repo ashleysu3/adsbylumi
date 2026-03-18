@@ -15,11 +15,11 @@ export function CancellationPolicyBanner() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("policy_acknowledged_at")
+        .select("policy_acknowledged_at" as any)
         .eq("id", user.id)
         .single();
 
-      if (profile && !profile.policy_acknowledged_at) {
+      if (profile && !(profile as any).policy_acknowledged_at) {
         setVisible(true);
       }
     };
@@ -31,7 +31,7 @@ export function CancellationPolicyBanner() {
     if (userId) {
       await supabase
         .from("profiles")
-        .update({ policy_acknowledged_at: new Date().toISOString() })
+        .update({ policy_acknowledged_at: new Date().toISOString() } as any)
         .eq("id", userId);
     }
   };
