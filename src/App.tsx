@@ -58,6 +58,7 @@ import AdminEmailLogs from "./pages/admin/EmailLogs";
 import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
 import AgencySettings from "./pages/AgencySettings";
+import CancellationPolicy from "./pages/CancellationPolicy";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -143,6 +144,7 @@ const App = () => {
                   <Route path="/admin/email-logs" element={<AdminEmailLogs />} />
                   <Route path="/client-portal/:portalId" element={<ClientPortal />} />
                   <Route path="/agency-settings" element={<AgencySettings />} />
+                  <Route path="/cancellation-policy" element={<CancellationPolicy />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

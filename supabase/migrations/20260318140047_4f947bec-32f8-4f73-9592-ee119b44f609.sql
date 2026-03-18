@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS policy_acknowledged_at timestamp with time zone DEFAULT NULL;
