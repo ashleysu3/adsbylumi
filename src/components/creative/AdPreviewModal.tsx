@@ -41,6 +41,7 @@ interface AdPreviewModalProps {
   brandName?: string;
   websiteUrl?: string;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
+  onUrlChange?: (url: string) => void;
 }
 
 export function AdPreviewModal({
@@ -53,6 +54,7 @@ export function AdPreviewModal({
   brandName = "Your Brand",
   websiteUrl,
   onCopyChange,
+  onUrlChange,
 }: AdPreviewModalProps) {
   const [platform, setPlatform] = useState<"feed" | "stories" | "reels" | "instagram">("feed");
   const [selectedHeadline, setSelectedHeadline] = useState(0);
@@ -60,6 +62,11 @@ export function AdPreviewModal({
   const [selectedPrimary, setSelectedPrimary] = useState(0);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [localUrl, setLocalUrl] = useState(websiteUrl || "");
+
+  useEffect(() => {
+    setLocalUrl(websiteUrl || "");
+  }, [websiteUrl]);
   
   const toVariationArray = (value: unknown): CopyVariation[] => {
     if (!value) return [];
@@ -186,12 +193,13 @@ export function AdPreviewModal({
   };
 
   const saveEdit = () => {
-    if (!editingField || !onCopyChange || !angleCopy) {
+    if (!editingField || !onCopyChange) {
       setEditingField(null);
       return;
     }
 
-    const updated = { ...angleCopy };
+    const baseCopy = angleCopy || { headlines: [], descriptions: [], primary_copy: [] };
+    const updated = { ...baseCopy };
 
     if (editingField === "headline" && updated.headlines?.[selectedHeadline]) {
       updated.headlines = [...updated.headlines];
@@ -485,26 +493,36 @@ export function AdPreviewModal({
           <div className="w-80 border-l bg-background p-4 space-y-5 overflow-y-auto">
             {/* Destination URL */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-semibold">Destination URL</span>
-              </div>
-              {websiteUrl ? (
-                <a
-                  href={websiteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-2.5 bg-muted rounded-lg text-sm text-primary hover:underline break-all"
-                >
-                  <Link2 className="h-4 w-4 shrink-0" />
-                  {websiteUrl}
-                </a>
-              ) : (
-                <div className="p-2.5 bg-muted/50 rounded-lg border border-dashed border-muted-foreground/30">
-                  <p className="text-sm text-muted-foreground italic">No destination URL set</p>
-                  <p className="text-xs text-muted-foreground mt-1">Set this in your offer or brand settings.</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold">Destination URL</span>
                 </div>
-              )}
+                {localUrl && (
+                  <a
+                    href={localUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+              <Input
+                value={localUrl || ""}
+                onChange={(e) => setLocalUrl(e.target.value)}
+                onBlur={() => {
+                  if (onUrlChange && localUrl !== websiteUrl) onUrlChange(localUrl || "");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                  }
+                }}
+                placeholder="https://yourwebsite.com"
+                className="text-sm"
+              />
             </div>
             
             <div className="h-px bg-border" />
