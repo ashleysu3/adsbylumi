@@ -16,6 +16,7 @@ import {
   Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen, RotateCcw,
   Smile, X
 } from 'lucide-react';
+import { CancelSubscriptionModal } from '@/components/CancelSubscriptionModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GlossaryTooltip } from '@/components/GlossaryTooltip';
 import { useNavigate } from 'react-router-dom';
