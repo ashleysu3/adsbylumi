@@ -1,12 +1,13 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, LayoutTemplate, Ticket, BarChart3, CreditCard, Bug, Users, Settings, Shield, Gift, DollarSign, Mail } from "lucide-react";
+import { BookOpen, LayoutTemplate, Ticket, BarChart3, CreditCard, Bug, Users, Settings, Shield, Gift, DollarSign, Mail, XCircle } from "lucide-react";
 
 const adminTabs = [
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/team", label: "Team", icon: Shield },
   { path: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
   { path: "/admin/stripe", label: "Stripe", icon: DollarSign },
+  { path: "/admin/cancellations", label: "Cancellations", icon: XCircle },
   { path: "/admin/bug-reports", label: "Bug Reports", icon: Bug },
   { path: "/admin/affiliates", label: "Affiliates", icon: Gift },
   { path: "/admin/email-logs", label: "Email Logs", icon: Mail },

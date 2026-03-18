@@ -1099,33 +1099,33 @@ export default function Settings() {
                           </Button>
                         )}
                       </div>
-                    ) : isCodeBased ? (
-                      <>
-                        <p className="text-sm text-muted-foreground">
-                          {isTrial 
-                            ? 'Cancel your trial to avoid being billed. Your access will end immediately upon cancellation.'
-                            : 'Cancel your complimentary access. Your data will be preserved but you\'ll need to subscribe to regain access.'
-                          }
-                        </p>
-                        <Button onClick={handleCancelCodeSubscription} disabled={saving} variant="destructive" className="gap-2">
-                          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-                          {isTrial ? 'Cancel Trial' : 'Cancel Access'}
-                        </Button>
-                      </>
                     ) : (
                       <>
                         <p className="text-sm text-muted-foreground">
-                          If you cancel, you'll retain access to your current plan until the end of your billing period. 
-                          Your campaigns and data will be preserved.
+                          {isCodeBased
+                            ? isTrial
+                              ? 'Cancel your trial to avoid being billed. Your access will end immediately upon cancellation.'
+                              : 'Cancel your complimentary access. Your data will be preserved but you\'ll need to subscribe to regain access.'
+                            : 'If you cancel, you\'ll retain access to your current plan until the end of your billing period. Your campaigns and data will be preserved.'}
                         </p>
-                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="destructive" className="gap-2">
-                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-                          Cancel Subscription
+                        <Button onClick={() => setCancelModalOpen(true)} disabled={saving} variant="destructive" className="gap-2">
+                          <LogOut className="h-4 w-4" />
+                          {isTrial ? 'Cancel Trial' : 'Cancel Subscription'}
                         </Button>
                       </>
                     )}
                   </CardContent>
                 </Card>
+
+                <CancelSubscriptionModal
+                  open={cancelModalOpen}
+                  onOpenChange={setCancelModalOpen}
+                  subscriptionEnd={subscriptionEnd}
+                  isCodeBased={isCodeBased}
+                  isTrial={isTrial}
+                  tierName={currentTier.name}
+                  onCancelled={refreshSubscription}
+                />
               </>
             ) : (
               <Card variant="glow">
