@@ -1386,6 +1386,15 @@ export default function CreativeStudio() {
                 }));
                 toast.success("Checklist cleared — all items archived");
               }}
+              onUrlChange={async (newUrl) => {
+                if (!workspace) return;
+                await supabase
+                  .from("campaign_workspaces")
+                  .update({ offer_url: newUrl, updated_at: new Date().toISOString() })
+                  .eq("id", workspace.id);
+                setWorkspace((prev: any) => prev ? { ...prev, offer_url: newUrl } : prev);
+                toast.success("Destination URL updated!");
+              }}
             />
           </TabsContent>
         </Tabs>
