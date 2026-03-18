@@ -1329,7 +1329,23 @@ export default function CreativeStudio() {
               selectedAngleIds={selectedAngleIds}
               onRemoveItem={removeFromChecklist}
               onBuildCampaign={handleBuildCampaign}
-              onUpdateWorkspace={(updates) => setWorkspace((prev: any) => ({ ...prev, ...updates }))}
+              onUpdateWorkspace={(updates) => {
+                // If angle_copy changed, sync it to the angleCopy state (source of truth) and persist
+                const incomingAngleCopy = (updates as any)?.creative_json?.angle_copy;
+                if (incomingAngleCopy) {
+                  setAngleCopy(incomingAngleCopy);
+                  const merged = { ...creativeJsonRef.current, angle_copy: incomingAngleCopy };
+                  creativeJsonRef.current = merged;
+                  supabase
+                    .from("campaign_workspaces")
+                    .update({ creative_json: merged, updated_at: new Date().toISOString() })
+                    .eq("id", workspace!.id)
+                    .then(() => {
+                      setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
+                    });
+                }
+                setWorkspace((prev: any) => ({ ...prev, ...updates }));
+              }}
               onSaveToLibrary={saveItemToLibrary}
               brandId={brandId}
               angleCopy={angleCopy}
