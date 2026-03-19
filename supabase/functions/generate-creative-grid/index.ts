@@ -12,19 +12,20 @@ Deno.serve(async (req) => {
   try {
     const { 
       angles, 
-      brandName, 
-      strategyData, 
-      audiencePsychology, 
-      offerData,
-      brandVoice,
-      messagingGuidelines,
-      productPsychology,
-       nicheContext,
-       brandId,
-       offerId,
-       offerAudiencePsychology,
-       creativeIntelligence
-    } = await req.json();
+       brandName, 
+       strategyData, 
+       audiencePsychology, 
+       offerData,
+       brandVoice,
+       messagingGuidelines,
+       productPsychology,
+        nicheContext,
+        brandId,
+        offerId,
+        offerAudiencePsychology,
+        creativeIntelligence,
+        perspectiveRole
+     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -135,7 +136,12 @@ snippets are shown in quick succession (carousel or montage style).
     const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts. Your creative MUST be specific, emotionally resonant, and impossible to ignore.
 
 === CRITICAL PERSPECTIVE RULE ===
-The person recording/posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame scripts accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it's clearly the founder's own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.
+${perspectiveRole === 'buyer' 
+  ? 'The person recording/posting these ads personally experienced the transformation. Frame hooks and scripts in first person: "I went from..." or "When I discovered..." — this is their own story and journey.'
+  : perspectiveRole === 'both'
+  ? 'The person recording/posting these ads is a BUSINESS OWNER who ALSO personally experienced the transformation. Mix BOTH framings: personal story ("I went from...") AND client results ("My clients also..."). Use their founder story as credibility, then reference client transformations as proof of scale.'
+  : 'The person recording/posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame scripts accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it\'s clearly the founder\'s own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.'
+}
 ${creativeIntelligence?.hasData ? `
 === DATA-INFORMED STRATEGY ===
 Based on the user's ad account performance over the last 90 days:

@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology, feedback, neverUseWords } = await req.json();
+    const { angles, brandInfo, offerData, audiencePsychology, brandId, offerId, offerAudiencePsychology, feedback, neverUseWords, perspectiveRole } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -147,7 +147,12 @@ testimonial quote from the content assets above.
     const systemPrompt = `You are an expert Meta Ads copywriter specializing in creating multiple high-converting copy variations for ${brandInfo?.name || 'this brand'}.
 
 ## CRITICAL PERSPECTIVE RULE
-The person posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame copy accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it's clearly the founder's own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.
+${perspectiveRole === 'buyer' 
+  ? 'The person posting these ads personally experienced the transformation. Frame copy in first person: "I went from..." or "When I discovered..." — this is their own story and journey.'
+  : perspectiveRole === 'both'
+  ? 'The person posting these ads is a BUSINESS OWNER who ALSO personally experienced the transformation. Mix BOTH framings: personal story ("I went from...") AND client results ("My clients also..."). Use their founder story as credibility, then reference client transformations as proof of scale.'
+  : 'The person posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame copy accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it\'s clearly the founder\'s own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.'
+}
 
 ## YOUR TASK
 Generate 3-5 variations of ad copy for EACH creative angle. Each variation should use a DIFFERENT copy framework/formula.

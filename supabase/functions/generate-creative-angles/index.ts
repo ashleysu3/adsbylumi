@@ -200,7 +200,12 @@ ${previousAnglesContext}
 ${Array.isArray(neverUseWords) && neverUseWords.length > 0 ? `\n🚫 BANNED WORDS/PHRASES (strictly forbidden in all output):\n${neverUseWords.map((w: string) => `- "${w}"`).join('\n')}\nDo NOT use any of these words in angle names, descriptions, or any generated text. Find alternative phrasing.\n` : ''}
 
 === CRITICAL PERSPECTIVE RULE ===
-The person recording/posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame scripts accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it's clearly the founder's own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.
+${preGenerationContext?.perspectiveRole === 'buyer' 
+  ? 'The person recording/posting these ads personally experienced the transformation. Frame scripts in first person: "I went from..." or "When I discovered..." — this is their own story and journey.'
+  : preGenerationContext?.perspectiveRole === 'both'
+  ? 'The person recording/posting these ads is a BUSINESS OWNER who ALSO personally experienced the transformation. Mix BOTH framings: personal story ("I went from...") AND client results ("My clients also..."). Use their founder story as credibility, then reference client transformations as proof of scale.'
+  : 'The person recording/posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame scripts accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it\'s clearly the founder\'s own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.'
+}
 
 RULES:
 - Generate exactly 11 creative angles

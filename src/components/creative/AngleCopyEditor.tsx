@@ -41,6 +41,7 @@ interface AngleCopyEditorProps {
   autoGenerate?: boolean;
   brandId?: string;
   offerId?: string;
+  perspectiveRole?: string;
 }
 
 export function AngleCopyEditor({
@@ -56,6 +57,7 @@ export function AngleCopyEditor({
   autoGenerate = false,
   brandId,
   offerId,
+  perspectiveRole,
 }: AngleCopyEditorProps) {
   const [activeAngle, setActiveAngle] = useState(selectedAngleIds[0] || "");
   const [generating, setGenerating] = useState(false);
@@ -126,6 +128,7 @@ export function AngleCopyEditor({
           neverUseWords: brandInfo?.never_use_words || [],
           brandId,
           offerId,
+          perspectiveRole: perspectiveRole || 'seller',
         },
       });
       
@@ -159,6 +162,7 @@ export function AngleCopyEditor({
           neverUseWords: brandInfo?.never_use_words || [],
           brandId,
           offerId,
+          perspectiveRole: perspectiveRole || 'seller',
         },
       });
       
