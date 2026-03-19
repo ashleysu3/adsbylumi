@@ -437,26 +437,159 @@ export function CreativeChecklistCard({
               )}
               
               {item.format === "broll" && (
-                <div>
-                  <h5 className="text-xs font-semibold text-muted-foreground uppercase mb-2">B-Roll Tips</h5>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>Capture variety: wide, medium, close-up shots</li>
-                    <li>Use slow, smooth movements</li>
-                    <li>Film in 4K if possible for flexibility</li>
-                    <li>Include lifestyle and product shots</li>
-                  </ul>
+                <div className="space-y-4">
+                  {/* Visual Direction */}
+                  {(item.visual_hook || (item as any).visual_guidance) && (
+                    <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                      <div className="flex items-center gap-2 text-green-600 mb-1">
+                        <Eye className="h-3.5 w-3.5" />
+                        <span className="text-xs font-semibold uppercase">Visual Direction</span>
+                      </div>
+                      <p className="text-sm">{item.visual_hook || (item as any).visual_guidance}</p>
+                    </div>
+                  )}
+
+                  {/* Text Overlays for B-Roll */}
+                  {item.text_overlays && item.text_overlays.length > 0 && (
+                    <div className="space-y-2">
+                      <h5 className="text-xs font-semibold text-muted-foreground uppercase">📝 Text Overlays</h5>
+                      <div className="space-y-2">
+                        {item.text_overlays.map((overlay, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              "p-2 rounded border text-sm",
+                              overlay.type === "hook" && "bg-blue-500/5 border-blue-500/20",
+                              overlay.type === "transition" && "bg-amber-500/5 border-amber-500/20",
+                              overlay.type === "cta" && "bg-green-500/5 border-green-500/20",
+                              overlay.type === "insight" && "bg-purple-500/5 border-purple-500/20",
+                              !overlay.type && "bg-muted/50"
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                {overlay.type && (
+                                  <Badge variant="outline" className="text-[10px] uppercase">
+                                    {overlay.type}
+                                  </Badge>
+                                )}
+                                <span>"{overlay.text}"</span>
+                              </div>
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                ⏱️ {overlay.timing}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Why This Works - Psychology for B-Roll */}
+                  {(item.psychology_trigger || item.why_this_works) && (
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Brain className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-semibold">Why This Works</span>
+                      </div>
+                      {item.psychology_trigger && (
+                        <Badge variant="outline" className="mb-2 text-xs bg-primary/10 text-primary border-primary/30">
+                          {item.psychology_trigger}
+                        </Badge>
+                      )}
+                      {item.why_this_works && (
+                        <p className="text-sm text-muted-foreground">{item.why_this_works}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Fallback generic tips if no item-specific data */}
+                  {!item.visual_hook && !(item as any).visual_guidance && !item.text_overlays?.length && !item.why_this_works && (
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground uppercase mb-2">B-Roll Tips</h5>
+                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                        <li>Capture variety: wide, medium, close-up shots</li>
+                        <li>Use slow, smooth movements</li>
+                        <li>Film in 4K if possible for flexibility</li>
+                        <li>Include lifestyle and product shots</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
               
               {item.format === "graphic" && (
-                <div>
-                  <h5 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Design Tips</h5>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>Keep text minimal and readable</li>
-                    <li>Use brand colors consistently</li>
-                    <li>Design for mobile-first (1080x1080 or 1080x1920)</li>
-                    <li>Include clear focal point</li>
-                  </ul>
+                <div className="space-y-4">
+                  {/* Design Direction */}
+                  {(item as any).design_direction && (
+                    <div className="p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+                      <div className="flex items-center gap-2 text-purple-600 mb-1">
+                        <Image className="h-3.5 w-3.5" />
+                        <span className="text-xs font-semibold uppercase">Design Direction</span>
+                      </div>
+                      <p className="text-sm">{(item as any).design_direction}</p>
+                    </div>
+                  )}
+
+                  {/* Graphic Copy (Text Overlays) */}
+                  {item.text_overlays && item.text_overlays.length > 0 && (
+                    <div className="space-y-2">
+                      <h5 className="text-xs font-semibold text-muted-foreground uppercase">📝 Graphic Copy</h5>
+                      <div className="space-y-2">
+                        {item.text_overlays.map((overlay, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              "p-2 rounded border text-sm",
+                              overlay.type === "hook" && "bg-blue-500/5 border-blue-500/20",
+                              overlay.type === "cta" && "bg-green-500/5 border-green-500/20",
+                              !overlay.type && "bg-muted/50"
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              {overlay.type && (
+                                <Badge variant="outline" className="text-[10px] uppercase">
+                                  {overlay.type}
+                                </Badge>
+                              )}
+                              <span>"{overlay.text}"</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Why This Works - Psychology for Graphics */}
+                  {(item.psychology_trigger || item.why_this_works) && (
+                    <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Brain className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-semibold">Why This Works</span>
+                      </div>
+                      {item.psychology_trigger && (
+                        <Badge variant="outline" className="mb-2 text-xs bg-primary/10 text-primary border-primary/30">
+                          {item.psychology_trigger}
+                        </Badge>
+                      )}
+                      {item.why_this_works && (
+                        <p className="text-sm text-muted-foreground">{item.why_this_works}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Fallback generic tips if no item-specific data */}
+                  {!item.text_overlays?.length && !item.why_this_works && !(item as any).design_direction && (
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Design Tips</h5>
+                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                        <li>Keep text minimal and readable</li>
+                        <li>Use brand colors consistently</li>
+                        <li>Design for mobile-first (1080x1080 or 1080x1920)</li>
+                        <li>Include clear focal point</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
               

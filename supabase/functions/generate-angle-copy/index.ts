@@ -146,6 +146,9 @@ testimonial quote from the content assets above.
 
     const systemPrompt = `You are an expert Meta Ads copywriter specializing in creating multiple high-converting copy variations for ${brandInfo?.name || 'this brand'}.
 
+## CRITICAL PERSPECTIVE RULE
+The person posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame copy accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it's clearly the founder's own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.
+
 ## YOUR TASK
 Generate 3-5 variations of ad copy for EACH creative angle. Each variation should use a DIFFERENT copy framework/formula.
 
