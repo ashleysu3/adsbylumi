@@ -571,12 +571,17 @@ export default function CreativeStudio() {
   }, [availableAngles, saveCreativeState]);
 
   const handleRegenerateClick = () => {
+    // Gate on psychology approval
+    if (workspace?.brands?.psychology_status && workspace.brands.psychology_status !== 'approved') {
+      toast.error("Please approve your Audience Psychology on the Dashboard before generating angles.");
+      return;
+    }
     // If user has downstream progress, show confirmation dialog
     if (gridData.length > 0 || productionItems.length > 0) {
       setShowRegenerateConfirm(true);
       return;
     }
-    generateAngles();
+    setShowContextInput(true);
   };
 
    // Fetch creative intelligence from past ad performance
