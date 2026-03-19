@@ -15,6 +15,8 @@ interface TestResult {
     tokenValid?: boolean;
     permissionsValid?: boolean;
     permissions?: string[];
+    missingPermissions?: string[];
+    hasInstagramMediaAccess?: boolean;
   };
   error?: string;
 }
