@@ -48,9 +48,7 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState<any>(null);
   const [offers, setOffers] = useState<any[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [checklistDismissed, setChecklistDismissed] = useState(() => {
-    return localStorage.getItem('onboarding-dismissed') === 'true';
-  });
+  const [checklistDismissed] = useState(false);
   const [emojiSettings, setEmojiSettings] = useState<EmojiSettings>({
     use_emojis: true,
     brand_emojis: DEFAULT_EMOJIS,
@@ -77,11 +75,7 @@ export default function Dashboard() {
     }
   }, [searchParams, setSearchParams]);
 
-  const handleDismissChecklist = () => {
-    setChecklistDismissed(true);
-    localStorage.setItem('onboarding-dismissed', 'true');
-    toast.success("You can always re-enable the checklist from settings");
-  };
+  // Checklist is no longer dismissible — it hides itself when all steps are complete
 
   useEffect(() => {
     fetchBrandData();
@@ -272,6 +266,29 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         setOffers(offersData || []);
+
+        // Auto-create digest_settings if none exist for this brand
+        const { data: existingDigest } = await supabase
+          .from("digest_settings")
+          .select("id")
+          .eq("brand_id", brandData.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingDigest) {
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          if (currentUser) {
+            await supabase.from("digest_settings").insert({
+              brand_id: brandData.id,
+              created_by: currentUser.id,
+              enabled: true,
+              send_day: "monday",
+              send_time: "08:00",
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York",
+              date_range_days: 7,
+            });
+          }
+        }
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to load brand data");
@@ -464,15 +481,12 @@ export default function Dashboard() {
         {/* System Alerts */}
         <AlertsBanner />
 
-        {/* Detailed Onboarding Checklist (collapsible) */}
-        {!checklistDismissed && (
-          <OnboardingChecklist
-            brand={brand}
-            offers={offers}
-            onEditBrand={() => setEditDialogOpen(true)}
-            onDismiss={handleDismissChecklist}
-          />
-        )}
+        {/* Detailed Onboarding Checklist (collapsible, non-dismissible) */}
+        <OnboardingChecklist
+          brand={brand}
+          offers={offers}
+          onEditBrand={() => setEditDialogOpen(true)}
+        />
 
         {/* Brand Details Card */}
         <Card variant="glow" data-section="brand-details">

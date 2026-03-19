@@ -208,6 +208,19 @@ export default function Onboarding() {
         if (subError) throw subError;
       }
 
+      // Auto-create digest settings so weekly reports are enabled by default
+      await supabase
+        .from("digest_settings")
+        .insert({
+          brand_id: brandData.id,
+          created_by: user.id,
+          enabled: true,
+          send_day: "monday",
+          send_time: "08:00",
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York",
+          date_range_days: 7,
+        });
+
       toast.info("Building your audience profile...");
       supabase.functions.invoke('generate-audience-psychology', {
         body: { brandId: brandData.id }

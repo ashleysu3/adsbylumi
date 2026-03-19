@@ -452,10 +452,10 @@ export default function Start() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">📬 Your weekly digest arrives every Monday morning</p>
-                  <p className="text-xs text-muted-foreground">Performance recap + Lumi's recommendations for the week.</p>
+                  <p className="text-xs text-muted-foreground">Performance recap + Lumi's recommendations for the week. Manage your schedule in Settings.</p>
                 </div>
-                <Button size="sm" variant="outline" className="text-xs flex-shrink-0" onClick={() => navigate('/settings/digest-preview')}>
-                  Preview Last Report
+                <Button size="sm" variant="outline" className="text-xs flex-shrink-0" onClick={() => navigate('/data')}>
+                  Manage Reports
                 </Button>
               </CardContent>
             </Card>
