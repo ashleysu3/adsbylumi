@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { MobileStepWizard, StepSlider } from "@/components/MobileStepWizard";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Target,
@@ -15,9 +18,13 @@ import {
   ChevronDown,
   Sparkles,
   ImagePlus,
+  MapPin,
+  Plus,
+  X,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
+import { detectLocationBusiness } from "@/lib/detect-location-business";
 
 interface MobileCampaignBuilderProps {
   workspace: any;
