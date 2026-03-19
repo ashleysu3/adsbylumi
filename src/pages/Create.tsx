@@ -1093,6 +1093,136 @@ export default function Create() {
                   </>
               }
 
+                {/* DM Leads goal */}
+                {selectedGoal === "dm_leads" &&
+              <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground italic">Where do you want people to message you?</p>
+                    <StepOption
+                  selected={dmConversionLocation === "instagram"}
+                  onSelect={() => setDmConversionLocation("instagram")}
+                  icon={<Instagram className="h-5 w-5" />}
+                  title="Instagram DMs"
+                  description="People will message you on Instagram" />
+                
+                    <StepOption
+                  selected={dmConversionLocation === "facebook"}
+                  onSelect={() => setDmConversionLocation("facebook")}
+                  icon={<MessageCircle className="h-5 w-5" />}
+                  title="Facebook Messenger"
+                  description="People will message you on Facebook" />
+                
+                    {dmConversionLocation && <>
+                      <div className="border-t pt-4 mt-2">
+                        <p className="text-sm text-muted-foreground italic mb-3">How do you want to create your ads?</p>
+                        <div className="space-y-3">
+                          <StepOption
+                            selected={dmContentChoice === "existing_posts"}
+                            onSelect={() => {
+                              setDmContentChoice("existing_posts");
+                              setSelectedOfferId(DM_LEADS_OFFER_ID);
+                              setShowSocialGrowthFlow(true);
+                            }}
+                            icon={<Image className="h-5 w-5" />}
+                            title="Use my existing posts"
+                            description="Pick Instagram posts to promote as DM ads" />
+                          
+                          <StepOption
+                            selected={dmContentChoice === "creative_studio"}
+                            onSelect={async () => {
+                              setDmContentChoice("creative_studio");
+                              setSelectedOfferId(DM_LEADS_OFFER_ID);
+                              // Go to creative studio flow — match template + generate angles
+                              const matched = templates.find((t) => t.slug === "dm-leads");
+                              if (matched) {
+                                setSelectedTemplateId(matched.id);
+                                setRecommendedTemplate(matched);
+                                setCurrentStep(2);
+                              }
+                            }}
+                            icon={<Wand2 className="h-5 w-5" />}
+                            title="Create new ads with Creative Studio"
+                            description="Generate DM-focused scripts, copy, and creative direction" />
+                        </div>
+                      </div>
+                    </>}
+
+                    {/* Show SocialGrowthFlow when existing posts chosen */}
+                    {showSocialGrowthFlow && dmContentChoice === "existing_posts" &&
+                      <SocialGrowthFlow
+                        brandId={brand.id}
+                        brandName={brand.name}
+                        instagramAccountId={brand.instagram_account_id}
+                        instagramAccountName={brand.instagram_account_name}
+                        audiencePsychology={brand.audience_psychology}
+                        fixedObjective="engagement"
+                        headerText="Pick the posts you want to drive DMs from 💬"
+                        headerSubtext="Select up to 6 posts. We'll put them in front of people most likely to message you."
+                        onComplete={async (data) => {
+                          try {
+                            setIsCreatingCampaign(true);
+                            const matchedTemplate = templates.find((t) => t.slug === "dm-leads") || templates[0];
+                            const campaignName = `DM Leads - ${dmConversionLocation === "instagram" ? "Instagram" : "Facebook Messenger"}`;
+
+                            const { data: strategy, error: strategyError } = await supabase
+                              .from("strategies")
+                              .insert({
+                                brand_id: brand.id,
+                                template_id: matchedTemplate?.id,
+                                name: campaignName,
+                                campaign_type: "dm_leads",
+                                status: "active"
+                              })
+                              .select()
+                              .single();
+                            if (strategyError) throw strategyError;
+
+                            const { data: workspace, error: workspaceError } = await supabase
+                              .from("campaign_workspaces")
+                              .insert({
+                                brand_id: brand.id,
+                                strategy_id: strategy.id,
+                                template_id: matchedTemplate?.id,
+                                name: campaignName,
+                                strategy_json: { ...matchedTemplate?.strategy_template, conversionLocation: dmConversionLocation } as any,
+                                progress_status: "ready_to_build",
+                                creative_json: {
+                                  dmLeadsCampaign: true,
+                                  conversionLocation: dmConversionLocation,
+                                  objective: "leads",
+                                  selectedPosts: data.selectedPosts.map((p) => ({
+                                    id: p.id,
+                                    media_url: p.media_url,
+                                    thumbnail_url: p.thumbnail_url,
+                                    media_type: p.media_type,
+                                    permalink: p.permalink,
+                                    caption: p.caption
+                                  }))
+                                } as any
+                              })
+                              .select()
+                              .single();
+                            if (workspaceError) throw workspaceError;
+
+                            clearSavedProgress();
+                            toast.success("Posts selected! Let's build your DM campaign.");
+                            navigate(`/campaigns/build?workspace=${workspace.id}`);
+                          } catch (error: any) {
+                            console.error("Error creating workspace:", error);
+                            toast.error(error.message || "Failed to create campaign");
+                          } finally {
+                            setIsCreatingCampaign(false);
+                          }
+                        }}
+                        onConnectInstagram={() => navigate("/settings/meta?returnTo=/create")}
+                        onBack={() => {
+                          setShowSocialGrowthFlow(false);
+                          setDmContentChoice("");
+                        }}
+                      />
+                    }
+                  </div>
+              }
+
                 {/* Local goal */}
                 {selectedGoal === "local" &&
               <div className="space-y-3">
