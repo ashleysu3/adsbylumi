@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     oauthUrl.searchParams.set('state', brandId);
     oauthUrl.searchParams.set(
       'scope',
-      'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list,instagram_basic,instagram_manage_insights'
+      'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list,pages_read_user_content,instagram_basic,instagram_manage_insights'
     );
     oauthUrl.searchParams.set('response_type', 'code');
 
