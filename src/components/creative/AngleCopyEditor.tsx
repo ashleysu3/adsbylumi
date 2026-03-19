@@ -57,6 +57,7 @@ export function AngleCopyEditor({
   autoGenerate = false,
   brandId,
   offerId,
+  perspectiveRole,
 }: AngleCopyEditorProps) {
   const [activeAngle, setActiveAngle] = useState(selectedAngleIds[0] || "");
   const [generating, setGenerating] = useState(false);
