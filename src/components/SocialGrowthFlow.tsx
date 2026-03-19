@@ -82,6 +82,7 @@ export function SocialGrowthFlow({
       });
 
       if (fetchError) throw fetchError;
+      if (data?.error) throw new Error(data.error);
 
       const fetchedPosts = data.posts || [];
       setPosts(fetchedPosts);
