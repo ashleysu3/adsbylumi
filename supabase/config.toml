@@ -215,3 +215,6 @@ verify_jwt = false
 
 [functions.stripe-admin]
 verify_jwt = false
+
+[functions.apply-optimizations]
+verify_jwt = false

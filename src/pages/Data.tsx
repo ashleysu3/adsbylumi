@@ -169,9 +169,14 @@ export default function AdPerformance() {
     additional_emails: [] as string[],
     enabled: true,
     alert_on_red: true,
+    auto_optimize: false,
   });
   const [digestLoading, setDigestLoading] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+
+  // Pending optimizations
+  const [pendingOptimizations, setPendingOptimizations] = useState<any[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
 
   // Campaign detail drawer (for report campaign cards)
   const [drawerCampaignId, setDrawerCampaignId] = useState<string | null>(null);
@@ -358,10 +363,48 @@ export default function AdPerformance() {
             additional_emails: data.additional_emails || [],
             enabled: data.enabled ?? true,
             alert_on_red: (data as any).alert_on_red ?? true,
+            auto_optimize: (data as any).auto_optimize ?? false,
           });
         }
       });
   }, [brandId]);
+
+  // Load pending optimizations
+  const fetchPendingOptimizations = useCallback(async () => {
+    if (!brandId) return;
+    setPendingLoading(true);
+    try {
+      const { data } = await supabase
+        .from('pending_optimizations')
+        .select('*')
+        .eq('brand_id', brandId)
+        .in('status', ['pending', 'applied'])
+        .order('created_at', { ascending: false });
+      setPendingOptimizations(data || []);
+    } catch (e) {
+      console.error('Error fetching pending optimizations:', e);
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [brandId]);
+
+  useEffect(() => {
+    if (brandId) fetchPendingOptimizations();
+  }, [brandId, fetchPendingOptimizations]);
+
+  const handleOptimizationAction = async (id: string, action: 'approved' | 'rejected' | 'undone') => {
+    try {
+      const newStatus = action === 'undone' ? 'rejected' : action;
+      await supabase
+        .from('pending_optimizations')
+        .update({ status: newStatus, resolved_at: new Date().toISOString() } as any)
+        .eq('id', id);
+      toast.success(action === 'approved' ? 'Optimization approved' : action === 'rejected' ? 'Optimization dismissed' : 'Optimization undone');
+      fetchPendingOptimizations();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update optimization');
+    }
+  };
 
   const loadOptimizationReport = useCallback(async () => {
     if (!brandId) return;
@@ -803,6 +846,7 @@ export default function AdPerformance() {
           additional_emails: digestSettings.additional_emails,
           enabled: digestSettings.enabled,
           alert_on_red: digestSettings.alert_on_red,
+          auto_optimize: digestSettings.auto_optimize,
         } as any, { onConflict: 'brand_id' });
 
       if (error) throw error;
@@ -1121,7 +1165,50 @@ export default function AdPerformance() {
           </div>
         )}
 
-        {/* Import Campaigns Modal */}
+        {/* ─── Pending Optimizations ─── */}
+        {pendingOptimizations.length > 0 && view === 'home' && (
+          <div className="space-y-3 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <img src={lumiLogo} className="h-5 w-5" alt="" />
+              <h2 className="text-lg font-bold text-foreground">Pending Actions</h2>
+              <Badge variant="outline" className="text-xs">{pendingOptimizations.filter(o => o.status === 'pending').length} pending</Badge>
+            </div>
+            {pendingOptimizations.map((opt) => (
+              <Card key={opt.id} className={opt.auto_applied ? 'border-primary/30 bg-primary/5' : ''}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant={opt.auto_applied ? 'default' : 'outline'} className="text-xs">
+                          {opt.auto_applied ? '✦ Auto-applied' : opt.recommendation_type.replace(/_/g, ' ')}
+                        </Badge>
+                      </div>
+                      <p className="text-sm">{opt.action_description}</p>
+                    </div>
+                    <div className="flex gap-1.5 shrink-0">
+                      {opt.status === 'pending' && (
+                        <>
+                          <Button size="sm" variant="default" onClick={() => handleOptimizationAction(opt.id, 'approved')}>
+                            Approve
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleOptimizationAction(opt.id, 'rejected')}>
+                            Dismiss
+                          </Button>
+                        </>
+                      )}
+                      {opt.status === 'applied' && opt.auto_applied && (
+                        <Button size="sm" variant="outline" onClick={() => handleOptimizationAction(opt.id, 'undone')}>
+                          Undo
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {brandId && metaAccountId &&
           <ImportCampaignsModal
             open={importModalOpen}
@@ -1395,6 +1482,16 @@ export default function AdPerformance() {
                 <Label className="text-sm">Enable digest</Label>
                 <Switch checked={digestSettings.enabled}
                   onCheckedChange={v => setDigestSettings(p => ({ ...p, enabled: v }))} />
+              </div>
+              <div className="flex items-center justify-between bg-primary/5 rounded-lg p-3 border border-primary/20">
+                <div>
+                  <Label className="text-sm font-medium">Auto-optimize</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Let LUMI auto-apply high-priority actions (pause budget hogs, scale winners)
+                  </p>
+                </div>
+                <Switch checked={digestSettings.auto_optimize}
+                  onCheckedChange={v => setDigestSettings(p => ({ ...p, auto_optimize: v }))} />
               </div>
               <Button onClick={saveDigestSettings} disabled={digestLoading} className="w-full">
                 {digestLoading ? 'Saving...' : 'Save Settings'}
