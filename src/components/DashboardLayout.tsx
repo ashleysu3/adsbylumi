@@ -18,7 +18,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ArrowRight, X } from "lucide-react";
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
-import { CancellationPolicyBanner } from "@/components/CancellationPolicyBanner";
+
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -128,7 +128,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           onShowWalkthrough={() => startTour()}
         />
         <SubscriptionBanner />
-        <CancellationPolicyBanner />
         <main className="px-4 py-4">{children}</main>
         <DashboardFooter />
         <MobileBottomNav />
@@ -180,7 +179,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
 
           <SubscriptionBanner />
-          <CancellationPolicyBanner />
+          
           <main className="flex-1 container mx-auto px-4 md:px-6 py-4 md:py-6">
             {children}
           </main>

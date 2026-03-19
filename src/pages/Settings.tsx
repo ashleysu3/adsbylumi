@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 import EmojiQuickPicker from '@/components/EmojiQuickPicker';
+import { CancellationPolicyBanner } from '@/components/CancellationPolicyBanner';
 
 interface NotificationPrefs {
   report_frequency: 'off' | 'daily' | 'weekly';
@@ -270,6 +271,7 @@ export default function Settings() {
 
   return (
     <DashboardLayout>
+      <CancellationPolicyBanner />
       <div className="space-y-6 pb-12">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
