@@ -406,6 +406,7 @@ export default function AdPerformance() {
     }
   };
 
+  const loadOptimizationReport = useCallback(async () => {
     if (!brandId) return;
 
     // Check for recent report
