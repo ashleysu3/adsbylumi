@@ -219,6 +219,7 @@ export function CreativeFlowModal({ open, onOpenChange, workspaceId, onComplete 
             price_point: workspace.offer_price,
           },
           audiencePsychology: workspace.brands?.audience_psychology,
+          perspectiveRole: workspace.creative_json?.preGenerationContext?.perspectiveRole || 'seller',
         }
       });
 
