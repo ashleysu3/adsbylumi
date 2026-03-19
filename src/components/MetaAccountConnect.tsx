@@ -577,8 +577,16 @@ export function MetaAccountConnect({
               {pages.length === 0 ? (
                 <Card className="p-4 border-destructive/50 bg-destructive/5">
                   <p className="text-sm text-destructive font-medium mb-2">No Pages Found</p>
-                  <p className="text-xs text-muted-foreground">
-                    You need a Facebook Page to create ads. Please create a Page in Facebook and try again.
+                  <p className="text-xs text-muted-foreground mb-2">
+                    We couldn't find any Facebook Pages linked to this account. This can happen if:
+                  </p>
+                  <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>You're logged into a different Facebook account than expected</li>
+                    <li>Your page is managed through Meta Business Manager</li>
+                    <li>You don't have Admin or Editor access to the page</li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Try disconnecting and reconnecting with the correct Facebook account, or make sure you have Admin access to the page.
                   </p>
                 </Card>
               ) : (
