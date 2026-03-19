@@ -93,6 +93,19 @@ export function AlertsBanner() {
 
   if (alerts.length === 0) return null;
 
+  // Returns 'error' for invalid/expired token alerts so they render as destructive/red
+  const getEffectiveSeverity = (alert: Alert): string => {
+    if (
+      alert.type?.includes('invalid') ||
+      alert.type?.includes('token') ||
+      alert.type === 'meta_token_invalid' ||
+      alert.type === 'meta_token_expired'
+    ) {
+      return 'error';
+    }
+    return alert.severity;
+  };
+
   const getSeverityStyles = (severity: string) => {
     switch (severity) {
       case 'error':
@@ -130,8 +143,18 @@ export function AlertsBanner() {
   return (
     <div className="space-y-2 mb-6">
       {alerts.map((alert) => {
-        const styles = getSeverityStyles(alert.severity);
-        const Icon = getIcon(alert.severity);
+        const effectiveSeverity = getEffectiveSeverity(alert);
+        const styles = getSeverityStyles(effectiveSeverity);
+        const Icon = getIcon(effectiveSeverity);
+        // Override action label for token-related alerts to say "Reconnect now"
+        const isTokenAlert =
+          alert.type?.includes('invalid') ||
+          alert.type?.includes('token') ||
+          alert.type === 'meta_token_invalid' ||
+          alert.type === 'meta_token_expired';
+        const actionLabel = isTokenAlert && alert.action_url
+          ? 'Reconnect now'
+          : alert.action_label;
         
         return (
           <div
@@ -152,14 +175,14 @@ export function AlertsBanner() {
                 {alert.message}
               </p>
               
-              {alert.action_url && alert.action_label && (
+              {alert.action_url && actionLabel && (
                 <Button
                   variant="link"
                   size="sm"
                   className="h-auto p-0 mt-2 text-sm font-medium"
                   onClick={() => handleAction(alert)}
                 >
-                  {alert.action_label}
+                  {actionLabel}
                   <ExternalLink className="h-3 w-3 ml-1" />
                 </Button>
               )}
