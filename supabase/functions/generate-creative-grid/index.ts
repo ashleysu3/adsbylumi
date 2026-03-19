@@ -12,19 +12,20 @@ Deno.serve(async (req) => {
   try {
     const { 
       angles, 
-      brandName, 
-      strategyData, 
-      audiencePsychology, 
-      offerData,
-      brandVoice,
-      messagingGuidelines,
-      productPsychology,
-       nicheContext,
-       brandId,
-       offerId,
-       offerAudiencePsychology,
-       creativeIntelligence
-    } = await req.json();
+       brandName, 
+       strategyData, 
+       audiencePsychology, 
+       offerData,
+       brandVoice,
+       messagingGuidelines,
+       productPsychology,
+        nicheContext,
+        brandId,
+        offerId,
+        offerAudiencePsychology,
+        creativeIntelligence,
+        perspectiveRole
+     } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
