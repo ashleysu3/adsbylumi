@@ -359,6 +359,7 @@ export default function AdPerformance() {
             additional_emails: data.additional_emails || [],
             enabled: data.enabled ?? true,
             alert_on_red: (data as any).alert_on_red ?? true,
+            auto_optimize: (data as any).auto_optimize ?? false,
           });
         }
       });
