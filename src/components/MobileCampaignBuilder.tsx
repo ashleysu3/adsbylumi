@@ -100,6 +100,12 @@ export function MobileCampaignBuilder({
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
+  const updateLocationAddress = (index: number, value: string) => {
+    const updated = [...locationAddresses];
+    updated[index] = value;
+    setLocationAddresses(updated);
+  };
+
   useEffect(() => {
     const newAnswers = {
       ...answers,
@@ -115,9 +121,17 @@ export function MobileCampaignBuilder({
       
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
+      // Smart location targeting
+      ...(showSmartLocation && {
+        locationTargeting: {
+          addresses: locationAddresses.filter(a => a.trim()),
+          radius: locationRadius,
+        },
+      }),
+      ...(!showSmartLocation && !usesLocationTargeting && { locationTargeting: undefined }),
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, showSmartLocation, locationAddresses, locationRadius]);
 
   const handleNext = () => { if (step < 2) setStep(step + 1); };
   const handleBack = () => { if (step > 1) setStep(step - 1); };
