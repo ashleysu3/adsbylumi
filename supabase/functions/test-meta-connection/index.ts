@@ -167,14 +167,16 @@ Deno.serve(async (req) => {
         tokenValid: true,
         permissionsValid: missingPermissions.length === 0,
         permissions: grantedPermissions,
+        missingPermissions: missingPermissions.length > 0 ? missingPermissions : undefined,
         adAccountId: accountId,
         adAccountName: accountData.name,
-        pageName: brand.page_name || undefined
+        pageName: brand.page_name || undefined,
+        hasInstagramMediaAccess,
       }
     };
 
     if (missingPermissions.length > 0) {
-      result.message = 'Connection works but some permissions are missing';
+      result.message = `Connection works but some permissions are missing: ${missingPermissions.join(', ')}. Please disconnect and reconnect your Meta account to grant updated permissions.`;
       result.details!.permissionsValid = false;
     }
 
