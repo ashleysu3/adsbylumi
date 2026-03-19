@@ -81,18 +81,14 @@ export interface CreativeContext {
      );
    };
  
-   const handleGenerate = () => {
-     const hasContext = quickSelections.length > 0 || additionalNotes.trim();
-     if (hasContext) {
-       onGenerate({
-         quickSelections,
-         additionalNotes: additionalNotes.trim(),
-         timestamp: new Date().toISOString()
-       });
-     } else {
-       onGenerate(null);
-     }
-   };
+    const handleGenerate = () => {
+      onGenerate({
+        quickSelections,
+        additionalNotes: additionalNotes.trim(),
+        perspectiveRole,
+        timestamp: new Date().toISOString()
+      });
+    };
  
    const content = (
      <div className="space-y-4">
