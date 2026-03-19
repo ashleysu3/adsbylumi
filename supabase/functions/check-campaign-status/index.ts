@@ -132,6 +132,21 @@ serve(async (req) => {
         })
         .eq('id', workspaceId);
 
+      // Log to unified ad_action_log
+      await supabase.from('ad_action_log').insert({
+        brand_id: brand.id,
+        workspace_id: workspaceId,
+        action_type: action === 'pause' ? `${targetType}_paused` : `${targetType}_activated`,
+        action_detail: {
+          entity_id: targetId,
+          entity_type: targetType,
+          requested_status: newStatus,
+          verified_status: verifiedStatus,
+        },
+        source: 'user',
+        meta_entity_id: targetId,
+      });
+
       return new Response(
         JSON.stringify({ 
           success: true, 
