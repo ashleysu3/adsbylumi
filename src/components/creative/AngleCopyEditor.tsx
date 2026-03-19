@@ -128,6 +128,7 @@ export function AngleCopyEditor({
           neverUseWords: brandInfo?.never_use_words || [],
           brandId,
           offerId,
+          perspectiveRole: perspectiveRole || 'seller',
         },
       });
       
