@@ -169,6 +169,7 @@ export default function AdPerformance() {
     additional_emails: [] as string[],
     enabled: true,
     alert_on_red: true,
+    auto_optimize: false,
   });
   const [digestLoading, setDigestLoading] = useState(false);
   const [newEmail, setNewEmail] = useState('');
