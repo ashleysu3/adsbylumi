@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 import EmojiQuickPicker from '@/components/EmojiQuickPicker';
+import { CancellationPolicyBanner } from '@/components/CancellationPolicyBanner';
 
 interface NotificationPrefs {
   report_frequency: 'off' | 'daily' | 'weekly';
