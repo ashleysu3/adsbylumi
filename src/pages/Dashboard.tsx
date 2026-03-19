@@ -48,9 +48,7 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState<any>(null);
   const [offers, setOffers] = useState<any[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [checklistDismissed, setChecklistDismissed] = useState(() => {
-    return localStorage.getItem('onboarding-dismissed') === 'true';
-  });
+  const [checklistDismissed] = useState(false);
   const [emojiSettings, setEmojiSettings] = useState<EmojiSettings>({
     use_emojis: true,
     brand_emojis: DEFAULT_EMOJIS,
