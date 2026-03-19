@@ -1,17 +1,20 @@
- import { useState } from "react";
- import { Card, CardContent } from "@/components/ui/card";
- import { Button } from "@/components/ui/button";
- import { Checkbox } from "@/components/ui/checkbox";
- import { Textarea } from "@/components/ui/textarea";
- import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
- import { Sparkles, ChevronDown, Lightbulb, Loader2 } from "lucide-react";
- import { cn } from "@/lib/utils";
- 
- export interface CreativeContext {
-   quickSelections: string[];
-   additionalNotes: string;
-   timestamp: string;
- }
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Sparkles, ChevronDown, Lightbulb, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export interface CreativeContext {
+  quickSelections: string[];
+  additionalNotes: string;
+  perspectiveRole: "seller" | "buyer" | "both";
+  timestamp: string;
+}
  
  interface CreativeContextInputProps {
    onGenerate: (context: CreativeContext | null) => void;
