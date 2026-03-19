@@ -65,6 +65,9 @@ export function MobileCampaignBuilder({
   const defaultAudience = template?.audience_type || "broad";
   const defaultCreativeType = isSocialGrowth ? "existing_posts" : (strategyJson?.creativeType || "video");
 
+  const templateStrategy = template?.strategy_template as any;
+  const usesLocationTargeting = templateStrategy?.location_type === "radius" || templateStrategy?.location_type === "places";
+
   // Only 2 steps: Budget → Review
   const [step, setStep] = useState(1);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -76,8 +79,24 @@ export function MobileCampaignBuilder({
   const [additionalPosts, setAdditionalPosts] = useState<SelectedPost[]>(
     answers.additionalPosts || []
   );
+
+  // Smart location state
+  const [showSmartLocation, setShowSmartLocation] = useState(
+    !!answers.locationTargeting && !usesLocationTargeting
+  );
+  const [locationAddresses, setLocationAddresses] = useState<string[]>(
+    answers.locationTargeting?.addresses || [""]
+  );
+  const [locationRadius, setLocationRadius] = useState(
+    answers.locationTargeting?.radius || 15
+  );
+
   const { activeBrand } = useBrand();
   const hasInstagram = !!activeBrand?.meta_account_id && !!(workspace?.brands?.instagram_account_id);
+
+  const locationDetection = !usesLocationTargeting
+    ? detectLocationBusiness(workspace.brands)
+    : { isLocal: false, example: "" };
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
