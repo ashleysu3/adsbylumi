@@ -1,45 +1,44 @@
 
 
-## Two Issues to Fix
+## Make Perspective a User Choice, Not a Hard Rule
 
-### Issue 1: LUMI Assumes the User Experienced the Results
+### What Changes
 
-**Problem**: The AI prompts in `generate-creative-angles`, `generate-creative-grid`, and `generate-angle-copy` don't distinguish between the user (brand owner) and their customers. When the AI generates hooks like "I lost 20 lbs using this method," it frames the user as the one who experienced the transformation — but in most cases, it's their *customers* who had those results. The user is the coach/service provider selling the offer.
+**1. Add a "Who experienced the results?" question to the pre-generation context UI**
 
-**Fix**: Add a clear directive to the system prompts in all three edge functions:
+In `CreativeContextInput.tsx`, add a new radio group question (always visible, not inside the collapsible) asking:
 
-- **`generate-creative-angles/index.ts`** (line ~190): Add a section to the system prompt clarifying the user is the SELLER, not the BUYER. Their customers experienced the results. Scripts should use "my client" / "my students" framing, not "I experienced this."
-  
-- **`generate-creative-grid/index.ts`** (line ~135): Same directive — hooks and scripts should frame the user as the expert/provider sharing their clients' transformations, not their own.
-  
-- **`generate-angle-copy/index.ts`** (line ~147): Same directive for ad copy — primary text should reference client results ("My clients...", "She went from...") rather than assuming the user personally experienced the transformation.
+> **Who experienced the results from your offer?**
+> - **My customers/clients** — "I help others get results" (coach, agency, service provider)
+> - **Me personally** — "I experienced the transformation myself" (founder story, personal brand)
+> - **Both** — "I got results AND so do my clients"
 
-The directive will read something like:
+This gets stored in the `CreativeContext` interface as a new `perspectiveRole` field (`"seller"` | `"buyer"` | `"both"`).
 
-> CRITICAL PERSPECTIVE RULE: The person recording/posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame scripts accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it's clearly the founder's own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.
+**2. Update `CreativeContext` interface**
 
----
+Add `perspectiveRole: "seller" | "buyer" | "both"` to the interface exported from `CreativeContextInput.tsx`.
 
-### Issue 2: Production Checklist Expanded View Missing CSV-Only Info
+**3. Pass perspective through to edge functions**
 
-**Problem**: The `CreativeChecklistCard` expanded view already shows talking head details well (verbal/written/visual hooks, scripts, text overlays, delivery style, psychology). However, for `broll` and `graphic` formats, the expanded view shows only generic tips ("Capture variety", "Keep text minimal") instead of the item-specific data that exists in the CSV export: text overlays, visual direction, and why-it-works psychology.
+In `CreativeStudio.tsx`, the `preGenerationContext` already flows to all three edge functions. No additional wiring needed — the new field travels with the existing context object.
 
-**Fix**: Update `CreativeChecklistCard.tsx` to show item-specific data for ALL formats, not just talking heads:
+**4. Replace hard-coded perspective rule in 3 edge functions**
 
-- **B-Roll items**: Show `text_overlays`, `visual_hook`/`guidance` as "Visual Direction", and `why_this_works` psychology — replacing or supplementing the generic "B-Roll Tips" list.
-  
-- **Graphic items**: Show `text_overlays` (as "Graphic Copy"), `guidance` as "Design Direction", and `why_this_works` — replacing or supplementing the generic "Design Tips" list.
+In `generate-creative-angles`, `generate-creative-grid`, and `generate-angle-copy`:
 
-This means extracting the talking-head-only sections (text overlays, psychology card) into shared sections that render for ALL formats when the data exists. The generic tips can remain as fallbacks when item-specific data isn't available.
+- Read `preGenerationContext.perspectiveRole` 
+- If `"seller"`: Use the current directive (frame as client results)
+- If `"buyer"`: Frame as personal experience ("I went from...")
+- If `"both"`: Allow both framings, mixing personal story with client results
+- If not set (legacy workspaces): Default to current seller framing as a reasonable default
 
-**Files changed**: `src/components/creative/CreativeChecklistCard.tsx` (~40 lines moved/restructured)
+### Files Changed
 
----
-
-### Summary
-
-| Change | Files | Scope |
-|--------|-------|-------|
-| Add seller-vs-customer perspective directive | 3 edge functions | ~5 lines each |
-| Show full item data for all formats in checklist | `CreativeChecklistCard.tsx` | ~40 lines restructured |
+| File | Change |
+|------|--------|
+| `src/components/creative/CreativeContextInput.tsx` | Add radio group for perspective, update interface |
+| `supabase/functions/generate-creative-angles/index.ts` | Dynamic perspective rule based on context |
+| `supabase/functions/generate-creative-grid/index.ts` | Same dynamic rule |
+| `supabase/functions/generate-angle-copy/index.ts` | Same dynamic rule |
 
