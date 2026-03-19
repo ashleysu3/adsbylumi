@@ -64,13 +64,16 @@ export interface CreativeContext {
    existingContext,
    compact = false
  }: CreativeContextInputProps) {
-   const [expanded, setExpanded] = useState(!!existingContext);
-   const [quickSelections, setQuickSelections] = useState<string[]>(
-     existingContext?.quickSelections || []
-   );
-   const [additionalNotes, setAdditionalNotes] = useState(
-     existingContext?.additionalNotes || ""
-   );
+    const [expanded, setExpanded] = useState(!!existingContext);
+    const [quickSelections, setQuickSelections] = useState<string[]>(
+      existingContext?.quickSelections || []
+    );
+    const [additionalNotes, setAdditionalNotes] = useState(
+      existingContext?.additionalNotes || ""
+    );
+    const [perspectiveRole, setPerspectiveRole] = useState<"seller" | "buyer" | "both">(
+      existingContext?.perspectiveRole || "seller"
+    );
  
    const toggleSelection = (id: string) => {
      setQuickSelections(prev =>
