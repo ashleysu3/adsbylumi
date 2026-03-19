@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Instagram, AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatInvokeError } from "@/lib/formatInvokeError";
 
 export interface SelectedPost {
   id: string;
@@ -54,7 +55,7 @@ export function ExistingPostPicker({
       }));
       setPosts(fetched);
     } catch (e: any) {
-      setError(e.message || "Failed to load posts");
+      setError(formatInvokeError(e));
     } finally {
       setLoading(false);
     }
