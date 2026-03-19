@@ -305,6 +305,12 @@ export function ProductionManager({
       setOverallStrategy(data.overallStrategy || "");
       setShowTopOnly(true);
       toast.success("Lumi's Top 5 ready!");
+      // Prompt user to save the others
+      const rankedIds = (data.rankedItems || []).map((r: any) => r.id);
+      const nonRankedCount = productionItems.filter(i => !rankedIds.includes(i.id)).length;
+      if (nonRankedCount > 0 && onSaveToLibrary) {
+        setShowSaveOthersPrompt(true);
+      }
     } catch (e: any) {
       console.error("Ranking error:", e);
       toast.error(e.message || "Failed to rank concepts");

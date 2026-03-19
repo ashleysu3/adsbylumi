@@ -42,7 +42,7 @@ export function AudiencePsychology({
   psychologyContentHash,
   psychologyGeneratedAt 
 }: AudiencePsychologyProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(status === 'completed' && !!psychology);
   const [generating, setGenerating] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editedPsychology, setEditedPsychology] = useState<any>(null);

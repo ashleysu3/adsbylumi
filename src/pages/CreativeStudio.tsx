@@ -1562,10 +1562,15 @@ export default function CreativeStudio() {
           brandId={brandId}
           campaignObjective={workspace?.strategy_json?.objective}
         />
-        {/* Auto-save status indicator */}
+        {/* Auto-save status indicator - unified across all tabs */}
         {workspace && (
           <div className="fixed bottom-4 right-4 z-30 bg-background/80 backdrop-blur-sm rounded-full px-3 py-1.5 border shadow-sm">
-            <AutoSaveIndicator status={saveStatus} size="sm" />
+            <AutoSaveIndicator status={
+              saveStatus === "saving" || copySaveStatus === "saving" ? "saving" :
+              saveStatus === "error" || copySaveStatus === "error" ? "error" :
+              saveStatus === "saved" || copySaveStatus === "saved" ? "saved" :
+              "idle"
+            } size="sm" />
           </div>
         )}
       </motion.div>
