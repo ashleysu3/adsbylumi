@@ -222,6 +222,24 @@ Deno.serve(async (req) => {
       console.log('Business Manager pages fetch skipped (non-fatal):', bmError);
     }
 
+    // Verify Instagram media access for each discovered IG account
+    const igPermissionWarnings: string[] = [];
+    for (const igAccount of instagramAccounts) {
+      try {
+        const testUrl = `https://graph.facebook.com/v18.0/${igAccount.id}/media?fields=id&limit=1&access_token=${finalToken}`;
+        const testRes = await fetch(testUrl);
+        const testData = await testRes.json();
+        if (!testRes.ok || testData.error) {
+          console.warn(`Instagram media access failed for ${igAccount.id}:`, testData.error?.message);
+          igPermissionWarnings.push(`Cannot read posts for @${igAccount.username || igAccount.id}: ${testData.error?.message || 'Permission denied'}`);
+        } else {
+          console.log(`Instagram media access verified for ${igAccount.id}`);
+        }
+      } catch (testErr) {
+        console.warn(`Instagram media test error for ${igAccount.id}:`, testErr);
+      }
+    }
+
     // Store the access token securely in Supabase Vault
     const { data: vaultResult, error: vaultError } = await supabase
       .rpc('store_meta_token', {
