@@ -179,7 +179,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
 
           <SubscriptionBanner />
-          <CancellationPolicyBanner />
+          
           <main className="flex-1 container mx-auto px-4 md:px-6 py-4 md:py-6">
             {children}
           </main>
