@@ -1,21 +1,33 @@
-## Smart Location Targeting Prompt for Non-Local Campaigns
-(Completed — see previous plan for details)
 
-## Fix Weekly Reports and Auto-Optimizations
-(Completed)
 
-### What was done
+## Fix: Instagram Posts Showing "No Posts Found" Instead of Permission Error
 
-1. **`run-optimization-report` now supports service-role mode** — When called with the service-role key (from cron/schedule-digests), it skips user JWT auth and looks up userId from the brand record. Interactive dashboard calls still use normal user auth.
+### Root Cause
 
-2. **`schedule-digests` uses service-role key** — Now calls `run-optimization-report` with the service-role key instead of anon key, so real reports are generated in cron context (no more empty stub reports).
+The edge function `analyze-instagram-posts` correctly detects the Meta API error (code 10: "Application does not have permission for this action") and returns a 400 response with an error message. However, `supabase.functions.invoke` does not throw on non-2xx responses -- it returns the error body in `data`. So:
 
-3. **Hourly cron job created** — `schedule-digests` is triggered every hour via pg_cron. The function internally handles timezone-aware day/time matching.
+1. `fetchError` is `null` (no network error)
+2. `data` contains `{ error: "Instagram permissions need to be updated..." }`
+3. The code reads `data.posts` which is `undefined`, defaults to `[]`
+4. The UI shows "No posts found" instead of the actual permission error
 
-4. **`apply-optimizations` edge function created** — After each digest report, schedule-digests calls this function to queue (or auto-apply) optimization recommendations from the report into the `pending_optimizations` table.
+### Fix
 
-5. **`pending_optimizations` table created** — Stores queued recommendations with status (pending/approved/rejected/applied), auto_applied flag, and meta_action payload.
+In **`src/components/SocialGrowthFlow.tsx`** `fetchPosts()` function (~line 84-88):
+- After checking `fetchError`, also check if `data?.error` exists and throw it
+- This surfaces the real error message ("Instagram permissions need to be updated. Please disconnect and reconnect your Meta account in Settings")
 
-6. **`auto_optimize` preference added to `digest_settings`** — When enabled, high-priority actions are auto-applied. When disabled (default), actions are queued for manual user approval.
+Same fix in **`src/components/ExistingPostPicker.tsx`** `fetchPosts()` (~line 42-48):
+- Same pattern: check `data?.error` before reading `data?.posts`
 
-7. **Pending optimizations UI added to Data page** — Shows a "Pending Actions" section with Approve/Dismiss buttons for manual actions, and Undo for auto-applied actions. Auto-optimize toggle added to the digest settings dialog.
+Additionally, improve the error display in `SocialGrowthFlow`:
+- When `error` state is set and we're on `post_selection` step, show the error message with a reconnect prompt instead of "No posts found"
+- Add a "Reconnect Meta" button that links to `/settings/meta`
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `src/components/SocialGrowthFlow.tsx` | Check `data?.error` after invoke; show error with reconnect CTA |
+| `src/components/ExistingPostPicker.tsx` | Check `data?.error` after invoke |
+
