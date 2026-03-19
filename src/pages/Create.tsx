@@ -179,6 +179,10 @@ export default function Create() {
 
   // Social growth flow state
   const [showSocialGrowthFlow, setShowSocialGrowthFlow] = useState(false);
+  
+  // DM Leads state
+  const [dmConversionLocation, setDmConversionLocation] = useState<"instagram" | "facebook">("instagram");
+  const [dmContentChoice, setDmContentChoice] = useState<"existing_posts" | "creative_studio" | "">("");
 
   // Resume state
   const [showResumePrompt, setShowResumePrompt] = useState(false);
