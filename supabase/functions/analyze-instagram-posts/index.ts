@@ -58,7 +58,12 @@ Deno.serve(async (req) => {
 
     if (!postsResponse.ok) {
       console.error('Error fetching posts:', postsData);
-      throw new Error(postsData.error?.message || 'Failed to fetch Instagram posts');
+      const metaError = postsData.error?.message || 'Failed to fetch Instagram posts';
+      // Permission error (code 10) typically means the user needs to reconnect with updated permissions
+      if (postsData.error?.code === 10) {
+        throw new Error('Instagram permissions need to be updated. Please disconnect and reconnect your Meta account in Settings to grant the latest permissions.');
+      }
+      throw new Error(metaError);
     }
 
     const posts: InstagramPost[] = postsData.data || [];
