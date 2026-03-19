@@ -395,10 +395,24 @@ export default function AdPerformance() {
   const handleOptimizationAction = async (id: string, action: 'approved' | 'rejected' | 'undone') => {
     try {
       const newStatus = action === 'undone' ? 'rejected' : action;
+      const opt = pendingOptimizations.find(o => o.id === id);
       await supabase
         .from('pending_optimizations')
         .update({ status: newStatus, resolved_at: new Date().toISOString() } as any)
         .eq('id', id);
+
+      // Log user action to ad_action_log
+      if (opt && brandId) {
+        await supabase.from('ad_action_log').insert({
+          brand_id: brandId,
+          workspace_id: opt.workspace_id,
+          action_type: opt.recommendation_type || 'optimization_' + action,
+          action_detail: { optimization_id: id, action, description: opt.action_description },
+          source: action === 'approved' ? 'lumi_approved' : 'user',
+          meta_entity_id: null,
+        });
+      }
+
       toast.success(action === 'approved' ? 'Optimization approved' : action === 'rejected' ? 'Optimization dismissed' : 'Optimization undone');
       fetchPendingOptimizations();
     } catch (e: any) {
