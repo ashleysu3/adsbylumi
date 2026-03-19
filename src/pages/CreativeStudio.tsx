@@ -953,10 +953,10 @@ export default function CreativeStudio() {
   }, [productionItems, workspace, availableAngles, saveProductionItems]);
 
   const workflowTabs = [
-    { id: "angles" as const, label: "Angles", icon: Target },
-    { id: "concepts" as const, label: "Creative Concepts", icon: Lightbulb },
+    { id: "angles" as const, label: "Strategy", icon: Target },
+    { id: "concepts" as const, label: "Concepts", icon: Lightbulb },
     { id: "copy" as const, label: "Ad Copy", icon: FileText },
-    { id: "build" as const, label: "Creation", icon: Rocket },
+    { id: "build" as const, label: "Production", icon: Rocket },
   ];
 
   // Tab progress indicators
@@ -1022,10 +1022,15 @@ export default function CreativeStudio() {
                 <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
                   Create a new ad campaign first, then come back here to generate creative angles, hooks, and copy.
                 </p>
-                <Button onClick={() => navigate("/create")} className="gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Create New Ad
-                </Button>
+                <div className="flex flex-col items-center gap-3">
+                  <Button onClick={() => navigate("/create")} className="gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Create New Ad
+                  </Button>
+                  <Button variant="link" size="sm" className="text-muted-foreground text-xs" onClick={() => navigate("/campaigns")}>
+                    Or go to Campaigns page →
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -1107,7 +1112,7 @@ export default function CreativeStudio() {
                   )}
                 >
                   <t.icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t.label}</span>
+                  <span className="text-xs sm:text-sm">{t.label}</span>
                   {tabProgress[t.id] && (
                     <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-background flex items-center justify-center">
                       <Check className="h-2 w-2 text-white" />
