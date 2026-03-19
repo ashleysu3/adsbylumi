@@ -18,7 +18,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ArrowRight, X } from "lucide-react";
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
-import { CancellationPolicyBanner } from "@/components/CancellationPolicyBanner";
+
 
 interface DashboardLayoutProps {
   children: ReactNode;
