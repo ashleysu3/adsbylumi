@@ -369,7 +369,43 @@ export default function AdPerformance() {
       });
   }, [brandId]);
 
-  const loadOptimizationReport = useCallback(async () => {
+  // Load pending optimizations
+  const fetchPendingOptimizations = useCallback(async () => {
+    if (!brandId) return;
+    setPendingLoading(true);
+    try {
+      const { data } = await supabase
+        .from('pending_optimizations')
+        .select('*')
+        .eq('brand_id', brandId)
+        .in('status', ['pending', 'applied'])
+        .order('created_at', { ascending: false });
+      setPendingOptimizations(data || []);
+    } catch (e) {
+      console.error('Error fetching pending optimizations:', e);
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [brandId]);
+
+  useEffect(() => {
+    if (brandId) fetchPendingOptimizations();
+  }, [brandId, fetchPendingOptimizations]);
+
+  const handleOptimizationAction = async (id: string, action: 'approved' | 'rejected' | 'undone') => {
+    try {
+      const newStatus = action === 'undone' ? 'rejected' : action;
+      await supabase
+        .from('pending_optimizations')
+        .update({ status: newStatus, resolved_at: new Date().toISOString() } as any)
+        .eq('id', id);
+      toast.success(action === 'approved' ? 'Optimization approved' : action === 'rejected' ? 'Optimization dismissed' : 'Optimization undone');
+      fetchPendingOptimizations();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to update optimization');
+    }
+  };
+
     if (!brandId) return;
 
     // Check for recent report
