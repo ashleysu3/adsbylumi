@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { detectLocationBusiness } from "@/lib/detect-location-business";
 import {
   DollarSign,
   ChevronDown,
@@ -84,12 +85,20 @@ export function CampaignBuilderForm({
   );
 
   // Location targeting state
+  const [showSmartLocation, setShowSmartLocation] = useState(
+    !!answers.locationTargeting && !usesLocationTargeting
+  );
   const [locationAddresses, setLocationAddresses] = useState<string[]>(
     answers.locationTargeting?.addresses || [""]
   );
   const [locationRadius, setLocationRadius] = useState(
     answers.locationTargeting?.radius || defaultRadius
   );
+
+  // Smart location detection for non-local strategies
+  const locationDetection = !usesLocationTargeting
+    ? detectLocationBusiness(workspace.brands)
+    : { isLocal: false, example: "" };
 
   // Ad scheduling state
   const [hasEndDate, setHasEndDate] = useState(!!answers.endDate);
@@ -117,18 +126,20 @@ export function CampaignBuilderForm({
       
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
-      // Location targeting
-      ...(usesLocationTargeting && {
+      // Location targeting — from template OR smart detection
+      ...((usesLocationTargeting || showSmartLocation) && {
         locationTargeting: {
           addresses: locationAddresses.filter(a => a.trim()),
           radius: locationRadius,
         },
       }),
+      // Clear location targeting if smart location was toggled off
+      ...(!usesLocationTargeting && !showSmartLocation && { locationTargeting: undefined }),
       // End date — only include if user explicitly set one
       ...(hasEndDate && endDate ? { endDate } : {}),
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation]);
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
@@ -298,6 +309,94 @@ export function CampaignBuilderForm({
                 <span>50 mi</span>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Smart Location Prompt — for businesses that appear local but didn't pick a local strategy */}
+      {!usesLocationTargeting && locationDetection.isLocal && (
+        <Card className={showSmartLocation ? "border-primary/30" : ""}>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <MapPin className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Does your business serve a specific area?</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    For example, {locationDetection.example}.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={showSmartLocation}
+                onCheckedChange={(checked) => {
+                  setShowSmartLocation(checked);
+                  if (!checked) {
+                    setLocationAddresses([""]);
+                    setLocationRadius(defaultRadius);
+                  }
+                }}
+              />
+            </div>
+
+            {showSmartLocation && (
+              <div className="space-y-4 pt-1">
+                {/* Address inputs */}
+                <div className="space-y-2">
+                  {locationAddresses.map((address, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        placeholder="Enter your business address"
+                        value={address}
+                        onChange={(e) => updateLocationAddress(index, e.target.value)}
+                        className="flex-1"
+                      />
+                      {locationAddresses.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeLocationAddress(index)}
+                          className="shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addLocationAddress}
+                    className="w-full gap-1 text-xs"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add another location
+                  </Button>
+                </div>
+
+                {/* Radius slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Targeting radius</span>
+                    <span className="text-sm font-bold text-primary">{locationRadius} miles</span>
+                  </div>
+                  <Slider
+                    value={[locationRadius]}
+                    onValueChange={([v]) => setLocationRadius(v)}
+                    min={1}
+                    max={50}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>1 mi</span>
+                    <span>50 mi</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

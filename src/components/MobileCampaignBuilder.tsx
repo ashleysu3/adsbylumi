@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { MobileStepWizard, StepSlider } from "@/components/MobileStepWizard";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Target,
@@ -15,9 +18,13 @@ import {
   ChevronDown,
   Sparkles,
   ImagePlus,
+  MapPin,
+  Plus,
+  X,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
+import { detectLocationBusiness } from "@/lib/detect-location-business";
 
 interface MobileCampaignBuilderProps {
   workspace: any;
@@ -58,6 +65,9 @@ export function MobileCampaignBuilder({
   const defaultAudience = template?.audience_type || "broad";
   const defaultCreativeType = isSocialGrowth ? "existing_posts" : (strategyJson?.creativeType || "video");
 
+  const templateStrategy = template?.strategy_template as any;
+  const usesLocationTargeting = templateStrategy?.location_type === "radius" || templateStrategy?.location_type === "places";
+
   // Only 2 steps: Budget → Review
   const [step, setStep] = useState(1);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -69,10 +79,32 @@ export function MobileCampaignBuilder({
   const [additionalPosts, setAdditionalPosts] = useState<SelectedPost[]>(
     answers.additionalPosts || []
   );
+
+  // Smart location state
+  const [showSmartLocation, setShowSmartLocation] = useState(
+    !!answers.locationTargeting && !usesLocationTargeting
+  );
+  const [locationAddresses, setLocationAddresses] = useState<string[]>(
+    answers.locationTargeting?.addresses || [""]
+  );
+  const [locationRadius, setLocationRadius] = useState(
+    answers.locationTargeting?.radius || 15
+  );
+
   const { activeBrand } = useBrand();
   const hasInstagram = !!activeBrand?.meta_account_id && !!(workspace?.brands?.instagram_account_id);
 
+  const locationDetection = !usesLocationTargeting
+    ? detectLocationBusiness(workspace.brands)
+    : { isLocal: false, example: "" };
+
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
+
+  const updateLocationAddress = (index: number, value: string) => {
+    const updated = [...locationAddresses];
+    updated[index] = value;
+    setLocationAddresses(updated);
+  };
 
   useEffect(() => {
     const newAnswers = {
@@ -89,9 +121,17 @@ export function MobileCampaignBuilder({
       
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
+      // Smart location targeting
+      ...(showSmartLocation && {
+        locationTargeting: {
+          addresses: locationAddresses.filter(a => a.trim()),
+          radius: locationRadius,
+        },
+      }),
+      ...(!showSmartLocation && !usesLocationTargeting && { locationTargeting: undefined }),
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, showSmartLocation, locationAddresses, locationRadius]);
 
   const handleNext = () => { if (step < 2) setStep(step + 1); };
   const handleBack = () => { if (step > 1) setStep(step - 1); };
@@ -199,6 +239,88 @@ export function MobileCampaignBuilder({
                   selectedPosts={additionalPosts}
                   onSelectionChange={setAdditionalPosts}
                 />
+              )}
+            </div>
+          )}
+
+          {/* Smart Location Prompt */}
+          {!usesLocationTargeting && locationDetection.isLocal && (
+            <div className={`p-4 rounded-xl border bg-card space-y-4 ${showSmartLocation ? "border-primary/30" : ""}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <MapPin className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">Does your business serve a specific area?</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      For example, {locationDetection.example}.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={showSmartLocation}
+                  onCheckedChange={(checked) => {
+                    setShowSmartLocation(checked);
+                    if (!checked) {
+                      setLocationAddresses([""]);
+                      setLocationRadius(15);
+                    }
+                  }}
+                />
+              </div>
+              {showSmartLocation && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    {locationAddresses.map((address, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          placeholder="Enter your business address"
+                          value={address}
+                          onChange={(e) => updateLocationAddress(index, e.target.value)}
+                          className="flex-1"
+                        />
+                        {locationAddresses.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setLocationAddresses(locationAddresses.filter((_, i) => i !== index))}
+                            className="shrink-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLocationAddresses([...locationAddresses, ""])}
+                      className="w-full gap-1 text-xs"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add another location
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Targeting radius</span>
+                      <span className="text-sm font-bold text-primary">{locationRadius} miles</span>
+                    </div>
+                    <Slider
+                      value={[locationRadius]}
+                      onValueChange={([v]) => setLocationRadius(v)}
+                      min={1}
+                      max={50}
+                      step={1}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>1 mi</span>
+                      <span>50 mi</span>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           )}
