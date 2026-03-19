@@ -243,6 +243,20 @@ Each angle object must have:
 
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
+    // Detect DM leads campaign context
+    const isDmLeads = strategyData?.dmLeadsCampaign === true;
+    const dmContext = isDmLeads ? `\n\n=== DM LEADS CAMPAIGN CONTEXT ===
+This is a DM Leads campaign. The goal is to get people to SEND A DIRECT MESSAGE (DM) on ${strategyData?.conversionLocation === 'facebook' ? 'Facebook Messenger' : 'Instagram'}.
+CRITICAL RULES FOR DM CAMPAIGNS:
+- Every angle must be designed to make someone want to START A CONVERSATION, not click a link or buy immediately
+- The CTA psychology should be low-commitment: "DM me", "Send me a message", "Ask me about..."
+- Hooks should create curiosity or a personal connection that makes DM'ing feel natural
+- Avoid "buy now" or "sign up" framing — this is about opening a conversation
+- Think about what would make someone comfortable enough to message a stranger
+- Use language that implies a 1:1 personal response (not automated/mass)
+- Consider angles like: personal invitation, exclusive access via DM, quick question, free resource via DM, "tell me your situation"
+` : '';
+
     const userPrompt = `Today's date is ${currentDate}. Ensure all content is seasonally appropriate and relevant to this time period. Do NOT reference holidays, seasons, or events that are not upcoming or current.
 
 Generate creative angles for this campaign:
@@ -255,12 +269,13 @@ ${offerData?.price ? `Price: ${offerData.price}` : ""}
 
 STRATEGY CONTEXT:
 ${JSON.stringify(strategyData, null, 2)}
+${dmContext}
 
 ${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audiencePsychology, null, 2)}` : ""}
 
 ${productPsychology ? `PRODUCT PSYCHOLOGY:\n${JSON.stringify(productPsychology, null, 2)}` : ""}
 
-Generate exactly 11 creative angles that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}`;
+Generate exactly 11 creative angles that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}${isDmLeads ? " Remember: every angle must drive DM conversations, not link clicks or purchases." : ""}`;
 
     console.log("[generate-creative-angles] Calling AI API...");
 
