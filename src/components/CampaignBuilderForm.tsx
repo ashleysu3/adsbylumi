@@ -126,13 +126,15 @@ export function CampaignBuilderForm({
       
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
-      // Location targeting
-      ...(usesLocationTargeting && {
+      // Location targeting — from template OR smart detection
+      ...((usesLocationTargeting || showSmartLocation) && {
         locationTargeting: {
           addresses: locationAddresses.filter(a => a.trim()),
           radius: locationRadius,
         },
       }),
+      // Clear location targeting if smart location was toggled off
+      ...(!usesLocationTargeting && !showSmartLocation && { locationTargeting: undefined }),
       // End date — only include if user explicitly set one
       ...(hasEndDate && endDate ? { endDate } : {}),
     };
