@@ -1310,6 +1310,7 @@ export default function CreativeStudio() {
                   autoGenerate={shouldAutoGenerateCopy}
                   brandId={brandId}
                   offerId={workspace?.offer_id}
+                  perspectiveRole={(workspace?.creative_json as Record<string, any>)?.preGenerationContext?.perspectiveRole || 'seller'}
                 />
                 
                 <div className="flex justify-end">
