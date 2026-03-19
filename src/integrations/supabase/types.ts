@@ -1056,6 +1056,7 @@ export type Database = {
         Row: {
           additional_emails: string[] | null
           alert_on_red: boolean | null
+          auto_optimize: boolean | null
           brand_id: string | null
           created_by: string
           date_range_days: number
@@ -1072,6 +1073,7 @@ export type Database = {
         Insert: {
           additional_emails?: string[] | null
           alert_on_red?: boolean | null
+          auto_optimize?: boolean | null
           brand_id?: string | null
           created_by: string
           date_range_days?: number
@@ -1088,6 +1090,7 @@ export type Database = {
         Update: {
           additional_emails?: string[] | null
           alert_on_red?: boolean | null
+          auto_optimize?: boolean | null
           brand_id?: string | null
           created_by?: string
           date_range_days?: number
@@ -1451,6 +1454,73 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      pending_optimizations: {
+        Row: {
+          action_description: string
+          auto_applied: boolean
+          brand_id: string
+          created_at: string
+          id: string
+          meta_action: Json | null
+          recommendation_type: string
+          report_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          workspace_id: string | null
+        }
+        Insert: {
+          action_description: string
+          auto_applied?: boolean
+          brand_id: string
+          created_at?: string
+          id?: string
+          meta_action?: Json | null
+          recommendation_type: string
+          report_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          action_description?: string
+          auto_applied?: boolean
+          brand_id?: string
+          created_at?: string
+          id?: string
+          meta_action?: Json | null
+          recommendation_type?: string
+          report_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_optimizations_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_optimizations_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "optimization_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_optimizations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
