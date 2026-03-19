@@ -481,15 +481,12 @@ export default function Dashboard() {
         {/* System Alerts */}
         <AlertsBanner />
 
-        {/* Detailed Onboarding Checklist (collapsible) */}
-        {!checklistDismissed && (
-          <OnboardingChecklist
-            brand={brand}
-            offers={offers}
-            onEditBrand={() => setEditDialogOpen(true)}
-            onDismiss={handleDismissChecklist}
-          />
-        )}
+        {/* Detailed Onboarding Checklist (collapsible, non-dismissible) */}
+        <OnboardingChecklist
+          brand={brand}
+          offers={offers}
+          onEditBrand={() => setEditDialogOpen(true)}
+        />
 
         {/* Brand Details Card */}
         <Card variant="glow" data-section="brand-details">

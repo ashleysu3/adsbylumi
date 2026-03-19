@@ -239,15 +239,17 @@
                  Back
                </Button>
  
-               <div className="flex gap-2">
-                 <Button variant="outline" onClick={onDismiss}>
-                   Skip for now
-                 </Button>
-                 <Button onClick={handleContinue} variant="lumi" className="gap-1">
-                   {currentStepData.isComplete ? 'Next' : 'Go to ' + currentStepData.title}
-                   <ChevronRight className="h-4 w-4" />
-                 </Button>
-               </div>
+              <div className="flex gap-2">
+                  {canDismiss && (
+                    <Button variant="outline" onClick={onDismiss}>
+                      Skip for now
+                    </Button>
+                  )}
+                  <Button onClick={handleContinue} variant="lumi" className="gap-1">
+                    {currentStepData.isComplete ? 'Next' : 'Go to ' + currentStepData.title}
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
              </div>
            </CardContent>
          </Card>

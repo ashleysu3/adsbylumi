@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CheckCircle2, Circle, ChevronDown, X, Sparkles } from "lucide-react";
+import { CheckCircle2, Circle, ChevronDown, Sparkles, Mail } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface OnboardingChecklistProps {
   brand: any;
   offers: any[];
   onEditBrand: () => void;
-  onDismiss: () => void;
 }
 
 interface ChecklistItem {
@@ -22,8 +22,23 @@ interface ChecklistItem {
   actionLabel?: string;
 }
 
-export function OnboardingChecklist({ brand, offers, onEditBrand, onDismiss }: OnboardingChecklistProps) {
+export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingChecklistProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [digestEnabled, setDigestEnabled] = useState<boolean | null>(null);
+
+  // Check if digest_settings exist and are enabled for this brand
+  useEffect(() => {
+    if (!brand?.id) return;
+    supabase
+      .from("digest_settings")
+      .select("enabled")
+      .eq("brand_id", brand.id)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        setDigestEnabled(data?.enabled ?? false);
+      });
+  }, [brand?.id]);
 
   const checklistItems: ChecklistItem[] = [
     {
@@ -84,6 +99,16 @@ export function OnboardingChecklist({ brand, offers, onEditBrand, onDismiss }: O
         window.location.href = '/settings/meta#pixel';
       },
       actionLabel: "Check Pixel"
+    },
+    {
+      id: "weekly-reports",
+      title: "Enable Weekly Reports",
+      description: "Get automated performance digests delivered to your inbox every week",
+      completed: digestEnabled === true,
+      action: () => {
+        window.location.href = '/data';
+      },
+      actionLabel: "View Settings"
     }
   ];
 
@@ -92,6 +117,7 @@ export function OnboardingChecklist({ brand, offers, onEditBrand, onDismiss }: O
   const progressPercentage = (completedCount / totalCount) * 100;
   const isComplete = completedCount === totalCount;
 
+  // Hide checklist when all steps are complete
   if (isComplete) {
     return null;
   }
@@ -100,31 +126,21 @@ export function OnboardingChecklist({ brand, offers, onEditBrand, onDismiss }: O
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <div className="mt-1">
-                <Sparkles className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <CollapsibleTrigger asChild>
-                  <button className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left w-full">
-                    <CardTitle className="text-lg">Getting Started Checklist</CardTitle>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                </CollapsibleTrigger>
-                <CardDescription className="mt-1">
-                  Complete these steps to set up your brand for success
-                </CardDescription>
-              </div>
+          <div className="flex items-start gap-3">
+            <div className="mt-1">
+              <Sparkles className="h-5 w-5 text-primary" />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 -mt-1"
-              onClick={onDismiss}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex-1">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left w-full">
+                  <CardTitle className="text-lg">Getting Started Checklist</CardTitle>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </CollapsibleTrigger>
+              <CardDescription className="mt-1">
+                Complete these steps to set up your brand for success
+              </CardDescription>
+            </div>
           </div>
 
           <div className="space-y-2 pt-4">
