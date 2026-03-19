@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { CheckCircle, ExternalLink, Copy, ArrowRight, Loader2, Play, Pause } from "lucide-react";
 import { toast } from "sonner";
@@ -81,6 +82,27 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
           }
         </p>
       </div>
+
+      {/* Post-publish recap */}
+      <Card className="text-left">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">What you just launched</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Campaign</span>
+            <span className="font-medium">{workspace?.offer_name || workspace?.name || "Your Campaign"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Status</span>
+            <Badge variant="secondary">{isLive ? "Active" : "Paused"}</Badge>
+          </div>
+          <Separator className="my-2" />
+          <p className="text-xs text-muted-foreground">
+            Your ads are now in Meta's review process. Most ads are approved within 24 hours.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Campaign Status Control */}
       <Card className={isLive ? 'border-green-500/30 bg-green-500/5' : 'border-amber-500/30 bg-amber-500/5'}>
