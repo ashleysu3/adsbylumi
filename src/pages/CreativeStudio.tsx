@@ -571,12 +571,17 @@ export default function CreativeStudio() {
   }, [availableAngles, saveCreativeState]);
 
   const handleRegenerateClick = () => {
+    // Gate on psychology approval
+    if (workspace?.brands?.psychology_status && workspace.brands.psychology_status !== 'approved') {
+      toast.error("Please approve your Audience Psychology on the Dashboard before generating angles.");
+      return;
+    }
     // If user has downstream progress, show confirmation dialog
     if (gridData.length > 0 || productionItems.length > 0) {
       setShowRegenerateConfirm(true);
       return;
     }
-    generateAngles();
+    setShowContextInput(true);
   };
 
    // Fetch creative intelligence from past ad performance
@@ -1130,7 +1135,14 @@ export default function CreativeStudio() {
                    </p>
                     {!generating && (
                       <div className="flex flex-col items-center gap-3">
-                        <Button onClick={() => generateAngles()} className="gap-2">
+                        <Button onClick={() => {
+                          // Gate on psychology approval
+                          if (workspace?.brands?.psychology_status && workspace.brands.psychology_status !== 'approved') {
+                            toast.error("Please approve your Audience Psychology on the Dashboard before generating angles.");
+                            return;
+                          }
+                          setShowContextInput(true);
+                        }} className="gap-2">
                           <Sparkles className="h-4 w-4" />
                           Generate Angles
                         </Button>
@@ -1555,10 +1567,15 @@ export default function CreativeStudio() {
           brandId={brandId}
           campaignObjective={workspace?.strategy_json?.objective}
         />
-        {/* Auto-save status indicator */}
+        {/* Auto-save status indicator - unified across all tabs */}
         {workspace && (
           <div className="fixed bottom-4 right-4 z-30 bg-background/80 backdrop-blur-sm rounded-full px-3 py-1.5 border shadow-sm">
-            <AutoSaveIndicator status={saveStatus} size="sm" />
+            <AutoSaveIndicator status={
+              saveStatus === "saving" || copySaveStatus === "saving" ? "saving" :
+              saveStatus === "error" || copySaveStatus === "error" ? "error" :
+              saveStatus === "saved" || copySaveStatus === "saved" ? "saved" :
+              "idle"
+            } size="sm" />
           </div>
         )}
       </motion.div>

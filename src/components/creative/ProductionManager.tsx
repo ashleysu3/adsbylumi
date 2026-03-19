@@ -70,6 +70,7 @@ export function ProductionManager({
   const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
   const [isRanking, setIsRanking] = useState(false);
   const [rankedItems, setRankedItems] = useState<RankedItem[]>([]);
+  const [showSaveOthersPrompt, setShowSaveOthersPrompt] = useState(false);
   const [overallStrategy, setOverallStrategy] = useState<string>("");
   const [showTopOnly, setShowTopOnly] = useState(false);
   const [movingToLibrary, setMovingToLibrary] = useState(false);
@@ -304,6 +305,12 @@ export function ProductionManager({
       setOverallStrategy(data.overallStrategy || "");
       setShowTopOnly(true);
       toast.success("Lumi's Top 5 ready!");
+      // Prompt user to save the others
+      const rankedIds = (data.rankedItems || []).map((r: any) => r.id);
+      const nonRankedCount = productionItems.filter(i => !rankedIds.includes(i.id)).length;
+      if (nonRankedCount > 0 && onSaveToLibrary) {
+        setShowSaveOthersPrompt(true);
+      }
     } catch (e: any) {
       console.error("Ranking error:", e);
       toast.error(e.message || "Failed to rank concepts");
@@ -971,6 +978,37 @@ export function ProductionManager({
         productionItems={productionItems}
         brandId={brandId}
       />
+
+      {/* Save Others Prompt after Lumi's Top 5 */}
+      <Dialog open={showSaveOthersPrompt} onOpenChange={setShowSaveOthersPrompt}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Library className="h-5 w-5 text-primary" />
+              Save the rest for later?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Lumi picked your Top 5. Want to save the other {productionItems.filter(i => !rankedItems.map(r => r.id).includes(i.id)).length} concepts to your Concept Library so you can use them in future rounds?
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowSaveOthersPrompt(false)}>
+              No, keep them here
+            </Button>
+            <Button 
+              onClick={async () => {
+                setShowSaveOthersPrompt(false);
+                await handleMoveOthersToLibrary();
+              }}
+              disabled={movingToLibrary}
+              className="gap-2"
+            >
+              {movingToLibrary ? <Loader2 className="h-4 w-4 animate-spin" /> : <Library className="h-4 w-4" />}
+              Save to Library
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
