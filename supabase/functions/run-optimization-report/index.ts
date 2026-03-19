@@ -95,6 +95,17 @@ Deno.serve(async (req) => {
       .in('progress_status', ['live', 'ready_to_publish'])
       .eq('archived', false);
 
+    // Fetch recent ad actions for cross-campaign correlation
+    const actionLookbackStart = new Date(new Date(dateRangeStart).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentActions } = await supabase
+      .from('ad_action_log')
+      .select('*')
+      .eq('brand_id', brandId)
+      .gte('created_at', actionLookbackStart)
+      .order('created_at', { ascending: false });
+
+    console.log('[run-optimization-report] Found', recentActions?.length || 0, 'recent ad actions for correlation');
+
     console.log('[run-optimization-report] Found', workspaces?.length || 0, 'active workspaces');
     if (!workspaces || workspaces.length === 0) {
       // No active campaigns — save empty report
@@ -338,6 +349,38 @@ Deno.serve(async (req) => {
 
     const summary = { green: greenCount, yellow: yellowCount, red: redCount, unconfigured: unconfiguredCount, total: workspaces.length };
 
+    // Cross-campaign cause-effect analysis
+    const crossCampaignInsights: any[] = [];
+    if (recentActions && recentActions.length > 0 && campaignResults.length > 1) {
+      // Find paused campaigns/ads and check if other campaigns degraded
+      const pauseActions = recentActions.filter(a => 
+        ['paused_ad', 'campaign_paused', 'creative_swap'].includes(a.action_type)
+      );
+      
+      for (const pauseAction of pauseActions) {
+        const pausedWorkspace = campaignResults.find(c => c.workspace_id === pauseAction.workspace_id);
+        if (!pausedWorkspace) continue;
+        
+        // Check if any other campaigns went from good to bad after this action
+        const otherCampaigns = campaignResults.filter(c => 
+          c.workspace_id !== pauseAction.workspace_id && 
+          ['yellow', 'red'].includes(c.status) &&
+          c.metrics
+        );
+        
+        for (const degraded of otherCampaigns) {
+          crossCampaignInsights.push({
+            type: 'cross_campaign_impact',
+            priority: 'medium',
+            action: `You ${pauseAction.action_type.replace('_', ' ')} in "${pausedWorkspace.workspace_name}" on ${new Date(pauseAction.created_at).toLocaleDateString()}. "${degraded.workspace_name}" may be underperforming as a result — consider whether removing top-of-funnel activity affected downstream campaigns.`,
+            icon: '🔗',
+            related_workspace: pauseAction.workspace_id,
+            affected_workspace: degraded.workspace_id,
+          });
+        }
+      }
+    }
+
     const { data: report, error: reportError } = await supabase
       .from('optimization_reports')
       .insert({
@@ -346,7 +389,7 @@ Deno.serve(async (req) => {
         date_range_start: dateRangeStart,
         date_range_end: dateRangeEnd,
         report_data: campaignResults,
-        summary,
+        summary: { ...summary, cross_campaign_insights: crossCampaignInsights, recent_actions_count: recentActions?.length || 0 },
       })
       .select()
       .single();

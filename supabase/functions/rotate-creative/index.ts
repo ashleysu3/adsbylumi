@@ -122,6 +122,28 @@ Deno.serve(async (req) => {
       reason: reason || 'Manual rotation',
     });
 
+    // 3b. Log to unified ad_action_log
+    if (fatigueAdId) {
+      await supabaseAdmin.from('ad_action_log').insert({
+        brand_id: brandId,
+        workspace_id: workspaceId,
+        action_type: 'paused_ad',
+        action_detail: { ad_id: fatigueAdId, reason: reason || 'Creative rotation' },
+        source: isAutoRotation ? 'lumi_auto' : 'lumi_approved',
+        meta_entity_id: fatigueAdId,
+      });
+    }
+    if (benchAdId) {
+      await supabaseAdmin.from('ad_action_log').insert({
+        brand_id: brandId,
+        workspace_id: workspaceId,
+        action_type: 'activated_ad',
+        action_detail: { ad_id: benchAdId, reason: reason || 'Creative rotation' },
+        source: isAutoRotation ? 'lumi_auto' : 'lumi_approved',
+        meta_entity_id: benchAdId,
+      });
+    }
+
     // 4. Send Slack notification
     try {
       const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');

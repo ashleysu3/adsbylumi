@@ -133,6 +133,17 @@ Deno.serve(async (req) => {
             status: 'applied',
             auto_applied: true,
           });
+
+          // Log to unified ad_action_log
+          await supabase.from('ad_action_log').insert({
+            brand_id: brandId,
+            workspace_id: campaign.workspace_id,
+            action_type: rec.type === 'budget_hog' ? 'paused_ad' : rec.type === 'scale' ? 'budget_change' : rec.type,
+            action_detail: { recommendation: rec.action, meta_action: metaAction, auto_applied: true },
+            source: 'lumi_auto',
+            meta_entity_id: null,
+          });
+
           applied++;
         } else {
           // Queue for manual approval

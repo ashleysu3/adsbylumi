@@ -25,6 +25,7 @@ import { MetaConnectionAlert, MetaConnectionBanner } from '@/components/MetaConn
 import { ImportCampaignsModal } from '@/components/insights/ImportCampaignsModal';
 import { useBrand } from '@/contexts/BrandContext';
 import { CampaignDetailDrawer } from '@/components/CampaignDetailDrawer';
+import { ActionHistoryTimeline } from '@/components/insights/ActionHistoryTimeline';
 import lumiLogo from '@/assets/lumi-logo.png';
 
 interface PerformanceAnalysis {
@@ -395,10 +396,24 @@ export default function AdPerformance() {
   const handleOptimizationAction = async (id: string, action: 'approved' | 'rejected' | 'undone') => {
     try {
       const newStatus = action === 'undone' ? 'rejected' : action;
+      const opt = pendingOptimizations.find(o => o.id === id);
       await supabase
         .from('pending_optimizations')
         .update({ status: newStatus, resolved_at: new Date().toISOString() } as any)
         .eq('id', id);
+
+      // Log user action to ad_action_log
+      if (opt && brandId) {
+        await supabase.from('ad_action_log').insert({
+          brand_id: brandId,
+          workspace_id: opt.workspace_id,
+          action_type: opt.recommendation_type || 'optimization_' + action,
+          action_detail: { optimization_id: id, action, description: opt.action_description },
+          source: action === 'approved' ? 'lumi_approved' : 'user',
+          meta_entity_id: null,
+        });
+      }
+
       toast.success(action === 'approved' ? 'Optimization approved' : action === 'rejected' ? 'Optimization dismissed' : 'Optimization undone');
       fetchPendingOptimizations();
     } catch (e: any) {
@@ -1006,6 +1021,21 @@ export default function AdPerformance() {
               <h2 className="text-lg font-bold text-foreground">LUMI Recommendations</h2>
             </div>
 
+            {/* Cross-Campaign Insights */}
+            {(optimizationReport?.summary as any)?.cross_campaign_insights?.length > 0 && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                    <Link2 className="h-4 w-4" />
+                    Cross-Campaign Impact Detected
+                  </div>
+                  {((optimizationReport.summary as any).cross_campaign_insights as any[]).map((insight: any, idx: number) => (
+                    <p key={idx} className="text-sm text-muted-foreground">{insight.action}</p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             {sortedReportCampaigns.map((c, i) => (
               <Card key={i} className="overflow-hidden">
                 <CardHeader className="pb-3">
@@ -1206,6 +1236,13 @@ export default function AdPerformance() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+
+        {/* ─── Action History Timeline ─── */}
+        {brandId && view === 'home' && (
+          <div className="pt-4 border-t">
+            <ActionHistoryTimeline brandId={brandId} />
           </div>
         )}
 
