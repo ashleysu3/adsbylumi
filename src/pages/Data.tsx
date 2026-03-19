@@ -25,6 +25,7 @@ import { MetaConnectionAlert, MetaConnectionBanner } from '@/components/MetaConn
 import { ImportCampaignsModal } from '@/components/insights/ImportCampaignsModal';
 import { useBrand } from '@/contexts/BrandContext';
 import { CampaignDetailDrawer } from '@/components/CampaignDetailDrawer';
+import { ActionHistoryTimeline } from '@/components/insights/ActionHistoryTimeline';
 import lumiLogo from '@/assets/lumi-logo.png';
 
 interface PerformanceAnalysis {
