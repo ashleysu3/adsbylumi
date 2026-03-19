@@ -41,6 +41,7 @@ interface AngleCopyEditorProps {
   autoGenerate?: boolean;
   brandId?: string;
   offerId?: string;
+  perspectiveRole?: string;
 }
 
 export function AngleCopyEditor({
