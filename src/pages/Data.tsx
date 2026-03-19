@@ -174,6 +174,10 @@ export default function AdPerformance() {
   const [digestLoading, setDigestLoading] = useState(false);
   const [newEmail, setNewEmail] = useState('');
 
+  // Pending optimizations
+  const [pendingOptimizations, setPendingOptimizations] = useState<any[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+
   // Campaign detail drawer (for report campaign cards)
   const [drawerCampaignId, setDrawerCampaignId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
