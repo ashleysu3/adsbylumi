@@ -1224,6 +1224,13 @@ export default function AdPerformance() {
           </div>
         )}
 
+        {/* ─── Action History Timeline ─── */}
+        {brandId && view === 'home' && (
+          <div className="pt-4 border-t">
+            <ActionHistoryTimeline brandId={brandId} />
+          </div>
+        )}
+
         {brandId && metaAccountId &&
           <ImportCampaignsModal
             open={importModalOpen}
