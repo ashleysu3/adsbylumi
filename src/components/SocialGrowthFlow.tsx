@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import lumiLogo from "@/assets/lumi-logo.png";
 import { cn } from "@/lib/utils";
 import { LumiThinkingInline } from "@/components/LumiThinking";
+import { formatInvokeError } from "@/lib/formatInvokeError";
 
 interface InstagramPost {
   id: string;
@@ -88,9 +89,10 @@ export function SocialGrowthFlow({
       setPosts(fetchedPosts);
       setStep("post_selection");
     } catch (err: any) {
+      const message = formatInvokeError(err);
       console.error("Error fetching Instagram posts:", err);
-      setError(err.message || "Failed to fetch Instagram posts");
-      toast.error("Failed to load your Instagram posts");
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -239,7 +241,7 @@ export function SocialGrowthFlow({
               <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
               <p className="font-medium">Couldn't load your posts</p>
               <p className="text-sm text-muted-foreground">{error}</p>
-              <Button variant="outline" size="sm" onClick={() => window.location.href = "/settings"}>
+              <Button variant="outline" size="sm" onClick={onConnectInstagram}>
                 Reconnect Meta
               </Button>
             </CardContent>
