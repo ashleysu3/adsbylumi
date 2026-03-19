@@ -77,10 +77,20 @@ export default function Dashboard() {
     }
   }, [searchParams, setSearchParams]);
 
-  const handleDismissChecklist = () => {
+  const handleDismissChecklist = async () => {
     setChecklistDismissed(true);
     localStorage.setItem('onboarding-dismissed', 'true');
     toast.success("You can always re-enable the checklist from settings");
+    // Also persist to profile
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("profiles").update({ onboarding_dismissed: true }).eq("id", user.id);
+      }
+    } catch (e) {
+      // non-critical, localStorage fallback is fine
+      console.log("Could not persist onboarding dismissal to profile:", e);
+    }
   };
 
   useEffect(() => {
@@ -262,6 +272,21 @@ export default function Dashboard() {
         .single();
 
       setSubscription(subData);
+
+      // Check if onboarding was dismissed in profile
+      try {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("onboarding_dismissed")
+          .eq("id", user.id)
+          .single();
+        if (profileData?.onboarding_dismissed) {
+          setChecklistDismissed(true);
+          localStorage.setItem('onboarding-dismissed', 'true');
+        }
+      } catch (e) {
+        // non-critical
+      }
 
       if (brandData) {
         const { data: offersData } = await supabase
