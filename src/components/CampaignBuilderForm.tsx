@@ -85,12 +85,20 @@ export function CampaignBuilderForm({
   );
 
   // Location targeting state
+  const [showSmartLocation, setShowSmartLocation] = useState(
+    !!answers.locationTargeting && !usesLocationTargeting
+  );
   const [locationAddresses, setLocationAddresses] = useState<string[]>(
     answers.locationTargeting?.addresses || [""]
   );
   const [locationRadius, setLocationRadius] = useState(
     answers.locationTargeting?.radius || defaultRadius
   );
+
+  // Smart location detection for non-local strategies
+  const locationDetection = !usesLocationTargeting
+    ? detectLocationBusiness(workspace.brands)
+    : { isLocal: false, example: "" };
 
   // Ad scheduling state
   const [hasEndDate, setHasEndDate] = useState(!!answers.endDate);
