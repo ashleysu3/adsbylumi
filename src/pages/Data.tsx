@@ -1021,6 +1021,21 @@ export default function AdPerformance() {
               <h2 className="text-lg font-bold text-foreground">LUMI Recommendations</h2>
             </div>
 
+            {/* Cross-Campaign Insights */}
+            {(optimizationReport?.summary as any)?.cross_campaign_insights?.length > 0 && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                    <Link2 className="h-4 w-4" />
+                    Cross-Campaign Impact Detected
+                  </div>
+                  {((optimizationReport.summary as any).cross_campaign_insights as any[]).map((insight: any, idx: number) => (
+                    <p key={idx} className="text-sm text-muted-foreground">{insight.action}</p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             {sortedReportCampaigns.map((c, i) => (
               <Card key={i} className="overflow-hidden">
                 <CardHeader className="pb-3">
