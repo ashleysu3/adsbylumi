@@ -178,6 +178,44 @@ serve(async (req) => {
       }
     }
 
+    // Keyword-based safety net: catch obvious mismatches before AI fallback
+    const nameAndDesc = `${offer.name || ''} ${offer.description || ''} ${offer.target_outcome || ''}`.toLowerCase();
+    const priceStr = (offer.price_point || '').toLowerCase().trim();
+    const isFreeOrCheap = !priceStr || priceStr === 'free' || priceStr === '$0' || priceStr === '0' || priceStr.startsWith('free');
+    const isWebinarOrTraining = /webinar|training|masterclass|challenge|workshop|opt[- ]?in|lead magnet|freebie|free guide|free download|checklist|quiz|pdf|registration/i.test(nameAndDesc);
+    
+    if (isFreeOrCheap && isWebinarOrTraining) {
+      const leadTemplate = templates.find(t => t.slug === 'lead-magnet');
+      if (leadTemplate) {
+        console.log('Keyword safety net: free webinar/training detected, forcing lead-magnet template');
+        const reason = 'This is a free webinar/training that captures leads, so a lead generation campaign will maximize sign-ups and grow your list.';
+        
+        const { error: updateError } = await supabase
+          .from('offers')
+          .update({
+            recommended_template_id: leadTemplate.id,
+            recommendation_reason: reason,
+            recommendation_confidence: 'high'
+          })
+          .eq('id', offerId);
+
+        if (updateError) throw updateError;
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          recommendation: {
+            template_id: leadTemplate.id,
+            template_name: leadTemplate.name,
+            template_slug: leadTemplate.slug,
+            confidence: 'high',
+            reason
+          }
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Fall back to AI recommendation for 'other' or when no page_goal is set
     const systemPrompt = `You are a Meta Ads strategist expert. Analyze an offer and recommend the BEST campaign template.
 
