@@ -809,6 +809,7 @@ export default function AdPerformance() {
           additional_emails: digestSettings.additional_emails,
           enabled: digestSettings.enabled,
           alert_on_red: digestSettings.alert_on_red,
+          auto_optimize: digestSettings.auto_optimize,
         } as any, { onConflict: 'brand_id' });
 
       if (error) throw error;
