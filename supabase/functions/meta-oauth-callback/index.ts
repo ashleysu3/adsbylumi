@@ -302,7 +302,8 @@ Deno.serve(async (req) => {
         success: true,
         accounts: activeAccounts,
         pages: pages,
-        instagramAccounts: instagramAccounts
+        instagramAccounts: instagramAccounts,
+        ...(igPermissionWarnings.length > 0 ? { igPermissionWarnings } : {})
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
