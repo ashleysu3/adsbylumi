@@ -1,44 +1,45 @@
 
 
-## Make Perspective a User Choice, Not a Hard Rule
+## Four Changes to Creative Studio
 
-### What Changes
+### 1. Audience Psychology: Auto-open and gate ad creation
 
-**1. Add a "Who experienced the results?" question to the pre-generation context UI**
+**Problem**: The `AudiencePsychology` component in `Dashboard.tsx` starts collapsed (`open` defaults to `false`). Users can skip approving it and jump straight into creative.
 
-In `CreativeContextInput.tsx`, add a new radio group question (always visible, not inside the collapsible) asking:
+**Changes**:
+- **`src/components/AudiencePsychology.tsx`**: Default `open` to `true` when psychology exists but is not yet approved (status === `'completed'`).
+- **`src/pages/CreativeStudio.tsx`**: Before allowing angle generation, check if `workspace.brands.psychology_status !== 'approved'`. If not approved, show an alert/toast telling them to approve their audience psychology on the Dashboard first, and block generation.
 
-> **Who experienced the results from your offer?**
-> - **My customers/clients** — "I help others get results" (coach, agency, service provider)
-> - **Me personally** — "I experienced the transformation myself" (founder story, personal brand)
-> - **Both** — "I got results AND so do my clients"
+### 2. Fix the Generate Angles button
 
-This gets stored in the `CreativeContext` interface as a new `perspectiveRole` field (`"seller"` | `"buyer"` | `"both"`).
+**Problem**: The first-time "Generate Angles" button (line 1133) calls `generateAngles()` directly without opening the context input dialog (which asks the perspective question). Only the *Regenerate* flow opens the context dialog.
 
-**2. Update `CreativeContext` interface**
+**Change in `src/pages/CreativeStudio.tsx`**:
+- Change the first-time "Generate Angles" button's `onClick` from `() => generateAngles()` to `() => setShowContextInput(true)` so users always get the context/perspective question before generation.
 
-Add `perspectiveRole: "seller" | "buyer" | "both"` to the interface exported from `CreativeContextInput.tsx`.
+### 3. Auto-save indicator works across all tabs
 
-**3. Pass perspective through to edge functions**
+**Problem**: The floating auto-save pill (bottom-right) only shows `saveStatus` from `saveCreativeState`. The copy tab uses its own `copySaveStatus`, and production saves go through `saveProductionItems` — neither updates the floating indicator.
 
-In `CreativeStudio.tsx`, the `preGenerationContext` already flows to all three edge functions. No additional wiring needed — the new field travels with the existing context object.
+**Change in `src/pages/CreativeStudio.tsx`**:
+- Unify the floating indicator to show the *most recent* save status across all three: `saveStatus`, `copySaveStatus`, and a new production save status. Derive a combined status: if any is `"saving"`, show saving; if any is `"error"`, show error; else show the most recently changed saved/idle state.
+- Update `saveProductionItems` to also set `setSaveStatus` so it flows through the same indicator.
+- Update the floating pill to show `copySaveStatus` when on the copy tab, and `saveStatus` otherwise.
 
-**4. Replace hard-coded perspective rule in 3 edge functions**
+### 4. After Lumi's Top 5, prompt to save others
 
-In `generate-creative-angles`, `generate-creative-grid`, and `generate-angle-copy`:
+**Problem**: After ranking, the "Save Others for Later" button exists but users must find it themselves. The user wants an automatic prompt.
 
-- Read `preGenerationContext.perspectiveRole` 
-- If `"seller"`: Use the current directive (frame as client results)
-- If `"buyer"`: Frame as personal experience ("I went from...")
-- If `"both"`: Allow both framings, mixing personal story with client results
-- If not set (legacy workspaces): Default to current seller framing as a reasonable default
+**Change in `src/components/creative/ProductionManager.tsx`**:
+- After `handleRankConcepts` succeeds and `rankedItems` are set, show a confirmation dialog/toast asking: "Want to save the other concepts to your library for later?" with Yes/No actions.
+- On "Yes", call `handleMoveOthersToLibrary()`.
+- On "No", dismiss.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/creative/CreativeContextInput.tsx` | Add radio group for perspective, update interface |
-| `supabase/functions/generate-creative-angles/index.ts` | Dynamic perspective rule based on context |
-| `supabase/functions/generate-creative-grid/index.ts` | Same dynamic rule |
-| `supabase/functions/generate-angle-copy/index.ts` | Same dynamic rule |
+| `src/components/AudiencePsychology.tsx` | Auto-open when status is `completed` |
+| `src/pages/CreativeStudio.tsx` | Gate angle generation on psychology approval; fix Generate Angles button to open context dialog; unify auto-save indicator |
+| `src/components/creative/ProductionManager.tsx` | Auto-prompt to save non-Top-5 concepts after ranking |
 
