@@ -75,11 +75,7 @@ export default function Dashboard() {
     }
   }, [searchParams, setSearchParams]);
 
-  const handleDismissChecklist = () => {
-    setChecklistDismissed(true);
-    localStorage.setItem('onboarding-dismissed', 'true');
-    toast.success("You can always re-enable the checklist from settings");
-  };
+  // Checklist is no longer dismissible — it hides itself when all steps are complete
 
   useEffect(() => {
     fetchBrandData();
