@@ -811,11 +811,12 @@ export default function CreativeStudio() {
           messagingGuidelines,
           productPsychology,
           offerAudiencePsychology,
-          nicheContext: workspace.brands?.industry,
-          creativeIntelligence,
-          brandId,
-          offerId: workspace.offer_id,
-        }
+           nicheContext: workspace.brands?.industry,
+           creativeIntelligence,
+           brandId,
+           offerId: workspace.offer_id,
+           perspectiveRole: (workspace.creative_json as Record<string, any>)?.preGenerationContext?.perspectiveRole || 'seller',
+         }
       });
       if (error) throw error;
       setGridData(data.grid);
