@@ -179,6 +179,49 @@ Deno.serve(async (req) => {
       console.error('Failed to fetch pages:', pagesData);
     }
 
+    // Also fetch pages managed via Business Manager
+    try {
+      const businessesUrl = `https://graph.facebook.com/v18.0/me/businesses?fields=id,name&access_token=${finalToken}`;
+      const businessesRes = await fetch(businessesUrl);
+      const businessesData = await businessesRes.json();
+
+      if (businessesRes.ok && businessesData.data?.length > 0) {
+        const existingPageIds = new Set(pages.map((p: any) => p.id));
+
+        const bmPagePromises = businessesData.data.flatMap((biz: any) => [
+          fetch(`https://graph.facebook.com/v18.0/${biz.id}/owned_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
+          fetch(`https://graph.facebook.com/v18.0/${biz.id}/client_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
+        ]);
+
+        const bmResults = await Promise.all(bmPagePromises);
+
+        for (const result of bmResults) {
+          if (result.data) {
+            for (const page of result.data) {
+              if (!existingPageIds.has(page.id)) {
+                pages.push(page);
+                existingPageIds.add(page.id);
+                // Extract Instagram if present
+                if (page.instagram_business_account) {
+                  instagramAccounts.push({
+                    id: page.instagram_business_account.id,
+                    name: page.instagram_business_account.name || page.instagram_business_account.username,
+                    username: page.instagram_business_account.username,
+                    profile_picture_url: page.instagram_business_account.profile_picture_url,
+                    linked_page_id: page.id,
+                    linked_page_name: page.name
+                  });
+                }
+              }
+            }
+          }
+        }
+        console.log('Total pages after BM merge:', pages.length);
+      }
+    } catch (bmError) {
+      console.log('Business Manager pages fetch skipped (non-fatal):', bmError);
+    }
+
     // Store the access token securely in Supabase Vault
     const { data: vaultResult, error: vaultError } = await supabase
       .rpc('store_meta_token', {
