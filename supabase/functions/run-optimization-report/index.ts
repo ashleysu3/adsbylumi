@@ -95,6 +95,17 @@ Deno.serve(async (req) => {
       .in('progress_status', ['live', 'ready_to_publish'])
       .eq('archived', false);
 
+    // Fetch recent ad actions for cross-campaign correlation
+    const actionLookbackStart = new Date(new Date(dateRangeStart).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentActions } = await supabase
+      .from('ad_action_log')
+      .select('*')
+      .eq('brand_id', brandId)
+      .gte('created_at', actionLookbackStart)
+      .order('created_at', { ascending: false });
+
+    console.log('[run-optimization-report] Found', recentActions?.length || 0, 'recent ad actions for correlation');
+
     console.log('[run-optimization-report] Found', workspaces?.length || 0, 'active workspaces');
     if (!workspaces || workspaces.length === 0) {
       // No active campaigns — save empty report
