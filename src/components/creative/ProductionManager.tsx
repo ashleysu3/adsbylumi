@@ -978,6 +978,37 @@ export function ProductionManager({
         productionItems={productionItems}
         brandId={brandId}
       />
+
+      {/* Save Others Prompt after Lumi's Top 5 */}
+      <Dialog open={showSaveOthersPrompt} onOpenChange={setShowSaveOthersPrompt}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Library className="h-5 w-5 text-primary" />
+              Save the rest for later?
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Lumi picked your Top 5. Want to save the other {productionItems.filter(i => !rankedItems.map(r => r.id).includes(i.id)).length} concepts to your Concept Library so you can use them in future rounds?
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowSaveOthersPrompt(false)}>
+              No, keep them here
+            </Button>
+            <Button 
+              onClick={async () => {
+                setShowSaveOthersPrompt(false);
+                await handleMoveOthersToLibrary();
+              }}
+              disabled={movingToLibrary}
+              className="gap-2"
+            >
+              {movingToLibrary ? <Loader2 className="h-4 w-4 animate-spin" /> : <Library className="h-4 w-4" />}
+              Save to Library
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
