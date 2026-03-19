@@ -237,6 +237,9 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
           : data.target_outcome
             ? JSON.stringify(data.target_outcome)
             : prev.target_outcome,
+        page_goal: data.suggested_page_goal && ['purchase', 'discovery_call', 'free_resource', 'other'].includes(data.suggested_page_goal)
+          ? data.suggested_page_goal
+          : prev.page_goal,
       }));
 
       if (data.needs_clarification) {
