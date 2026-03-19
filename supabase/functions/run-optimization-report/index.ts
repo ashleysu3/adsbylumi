@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
       throw new Error('brandId, dateRangeStart, and dateRangeEnd are required');
     }
 
-    // Auth
+    // Auth — support both user JWT and service-role key for cron context
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Authorization required' }), {
@@ -26,27 +26,48 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseAuth = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
-    if (userError || !user) {
-      console.error('Auth error:', userError?.message);
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401,
-      });
-    }
-    const userId = user.id;
-    console.log('[run-optimization-report] Authenticated user:', userId);
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const isServiceRole = token === serviceRoleKey;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Verify brand ownership
+    let userId: string;
+
+    if (isServiceRole) {
+      // Service-role mode (called from schedule-digests cron)
+      // Look up userId from the brand
+      const { data: brandLookup, error: brandLookupError } = await supabase
+        .from('brands')
+        .select('user_id')
+        .eq('id', brandId)
+        .single();
+      if (brandLookupError || !brandLookup) {
+        throw new Error('Brand not found');
+      }
+      userId = brandLookup.user_id;
+      console.log('[run-optimization-report] Service-role mode, userId from brand:', userId);
+    } else {
+      // User JWT mode (called from dashboard)
+      const supabaseAuth = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      );
+      const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
+      if (userError || !user) {
+        console.error('Auth error:', userError?.message);
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401,
+        });
+      }
+      userId = user.id;
+      console.log('[run-optimization-report] Authenticated user:', userId);
+    }
+
+    // Verify brand ownership (skip in service-role mode — already trusted)
     const { data: brand, error: brandError } = await supabase
       .from('brands')
       .select('id, user_id, meta_account_id, meta_access_token, name')
@@ -55,7 +76,7 @@ Deno.serve(async (req) => {
 
     if (brandError || !brand) throw new Error('Brand not found');
     console.log('[run-optimization-report] Brand found:', brand.name, 'meta_account_id:', brand.meta_account_id);
-    if (brand.user_id !== userId) {
+    if (!isServiceRole && brand.user_id !== userId) {
       return new Response(JSON.stringify({ error: 'Access denied' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403,
       });
