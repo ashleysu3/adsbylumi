@@ -43,6 +43,7 @@ export function ExistingPostPicker({
         }
       );
       if (fnError) throw fnError;
+      if (data?.error) throw new Error(data.error);
       const fetched = (data?.posts || []).map((p: any) => ({
         id: p.id,
         caption: p.caption || "",

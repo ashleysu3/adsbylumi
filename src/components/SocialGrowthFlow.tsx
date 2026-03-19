@@ -233,7 +233,18 @@ export function SocialGrowthFlow({
           </div>
         </div>
 
-        {posts.length === 0 ? (
+        {error ? (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="p-6 text-center space-y-3">
+              <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+              <p className="font-medium">Couldn't load your posts</p>
+              <p className="text-sm text-muted-foreground">{error}</p>
+              <Button variant="outline" size="sm" onClick={() => window.location.href = "/settings"}>
+                Reconnect Meta
+              </Button>
+            </CardContent>
+          </Card>
+        ) : posts.length === 0 ? (
           <Card className="border-amber-500/30 bg-amber-500/5">
             <CardContent className="p-6 text-center space-y-2">
               <AlertCircle className="h-8 w-8 text-amber-500 mx-auto" />
