@@ -1440,6 +1440,16 @@ export default function AdPerformance() {
                 <Switch checked={digestSettings.enabled}
                   onCheckedChange={v => setDigestSettings(p => ({ ...p, enabled: v }))} />
               </div>
+              <div className="flex items-center justify-between bg-primary/5 rounded-lg p-3 border border-primary/20">
+                <div>
+                  <Label className="text-sm font-medium">Auto-optimize</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Let LUMI auto-apply high-priority actions (pause budget hogs, scale winners)
+                  </p>
+                </div>
+                <Switch checked={digestSettings.auto_optimize}
+                  onCheckedChange={v => setDigestSettings(p => ({ ...p, auto_optimize: v }))} />
+              </div>
               <Button onClick={saveDigestSettings} disabled={digestLoading} className="w-full">
                 {digestLoading ? 'Saving...' : 'Save Settings'}
               </Button>
