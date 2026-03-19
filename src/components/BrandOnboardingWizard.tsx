@@ -112,24 +112,29 @@
      onNavigateToTab(steps[index].id);
    };
  
-   return (
-     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-       <motion.div
-         initial={{ opacity: 0, scale: 0.95, y: 20 }}
-         animate={{ opacity: 1, scale: 1, y: 0 }}
-         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-         className="w-full max-w-lg"
-       >
-         <Card className="border-2 shadow-2xl">
-           <CardHeader className="relative pb-2">
-             <Button
-               variant="ghost"
-               size="icon"
-               className="absolute right-4 top-4"
-               onClick={onDismiss}
-             >
-               <X className="h-4 w-4" />
-             </Button>
+    // Only allow dismissing once brand basics are done
+    const canDismiss = steps[0].isComplete;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="w-full max-w-lg"
+        >
+          <Card className="border-2 shadow-2xl">
+            <CardHeader className="relative pb-2">
+              {canDismiss && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-4 top-4"
+                  onClick={onDismiss}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
              
              <div className="flex items-center gap-2 text-primary">
                <Sparkles className="h-5 w-5" />
