@@ -1130,7 +1130,14 @@ export default function CreativeStudio() {
                    </p>
                     {!generating && (
                       <div className="flex flex-col items-center gap-3">
-                        <Button onClick={() => generateAngles()} className="gap-2">
+                        <Button onClick={() => {
+                          // Gate on psychology approval
+                          if (workspace?.brands?.psychology_status && workspace.brands.psychology_status !== 'approved') {
+                            toast.error("Please approve your Audience Psychology on the Dashboard before generating angles.");
+                            return;
+                          }
+                          setShowContextInput(true);
+                        }} className="gap-2">
                           <Sparkles className="h-4 w-4" />
                           Generate Angles
                         </Button>
