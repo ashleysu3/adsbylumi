@@ -1,65 +1,119 @@
 
 
-## Ad Action History & Cross-Campaign Cause-Effect Analysis
+## Ads Manager Dashboard for LUMI
 
-### Problem
-Today, `creative_rotation_log` only tracks creative swaps (pause/activate ads). There's no unified log of ALL ad actions (budget changes, audience edits, status toggles), and the optimization engine doesn't reference past actions when diagnosing performance shifts across campaigns.
+This is a large feature. The app already has foundational pieces (brands, campaigns, optimization_reports, ad_action_log, weekly_reports, campaign_goals, pending_optimizations). The plan builds on these existing tables and adds the missing agency-level management layer.
 
-### What We'll Build
+### What Already Exists (Reuse)
+- `brands` table = clients (name, meta_account_id, etc.)
+- `campaign_workspaces` = campaigns with objectives, budgets, KPIs
+- `campaign_goals` = KPI targets per campaign
+- `ad_action_log` = audit log of all changes
+- `optimization_reports` = performance reports
+- `pending_optimizations` = approval workflow
+- `weekly_reports` = weekly report storage
+- `ActionHistoryTimeline` component = audit log UI
 
-**1. Unified Ad Actions Log Table**
+### What's New
 
-New `ad_action_log` table to capture every meaningful action taken on any campaign:
+**1. Database Changes (2 new tables, 1 alter)**
 
-| Column | Type | Purpose |
-|--------|------|---------|
-| id | uuid | PK |
-| brand_id | uuid | FK to brands |
-| workspace_id | uuid | FK to campaign_workspaces |
-| action_type | text | `paused_ad`, `activated_ad`, `budget_change`, `audience_change`, `creative_swap`, `campaign_paused`, `campaign_activated` |
-| action_detail | jsonb | Specifics (old/new budget, ad ID, etc.) |
-| source | text | `user`, `lumi_auto`, `lumi_approved` |
-| meta_entity_id | text | The Meta ad/campaign/adset ID affected |
-| created_at | timestamptz | When it happened |
+| Table | Purpose |
+|-------|---------|
+| `agency_clients` | Extends brands with Slack channel IDs, contact info, health status, notes — the "scorecard" metadata |
+| `review_logs` | Structured review entries tied to a date, with campaign metrics, ad-level data, action plans, and approval status |
+| ALTER `brands` | Add `last_review_date` and `next_report_due` columns |
 
-RLS: Users can read/insert for their own brands.
+**2. New Pages**
 
-**2. Log Actions From All Touchpoints**
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/ads-manager` | `AdsManager.tsx` | Health overview dashboard — all clients at a glance with status pills, last review, flagged items |
+| `/ads-manager/client/:id` | `AdsManagerClient.tsx` | Client scorecard + campaign list with KPI targets, status badges, notes |
+| `/ads-manager/review` | `AdsManagerReview.tsx` | Mon/Thu optimization review flow — input metrics, flag ads, generate action plans |
+| `/ads-manager/approve` | `AdsManagerApprove.tsx` | Approval queue — summary of proposed actions, approve/reject per client or action |
+| `/ads-manager/reports` | `AdsManagerReports.tsx` | Tuesday report workflow — draft/approve/send cycle with preview |
 
-Update these edge functions to insert into `ad_action_log`:
-- `rotate-creative` — already logs to `creative_rotation_log`, add to new table too
-- `apply-optimizations` — budget changes, pauses
-- `check-campaign-status` — ad pause/activate toggles from the dashboard
+**3. New Components**
 
-Update frontend in `Data.tsx` where users approve/dismiss pending optimizations.
+| Component | Purpose |
+|-----------|---------|
+| `ClientScorecard` | Collapsible card showing client health, campaigns, KPIs, status indicators |
+| `ReviewForm` | Structured form for entering 3-day/7-day metrics, ad-level spend/CPL/ROAS, flagging ads |
+| `ApprovalQueue` | List of pending actions grouped by client with approve/reject buttons |
+| `ReportDraftPreview` | Report preview with KPI status emojis, budget summaries, editable notes |
+| `ClientHealthBadge` | Color-coded status pill (green/yellow/red) |
 
-**3. Cross-Campaign Cause-Effect in Optimization Reports**
+**4. Sidebar Addition**
 
-Update `run-optimization-report` to:
-- Query `ad_action_log` for actions taken in the 7 days before the report period
-- Pass this "recent actions" context to the diagnostic engine
-- Add a new recommendation type: `cross_campaign_impact` — e.g., "You paused your Instagram traffic campaign 5 days ago. Your lead gen campaign's CPL increased 40% since then — consider reactivating top-of-funnel activity."
-- Compare current metrics vs. the previous report period to detect performance shifts correlated with actions
+Add "Ads Manager" section to `AppSidebar.tsx` (visible for agency users or admins) with sub-items: Overview, Reviews, Approvals, Reports.
 
-**4. Action Timeline UI**
+**5. Edge Functions**
 
-Add an "Action History" section to the Results page (`Data.tsx`):
-- Chronological timeline of actions with icons per type
-- Each entry shows: date, action description, which campaign, who triggered it (user vs LUMI)
-- Highlight entries where LUMI detected a correlated performance change
+| Function | Purpose |
+|----------|---------|
+| `generate-review-action-plan` | Takes review metrics + KPI targets, generates AI action plan summary |
+| `generate-manager-report` | Auto-generates Tuesday report draft from latest review log data |
+
+**6. Audit Log Enhancement**
+
+Extend `ActionHistoryTimeline` to support filtering by client and action type. Add an "Audit Log" tab to the Ads Manager dashboard that shows all changes across all clients.
+
+### Data Model Details
+
+```text
+agency_clients
+├── id (uuid, PK)
+├── brand_id (uuid, FK → brands)
+├── slack_client_channel (text)
+├── slack_internal_channel (text)
+├── contact_name (text)
+├── contact_email (text)
+├── health_status (text: healthy/watching/needs_attention/paused)
+├── notes (text)
+├── created_at, updated_at
+
+review_logs
+├── id (uuid, PK)
+├── brand_id (uuid, FK → brands)
+├── review_date (date)
+├── reviewer_id (uuid, FK → auth.users via profiles)
+├── campaign_metrics (jsonb) — per-campaign 3d/7d actuals
+├── ad_level_data (jsonb) — per-ad spend/CPL/ROAS/flags
+├── action_plan (text) — AI-generated or manual summary
+├── approval_status (text: draft/pending/approved/executed)
+├── approved_by (uuid)
+├── approved_at (timestamptz)
+├── notes (text)
+├── created_at
+```
+
+### UI Design Approach
+
+- Data-forward: table-based layouts with inline editing
+- Color coding: green (`bg-green-500/10`), yellow (`bg-amber-500/10`), red (`bg-destructive/10`) throughout
+- Collapsible client sections using existing `Collapsible` component
+- Mobile-friendly: stacked cards on small screens, scrollable tables on desktop
+- Status system: ✅ On Track, ⚠️ Watching, 🔴 Needs Intervention, ⏸️ Paused, 🚫 Turned Off
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| **New migration** | Create `ad_action_log` table with RLS |
-| `supabase/functions/rotate-creative/index.ts` | Insert into `ad_action_log` |
-| `supabase/functions/apply-optimizations/index.ts` | Insert into `ad_action_log` |
-| `supabase/functions/check-campaign-status/index.ts` | Insert into `ad_action_log` |
-| `supabase/functions/run-optimization-report/index.ts` | Query recent actions, add cross-campaign correlation logic |
-| `src/pages/Data.tsx` | Add Action History timeline section |
-| `src/pages/Data.tsx` | Log user-approved optimizations to `ad_action_log` |
-
-### Note
-Your second request ("I also want to make sure that LUMI is doing checks on t...") was cut off. Please finish that thought and I'll incorporate it into this plan.
+| **New migration** | Create `agency_clients`, `review_logs` tables with RLS |
+| `src/pages/AdsManager.tsx` | Health overview dashboard |
+| `src/pages/AdsManagerClient.tsx` | Client scorecard detail |
+| `src/pages/AdsManagerReview.tsx` | Review flow UI |
+| `src/pages/AdsManagerApprove.tsx` | Approval workflow |
+| `src/pages/AdsManagerReports.tsx` | Report draft/approve/send |
+| `src/components/ads-manager/ClientScorecard.tsx` | Scorecard component |
+| `src/components/ads-manager/ReviewForm.tsx` | Review entry form |
+| `src/components/ads-manager/ApprovalQueue.tsx` | Approval queue |
+| `src/components/ads-manager/ReportDraftPreview.tsx` | Report preview |
+| `src/components/ads-manager/ClientHealthBadge.tsx` | Status badge |
+| `src/components/AppSidebar.tsx` | Add Ads Manager nav section |
+| `src/App.tsx` | Add new routes |
+| `supabase/functions/generate-review-action-plan/index.ts` | AI action plan generation |
+| `supabase/functions/generate-manager-report/index.ts` | Auto-generate report drafts |
+| `src/components/insights/ActionHistoryTimeline.tsx` | Add client/action-type filters |
 
