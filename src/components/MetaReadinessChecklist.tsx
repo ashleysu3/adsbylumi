@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   CheckCircle2, XCircle, Loader2, 
   Facebook, Instagram, CreditCard, Activity,
-  ChevronDown
+  ChevronDown, ExternalLink
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -208,6 +208,33 @@ export function MetaReadinessChecklist({
                     >
                       {item.actionLabel}
                     </Button>
+                  )}
+                  {expandedItem === 'pixel' && item.id === 'pixel' && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-medium text-foreground">Quick install guides:</p>
+                      <div className="space-y-1.5">
+                        {[
+                          { name: "Kajabi", url: "https://help.kajabi.com/hc/en-us/articles/360035249811" },
+                          { name: "Shopify", url: "https://help.shopify.com/en/manual/promoting-marketing/pixels/facebook" },
+                          { name: "WordPress", url: "https://wordpress.org/plugins/pixel-caffeine/" },
+                          { name: "Squarespace", url: "https://support.squarespace.com/hc/en-us/articles/205815908" },
+                          { name: "Wix", url: "https://support.wix.com/en/article/adding-the-facebook-pixel-to-your-wix-site" },
+                          { name: "ClickFunnels", url: "https://help.clickfunnels.com/hc/en-us/articles/360001134723" },
+                          { name: "Kartra", url: "https://help.kartra.com/article/meta-facebook-pixel" },
+                        ].map(({ name, url }) => (
+                          <a
+                            key={name}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            {name} guide
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               </CollapsibleContent>
