@@ -15,9 +15,9 @@ import { LinkNewOfferToCampaignDialog } from "./LinkNewOfferToCampaignDialog";
 type PageGoal = 'purchase' | 'discovery_call' | 'free_resource' | 'other';
 
 const PAGE_GOAL_OPTIONS: { value: PageGoal; label: string; description: string }[] = [
-  { value: 'purchase', label: 'Purchase', description: 'Buy a product or service directly' },
+  { value: 'purchase', label: 'Sell a Product/Service', description: 'They pay money to buy something' },
   { value: 'discovery_call', label: 'Book a Call', description: 'Schedule a discovery or sales call' },
-  { value: 'free_resource', label: 'Collect Leads', description: 'Capture name/email (lead magnet, webinar, challenge)' },
+  { value: 'free_resource', label: 'Collect Leads (Free)', description: 'Free webinar, training, challenge, PDF, opt-in, or lead magnet' },
   { value: 'other', label: 'Other', description: 'Something else (waitlist, community, etc.)' },
 ];
 

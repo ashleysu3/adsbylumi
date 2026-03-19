@@ -213,6 +213,13 @@ EXTRACT THE FOLLOWING (be thorough - pull actual quotes and language from the pa
 
 17. **clarification_questions** - If needs_clarification is true, provide 1-3 specific questions to ask the user.
 
+18. **suggested_page_goal** - One of: "purchase", "discovery_call", "free_resource", or "other". Determine based on these rules:
+    - If the page collects leads (email/name) for a free or low-cost resource like a webinar, training, challenge, masterclass, PDF, guide, checklist, quiz, opt-in, or freebie → "free_resource"
+    - If the page's primary CTA is to book a call, schedule a consultation, or apply → "discovery_call"
+    - If the page sells a product or service for payment (course, coaching package, membership, physical product) → "purchase"
+    - Otherwise → "other"
+    IMPORTANT: Free webinars, free trainings, free challenges, and any registration-based events are ALWAYS "free_resource", even if they eventually lead to a sale.
+
 Return ONLY valid JSON with these exact fields. If you can't find information for a field, use reasonable inferences OR leave as empty array/null and add to missing_info.`;
 
     const userPrompt = `Analyze this offer page and extract ALL available copy and information for ad creative generation.
