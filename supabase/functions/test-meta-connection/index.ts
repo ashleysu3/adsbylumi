@@ -15,6 +15,8 @@ interface TestResult {
     tokenValid?: boolean;
     permissionsValid?: boolean;
     permissions?: string[];
+    missingPermissions?: string[];
+    hasInstagramMediaAccess?: boolean;
   };
   error?: string;
 }
@@ -125,8 +127,9 @@ Deno.serve(async (req) => {
       ?.filter((p: any) => p.status === 'granted')
       ?.map((p: any) => p.permission) || [];
 
-    const requiredPermissions = ['ads_management', 'ads_read', 'business_management'];
+    const requiredPermissions = ['ads_management', 'ads_read', 'business_management', 'pages_read_user_content', 'instagram_basic'];
     const missingPermissions = requiredPermissions.filter(p => !grantedPermissions.includes(p));
+    const hasInstagramMediaAccess = grantedPermissions.includes('pages_read_user_content') && grantedPermissions.includes('instagram_basic');
 
     // Test 3: Validate ad account access
     console.log('Testing ad account access...');
@@ -166,14 +169,16 @@ Deno.serve(async (req) => {
         tokenValid: true,
         permissionsValid: missingPermissions.length === 0,
         permissions: grantedPermissions,
+        missingPermissions: missingPermissions.length > 0 ? missingPermissions : undefined,
         adAccountId: accountId,
         adAccountName: accountData.name,
-        pageName: brand.page_name || undefined
+        pageName: brand.page_name || undefined,
+        hasInstagramMediaAccess,
       }
     };
 
     if (missingPermissions.length > 0) {
-      result.message = 'Connection works but some permissions are missing';
+      result.message = `Connection works but some permissions are missing: ${missingPermissions.join(', ')}. Please disconnect and reconnect your Meta account to grant updated permissions.`;
       result.details!.permissionsValid = false;
     }
 
