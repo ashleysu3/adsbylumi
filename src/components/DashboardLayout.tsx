@@ -128,7 +128,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           onShowWalkthrough={() => startTour()}
         />
         <SubscriptionBanner />
-        <CancellationPolicyBanner />
         <main className="px-4 py-4">{children}</main>
         <DashboardFooter />
         <MobileBottomNav />
