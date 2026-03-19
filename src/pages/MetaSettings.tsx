@@ -39,6 +39,8 @@ export default function MetaSettings() {
       tokenValid?: boolean;
       permissionsValid?: boolean;
       permissions?: string[];
+      missingPermissions?: string[];
+      hasInstagramMediaAccess?: boolean;
       adAccountName?: string;
       adAccountId?: string;
     };
