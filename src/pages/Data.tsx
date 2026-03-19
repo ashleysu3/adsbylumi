@@ -1165,7 +1165,50 @@ export default function AdPerformance() {
           </div>
         )}
 
-        {/* Import Campaigns Modal */}
+        {/* ─── Pending Optimizations ─── */}
+        {pendingOptimizations.length > 0 && view === 'home' && (
+          <div className="space-y-3 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <img src={lumiLogo} className="h-5 w-5" alt="" />
+              <h2 className="text-lg font-bold text-foreground">Pending Actions</h2>
+              <Badge variant="outline" className="text-xs">{pendingOptimizations.filter(o => o.status === 'pending').length} pending</Badge>
+            </div>
+            {pendingOptimizations.map((opt) => (
+              <Card key={opt.id} className={opt.auto_applied ? 'border-primary/30 bg-primary/5' : ''}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant={opt.auto_applied ? 'default' : 'outline'} className="text-xs">
+                          {opt.auto_applied ? '✦ Auto-applied' : opt.recommendation_type.replace(/_/g, ' ')}
+                        </Badge>
+                      </div>
+                      <p className="text-sm">{opt.action_description}</p>
+                    </div>
+                    <div className="flex gap-1.5 shrink-0">
+                      {opt.status === 'pending' && (
+                        <>
+                          <Button size="sm" variant="default" onClick={() => handleOptimizationAction(opt.id, 'approved')}>
+                            Approve
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleOptimizationAction(opt.id, 'rejected')}>
+                            Dismiss
+                          </Button>
+                        </>
+                      )}
+                      {opt.status === 'applied' && opt.auto_applied && (
+                        <Button size="sm" variant="outline" onClick={() => handleOptimizationAction(opt.id, 'undone')}>
+                          Undo
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {brandId && metaAccountId &&
           <ImportCampaignsModal
             open={importModalOpen}
