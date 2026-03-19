@@ -133,6 +133,9 @@ snippets are shown in quick succession (carousel or montage style).
     const offerHesitations = ensureArray(offerAudiencePsychology?.specific_hesitations);
 
     const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts. Your creative MUST be specific, emotionally resonant, and impossible to ignore.
+
+=== CRITICAL PERSPECTIVE RULE ===
+The person recording/posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame scripts accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it's clearly the founder's own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.
 ${creativeIntelligence?.hasData ? `
 === DATA-INFORMED STRATEGY ===
 Based on the user's ad account performance over the last 90 days:
