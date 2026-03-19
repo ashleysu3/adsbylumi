@@ -90,10 +90,51 @@ export interface CreativeContext {
       });
     };
  
-   const content = (
-     <div className="space-y-4">
-       <Collapsible open={expanded} onOpenChange={setExpanded}>
-         <CollapsibleTrigger asChild>
+    const content = (
+      <div className="space-y-4">
+        {/* Perspective question — always visible */}
+        <div className="space-y-3 p-4 rounded-lg border border-border bg-muted/30">
+          <Label className="text-sm font-medium">Who experienced the results from your offer?</Label>
+          <RadioGroup
+            value={perspectiveRole}
+            onValueChange={(v) => setPerspectiveRole(v as "seller" | "buyer" | "both")}
+            className="grid gap-2"
+          >
+            <label className={cn(
+              "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+              perspectiveRole === "seller" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"
+            )}>
+              <RadioGroupItem value="seller" id="perspective-seller" />
+              <div>
+                <p className="text-sm font-medium">My customers / clients</p>
+                <p className="text-xs text-muted-foreground">I help others get results (coach, agency, service provider)</p>
+              </div>
+            </label>
+            <label className={cn(
+              "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+              perspectiveRole === "buyer" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"
+            )}>
+              <RadioGroupItem value="buyer" id="perspective-buyer" />
+              <div>
+                <p className="text-sm font-medium">Me personally</p>
+                <p className="text-xs text-muted-foreground">I experienced the transformation myself (founder story, personal brand)</p>
+              </div>
+            </label>
+            <label className={cn(
+              "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors",
+              perspectiveRole === "both" ? "border-primary bg-primary/5" : "border-border hover:border-muted-foreground/50"
+            )}>
+              <RadioGroupItem value="both" id="perspective-both" />
+              <div>
+                <p className="text-sm font-medium">Both</p>
+                <p className="text-xs text-muted-foreground">I got results AND so do my clients</p>
+              </div>
+            </label>
+          </RadioGroup>
+        </div>
+
+        <Collapsible open={expanded} onOpenChange={setExpanded}>
+          <CollapsibleTrigger asChild>
            <Button 
              variant="ghost" 
              className="w-full justify-between px-4 py-3 h-auto bg-muted/50 hover:bg-muted"
