@@ -181,6 +181,53 @@ export type Database = {
           },
         ]
       }
+      agency_clients: {
+        Row: {
+          brand_id: string
+          contact_email: string | null
+          contact_name: string | null
+          created_at: string
+          health_status: string
+          id: string
+          notes: string | null
+          slack_client_channel: string | null
+          slack_internal_channel: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          health_status?: string
+          id?: string
+          notes?: string | null
+          slack_client_channel?: string | null
+          slack_internal_channel?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          created_at?: string
+          health_status?: string
+          id?: string
+          notes?: string | null
+          slack_client_channel?: string | null
+          slack_internal_channel?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agency_clients_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: true
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audiences: {
         Row: {
           brand_id: string
@@ -347,6 +394,7 @@ export type Database = {
           industry: string | null
           instagram_account_id: string | null
           instagram_account_name: string | null
+          last_review_date: string | null
           meta_access_token: string | null
           meta_account_id: string | null
           meta_pixel_events: Json | null
@@ -357,6 +405,7 @@ export type Database = {
           multi_advertiser_ads: boolean | null
           name: string
           never_use_words: string[] | null
+          next_report_due: string | null
           notification_preferences: Json | null
           page_id: string | null
           page_name: string | null
@@ -383,6 +432,7 @@ export type Database = {
           industry?: string | null
           instagram_account_id?: string | null
           instagram_account_name?: string | null
+          last_review_date?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
           meta_pixel_events?: Json | null
@@ -393,6 +443,7 @@ export type Database = {
           multi_advertiser_ads?: boolean | null
           name: string
           never_use_words?: string[] | null
+          next_report_due?: string | null
           notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null
@@ -419,6 +470,7 @@ export type Database = {
           industry?: string | null
           instagram_account_id?: string | null
           instagram_account_name?: string | null
+          last_review_date?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
           meta_pixel_events?: Json | null
@@ -429,6 +481,7 @@ export type Database = {
           multi_advertiser_ads?: boolean | null
           name?: string
           never_use_words?: string[] | null
+          next_report_due?: string | null
           notification_preferences?: Json | null
           page_id?: string | null
           page_name?: string | null
@@ -1614,6 +1667,59 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      review_logs: {
+        Row: {
+          action_plan: string | null
+          ad_level_data: Json
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          brand_id: string
+          campaign_metrics: Json
+          created_at: string
+          id: string
+          notes: string | null
+          review_date: string
+          reviewer_id: string
+        }
+        Insert: {
+          action_plan?: string | null
+          ad_level_data?: Json
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          brand_id: string
+          campaign_metrics?: Json
+          created_at?: string
+          id?: string
+          notes?: string | null
+          review_date?: string
+          reviewer_id: string
+        }
+        Update: {
+          action_plan?: string | null
+          ad_level_data?: Json
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          brand_id?: string
+          campaign_metrics?: Json
+          created_at?: string
+          id?: string
+          notes?: string | null
+          review_date?: string
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "review_logs_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_settings: {
         Row: {
