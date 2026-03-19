@@ -887,16 +887,24 @@ export function ProductionManager({
                     </p>
                   </div>
                 </div>
-                <Button 
-                  variant="lumi"
-                  onClick={onBuildCampaign} 
-                  disabled={!isReadyToBuild}
-                  size="lg"
-                  className="gap-2"
-                >
-                  <Rocket className="h-5 w-5" />
-                  Build Campaign
-                </Button>
+                <div className="flex flex-col items-end gap-1">
+                  <Button 
+                    variant="lumi"
+                    onClick={onBuildCampaign} 
+                    disabled={!isReadyToBuild}
+                    size="lg"
+                    className="gap-2"
+                    title={!isReadyToBuild ? "Upload at least one creative asset to build" : undefined}
+                  >
+                    <Rocket className="h-5 w-5" />
+                    Build Campaign
+                  </Button>
+                  {!isReadyToBuild && (
+                    <p className="text-xs text-muted-foreground text-right">
+                      Upload at least one creative asset above to enable building
+                    </p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
