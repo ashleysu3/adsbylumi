@@ -1,65 +1,45 @@
 
 
-## Plan: Add Local & Event Targeting Strategies to the Create Wizard
+## Two Issues to Fix
 
-### Problem
-Three location-based campaign templates already exist in the database (`local-nearby`, `local-regional`, `event-location`) and the campaign builder already handles location/radius UI. However, there is no way for users to access these strategies from the `/create` page — they are invisible.
+### Issue 1: LUMI Assumes the User Experienced the Results
 
-### What Changes
+**Problem**: The AI prompts in `generate-creative-angles`, `generate-creative-grid`, and `generate-angle-copy` don't distinguish between the user (brand owner) and their customers. When the AI generates hooks like "I lost 20 lbs using this method," it frames the user as the one who experienced the transformation — but in most cases, it's their *customers* who had those results. The user is the coach/service provider selling the offer.
 
-**1. Add system offer IDs for the three local strategies**
+**Fix**: Add a clear directive to the system prompts in all three edge functions:
 
-In `src/pages/Create.tsx`, add three new system offer constants alongside the existing social growth ones:
+- **`generate-creative-angles/index.ts`** (line ~190): Add a section to the system prompt clarifying the user is the SELLER, not the BUYER. Their customers experienced the results. Scripts should use "my client" / "my students" framing, not "I experienced this."
+  
+- **`generate-creative-grid/index.ts`** (line ~135): Same directive — hooks and scripts should frame the user as the expert/provider sharing their clients' transformations, not their own.
+  
+- **`generate-angle-copy/index.ts`** (line ~147): Same directive for ad copy — primary text should reference client results ("My clients...", "She went from...") rather than assuming the user personally experienced the transformation.
 
-```
-LOCAL_NEARBY_OFFER_ID = "system-local-nearby"
-LOCAL_REGIONAL_OFFER_ID = "system-local-regional"  
-EVENT_LOCATION_OFFER_ID = "system-event-location"
-```
+The directive will read something like:
 
-Add these to `SYSTEM_OFFER_IDS`.
+> CRITICAL PERSPECTIVE RULE: The person recording/posting these ads is the BUSINESS OWNER — a coach, course creator, or service provider. They are NOT the person who experienced the transformation. Their CUSTOMERS/CLIENTS are the ones who got results. Frame scripts accordingly: "My client went from..." or "One of my students..." — NOT "I went from..." unless it's clearly the founder's own origin story. When referencing testimonials, attribute them to clients. The user sells the solution; their customers experienced the results.
 
-**2. Add the options to Step 1 (offer selection)**
+---
 
-Between the social growth options and the "or promote an offer" divider, add a second divider ("or grow locally") followed by three new `StepOption` entries:
+### Issue 2: Production Checklist Expanded View Missing CSV-Only Info
 
-- **Event & Location Targeting** (MapPin icon) — "Get in front of people at conferences, trade shows, or high-traffic locations"
-- **Local Business — Nearby** (MapPin icon) — "Attract nearby customers to your storefront or location"  
-- **Local Business — Regional** (MapPin icon) — "Reach customers across your service area"
+**Problem**: The `CreativeChecklistCard` expanded view already shows talking head details well (verbal/written/visual hooks, scripts, text overlays, delivery style, psychology). However, for `broll` and `graphic` formats, the expanded view shows only generic tips ("Capture variety", "Keep text minimal") instead of the item-specific data that exists in the CSV export: text overlays, visual direction, and why-it-works psychology.
 
-**3. Handle selection → skip to strategy step automatically**
+**Fix**: Update `CreativeChecklistCard.tsx` to show item-specific data for ALL formats, not just talking heads:
 
-When a user selects a local strategy, it should:
-- Auto-match the corresponding campaign template by slug (`event-location`, `local-nearby`, `local-regional`)
-- Set `selectedTemplateId` to the matched template
-- Skip directly to Step 2 (strategy recommendation) since the template is already determined
-- The strategy recommendation step already works — it shows the selected template with structure details
+- **B-Roll items**: Show `text_overlays`, `visual_hook`/`guidance` as "Visual Direction", and `why_this_works` psychology — replacing or supplementing the generic "B-Roll Tips" list.
+  
+- **Graphic items**: Show `text_overlays` (as "Graphic Copy"), `guidance` as "Design Direction", and `why_this_works` — replacing or supplementing the generic "Design Tips" list.
 
-**4. Wire the flow through to workspace creation**
+This means extracting the talking-head-only sections (text overlays, psychology card) into shared sections that render for ALL formats when the data exists. The generic tips can remain as fallbacks when item-specific data isn't available.
 
-The existing `handleGenerateAndNavigate` flow creates a strategy + workspace and navigates to Creative Studio. For local strategies, the workspace needs to:
-- Store the template's `strategy_template` JSON (which already contains `location_type`, `default_radius`, etc.)
-- The `CampaignBuilderForm` already reads `location_type` from `strategy_template` and shows address/radius inputs
+**Files changed**: `src/components/creative/CreativeChecklistCard.tsx` (~40 lines moved/restructured)
 
-**5. Add educational context for the Event strategy**
+---
 
-For the event-location option, after selection on Step 2, show an educational Lumi card explaining the two-phase approach:
-- Phase 1: "Awareness ads at the event location to get people to interact with your content"
-- Phase 2: "Later, retarget those people with your offer ads (lead magnet or purchase)"
-- Include a note: "Make sure you also have an offer campaign set up so you can retarget these people"
+### Summary
 
-### What Does NOT Change
-- `CampaignBuilderForm.tsx` — already handles location targeting UI
-- Campaign templates in DB — already configured with `location_type`, radius settings
-- Edge functions — no changes needed
-- Creative Studio flow — works as-is since these are standard templates
-
-### Technical Details
-
-The key insight is that local strategies follow the same offer-less pattern as social growth, but instead of showing the Instagram post picker, they proceed directly through the standard angle generation → Creative Studio flow. The `strategy_template` JSON on each template already carries `location_type: "radius"` or `location_type: "places"`, which the builder form reads to show location inputs.
-
-The event-location template uses `location_type: "places"` with a default 5-mile radius, while the two local-business templates use `location_type: "radius"` with 10 and 25 mile defaults respectively.
-
-### Files to Edit
-- `src/pages/Create.tsx` — add system offer IDs, Step 1 options, auto-template-matching logic, and educational card for event strategy
+| Change | Files | Scope |
+|--------|-------|-------|
+| Add seller-vs-customer perspective directive | 3 edge functions | ~5 lines each |
+| Show full item data for all formats in checklist | `CreativeChecklistCard.tsx` | ~40 lines restructured |
 
