@@ -404,7 +404,30 @@ export default function Onboarding() {
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
                   placeholder="e.g., Coaching, E-commerce, SaaS"
+                  list="industry-suggestions"
                 />
+                <datalist id="industry-suggestions">
+                  <option value="Online Coaching" />
+                  <option value="Business Coaching" />
+                  <option value="Life Coaching" />
+                  <option value="Health & Wellness Coaching" />
+                  <option value="Fitness Coaching" />
+                  <option value="E-commerce" />
+                  <option value="Digital Products" />
+                  <option value="Online Courses" />
+                  <option value="SaaS" />
+                  <option value="Photography" />
+                  <option value="Consulting" />
+                  <option value="Real Estate" />
+                  <option value="Beauty & Skincare" />
+                  <option value="Food & Beverage" />
+                  <option value="Fashion" />
+                  <option value="Home & Decor" />
+                  <option value="Finance" />
+                  <option value="Legal Services" />
+                  <option value="Event Planning" />
+                  <option value="Wedding Services" />
+                </datalist>
               </div>
 
               <Button 
@@ -573,6 +596,14 @@ export default function Onboarding() {
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </Button>
               </motion.div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full text-muted-foreground text-xs mt-1"
+                onClick={() => setStep(4)}
+              >
+                Skip intro →
+              </Button>
             </motion.div>
           ) : (
             // Step 4: Connect Meta
