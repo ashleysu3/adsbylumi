@@ -1,45 +1,56 @@
 
 
-## Four Changes to Creative Studio
+## Smart Location Targeting Prompt for Non-Local Campaigns
 
-### 1. Audience Psychology: Auto-open and gate ad creation
+### What This Does
 
-**Problem**: The `AudiencePsychology` component in `Dashboard.tsx` starts collapsed (`open` defaults to `false`). Users can skip approving it and jump straight into creative.
+When a user creates a campaign with a standard strategy (not already a local strategy), the system checks if their business appears to be location-dependent. If so, it shows a prompt asking if they want to limit their ad delivery to a specific area — with a relevant example based on their industry. If they say yes, the location input (address + radius) appears inline.
 
-**Changes**:
-- **`src/components/AudiencePsychology.tsx`**: Default `open` to `true` when psychology exists but is not yet approved (status === `'completed'`).
-- **`src/pages/CreativeStudio.tsx`**: Before allowing angle generation, check if `workspace.brands.psychology_status !== 'approved'`. If not approved, show an alert/toast telling them to approve their audience psychology on the Dashboard first, and block generation.
+### Detection Logic
 
-### 2. Fix the Generate Angles button
+Check the brand's `industry`, `name`, `value_proposition`, and `target_audience` fields against location-sensitive keywords:
 
-**Problem**: The first-time "Generate Angles" button (line 1133) calls `generateAngles()` directly without opening the context input dialog (which asks the perspective question). Only the *Regenerate* flow opens the context dialog.
+- **Service providers**: therapist, salon, spa, gym, fitness, yoga, chiropractor, dentist, doctor, clinic, plumber, electrician, contractor, landscaper, mechanic, realtor, photographer
+- **Brick & mortar**: restaurant, cafe, bakery, bar, shop, store, boutique, studio, gallery, florist
+- **Professional services**: attorney, lawyer, accountant, veterinarian, tutor
 
-**Change in `src/pages/CreativeStudio.tsx`**:
-- Change the first-time "Generate Angles" button's `onClick` from `() => generateAngles()` to `() => setShowContextInput(true)` so users always get the context/perspective question before generation.
+If matched, show a Lumi-branded prompt card with a contextual example.
 
-### 3. Auto-save indicator works across all tabs
+### Changes
 
-**Problem**: The floating auto-save pill (bottom-right) only shows `saveStatus` from `saveCreativeState`. The copy tab uses its own `copySaveStatus`, and production saves go through `saveProductionItems` — neither updates the floating indicator.
+**`src/components/CampaignBuilderForm.tsx`** (~50 lines added):
 
-**Change in `src/pages/CreativeStudio.tsx`**:
-- Unify the floating indicator to show the *most recent* save status across all three: `saveStatus`, `copySaveStatus`, and a new production save status. Derive a combined status: if any is `"saving"`, show saving; if any is `"error"`, show error; else show the most recently changed saved/idle state.
-- Update `saveProductionItems` to also set `setSaveStatus` so it flows through the same indicator.
-- Update the floating pill to show `copySaveStatus` when on the copy tab, and `saveStatus` otherwise.
+1. Add a `detectLocationBusiness()` helper that scans `workspace.brands` fields for location-sensitive keywords
+2. When `usesLocationTargeting` is false but the business appears local, show a card:
+   - Lumi icon + "Does your business serve a specific area?"
+   - Contextual example: e.g., "For example, a therapist in Austin might only want their ads shown within 25 miles"
+   - Toggle: "Yes, limit my ad area" → reveals the same address + radius inputs already used for local strategies
+3. When toggled on, pass `locationTargeting` in the answers just like local strategies do
 
-### 4. After Lumi's Top 5, prompt to save others
+**`src/components/MobileCampaignBuilder.tsx`** (~40 lines added):
 
-**Problem**: After ranking, the "Save Others for Later" button exists but users must find it themselves. The user wants an automatic prompt.
+Same detection + prompt for mobile flow, placed on the Review step (step 2) above "Best practices applied".
 
-**Change in `src/components/creative/ProductionManager.tsx`**:
-- After `handleRankConcepts` succeeds and `rankedItems` are set, show a confirmation dialog/toast asking: "Want to save the other concepts to your library for later?" with Yes/No actions.
-- On "Yes", call `handleMoveOthersToLibrary()`.
-- On "No", dismiss.
+### No edge function or DB changes needed
 
-### Files Changed
+The `locationTargeting` field already flows through `campaign_builder_answers` → `build-meta-campaign` edge function. The existing plumbing handles it.
 
-| File | Change |
-|------|--------|
-| `src/components/AudiencePsychology.tsx` | Auto-open when status is `completed` |
-| `src/pages/CreativeStudio.tsx` | Gate angle generation on psychology approval; fix Generate Angles button to open context dialog; unify auto-save indicator |
-| `src/components/creative/ProductionManager.tsx` | Auto-prompt to save non-Top-5 concepts after ranking |
+### Example UX
+
+```text
+┌─────────────────────────────────────┐
+│ 📍 Does your business serve a      │
+│    specific area?                   │
+│                                     │
+│ "For example, a therapist in       │
+│  Austin might only want ads shown  │
+│  within 25 miles of their office." │
+│                                     │
+│ [Toggle: Limit my ad area]         │
+│                                     │
+│ (if toggled on:)                   │
+│ [Enter your business address    ]  │
+│ Radius: ===●========= 15 miles    │
+└─────────────────────────────────────┘
+```
 
