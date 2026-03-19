@@ -851,6 +851,14 @@ export default function Create() {
                 
                     <StepOption
                   selected={false}
+                  onSelect={() => setSelectedGoal("dm_leads")}
+                  icon={<Users className="h-5 w-5" />}
+                  title="Get people to DM me"
+                  description="Drive Instagram or Facebook DMs from people ready to have a conversation"
+                  badge="New" />
+                
+                    <StepOption
+                  selected={false}
                   onSelect={() => setSelectedGoal("grow_social")}
                   icon={<Instagram className="h-5 w-5" />}
                   title="Grow my social presence"
