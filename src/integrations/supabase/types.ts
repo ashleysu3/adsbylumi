@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_action_log: {
+        Row: {
+          action_detail: Json
+          action_type: string
+          brand_id: string
+          created_at: string
+          id: string
+          meta_entity_id: string | null
+          source: string
+          workspace_id: string | null
+        }
+        Insert: {
+          action_detail?: Json
+          action_type: string
+          brand_id: string
+          created_at?: string
+          id?: string
+          meta_entity_id?: string | null
+          source?: string
+          workspace_id?: string | null
+        }
+        Update: {
+          action_detail?: Json
+          action_type?: string
+          brand_id?: string
+          created_at?: string
+          id?: string
+          meta_entity_id?: string | null
+          source?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_action_log_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ad_action_log_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_audit_logs: {
         Row: {
           action: string
