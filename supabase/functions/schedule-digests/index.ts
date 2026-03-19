@@ -170,6 +170,26 @@ Deno.serve(async (req) => {
           }
         }
 
+        // ─── Run apply-optimizations to queue or auto-apply recommendations ───
+        const autoOptimize = (setting as any).auto_optimize ?? false;
+        if (reportId) {
+          try {
+            await fetch(
+              `${Deno.env.get('SUPABASE_URL')}/functions/v1/apply-optimizations`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                },
+                body: JSON.stringify({ brandId, reportId, autoOptimize }),
+              }
+            );
+          } catch (e) {
+            console.error(`Error calling apply-optimizations for brand ${brandId}:`, e);
+          }
+        }
+
         // Update last_sent_at
         await supabase
           .from('digest_settings')
