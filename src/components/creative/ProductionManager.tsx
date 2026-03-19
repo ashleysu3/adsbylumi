@@ -70,6 +70,7 @@ export function ProductionManager({
   const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
   const [isRanking, setIsRanking] = useState(false);
   const [rankedItems, setRankedItems] = useState<RankedItem[]>([]);
+  const [showSaveOthersPrompt, setShowSaveOthersPrompt] = useState(false);
   const [overallStrategy, setOverallStrategy] = useState<string>("");
   const [showTopOnly, setShowTopOnly] = useState(false);
   const [movingToLibrary, setMovingToLibrary] = useState(false);
