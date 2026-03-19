@@ -139,7 +139,7 @@ export function CampaignBuilderForm({
       ...(hasEndDate && endDate ? { endDate } : {}),
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation]);
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
