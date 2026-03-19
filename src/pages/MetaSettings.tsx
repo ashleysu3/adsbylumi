@@ -521,10 +521,18 @@ export default function MetaSettings() {
                               <div className="flex items-center gap-2">
                                 <Shield className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-muted-foreground">Permissions:</span>
-                                <Badge variant={testResult.details.permissionsValid ? "default" : "secondary"} className={testResult.details.permissionsValid ? "bg-green-500/10 text-green-600 border-green-500/30" : ""}>
-                                  {testResult.details.permissionsValid ? "All granted" : "Some missing"}
+                                <Badge variant={testResult.details.permissionsValid ? "default" : "destructive"} className={testResult.details.permissionsValid ? "bg-green-500/10 text-green-600 border-green-500/30" : ""}>
+                                  {testResult.details.permissionsValid ? "All granted" : `Missing: ${testResult.details.missingPermissions?.join(', ') || 'some permissions'}`}
                                 </Badge>
                               </div>
+                            )}
+                            {testResult.details.hasInstagramMediaAccess === false && (
+                              <Alert className="mt-2 border-amber-500/30 bg-amber-500/5">
+                                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                <AlertDescription className="text-xs">
+                                  <span className="font-medium">Instagram post access is missing.</span> You won't be able to pull existing posts for ads. Disconnect and reconnect your Meta account to grant the latest permissions.
+                                </AlertDescription>
+                              </Alert>
                             )}
                             {testResult.details.adAccountName && (
                               <div className="flex items-center gap-2">
