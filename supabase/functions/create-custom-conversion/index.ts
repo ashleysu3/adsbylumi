@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     // 4. Get pixel ID from ad account
     console.log('Fetching pixel for account:', accountId);
     const pixelResponse = await fetch(
-      `https://graph.facebook.com/v18.0/act_${accountId}/adspixels?fields=id,name&access_token=${metaAccessToken}`
+      `https://graph.facebook.com/v21.0/act_${accountId}/adspixels?fields=id,name&access_token=${metaAccessToken}`
     );
     const pixelData = await pixelResponse.json();
 
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
 
     // 6. Create Custom Conversion via Meta API
     const ccResponse = await fetch(
-      `https://graph.facebook.com/v18.0/act_${accountId}/customconversions`,
+      `https://graph.facebook.com/v21.0/act_${accountId}/customconversions`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

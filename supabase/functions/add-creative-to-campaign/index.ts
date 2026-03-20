@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     const isAdSetValidForAccount = async (candidateAdSetId: string): Promise<boolean> => {
       try {
         const adSetCheckRes = await fetch(
-          `https://graph.facebook.com/v18.0/${candidateAdSetId}?fields=id,account_id,status,effective_status,campaign_id&access_token=${metaAccessToken}`
+          `https://graph.facebook.com/v21.0/${candidateAdSetId}?fields=id,account_id,status,effective_status,campaign_id&access_token=${metaAccessToken}`
         );
         const adSetCheck = await adSetCheckRes.json();
 
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
         for (const adId of existingAdIds) {
           try {
             const adInfoRes = await fetch(
-              `https://graph.facebook.com/v18.0/${adId}?fields=adset_id&access_token=${metaAccessToken}`
+              `https://graph.facebook.com/v21.0/${adId}?fields=adset_id&access_token=${metaAccessToken}`
             );
             const adInfo = await adInfoRes.json();
             if (adInfo.adset_id && await isAdSetValidForAccount(adInfo.adset_id)) {
@@ -187,7 +187,7 @@ Deno.serve(async (req) => {
       // Second try: fetch ad sets from campaign
       if (!adSetId) {
         const adSetsRes = await fetch(
-          `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=id,name,status,effective_status&limit=10&access_token=${metaAccessToken}`
+          `https://graph.facebook.com/v21.0/${campaignId}/adsets?fields=id,name,status,effective_status&limit=10&access_token=${metaAccessToken}`
         );
         const adSetsData = await adSetsRes.json();
 
@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
     try {
       // Get ads in this ad set
       const adsRes = await fetch(
-        `https://graph.facebook.com/v18.0/${adSetId}/ads?fields=creative{object_story_spec,url_tags,tracking_specs,asset_feed_spec}&limit=1&access_token=${metaAccessToken}`
+        `https://graph.facebook.com/v21.0/${adSetId}/ads?fields=creative{object_story_spec,url_tags,tracking_specs,asset_feed_spec}&limit=1&access_token=${metaAccessToken}`
       );
       const adsData = await adsRes.json();
       
@@ -294,7 +294,7 @@ Deno.serve(async (req) => {
     let forceClonePerAsset = false;
     try {
       const adSetMetaRes = await fetch(
-        `https://graph.facebook.com/v18.0/${adSetId}?fields=id,is_dynamic_creative&access_token=${metaAccessToken}`
+        `https://graph.facebook.com/v21.0/${adSetId}?fields=id,is_dynamic_creative&access_token=${metaAccessToken}`
       );
       const adSetMeta = await adSetMetaRes.json();
       isDynamicCreativeAdSet = Boolean(adSetMeta?.is_dynamic_creative);
@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
     const getAdSetDynamicMode = async (candidateAdSetId: string): Promise<boolean | null> => {
       try {
         const modeRes = await fetch(
-          `https://graph.facebook.com/v18.0/${candidateAdSetId}?fields=id,is_dynamic_creative&access_token=${metaAccessToken}`
+          `https://graph.facebook.com/v21.0/${candidateAdSetId}?fields=id,is_dynamic_creative&access_token=${metaAccessToken}`
         );
         const modeData = await modeRes.json();
         if (modeData?.error) {
@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
     const cloneAdSetForAsset = async (assetName: string): Promise<string | null> => {
       try {
         const cloneRes = await fetch(
-          `https://graph.facebook.com/v18.0/${adSetId}/copies`,
+          `https://graph.facebook.com/v21.0/${adSetId}/copies`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -524,7 +524,7 @@ Deno.serve(async (req) => {
           }
 
           const creativeResponse = await fetch(
-            `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
+            `https://graph.facebook.com/v21.0/act_${accountId}/adcreatives`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -566,7 +566,7 @@ Deno.serve(async (req) => {
         }
 
         const adResponse = await fetch(
-          `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
+          `https://graph.facebook.com/v21.0/act_${accountId}/ads`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -608,7 +608,7 @@ Deno.serve(async (req) => {
             }
 
             const retryAdResponse = await fetch(
-              `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
+              `https://graph.facebook.com/v21.0/act_${accountId}/ads`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     console.log('Processing OAuth callback for brand:', brandId);
 
     // Exchange code for short-lived access token
-    const tokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
+    const tokenUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token');
     tokenUrl.searchParams.set('client_id', META_APP_ID);
     tokenUrl.searchParams.set('client_secret', META_APP_SECRET);
     tokenUrl.searchParams.set('redirect_uri', redirectUri);
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     console.log('Short-lived access token obtained, exchanging for long-lived token...');
 
     // Exchange short-lived token for long-lived token (~60 days)
-    const longLivedUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
+    const longLivedUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token');
     longLivedUrl.searchParams.set('grant_type', 'fb_exchange_token');
     longLivedUrl.searchParams.set('client_id', META_APP_ID);
     longLivedUrl.searchParams.set('client_secret', META_APP_SECRET);
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
     tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + tokenExpiresIn);
 
     // Get user's ad accounts
-    const adAccountsUrl = `https://graph.facebook.com/v18.0/me/adaccounts?fields=id,name,account_status,currency,business_name&access_token=${finalToken}`;
+    const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?fields=id,name,account_status,currency,business_name&access_token=${finalToken}`;
     
     console.log('Fetching ad accounts...');
     const adAccountsResponse = await fetch(adAccountsUrl);
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     console.log('Active ad accounts found:', activeAccounts.length);
 
     // Get user's Facebook Pages (required for ad creative creation)
-    const pagesUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`;
+    const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`;
     
     console.log('Fetching Facebook Pages with Instagram accounts...');
     const pagesResponse = await fetch(pagesUrl);
@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
 
     // Also fetch pages managed via Business Manager
     try {
-      const businessesUrl = `https://graph.facebook.com/v18.0/me/businesses?fields=id,name&access_token=${finalToken}`;
+      const businessesUrl = `https://graph.facebook.com/v21.0/me/businesses?fields=id,name&access_token=${finalToken}`;
       const businessesRes = await fetch(businessesUrl);
       const businessesData = await businessesRes.json();
 
@@ -189,8 +189,8 @@ Deno.serve(async (req) => {
         const existingPageIds = new Set(pages.map((p: any) => p.id));
 
         const bmPagePromises = businessesData.data.flatMap((biz: any) => [
-          fetch(`https://graph.facebook.com/v18.0/${biz.id}/owned_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
-          fetch(`https://graph.facebook.com/v18.0/${biz.id}/client_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
+          fetch(`https://graph.facebook.com/v21.0/${biz.id}/owned_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
+          fetch(`https://graph.facebook.com/v21.0/${biz.id}/client_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
         ]);
 
         const bmResults = await Promise.all(bmPagePromises);
@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
     const igPermissionWarnings: string[] = [];
     for (const igAccount of instagramAccounts) {
       try {
-        const testUrl = `https://graph.facebook.com/v18.0/${igAccount.id}/media?fields=id&limit=1&access_token=${finalToken}`;
+        const testUrl = `https://graph.facebook.com/v21.0/${igAccount.id}/media?fields=id&limit=1&access_token=${finalToken}`;
         const testRes = await fetch(testUrl);
         const testData = await testRes.json();
         if (!testRes.ok || testData.error) {

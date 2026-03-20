@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     console.log('Fetching Instagram posts for account:', instagramAccountId);
 
     // Fetch recent posts from Instagram Graph API
-    const postsUrl = `https://graph.facebook.com/v18.0/${instagramAccountId}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&limit=25&access_token=${accessToken}`;
+    const postsUrl = `https://graph.facebook.com/v21.0/${instagramAccountId}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&limit=25&access_token=${accessToken}`;
     
     const postsResponse = await fetch(postsUrl);
     const postsData = await postsResponse.json();

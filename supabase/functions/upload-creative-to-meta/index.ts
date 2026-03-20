@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
       
       // Step 1: Initialize upload session
       const initResponse = await fetch(
-        `https://graph.facebook.com/v18.0/act_${accountId}/advideos`,
+        `https://graph.facebook.com/v21.0/act_${accountId}/advideos`,
         {
           method: 'POST',
           headers: {
@@ -195,7 +195,7 @@ Deno.serve(async (req) => {
       formData.append('video_file_chunk', assetData, fileName || 'video.mp4');
 
       const transferResponse = await fetch(
-        `https://graph.facebook.com/v18.0/act_${accountId}/advideos`,
+        `https://graph.facebook.com/v21.0/act_${accountId}/advideos`,
         {
           method: 'POST',
           body: formData,
@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
 
       // Step 3: Finish upload
       const finishResponse = await fetch(
-        `https://graph.facebook.com/v18.0/act_${accountId}/advideos`,
+        `https://graph.facebook.com/v21.0/act_${accountId}/advideos`,
         {
           method: 'POST',
           headers: {
@@ -265,7 +265,7 @@ Deno.serve(async (req) => {
       const base64 = btoa(binary);
 
       const imageResponse = await fetch(
-        `https://graph.facebook.com/v18.0/act_${accountId}/adimages`,
+        `https://graph.facebook.com/v21.0/act_${accountId}/adimages`,
         {
           method: 'POST',
           headers: {

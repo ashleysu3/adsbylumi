@@ -20,7 +20,7 @@ async function scrapeContent(url: string): Promise<{ caption: string; descriptio
   try {
     let oembedUrl = '';
     if (platform === 'instagram') {
-      oembedUrl = `https://graph.facebook.com/v18.0/instagram_oembed?url=${encodeURIComponent(url)}&access_token=public`;
+      oembedUrl = `https://graph.facebook.com/v21.0/instagram_oembed?url=${encodeURIComponent(url)}&access_token=public`;
     } else if (platform === 'tiktok') {
       oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
     }

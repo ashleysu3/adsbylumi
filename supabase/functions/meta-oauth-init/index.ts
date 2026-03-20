@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     console.log('[meta-oauth-init] Initiating Meta OAuth for brand:', brandId);
 
     // Build Meta OAuth URL with all required permissions for ad creation
-    const oauthUrl = new URL('https://www.facebook.com/v18.0/dialog/oauth');
+    const oauthUrl = new URL('https://www.facebook.com/v21.0/dialog/oauth');
     oauthUrl.searchParams.set('client_id', META_APP_ID);
     oauthUrl.searchParams.set('redirect_uri', redirectUri);
     oauthUrl.searchParams.set('state', brandId);
