@@ -94,6 +94,8 @@ Deno.serve(async (req) => {
       'scope',
       'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list,pages_read_user_content,instagram_basic,instagram_manage_insights'
     );
+    // Force Meta to re-request previously declined scopes on reconnect.
+    oauthUrl.searchParams.set('auth_type', 'rerequest');
     oauthUrl.searchParams.set('response_type', 'code');
 
     return new Response(JSON.stringify({ authUrl: oauthUrl.toString() }), {

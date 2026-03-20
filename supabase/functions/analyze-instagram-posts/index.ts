@@ -51,17 +51,33 @@ Deno.serve(async (req) => {
     console.log('Fetching Instagram posts for account:', instagramAccountId);
 
     // Fetch recent posts from Instagram Graph API
-    const postsUrl = `https://graph.facebook.com/v21.0/${instagramAccountId}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&limit=25&access_token=${accessToken}`;
-    
-    const postsResponse = await fetch(postsUrl);
-    const postsData = await postsResponse.json();
+    // For simple picker mode, avoid engagement fields to prevent unnecessary permission failures.
+    const baseFields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp';
+    const engagementFields = 'like_count,comments_count';
+    const requestedFields = simple ? baseFields : `${baseFields},${engagementFields}`;
+
+    const fetchPostsByFields = async (fields: string) => {
+      const postsUrl = `https://graph.facebook.com/v21.0/${instagramAccountId}/media?fields=${fields}&limit=25&access_token=${accessToken}`;
+      const response = await fetch(postsUrl);
+      const data = await response.json();
+      return { response, data };
+    };
+
+    let { response: postsResponse, data: postsData } = await fetchPostsByFields(requestedFields);
+
+    // If engagement fields trigger permission errors, gracefully retry with basic fields.
+    if (!postsResponse.ok && postsData?.error?.code === 10 && !simple) {
+      console.warn('Retrying Instagram media fetch without engagement fields due to permission error');
+      const retry = await fetchPostsByFields(baseFields);
+      postsResponse = retry.response;
+      postsData = retry.data;
+    }
 
     if (!postsResponse.ok) {
       console.error('Error fetching posts:', postsData);
       const metaError = postsData.error?.message || 'Failed to fetch Instagram posts';
-      // Permission error (code 10) typically means the user needs to reconnect with updated permissions
       if (postsData.error?.code === 10) {
-        throw new Error('Instagram permissions need to be updated. Please disconnect and reconnect your Meta account in Settings to grant the latest permissions.');
+        throw new Error('Instagram permissions are still incomplete for post access. Please reconnect Meta and accept all requested permissions, then try again.');
       }
       throw new Error(metaError);
     }
