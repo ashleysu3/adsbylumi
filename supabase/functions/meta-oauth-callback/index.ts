@@ -254,10 +254,12 @@ Deno.serve(async (req) => {
       console.log('Access token stored securely in vault for brand:', brandId);
     }
 
-    // Update the token expiration date in the brands table
+    // Update the token expiration date AND store token directly in brands table
+    // (analyze-instagram-posts and other functions read meta_access_token directly from brands)
     const { error: updateError } = await supabase
       .from('brands')
       .update({ 
+        meta_access_token: finalToken,
         meta_token_expires_at: tokenExpiresAt.toISOString(),
         updated_at: new Date().toISOString()
       })
