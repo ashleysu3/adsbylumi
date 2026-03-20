@@ -92,6 +92,7 @@ export function SocialGrowthFlow({
       const message = formatInvokeError(err);
       console.error("Error fetching Instagram posts:", err);
       setError(message);
+      setStep("post_selection"); // Show error card so user sees reconnect option
       toast.error(message);
     } finally {
       setIsLoading(false);
