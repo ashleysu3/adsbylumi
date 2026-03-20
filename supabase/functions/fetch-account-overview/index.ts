@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     // URL-encode the filtering parameter to only include active campaigns
     const filtering = encodeURIComponent('[{"field":"campaign.delivery_info","operator":"IN","value":["active"]}]');
     
-    const insightsUrl = `https://graph.facebook.com/v18.0/${brand.meta_account_id}/insights?${timeRange}&fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,purchase_roas&level=account&filtering=${filtering}&access_token=${metaAccessToken}`;
+    const insightsUrl = `https://graph.facebook.com/v21.0/${brand.meta_account_id}/insights?${timeRange}&fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,purchase_roas&level=account&filtering=${filtering}&access_token=${metaAccessToken}`;
 
     console.log('Fetching insights with active-only filter');
     const insightsResponse = await fetch(insightsUrl);

@@ -201,7 +201,7 @@ async function verifyTokenWithMeta(supabase: any, brandId: string): Promise<bool
     }
 
     // Make a simple API call to verify the token
-    const response = await fetch(`https://graph.facebook.com/v18.0/me?access_token=${token}`);
+    const response = await fetch(`https://graph.facebook.com/v21.0/me?access_token=${token}`);
     const data = await response.json();
 
     if (data.error) {
@@ -407,7 +407,7 @@ async function attemptTokenRefresh(
       return false;
     }
 
-    const refreshUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
+    const refreshUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token');
     refreshUrl.searchParams.set('grant_type', 'fb_exchange_token');
     refreshUrl.searchParams.set('client_id', appId);
     refreshUrl.searchParams.set('client_secret', appSecret);

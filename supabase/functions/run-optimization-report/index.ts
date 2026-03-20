@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
       // Fetch Meta campaign insights
       try {
         console.log('[run-optimization-report] Fetching Meta insights for campaign:', campaignId);
-        const insightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&access_token=${brand.meta_access_token}`;
+        const insightsUrl = `https://graph.facebook.com/v21.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&access_token=${brand.meta_access_token}`;
         const insightsRes = await fetch(insightsUrl);
         const insightsData = await insightsRes.json();
         console.log('[run-optimization-report] Meta response for', campaignId, ':', JSON.stringify(insightsData).slice(0, 500));
@@ -252,7 +252,7 @@ Deno.serve(async (req) => {
         // Fetch ad-level breakdown
         let adLevelData: any[] = [];
         try {
-          const adsUrl = `https://graph.facebook.com/v18.0/${campaignId}/ads?fields=name,insights.time_range({"since":"${dateRangeStart}","until":"${dateRangeEnd}"}){spend,actions,cost_per_action_type}&limit=50&access_token=${brand.meta_access_token}`;
+          const adsUrl = `https://graph.facebook.com/v21.0/${campaignId}/ads?fields=name,insights.time_range({"since":"${dateRangeStart}","until":"${dateRangeEnd}"}){spend,actions,cost_per_action_type}&limit=50&access_token=${brand.meta_access_token}`;
           const adsRes = await fetch(adsUrl);
           const adsData = await adsRes.json();
 

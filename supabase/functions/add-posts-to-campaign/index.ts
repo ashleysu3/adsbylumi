@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
 
       // Try getting ad sets from campaign
       const adSetsRes = await fetch(
-        `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=id,name,status&limit=10&access_token=${metaAccessToken}`
+        `https://graph.facebook.com/v21.0/${campaignId}/adsets?fields=id,name,status&limit=10&access_token=${metaAccessToken}`
       );
       const adSetsData = await adSetsRes.json();
 
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     let referenceSettings: any = null;
     try {
       const adsRes = await fetch(
-        `https://graph.facebook.com/v18.0/${adSetId}/ads?fields=creative{object_story_spec,url_tags}&limit=1&access_token=${metaAccessToken}`
+        `https://graph.facebook.com/v21.0/${adSetId}/ads?fields=creative{object_story_spec,url_tags}&limit=1&access_token=${metaAccessToken}`
       );
       const adsData = await adsRes.json();
 
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
 
 
         const creativeRes = await fetch(
-          `https://graph.facebook.com/v18.0/act_${accountId}/adcreatives`,
+          `https://graph.facebook.com/v21.0/act_${accountId}/adcreatives`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
         }
 
         const adRes = await fetch(
-          `https://graph.facebook.com/v18.0/act_${accountId}/ads`,
+          `https://graph.facebook.com/v21.0/act_${accountId}/ads`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

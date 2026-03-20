@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     // ============================================
     // STEP 1: Fetch real-time campaign status from Meta
     // ============================================
-    const statusUrl = `https://graph.facebook.com/v18.0/${campaignId}?fields=status,effective_status,daily_budget,lifetime_budget&access_token=${metaAccessToken}`;
+    const statusUrl = `https://graph.facebook.com/v21.0/${campaignId}?fields=status,effective_status,daily_budget,lifetime_budget&access_token=${metaAccessToken}`;
     const statusResponse = await fetch(statusUrl);
     const statusData = await safeJson(statusResponse);
 
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
     // If no campaign-level budget, fetch ad set budgets (ABO campaigns)
     if (!resolvedDailyBudget && !resolvedLifetimeBudget) {
       try {
-        const adSetsUrl = `https://graph.facebook.com/v18.0/${campaignId}/adsets?fields=daily_budget,lifetime_budget,status&limit=100&access_token=${metaAccessToken}`;
+        const adSetsUrl = `https://graph.facebook.com/v21.0/${campaignId}/adsets?fields=daily_budget,lifetime_budget,status&limit=100&access_token=${metaAccessToken}`;
         const adSetsResponse = await fetch(adSetsUrl);
         const adSetsData = await safeJson(adSetsResponse);
 
@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
     // Fetch Campaign-level insights - including video_p100_watched_actions for thruplay data
     // (safeJson helper defined above)
 
-    const campaignInsightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions,purchase_roas&${timeRange}&access_token=${metaAccessToken}`;
+    const campaignInsightsUrl = `https://graph.facebook.com/v21.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type,video_p100_watched_actions,purchase_roas&${timeRange}&access_token=${metaAccessToken}`;
     
     const campaignResponse = await fetch(campaignInsightsUrl);
     const campaignData = await safeJson(campaignResponse);
@@ -288,7 +288,7 @@ Deno.serve(async (req) => {
     const adSetMetrics = [];
     for (const adSetId of adSetIds) {
       try {
-        const adSetUrl = `https://graph.facebook.com/v18.0/${adSetId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
+        const adSetUrl = `https://graph.facebook.com/v21.0/${adSetId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
         const adSetResponse = await fetch(adSetUrl);
         const adSetData = await safeJson(adSetResponse);
         if (adSetData.data?.[0]) {
@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
     const adMetrics = [];
     for (const adId of adIds) {
       try {
-        const adUrl = `https://graph.facebook.com/v18.0/${adId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
+        const adUrl = `https://graph.facebook.com/v21.0/${adId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${metaAccessToken}`;
         const adResponse = await fetch(adUrl);
         const adData = await safeJson(adResponse);
         if (adData.data?.[0]) {

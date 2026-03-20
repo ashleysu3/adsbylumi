@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       : 'date_preset=last_7d';
 
     // Fetch ads within this campaign
-    const adsUrl = `https://graph.facebook.com/v18.0/${campaignId}/ads?fields=id,name,status&limit=100&access_token=${metaAccessToken}`;
+    const adsUrl = `https://graph.facebook.com/v21.0/${campaignId}/ads?fields=id,name,status&limit=100&access_token=${metaAccessToken}`;
     const adsResponse = await fetch(adsUrl);
     const adsData = await adsResponse.json();
 
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     console.log(`Found ${ads.length} ads in campaign`);
 
     // Fetch insights at ad level
-    const insightsUrl = `https://graph.facebook.com/v18.0/${campaignId}/insights?level=ad&${timeRange}&fields=ad_id,ad_name,spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,purchase_roas&limit=100&access_token=${metaAccessToken}`;
+    const insightsUrl = `https://graph.facebook.com/v21.0/${campaignId}/insights?level=ad&${timeRange}&fields=ad_id,ad_name,spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,purchase_roas&limit=100&access_token=${metaAccessToken}`;
     const insightsResponse = await fetch(insightsUrl);
     const insightsData = await insightsResponse.json();
 

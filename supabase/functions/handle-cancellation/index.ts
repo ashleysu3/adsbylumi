@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
 
       // Fetch active campaigns
       try {
-        const campaignsUrl = `https://graph.facebook.com/v18.0/${metaAccountId}/campaigns?fields=id,name,status&filtering=[{"field":"status","operator":"IN","value":["ACTIVE"]}]&limit=500&access_token=${metaAccessToken}`;
+        const campaignsUrl = `https://graph.facebook.com/v21.0/${metaAccountId}/campaigns?fields=id,name,status&filtering=[{"field":"status","operator":"IN","value":["ACTIVE"]}]&limit=500&access_token=${metaAccessToken}`;
 
         const campaignsRes = await fetch(campaignsUrl);
         const campaignsData = await campaignsRes.json();
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
         for (const campaign of activeCampaigns) {
           try {
             const pauseRes = await fetch(
-              `https://graph.facebook.com/v18.0/${campaign.id}`,
+              `https://graph.facebook.com/v21.0/${campaign.id}`,
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
