@@ -151,6 +151,8 @@ const App = () => {
                   <Route path="/client-portal/:portalId" element={<ClientPortal />} />
                   <Route path="/agency-settings" element={<AgencySettings />} />
                   <Route path="/cancellation-policy" element={<CancellationPolicy />} />
+                  <Route path="/ads-manager" element={<AdsManager />} />
+                  <Route path="/ads-manager/client/:id" element={<AdsManagerClient />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

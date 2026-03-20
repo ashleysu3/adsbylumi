@@ -290,19 +290,33 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               {isAgencyUser && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Customize agency branding for client materials">
-                    <NavLink
-                      to="/agency-settings"
-                      end
-                      className="transition-all duration-200"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <Palette className="h-4 w-4" />
-                      {!collapsed && <span>Agency Settings</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Manage all clients, reviews, and reports">
+                      <NavLink
+                        to="/ads-manager"
+                        className="transition-all duration-200"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      >
+                        <LayoutGrid className="h-4 w-4" />
+                        {!collapsed && <span>Ads Manager</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Customize agency branding for client materials">
+                      <NavLink
+                        to="/agency-settings"
+                        end
+                        className="transition-all duration-200"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      >
+                        <Palette className="h-4 w-4" />
+                        {!collapsed && <span>Agency Settings</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
               )}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Settings">
