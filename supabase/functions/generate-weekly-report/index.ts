@@ -129,6 +129,38 @@ ${(() => {
 
 👉 Approve all recommendations with one click: ${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').split('.supabase.co')[0]}.lovable.app/data?workspace=${workspaceId}
 
+=== 💡 TRY THIS: CREATIVE IDEAS BASED ON YOUR TOP PERFORMERS ===
+${(() => {
+  const ideas: string[] = [];
+  // Analyze what's working to suggest creative variations
+  const topCtr = metrics.ctr && metrics.ctr > 1.5;
+  const goodRoas = metrics.roas && metrics.roas >= 2;
+  const highReach = metrics.reach && metrics.reach > 5000;
+  
+  if (topCtr) {
+    ideas.push('🎬 Your hooks are grabbing attention — try a new variation of your best-performing opening line with a different visual backdrop');
+    ideas.push('📸 Film a "before/after" style reel using the same angle that\'s driving clicks');
+  }
+  if (goodRoas) {
+    ideas.push('🔥 Your offer messaging is converting — create a testimonial-style ad with a client saying the same key benefit');
+    ideas.push('💬 Turn your best-performing primary text into a talking-head script and test it as a video ad');
+  }
+  if (highReach) {
+    ideas.push('🎯 You\'re reaching a lot of people — try a "myth-busting" hook to stand out in the feed');
+    ideas.push('📱 Create a carousel version of your top ad — break the message into 3-5 swipeable slides');
+  }
+  if (metrics.frequency && metrics.frequency >= 3) {
+    ideas.push('🔄 Your audience is seeing ads repeatedly — reshoot your best concept in a new location or outfit');
+    ideas.push('✂️ Take your best video ad and create a 15-second cut-down version for Stories/Reels');
+  }
+  if (ideas.length === 0) {
+    ideas.push('🎨 Test a pattern-interrupt hook: start your video with an unexpected visual or bold statement');
+    ideas.push('📝 Try a "3 reasons why" style static graphic based on your offer\'s top benefits');
+    ideas.push('🗣️ Record a casual, selfie-style testimonial ad — authenticity often outperforms polish');
+  }
+  return ideas.slice(0, 4).map((idea, i) => `${i + 1}. ${idea}`).join('\n');
+})()}
+
 === A NOTE FROM LUMI ===
 ${report.seasonality_context?.notes 
   ? `${report.seasonality_context.notes} ${report.seasonality_context.recommendation}`
