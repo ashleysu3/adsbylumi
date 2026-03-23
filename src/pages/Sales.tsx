@@ -98,7 +98,7 @@ const Sales = () => {
         {!bannerDismissed && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="sticky top-0 z-50 bg-gradient-to-r from-primary to-accent text-primary-foreground">
             <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-4">
-              <p className="text-xs sm:text-sm font-medium flex items-center gap-2"><Sparkles className="w-4 h-4" /> <span><strong>LUMIBETA</strong> — 50% off for life. Founders pricing ends soon.</span></p>
+              <p className="text-xs sm:text-sm font-medium flex items-center gap-2"><Sparkles className="w-4 h-4" /> <span><strong>Founding Member Pricing</strong> — 50% off for life ends March 30th.</span></p>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="secondary" className="text-xs h-7 px-3 font-semibold" onClick={goCheckout} disabled={checkoutLoading}>Claim Offer</Button>
                 <button onClick={dismissBanner} className="text-primary-foreground/60 hover:text-primary-foreground"><X className="w-4 h-4" /></button>
@@ -138,7 +138,7 @@ const Sales = () => {
         </div>
         <div className="container mx-auto px-4 relative z-10 text-center max-w-4xl">
           <FadeUp>
-            <Badge variant="outline" className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5 backdrop-blur-sm rounded-full">✨ Founders Pricing — 50% Off for Life</Badge>
+            <Badge variant="outline" className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5 backdrop-blur-sm rounded-full">✨ Founding Member Pricing — 50% Off for Life (Ends March 30th)</Badge>
           </FadeUp>
           <FadeUp delay={0.1}>
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.08] mb-4">
@@ -152,11 +152,11 @@ const Sales = () => {
           </FadeUp>
           <FadeUp delay={0.3}>
             <div className="flex justify-center mb-4">
-              <CheckoutButton className="px-8 text-base">
-                Start for 50% Off <ArrowRight className="w-4 h-4 ml-1.5" />
-              </CheckoutButton>
-            </div>
-            <p className="text-xs text-muted-foreground">Use code <strong>LUMIBETA</strong> at checkout. No contracts. Cancel anytime.</p>
+               <CheckoutButton className="px-8 text-base">
+                 Become a Founding Member <ArrowRight className="w-4 h-4 ml-1.5" />
+               </CheckoutButton>
+             </div>
+             <p className="text-xs text-muted-foreground">50% founding member discount auto-applied at checkout. No contracts. Cancel anytime.</p>
           </FadeUp>
         </div>
       </section>
