@@ -64,14 +64,22 @@ function UpgradePlanSection() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        You're currently on a complimentary plan via invite code. Upgrade now to lock in founders pricing before rates increase.
-      </p>
+      <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+        <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+          🎉 Founding Member Pricing — 50% off for life ends March 30th!
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Your discount will be automatically applied at checkout.
+        </p>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Card className="border-primary/30 bg-primary/5 p-4">
           <div className="space-y-2">
             <p className="font-semibold text-sm">Solo Monthly</p>
-            <p className="text-2xl font-bold">${SUBSCRIPTION_TIERS.solo.monthlyPrice}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl font-bold">${Math.round(SUBSCRIPTION_TIERS.solo.monthlyPrice / 2)}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+              <p className="text-sm text-muted-foreground line-through">${SUBSCRIPTION_TIERS.solo.monthlyPrice}/mo</p>
+            </div>
             <Button
               variant="lumi"
               size="sm"
