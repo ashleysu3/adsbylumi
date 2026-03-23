@@ -77,19 +77,28 @@ export default function PartnerDashboard() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const trialCode = affiliateData?.partnerTrialCode || '';
+  const trialLink = trialCode ? `https://adsbylumi.com/?code=${trialCode}` : affiliateData?.referralLink || '';
+
   const copyBlocks = affiliateData
     ? [
         {
           label: "Social Post",
-          text: `I've been recommending LUMI to my audience and they love it. It builds your entire Meta ad campaign — strategy, copy, creative briefs, everything — in minutes. Perfect for coaches & course creators. Try it here: ${affiliateData.referralLink}`,
+          text: trialCode
+            ? `I've been recommending LUMI to my audience and they love it. It builds your entire Meta ad campaign — strategy, copy, creative briefs, everything — in minutes. Perfect for coaches & course creators. Use code ${trialCode} for a free 14-day trial: ${trialLink}`
+            : `I've been recommending LUMI to my audience and they love it. It builds your entire Meta ad campaign — strategy, copy, creative briefs, everything — in minutes. Perfect for coaches & course creators. Try it here: ${affiliateData.referralLink}`,
         },
         {
           label: "Email / Newsletter",
-          text: `Quick recommendation: There's a tool called LUMI that acts as your own ads manager. You plug in your offer, and it builds your entire Meta ad campaign — angles, copy, creative briefs, everything. I've seen great results from my audience. Check it out here: ${affiliateData.referralLink}`,
+          text: trialCode
+            ? `Quick recommendation: There's a tool called LUMI that acts as your own ads manager. You plug in your offer, and it builds your entire Meta ad campaign — angles, copy, creative briefs, everything. I've seen great results from my audience. Use code ${trialCode} for a free 14-day trial: ${trialLink}`
+            : `Quick recommendation: There's a tool called LUMI that acts as your own ads manager. You plug in your offer, and it builds your entire Meta ad campaign — angles, copy, creative briefs, everything. I've seen great results from my audience. Check it out here: ${affiliateData.referralLink}`,
         },
         {
           label: "DM / Story",
-          text: `Have you tried LUMI for your ads? It's a game-changer for coaches & course creators — here's my link: ${affiliateData.referralLink}`,
+          text: trialCode
+            ? `Have you tried LUMI for your ads? It's a game-changer for coaches & course creators. Use code ${trialCode} for a free 14-day trial → ${trialLink}`
+            : `Have you tried LUMI for your ads? It's a game-changer for coaches & course creators — here's my link: ${affiliateData.referralLink}`,
         },
       ]
     : [];
