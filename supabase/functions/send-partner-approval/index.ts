@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <img src="https://adsbylumi.com/lovable-uploads/your-ad-assistant-logo.png" alt="LUMI" height="32" style="display: block;" />
+                    <img src="https://adsbylumi.com/lovable-uploads/lumi-logo.png" alt="LUMI" height="32" style="display: block;" />
                   </td>
                   <td align="right">
                     <span style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; color: #ffffff; background: linear-gradient(135deg, #F97316, #EC4899); letter-spacing: 0.5px;">PARTNER</span>
