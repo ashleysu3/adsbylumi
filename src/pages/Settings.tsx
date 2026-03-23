@@ -41,6 +41,73 @@ interface AlertThresholds {
   frequency_critical: number;
 }
 
+function UpgradePlanSection() {
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  const handleUpgradeCheckout = async (priceId: string) => {
+    try {
+      setCheckoutLoading(priceId);
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+      toast.error('Failed to start checkout. Please try again.');
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        You're currently on a complimentary plan via invite code. Upgrade now to lock in founders pricing before rates increase.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card className="border-primary/30 bg-primary/5 p-4">
+          <div className="space-y-2">
+            <p className="font-semibold text-sm">Solo Monthly</p>
+            <p className="text-2xl font-bold">${SUBSCRIPTION_TIERS.solo.monthlyPrice}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+            <Button
+              variant="lumi"
+              size="sm"
+              className="w-full gap-2"
+              disabled={checkoutLoading !== null}
+              onClick={() => handleUpgradeCheckout(SUBSCRIPTION_TIERS.solo.monthlyPriceId)}
+            >
+              {checkoutLoading === SUBSCRIPTION_TIERS.solo.monthlyPriceId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
+              Upgrade Monthly
+            </Button>
+          </div>
+        </Card>
+        <Card className="border-primary/30 bg-primary/5 p-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-sm">Solo Annual</p>
+              <Badge variant="secondary" className="text-xs">Save ~17%</Badge>
+            </div>
+            <p className="text-2xl font-bold">${SUBSCRIPTION_TIERS.solo.annualPrice}<span className="text-sm font-normal text-muted-foreground">/yr</span></p>
+            <Button
+              variant="lumi"
+              size="sm"
+              className="w-full gap-2"
+              disabled={checkoutLoading !== null}
+              onClick={() => handleUpgradeCheckout(SUBSCRIPTION_TIERS.solo.annualPriceId)}
+            >
+              {checkoutLoading === SUBSCRIPTION_TIERS.solo.annualPriceId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
+              Upgrade Annual
+            </Button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function Settings() {
   const navigate = useNavigate();
   const { getEffectiveUserId } = useImpersonation();
