@@ -991,24 +991,22 @@ export default function Settings() {
                     <CardTitle>Change Plan</CardTitle>
                     <CardDescription>
                       {isCodeBased 
-                        ? 'Upgrade to a paid plan for additional features' 
+                        ? 'Upgrade to a paid plan to lock in founders pricing' 
                         : 'Upgrade, downgrade, or switch billing frequency'
                       }
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex flex-wrap gap-3">
-                      <Button onClick={() => navigate('/auth')} variant="lumi" className="gap-2">
-                        <Crown className="h-4 w-4" />
-                        View All Plans
-                      </Button>
-                      {!isCodeBased && (
-                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="outline" className="gap-2">
-                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sliders className="h-4 w-4" />}
-                          Change Plan in Portal
+                    {isCodeBased ? (
+                      <UpgradePlanSection />
+                    ) : (
+                      <div className="flex flex-wrap gap-3">
+                        <Button onClick={handleManageSubscription} disabled={portalLoading} variant="lumi" className="gap-2">
+                          {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
+                          Change Plan
                         </Button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
