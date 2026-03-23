@@ -104,9 +104,9 @@ export default function PartnerDashboard() {
     : [];
 
   const brandAssets = [
-    { name: "LUMI Logo (PNG)", icon: Image, url: "https://adsbylumi.com/lovable-uploads/lumi-logo.png" },
-    { name: "LUMI Icon", icon: Image, url: "https://adsbylumi.com/lovable-uploads/lumi-bulb.png" },
-    { name: "Partner Badge", icon: FileText, url: "https://adsbylumi.com/lovable-uploads/82f0195b-d6a7-443a-a86e-a18f8721ac42.png" },
+    { name: "LUMI Logo (PNG)", icon: Image, url: "/lovable-uploads/lumi-logo.png" },
+    { name: "LUMI Icon", icon: Image, url: "/lovable-uploads/lumi-bulb.png" },
+    { name: "Partner Badge", icon: FileText, url: "/lovable-uploads/82f0195b-d6a7-443a-a86e-a18f8721ac42.png" },
   ];
 
   if (loading) {
