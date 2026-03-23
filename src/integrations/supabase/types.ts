@@ -1484,6 +1484,7 @@ export type Database = {
           email: string
           expires_at: string | null
           id: string
+          partner_trial_code: string | null
           rewardful_affiliate_id: string | null
           token: string
         }
@@ -1492,6 +1493,7 @@ export type Database = {
           email: string
           expires_at?: string | null
           id?: string
+          partner_trial_code?: string | null
           rewardful_affiliate_id?: string | null
           token?: string
         }
@@ -1500,6 +1502,7 @@ export type Database = {
           email?: string
           expires_at?: string | null
           id?: string
+          partner_trial_code?: string | null
           rewardful_affiliate_id?: string | null
           token?: string
         }
