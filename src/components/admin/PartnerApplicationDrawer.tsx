@@ -83,6 +83,20 @@ function getEmailPreviewHtml(firstName: string, customMessage: string, referralL
         </span>
       </div>
       <hr style="border: none; border-top: 1px solid #F0EDE8; margin: 16px 0;" />
+      
+      <p style="font-size: 16px; font-weight: 800; color: #111; margin: 0 0 6px;">📞 Let's Get You Set Up for Success</p>
+      <p style="font-size: 12px; color: #555; line-height: 1.5; margin: 0 0 12px;">Book a 1:1 onboarding call so we can walk you through everything and set you up to earn from day one.</p>
+      <div style="text-align: center; margin-bottom: 16px;">
+        <span style="display: inline-block; padding: 10px 28px; border-radius: 8px; font-size: 13px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #A78BFA, #6366F1);">
+          Book Your Partner Setup Call →
+        </span>
+      </div>
+      <hr style="border: none; border-top: 1px solid #F0EDE8; margin: 16px 0;" />
+
+      <p style="font-size: 16px; font-weight: 800; color: #111; margin: 0 0 6px;">🎤 We'll Come Speak to Your Community</p>
+      <p style="font-size: 12px; color: #555; line-height: 1.5; margin: 0 0 12px;">Want to offer your audience a masterclass on Meta ads? We'll come speak in your community — group call, membership, podcast, or live event. Your audience gets expert ads education, you earn commission on every signup.</p>
+      <hr style="border: none; border-top: 1px solid #F0EDE8; margin: 16px 0;" />
+
       <p style="font-size: 14px; font-weight: 800; color: #111; margin: 0 0 8px;">📦 Your Marketing Kit</p>
       <div style="background: #FAFAF8; border-radius: 8px; border: 1px solid #F0EDE8; padding: 12px 14px; margin-bottom: 8px;">
         <p style="margin: 0 0 4px; font-size: 10px; font-weight: 700; color: #F97316; text-transform: uppercase;">📱 Social Post</p>
@@ -92,9 +106,13 @@ function getEmailPreviewHtml(firstName: string, customMessage: string, referralL
         <p style="margin: 0 0 4px; font-size: 10px; font-weight: 700; color: #A78BFA; text-transform: uppercase;">✉️ Email / Newsletter</p>
         <p style="margin: 0; font-size: 12px; color: #444; line-height: 1.5;">Quick recommendation: There's a tool called LUMI...</p>
       </div>
-      <div style="background: #FAFAF8; border-radius: 8px; border: 1px solid #F0EDE8; padding: 12px 14px;">
+      <div style="background: #FAFAF8; border-radius: 8px; border: 1px solid #F0EDE8; padding: 12px 14px; margin-bottom: 8px;">
         <p style="margin: 0 0 4px; font-size: 10px; font-weight: 700; color: #EC4899; text-transform: uppercase;">💬 DM / Story</p>
         <p style="margin: 0; font-size: 12px; color: #444; line-height: 1.5;">Have you tried LUMI for your ads? It's a game-changer...</p>
+      </div>
+      <div style="background: #FAFAF8; border-radius: 8px; border: 1px solid #F0EDE8; padding: 12px 14px;">
+        <p style="margin: 0 0 4px; font-size: 10px; font-weight: 700; color: #93C5FD; text-transform: uppercase;">🎬 Story / Reel Script</p>
+        <p style="margin: 0; font-size: 12px; color: #444; line-height: 1.5;">"If you've been wanting to run Meta ads but have no idea where to start — let me introduce you to LUMI..."</p>
       </div>
     </div>
   </div>
