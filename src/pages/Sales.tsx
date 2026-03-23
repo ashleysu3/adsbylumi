@@ -98,7 +98,7 @@ const Sales = () => {
         {!bannerDismissed && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="sticky top-0 z-50 bg-gradient-to-r from-primary to-accent text-primary-foreground">
             <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-4">
-              <p className="text-xs sm:text-sm font-medium flex items-center gap-2"><Sparkles className="w-4 h-4" /> <span><strong>LUMIBETA</strong> — 50% off for life. Founders pricing ends soon.</span></p>
+              <p className="text-xs sm:text-sm font-medium flex items-center gap-2"><Sparkles className="w-4 h-4" /> <span><strong>Founding Member Pricing</strong> — 50% off for life ends March 30th.</span></p>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="secondary" className="text-xs h-7 px-3 font-semibold" onClick={goCheckout} disabled={checkoutLoading}>Claim Offer</Button>
                 <button onClick={dismissBanner} className="text-primary-foreground/60 hover:text-primary-foreground"><X className="w-4 h-4" /></button>
