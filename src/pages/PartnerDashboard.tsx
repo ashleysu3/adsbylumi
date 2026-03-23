@@ -173,21 +173,41 @@ export default function PartnerDashboard() {
 
         {affiliateData && (
           <div className="space-y-6">
+            {/* Partner Trial Code */}
+            {trialCode && (
+              <Card className="border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 shadow-sm">
+                <CardContent className="p-6">
+                  <p className="text-sm font-medium text-green-700 mb-2">🎁 Your partner trial code</p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-3xl font-bold tracking-widest text-[hsl(0,0%,7%)]">{trialCode}</span>
+                    <Button variant="outline" size="icon" onClick={() => handleCopy(trialCode, "trialCode")}>
+                      {copied === "trialCode" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-[hsl(0,0%,40%)] mb-3">
+                    Share this code with your audience. They get a <strong>14-day free trial</strong> of LUMI, and you earn commission when they convert.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Input value={trialLink} readOnly className="font-medium text-sm" />
+                    <Button variant="outline" size="icon" onClick={() => handleCopy(trialLink, "trialLink")}>
+                      {copied === "trialLink" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-[hsl(0,0%,60%)] mt-2">Share this direct link — the code is auto-applied at checkout</p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Referral Link */}
             <Card className="border-[hsl(40,20%,90%)] shadow-sm">
               <CardContent className="p-6">
                 <p className="text-sm font-medium text-[hsl(0,0%,40%)] mb-3">Your referral link</p>
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2">
                   <Input value={affiliateData.referralLink} readOnly className="font-medium" />
                   <Button variant="outline" size="icon" onClick={() => handleCopy(affiliateData.referralLink, "link")}>
                     {copied === "link" ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
-                {affiliateData.referralCode && (
-                  <Badge className="bg-[hsl(40,20%,94%)] text-[hsl(0,0%,7%)] border-[hsl(40,20%,90%)]">
-                    Your code: {affiliateData.referralCode}
-                  </Badge>
-                )}
               </CardContent>
             </Card>
 
