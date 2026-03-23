@@ -129,7 +129,7 @@ function buildBetaWelcomeHtml(firstName: string): string {
                   This is a call with me. The person who built LUMI, ran the agency, and has seen firsthand what makes these campaigns fly (and what makes them flop). First come, first served, and I genuinely mean it when I say these will go fast.
                 </p>
                 <p style="margin: 0; text-align: center;">
-                  <a href="https://tidycal.com/thepaidadacademy/1-1-lumi-setup" style="display: inline-block; background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 4px 14px rgba(30, 64, 175, 0.3);">
+                  <a href="https://calendar.app.google/2XAStgsuYje8npVo8" style="display: inline-block; background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-size: 15px; font-weight: 700; font-family: 'Red Hat Display', sans-serif; box-shadow: 0 4px 14px rgba(30, 64, 175, 0.3);">
                     Book your free campaign build call → 25 spots only
                   </a>
                 </p>
