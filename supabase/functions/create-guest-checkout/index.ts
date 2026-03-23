@@ -25,6 +25,13 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
+    // Auto-apply LUMIBETA founding member discount before March 30, 2026
+    const foundingMemberCutoff = new Date('2026-03-30T23:59:59Z');
+    const isFoundingPeriod = new Date() < foundingMemberCutoff;
+    const lumiBetaCouponId = 'zBPhY3uh';
+
+    logStep("Founding member check", { isFoundingPeriod, cutoff: foundingMemberCutoff.toISOString() });
+
     const returnOrigin = origin || "https://youradassistant.lovable.app";
     const sessionOptions: any = {
       client_reference_id: rewardful_referral || undefined,
@@ -37,7 +44,9 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${returnOrigin}/auth?signup=true&paid=true`,
       cancel_url: `${returnOrigin}/`,
-      allow_promotion_codes: true,
+      ...(isFoundingPeriod
+        ? { discounts: [{ coupon: lumiBetaCouponId }] }
+        : { allow_promotion_codes: true }),
     };
 
     const session = await stripe.checkout.sessions.create(sessionOptions);
