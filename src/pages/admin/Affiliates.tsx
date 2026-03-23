@@ -331,34 +331,14 @@ export default function AdminAffiliates() {
                             <TableCell className="text-xs">{new Date(app.created_at).toLocaleDateString()}</TableCell>
                             <TableCell>{statusBadge(app.status)}</TableCell>
                             <TableCell>
-                              <div className="flex items-center gap-1">
-                                {app.status === 'pending' && (
-                                  <>
-                                    <Button variant="outline" size="sm"
-                                      className="text-green-700 border-green-300 hover:bg-green-50 text-xs"
-                                      disabled={actionLoading === app.id}
-                                      onClick={() => handleApprove(app)}
-                                    >
-                                      {actionLoading === app.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
-                                      Approve
-                                    </Button>
-                                    <Button variant="outline" size="sm"
-                                      className="text-red-700 border-red-300 hover:bg-red-50 text-xs"
-                                      onClick={() => setDeclineModal(app.id)}
-                                    >
-                                      <X className="h-3 w-3 mr-1" /> Decline
-                                    </Button>
-                                  </>
-                                )}
-                                {app.status === 'approved' && app.rewardful_affiliate_id && (
-                                  <Badge variant="outline" className="text-xs font-mono">{app.rewardful_affiliate_id.slice(0, 8)}...</Badge>
-                                )}
-                                {app.status === 'declined' && (
-                                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => handleReconsider(app.id)}>
-                                    <RotateCcw className="h-3 w-3 mr-1" /> Reconsider
-                                  </Button>
-                                )}
-                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                onClick={(e) => { e.stopPropagation(); setSelectedApp(app); }}
+                              >
+                                Open Application
+                              </Button>
                             </TableCell>
                             <TableCell>
                               <Textarea
