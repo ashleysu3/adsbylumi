@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, firstName, lastName, referralLink, referralCode, rewardfulAffiliateId, customMessage } = await req.json();
+    const { email, firstName, lastName, referralLink, referralCode, rewardfulAffiliateId, customMessage, partnerTrialCode } = await req.json();
 
     if (!email || !firstName || !referralLink) {
       return new Response(
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Create or get access token
+    // Create or get access token, store trial code
     const { data: existingToken } = await supabase
       .from('partner_access_tokens')
       .select('token')
@@ -35,12 +35,20 @@ Deno.serve(async (req) => {
     let accessToken: string;
     if (existingToken?.token) {
       accessToken = existingToken.token;
+      // Update trial code on existing token
+      if (partnerTrialCode) {
+        await supabase
+          .from('partner_access_tokens')
+          .update({ partner_trial_code: partnerTrialCode })
+          .eq('email', email);
+      }
     } else {
       const { data: newToken, error: tokenError } = await supabase
         .from('partner_access_tokens')
         .insert({
           email,
           rewardful_affiliate_id: rewardfulAffiliateId || null,
+          partner_trial_code: partnerTrialCode || null,
         })
         .select('token')
         .single();
