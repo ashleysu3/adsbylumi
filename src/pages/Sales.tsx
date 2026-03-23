@@ -32,16 +32,38 @@ const FadeUp = ({ children, className = "", delay = 0 }: { children: React.React
 
 const Sales = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem("lumi-banner-dismissed") === "true");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [partnerCode, setPartnerCode] = useState(searchParams.get("code") || "");
+  const [partnerCodeValid, setPartnerCodeValid] = useState<boolean | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Auto-validate partner code from URL
+  useEffect(() => {
+    const codeFromUrl = searchParams.get("code");
+    if (codeFromUrl) {
+      setPartnerCode(codeFromUrl);
+      validatePartnerCode(codeFromUrl);
+    }
+  }, []);
+
+  const validatePartnerCode = async (code: string) => {
+    if (!code.trim()) { setPartnerCodeValid(null); return; }
+    const { data } = await supabase
+      .from("partner_access_tokens")
+      .select("partner_trial_code")
+      .eq("partner_trial_code", code.toUpperCase().trim())
+      .maybeSingle();
+    setPartnerCodeValid(!!data);
+  };
 
   const dismissBanner = () => { setBannerDismissed(true); localStorage.setItem("lumi-banner-dismissed", "true"); };
 
@@ -69,7 +91,11 @@ const Sales = () => {
       } catch { /* ignore */ }
 
       const { data, error } = await supabase.functions.invoke("create-guest-checkout", {
-        body: { priceId, rewardful_referral },
+        body: {
+          priceId,
+          rewardful_referral,
+          partnerCode: partnerCodeValid ? partnerCode.toUpperCase().trim() : undefined,
+        },
       });
 
       if (error) throw error;

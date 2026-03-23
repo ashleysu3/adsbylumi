@@ -76,6 +76,18 @@ export default function AdminAffiliates() {
       const referralCode = data?.referralCode || '';
       const affiliateId = data?.id || null;
 
+      // Generate unique partner trial code (FIRSTNAME14)
+      const baseCode = app.first_name.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) + '14';
+      let trialCode = baseCode;
+      // Check uniqueness — if taken, append a number
+      const { data: existingCodes } = await supabase
+        .from('partner_access_tokens')
+        .select('partner_trial_code')
+        .ilike('partner_trial_code', `${baseCode}%`);
+      if (existingCodes && existingCodes.length > 0) {
+        trialCode = `${baseCode}${existingCodes.length}`;
+      }
+
       const { error: updateErr } = await supabase
         .from('partner_applications')
         .update({
@@ -96,6 +108,7 @@ export default function AdminAffiliates() {
           referralCode,
           rewardfulAffiliateId: affiliateId,
           customMessage: customMessage || undefined,
+          partnerTrialCode: trialCode,
         }
       });
 
