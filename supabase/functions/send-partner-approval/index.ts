@@ -114,12 +114,34 @@ Deno.serve(async (req) => {
                  <p style="margin: 8px 0 0; font-size: 12px; color: #999999;">— The LUMI Team</p>
                </div>
                ` : ''}
-               <p style="margin: 0 0 24px; font-size: 15px; color: #555555; line-height: 1.7;">
-                 Your application to the LUMI Partner Program has been approved. You now earn <strong style="color: #111111;">30% recurring monthly commission</strong> on every subscription you refer — for as long as they stay subscribed.
-               </p>
+                <p style="margin: 0 0 24px; font-size: 15px; color: #555555; line-height: 1.7;">
+                  Your application to the LUMI Partner Program has been approved. You now earn <strong style="color: #111111;">30% recurring monthly commission</strong> on every subscription you refer — for as long as they stay subscribed.
+                </p>
               </p>
             </td>
           </tr>
+
+          <!-- Partner Trial Code Card -->
+          ${partnerTrialCode ? `
+          <tr>
+            <td style="padding: 0 40px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #ECFDF5, #F0FDF4); border-radius: 12px; border: 2px solid #86EFAC;">
+                <tr>
+                  <td style="padding: 20px 24px;">
+                    <p style="margin: 0 0 8px; font-size: 12px; font-weight: 700; color: #16A34A; text-transform: uppercase; letter-spacing: 1px;">🎁 Your Partner Trial Code</p>
+                    <p style="margin: 0 0 8px; font-size: 28px; font-weight: 800; color: #111111; letter-spacing: 2px;">${partnerTrialCode}</p>
+                    <p style="margin: 0; font-size: 13px; color: #555555; line-height: 1.6;">
+                      Share this code with your audience. When they enter it at checkout, they get a <strong style="color: #111111;">14-day free trial</strong> of LUMI — and you earn commission when they convert to a paid subscription.
+                    </p>
+                    <p style="margin: 12px 0 0; font-size: 12px; color: #888888;">
+                      Direct link: <a href="https://adsbylumi.com/?code=${partnerTrialCode}" style="color: #F97316; text-decoration: none; font-weight: 600;">adsbylumi.com/?code=${partnerTrialCode}</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          ` : ''}
           
           <!-- Referral Link Card -->
           <tr>
