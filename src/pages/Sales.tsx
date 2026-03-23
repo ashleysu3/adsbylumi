@@ -405,9 +405,38 @@ const Sales = () => {
                   {/* #2 — Ad budget reassurance */}
                   <p className="text-[11px] text-muted-foreground text-center mb-4">You control your ad budget completely — LUMI just manages it smarter. Most beginners start with $10–$20/day.</p>
 
-                  <CheckoutButton className="w-full">Get Started for 50% Off <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
+                  <CheckoutButton className="w-full">
+                    {partnerCodeValid ? "Start Your 14-Day Free Trial" : "Get Started for 50% Off"} <ArrowRight className="w-4 h-4 ml-1" />
+                  </CheckoutButton>
                   {/* #4 — Post-click clarity */}
-                  <p className="text-[11px] text-muted-foreground text-center mt-2">You'll pay first, then create your account and be inside LUMI in under 2 minutes.</p>
+                  <p className="text-[11px] text-muted-foreground text-center mt-2">
+                    {partnerCodeValid
+                      ? "Your 14-day free trial starts now. No charge until the trial ends."
+                      : "You'll pay first, then create your account and be inside LUMI in under 2 minutes."}
+                  </p>
+
+                  {/* Partner code input */}
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <p className="text-xs text-muted-foreground text-center mb-2">Have a partner code?</p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter code (e.g. SARAH14)"
+                        value={partnerCode}
+                        onChange={(e) => {
+                          setPartnerCode(e.target.value);
+                          setPartnerCodeValid(null);
+                        }}
+                        onBlur={() => validatePartnerCode(partnerCode)}
+                        className="text-sm uppercase"
+                      />
+                    </div>
+                    {partnerCodeValid === true && (
+                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><Gift className="w-3 h-3" /> Partner code applied — 14-day free trial!</p>
+                    )}
+                    {partnerCodeValid === false && partnerCode && (
+                      <p className="text-xs text-destructive mt-1">Code not found. Check spelling and try again.</p>
+                    )}
+                  </div>
 
                   {/* #3 — Locked-in founders rate callout */}
                   <div className="mt-4 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-3 flex items-start gap-3">
