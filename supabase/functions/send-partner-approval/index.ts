@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
             </td>
           </tr>
           
-          <!-- Dashboard CTA -->
+           <!-- Dashboard CTA -->
           <tr>
             <td style="padding: 0 40px 32px;" align="center">
               <a href="${dashboardUrl}" style="display: inline-block; padding: 14px 40px; border-radius: 10px; font-size: 15px; font-weight: 700; color: #ffffff; background: linear-gradient(135deg, #F97316, #EC4899); text-decoration: none; letter-spacing: 0.3px;">
@@ -146,6 +146,54 @@ Deno.serve(async (req) => {
               <hr style="border: none; border-top: 1px solid #F0EDE8; margin: 0;" />
             </td>
           </tr>
+
+          <!-- Book a Setup Call -->
+          <tr>
+            <td style="padding: 32px 40px 8px;">
+              <h2 style="margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #111111;">
+                📞 Let's Get You Set Up for Success
+              </h2>
+              <p style="margin: 0 0 16px; font-size: 14px; color: #555555; line-height: 1.6;">
+                Book a 1:1 onboarding call with us so we can walk you through everything, answer your questions, and make sure you're set up to earn from day one.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 0 40px 24px;" align="center">
+              <a href="https://calendar.app.google/2XAStgsuYje8npVo8" style="display: inline-block; padding: 14px 36px; border-radius: 10px; font-size: 15px; font-weight: 700; color: #ffffff; background: linear-gradient(135deg, #A78BFA, #6366F1); text-decoration: none; letter-spacing: 0.3px;">
+                Book Your Partner Setup Call →
+              </a>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 40px;">
+              <hr style="border: none; border-top: 1px solid #F0EDE8; margin: 0;" />
+            </td>
+          </tr>
+
+          <!-- Speaking / Education Offer -->
+          <tr>
+            <td style="padding: 32px 40px 8px;">
+              <h2 style="margin: 0 0 8px; font-size: 18px; font-weight: 800; color: #111111;">
+                🎤 We'll Come Speak to Your Community
+              </h2>
+              <p style="margin: 0 0 16px; font-size: 14px; color: #555555; line-height: 1.6;">
+                Want to offer your audience a masterclass on Meta ads? We'll come speak in your community — whether it's a group coaching call, a membership training, a podcast, or a live event. We'll cover how to run ads that actually convert, and show how LUMI makes the whole process simple.
+              </p>
+              <p style="margin: 0 0 16px; font-size: 14px; color: #555555; line-height: 1.6;">
+                It's a win-win: your audience gets expert ads education, and you earn commission on every signup. Just mention it on your setup call or reply to this email to schedule.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding: 0 40px;">
+              <hr style="border: none; border-top: 1px solid #F0EDE8; margin: 0;" />
+            </td>
+          </tr>
           
           <!-- Marketing Assets Section -->
           <tr>
@@ -154,7 +202,7 @@ Deno.serve(async (req) => {
                 📦 Your Marketing Kit
               </h2>
               <p style="margin: 0 0 20px; font-size: 14px; color: #555555; line-height: 1.6;">
-                Everything you need to start sharing LUMI with your audience today.
+                Copy-paste ready content to start sharing LUMI with your audience today. Edit these to match your voice!
               </p>
             </td>
           </tr>
@@ -187,12 +235,24 @@ Deno.serve(async (req) => {
               </table>
               
               <!-- DM Copy -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAFAF8; border-radius: 10px; border: 1px solid #F0EDE8;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 16px; background-color: #FAFAF8; border-radius: 10px; border: 1px solid #F0EDE8;">
                 <tr>
                   <td style="padding: 16px 20px;">
                     <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; color: #EC4899; text-transform: uppercase; letter-spacing: 1px;">💬 DM / Story</p>
                     <p style="margin: 0; font-size: 13px; color: #444444; line-height: 1.6;">
                       Have you tried LUMI for your ads? It's a game-changer for coaches & course creators — here's my link: ${referralLink}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Story / Reel Script -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #FAFAF8; border-radius: 10px; border: 1px solid #F0EDE8;">
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; color: #93C5FD; text-transform: uppercase; letter-spacing: 1px;">🎬 Story / Reel Script</p>
+                    <p style="margin: 0; font-size: 13px; color: #444444; line-height: 1.6;">
+                      "If you've been wanting to run Meta ads but have no idea where to start — let me introduce you to LUMI. It literally builds your entire ad campaign for you. Strategy, copy, creative briefs, everything. I use it and my audience loves it. Link in bio!"
                     </p>
                   </td>
                 </tr>
@@ -203,9 +263,9 @@ Deno.serve(async (req) => {
           <!-- Brand Assets -->
           <tr>
             <td style="padding: 0 40px 32px;">
-              <p style="margin: 0 0 12px; font-size: 14px; font-weight: 700; color: #111111;">🎨 Brand Assets</p>
+              <p style="margin: 0 0 12px; font-size: 14px; font-weight: 700; color: #111111;">🎨 Brand Assets & Logos</p>
               <p style="margin: 0 0 16px; font-size: 13px; color: #555555; line-height: 1.6;">
-                Download LUMI logos and partner badges from your dashboard to use in your content and promotions.
+                Download LUMI logos, partner badges, and branded graphics from your dashboard to use in your content and promotions.
               </p>
               <a href="${dashboardUrl}" style="display: inline-block; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #F97316; border: 2px solid #F97316; text-decoration: none;">
                 Download Assets →
@@ -234,13 +294,13 @@ Deno.serve(async (req) => {
                 <tr>
                   <td style="padding: 8px 0; font-size: 14px; color: #333333; line-height: 1.6;">
                     <strong style="display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; background: linear-gradient(135deg, #F97316, #EC4899); color: white; font-size: 12px; margin-right: 12px; vertical-align: middle;">1</strong>
-                    Share your referral link with your audience
+                    Book your setup call & get your link ready
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-size: 14px; color: #333333; line-height: 1.6;">
                     <strong style="display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; background: linear-gradient(135deg, #F97316, #EC4899); color: white; font-size: 12px; margin-right: 12px; vertical-align: middle;">2</strong>
-                    They sign up for LUMI through your link
+                    Share with your audience using the marketing kit above
                   </td>
                 </tr>
                 <tr>
