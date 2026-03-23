@@ -1,0 +1,1 @@
+ALTER TABLE public.partner_access_tokens ADD COLUMN partner_trial_code TEXT UNIQUE;

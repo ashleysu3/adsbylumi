@@ -1,3 +1,4 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
 
 async function fetchWithRetry(url: string, options: RequestInit, retries = 3, delay = 1000): Promise<Response> {
@@ -62,12 +63,30 @@ Deno.serve(async (req) => {
     const referralLink = affiliate.links?.[0]?.url || '';
     const referralCode = affiliate.links?.[0]?.token || '';
 
+    // Look up partner trial code
+    let partnerTrialCode = '';
+    try {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      );
+      const { data: tokenData } = await supabase
+        .from('partner_access_tokens')
+        .select('partner_trial_code')
+        .eq('email', email)
+        .maybeSingle();
+      partnerTrialCode = tokenData?.partner_trial_code || '';
+    } catch (e) {
+      console.error('Failed to look up trial code:', e);
+    }
+
     return new Response(
       JSON.stringify({
         exists: true,
         id: affiliate.id,
         referralLink,
         referralCode,
+        partnerTrialCode,
         leadsCount: affiliate.leads_count || affiliate.visitors_count || 0,
         conversionsCount: affiliate.conversions_count || 0,
         earningsCents: affiliate.earnings_balance?.amount_cents || affiliate.commissions_total_cents || 0,

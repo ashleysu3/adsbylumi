@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
 const logStep = (step: string, details?: any) => {
@@ -17,22 +18,46 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { priceId, promoCode, rewardful_referral } = await req.json();
+    const { priceId, promoCode, rewardful_referral, partnerCode } = await req.json();
     if (!priceId) throw new Error("Price ID is required");
-    logStep("Price ID received", { priceId, promoCode: promoCode || "none", rewardful_referral: rewardful_referral || "none" });
+    logStep("Price ID received", { priceId, promoCode: promoCode || "none", rewardful_referral: rewardful_referral || "none", partnerCode: partnerCode || "none" });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
+
+    // Check for partner trial code
+    let isPartnerTrial = false;
+    let partnerEmail = '';
+    if (partnerCode) {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      );
+      const { data: tokenData } = await supabase
+        .from("partner_access_tokens")
+        .select("email, rewardful_affiliate_id")
+        .eq("partner_trial_code", partnerCode.toUpperCase().trim())
+        .maybeSingle();
+
+      if (tokenData) {
+        isPartnerTrial = true;
+        partnerEmail = tokenData.email;
+        logStep("Partner trial code valid", { partnerEmail, code: partnerCode });
+      } else {
+        logStep("Partner trial code not found", { code: partnerCode });
+      }
+    }
 
     // Auto-apply LUMIBETA founding member discount before March 30, 2026
     const foundingMemberCutoff = new Date('2026-03-30T23:59:59Z');
     const isFoundingPeriod = new Date() < foundingMemberCutoff;
     const lumiBetaCouponId = 'zBPhY3uh';
 
-    logStep("Founding member check", { isFoundingPeriod, cutoff: foundingMemberCutoff.toISOString() });
+    logStep("Founding member check", { isFoundingPeriod, isPartnerTrial });
 
     const returnOrigin = origin || "https://youradassistant.lovable.app";
+
     const sessionOptions: any = {
       client_reference_id: rewardful_referral || undefined,
       line_items: [
@@ -44,14 +69,32 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${returnOrigin}/auth?signup=true&paid=true`,
       cancel_url: `${returnOrigin}/`,
-      ...(isFoundingPeriod
-        ? { discounts: [{ coupon: lumiBetaCouponId }] }
-        : { allow_promotion_codes: true }),
     };
+
+    if (isPartnerTrial) {
+      // Partner trial: 14-day free trial on the subscription
+      sessionOptions.subscription_data = {
+        trial_period_days: 14,
+        metadata: {
+          partner_code: partnerCode.toUpperCase().trim(),
+          partner_email: partnerEmail,
+        },
+      };
+      // After trial, apply founding member discount if still in founding period
+      if (isFoundingPeriod) {
+        sessionOptions.discounts = [{ coupon: lumiBetaCouponId }];
+      } else {
+        sessionOptions.allow_promotion_codes = true;
+      }
+    } else if (isFoundingPeriod) {
+      sessionOptions.discounts = [{ coupon: lumiBetaCouponId }];
+    } else {
+      sessionOptions.allow_promotion_codes = true;
+    }
 
     const session = await stripe.checkout.sessions.create(sessionOptions);
 
-    logStep("Guest checkout session created", { sessionId: session.id, url: session.url });
+    logStep("Guest checkout session created", { sessionId: session.id, url: session.url, isPartnerTrial });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

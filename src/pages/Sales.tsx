@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { X, Menu, DollarSign, Clock, BookOpen, Check, ChevronDown, Target, PenTool, Clapperboard, BarChart3, Lightbulb, Mail, ArrowRight, TrendingUp, RefreshCw, Shield, Lock, Calendar, Sparkles, Rocket, MailCheck, Loader2 } from "lucide-react";
+import { X, Menu, DollarSign, Clock, BookOpen, Check, ChevronDown, Target, PenTool, Clapperboard, BarChart3, Lightbulb, Mail, ArrowRight, TrendingUp, RefreshCw, Shield, Lock, Calendar, Sparkles, Rocket, MailCheck, Loader2, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,16 +32,38 @@ const FadeUp = ({ children, className = "", delay = 0 }: { children: React.React
 
 const Sales = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem("lumi-banner-dismissed") === "true");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [partnerCode, setPartnerCode] = useState(searchParams.get("code") || "");
+  const [partnerCodeValid, setPartnerCodeValid] = useState<boolean | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Auto-validate partner code from URL
+  useEffect(() => {
+    const codeFromUrl = searchParams.get("code");
+    if (codeFromUrl) {
+      setPartnerCode(codeFromUrl);
+      validatePartnerCode(codeFromUrl);
+    }
+  }, []);
+
+  const validatePartnerCode = async (code: string) => {
+    if (!code.trim()) { setPartnerCodeValid(null); return; }
+    const { data } = await supabase
+      .from("partner_access_tokens")
+      .select("partner_trial_code")
+      .eq("partner_trial_code", code.toUpperCase().trim())
+      .maybeSingle();
+    setPartnerCodeValid(!!data);
+  };
 
   const dismissBanner = () => { setBannerDismissed(true); localStorage.setItem("lumi-banner-dismissed", "true"); };
 
@@ -68,7 +91,11 @@ const Sales = () => {
       } catch { /* ignore */ }
 
       const { data, error } = await supabase.functions.invoke("create-guest-checkout", {
-        body: { priceId, rewardful_referral },
+        body: {
+          priceId,
+          rewardful_referral,
+          partnerCode: partnerCodeValid ? partnerCode.toUpperCase().trim() : undefined,
+        },
       });
 
       if (error) throw error;
@@ -378,9 +405,38 @@ const Sales = () => {
                   {/* #2 — Ad budget reassurance */}
                   <p className="text-[11px] text-muted-foreground text-center mb-4">You control your ad budget completely — LUMI just manages it smarter. Most beginners start with $10–$20/day.</p>
 
-                  <CheckoutButton className="w-full">Get Started for 50% Off <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
+                  <CheckoutButton className="w-full">
+                    {partnerCodeValid ? "Start Your 14-Day Free Trial" : "Get Started for 50% Off"} <ArrowRight className="w-4 h-4 ml-1" />
+                  </CheckoutButton>
                   {/* #4 — Post-click clarity */}
-                  <p className="text-[11px] text-muted-foreground text-center mt-2">You'll pay first, then create your account and be inside LUMI in under 2 minutes.</p>
+                  <p className="text-[11px] text-muted-foreground text-center mt-2">
+                    {partnerCodeValid
+                      ? "Your 14-day free trial starts now. No charge until the trial ends."
+                      : "You'll pay first, then create your account and be inside LUMI in under 2 minutes."}
+                  </p>
+
+                  {/* Partner code input */}
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <p className="text-xs text-muted-foreground text-center mb-2">Have a partner code?</p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter code (e.g. SARAH14)"
+                        value={partnerCode}
+                        onChange={(e) => {
+                          setPartnerCode(e.target.value);
+                          setPartnerCodeValid(null);
+                        }}
+                        onBlur={() => validatePartnerCode(partnerCode)}
+                        className="text-sm uppercase"
+                      />
+                    </div>
+                    {partnerCodeValid === true && (
+                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><Gift className="w-3 h-3" /> Partner code applied — 14-day free trial!</p>
+                    )}
+                    {partnerCodeValid === false && partnerCode && (
+                      <p className="text-xs text-destructive mt-1">Code not found. Check spelling and try again.</p>
+                    )}
+                  </div>
 
                   {/* #3 — Locked-in founders rate callout */}
                   <div className="mt-4 rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-3 flex items-start gap-3">

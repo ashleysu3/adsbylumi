@@ -54,6 +54,7 @@ const statusStyles: Record<string, string> = {
 };
 
 function getEmailPreviewHtml(firstName: string, customMessage: string, referralLink: string, referralCode: string) {
+  const trialCode = firstName.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) + '14';
   return `
 <div style="font-family: 'Red Hat Display', Arial, sans-serif; background: #FAF9F6; padding: 24px; border-radius: 12px;">
   <div style="background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
@@ -72,6 +73,11 @@ function getEmailPreviewHtml(firstName: string, customMessage: string, referralL
       <p style="font-size: 13px; color: #555; line-height: 1.6; margin: 0 0 16px;">
         Your application has been approved. You now earn <strong>30% recurring monthly commission</strong> on every subscription you refer.
       </p>
+      <div style="background: linear-gradient(135deg, #ECFDF5, #F0FDF4); border-radius: 10px; border: 2px solid #86EFAC; padding: 14px 18px; margin-bottom: 16px;">
+        <p style="margin: 0 0 4px; font-size: 10px; font-weight: 700; color: #16A34A; text-transform: uppercase; letter-spacing: 1px;">🎁 Your Partner Trial Code</p>
+        <p style="margin: 0 0 6px; font-size: 22px; font-weight: 800; color: #111; letter-spacing: 2px;">${trialCode}</p>
+        <p style="margin: 0; font-size: 12px; color: #555;">Share this code — your audience gets a <strong>14-day free trial</strong>, you earn commission when they convert.</p>
+      </div>
       <div style="background: linear-gradient(135deg, #FFF7ED, #FDF2F8); border-radius: 10px; border: 1px solid #FECDD3; padding: 14px 18px; margin-bottom: 16px;">
         <p style="margin: 0 0 4px; font-size: 10px; font-weight: 700; color: #F97316; text-transform: uppercase; letter-spacing: 1px;">Your Referral Link</p>
         <p style="margin: 0; font-size: 13px; font-weight: 600; color: #111; word-break: break-all;">${referralLink || '[generated on approval]'}</p>
