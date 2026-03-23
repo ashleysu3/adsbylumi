@@ -73,6 +73,7 @@ Generate a professional weekly report including:
 4. Actions taken this week
 5. Recommendations for next week
 6. Budget summary
+7. A "💡 Try This" section with 3-4 specific, actionable creative ideas inspired by what's performing best this week. Look at the top-performing ads, angles, hooks, or formats and suggest new variations the user could create. Be specific — e.g. "Your testimonial-style ad is crushing it — film 2 more with different clients" or "Your carousel is getting great CTR — try a video version of the same concept." Make these feel like a creative director giving fresh ideas.
 
 Format in clean markdown. Keep it professional but warm.`;
 
