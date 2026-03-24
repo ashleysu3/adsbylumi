@@ -78,6 +78,7 @@ export function ClientReportModal({
   open,
   onOpenChange,
   brandId,
+  brandName,
   dateRangeStart,
   dateRangeEnd,
   campaigns = [],
