@@ -244,7 +244,7 @@ export function ClientReportModal({
   };
 
   const toggleAll = () => {
-    setSelectedIds(selectedIds.size === campaigns.length ? new Set() : new Set(campaigns.map((c) => c.id)));
+    setSelectedIds(selectedIds.size === campaignsWithData.length ? new Set() : new Set(campaignsWithData.map((c) => c.id)));
   };
 
   const toggleDay = (day: string) => {
