@@ -960,6 +960,6 @@ export function InsightsHome({
           )}
         </DialogContent>
       </Dialog>
-    </div>);
-
+    </div>
+  );
 }
