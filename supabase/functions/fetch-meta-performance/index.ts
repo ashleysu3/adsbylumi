@@ -54,9 +54,23 @@ Deno.serve(async (req) => {
     );
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    
+    // Retry auth up to 3 times to handle transient TLS errors
+    let user = null;
+    let authError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const result = await supabaseAuth.auth.getUser(token);
+      authError = result.error;
+      user = result.data?.user ?? null;
+      if (!authError && user) break;
+      if (attempt < 2) {
+        console.warn(`[fetch-meta-performance] Auth attempt ${attempt + 1} failed:`, authError?.message);
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+      }
+    }
     
     if (authError || !user) {
+      console.error('[fetch-meta-performance] Auth failed after retries:', authError?.message);
       return new Response(
         JSON.stringify({ error: 'Invalid or expired token' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
