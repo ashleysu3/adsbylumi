@@ -384,23 +384,7 @@ export function ClientReportModal({
         </DialogHeader>
 
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          {/* Agency gate */}
-          {!isAgency && !rawReport && !loading && !showMissingDataPopup && (
-            <div className="px-6 pb-6 flex flex-col items-center justify-center gap-4 py-12">
-              <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Lock className="h-8 w-8 text-primary" />
-              </div>
-              <div className="text-center space-y-2 max-w-sm">
-                <h3 className="font-display font-bold text-lg">Agency Feature</h3>
-                <p className="text-sm text-muted-foreground">
-                  Client reports with Slack delivery and automated scheduling are available on the Agency plan.
-                </p>
-              </div>
-              <Button variant="lumi" className="rounded-2xl" onClick={() => window.open('/pricing', '_blank')}>
-                Upgrade to Agency
-              </Button>
-            </div>
-          )}
+          {/* Removed agency gate — reports now available to all users */}
 
           {/* Missing data popup */}
           {showMissingDataPopup && (
