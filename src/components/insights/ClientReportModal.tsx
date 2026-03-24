@@ -663,15 +663,24 @@ export function ClientReportModal({
 
               {/* Sticky footer */}
               <div className="border-t bg-background px-6 py-3 shrink-0 space-y-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   {!viewingPast && (
                     <Button onClick={() => setReport(null)} variant="outline" size="sm" className="rounded-xl text-xs">
                       <FileText className="h-3.5 w-3.5 mr-1" /> New Report
                     </Button>
                   )}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={() => copyToClipboard(rawReport!)} className="rounded-xl gap-1.5">
                       {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy Report</>}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl gap-1.5"
+                      onClick={() => setShowEmailInput(!showEmailInput)}
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Email Report
                     </Button>
                     {isAgency && slackChannel && (
                       <Button
@@ -686,8 +695,8 @@ export function ClientReportModal({
                               body: {
                                 channel: slackChannel,
                                 reportText: rawReport,
-                                brandName: '',
-                                dateRange: `${dateRangeStart} – ${dateRangeEnd}`,
+                                brandName: brandName || '',
+                                dateRange: `${effectiveDateStart} – ${effectiveDateEnd}`,
                               },
                             });
                             if (error) throw error;
@@ -705,6 +714,29 @@ export function ClientReportModal({
                     )}
                   </div>
                 </div>
+
+                {/* Email input */}
+                {showEmailInput && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="email"
+                      placeholder="Enter email address..."
+                      value={emailRecipient}
+                      onChange={(e) => setEmailRecipient(e.target.value)}
+                      className="h-9 rounded-xl text-sm flex-1"
+                      onKeyDown={(e) => { if (e.key === 'Enter') sendReportEmail(); }}
+                    />
+                    <Button
+                      size="sm"
+                      className="rounded-xl gap-1.5 shrink-0"
+                      onClick={sendReportEmail}
+                      disabled={sendingEmail || !emailRecipient}
+                    >
+                      {sendingEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      Send
+                    </Button>
+                  </div>
+                )}
 
                 {/* Delivery settings — agency only */}
                 {isAgency && !viewingPast && (
