@@ -1,13 +1,10 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { getCorsHeaders } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
 
-serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
@@ -23,10 +20,22 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error('Unauthorized');
 
-    const { brand_id, campaign_metrics, ad_level_data, notes } = await req.json();
+    const rawBody = await req.text();
+    let body: any;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      // Sometimes the body arrives double-encoded
+      try {
+        body = JSON.parse(JSON.parse(rawBody));
+      } catch {
+        throw new Error('Invalid request body');
+      }
+    }
+
+    const { brand_id, campaign_metrics, ad_level_data, notes } = body;
     if (!brand_id) throw new Error('brand_id required');
 
-    // Build prompt
     const metricsStr = (campaign_metrics || []).map((m: any) =>
       `Campaign: ${m.campaign_name}\n  Spend 3d: ${m.spend_3d || 'N/A'} | 7d: ${m.spend_7d || 'N/A'}\n  CPL 3d: ${m.cpl_3d || 'N/A'} | 7d: ${m.cpl_7d || 'N/A'}\n  ROAS 3d: ${m.roas_3d || 'N/A'} | 7d: ${m.roas_7d || 'N/A'}\n  CTR 3d: ${m.ctr_3d || 'N/A'} | 7d: ${m.ctr_7d || 'N/A'}\n  Notes: ${m.notes || 'None'}`
     ).join('\n\n');
