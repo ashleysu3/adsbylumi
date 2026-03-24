@@ -77,9 +77,19 @@ Deno.serve(async (req) => {
     if (brandError || !brand) throw new Error('Brand not found');
     console.log('[run-optimization-report] Brand found:', brand.name, 'meta_account_id:', brand.meta_account_id);
     if (!isServiceRole && brand.user_id !== userId) {
-      return new Response(JSON.stringify({ error: 'Access denied' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403,
-      });
+      // Check if user is admin — admins can access any brand
+      const { data: roleCheck } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+      if (!roleCheck) {
+        return new Response(JSON.stringify({ error: 'Access denied' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403,
+        });
+      }
+      console.log('[run-optimization-report] Admin access granted for user:', userId);
     }
 
     if (!brand.meta_account_id || !brand.meta_access_token) {
