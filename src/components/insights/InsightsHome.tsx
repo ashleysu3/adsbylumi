@@ -914,7 +914,7 @@ export function InsightsHome({
           open={reportModalOpen}
           onOpenChange={setReportModalOpen}
           brandId={brandId}
-          brandName={brand?.name}
+          brandName={activeBrand?.name}
           dateRangeStart={dateRangeStart || ''}
           dateRangeEnd={dateRangeEnd || ''}
           campaigns={campaigns.map((c) => ({
