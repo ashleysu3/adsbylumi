@@ -22,6 +22,7 @@ interface CampaignOption {
 
 export default function WeeklyDigestPreview() {
   const navigate = useNavigate();
+  const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
@@ -29,29 +30,17 @@ export default function WeeklyDigestPreview() {
   const [previewData, setPreviewData] = useState<any>(null);
 
   useEffect(() => {
-    fetchCampaigns();
-  }, []);
+    if (activeBrand?.id) fetchCampaigns();
+    else setLoading(false);
+  }, [activeBrand?.id]);
 
   const fetchCampaigns = async () => {
+    if (!activeBrand?.id) return;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
-
-      const { data: brand } = await supabase
-        .from('brands')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!brand) return;
-
       const { data, error } = await supabase
         .from('campaign_workspaces')
         .select('id, name, performance_report_latest, performance_history')
-        .eq('brand_id', brand.id)
+        .eq('brand_id', activeBrand.id)
         .not('meta_campaign_ids', 'is', null)
         .eq('archived', false);
 
