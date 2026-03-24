@@ -1,119 +1,53 @@
 
 
-## Ads Manager Dashboard for LUMI
+## Self-Serve Performance Reports with Approve Buttons & Educational Tooltips
 
-This is a large feature. The app already has foundational pieces (brands, campaigns, optimization_reports, ad_action_log, weekly_reports, campaign_goals, pending_optimizations). The plan builds on these existing tables and adds the missing agency-level management layer.
+### What Exists Today
+- The `generate-client-report` edge function already supports a `mode: 'self-serve'` parameter that generates reports with "LUMI Recommends" and "Approve These Changes" sections instead of agency language.
+- However, the `ClientReportModal` UI **blocks non-agency users** with a lock screen (lines 388-403). Non-agency users cannot access reports at all.
+- The `ReportSectionRenderer` renders markdown but has no interactive elements (approve buttons) or educational tooltips.
 
-### What Already Exists (Reuse)
-- `brands` table = clients (name, meta_account_id, etc.)
-- `campaign_workspaces` = campaigns with objectives, budgets, KPIs
-- `campaign_goals` = KPI targets per campaign
-- `ad_action_log` = audit log of all changes
-- `optimization_reports` = performance reports
-- `pending_optimizations` = approval workflow
-- `weekly_reports` = weekly report storage
-- `ActionHistoryTimeline` component = audit log UI
+### Plan
 
-### What's New
+**1. Unlock reports for all users**
 
-**1. Database Changes (2 new tables, 1 alter)**
+In `ClientReportModal.tsx`:
+- Remove the agency gate (lock screen for non-agency users)
+- Pass `mode: 'self-serve'` to `generate-client-report` when the user is not on the agency plan
+- Hide agency-only features (Slack delivery, auto-send schedule) for non-agency users — this already works
+- Show campaign selection and generate button for all authenticated users
 
-| Table | Purpose |
-|-------|---------|
-| `agency_clients` | Extends brands with Slack channel IDs, contact info, health status, notes — the "scorecard" metadata |
-| `review_logs` | Structured review entries tied to a date, with campaign metrics, ad-level data, action plans, and approval status |
-| ALTER `brands` | Add `last_review_date` and `next_report_due` columns |
+**2. Add "Approve" buttons to report action items**
 
-**2. New Pages**
+In `ReportSectionRenderer.tsx`:
+- Detect the "Approve These Changes" section by title match
+- Parse checklist items (`- [ ] Approve ...`) in that section
+- Render each as a card with an "Approve" button instead of a plain checkbox
+- On click, insert a `pending_optimizations` row with `status: 'approved'` and call `apply-optimizations` edge function
+- Show a confirmation toast and update the button to "Approved ✅"
+- Pass `brandId` as a prop to `ReportSectionRenderer` so it can make DB calls
 
-| Route | Component | Purpose |
-|-------|-----------|---------|
-| `/ads-manager` | `AdsManager.tsx` | Health overview dashboard — all clients at a glance with status pills, last review, flagged items |
-| `/ads-manager/client/:id` | `AdsManagerClient.tsx` | Client scorecard + campaign list with KPI targets, status badges, notes |
-| `/ads-manager/review` | `AdsManagerReview.tsx` | Mon/Thu optimization review flow — input metrics, flag ads, generate action plans |
-| `/ads-manager/approve` | `AdsManagerApprove.tsx` | Approval queue — summary of proposed actions, approve/reject per client or action |
-| `/ads-manager/reports` | `AdsManagerReports.tsx` | Tuesday report workflow — draft/approve/send cycle with preview |
+**3. Add glossary tooltips to ad terminology**
 
-**3. New Components**
+In `ReportSectionRenderer.tsx`:
+- After inline formatting is parsed, scan text for known glossary terms (CPL, CTR, ROAS, CPC, CPP, CPM, Frequency, Reach, Impressions)
+- Wrap first occurrence of each term with `GlossaryTermInline` from existing `GlossaryTooltip.tsx`
+- This gives hover tooltips with plain-English definitions from the existing `ads-glossary.ts`
 
-| Component | Purpose |
-|-----------|---------|
-| `ClientScorecard` | Collapsible card showing client health, campaigns, KPIs, status indicators |
-| `ReviewForm` | Structured form for entering 3-day/7-day metrics, ad-level spend/CPL/ROAS, flagging ads |
-| `ApprovalQueue` | List of pending actions grouped by client with approve/reject buttons |
-| `ReportDraftPreview` | Report preview with KPI status emojis, budget summaries, editable notes |
-| `ClientHealthBadge` | Color-coded status pill (green/yellow/red) |
+**4. Add a "💡 Try This" section rendering**
 
-**4. Sidebar Addition**
-
-Add "Ads Manager" section to `AppSidebar.tsx` (visible for agency users or admins) with sub-items: Overview, Reviews, Approvals, Reports.
-
-**5. Edge Functions**
-
-| Function | Purpose |
-|----------|---------|
-| `generate-review-action-plan` | Takes review metrics + KPI targets, generates AI action plan summary |
-| `generate-manager-report` | Auto-generates Tuesday report draft from latest review log data |
-
-**6. Audit Log Enhancement**
-
-Extend `ActionHistoryTimeline` to support filtering by client and action type. Add an "Audit Log" tab to the Ads Manager dashboard that shows all changes across all clients.
-
-### Data Model Details
-
-```text
-agency_clients
-├── id (uuid, PK)
-├── brand_id (uuid, FK → brands)
-├── slack_client_channel (text)
-├── slack_internal_channel (text)
-├── contact_name (text)
-├── contact_email (text)
-├── health_status (text: healthy/watching/needs_attention/paused)
-├── notes (text)
-├── created_at, updated_at
-
-review_logs
-├── id (uuid, PK)
-├── brand_id (uuid, FK → brands)
-├── review_date (date)
-├── reviewer_id (uuid, FK → auth.users via profiles)
-├── campaign_metrics (jsonb) — per-campaign 3d/7d actuals
-├── ad_level_data (jsonb) — per-ad spend/CPL/ROAS/flags
-├── action_plan (text) — AI-generated or manual summary
-├── approval_status (text: draft/pending/approved/executed)
-├── approved_by (uuid)
-├── approved_at (timestamptz)
-├── notes (text)
-├── created_at
-```
-
-### UI Design Approach
-
-- Data-forward: table-based layouts with inline editing
-- Color coding: green (`bg-green-500/10`), yellow (`bg-amber-500/10`), red (`bg-destructive/10`) throughout
-- Collapsible client sections using existing `Collapsible` component
-- Mobile-friendly: stacked cards on small screens, scrollable tables on desktop
-- Status system: ✅ On Track, ⚠️ Watching, 🔴 Needs Intervention, ⏸️ Paused, 🚫 Turned Off
+The AI prompt already generates creative ideas. Ensure the renderer gives this section a distinctive card style (like the action section styling) so it stands out visually.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| **New migration** | Create `agency_clients`, `review_logs` tables with RLS |
-| `src/pages/AdsManager.tsx` | Health overview dashboard |
-| `src/pages/AdsManagerClient.tsx` | Client scorecard detail |
-| `src/pages/AdsManagerReview.tsx` | Review flow UI |
-| `src/pages/AdsManagerApprove.tsx` | Approval workflow |
-| `src/pages/AdsManagerReports.tsx` | Report draft/approve/send |
-| `src/components/ads-manager/ClientScorecard.tsx` | Scorecard component |
-| `src/components/ads-manager/ReviewForm.tsx` | Review entry form |
-| `src/components/ads-manager/ApprovalQueue.tsx` | Approval queue |
-| `src/components/ads-manager/ReportDraftPreview.tsx` | Report preview |
-| `src/components/ads-manager/ClientHealthBadge.tsx` | Status badge |
-| `src/components/AppSidebar.tsx` | Add Ads Manager nav section |
-| `src/App.tsx` | Add new routes |
-| `supabase/functions/generate-review-action-plan/index.ts` | AI action plan generation |
-| `supabase/functions/generate-manager-report/index.ts` | Auto-generate report drafts |
-| `src/components/insights/ActionHistoryTimeline.tsx` | Add client/action-type filters |
+| `src/components/insights/ClientReportModal.tsx` | Remove agency gate; pass `mode` param; show generate button for all users |
+| `src/components/insights/ReportSectionRenderer.tsx` | Add approve buttons in "Approve These Changes" section; add glossary tooltips to ad terms; style "Try This" section |
+
+### Technical Notes
+- The `pending_optimizations` table already exists with the right schema for storing approved actions
+- The `ads-glossary.ts` already has all common terms defined
+- `GlossaryTermInline` already renders dotted-underline hover tooltips
+- No database changes needed
 
