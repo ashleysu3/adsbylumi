@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -475,8 +474,8 @@ export function ClientReportModal({
                     </Button>
                   </div>
                   <div className="relative">
-                    <ScrollArea className="max-h-[300px]">
-                      <div className="space-y-1 pr-2">
+                    <div className="max-h-[300px] overflow-y-auto overscroll-contain rounded-xl border border-border/50 p-1 pr-2">
+                      <div className="space-y-1">
                         {campaigns.map((c) => (
                           <label key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 cursor-pointer transition-colors">
                             <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleCampaign(c.id)} />
@@ -487,7 +486,7 @@ export function ClientReportModal({
                           </label>
                         ))}
                       </div>
-                    </ScrollArea>
+                    </div>
                     {campaigns.length > 5 && (
                       <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent pointer-events-none rounded-b-xl" />
                     )}
@@ -555,7 +554,12 @@ export function ClientReportModal({
               {/* Report body — scrollable */}
               <div className="flex-1 min-h-0 overflow-y-auto px-6 py-3">
                 <div className="pb-4">
-                  <ReportSectionRenderer sections={parsed.sections} brandId={brandId} mode={isAgency ? reportType : 'self-serve'} />
+                  <ReportSectionRenderer
+                    sections={parsed.sections}
+                    brandId={brandId}
+                    mode={isAgency ? reportType : 'self-serve'}
+                    campaignLinks={campaigns.map((campaign) => ({ id: campaign.id, name: campaign.name }))}
+                  />
                 </div>
               </div>
 
