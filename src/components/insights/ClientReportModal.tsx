@@ -466,24 +466,35 @@ export function ClientReportModal({
               {campaigns.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">Select campaigns to include:</p>
+                    <p className="text-sm font-medium">
+                      Select campaigns to include
+                      <span className="text-muted-foreground font-normal ml-1">({campaigns.length} available)</span>
+                    </p>
                     <Button variant="ghost" size="sm" className="text-xs h-7" onClick={toggleAll}>
                       {selectedIds.size === campaigns.length ? 'Deselect All' : 'Select All'}
                     </Button>
                   </div>
-                  <ScrollArea className="max-h-[200px]">
-                    <div className="space-y-1">
-                      {campaigns.map((c) => (
-                        <label key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 cursor-pointer transition-colors">
-                          <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleCampaign(c.id)} />
-                          <span className="flex-1 text-sm font-medium truncate">{c.name}</span>
-                          {c.status && (
-                            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${statusColor(c.status)}`}>{c.status}</Badge>
-                          )}
-                        </label>
-                      ))}
-                    </div>
-                  </ScrollArea>
+                  <div className="relative">
+                    <ScrollArea className="max-h-[300px]">
+                      <div className="space-y-1 pr-2">
+                        {campaigns.map((c) => (
+                          <label key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 cursor-pointer transition-colors">
+                            <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleCampaign(c.id)} />
+                            <span className="flex-1 text-sm font-medium truncate">{c.name}</span>
+                            {c.status && (
+                              <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${statusColor(c.status)}`}>{c.status}</Badge>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                    {campaigns.length > 5 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent pointer-events-none rounded-b-xl" />
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground text-center">
+                    {selectedIds.size} of {campaigns.length} selected — scroll to see all
+                  </p>
                 </div>
               )}
               {isAgency && (
