@@ -111,6 +111,21 @@ export function ClientReportModal({
   const [testingSend, setTestingSend] = useState(false);
   const [sendingToSlack, setSendingToSlack] = useState(false);
 
+  // Email send
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+
+  // Custom date range for report
+  const [reportDateFrom, setReportDateFrom] = useState<Date | undefined>(dateRangeStart ? parseISO(dateRangeStart) : undefined);
+  const [reportDateTo, setReportDateTo] = useState<Date | undefined>(dateRangeEnd ? parseISO(dateRangeEnd) : undefined);
+
+  const effectiveDateStart = reportDateFrom ? format(reportDateFrom, 'yyyy-MM-dd') : dateRangeStart;
+  const effectiveDateEnd = reportDateTo ? format(reportDateTo, 'yyyy-MM-dd') : dateRangeEnd;
+
+  // Filter campaigns to only those with data
+  const campaignsWithData = campaigns.filter(c => c.hasData !== false);
+
   useEffect(() => {
     if (open && brandId) {
       fetchPastReports();
