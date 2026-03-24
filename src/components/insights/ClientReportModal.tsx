@@ -84,6 +84,7 @@ export function ClientReportModal({
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<string | null>(null);
+  const [reportType, setReportType] = useState<'agency' | 'self-serve'>('agency');
   const [copied, setCopied] = useState(false);
   const [pastReports, setPastReports] = useState<PastReport[]>([]);
   const [viewingPast, setViewingPast] = useState<string | null>(null);
@@ -232,7 +233,7 @@ export function ClientReportModal({
     setReport(null);
     try {
       const { data, error } = await supabase.functions.invoke('generate-client-report', {
-        body: { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds: Array.from(selectedIds), mode: isAgency ? 'agency' : 'self-serve' },
+        body: { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds: Array.from(selectedIds), mode: isAgency ? reportType : 'self-serve' },
       });
       if (error) throw new Error(error.message || 'Failed to generate report');
       if (data?.error) throw new Error(data.error);
@@ -374,7 +375,7 @@ export function ClientReportModal({
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg font-display">
             <FileText className="h-5 w-5 text-primary" />
-            {viewingPast ? 'Past Report' : isAgency ? 'Client Report' : 'Performance Report'}
+            {viewingPast ? 'Past Report' : isAgency ? (reportType === 'agency' ? 'Done For You Report' : 'DIY Client Report') : 'Performance Report'}
           </DialogTitle>
         </DialogHeader>
 
@@ -485,6 +486,35 @@ export function ClientReportModal({
                   </ScrollArea>
                 </div>
               )}
+              {isAgency && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Report type:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setReportType('agency')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        reportType === 'agency'
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                          : 'border-border hover:border-primary/40'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold">Done For You</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Internal report — what your agency needs to do</p>
+                    </button>
+                    <button
+                      onClick={() => setReportType('self-serve')}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        reportType === 'self-serve'
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                          : 'border-border hover:border-primary/40'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold">DIY Client Report</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Client-facing — tells them what to do with approve buttons</p>
+                    </button>
+                  </div>
+                </div>
+              )}
               <div className="text-center space-y-3 pt-2">
                 <p className="text-muted-foreground text-sm">Generate a polished, copy-paste-ready weekly report with LUMI's strategic recommendations.</p>
                 <Button onClick={generateReport} variant="lumi" size="lg" className="rounded-2xl" disabled={selectedIds.size === 0}>
@@ -514,7 +544,7 @@ export function ClientReportModal({
               {/* Report body — scrollable */}
               <div className="flex-1 min-h-0 overflow-y-auto px-6 py-3">
                 <div className="pb-4">
-                  <ReportSectionRenderer sections={parsed.sections} brandId={brandId} mode={isAgency ? 'agency' : 'self-serve'} />
+                  <ReportSectionRenderer sections={parsed.sections} brandId={brandId} mode={isAgency ? reportType : 'self-serve'} />
                 </div>
               </div>
 
