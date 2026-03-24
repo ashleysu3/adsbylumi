@@ -233,7 +233,7 @@ export function ClientReportModal({
     setReport(null);
     try {
       const { data, error } = await supabase.functions.invoke('generate-client-report', {
-        body: { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds: Array.from(selectedIds), mode: isAgency ? 'agency' : 'self-serve' },
+        body: { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds: Array.from(selectedIds), mode: isAgency ? reportType : 'self-serve' },
       });
       if (error) throw new Error(error.message || 'Failed to generate report');
       if (data?.error) throw new Error(data.error);
