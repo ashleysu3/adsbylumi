@@ -514,7 +514,7 @@ export function ClientReportModal({
               {/* Report body — scrollable */}
               <div className="flex-1 min-h-0 overflow-y-auto px-6 py-3">
                 <div className="pb-4">
-                  <ReportSectionRenderer sections={parsed.sections} />
+                  <ReportSectionRenderer sections={parsed.sections} brandId={brandId} mode={isAgency ? 'agency' : 'self-serve'} />
                 </div>
               </div>
 
