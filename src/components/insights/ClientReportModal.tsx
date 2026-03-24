@@ -129,11 +129,13 @@ export function ClientReportModal({
   useEffect(() => {
     if (open && brandId) {
       fetchPastReports();
-      setSelectedIds(new Set(campaigns.map((c) => c.id)));
+      setSelectedIds(new Set(campaignsWithData.map((c) => c.id)));
       if (initialReportText) {
         setReport(initialReportText);
       }
       if (isAgency) fetchDeliverySettings();
+      setReportDateFrom(dateRangeStart ? parseISO(dateRangeStart) : undefined);
+      setReportDateTo(dateRangeEnd ? parseISO(dateRangeEnd) : undefined);
     }
     if (!open) {
       setReport(null);
@@ -141,6 +143,8 @@ export function ClientReportModal({
       setShowMissingDataPopup(false);
       setMissingDataItems([]);
       setPendingReport(null);
+      setShowEmailInput(false);
+      setEmailRecipient('');
     }
   }, [open, brandId]);
 
