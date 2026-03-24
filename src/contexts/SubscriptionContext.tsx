@@ -75,10 +75,16 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
       const isAgencyUser = profileData?.is_agency_user ?? false;
 
-      const { data, error } = await supabase.functions.invoke('check-subscription');
-      
-      if (error) {
-        console.error('Error checking subscription:', error);
+      let data: any = null;
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await supabase.functions.invoke('check-subscription');
+        if (!res.error) { data = res.data; break; }
+        lastError = res.error;
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      }
+      if (!data) {
+        console.error('Error checking subscription after retries:', lastError);
         setState(prev => ({ ...prev, isLoading: false }));
         return;
       }
