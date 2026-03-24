@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { GlossaryTermInline } from '@/components/GlossaryTooltip';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -10,6 +11,11 @@ import { adsGlossary } from '@/lib/ads-glossary';
 interface ReportSection {
   title: string;
   content: string;
+}
+
+interface CampaignLinkOption {
+  id: string;
+  name: string;
 }
 
 export function parseReportSections(text: string): { sections: ReportSection[] } {
@@ -292,10 +298,16 @@ interface ReportSectionRendererProps {
   sections: ReportSection[];
   brandId?: string;
   mode?: 'agency' | 'self-serve';
+  campaignLinks?: CampaignLinkOption[];
 }
 
-export function ReportSectionRenderer({ sections, brandId, mode }: ReportSectionRendererProps) {
+export function ReportSectionRenderer({ sections, brandId, mode, campaignLinks = [] }: ReportSectionRendererProps) {
   const isSelfServe = mode === 'self-serve';
+  const navigate = useNavigate();
+
+  const handleOpenCreativeRefresh = (workspaceId: string) => {
+    navigate(`/creative-studio?workspace=${workspaceId}&refreshCreative=true`);
+  };
 
   return (
     <TooltipProvider>
@@ -304,6 +316,7 @@ export function ReportSectionRenderer({ sections, brandId, mode }: ReportSection
           const isCampaignSection = /[✅⚠️💰📊📋🤝]/.test(section.title);
           const isActionSection = /Agency Action|What We Need|LUMI Recommends/i.test(section.title);
           const isApproveSection = /Approve These Changes/i.test(section.title);
+          const isTodoSection = /Your To-Do List|Your To Do List|To-Do List/i.test(section.title);
           const isTryThisSection = /Try This|💡/i.test(section.title);
 
           return (
@@ -334,6 +347,8 @@ export function ReportSectionRenderer({ sections, brandId, mode }: ReportSection
                 <div className="space-y-0.5">
                   {isApproveSection && isSelfServe && brandId
                     ? renderApproveSection(section.content, brandId)
+                    : isTodoSection
+                      ? renderTodoSection(section.content, campaignLinks, handleOpenCreativeRefresh)
                     : renderContentWithTables(section.content)
                   }
                 </div>
@@ -344,6 +359,33 @@ export function ReportSectionRenderer({ sections, brandId, mode }: ReportSection
       </div>
     </TooltipProvider>
   );
+}
+
+const CREATIVE_TASK_PATTERN = /(creative|hook|video|static image|copy angle|angles|concept|ad copy|b-roll|refresh)/i;
+
+function normalizeCampaignText(value: string): string {
+  return value.toLowerCase().replace(/["'`“”]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function findCampaignForTodo(actionText: string, campaignLinks: CampaignLinkOption[]): CampaignLinkOption | null {
+  if (campaignLinks.length === 0) return null;
+
+  const quotedName = actionText.match(/["“](.+?)["”]/)?.[1];
+  if (quotedName) {
+    const normalizedQuoted = normalizeCampaignText(quotedName);
+    const quotedMatch = campaignLinks.find((campaign) => {
+      const normalizedName = normalizeCampaignText(campaign.name);
+      return (
+        normalizedName === normalizedQuoted ||
+        normalizedName.includes(normalizedQuoted) ||
+        normalizedQuoted.includes(normalizedName)
+      );
+    });
+    if (quotedMatch) return quotedMatch;
+  }
+
+  const normalizedAction = normalizeCampaignText(actionText);
+  return campaignLinks.find((campaign) => normalizedAction.includes(normalizeCampaignText(campaign.name))) || null;
 }
 
 function renderApproveSection(content: string, brandId: string): React.ReactNode[] {
@@ -358,6 +400,46 @@ function renderApproveSection(content: string, brandId: string): React.ReactNode
       const actionText = checkMatch[1].replace(/^Approve:\s*/i, '').trim();
       elements.push(
         <ApproveActionCard key={`approve-${i}`} action={actionText} brandId={brandId} />
+      );
+    } else if (line.trim()) {
+      elements.push(renderFormattedLine(line, i));
+    }
+  }
+
+  return elements;
+}
+
+function renderTodoSection(
+  content: string,
+  campaignLinks: CampaignLinkOption[],
+  onStartCreative: (workspaceId: string) => void
+): React.ReactNode[] {
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const checkMatch = line.match(/^[-*]\s*\[[ x]?\]\s*(.+)$/i);
+
+    if (checkMatch) {
+      const actionText = checkMatch[1].trim();
+      const linkedCampaign = findCampaignForTodo(actionText, campaignLinks);
+      const showGetStarted = !!linkedCampaign && CREATIVE_TASK_PATTERN.test(actionText);
+
+      elements.push(
+        <div key={`todo-${i}`} className="flex flex-col gap-2 rounded-xl border bg-card p-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="text-sm text-foreground/85">{parseInlineFormatting(actionText)}</div>
+          {showGetStarted && linkedCampaign && (
+            <Button
+              variant="lumi"
+              size="sm"
+              className="rounded-xl shrink-0"
+              onClick={() => onStartCreative(linkedCampaign.id)}
+            >
+              Get started
+            </Button>
+          )}
+        </div>
       );
     } else if (line.trim()) {
       elements.push(renderFormattedLine(line, i));
