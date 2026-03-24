@@ -1215,6 +1215,60 @@ export type Database = {
           },
         ]
       }
+      email_approval_tokens: {
+        Row: {
+          action_data: Json
+          action_description: string
+          brand_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          status: string
+          token: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          action_data?: Json
+          action_description: string
+          brand_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          status?: string
+          token?: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          action_data?: Json
+          action_description?: string
+          brand_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          status?: string
+          token?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_approval_tokens_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_approval_tokens_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           created_at: string
