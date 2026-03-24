@@ -505,7 +505,29 @@ Generate ONLY the report text. No preamble.`;
 
     if (!reportText) throw new Error('Failed to generate report');
 
-    // Post-generation validation
+    // Post-generation validation: ensure no cross-brand campaign names leaked in
+    // Split into sections and validate each campaign heading belongs to this brand
+    const reportSections = reportText.split(/(?=^### )/m);
+    const cleanedSections = reportSections.filter(section => {
+      // Keep non-campaign sections (Executive Summary, Budget Overview, etc.)
+      const headingMatch = section.match(/^### [✅⚠️🔴⏸️🚫]*\s*(.+)$/m);
+      if (!headingMatch) return true;
+      
+      const heading = headingMatch[1].trim();
+      // Keep known structural sections
+      if (/Executive Summary|Budget Overview|Action Items|Agency Action|What We Need|Approve These|To-Do|Try This|💡|💰|📊|📋|🤝/i.test(heading)) return true;
+      
+      // For campaign sections, verify the campaign name is in our allowed list
+      const matchesCampaign = campaignNames.some(name => heading.includes(name));
+      if (!matchesCampaign) {
+        console.warn(`CROSS-BRAND FILTER: Stripped unauthorized campaign section: "${heading}"`);
+        return false;
+      }
+      return true;
+    });
+    reportText = cleanedSections.join('');
+
+    // Also check for missing campaigns
     const missingCampaigns = campaignNames.filter(name => !reportText.includes(name));
     if (missingCampaigns.length > 0) {
       reportText += `\n\n---\n\n### Additional Campaigns\n`;
