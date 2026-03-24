@@ -464,8 +464,8 @@ export function ClientReportModal({
             </div>
           )}
 
-          {/* Campaign selection */}
-          {isAgency && !rawReport && !loading && !showMissingDataPopup && (
+          {/* Campaign selection — available to all users */}
+          {!rawReport && !loading && !showMissingDataPopup && (
             <div className="px-6 pb-6 space-y-4">
               {campaigns.length > 0 && (
                 <div className="space-y-2">
