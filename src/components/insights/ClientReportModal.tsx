@@ -232,7 +232,7 @@ export function ClientReportModal({
     setReport(null);
     try {
       const { data, error } = await supabase.functions.invoke('generate-client-report', {
-        body: { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds: Array.from(selectedIds) },
+        body: { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds: Array.from(selectedIds), mode: isAgency ? 'agency' : 'self-serve' },
       });
       if (error) throw new Error(error.message || 'Failed to generate report');
       if (data?.error) throw new Error(data.error);
@@ -374,33 +374,12 @@ export function ClientReportModal({
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg font-display">
             <FileText className="h-5 w-5 text-primary" />
-            {viewingPast ? 'Past Report' : 'Client Report'}
-            {!isAgency && (
-              <Badge variant="secondary" className="ml-2 text-[10px] gap-1">
-                <Lock className="h-3 w-3" /> Agency
-              </Badge>
-            )}
+            {viewingPast ? 'Past Report' : isAgency ? 'Client Report' : 'Performance Report'}
           </DialogTitle>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          {/* Agency gate */}
-          {!isAgency && !rawReport && !loading && !showMissingDataPopup && (
-            <div className="px-6 pb-6 flex flex-col items-center justify-center gap-4 py-12">
-              <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Lock className="h-8 w-8 text-primary" />
-              </div>
-              <div className="text-center space-y-2 max-w-sm">
-                <h3 className="font-display font-bold text-lg">Agency Feature</h3>
-                <p className="text-sm text-muted-foreground">
-                  Client reports with Slack delivery and automated scheduling are available on the Agency plan.
-                </p>
-              </div>
-              <Button variant="lumi" className="rounded-2xl" onClick={() => window.open('/pricing', '_blank')}>
-                Upgrade to Agency
-              </Button>
-            </div>
-          )}
+          {/* Removed agency gate — reports now available to all users */}
 
           {/* Missing data popup */}
           {showMissingDataPopup && (
@@ -480,8 +459,8 @@ export function ClientReportModal({
             </div>
           )}
 
-          {/* Campaign selection */}
-          {isAgency && !rawReport && !loading && !showMissingDataPopup && (
+          {/* Campaign selection — available to all users */}
+          {!rawReport && !loading && !showMissingDataPopup && (
             <div className="px-6 pb-6 space-y-4">
               {campaigns.length > 0 && (
                 <div className="space-y-2">
@@ -535,7 +514,7 @@ export function ClientReportModal({
               {/* Report body — scrollable */}
               <div className="flex-1 min-h-0 overflow-y-auto px-6 py-3">
                 <div className="pb-4">
-                  <ReportSectionRenderer sections={parsed.sections} />
+                  <ReportSectionRenderer sections={parsed.sections} brandId={brandId} mode={isAgency ? 'agency' : 'self-serve'} />
                 </div>
               </div>
 
