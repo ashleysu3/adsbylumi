@@ -23,12 +23,14 @@ interface CampaignOption {
   name: string;
   status?: string;
   templateName?: string | null;
+  hasData?: boolean; // whether campaign has data in selected period
 }
 
 interface ClientReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   brandId: string;
+  brandName?: string;
   dateRangeStart: string;
   dateRangeEnd: string;
   campaigns?: CampaignOption[];
