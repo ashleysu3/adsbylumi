@@ -375,7 +375,7 @@ export function ClientReportModal({
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2 text-lg font-display">
             <FileText className="h-5 w-5 text-primary" />
-            {viewingPast ? 'Past Report' : isAgency ? 'Client Report' : 'Performance Report'}
+            {viewingPast ? 'Past Report' : isAgency ? (reportType === 'agency' ? 'Done For You Report' : 'DIY Client Report') : 'Performance Report'}
           </DialogTitle>
         </DialogHeader>
 
