@@ -84,6 +84,7 @@ export function ClientReportModal({
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<string | null>(null);
+  const [reportType, setReportType] = useState<'agency' | 'self-serve'>('agency');
   const [copied, setCopied] = useState(false);
   const [pastReports, setPastReports] = useState<PastReport[]>([]);
   const [viewingPast, setViewingPast] = useState<string | null>(null);
