@@ -350,7 +350,9 @@ Deno.serve(async (req) => {
 
 IMPORTANT: This is LIVE data pulled directly from Meta's API for the period ${dateRangeStart || 'last 7 days'} to ${dateRangeEnd || 'today'}. Use the exact numbers provided — do NOT make up or estimate metrics.
 
-CRITICAL: You MUST include a section for EVERY one of these campaigns: ${campaignNames.map(n => `"${n}"`).join(', ')}.
+CRITICAL DATA ISOLATION: This report is EXCLUSIVELY for the brand "${brand.name}". You MUST ONLY reference campaigns listed below. Do NOT invent, hallucinate, or reference ANY campaign names that are not in the provided data. If you are unsure about a campaign name, do NOT include it.
+
+CRITICAL: You MUST include a section for EVERY one of these campaigns and ONLY these campaigns: ${campaignNames.map(n => `"${n}"`).join(', ')}.
 
 LANGUAGE RULES:
 - Write in plain English. Avoid marketing jargon.
