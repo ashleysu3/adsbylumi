@@ -9,7 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Copy, Check, FileText, Calendar, ChevronRight, Lock, Settings2, Hash, Send, ChevronDown, AlertCircle, MessageSquare } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Loader2, Copy, Check, FileText, Calendar, ChevronRight, Lock, Settings2, Hash, Send, ChevronDown, AlertCircle, MessageSquare, Mail } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { parseReportSections, ReportSectionRenderer } from './ReportSectionRenderer';
@@ -20,12 +23,14 @@ interface CampaignOption {
   name: string;
   status?: string;
   templateName?: string | null;
+  hasData?: boolean; // whether campaign has data in selected period
 }
 
 interface ClientReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   brandId: string;
+  brandName?: string;
   dateRangeStart: string;
   dateRangeEnd: string;
   campaigns?: CampaignOption[];
@@ -73,6 +78,7 @@ export function ClientReportModal({
   open,
   onOpenChange,
   brandId,
+  brandName,
   dateRangeStart,
   dateRangeEnd,
   campaigns = [],
@@ -105,14 +111,31 @@ export function ClientReportModal({
   const [testingSend, setTestingSend] = useState(false);
   const [sendingToSlack, setSendingToSlack] = useState(false);
 
+  // Email send
+  const [emailRecipient, setEmailRecipient] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+
+  // Custom date range for report
+  const [reportDateFrom, setReportDateFrom] = useState<Date | undefined>(dateRangeStart ? parseISO(dateRangeStart) : undefined);
+  const [reportDateTo, setReportDateTo] = useState<Date | undefined>(dateRangeEnd ? parseISO(dateRangeEnd) : undefined);
+
+  const effectiveDateStart = reportDateFrom ? format(reportDateFrom, 'yyyy-MM-dd') : dateRangeStart;
+  const effectiveDateEnd = reportDateTo ? format(reportDateTo, 'yyyy-MM-dd') : dateRangeEnd;
+
+  // Filter campaigns to only those with data
+  const campaignsWithData = campaigns.filter(c => c.hasData !== false);
+
   useEffect(() => {
     if (open && brandId) {
       fetchPastReports();
-      setSelectedIds(new Set(campaigns.map((c) => c.id)));
+      setSelectedIds(new Set(campaignsWithData.map((c) => c.id)));
       if (initialReportText) {
         setReport(initialReportText);
       }
       if (isAgency) fetchDeliverySettings();
+      setReportDateFrom(dateRangeStart ? parseISO(dateRangeStart) : undefined);
+      setReportDateTo(dateRangeEnd ? parseISO(dateRangeEnd) : undefined);
     }
     if (!open) {
       setReport(null);
@@ -120,6 +143,8 @@ export function ClientReportModal({
       setShowMissingDataPopup(false);
       setMissingDataItems([]);
       setPendingReport(null);
+      setShowEmailInput(false);
+      setEmailRecipient('');
     }
   }, [open, brandId]);
 
@@ -219,7 +244,7 @@ export function ClientReportModal({
   };
 
   const toggleAll = () => {
-    setSelectedIds(selectedIds.size === campaigns.length ? new Set() : new Set(campaigns.map((c) => c.id)));
+    setSelectedIds(selectedIds.size === campaignsWithData.length ? new Set() : new Set(campaignsWithData.map((c) => c.id)));
   };
 
   const toggleDay = (day: string) => {
@@ -232,7 +257,7 @@ export function ClientReportModal({
     setReport(null);
     try {
       const { data, error } = await supabase.functions.invoke('generate-client-report', {
-        body: { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds: Array.from(selectedIds), mode: isAgency ? reportType : 'self-serve' },
+        body: { brandId, dateRangeStart: effectiveDateStart, dateRangeEnd: effectiveDateEnd, selectedWorkspaceIds: Array.from(selectedIds), mode: isAgency ? reportType : 'self-serve' },
       });
       if (error) throw new Error(error.message || 'Failed to generate report');
       if (data?.error) throw new Error(data.error);
@@ -355,6 +380,30 @@ export function ClientReportModal({
     } catch { toast.error('Failed to copy'); }
   };
 
+  const sendReportEmail = async () => {
+    if (!emailRecipient || !rawReport) return;
+    setSendingEmail(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-report-email', {
+        body: {
+          reportText: rawReport,
+          recipientEmail: emailRecipient,
+          brandName: brandName || '',
+          dateRangeStart: effectiveDateStart,
+          dateRangeEnd: effectiveDateEnd,
+        },
+      });
+      if (error) throw error;
+      toast.success(`Report sent to ${emailRecipient}`);
+      setShowEmailInput(false);
+      setEmailRecipient('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send email');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const rawReport = viewingPast
     ? pastReports.find((r) => r.id === viewingPast)?.report_text || null
     : report;
@@ -461,22 +510,66 @@ export function ClientReportModal({
 
           {/* Campaign selection — available to all users */}
           {!rawReport && !loading && !showMissingDataPopup && (
-            <div className="px-6 pb-6 space-y-4">
-              {campaigns.length > 0 && (
+            <div className="px-6 pb-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+              {/* Date range picker */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Report date range</p>
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="rounded-xl text-xs h-9 flex-1 justify-start">
+                        <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                        {reportDateFrom ? format(reportDateFrom, 'MMM d, yyyy') : 'Start date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={reportDateFrom}
+                        onSelect={setReportDateFrom}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <span className="text-xs text-muted-foreground">to</span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="rounded-xl text-xs h-9 flex-1 justify-start">
+                        <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                        {reportDateTo ? format(reportDateTo, 'MMM d, yyyy') : 'End date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={reportDateTo}
+                        onSelect={setReportDateTo}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {campaignsWithData.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">
                       Select campaigns to include
-                      <span className="text-muted-foreground font-normal ml-1">({campaigns.length} available)</span>
+                      <span className="text-muted-foreground font-normal ml-1">({campaignsWithData.length} with data)</span>
                     </p>
                     <Button variant="ghost" size="sm" className="text-xs h-7" onClick={toggleAll}>
-                      {selectedIds.size === campaigns.length ? 'Deselect All' : 'Select All'}
+                      {selectedIds.size === campaignsWithData.length ? 'Deselect All' : 'Select All'}
                     </Button>
                   </div>
                   <div className="relative">
                     <div className="max-h-[300px] overflow-y-auto overscroll-contain rounded-xl border border-border/50 p-1 pr-2">
                       <div className="space-y-1">
-                        {campaigns.map((c) => (
+                        {campaignsWithData.map((c) => (
                           <label key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-muted/50 cursor-pointer transition-colors">
                             <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleCampaign(c.id)} />
                             <span className="flex-1 text-sm font-medium truncate">{c.name}</span>
@@ -487,13 +580,18 @@ export function ClientReportModal({
                         ))}
                       </div>
                     </div>
-                    {campaigns.length > 5 && (
+                    {campaignsWithData.length > 5 && (
                       <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent pointer-events-none rounded-b-xl" />
                     )}
                   </div>
                   <p className="text-[11px] text-muted-foreground text-center">
-                    {selectedIds.size} of {campaigns.length} selected — scroll to see all
+                    {selectedIds.size} of {campaignsWithData.length} selected — scroll to see all
                   </p>
+                </div>
+              )}
+              {campaignsWithData.length === 0 && campaigns.length > 0 && (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground">No campaigns have data for the selected date range. Try adjusting the dates.</p>
                 </div>
               )}
               {isAgency && (
@@ -526,7 +624,7 @@ export function ClientReportModal({
                 </div>
               )}
               <div className="text-center space-y-3 pt-2">
-                <p className="text-muted-foreground text-sm">Generate a polished, copy-paste-ready weekly report with LUMI's strategic recommendations.</p>
+                <p className="text-muted-foreground text-sm">Generate a polished, copy-paste-ready report with LUMI's strategic recommendations.</p>
                 <Button onClick={generateReport} variant="lumi" size="lg" className="rounded-2xl" disabled={selectedIds.size === 0}>
                   <FileText className="h-4 w-4 mr-2" />
                   Generate Report ({selectedIds.size} campaign{selectedIds.size !== 1 ? 's' : ''})
@@ -565,15 +663,24 @@ export function ClientReportModal({
 
               {/* Sticky footer */}
               <div className="border-t bg-background px-6 py-3 shrink-0 space-y-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   {!viewingPast && (
                     <Button onClick={() => setReport(null)} variant="outline" size="sm" className="rounded-xl text-xs">
                       <FileText className="h-3.5 w-3.5 mr-1" /> New Report
                     </Button>
                   )}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={() => copyToClipboard(rawReport!)} className="rounded-xl gap-1.5">
                       {copied ? <><Check className="h-3.5 w-3.5" /> Copied!</> : <><Copy className="h-3.5 w-3.5" /> Copy Report</>}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl gap-1.5"
+                      onClick={() => setShowEmailInput(!showEmailInput)}
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Email Report
                     </Button>
                     {isAgency && slackChannel && (
                       <Button
@@ -588,8 +695,8 @@ export function ClientReportModal({
                               body: {
                                 channel: slackChannel,
                                 reportText: rawReport,
-                                brandName: '',
-                                dateRange: `${dateRangeStart} – ${dateRangeEnd}`,
+                                brandName: brandName || '',
+                                dateRange: `${effectiveDateStart} – ${effectiveDateEnd}`,
                               },
                             });
                             if (error) throw error;
@@ -607,6 +714,29 @@ export function ClientReportModal({
                     )}
                   </div>
                 </div>
+
+                {/* Email input */}
+                {showEmailInput && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="email"
+                      placeholder="Enter email address..."
+                      value={emailRecipient}
+                      onChange={(e) => setEmailRecipient(e.target.value)}
+                      className="h-9 rounded-xl text-sm flex-1"
+                      onKeyDown={(e) => { if (e.key === 'Enter') sendReportEmail(); }}
+                    />
+                    <Button
+                      size="sm"
+                      className="rounded-xl gap-1.5 shrink-0"
+                      onClick={sendReportEmail}
+                      disabled={sendingEmail || !emailRecipient}
+                    >
+                      {sendingEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                      Send
+                    </Button>
+                  </div>
+                )}
 
                 {/* Delivery settings — agency only */}
                 {isAgency && !viewingPast && (

@@ -187,7 +187,7 @@ export function InsightsHome({
   dateRangeEnd
 }: InsightsHomeProps) {
   const navigate = useNavigate();
-  const { isAgencyUser } = useBrand();
+  const { isAgencyUser, activeBrand } = useBrand();
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live']);
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -914,6 +914,7 @@ export function InsightsHome({
           open={reportModalOpen}
           onOpenChange={setReportModalOpen}
           brandId={brandId}
+          brandName={activeBrand?.name}
           dateRangeStart={dateRangeStart || ''}
           dateRangeEnd={dateRangeEnd || ''}
           campaigns={campaigns.map((c) => ({
@@ -921,6 +922,7 @@ export function InsightsHome({
             name: c.name,
             status: c.status,
             templateName: c.templateName,
+            hasData: c.metrics ? (c.metrics.spend ?? 0) > 0 || (c.metrics.impressions ?? 0) > 0 : false,
           }))}
         />
       )}
