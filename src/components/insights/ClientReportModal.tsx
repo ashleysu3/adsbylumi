@@ -380,6 +380,30 @@ export function ClientReportModal({
     } catch { toast.error('Failed to copy'); }
   };
 
+  const sendReportEmail = async () => {
+    if (!emailRecipient || !rawReport) return;
+    setSendingEmail(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-report-email', {
+        body: {
+          reportText: rawReport,
+          recipientEmail: emailRecipient,
+          brandName: brandName || '',
+          dateRangeStart: effectiveDateStart,
+          dateRangeEnd: effectiveDateEnd,
+        },
+      });
+      if (error) throw error;
+      toast.success(`Report sent to ${emailRecipient}`);
+      setShowEmailInput(false);
+      setEmailRecipient('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to send email');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const rawReport = viewingPast
     ? pastReports.find((r) => r.id === viewingPast)?.report_text || null
     : report;
