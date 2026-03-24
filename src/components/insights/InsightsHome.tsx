@@ -187,7 +187,7 @@ export function InsightsHome({
   dateRangeEnd
 }: InsightsHomeProps) {
   const navigate = useNavigate();
-  const { isAgencyUser, brand } = useBrand();
+  const { isAgencyUser, activeBrand } = useBrand();
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(['active', 'live']);
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
