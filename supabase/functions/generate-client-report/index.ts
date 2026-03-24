@@ -352,6 +352,12 @@ IMPORTANT: This is LIVE data pulled directly from Meta's API for the period ${da
 
 CRITICAL DATA ISOLATION: This report is EXCLUSIVELY for the brand "${brand.name}". You MUST ONLY reference campaigns listed below. Do NOT invent, hallucinate, or reference ANY campaign names that are not in the provided data. If you are unsure about a campaign name, do NOT include it.
 
+PROHIBITED ADVICE — NEVER include any of these:
+- NEVER recommend landing page changes, landing page optimization, landing page A/B testing, or any landing page improvements. Do not mention landing pages at all in recommendations.
+- NEVER recommend retargeting campaigns, retargeting audiences, custom audiences based on website visitors, or remarketing strategies. These are less effective due to Meta's Andromeda changes and should not be suggested.
+- NEVER recommend creating lookalike audiences from retargeting pools.
+- Focus all recommendations on: creative refreshes, budget adjustments, audience testing with broad/interest targeting, copy angle changes, and campaign structure optimization.
+
 CRITICAL: You MUST include a section for EVERY one of these campaigns and ONLY these campaigns: ${campaignNames.map(n => `"${n}"`).join(', ')}.
 
 LANGUAGE RULES:
