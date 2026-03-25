@@ -594,7 +594,10 @@ export function ProductionManager({
       (key) => normalizeLookup(key) === normalizedItemAngleName
     );
 
-    return nameKeyMatch || matchedAngle?.id || null;
+    // Also check item.id as a key (used as fallback when saving edits)
+    const idKeyMatch = item.id && angleCopy[item.id] ? item.id : null;
+
+    return nameKeyMatch || matchedAngle?.id || idKeyMatch || null;
   };
 
   // Get copy for item's angle (supports id-keyed and name-keyed stores)

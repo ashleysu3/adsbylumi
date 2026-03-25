@@ -198,8 +198,25 @@ export function AdPreviewModal({
       return;
     }
 
-    const baseCopy = angleCopy || { headlines: [], descriptions: [], primary_copy: [] };
+    // When angleCopy is empty/undefined, seed from current fallback values
+    // so the save captures existing copy rather than losing it
+    const hasAngleCopy = angleCopy && (
+      (angleCopy.headlines?.length ?? 0) > 0 ||
+      (angleCopy.descriptions?.length ?? 0) > 0 ||
+      (angleCopy.primary_copy?.length ?? 0) > 0
+    );
+
+    const baseCopy = hasAngleCopy
+      ? angleCopy!
+      : {
+          headlines: headlines.length > 0 ? [...headlines] : [],
+          descriptions: descriptions.length > 0 ? [...descriptions] : [],
+          primary_copy: primaryCopy.length > 0 ? [...primaryCopy] : [],
+        };
+
     const updated = {
+      // Preserve any extra fields from the original angleCopy
+      ...(angleCopy || {}),
       headlines: [...(baseCopy.headlines || [])],
       descriptions: [...(baseCopy.descriptions || [])],
       primary_copy: [...(baseCopy.primary_copy || [])],
@@ -209,7 +226,6 @@ export function AdPreviewModal({
       if (updated.headlines[selectedHeadline]) {
         updated.headlines[selectedHeadline] = { ...updated.headlines[selectedHeadline], text: editValue };
       } else {
-        // Create entry if it doesn't exist (copy came from fallback)
         updated.headlines = [{ text: editValue }];
       }
     } else if (editingField === "description") {
