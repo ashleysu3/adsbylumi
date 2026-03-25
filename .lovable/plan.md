@@ -1,34 +1,54 @@
 
 
-## Purge All Landing Page / Retargeting / Non-Ad Recommendations from AI Prompts
+## Problem
 
-### Problem
-The `generate-client-report` prompt already has the prohibition, but two other AI-powered edge functions still reference landing pages and retargeting in their prompts, which means the AI can still produce those recommendations:
+The ad preview's Stories and Reels tabs use `object-cover` on all media, which crops square (1:1) images to fill the 9:16 frame -- cutting off content. In reality, Meta Ads Manager does NOT crop square images for Stories/Reels. Instead, it centers the square image and adds a gradient color fill above and below. The current preview is misleading users into thinking their content is being cropped when it is not.
 
-1. **`analyze-performance/index.ts`** — The prompt explicitly mentions "landing page performance" in the NURTURE stage, "Warm Audience Health" for retargeting audiences, and "offer/landing page mismatches"
-2. **`generate-review-action-plan/index.ts`** — No explicit prohibition, so the AI can freely suggest landing page or retargeting advice
+The upload-to-Meta edge function sends the raw asset file -- Meta itself handles placement adaptation. So the creative is **not** getting cut off in Ads Manager.
 
-### Plan
+## Plan
 
-**1. Update `analyze-performance/index.ts` prompt** (lines ~199-213)
+### 1. Detect asset aspect ratio and adapt rendering
 
-- Remove "landing page performance" from the NURTURE stage description → replace with "Click-to-conversion, ad-to-action clarity"
-- Remove section 4 "Warm Audience Health" entirely (retargeting audience evaluation)
-- Remove "landing page" from section 6 "Offer Diagnosis" → keep only "identify mismatches between the offer and creative"
-- Add a PROHIBITED ADVICE block (same as `generate-client-report`): never recommend landing page changes, retargeting, lookalike audiences from retargeting pools, or remarketing
-- Renumber remaining sections
+In both `AdPreviewModal.tsx` and `AdPreview.tsx`, when rendering media inside a 9:16 container (Stories/Reels):
 
-**2. Update `generate-review-action-plan/index.ts` prompt** (lines ~58-65)
+- Use an `onLoad` handler on `<img>` to detect if the image is square (or close to 1:1)
+- If the image is **not** 9:16-ish, switch from `object-cover` to `object-contain` and add a gradient background behind it (mimicking Meta's behavior)
+- For videos, use `onLoadedMetadata` to read `videoWidth`/`videoHeight` and apply the same logic
 
-- Add a PROHIBITED ADVICE block before the "Generate:" section:
-  - "NEVER recommend landing page changes or optimization"
-  - "NEVER recommend retargeting campaigns or remarketing strategies"
-  - "Focus only on: creative refreshes, budget adjustments, audience testing with broad/interest targeting, copy angles, campaign structure"
+The gradient will sample from the image's dominant edge colors using a CSS approach: render the image behind itself at full-bleed with a heavy blur, then overlay the actual image centered -- this is how Meta does it.
 
-### Files Changed
+### 2. Update `renderMedia` in AdPreviewModal.tsx
 
-| File | Change |
-|------|--------|
-| `supabase/functions/analyze-performance/index.ts` | Remove landing page and retargeting references from prompt; add prohibited advice block |
-| `supabase/functions/generate-review-action-plan/index.ts` | Add prohibited advice block to prompt |
+- Add state: `mediaAspect: number | null`
+- In the `renderMedia` function, wrap media in a container that:
+  - For **9:16 containers** (Stories/Reels): if `mediaAspect` is close to 1:1, render the image with `object-contain` over a blurred copy of itself as background
+  - For **1:1 containers** (Feed/Instagram): keep `object-cover` as-is (this is correct)
+- Accept a `placement` parameter (`"feed" | "vertical"`) to control behavior
+
+### 3. Update `AdPreview.tsx` Stories tab
+
+Apply the same logic: detect square assets and render them centered with gradient/blur padding instead of cropping.
+
+### 4. Files to modify
+
+- `src/components/creative/AdPreviewModal.tsx` -- update `renderMedia`, add aspect detection state
+- `src/components/AdPreview.tsx` -- update Stories tab media rendering
+
+### Technical detail
+
+```text
+9:16 container with square image (Meta-style):
+
+┌─────────────┐
+│ blurred bg   │  ← gradient/blur fill
+│  ┌────────┐  │
+│  │ square │  │  ← actual image, centered
+│  │ image  │  │
+│  └────────┘  │
+│ blurred bg   │  ← gradient/blur fill
+└─────────────┘
+```
+
+The blurred background is achieved by rendering the same image behind with `object-cover` + `blur(20px)` + slight scale-up, then the real image on top with `object-contain`. This closely matches Meta's actual rendering.
 
