@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Lightbulb, FileText, Video, Image, Sparkles, MoreHorizontal, Edit2, Trash2, FolderOpen, Filter, Tag, Wand2, Check, X, Loader2, Brain, RefreshCw, CheckCheck } from "lucide-react";
+import { Plus, Search, Lightbulb, FileText, Video, Image, Sparkles, MoreHorizontal, Edit2, Trash2, FolderOpen, Filter, Tag, Wand2, Check, X, Loader2, Brain, RefreshCw, CheckCheck, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
