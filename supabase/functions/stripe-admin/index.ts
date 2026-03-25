@@ -379,12 +379,11 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          totalPayingSubscribers += 1;
-
           const invoiceLines = (latestPaidInvoice.lines?.data || []).filter((line: any) => line.type === "subscription");
           const paidCycleTotal = invoiceLines.reduce((sum: number, line: any) => sum + (line.amount || 0), 0);
 
           const items = sub.items?.data || [];
+          let subscriptionMonthlyTotal = 0;
           const cycleBaseAmounts = items.map((item: any) => {
             const unitAmount = item.price?.unit_amount || 0;
             const quantity = item.quantity || 1;
@@ -412,6 +411,7 @@ Deno.serve(async (req) => {
 
             const monthlyAmount = normalizeToMonthly(netCycleAmount, price.recurring);
             totalMRR += monthlyAmount;
+            subscriptionMonthlyTotal += monthlyAmount;
 
             const discountAmount = Math.max(0, cycleBaseAmount - netCycleAmount);
             const label = discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} off` : null;
@@ -448,6 +448,10 @@ Deno.serve(async (req) => {
               monthlyAmount,
               invoiceId: latestPaidInvoice.id,
             });
+          }
+
+          if (subscriptionMonthlyTotal > 0) {
+            totalPayingSubscribers += 1;
           }
         }
 
