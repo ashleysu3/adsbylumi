@@ -199,20 +199,33 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdP
                 {/* Stories Frame */}
                 <AspectRatio ratio={9/16}>
                   {assetUrl ? (
-                    isVideo ? (
-                      <video 
-                        src={assetUrl} 
-                        className="w-full h-full object-cover"
-                        muted
-                        playsInline
-                      />
-                    ) : (
-                      <img 
-                        src={assetUrl} 
-                        alt="Ad creative"
-                        className="w-full h-full object-cover"
-                      />
-                    )
+                    <div className="relative w-full h-full overflow-hidden">
+                      {/* Blurred background for non-vertical assets */}
+                      {needsMetaPadding && (
+                        isVideo ? (
+                          <video src={assetUrl} className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" muted playsInline />
+                        ) : (
+                          <img src={assetUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" />
+                        )
+                      )}
+                      {needsMetaPadding && <div className="absolute inset-0 bg-black/30 z-[5]" />}
+                      {isVideo ? (
+                        <video 
+                          src={assetUrl} 
+                          className={`w-full h-full ${needsMetaPadding ? 'object-contain relative z-10' : 'object-cover'}`}
+                          muted
+                          playsInline
+                          onLoadedMetadata={handleVideoLoad}
+                        />
+                      ) : (
+                        <img 
+                          src={assetUrl} 
+                          alt="Ad creative"
+                          className={`w-full h-full ${needsMetaPadding ? 'object-contain relative z-10' : 'object-cover'}`}
+                          onLoad={handleImageLoad}
+                        />
+                      )}
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-primary/30 to-primary/10 text-white">
                       <div className="text-center">
