@@ -322,10 +322,10 @@ export default function Analytics() {
 
                         {expandedPricePoints[tier.price_id] && (
                           <div className="border-t bg-muted/20 p-3 space-y-2">
-                            {tier.subscribers.length === 0 ? (
+                            {(!tier.subscribers || tier.subscribers.length === 0) ? (
                               <p className="text-xs text-muted-foreground">No subscribers in this price point.</p>
                             ) : (
-                              tier.subscribers.map((subscriber) => {
+                              (tier.subscribers || []).map((subscriber) => {
                                 const accountQuery = subscriber.app_user_id
                                   ? `userId=${encodeURIComponent(subscriber.app_user_id)}`
                                   : `email=${encodeURIComponent(subscriber.email || "")}`;
