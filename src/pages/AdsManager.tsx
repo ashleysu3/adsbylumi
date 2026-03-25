@@ -349,7 +349,7 @@ export default function AdsManager() {
         <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
           <Lock className="h-12 w-12 text-muted-foreground mx-auto" />
           <h2 className="text-xl font-bold">Agency Feature</h2>
-          <p className="text-muted-foreground">Ads Manager is only available for agency-tier accounts.</p>
+          <p className="text-muted-foreground">Manage All Accounts is only available for agency-tier accounts.</p>
           <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
         </div>
       </DashboardLayout>

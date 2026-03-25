@@ -299,7 +299,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                         activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       >
                         <LayoutGrid className="h-4 w-4" />
-                        {!collapsed && <span>Ads Manager</span>}
+                        {!collapsed && <span>Manage All Accounts</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
