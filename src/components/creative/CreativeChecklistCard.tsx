@@ -725,22 +725,59 @@ export function CreativeChecklistCard({
               <div>
                 <h5 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Asset</h5>
                 {hasAsset ? (
-                  <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{uploadedAsset.file_name}</p>
-                      <p className="text-xs text-muted-foreground">Uploaded successfully</p>
-                    </div>
-                    <div className="flex gap-1">
-                      {onPreview && (
-                        <Button size="sm" variant="ghost" onClick={() => onPreview(uploadedAsset)}>
-                          <Eye className="h-4 w-4" />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{uploadedAsset!.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {uploadedAsset!.file_type?.startsWith('video/') ? 'Video uploaded (9:16)' : 'Square / Feed version'}
+                        </p>
+                      </div>
+                      <div className="flex gap-1">
+                        {onPreview && (
+                          <Button size="sm" variant="ghost" onClick={() => onPreview(uploadedAsset)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button size="sm" variant="ghost" onClick={onUploadClick}>
+                          Replace
                         </Button>
-                      )}
-                      <Button size="sm" variant="ghost" onClick={onUploadClick}>
-                        Replace
-                      </Button>
+                      </div>
                     </div>
+                    
+                    {/* Optional 9:16 vertical version - only for images */}
+                    {!uploadedAsset!.file_type?.startsWith('video/') && onUploadVerticalClick && (
+                      uploadedAssetVertical ? (
+                        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{uploadedAssetVertical.file_name}</p>
+                            <p className="text-xs text-muted-foreground">9:16 Stories / Reels version</p>
+                          </div>
+                          <div className="flex gap-1">
+                            {onPreview && (
+                              <Button size="sm" variant="ghost" onClick={() => onPreview(uploadedAssetVertical)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost" onClick={onUploadVerticalClick}>
+                              Replace
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="w-full text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                          onClick={onUploadVerticalClick}
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          Add 9:16 version for Stories / Reels (optional)
+                        </Button>
+                      )
+                    )}
                   </div>
                 ) : (
                   <Button 
