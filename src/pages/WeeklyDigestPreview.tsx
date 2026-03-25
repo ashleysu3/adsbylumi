@@ -2,122 +2,111 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useBrand } from '@/contexts/BrandContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { 
-  Mail, ArrowLeft, Loader2, TrendingUp, TrendingDown, 
-  CheckCircle, AlertTriangle, Sparkles, Calendar, Send
-} from 'lucide-react';
-import { format } from 'date-fns';
-
-interface CampaignOption {
-  id: string;
-  name: string;
-  hasData: boolean;
-}
+import { parseReportSections, ReportSectionRenderer } from '@/components/insights/ReportSectionRenderer';
+import { ArrowLeft, Loader2, Send, FileText, Calendar } from 'lucide-react';
+import { format, subDays } from 'date-fns';
 
 export default function WeeklyDigestPreview() {
   const navigate = useNavigate();
-  const { activeBrand } = useBrand();
+  const { activeBrand, isAgencyUser } = useBrand();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
-  const [selectedCampaign, setSelectedCampaign] = useState<string>('');
-  const [previewData, setPreviewData] = useState<any>(null);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [reportText, setReportText] = useState<string | null>(null);
+  const [campaignCount, setCampaignCount] = useState(0);
+  const [dateStart, setDateStart] = useState(() => format(subDays(new Date(), 7), 'yyyy-MM-dd'));
+  const [dateEnd, setDateEnd] = useState(() => format(new Date(), 'yyyy-MM-dd'));
 
   useEffect(() => {
-    if (activeBrand?.id) fetchCampaigns();
+    if (activeBrand?.id) checkCampaigns();
     else setLoading(false);
   }, [activeBrand?.id]);
 
-  const fetchCampaigns = async () => {
+  const checkCampaigns = async () => {
     if (!activeBrand?.id) return;
     try {
       const { data, error } = await supabase
         .from('campaign_workspaces')
-        .select('id, name, performance_report_latest, performance_history')
+        .select('id')
         .eq('brand_id', activeBrand.id)
         .not('meta_campaign_ids', 'is', null)
+        .neq('meta_campaign_status', 'draft')
         .eq('archived', false);
 
       if (error) throw error;
-
-      const campaignOptions: CampaignOption[] = (data || []).map(c => ({
-        id: c.id,
-        name: c.name,
-        hasData: !!(c.performance_report_latest || (c.performance_history as any[])?.length > 0),
-      }));
-
-      setCampaigns(campaignOptions);
-      
-      // Auto-select first campaign with data
-      const firstWithData = campaignOptions.find(c => c.hasData);
-      if (firstWithData) {
-        setSelectedCampaign(firstWithData.id);
-        loadPreviewData(firstWithData.id);
-      }
+      setCampaignCount(data?.length || 0);
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
-      toast.error('Failed to load campaigns');
+      console.error('Error checking campaigns:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPreviewData = async (campaignId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('campaign_workspaces')
-        .select('name, offer_name, performance_report_latest, performance_history')
-        .eq('id', campaignId)
-        .single();
-
-      if (error) throw error;
-
-      const report = data.performance_report_latest;
-      const history = (data.performance_history as any[]) || [];
-      const latestMetrics = history[history.length - 1]?.metrics || {};
-
-      setPreviewData({
-        campaignName: data.offer_name || data.name,
-        metrics: latestMetrics,
-        report,
-        dateRange: `${format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), 'MMM d')} - ${format(new Date(), 'MMM d, yyyy')}`,
-      });
-    } catch (error) {
-      console.error('Error loading preview:', error);
-      setPreviewData(null);
-    }
-  };
-
-  const handleCampaignChange = (campaignId: string) => {
-    setSelectedCampaign(campaignId);
-    loadPreviewData(campaignId);
-  };
-
-  const handleSendTestEmail = async () => {
-    if (!selectedCampaign) return;
-    
+  const handleGeneratePreview = async () => {
+    if (!activeBrand?.id) return;
     setGenerating(true);
+    setReportText(null);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-weekly-report', {
-        body: { workspaceId: selectedCampaign },
+      const { data, error } = await supabase.functions.invoke('generate-client-report', {
+        body: {
+          brandId: activeBrand.id,
+          dateRangeStart: dateStart,
+          dateRangeEnd: dateEnd,
+          mode: isAgencyUser ? 'agency' : 'self-serve',
+        },
       });
 
       if (error) throw error;
-      
-      toast.success('Test email queued! Check your inbox.');
+      if (data?.error) throw new Error(data.error);
+
+      setReportText(data?.reportText || data?.report_text || '');
+      toast.success('Performance Report generated!');
     } catch (error: any) {
-      console.error('Error sending test:', error);
-      toast.error('Failed to send test email');
+      console.error('Error generating preview:', error);
+      toast.error(error.message || 'Failed to generate report');
     } finally {
       setGenerating(false);
     }
   };
+
+  const handleSendTestEmail = async () => {
+    if (!activeBrand?.id) return;
+    setSendingTest(true);
+    try {
+      // Get a workspace to trigger the email
+      const { data: ws } = await supabase
+        .from('campaign_workspaces')
+        .select('id')
+        .eq('brand_id', activeBrand.id)
+        .not('meta_campaign_ids', 'is', null)
+        .eq('archived', false)
+        .limit(1)
+        .single();
+
+      if (!ws) throw new Error('No published campaigns found');
+
+      const { error } = await supabase.functions.invoke('generate-weekly-report', {
+        body: { workspaceId: ws.id },
+      });
+
+      if (error) throw error;
+      toast.success('Test email queued! Check your inbox.');
+    } catch (error: any) {
+      console.error('Error sending test:', error);
+      toast.error(error.message || 'Failed to send test email');
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const parsed = reportText ? parseReportSections(reportText) : null;
 
   if (loading) {
     return (
@@ -136,209 +125,106 @@ export default function WeeklyDigestPreview() {
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate('/settings')}
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate('/settings')}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight">
-              <span className="text-gradient-lumi">Weekly Digest Preview</span>
+              <span className="text-gradient-lumi">Performance Report Preview</span>
             </h1>
             <p className="text-muted-foreground mt-1">
-              See what your weekly performance report will look like
+              Generate and preview your performance report
             </p>
           </div>
-          <Button 
-            onClick={handleSendTestEmail} 
-            disabled={generating || !selectedCampaign}
-            variant="lumi"
+          <Button
+            onClick={handleSendTestEmail}
+            disabled={sendingTest || campaignCount === 0}
+            variant="outline"
+            size="sm"
             className="gap-2"
           >
-            {generating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
+            {sendingTest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Send Test Email
           </Button>
         </div>
 
-        {/* Campaign Selector */}
-        {campaigns.length > 0 && (
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-4">
-                <label className="text-sm font-medium">Preview for:</label>
-                <Select value={selectedCampaign} onValueChange={handleCampaignChange}>
-                  <SelectTrigger className="w-64">
-                    <SelectValue placeholder="Select a campaign" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {campaigns.map(c => (
-                      <SelectItem key={c.id} value={c.id} disabled={!c.hasData}>
-                        {c.name} {!c.hasData && '(No data)'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        {/* Date range + Generate */}
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <Label className="text-xs">From</Label>
+                <Input type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} className="w-40 h-9" />
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <div>
+                <Label className="text-xs">To</Label>
+                <Input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} className="w-40 h-9" />
+              </div>
+              <Button onClick={handleGeneratePreview} disabled={generating || campaignCount === 0} variant="lumi" className="gap-2">
+                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                {generating ? 'Generating...' : 'Generate Performance Report'}
+              </Button>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" />
+                {campaignCount} campaign{campaignCount !== 1 ? 's' : ''} with data
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Email Preview */}
-        {previewData ? (
+        {/* Report content */}
+        {parsed ? (
           <Card className="overflow-hidden border-2">
-            <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white">
+            <CardHeader className="bg-gradient-to-r from-slate-900 to-slate-800 text-white pb-4">
               <div className="flex items-center gap-2 mb-2">
-                <Mail className="h-5 w-5" />
-                <Badge variant="outline" className="text-white border-white/30">
-                  Email Preview
-                </Badge>
+                <FileText className="h-5 w-5" />
+                <Badge variant="outline" className="text-white border-white/30">Performance Report</Badge>
               </div>
-              <CardTitle className="text-2xl">📊 Weekly Performance Report</CardTitle>
-              <CardDescription className="text-slate-300">
-                {previewData.campaignName}
-              </CardDescription>
+              <CardTitle className="text-2xl">📊 Performance Report</CardTitle>
+              <p className="text-slate-300 text-sm mt-1">
+                {activeBrand?.name} · {format(new Date(dateStart), 'MMM d')} — {format(new Date(dateEnd), 'MMM d, yyyy')}
+              </p>
             </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              {/* Date Range */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>{previewData.dateRange}</span>
-              </div>
-
-              {/* Metrics Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MetricCard 
-                  label="Spend" 
-                  value={`$${(previewData.metrics.spend || 0).toFixed(2)}`} 
-                />
-                <MetricCard 
-                  label="Reach" 
-                  value={(previewData.metrics.reach || 0).toLocaleString()} 
-                />
-                <MetricCard 
-                  label="Conversions" 
-                  value={previewData.metrics.leads || previewData.metrics.purchases || 0} 
-                />
-                <MetricCard 
-                  label="Cost/Result" 
-                  value={`$${(previewData.metrics.cpl || previewData.metrics.cpp || 0).toFixed(2)}`} 
-                />
-              </div>
-
-              {/* Lumi Insights */}
-              <div className="p-4 rounded-lg bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="h-4 w-4 text-lumi-orange-1" />
-                  <span className="font-semibold text-sm">Lumi's Weekly Insights</span>
-                </div>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>• Your top performing creative is driving 60% of conversions</li>
-                  <li>• Consider increasing budget on high-ROAS ad sets</li>
-                  <li>• Test new hooks to combat creative fatigue</li>
-                </ul>
-              </div>
-
-              {/* What's Working */}
-              {previewData.report?.kpi_evaluation && (
-                <div className="p-4 rounded-lg bg-green-500/10 border-l-4 border-green-500">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="font-semibold text-sm">What's Working</span>
-                  </div>
-                  <ul className="space-y-1 text-sm text-muted-foreground">
-                    {previewData.report.kpi_evaluation.ctr?.status === 'healthy' && (
-                      <li>• CTR is performing well</li>
-                    )}
-                    {previewData.report.kpi_evaluation.cpc?.status === 'healthy' && (
-                      <li>• Cost per click is efficient</li>
-                    )}
-                    <li>• Top of funnel is driving awareness</li>
-                  </ul>
-                </div>
-              )}
-
-              {/* Needs Attention */}
-              {previewData.report?.creative_diagnosis?.problem && (
-                <div className="p-4 rounded-lg bg-yellow-500/10 border-l-4 border-yellow-500">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                    <span className="font-semibold text-sm">Needs Attention</span>
-                  </div>
-                  <ul className="space-y-1 text-sm text-muted-foreground">
-                    <li>• {previewData.report.creative_diagnosis.problem}</li>
-                    {previewData.metrics.frequency > 3 && (
-                      <li>• Ad frequency is {previewData.metrics.frequency?.toFixed(1)} - consider refreshing creative</li>
-                    )}
-                  </ul>
-                </div>
-              )}
-
-              {/* Next Steps */}
-              {previewData.report?.next_steps && previewData.report.next_steps.length > 0 && (
-                <div className="p-4 rounded-lg bg-blue-500/10 border-l-4 border-blue-500">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="h-4 w-4 text-blue-500" />
-                    <span className="font-semibold text-sm">Your Next Steps</span>
-                  </div>
-                  <ol className="space-y-1 text-sm text-muted-foreground list-decimal list-inside">
-                    {previewData.report.next_steps.slice(0, 3).map((step: string, i: number) => (
-                      <li key={i}>{step}</li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
-              {/* CTA */}
-              <div className="text-center pt-4">
-                <Button variant="lumi" size="lg">
-                  View Full Dashboard →
-                </Button>
-              </div>
-
-              {/* Footer */}
-              <div className="text-center text-xs text-muted-foreground pt-4 border-t">
-                This is an automated weekly report from Lumi.<br />
-                Keep going - you're doing great! 🎉
-              </div>
+            <CardContent className="p-6">
+              <ReportSectionRenderer
+                sections={parsed.sections}
+                brandId={activeBrand?.id}
+                mode={isAgencyUser ? 'agency' : 'self-serve'}
+              />
             </CardContent>
           </Card>
-        ) : campaigns.length === 0 ? (
+        ) : campaignCount === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
-              <Mail className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
               <h3 className="font-semibold mb-2">No Published Campaigns</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Publish a campaign to see your weekly digest preview
+                Publish a campaign to generate your performance report
               </p>
               <Button onClick={() => navigate('/campaigns')} variant="outline">
                 Go to Campaigns
               </Button>
             </CardContent>
           </Card>
+        ) : !generating ? (
+          <Card className="text-center py-12">
+            <CardContent>
+              <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Ready to Generate</h3>
+              <p className="text-sm text-muted-foreground">
+                Choose your date range and click "Generate Performance Report" to preview
+              </p>
+            </CardContent>
+          </Card>
         ) : (
           <Card className="text-center py-12">
             <CardContent>
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
-              <p className="text-sm text-muted-foreground">Loading preview data...</p>
+              <p className="text-sm text-muted-foreground">Generating your performance report...</p>
             </CardContent>
           </Card>
         )}
       </div>
     </DashboardLayout>
-  );
-}
-
-function MetricCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="p-4 bg-muted/30 rounded-lg text-center">
-      <p className="text-xs text-muted-foreground uppercase mb-1">{label}</p>
-      <p className="text-xl font-bold">{value}</p>
-    </div>
   );
 }

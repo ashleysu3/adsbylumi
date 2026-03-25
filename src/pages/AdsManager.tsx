@@ -497,7 +497,7 @@ export default function AdsManager() {
               </div>
               <Button onClick={handleGenerateReport} disabled={isGeneratingReport || !reportClientId} size="sm">
                 {isGeneratingReport ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <FileText className="h-3 w-3 mr-1" />}
-                Generate Report
+                Generate Performance Report
               </Button>
             </div>
 
