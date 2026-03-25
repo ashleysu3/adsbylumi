@@ -19,7 +19,7 @@ import { motion } from "framer-motion";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { formatInvokeError } from "@/lib/formatInvokeError";
 import { useBrand } from "@/contexts/BrandContext";
-import { LumiThinking } from "@/components/LumiThinking";
+import { LumiThinkingInline } from "@/components/LumiThinking";
 
 const STEP_LABELS = ["Brand Basics", "Positioning", "Psychology", "Meet Lumi", "Connect Meta", "What's Next"];
 const DEFAULT_EMOJIS = ['✨', '🎯', '💡', '🚀', '💪', '⭐'];
