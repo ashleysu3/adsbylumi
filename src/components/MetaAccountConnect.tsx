@@ -143,6 +143,11 @@ export function MetaAccountConnect({
 
   const handleOAuthFlow = async () => {
     setOauthLoading(true);
+
+    // Open the popup immediately (in the click handler / user-gesture context)
+    // so browsers don't block it. We'll navigate it after the API call returns.
+    const popup = window.open('about:blank', 'Meta OAuth', 'width=600,height=700,scrollbars=yes');
+
     try {
       const redirectUri = `${window.location.origin}/meta-oauth-callback`;
 
@@ -150,13 +155,18 @@ export function MetaAccountConnect({
         body: { brandId, redirectUri }
       });
 
-      if (error) throw error;
+      if (error) {
+        popup?.close();
+        throw error;
+      }
 
-      const popup = window.open(
-        data.authUrl,
-        'Meta OAuth',
-        'width=600,height=700,scrollbars=yes'
-      );
+      if (popup) {
+        popup.location.href = data.authUrl;
+      } else {
+        // Fallback: popup was still blocked despite immediate open
+        window.location.href = data.authUrl;
+        return;
+      }
 
       const handleCallback = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
