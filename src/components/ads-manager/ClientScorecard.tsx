@@ -179,6 +179,12 @@ function CampaignRow({
   const [kpi, setKpi] = useState(campaign.goal?.primary_kpi || 'cpl');
   const [threshold, setThreshold] = useState(campaign.goal?.primary_kpi_threshold?.toString() || '');
 
+  // Sync state when goal data changes (e.g. after reload)
+  useEffect(() => {
+    setKpi(campaign.goal?.primary_kpi || 'cpl');
+    setThreshold(campaign.goal?.primary_kpi_threshold?.toString() || '');
+  }, [campaign.goal?.primary_kpi, campaign.goal?.primary_kpi_threshold]);
+
   const goal = campaign.goal;
   const metrics = campaign.metrics || {};
   const kpiConfig = KPI_OPTIONS.find(k => k.value === (goal?.primary_kpi || kpi));
