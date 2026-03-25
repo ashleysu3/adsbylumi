@@ -672,7 +672,7 @@ export default function Settings() {
                   </Button>
                   <Button onClick={() => navigate('/settings/digest-preview')} variant="outline" className="gap-2">
                     <Eye className="h-4 w-4" />
-                    Preview Weekly Digest
+                    Preview Performance Report
                   </Button>
                 </div>
               </CardContent>
