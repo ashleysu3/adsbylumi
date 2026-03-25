@@ -4,9 +4,9 @@ const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
 const SLACK_CHANNEL = 'lumi-alerts';
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204 });
-  }
+  // Slack lumi chat notifications disabled — returning early
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204 });
+  return new Response(JSON.stringify({ success: true, disabled: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) {

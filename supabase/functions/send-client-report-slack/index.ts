@@ -3,12 +3,11 @@ import { getCorsHeaders } from '../_shared/cors.ts';
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
 
 Deno.serve(async (req) => {
+  // Slack client report notifications disabled — returning early
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
-
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  return new Response(JSON.stringify({ success: true, disabled: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
     const { channel, reportText, brandName, dateRange } = await req.json();
