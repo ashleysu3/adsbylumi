@@ -276,7 +276,11 @@ Deno.serve(async (req) => {
         let hasMore = true;
         let startingAfter: string | undefined;
         while (hasMore) {
-          const listParams: any = { status: "active", limit: 100 };
+          const listParams: any = {
+            status: "active",
+            limit: 100,
+            expand: ["data.customer"],
+          };
           if (startingAfter) listParams.starting_after = startingAfter;
           const page = await stripe.subscriptions.list(listParams);
           allSubs.push(...page.data);
@@ -284,54 +288,219 @@ Deno.serve(async (req) => {
           if (page.data.length > 0) startingAfter = page.data[page.data.length - 1].id;
         }
 
-        // Calculate MRR and group by price — use actual amounts paid (after discounts)
-        let totalMRR = 0;
-        const priceBreakdown: Record<string, { count: number; amount: number; productName: string; interval: string }> = {};
+        const normalizeToMonthly = (cycleAmountCents: number, recurring: any) => {
+          if (!recurring?.interval) return cycleAmountCents;
+          const intervalCount = recurring.interval_count || 1;
 
-        for (const sub of allSubs) {
-          // Determine discount percentage from the subscription's coupon
-          let discountPct = 0;
-          let discountAmountOff = 0;
-          if (sub.discount?.coupon) {
-            if (sub.discount.coupon.percent_off) {
-              discountPct = sub.discount.coupon.percent_off;
-            } else if (sub.discount.coupon.amount_off) {
-              discountAmountOff = sub.discount.coupon.amount_off;
+          switch (recurring.interval) {
+            case "year":
+              return Math.round(cycleAmountCents / (12 * intervalCount));
+            case "month":
+              return Math.round(cycleAmountCents / intervalCount);
+            case "week":
+              return Math.round((cycleAmountCents * 52) / (12 * intervalCount));
+            case "day":
+              return Math.round((cycleAmountCents * 30) / intervalCount);
+            default:
+              return cycleAmountCents;
+          }
+        };
+
+        const resolveDiscount = async (sub: any) => {
+          let percentOff = 0;
+          let amountOff = 0;
+          let label: string | null = null;
+
+          const directCoupon = sub.discount?.coupon;
+          if (directCoupon?.percent_off) {
+            percentOff = Number(directCoupon.percent_off);
+          } else if (directCoupon?.amount_off) {
+            amountOff = Number(directCoupon.amount_off);
+          }
+
+          if (!percentOff && !amountOff && Array.isArray(sub.discounts) && sub.discounts.length > 0) {
+            const firstDiscountRef = sub.discounts[0];
+            try {
+              const resolvedDiscount =
+                typeof firstDiscountRef === "string"
+                  ? await stripe.discounts.retrieve(firstDiscountRef)
+                  : firstDiscountRef;
+              const coupon = resolvedDiscount?.coupon;
+              if (coupon?.percent_off) {
+                percentOff = Number(coupon.percent_off);
+              } else if (coupon?.amount_off) {
+                amountOff = Number(coupon.amount_off);
+              }
+            } catch (discountError) {
+              logStep("Could not resolve subscription discount", {
+                subscriptionId: sub.id,
+                error: (discountError as Error)?.message,
+              });
             }
           }
 
-          for (const item of sub.items.data) {
+          if (percentOff > 0) {
+            label = `${percentOff}% off`;
+          } else if (amountOff > 0) {
+            label = `$${(amountOff / 100).toFixed(2)} off`;
+          }
+
+          return { percentOff, amountOff, label };
+        };
+
+        const customerCache = new Map<string, { id: string; email: string | null; name: string | null }>();
+
+        const getCustomerInfo = async (customerRef: any) => {
+          if (!customerRef) return { id: "unknown", email: null, name: null };
+
+          if (typeof customerRef === "object") {
+            const expandedCustomer = {
+              id: customerRef.id,
+              email: customerRef.email ?? null,
+              name: customerRef.name ?? null,
+            };
+            customerCache.set(expandedCustomer.id, expandedCustomer);
+            return expandedCustomer;
+          }
+
+          if (customerCache.has(customerRef)) {
+            return customerCache.get(customerRef)!;
+          }
+
+          try {
+            const customer = await stripe.customers.retrieve(customerRef);
+            const resolvedCustomer = {
+              id: typeof customer === "string" ? customerRef : customer.id,
+              email: typeof customer === "string" ? null : customer.email ?? null,
+              name: typeof customer === "string" ? null : customer.name ?? null,
+            };
+            customerCache.set(customerRef, resolvedCustomer);
+            return resolvedCustomer;
+          } catch {
+            const fallback = { id: customerRef, email: null, name: null };
+            customerCache.set(customerRef, fallback);
+            return fallback;
+          }
+        };
+
+        let totalMRR = 0;
+        const priceBreakdown: Record<string, {
+          count: number;
+          amount: number;
+          productName: string;
+          interval: string;
+          discountLabel: string | null;
+          subscribers: Array<{
+            email: string | null;
+            customer_id: string;
+            subscription_id: string;
+            monthly_amount_cents: number;
+            discount_label: string | null;
+            app_user_id?: string | null;
+            user_full_name?: string | null;
+          }>;
+        }> = {};
+
+        for (const sub of allSubs) {
+          const customer = await getCustomerInfo(sub.customer);
+          const { percentOff, amountOff, label } = await resolveDiscount(sub);
+
+          const items = sub.items?.data || [];
+          const cycleBaseAmounts = items.map((item: any) => {
+            const unitAmount = item.price?.unit_amount || 0;
+            const quantity = item.quantity || 1;
+            return unitAmount * quantity;
+          });
+          const totalCycleBase = cycleBaseAmounts.reduce((sum: number, amount: number) => sum + amount, 0);
+
+          for (let index = 0; index < items.length; index++) {
+            const item = items[index];
             const price = item.price;
-            let baseAmount = price.unit_amount || 0;
+            const cycleBaseAmount = cycleBaseAmounts[index] || 0;
 
-            // Apply discount
-            let actualAmount = baseAmount;
-            if (discountPct > 0) {
-              actualAmount = Math.round(baseAmount * (1 - discountPct / 100));
-            } else if (discountAmountOff > 0) {
-              actualAmount = Math.max(0, baseAmount - discountAmountOff);
+            let discountedCycleAmount = cycleBaseAmount;
+            if (percentOff > 0) {
+              discountedCycleAmount = Math.round(cycleBaseAmount * (1 - percentOff / 100));
+            } else if (amountOff > 0 && totalCycleBase > 0) {
+              const allocatedDiscount = Math.round((cycleBaseAmount / totalCycleBase) * amountOff);
+              discountedCycleAmount = Math.max(0, cycleBaseAmount - allocatedDiscount);
             }
 
-            // Normalize to monthly
-            let monthlyAmount = actualAmount;
-            if (price.recurring?.interval === "year") {
-              monthlyAmount = Math.round(actualAmount / 12);
-            }
+            const monthlyAmount = normalizeToMonthly(discountedCycleAmount, price.recurring);
             totalMRR += monthlyAmount;
 
-            // Group by price + discount combo for accurate breakdown
-            const discountLabel = discountPct > 0 ? `_${discountPct}off` : discountAmountOff > 0 ? `_$${discountAmountOff}off` : "";
-            const groupKey = `${price.id}${discountLabel}`;
+            const productName = typeof price.product === "string"
+              ? price.product
+              : (price.product as any)?.name || "Unknown";
+
+            const groupKey = `${price.id}_${monthlyAmount}_${label || "standard"}`;
             if (!priceBreakdown[groupKey]) {
               priceBreakdown[groupKey] = {
                 count: 0,
                 amount: monthlyAmount,
-                productName: typeof price.product === "string" ? price.product : (price.product as any)?.name || "Unknown",
+                productName,
                 interval: price.recurring?.interval || "month",
+                discountLabel: label,
+                subscribers: [],
               };
             }
             priceBreakdown[groupKey].count += 1;
+            priceBreakdown[groupKey].subscribers.push({
+              email: customer.email,
+              customer_id: customer.id,
+              subscription_id: sub.id,
+              monthly_amount_cents: monthlyAmount,
+              discount_label: label,
+            });
           }
+        }
+
+        // Map Stripe customer emails back to app users for "view account" links
+        const emails = [...new Set(
+          Object.values(priceBreakdown)
+            .flatMap((entry) => entry.subscribers.map((s) => s.email))
+            .filter(Boolean) as string[]
+        )];
+
+        const profileByEmail: Record<string, { id: string; full_name: string | null }> = {};
+        if (emails.length > 0) {
+          const { createClient } = await import("npm:@supabase/supabase-js@2");
+          const serviceClient = createClient(
+            Deno.env.get("SUPABASE_URL") ?? "",
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+            { auth: { persistSession: false } },
+          );
+
+          for (let i = 0; i < emails.length; i += 100) {
+            const emailBatch = emails.slice(i, i + 100);
+            const { data: profiles } = await serviceClient
+              .from("profiles")
+              .select("id, email, full_name")
+              .in("email", emailBatch);
+
+            for (const profile of profiles || []) {
+              if (profile.email) {
+                profileByEmail[profile.email.toLowerCase()] = {
+                  id: profile.id,
+                  full_name: profile.full_name,
+                };
+              }
+            }
+          }
+        }
+
+        for (const entry of Object.values(priceBreakdown)) {
+          entry.subscribers = entry.subscribers.map((subscriber) => {
+            const profile = subscriber.email
+              ? profileByEmail[subscriber.email.toLowerCase()]
+              : undefined;
+
+            return {
+              ...subscriber,
+              app_user_id: profile?.id ?? null,
+              user_full_name: profile?.full_name ?? null,
+            };
+          });
         }
 
         // Resolve product names
@@ -359,7 +528,12 @@ Deno.serve(async (req) => {
             monthly_amount_cents: data.amount,
             subscriber_count: data.count,
             interval: data.interval,
-          })).sort((a, b) => b.subscriber_count - a.subscriber_count),
+            effective_label: `$${(data.amount / 100).toFixed(2)}/mo${data.discountLabel ? ` (${data.discountLabel})` : ""}`,
+            subscribers: data.subscribers.sort((a, b) => (a.email || "").localeCompare(b.email || "")),
+          })).sort((a, b) => {
+            if (b.subscriber_count !== a.subscriber_count) return b.subscriber_count - a.subscriber_count;
+            return b.monthly_amount_cents - a.monthly_amount_cents;
+          }),
         };
         break;
       }

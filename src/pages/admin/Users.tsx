@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { 
   Users, RefreshCw, Search, User, Bug, CreditCard, FileText, 
   MessageSquare, Send, DollarSign, XCircle, Gift, Mail, 
@@ -123,6 +123,7 @@ const ACTIVITY_ICONS: Record<string, { icon: any; color: string }> = {
 
 export default function AdminUsers() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { startImpersonation, isImpersonating, impersonatedUser } = useImpersonation();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,6 +161,13 @@ export default function AdminUsers() {
   useEffect(() => {
     checkAdminAndFetch();
   }, []);
+
+  useEffect(() => {
+    const emailFromQuery = searchParams.get("email");
+    if (emailFromQuery) {
+      setSearchQuery(emailFromQuery);
+    }
+  }, [searchParams]);
 
   const checkAdminAndFetch = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -235,6 +243,23 @@ export default function AdminUsers() {
       fetchUsers();
     }
   }, [filters]);
+
+  useEffect(() => {
+    if (loading || users.length === 0) return;
+
+    const targetUserId = searchParams.get("userId");
+    const targetEmail = searchParams.get("email")?.toLowerCase();
+    if (!targetUserId && !targetEmail) return;
+
+    const targetUser = users.find((user) => {
+      if (targetUserId) return user.id === targetUserId;
+      return user.email.toLowerCase() === targetEmail;
+    });
+
+    if (targetUser && selectedUser?.id !== targetUser.id) {
+      fetchUserDetails(targetUser);
+    }
+  }, [loading, users, searchParams, selectedUser?.id]);
   
   const clearFilters = () => {
     setFilters({
