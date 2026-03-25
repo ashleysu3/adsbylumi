@@ -1,0 +1,1 @@
+ALTER TABLE public.agency_clients ADD COLUMN ad_literacy_level text NOT NULL DEFAULT 'beginner';
