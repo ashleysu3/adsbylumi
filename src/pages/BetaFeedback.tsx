@@ -50,42 +50,7 @@ export default function BetaFeedback() {
 
       if (error) throw error;
 
-      // Send to Slack (fire-and-forget)
-      supabase.functions.invoke("slack-notify", {
-        body: {
-          channel: "lumi-alerts",
-          text: `🧪 Beta Feedback from ${user.email}`,
-          blocks: [
-            {
-              type: "header",
-              text: { type: "plain_text", text: "🧪 New Beta Feedback", emoji: true },
-            },
-            {
-              type: "section",
-              fields: [
-                { type: "mrkdwn", text: `*From:*\n${user.email}` },
-                { type: "mrkdwn", text: `*NPS Score:*\n${recommendationScore ?? 'Not provided'}/10` },
-              ],
-            },
-            {
-              type: "section",
-              text: { type: "mrkdwn", text: `*Favorite Feature:*\n${favoriteFeature || '_Not answered_'}` },
-            },
-            {
-              type: "section",
-              text: { type: "mrkdwn", text: `*What Felt Confusing:*\n${confusingPart || '_Not answered_'}` },
-            },
-            {
-              type: "section",
-              text: { type: "mrkdwn", text: `*Missing Feature:*\n${missingFeature || '_Not answered_'}` },
-            },
-            ...(additionalNotes ? [{
-              type: "section",
-              text: { type: "mrkdwn", text: `*Additional Notes:*\n${additionalNotes}` },
-            }] : []),
-          ],
-        },
-      }).catch((err) => console.error("Slack notify failed:", err));
+      // Slack notification disabled
 
       setSubmitted(true);
       toast.success("Thank you for your feedback! 💜");
