@@ -291,7 +291,12 @@ Deno.serve(async (req) => {
       }
     );
     
+    console.log(`Resolved assets: ${uploadedAssetsList.length} uploaded, ${productionItems.filter((i: any) => i.linkedAsset).length} linked to items`);
+    console.log(`Approved concepts: ${approvedConcepts.length} of ${productionItems.length} total items`);
+    
     if (approvedConcepts.length < 1) {
+      const itemStatuses = productionItems.map((i: any) => ({ id: i.id, status: i.status, completed: i.completed, hasAsset: !!i.linkedAsset, hasCopy: !!(i.finalCopy || i.final_copy) }));
+      console.error('No approved concepts found. Item details:', JSON.stringify(itemStatuses));
       throw new Error('At least 1 approved creative with linked asset is required. Please complete the Production workflow first.');
     }
 
