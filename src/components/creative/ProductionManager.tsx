@@ -65,6 +65,7 @@ export function ProductionManager({
   onUrlChange,
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
+  const [uploadingVerticalItemId, setUploadingVerticalItemId] = useState<string | null>(null);
   const [previewAsset, setPreviewAsset] = useState<any>(null);
   const [adPreviewItem, setAdPreviewItem] = useState<ProductionItem | null>(null);
   const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
@@ -84,6 +85,7 @@ export function ProductionManager({
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [resolvedAssetUrls, setResolvedAssetUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const verticalFileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
   const uploadedAssetSignature = uploadedAssets
@@ -387,6 +389,30 @@ export function ProductionManager({
     }
   };
 
+  // Validate video aspect ratio — must be 9:16 (vertical)
+  const validateVideoAspectRatio = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(video.src);
+        const ratio = video.videoWidth / video.videoHeight;
+        // 9:16 = 0.5625. Allow some tolerance (0.45–0.65)
+        if (ratio > 0.65) {
+          toast.error("Videos must be in 9:16 (vertical/reel) format. Please upload a vertical video.", { duration: 5000 });
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        resolve(true); // Allow on error — don't block uploads we can't validate
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
   // Handle file selection for a specific item
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
     const files = event.target.files;
@@ -396,6 +422,15 @@ export function ProductionManager({
     if (file.size > 50 * 1024 * 1024) {
       toast.error("File must be less than 50MB");
       return;
+    }
+
+    // Enforce 9:16 for videos
+    if (file.type.startsWith('video/')) {
+      const isValid = await validateVideoAspectRatio(file);
+      if (!isValid) {
+        event.target.value = '';
+        return;
+      }
     }
     
     setUploadingItemId(itemId);
@@ -429,7 +464,7 @@ export function ProductionManager({
         linked_concept_title: item?.hook || null,
       };
       
-      // Remove any existing asset for this item
+      // Remove any existing asset for this item (but keep vertical version)
       const filteredAssets = uploadedAssets.filter((a: any) => a.linked_concept_id !== itemId);
       const updatedAssets = [...filteredAssets, newAsset];
       
@@ -452,10 +487,96 @@ export function ProductionManager({
       event.target.value = '';
     }
   };
+
+  // Handle vertical (9:16) version upload for an image
+  const handleVerticalFileSelect = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("File must be less than 50MB");
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error("Only image files can be uploaded as a 9:16 version");
+      return;
+    }
+    
+    setUploadingVerticalItemId(itemId);
+    
+    try {
+      const brandId = workspace.brand_id;
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}_vertical_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${brandId}/${workspace.id}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('creative-assets')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('creative-assets')
+        .getPublicUrl(filePath);
+      
+      const item = productionItems.find(i => i.id === itemId);
+      const verticalConceptId = `${itemId}_vertical`;
+      const newAsset = {
+        id: `asset_${Date.now()}_v`,
+        file_name: file.name,
+        file_type: file.type,
+        file_size: file.size,
+        file_url: urlData.publicUrl,
+        storage_path: filePath,
+        uploaded_at: new Date().toISOString(),
+        linked_concept_id: verticalConceptId,
+        linked_concept_title: item?.hook ? `${item.hook} (9:16)` : null,
+        is_vertical_version: true,
+      };
+      
+      // Remove any existing vertical asset for this item
+      const filteredAssets = uploadedAssets.filter((a: any) => a.linked_concept_id !== verticalConceptId);
+      const updatedAssets = [...filteredAssets, newAsset];
+      
+      await supabase
+        .from('campaign_workspaces')
+        .update({ 
+          user_uploaded_assets: updatedAssets,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', workspace.id);
+      
+      onUpdateWorkspace({ user_uploaded_assets: updatedAssets });
+      toast.success("9:16 version uploaded!");
+      
+    } catch (e: any) {
+      console.error("Vertical upload error:", e);
+      toast.error("Failed to upload file");
+    } finally {
+      setUploadingVerticalItemId(null);
+      event.target.value = '';
+    }
+  };
   
   const handleUploadClick = (itemId: string) => {
     setUploadingItemId(itemId);
     fileInputRef.current?.click();
+  };
+
+  const handleUploadVerticalClick = (itemId: string) => {
+    setUploadingVerticalItemId(itemId);
+    verticalFileInputRef.current?.click();
+  };
+
+  // Get the vertical (9:16) version of an asset for an item
+  const getVerticalAssetForItem = (item: ProductionItem) => {
+    const verticalConceptId = `${item.id}_vertical`;
+    const verticalAsset = uploadedAssets.find((a: any) => a.linked_concept_id === verticalConceptId);
+    if (!verticalAsset) return null;
+    return normalizeUploadedAsset(verticalAsset);
   };
   
   const getAngleCopyKeyForItem = (item: ProductionItem): string | null => {
@@ -522,6 +643,13 @@ export function ProductionManager({
         accept="video/*,image/*"
         className="hidden"
         onChange={(e) => uploadingItemId && handleFileSelect(e, uploadingItemId)}
+      />
+      <input
+        ref={verticalFileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => uploadingVerticalItemId && handleVerticalFileSelect(e, uploadingVerticalItemId)}
       />
       
       <div className="space-y-4">
@@ -753,7 +881,9 @@ export function ProductionManager({
                           key={item.id}
                           item={item}
                           uploadedAsset={getAssetForItem(item)}
+                          uploadedAssetVertical={getVerticalAssetForItem(item)}
                           onUploadClick={() => handleUploadClick(item.id)}
+                          onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
                           onRemove={() => onRemoveItem(item.id)}
                           onPreview={setPreviewAsset}
                           onAdPreview={() => setAdPreviewItem(item)}
@@ -790,7 +920,9 @@ export function ProductionManager({
                               key={item.id}
                               item={item}
                               uploadedAsset={getAssetForItem(item)}
+                              uploadedAssetVertical={getVerticalAssetForItem(item)}
                               onUploadClick={() => handleUploadClick(item.id)}
+                              onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
                               onRemove={() => onRemoveItem(item.id)}
                               onPreview={setPreviewAsset}
                               onAdPreview={() => setAdPreviewItem(item)}
@@ -848,7 +980,9 @@ export function ProductionManager({
                                   key={item.id}
                                   item={item}
                                   uploadedAsset={getAssetForItem(item)}
+                                  uploadedAssetVertical={getVerticalAssetForItem(item)}
                                   onUploadClick={() => handleUploadClick(item.id)}
+                                  onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
                                   onRemove={() => onRemoveItem(item.id)}
                                   onPreview={setPreviewAsset}
                                   onAdPreview={() => setAdPreviewItem(item)}

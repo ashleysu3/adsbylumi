@@ -128,11 +128,45 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
     event.target.value = '';
   };
 
+  // Validate video aspect ratio — must be 9:16 (vertical)
+  const validateVideoAspectRatio = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(video.src);
+        const ratio = video.videoWidth / video.videoHeight;
+        if (ratio > 0.65) {
+          toast.error("Videos must be in 9:16 (vertical/reel) format. Please upload a vertical video.", { duration: 5000 });
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        resolve(true);
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
   const uploadFiles = async (files: File[]) => {
     if (files.length === 0) return;
 
     const validFiles = validateFiles(files);
     if (validFiles.length === 0) return;
+
+    // Validate video aspect ratios
+    const approvedFiles: File[] = [];
+    for (const file of validFiles) {
+      if (file.type.startsWith('video/')) {
+        const isValid = await validateVideoAspectRatio(file);
+        if (!isValid) continue;
+      }
+      approvedFiles.push(file);
+    }
+    if (approvedFiles.length === 0) return;
 
     setUploading(true);
     setUploadProgress(0);
@@ -141,8 +175,8 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
       const brandId = workspace.brand_id;
       const newAssets: any[] = [];
 
-      for (let i = 0; i < validFiles.length; i++) {
-        const file = validFiles[i];
+      for (let i = 0; i < approvedFiles.length; i++) {
+        const file = approvedFiles[i];
         const fileExt = file.name.split('.').pop();
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -176,7 +210,7 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
             productionItem?.concept?.title || productionItem?.linked_concept_title || (productionItem as any)?.hook || null,
         });
 
-        setUploadProgress(((i + 1) / validFiles.length) * 100);
+        setUploadProgress(((i + 1) / approvedFiles.length) * 100);
       }
 
       // Update workspace with new assets
@@ -194,7 +228,7 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
 
       onUpdate({ user_uploaded_assets: updatedAssets });
 
-      toast.success(`Uploaded ${validFiles.length} file${validFiles.length > 1 ? 's' : ''} successfully!`);
+      toast.success(`Uploaded ${approvedFiles.length} file${approvedFiles.length > 1 ? 's' : ''} successfully!`);
 
     } catch (error: any) {
       console.error('Upload error:', error);
