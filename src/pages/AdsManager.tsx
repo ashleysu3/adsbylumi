@@ -43,7 +43,16 @@ export default function AdsManager() {
     contact_email: '',
     health_status: 'healthy',
     notes: '',
+    ad_literacy_level: 'beginner',
   });
+
+  // Reports tab state
+  const [reportClientId, setReportClientId] = useState<string>('');
+  const [reportDateStart, setReportDateStart] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0];
+  });
+  const [reportDateEnd, setReportDateEnd] = useState(() => new Date().toISOString().split('T')[0]);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const [reviewBrandId, setReviewBrandId] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -119,7 +128,39 @@ export default function AdsManager() {
           };
         });
 
-        return { ...client, brand: brandRes.data, campaigns: enrichedCampaigns };
+        // Auto-compute health status from campaign performance
+        let autoHealth = 'healthy';
+        const activeCampaigns = enrichedCampaigns.filter((c: any) => c.hasLiveData);
+        if (activeCampaigns.length > 0) {
+          const statuses = activeCampaigns.map((c: any) => {
+            const report = c.performance_report_latest as any;
+            const goal = c.goal;
+            if (!report?.metrics || !goal) return 'unknown';
+            const m = report.metrics;
+            const kpi = goal.primary_kpi;
+            const threshold = goal.primary_kpi_threshold;
+            const goalType = goal.primary_kpi_goal_type;
+            const value = m[kpi];
+            if (!value || !threshold) return 'unknown';
+            if (goalType === 'less_than') {
+              if (value <= threshold) return 'green';
+              if (value <= threshold * 1.3) return 'amber';
+              return 'red';
+            }
+            if (value >= threshold) return 'green';
+            if (value >= threshold * 0.7) return 'amber';
+            return 'red';
+          });
+          if (statuses.includes('red')) autoHealth = 'needs_attention';
+          else if (statuses.includes('amber')) autoHealth = 'watching';
+          else autoHealth = 'healthy';
+        }
+
+        if (client.health_status !== autoHealth && activeCampaigns.length > 0) {
+          supabase.from('agency_clients').update({ health_status: autoHealth }).eq('id', client.id);
+        }
+
+        return { ...client, health_status: activeCampaigns.length > 0 ? autoHealth : client.health_status, brand: brandRes.data, campaigns: enrichedCampaigns };
       })
     );
 
@@ -151,6 +192,7 @@ export default function AdsManager() {
         contact_email: formData.contact_email || null,
         health_status: formData.health_status,
         notes: formData.notes || null,
+        ad_literacy_level: formData.ad_literacy_level || 'beginner',
         updated_at: new Date().toISOString(),
       }).eq('id', editingClient.id);
     } else {
@@ -181,12 +223,60 @@ export default function AdsManager() {
         contact_email: client.contact_email || '',
         health_status: client.health_status || 'healthy',
         notes: client.notes || '',
+        ad_literacy_level: client.ad_literacy_level || 'beginner',
       });
     } else {
       setEditingClient(null);
-      setFormData({ brand_id: '', slack_client_channel: '', slack_internal_channel: '', contact_name: '', contact_email: '', health_status: 'healthy', notes: '' });
+      setFormData({ brand_id: '', slack_client_channel: '', slack_internal_channel: '', contact_name: '', contact_email: '', health_status: 'healthy', notes: '', ad_literacy_level: 'beginner' });
     }
     setEditDialog(true);
+  };
+
+  const handleGenerateReport = async () => {
+    if (!reportClientId) { toast.error('Select a client first'); return; }
+    setIsGeneratingReport(true);
+    try {
+      const client = clients.find((c: any) => c.brand_id === reportClientId);
+      const { data: agencyBranding } = await supabase.from('agency_branding').select('*').eq('brand_id', reportClientId).maybeSingle();
+
+      const { data, error } = await supabase.functions.invoke('generate-client-report', {
+        body: {
+          brandId: reportClientId,
+          dateRangeStart: reportDateStart,
+          dateRangeEnd: reportDateEnd,
+          mode: 'agency',
+          adLiteracyLevel: client?.ad_literacy_level || 'beginner',
+          agencyNotes: client?.notes || '',
+          whiteLabel: agencyBranding?.white_label_reports ? { companyName: agencyBranding.company_name } : null,
+        },
+      });
+      if (error) throw error;
+
+      // Parse agency action items from report and create pending_optimizations
+      const reportText = data?.report || '';
+      const actionSection = reportText.match(/###\s*(?:📋\s*)?Agency Action Items([\s\S]*?)(?=###|$)/i)?.[1] || '';
+      const actionItems = actionSection.match(/- \[[ x]?\]\s*(.+)/g) || [];
+      if (actionItems.length > 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        for (const item of actionItems) {
+          const desc = item.replace(/- \[[ x]?\]\s*/, '').trim();
+          if (desc && desc.length > 5) {
+            await supabase.from('pending_optimizations').insert({
+              brand_id: reportClientId,
+              recommendation_type: 'agency_report',
+              action_description: desc,
+              status: 'pending',
+            });
+          }
+        }
+      }
+
+      toast.success('Report generated');
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to generate report');
+    }
+    setIsGeneratingReport(false);
   };
 
   const handleSaveReview = async (data: any) => {
@@ -385,10 +475,54 @@ export default function AdsManager() {
 
           {/* Reports Tab */}
           <TabsContent value="reports" className="space-y-4">
-            {weeklyReports.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-muted-foreground">No reports yet.</CardContent></Card>
-            ) : (
-              weeklyReports.map((r: any) => (
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <Label className="text-xs">Client</Label>
+                <Select value={reportClientId} onValueChange={setReportClientId}>
+                  <SelectTrigger className="w-56"><SelectValue placeholder="Select client..." /></SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c: any) => (
+                      <SelectItem key={c.brand_id} value={c.brand_id}>{c.brand?.name || 'Unknown'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">From</Label>
+                <Input type="date" value={reportDateStart} onChange={(e) => setReportDateStart(e.target.value)} className="w-40 h-10" />
+              </div>
+              <div>
+                <Label className="text-xs">To</Label>
+                <Input type="date" value={reportDateEnd} onChange={(e) => setReportDateEnd(e.target.value)} className="w-40 h-10" />
+              </div>
+              <Button onClick={handleGenerateReport} disabled={isGeneratingReport || !reportClientId} size="sm">
+                {isGeneratingReport ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <FileText className="h-3 w-3 mr-1" />}
+                Generate Report
+              </Button>
+            </div>
+
+            {(() => {
+              const filteredReports = reportClientId
+                ? weeklyReports.filter((r: any) => r.brand_id === reportClientId)
+                : weeklyReports;
+              // Group by week and show latest per week
+              const byWeek = new Map<string, any>();
+              filteredReports.forEach((r: any) => {
+                const weekKey = `${r.brand_id}-${r.date_range_start}`;
+                if (!byWeek.has(weekKey) || new Date(r.created_at) > new Date(byWeek.get(weekKey).created_at)) {
+                  byWeek.set(weekKey, r);
+                }
+              });
+              const dedupedReports = Array.from(byWeek.values()).sort((a: any, b: any) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+
+              if (dedupedReports.length === 0) {
+                return <Card><CardContent className="py-12 text-center text-muted-foreground">
+                  {reportClientId ? 'No reports for this client yet. Generate one above.' : 'Select a client to view reports.'}
+                </CardContent></Card>;
+              }
+              return dedupedReports.map((r: any) => (
                 <ReportDraftPreview
                   key={r.id}
                   report={r}
@@ -397,8 +531,8 @@ export default function AdsManager() {
                   onSend={() => toast.success('Report sent')}
                   onUpdateText={() => {}}
                 />
-              ))
-            )}
+              ));
+            })()}
           </TabsContent>
 
           {/* Audit Log Tab */}
@@ -440,7 +574,7 @@ export default function AdsManager() {
                 <div><Label>Slack Internal Channel</Label><Input value={formData.slack_internal_channel} onChange={(e) => setFormData((p) => ({ ...p, slack_internal_channel: e.target.value }))} /></div>
               </div>
               <div>
-                <Label>Health Status</Label>
+                <Label>Health Status <span className="text-muted-foreground text-xs">(auto-computed from performance)</span></Label>
                 <Select value={formData.health_status} onValueChange={(v) => setFormData((p) => ({ ...p, health_status: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -451,7 +585,18 @@ export default function AdsManager() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Notes</Label><Textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} /></div>
+              <div>
+                <Label>Ad Literacy Level</Label>
+                <Select value={formData.ad_literacy_level} onValueChange={(v) => setFormData((p) => ({ ...p, ad_literacy_level: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">🌱 Beginner — No ad knowledge</SelectItem>
+                    <SelectItem value="intermediate">📊 Intermediate — Knows basics</SelectItem>
+                    <SelectItem value="advanced">🎯 Advanced — Fluent in ad lingo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Notes</Label><Textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} placeholder="Internal notes about this client (e.g. 'client is stressed about lead costs')..." /></div>
               <Button onClick={handleSaveClient} className="w-full">{editingClient ? 'Update Client' : 'Add Client'}</Button>
             </div>
           </DialogContent>

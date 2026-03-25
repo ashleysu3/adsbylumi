@@ -183,6 +183,7 @@ export type Database = {
       }
       agency_clients: {
         Row: {
+          ad_literacy_level: string
           brand_id: string
           contact_email: string | null
           contact_name: string | null
@@ -195,6 +196,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ad_literacy_level?: string
           brand_id: string
           contact_email?: string | null
           contact_name?: string | null
@@ -207,6 +209,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ad_literacy_level?: string
           brand_id?: string
           contact_email?: string | null
           contact_name?: string | null

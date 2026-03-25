@@ -26,8 +26,9 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) throw new Error('Unauthorized');
 
-    const { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds, mode } = await req.json();
+    const { brandId, dateRangeStart, dateRangeEnd, selectedWorkspaceIds, mode, adLiteracyLevel, agencyNotes, whiteLabel } = await req.json();
     const reportMode = mode === 'self-serve' ? 'self-serve' : 'agency';
+    const literacyLevel = adLiteracyLevel || 'beginner';
     if (!brandId) throw new Error('brandId is required');
 
     const { data: brand, error: brandError } = await supabase
@@ -346,7 +347,24 @@ Deno.serve(async (req) => {
 
     const campaignNames = campaignSummaries.map(c => c.name);
 
-    const prompt = `You are LUMI, a friendly and strategic ads advisor. You write weekly performance reports for business owners — NOT marketers. Write as if explaining to someone who is brilliant at their business but doesn't live in ads dashboards.
+    // Build literacy-level language instructions
+    const literacyInstructions = literacyLevel === 'advanced'
+      ? 'Use standard ad terminology freely. The reader is fluent in marketing metrics and jargon.'
+      : literacyLevel === 'intermediate'
+      ? 'The reader understands basics (CTR, CPL, ROAS) but spell out less common terms. Avoid deep technical details.'
+      : 'Explain everything like they have never run ads before. Use analogies and plain language. Avoid ALL acronyms — always spell them out. When mentioning a metric, explain what it means in parentheses.';
+
+    // White-label: replace LUMI with agency name if provided
+    const advisorName = whiteLabel?.companyName || 'LUMI';
+
+    // Agency notes context
+    const agencyNotesContext = agencyNotes
+      ? `\n\nAGENCY NOTES (internal context — consider tone, priorities, and client sentiment when writing): ${agencyNotes}\n`
+      : '';
+
+    const prompt = `You are ${advisorName}, a friendly and strategic ads advisor. You write weekly performance reports for business owners — NOT marketers. Write as if explaining to someone who is brilliant at their business but doesn't live in ads dashboards.
+
+LANGUAGE COMPLEXITY: ${literacyInstructions}
 
 IMPORTANT: This is LIVE data pulled directly from Meta's API for the period ${dateRangeStart || 'last 7 days'} to ${dateRangeEnd || 'today'}. Use the exact numbers provided — do NOT make up or estimate metrics.
 
@@ -359,7 +377,7 @@ PROHIBITED ADVICE — NEVER include any of these:
 - Focus all recommendations on: creative refreshes, budget adjustments, audience testing with broad/interest targeting, copy angle changes, and campaign structure optimization.
 
 CRITICAL: You MUST include a section for EVERY one of these campaigns and ONLY these campaigns: ${campaignNames.map(n => `"${n}"`).join(', ')}.
-
+${agencyNotesContext}
 LANGUAGE RULES:
 - Write in plain English. Avoid marketing jargon.
 - On first use, spell out any acronym: "Cost Per Lead (CPL)", "Click-Through Rate (CTR)", "Return on Ad Spend (ROAS)", "Cost Per Click (CPC)"
@@ -484,7 +502,7 @@ Generate ONLY the report text. No preamble.`;
           body: JSON.stringify({
             model: 'google/gemini-2.5-flash',
             messages: [
-              { role: 'system', content: 'You are LUMI, an elite Meta Ads strategist. Write with confidence, specificity, and warmth. Use markdown formatting for structure. Every recommendation includes exact action, metric, and timeline.' },
+              { role: 'system', content: `You are ${advisorName}, an elite Meta Ads strategist. Write with confidence, specificity, and warmth. Use markdown formatting for structure. Every recommendation includes exact action, metric, and timeline.` },
               { role: 'user', content: prompt },
             ],
           }),
