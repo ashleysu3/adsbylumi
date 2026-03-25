@@ -9,8 +9,9 @@ import {
   Video, Film, Image, ChevronDown, ChevronUp, 
   Upload, Eye, CheckCircle2, Trash2, Maximize2,
   Library, Loader2, Info, Trophy, Mic, Type, Brain, Sparkles, Copy, Volume2,
-  MessageSquare, RefreshCw
+  MessageSquare, RefreshCw, FileText, Pencil, Check
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,12 @@ const hookTechniqueExplanations: Record<string, string> = {
   pattern_interrupt: "The unexpected breaks mental autopilot. When something doesn't fit the pattern, we pay attention.",
 };
 
+interface AngleCopyData {
+  headlines?: { text: string; framework?: string }[];
+  descriptions?: { text: string }[];
+  primary_copy?: { text: string; length?: string }[];
+}
+
 interface CreativeChecklistCardProps {
   item: ProductionItem;
   uploadedAsset?: {
@@ -56,6 +63,8 @@ interface CreativeChecklistCardProps {
   onRefineScript?: (itemId: string, feedback: string) => Promise<void>;
   selected?: boolean;
   onToggleSelect?: () => void;
+  angleCopy?: AngleCopyData;
+  onCopyChange?: (updatedCopy: AngleCopyData) => void;
 }
 
 export function CreativeChecklistCard({ 
@@ -73,12 +82,16 @@ export function CreativeChecklistCard({
   onRefineScript,
   selected,
   onToggleSelect,
+  angleCopy,
+  onCopyChange,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
+  const [editingCopyField, setEditingCopyField] = useState<string | null>(null);
+  const [editCopyValue, setEditCopyValue] = useState("");
   const Icon = formatIcons[item.format as keyof typeof formatIcons] || Image;
   const formatLabel = formatLabels[item.format as keyof typeof formatLabels] || item.format;
   
