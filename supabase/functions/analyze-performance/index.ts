@@ -198,21 +198,26 @@ Analyze the performance data and deliver a comprehensive, beginner-friendly repo
 
 2. **Customer Journey Diagnosis**: Identify issues at each stage:
    - GROW (Attract new people): CTR, reach, creative variety
-   - NURTURE (Build trust): Click-to-conversion, landing page performance
-   - CONVERT (Guide to action): Warm audience conversion, offer clarity
+   - NURTURE (Build trust): Click-to-conversion, ad-to-action clarity
+   - CONVERT (Guide to action): Conversion rate, offer clarity in creative
    - Focus on the journey stages that are RELEVANT to this campaign type
 
 3. **Creative Troubleshooting**: Diagnose creative issues based on the data. Link low CTR to hook problems, high CPC to clarity issues, high frequency to fatigue, etc. Provide specific creative recommendations.
 
-4. **Warm Audience Health**: Evaluate retargeting audience size and stability. Is it large enough (3k+ ideal)? Growing or stagnant?
+4. **Seasonality Context**: Consider the current quarter and seasonal patterns. Explain if CPM increases or performance shifts are normal for this time of year.
 
-5. **Seasonality Context**: Consider the current quarter and seasonal patterns. Explain if CPM increases or performance shifts are normal for this time of year.
+5. **Offer Diagnosis**: Based on the offer type (lead magnet, webinar, low ticket, high ticket), identify mismatches between the offer and the creative messaging.
 
-6. **Offer Diagnosis**: Based on the offer type (lead magnet, webinar, low ticket, high ticket), identify mismatches between the offer and creative/landing page.
+6. **Top 3 Next Steps**: Provide exactly 3 actionable, specific steps the user should take this week. Make them simple and encouraging. ONLY recommend actions related to the campaign's actual purpose and priority KPIs.
 
-7. **Top 3 Next Steps**: Provide exactly 3 actionable, specific steps the user should take this week. Make them simple and encouraging. ONLY recommend actions related to the campaign's actual purpose and priority KPIs.
+7. **Creative Refresh Suggestions**: Suggest 2-3 specific creative types to add or refresh, including hook patterns, script starters, and psychology triggers to use.
 
-8. **Creative Refresh Suggestions**: Suggest 2-3 specific creative types to add or refresh, including hook patterns, script starters, and psychology triggers to use.
+PROHIBITED ADVICE — NEVER include any of the following:
+- NEVER recommend landing page changes, landing page optimization, or A/B testing landing pages
+- NEVER recommend retargeting campaigns, retargeting audiences, or remarketing strategies
+- NEVER recommend lookalike audiences built from retargeting pools
+- NEVER mention "landing page" in any recommendation
+- Focus ONLY on: creative refreshes, budget adjustments, audience testing with broad/interest targeting, copy angles, campaign structure, and offer-to-creative alignment
 
 TONE & STYLE:
 - Warm, encouraging, and supportive
@@ -246,12 +251,6 @@ Return ONLY a valid JSON object with this exact structure:
     "recommended_creatives_to_add": [string],
     "recommended_creatives_to_refresh": [string],
     "why_it_works": string
-  },
-  "warm_audience_health": {
-    "size": string,
-    "stability": string,
-    "notes": string,
-    "recommendation": string
   },
   "seasonality_context": {
     "quarter": string,

@@ -55,6 +55,13 @@ ${adsStr || 'No ad data provided.'}
 REVIEWER NOTES:
 ${notes || 'None'}
 
+PROHIBITED ADVICE — NEVER include any of the following:
+- NEVER recommend landing page changes or optimization
+- NEVER recommend retargeting campaigns, retargeting audiences, or remarketing strategies
+- NEVER recommend lookalike audiences built from retargeting pools
+- NEVER mention "landing page" in any recommendation
+- Focus ONLY on: creative refreshes, budget adjustments, audience testing with broad/interest targeting, copy angles, campaign structure
+
 Generate:
 1. Executive summary (2-3 sentences)
 2. Specific actions per campaign (pause/scale/watch with reason)
