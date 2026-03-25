@@ -128,7 +128,39 @@ export default function AdsManager() {
           };
         });
 
-        return { ...client, brand: brandRes.data, campaigns: enrichedCampaigns };
+        // Auto-compute health status from campaign performance
+        let autoHealth = 'healthy';
+        const activeCampaigns = enrichedCampaigns.filter((c: any) => c.hasLiveData);
+        if (activeCampaigns.length > 0) {
+          const statuses = activeCampaigns.map((c: any) => {
+            const report = c.performance_report_latest as any;
+            const goal = c.goal;
+            if (!report?.metrics || !goal) return 'unknown';
+            const m = report.metrics;
+            const kpi = goal.primary_kpi;
+            const threshold = goal.primary_kpi_threshold;
+            const goalType = goal.primary_kpi_goal_type;
+            const value = m[kpi];
+            if (!value || !threshold) return 'unknown';
+            if (goalType === 'less_than') {
+              if (value <= threshold) return 'green';
+              if (value <= threshold * 1.3) return 'amber';
+              return 'red';
+            }
+            if (value >= threshold) return 'green';
+            if (value >= threshold * 0.7) return 'amber';
+            return 'red';
+          });
+          if (statuses.includes('red')) autoHealth = 'needs_attention';
+          else if (statuses.includes('amber')) autoHealth = 'watching';
+          else autoHealth = 'healthy';
+        }
+
+        if (client.health_status !== autoHealth && activeCampaigns.length > 0) {
+          supabase.from('agency_clients').update({ health_status: autoHealth }).eq('id', client.id);
+        }
+
+        return { ...client, health_status: activeCampaigns.length > 0 ? autoHealth : client.health_status, brand: brandRes.data, campaigns: enrichedCampaigns };
       })
     );
 
