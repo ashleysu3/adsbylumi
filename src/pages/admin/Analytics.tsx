@@ -7,10 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Briefcase, Palette, TrendingUp, Calendar, DollarSign, CreditCard, Award, Loader2, KeyRound } from "lucide-react";
+import { Users, Briefcase, Palette, TrendingUp, Calendar, DollarSign, CreditCard, Award, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-const FUNCTION_URL = `https://sqwjbndgighjtifijgws.supabase.co/functions/v1/stripe-admin`;
 
 interface AnalyticsData {
   totalUsers: number;
