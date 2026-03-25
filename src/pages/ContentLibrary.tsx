@@ -260,6 +260,57 @@ export default function ContentLibrary() {
     }
   };
 
+  // Add to Production Checklist
+  const openProductionPicker = (idea: ContentIdea) => {
+    setIdeaForProduction(idea);
+    setProductionPickerOpen(true);
+  };
+
+  const addToProduction = async (workspaceId: string) => {
+    if (!ideaForProduction) return;
+    setAddingToProduction(workspaceId);
+    try {
+      const { data: ws, error: fetchErr } = await supabase
+        .from("campaign_workspaces")
+        .select("production_items")
+        .eq("id", workspaceId)
+        .single();
+      if (fetchErr) throw fetchErr;
+
+      const existing = (ws?.production_items as any[]) || [];
+      const newItem = {
+        id: `prod_${Date.now()}`,
+        hook: ideaForProduction.title,
+        guidance: ideaForProduction.content || "",
+        format: ideaForProduction.type === "script" ? "talking_head" : ideaForProduction.type === "visual" ? "static" : ideaForProduction.type === "video" ? "b_roll" : "talking_head",
+        angleName: ideaForProduction.tags?.[0] || "From Library",
+        completed: false,
+        source: "concept_library",
+      };
+
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({
+          production_items: [...existing, newItem],
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", workspaceId);
+      if (error) throw error;
+
+      await supabase.from("content_ideas").update({ status: "in_progress" }).eq("id", ideaForProduction.id);
+      setIdeas(prev => prev.map(i => i.id === ideaForProduction.id ? { ...i, status: "in_progress" } : i));
+
+      toast.success("Added to production checklist!");
+      setProductionPickerOpen(false);
+      setIdeaForProduction(null);
+    } catch (error: any) {
+      console.error("Error adding to production:", error);
+      toast.error("Failed to add to production checklist");
+    } finally {
+      setAddingToProduction(null);
+    }
+  };
+
   // AI Generation
   const openAiDialog = () => {
     setAiSuggestions([]);
