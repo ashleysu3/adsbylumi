@@ -415,9 +415,8 @@ ${wowContext ? 'If previous period data exists, show "+X%" or "-X%" deltas next 
 **What's Happening:**
 [2-4 sentences in plain language. What's working, what isn't, and why. Name specific ad creatives when available.]
 
-${reportMode === 'self-serve' ? `**✦ LUMI Recommends:**
-[Concrete recommendation with a specific date. E.g. "Refresh your hook creative by March 14" not "optimize".]` : `**What We're Doing About It:**
-[Concrete action with a specific date. E.g. "We'll swap the creative by March 14" not "we'll optimize".]`}
+**✦ ${advisorName} Recommends:**
+[Concrete recommendation with a specific date. E.g. "We recommend refreshing your hook creative by March 14" not "optimize". NEVER say "We will" — always say "We recommend".]
 
 ---
 
