@@ -37,6 +37,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [inProgressWorkspace, setInProgressWorkspace] = useState<{ id: string; name: string } | null>(null);
   const [progressBannerDismissed, setProgressBannerDismissed] = useState(false);
   const { activeBrand, isAgencyUser } = useBrand();
+  const [agencyName, setAgencyName] = useState<string | null>(null);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [walkthroughSteps, setWalkthroughSteps] = useState<any[]>([]);
   const [tourActive, setTourActive] = useState(false);
@@ -94,7 +95,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       .then(({ data }) => setInProgressWorkspace(data || null));
   }, [activeBrand?.id, location.pathname]);
 
-  // Register desktop layout with LumiAssistant context
+  // Fetch agency name for Manage All Accounts view
+  useEffect(() => {
+    if (!isAgencyUser || !activeBrand?.id) return;
+    supabase.from('agency_branding').select('company_name').eq('brand_id', activeBrand.id).maybeSingle()
+      .then(({ data }) => setAgencyName(data?.company_name || null));
+  }, [isAgencyUser, activeBrand?.id]);
+
+
   useEffect(() => {
     if (!isMobile) {
       setDesktopNavLayout(true);
@@ -167,11 +175,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <SidebarTrigger />
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[200px]">
-                {isAgencyUser && activeBrand ? activeBrand.name : (profile?.full_name || user?.email)}
+                {location.pathname === '/ads-manager' && isAgencyUser
+                  ? (agencyName || profile?.full_name || 'Agency')
+                  : isAgencyUser && activeBrand ? activeBrand.name : (profile?.full_name || user?.email)}
               </span>
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {isAgencyUser && activeBrand ? activeBrand.name.charAt(0).toUpperCase() : (profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase())}
+                  {location.pathname === '/ads-manager' && isAgencyUser
+                    ? (agencyName || profile?.full_name || 'A').charAt(0).toUpperCase()
+                    : isAgencyUser && activeBrand ? activeBrand.name.charAt(0).toUpperCase() : (profile?.full_name?.charAt(0) || user?.email?.charAt(0).toUpperCase())}
                 </AvatarFallback>
               </Avatar>
             </div>
