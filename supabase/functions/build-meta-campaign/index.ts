@@ -246,22 +246,57 @@ Deno.serve(async (req) => {
     
     console.log(`Found ${angles.length} angles, ${Object.keys(angleCopy).length} angle copies, ${Object.keys(copySelections).length} copy selections`);
 
-    // Get approved production items with linked assets
+    // Resolve linkedAsset from user_uploaded_assets if not directly on the item
+    const uploadedAssetsList: any[] = workspace.user_uploaded_assets || [];
+    const productionItems: ProductionItem[] = (workspace.production_items || []).map(
+      (item: any) => {
+        // If item already has linkedAsset, keep it
+        if (item.linkedAsset) return item;
+        // Try to resolve from user_uploaded_assets by matching linked_concept_id
+        const matchingAsset = uploadedAssetsList.find(
+          (a: any) => a.linked_concept_id === item.id
+        );
+        if (matchingAsset) {
+          return {
+            ...item,
+            linkedAsset: {
+              id: matchingAsset.id,
+              url: matchingAsset.file_url,
+              storagePath: matchingAsset.storage_path,
+              type: matchingAsset.file_type,
+              fileName: matchingAsset.file_name,
+            },
+          };
+        }
+        return item;
+      }
+    );
+
+    // Get production items with linked assets
+    // Accept items that are approved OR completed OR simply have a linked asset
     // Copy can come from either item-level finalCopy OR angle-level angle_copy
-    const approvedConcepts: ProductionItem[] = (workspace.production_items || []).filter(
+    const approvedConcepts: ProductionItem[] = productionItems.filter(
       (item: ProductionItem) => {
-        // Check status
-        if (item.status !== 'approved') return false;
+        // Check status - accept 'approved', completed:true, or any item with an asset
+        const isApproved = item.status === 'approved' || (item as any).completed === true;
         // Check for asset (new or legacy)
         const hasAsset = item.linkedAsset || item.uploaded_asset_id;
+        if (!hasAsset) return false;
         // Check for copy - either item-level or angle-level
         const hasItemCopy = item.finalCopy || item.final_copy;
         const hasAngleCopy = item.angleName && angleCopy && Object.keys(angleCopy).length > 0;
-        return hasAsset && (hasItemCopy || hasAngleCopy);
+        // If item has asset + copy, include it (even if not explicitly approved)
+        // This handles the case where items have no status field but have all required data
+        return hasAsset && (hasItemCopy || hasAngleCopy || isApproved);
       }
     );
     
+    console.log(`Resolved assets: ${uploadedAssetsList.length} uploaded, ${productionItems.filter((i: any) => i.linkedAsset).length} linked to items`);
+    console.log(`Approved concepts: ${approvedConcepts.length} of ${productionItems.length} total items`);
+    
     if (approvedConcepts.length < 1) {
+      const itemStatuses = productionItems.map((i: any) => ({ id: i.id, status: i.status, completed: i.completed, hasAsset: !!i.linkedAsset, hasCopy: !!(i.finalCopy || i.final_copy) }));
+      console.error('No approved concepts found. Item details:', JSON.stringify(itemStatuses));
       throw new Error('At least 1 approved creative with linked asset is required. Please complete the Production workflow first.');
     }
 
