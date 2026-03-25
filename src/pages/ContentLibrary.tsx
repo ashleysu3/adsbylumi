@@ -628,6 +628,19 @@ export default function ContentLibrary() {
                                   +{idea.tags.length - 3}
                                 </Badge>}
                             </div>}
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-3 text-xs gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openProductionPicker(idea);
+                            }}
+                          >
+                            <ClipboardList className="h-3.5 w-3.5" />
+                            Add to Production
+                          </Button>
                         </CardContent>
                       </Card>;
             })}
