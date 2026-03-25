@@ -11,7 +11,7 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
-  X, Check, FileDown, Printer, BarChart3
+  X, Check, FileDown, Printer, BarChart3, RefreshCw
 } from "lucide-react";
 import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
@@ -1328,15 +1328,34 @@ export default function CreativeStudio() {
                   {gridData.filter(c => c.angleId === activeAngleId).map(cell => {
                     const Icon = formatIcons[cell.format];
                     const isAdded = productionItems.some(p => p.hook === cell.hook);
+                    const isRegenerating = regeneratingCellId === cell.id;
                     return (
                       <Card key={cell.id} className={cn(
-                        "transition-all rounded-2xl",
-                        isAdded ? "ring-1 ring-green-200 bg-green-50/50 dark:ring-green-800 dark:bg-green-950/20" : "hover:shadow-md border"
+                        "transition-all rounded-2xl relative group",
+                        isAdded ? "ring-1 ring-green-200 bg-green-50/50 dark:ring-green-800 dark:bg-green-950/20" : "hover:shadow-md border",
+                        isRegenerating && "opacity-60 pointer-events-none"
                       )}>
+                        {isRegenerating && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-2xl z-10">
+                            <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                          </div>
+                        )}
                         <CardContent className="pt-4 p-6 space-y-3">
                           <div className="flex items-center justify-between">
                             <Badge variant="secondary" className="gap-1"><Icon className="h-3 w-3" />{formatLabels[cell.format]}</Badge>
-                            {isAdded && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => regenerateGridCell(cell.id)}
+                                disabled={isRegenerating}
+                                title="Regenerate this concept"
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" />
+                              </Button>
+                              {isAdded && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                            </div>
                           </div>
                           <p className="font-semibold text-base leading-snug">{cell.hook}</p>
                           <p className="text-xs text-muted-foreground line-clamp-3">{cell.guidance}</p>
