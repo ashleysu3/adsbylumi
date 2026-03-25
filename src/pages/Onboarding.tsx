@@ -625,10 +625,9 @@ export default function Onboarding() {
                   <div className="flex justify-center">
                     <SparkleIcon size="xl" state="thinking" glow className="animate-float" />
                   </div>
-                  <LumiThinking
-                    messages={PSYCHOLOGY_LOADING_COPY}
-                    intervalMs={3000}
-                    className="text-center"
+                  <LumiThinkingInline
+                    isOpen={true}
+                    customCopy={PSYCHOLOGY_LOADING_COPY}
                   />
                   <p className="text-xs text-center text-muted-foreground">
                     Lumi is building a deep psychological profile of your audience. This usually takes 15–30 seconds.
