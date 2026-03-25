@@ -174,6 +174,8 @@ export default function CreativeStudio() {
 
   // Regeneration confirmation state
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [regeneratingCellId, setRegeneratingCellId] = useState<string | null>(null);
+  const [regeneratingAngleId, setRegeneratingAngleId] = useState<string | null>(null);
  
   // Pre-generation context state
   const [showContextInput, setShowContextInput] = useState(false);
