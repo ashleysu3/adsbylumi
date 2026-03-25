@@ -252,12 +252,6 @@ Return ONLY a valid JSON object with this exact structure:
     "recommended_creatives_to_refresh": [string],
     "why_it_works": string
   },
-  "warm_audience_health": {
-    "size": string,
-    "stability": string,
-    "notes": string,
-    "recommendation": string
-  },
   "seasonality_context": {
     "quarter": string,
     "expected_behavior": string,
