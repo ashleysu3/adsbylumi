@@ -284,29 +284,53 @@ Deno.serve(async (req) => {
           if (page.data.length > 0) startingAfter = page.data[page.data.length - 1].id;
         }
 
-        // Calculate MRR and group by price
+        // Calculate MRR and group by price — use actual amounts paid (after discounts)
         let totalMRR = 0;
         const priceBreakdown: Record<string, { count: number; amount: number; productName: string; interval: string }> = {};
 
         for (const sub of allSubs) {
+          // Determine discount percentage from the subscription's coupon
+          let discountPct = 0;
+          let discountAmountOff = 0;
+          if (sub.discount?.coupon) {
+            if (sub.discount.coupon.percent_off) {
+              discountPct = sub.discount.coupon.percent_off;
+            } else if (sub.discount.coupon.amount_off) {
+              discountAmountOff = sub.discount.coupon.amount_off;
+            }
+          }
+
           for (const item of sub.items.data) {
             const price = item.price;
-            let monthlyAmount = price.unit_amount || 0;
+            let baseAmount = price.unit_amount || 0;
+
+            // Apply discount
+            let actualAmount = baseAmount;
+            if (discountPct > 0) {
+              actualAmount = Math.round(baseAmount * (1 - discountPct / 100));
+            } else if (discountAmountOff > 0) {
+              actualAmount = Math.max(0, baseAmount - discountAmountOff);
+            }
+
+            // Normalize to monthly
+            let monthlyAmount = actualAmount;
             if (price.recurring?.interval === "year") {
-              monthlyAmount = Math.round(monthlyAmount / 12);
+              monthlyAmount = Math.round(actualAmount / 12);
             }
             totalMRR += monthlyAmount;
 
-            const priceId = price.id;
-            if (!priceBreakdown[priceId]) {
-              priceBreakdown[priceId] = {
+            // Group by price + discount combo for accurate breakdown
+            const discountLabel = discountPct > 0 ? `_${discountPct}off` : discountAmountOff > 0 ? `_$${discountAmountOff}off` : "";
+            const groupKey = `${price.id}${discountLabel}`;
+            if (!priceBreakdown[groupKey]) {
+              priceBreakdown[groupKey] = {
                 count: 0,
                 amount: monthlyAmount,
                 productName: typeof price.product === "string" ? price.product : (price.product as any)?.name || "Unknown",
                 interval: price.recurring?.interval || "month",
               };
             }
-            priceBreakdown[priceId].count += 1;
+            priceBreakdown[groupKey].count += 1;
           }
         }
 
