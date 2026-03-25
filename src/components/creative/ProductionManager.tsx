@@ -953,7 +953,12 @@ export function ProductionManager({
           brandName={workspace?.brands?.name}
           websiteUrl={workspace?.offer_url || workspace?.brands?.website_url}
           onCopyChange={(updatedCopy) => {
-            const copyKey = getAngleCopyKeyForItem(adPreviewItem);
+            let copyKey = getAngleCopyKeyForItem(adPreviewItem);
+            // If no key found, create one from angle name
+            if (!copyKey) {
+              const itemAny = adPreviewItem as any;
+              copyKey = itemAny.angleId || itemAny.angle_id || adPreviewItem.angleName || adPreviewItem.id;
+            }
             if (copyKey) {
               const updatedAngleCopy = { ...angleCopy, [copyKey]: updatedCopy };
               onUpdateWorkspace({
