@@ -863,5 +863,53 @@ export default function ContentLibrary() {
 
       {/* Creative Flow Modal */}
       <CreativeFlowModal open={creativeModalOpen} onOpenChange={setCreativeModalOpen} workspaceId={selectedCampaignId} />
+
+      {/* Add to Production Picker Dialog */}
+      <Dialog open={productionPickerOpen} onOpenChange={setProductionPickerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-primary" />
+              Add to Production Checklist
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Choose which campaign to add <span className="font-medium text-foreground">"{ideaForProduction?.title?.slice(0, 50)}{(ideaForProduction?.title?.length || 0) > 50 ? '...' : ''}"</span> to:
+          </p>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {campaigns.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground mb-2">No campaigns found</p>
+                <Button variant="outline" size="sm" onClick={() => { setProductionPickerOpen(false); navigate("/campaigns"); }}>
+                  Create a Campaign
+                </Button>
+              </div>
+            ) : (
+              campaigns.map(campaign => (
+                <Card 
+                  key={campaign.id} 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => addToProduction(campaign.id)}
+                >
+                  <CardContent className="p-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{campaign.name}</p>
+                      {campaign.offer_name && (
+                        <p className="text-xs text-muted-foreground">{campaign.offer_name}</p>
+                      )}
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {campaign.progress_status?.replace(/_/g, ' ')}
+                      </Badge>
+                    </div>
+                    {addingToProduction === campaign.id && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>;
 }
