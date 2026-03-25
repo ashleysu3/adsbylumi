@@ -51,7 +51,14 @@ interface CreativeChecklistCardProps {
     file_url: string;
     file_type: string;
   } | null;
+  uploadedAssetVertical?: {
+    id: string;
+    file_name: string;
+    file_url: string;
+    file_type: string;
+  } | null;
   onUploadClick: () => void;
+  onUploadVerticalClick?: () => void;
   onRemove: () => void;
   onPreview?: (asset: any) => void;
   onAdPreview?: () => void;
@@ -69,8 +76,10 @@ interface CreativeChecklistCardProps {
 
 export function CreativeChecklistCard({ 
   item, 
-  uploadedAsset, 
-  onUploadClick, 
+  uploadedAsset,
+  uploadedAssetVertical,
+  onUploadClick,
+  onUploadVerticalClick,
   onRemove,
   onPreview,
   onAdPreview,
