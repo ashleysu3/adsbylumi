@@ -63,7 +63,7 @@ export default function AdsManager() {
   useEffect(() => {
     if (!isAgencyUser && tier !== 'agency') {
       navigate('/dashboard');
-      toast.error('Ads Manager is available for agency accounts only.');
+      toast.error('Manage All Accounts is available for agency accounts only.');
     }
   }, [isAgencyUser, tier, navigate]);
 
