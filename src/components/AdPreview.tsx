@@ -34,11 +34,30 @@ interface AdPreviewProps {
 }
 
 export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdPreviewProps) {
+  const [mediaAspect, setMediaAspect] = useState<number | null>(null);
+  
+  const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      setMediaAspect(img.naturalWidth / img.naturalHeight);
+    }
+  }, []);
+
+  const handleVideoLoad = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const vid = e.currentTarget;
+    if (vid.videoWidth && vid.videoHeight) {
+      setMediaAspect(vid.videoWidth / vid.videoHeight);
+    }
+  }, []);
+
   const conceptData = concept as any;
   const assetUrl = concept.linkedAsset?.url || conceptData.uploaded_asset_url || conceptData.asset_url || null;
   const assetType = concept.linkedAsset?.type || conceptData.linkedAsset?.file_type || 'image';
   const isVideo = assetType.includes('video') || /\.(mp4|mov|webm|m4v)$/i.test(assetUrl || '');
   
+  // Whether the asset needs Meta-style padding in vertical containers (square or wider in 9:16)
+  const needsMetaPadding = mediaAspect !== null && mediaAspect > 0.7;
+
   // Normalize copy fields (handle both naming conventions + flattened shapes)
   const copy = concept.finalCopy || concept.final_copy || {
     headline: conceptData.headline,
