@@ -1021,11 +1021,11 @@ export default function Settings() {
                       <div className="grid gap-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Brands</span>
-                          <span>{currentTier.limits.brands === -1 ? 'Unlimited' : currentTier.limits.brands}</span>
+                          <span>{currentTier.limits.brands}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Ad Accounts</span>
-                          <span>{currentTier.limits.adAccounts === -1 ? 'Unlimited' : currentTier.limits.adAccounts}</span>
+                          <span>{currentTier.limits.adAccounts}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Ad Spend Cap</span>

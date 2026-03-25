@@ -52,14 +52,14 @@ export const SUBSCRIPTION_TIERS = {
     monthlyPrice: null,
     annualPrice: null,
     limits: {
-      brands: -1, // unlimited
-      adAccounts: -1,
+      brands: 10,
+      adAccounts: 10,
       adSpendCap: -1, // unlimited
     },
     features: [
       "Unlimited ad spend management",
-      "Unlimited Brands",
-      "Unlimited Ad Accounts",
+      "Up to 10 Brands",
+      "Up to 10 Ad Accounts",
       "Everything in Creator",
       "White-label options",
       "Dedicated account manager",
