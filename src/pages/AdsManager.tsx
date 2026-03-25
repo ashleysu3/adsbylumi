@@ -43,7 +43,16 @@ export default function AdsManager() {
     contact_email: '',
     health_status: 'healthy',
     notes: '',
+    ad_literacy_level: 'beginner',
   });
+
+  // Reports tab state
+  const [reportClientId, setReportClientId] = useState<string>('');
+  const [reportDateStart, setReportDateStart] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0];
+  });
+  const [reportDateEnd, setReportDateEnd] = useState(() => new Date().toISOString().split('T')[0]);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const [reviewBrandId, setReviewBrandId] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
