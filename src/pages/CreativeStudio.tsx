@@ -539,12 +539,38 @@ export default function CreativeStudio() {
   }, [workspace]);
 
   const handleCopyChange = useCallback((angleId: string, copy: any) => {
-    setAngleCopy(prev => {
-      const updated = { ...prev, [angleId]: copy };
-      // Auto-save copy to DB immediately (debounced by the calling component)
-      return updated;
-    });
+    setAngleCopy(prev => ({ ...prev, [angleId]: copy }));
   }, []);
+
+  // Auto-save angleCopy whenever it changes (debounced)
+  const angleCopyRef = useRef(angleCopy);
+  angleCopyRef.current = angleCopy;
+  const copySaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!workspace || Object.keys(angleCopy).length === 0) return;
+    // Debounce: save 1.5s after last change
+    if (copySaveTimerRef.current) clearTimeout(copySaveTimerRef.current);
+    copySaveTimerRef.current = setTimeout(async () => {
+      setCopySaveStatus("saving");
+      try {
+        const merged = { ...creativeJsonRef.current, angle_copy: angleCopyRef.current };
+        creativeJsonRef.current = merged;
+        await supabase
+          .from("campaign_workspaces")
+          .update({ creative_json: merged, updated_at: new Date().toISOString() })
+          .eq("id", workspace.id);
+        setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
+        setCopySaveStatus("saved");
+        setTimeout(() => setCopySaveStatus("idle"), 2000);
+      } catch (e) {
+        console.error("Auto-save copy failed:", e);
+        setCopySaveStatus("error");
+        setTimeout(() => setCopySaveStatus("idle"), 3000);
+      }
+    }, 1500);
+    return () => { if (copySaveTimerRef.current) clearTimeout(copySaveTimerRef.current); };
+  }, [angleCopy, workspace?.id]);
 
   const handleSaveCopy = useCallback(async () => {
     if (!workspace) return;
