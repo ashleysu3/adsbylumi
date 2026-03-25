@@ -11,10 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useBrand } from '@/contexts/BrandContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { toast } from 'sonner';
-import { Plus, LayoutDashboard, ClipboardCheck, CheckCircle, FileText, History } from 'lucide-react';
+import { Plus, LayoutDashboard, ClipboardCheck, CheckCircle, FileText, History, Lock, Loader2 } from 'lucide-react';
 import { ClientScorecard } from '@/components/ads-manager/ClientScorecard';
-import { ClientHealthBadge } from '@/components/ads-manager/ClientHealthBadge';
 import { ApprovalQueue } from '@/components/ads-manager/ApprovalQueue';
 import { ReviewForm } from '@/components/ads-manager/ReviewForm';
 import { ReportDraftPreview } from '@/components/ads-manager/ReportDraftPreview';
@@ -23,7 +23,8 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 export default function AdsManager() {
-  const { activeBrand, brands } = useBrand();
+  const { activeBrand, brands, isAgencyUser } = useBrand();
+  const { tier } = useSubscription();
   const navigate = useNavigate();
   const [clients, setClients] = useState<any[]>([]);
   const [reviewLogs, setReviewLogs] = useState<any[]>([]);
@@ -34,7 +35,6 @@ export default function AdsManager() {
   const [editDialog, setEditDialog] = useState(false);
   const [approvalLoadingId, setApprovalLoadingId] = useState<string>();
 
-  // Form state for add/edit client
   const [formData, setFormData] = useState({
     brand_id: '',
     slack_client_channel: '',
@@ -45,42 +45,89 @@ export default function AdsManager() {
     notes: '',
   });
 
-  // Review state
   const [reviewBrandId, setReviewBrandId] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [actionPlan, setActionPlan] = useState('');
 
+  // Gate: redirect non-agency users
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!isAgencyUser && tier !== 'agency') {
+      navigate('/dashboard');
+      toast.error('Ads Manager is available for agency accounts only.');
+    }
+  }, [isAgencyUser, tier, navigate]);
+
+  useEffect(() => {
+    if (isAgencyUser || tier === 'agency') {
+      loadData();
+    }
+  }, [brands]);
 
   const loadData = async () => {
     setLoading(true);
+
+    // 1. Get existing agency_clients
+    const { data: existingClients } = await supabase.from('agency_clients').select('*');
+    const existingBrandIds = new Set((existingClients || []).map((c: any) => c.brand_id));
+
+    // 2. Auto-create agency_client entries for brands not yet added
+    const missingBrands = (brands || []).filter(b => !existingBrandIds.has(b.id));
+    if (missingBrands.length > 0) {
+      const inserts = missingBrands.map(b => ({
+        brand_id: b.id,
+        health_status: 'healthy',
+      }));
+      await supabase.from('agency_clients').insert(inserts);
+    }
+
+    // 3. Re-fetch all clients after potential inserts
     const [clientsRes, reviewsRes, reportsRes] = await Promise.all([
       supabase.from('agency_clients').select('*'),
       supabase.from('review_logs').select('*').order('created_at', { ascending: false }).limit(50),
       supabase.from('weekly_reports').select('*').order('created_at', { ascending: false }).limit(20),
     ]);
 
-    // Enrich clients with brand data and campaigns
+    // 4. Enrich clients with brand data, campaigns, and goals
     const enrichedClients = await Promise.all(
       ((clientsRes.data as any[]) || []).map(async (client: any) => {
-        const [brandRes, campaignsRes] = await Promise.all([
+        const [brandRes, campaignsRes, goalsRes] = await Promise.all([
           supabase.from('brands').select('id, name, meta_account_id, last_review_date, next_report_due').eq('id', client.brand_id).single(),
-          supabase.from('campaign_workspaces').select('id, name, progress_status, meta_campaign_status').eq('brand_id', client.brand_id).eq('archived', false).limit(20),
+          supabase.from('campaign_workspaces')
+            .select('id, name, progress_status, meta_campaign_status, meta_campaign_ids, performance_report_latest, template_id')
+            .eq('brand_id', client.brand_id)
+            .eq('archived', false)
+            .limit(20),
+          supabase.from('campaign_goals').select('*').eq('brand_id', client.brand_id),
         ]);
-        return { ...client, brand: brandRes.data, campaigns: campaignsRes.data || [] };
+
+        // Build a goals map by workspace_id
+        const goalsMap: Record<string, any> = {};
+        (goalsRes.data || []).forEach((g: any) => {
+          if (g.workspace_id) goalsMap[g.workspace_id] = g;
+        });
+
+        // Enrich campaigns with their goals and latest metrics
+        const enrichedCampaigns = (campaignsRes.data || []).map((c: any) => {
+          const report = c.performance_report_latest as any;
+          const metrics = report?.metrics || {};
+          return {
+            ...c,
+            goal: goalsMap[c.id] || null,
+            metrics,
+            hasLiveData: !!(c.meta_campaign_ids && c.meta_campaign_status !== 'draft'),
+          };
+        });
+
+        return { ...client, brand: brandRes.data, campaigns: enrichedCampaigns };
       })
     );
 
-    // Enrich reviews with brand name
     const enrichedReviews = ((reviewsRes.data as any[]) || []).map((r: any) => {
       const client = enrichedClients.find((c: any) => c.brand_id === r.brand_id);
       return { ...r, brand: client?.brand || { name: 'Unknown' } };
     });
 
-    // Enrich reports
     const enrichedReports = ((reportsRes.data as any[]) || []).map((r: any) => {
       const client = enrichedClients.find((c: any) => c.brand_id === r.brand_id);
       return { ...r, brand: client?.brand || { name: 'Unknown' } };
@@ -201,7 +248,24 @@ export default function AdsManager() {
     loadData();
   };
 
-  // Stats
+  const handleGoalSaved = () => {
+    loadData();
+  };
+
+  // Gate check
+  if (!isAgencyUser && tier !== 'agency') {
+    return (
+      <DashboardLayout>
+        <div className="max-w-2xl mx-auto py-20 text-center space-y-4">
+          <Lock className="h-12 w-12 text-muted-foreground mx-auto" />
+          <h2 className="text-xl font-bold">Agency Feature</h2>
+          <p className="text-muted-foreground">Ads Manager is only available for agency-tier accounts.</p>
+          <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   const healthCounts = {
     healthy: clients.filter((c) => c.health_status === 'healthy').length,
     watching: clients.filter((c) => c.health_status === 'watching').length,
@@ -210,7 +274,6 @@ export default function AdsManager() {
 
   const existingBrandIds = clients.map((c: any) => c.brand_id);
   const availableBrands = (brands || []).filter((b) => !existingBrandIds.includes(b.id));
-
   const reviewClient = clients.find((c: any) => c.brand_id === reviewBrandId);
 
   return (
@@ -221,9 +284,11 @@ export default function AdsManager() {
             <h1 className="text-2xl font-bold">Ads Manager</h1>
             <p className="text-sm text-muted-foreground">Manage all your clients, reviews, and reports in one place.</p>
           </div>
-          <Button onClick={() => openEditDialog()} size="sm">
-            <Plus className="h-4 w-4 mr-1" /> Add Client
-          </Button>
+          {availableBrands.length > 0 && (
+            <Button onClick={() => openEditDialog()} size="sm">
+              <Plus className="h-4 w-4 mr-1" /> Add Client
+            </Button>
+          )}
         </div>
 
         {/* Health overview cards */}
@@ -255,7 +320,10 @@ export default function AdsManager() {
           {/* Clients Tab */}
           <TabsContent value="overview" className="space-y-3">
             {loading ? (
-              <p className="text-muted-foreground text-sm text-center py-8">Loading clients...</p>
+              <div className="flex items-center justify-center py-12 gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm">Loading clients...</span>
+              </div>
             ) : clients.length === 0 ? (
               <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">No clients yet. Add your first client to get started.</p></CardContent></Card>
             ) : (
@@ -265,6 +333,7 @@ export default function AdsManager() {
                   client={client}
                   onEdit={openEditDialog}
                   onViewDetail={(brandId) => navigate(`/ads-manager/client/${brandId}`)}
+                  onGoalSaved={handleGoalSaved}
                 />
               ))
             )}
