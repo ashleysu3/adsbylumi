@@ -279,7 +279,7 @@ Deno.serve(async (req) => {
           const listParams: any = {
             status: "active",
             limit: 100,
-            expand: ["data.customer"],
+            expand: ["data.customer", "data.discount", "data.discount.coupon"],
           };
           if (startingAfter) listParams.starting_after = startingAfter;
           const page = await stripe.subscriptions.list(listParams);
@@ -318,32 +318,19 @@ Deno.serve(async (req) => {
             amountOff = Number(directCoupon.amount_off);
           }
 
-          if (!percentOff && !amountOff && Array.isArray(sub.discounts) && sub.discounts.length > 0) {
-            const firstDiscountRef = sub.discounts[0];
-            try {
-              const resolvedDiscount =
-                typeof firstDiscountRef === "string"
-                  ? await stripe.discounts.retrieve(firstDiscountRef)
-                  : firstDiscountRef;
-              const coupon = resolvedDiscount?.coupon;
-              if (coupon?.percent_off) {
-                percentOff = Number(coupon.percent_off);
-              } else if (coupon?.amount_off) {
-                amountOff = Number(coupon.amount_off);
-              }
-            } catch (discountError) {
-              logStep("Could not resolve subscription discount", {
-                subscriptionId: sub.id,
-                error: (discountError as Error)?.message,
-              });
-            }
-          }
-
           if (percentOff > 0) {
             label = `${percentOff}% off`;
           } else if (amountOff > 0) {
             label = `$${(amountOff / 100).toFixed(2)} off`;
           }
+
+          logStep("Discount resolved", {
+            subscriptionId: sub.id,
+            percentOff,
+            amountOff,
+            label,
+            hasDiscount: !!sub.discount,
+          });
 
           return { percentOff, amountOff, label };
         };
