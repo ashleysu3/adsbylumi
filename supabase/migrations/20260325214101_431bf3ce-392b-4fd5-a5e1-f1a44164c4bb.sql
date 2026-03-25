@@ -1,0 +1,1 @@
+UPDATE profiles SET onboarding_email_step = 0 WHERE id = '60e21701-7a6b-4eb2-9778-00c1a9a0a547';
