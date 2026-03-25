@@ -881,7 +881,9 @@ export function ProductionManager({
                           key={item.id}
                           item={item}
                           uploadedAsset={getAssetForItem(item)}
+                          uploadedAssetVertical={getVerticalAssetForItem(item)}
                           onUploadClick={() => handleUploadClick(item.id)}
+                          onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
                           onRemove={() => onRemoveItem(item.id)}
                           onPreview={setPreviewAsset}
                           onAdPreview={() => setAdPreviewItem(item)}
@@ -918,7 +920,9 @@ export function ProductionManager({
                               key={item.id}
                               item={item}
                               uploadedAsset={getAssetForItem(item)}
+                              uploadedAssetVertical={getVerticalAssetForItem(item)}
                               onUploadClick={() => handleUploadClick(item.id)}
+                              onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
                               onRemove={() => onRemoveItem(item.id)}
                               onPreview={setPreviewAsset}
                               onAdPreview={() => setAdPreviewItem(item)}
@@ -976,7 +980,9 @@ export function ProductionManager({
                                   key={item.id}
                                   item={item}
                                   uploadedAsset={getAssetForItem(item)}
+                                  uploadedAssetVertical={getVerticalAssetForItem(item)}
                                   onUploadClick={() => handleUploadClick(item.id)}
+                                  onUploadVerticalClick={() => handleUploadVerticalClick(item.id)}
                                   onRemove={() => onRemoveItem(item.id)}
                                   onPreview={setPreviewAsset}
                                   onAdPreview={() => setAdPreviewItem(item)}
