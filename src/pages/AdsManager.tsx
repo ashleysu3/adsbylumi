@@ -371,7 +371,7 @@ export default function AdsManager() {
       <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Ads Manager</h1>
+            <h1 className="text-2xl font-bold">Manage All Accounts</h1>
             <p className="text-sm text-muted-foreground">Manage all your clients, reviews, and reports in one place.</p>
           </div>
           {availableBrands.length > 0 && (
