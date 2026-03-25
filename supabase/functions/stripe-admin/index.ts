@@ -279,7 +279,7 @@ Deno.serve(async (req) => {
           const listParams: any = {
             status: "active",
             limit: 100,
-            expand: ["data.customer", "data.items.data.price.product"],
+            expand: ["data.customer"],
           };
           if (startingAfter) listParams.starting_after = startingAfter;
           const page = await stripe.subscriptions.list(listParams);
