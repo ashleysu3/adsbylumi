@@ -9,8 +9,9 @@ import {
   Video, Film, Image, ChevronDown, ChevronUp, 
   Upload, Eye, CheckCircle2, Trash2, Maximize2,
   Library, Loader2, Info, Trophy, Mic, Type, Brain, Sparkles, Copy, Volume2,
-  MessageSquare, RefreshCw
+  MessageSquare, RefreshCw, FileText, Pencil, Check
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,12 @@ const hookTechniqueExplanations: Record<string, string> = {
   pattern_interrupt: "The unexpected breaks mental autopilot. When something doesn't fit the pattern, we pay attention.",
 };
 
+interface AngleCopyData {
+  headlines?: { text: string; framework?: string }[];
+  descriptions?: { text: string }[];
+  primary_copy?: { text: string; length?: string }[];
+}
+
 interface CreativeChecklistCardProps {
   item: ProductionItem;
   uploadedAsset?: {
@@ -56,6 +63,8 @@ interface CreativeChecklistCardProps {
   onRefineScript?: (itemId: string, feedback: string) => Promise<void>;
   selected?: boolean;
   onToggleSelect?: () => void;
+  angleCopy?: AngleCopyData;
+  onCopyChange?: (updatedCopy: AngleCopyData) => void;
 }
 
 export function CreativeChecklistCard({ 
@@ -73,12 +82,16 @@ export function CreativeChecklistCard({
   onRefineScript,
   selected,
   onToggleSelect,
+  angleCopy,
+  onCopyChange,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
+  const [editingCopyField, setEditingCopyField] = useState<string | null>(null);
+  const [editCopyValue, setEditCopyValue] = useState("");
   const Icon = formatIcons[item.format as keyof typeof formatIcons] || Image;
   const formatLabel = formatLabels[item.format as keyof typeof formatLabels] || item.format;
   
@@ -590,6 +603,112 @@ export function CreativeChecklistCard({
                       </ul>
                     </div>
                   )}
+                </div>
+              )}
+              
+              {/* Ad Copy Section */}
+              {angleCopy && (angleCopy.headlines?.length || angleCopy.primary_copy?.length || angleCopy.descriptions?.length) ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5" />
+                      Ad Copy
+                    </h5>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-3">
+                    {/* Headline */}
+                    {angleCopy.headlines?.[0] && (
+                      <div>
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase">Headline</span>
+                        {editingCopyField === "headline" ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Input
+                              value={editCopyValue}
+                              onChange={(e) => setEditCopyValue(e.target.value)}
+                              className="h-7 text-sm"
+                              maxLength={40}
+                              autoFocus
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  const updated = { ...angleCopy, headlines: [{ ...angleCopy.headlines![0], text: editCopyValue }] };
+                                  onCopyChange?.(updated);
+                                  setEditingCopyField(null);
+                                }
+                              }}
+                            />
+                            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => {
+                              const updated = { ...angleCopy, headlines: [{ ...angleCopy.headlines![0], text: editCopyValue }] };
+                              onCopyChange?.(updated);
+                              setEditingCopyField(null);
+                            }}>
+                              <Check className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-1 mt-0.5">
+                            <p className="text-sm font-medium">{angleCopy.headlines[0].text}</p>
+                            {onCopyChange && (
+                              <Button size="icon" variant="ghost" className="h-5 w-5 shrink-0 text-muted-foreground" onClick={() => {
+                                setEditingCopyField("headline");
+                                setEditCopyValue(angleCopy.headlines![0].text);
+                              }}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Primary Copy */}
+                    {angleCopy.primary_copy?.[0] && (
+                      <div>
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase">Primary Text</span>
+                        {editingCopyField === "primary" ? (
+                          <div className="space-y-1 mt-1">
+                            <Textarea
+                              value={editCopyValue}
+                              onChange={(e) => setEditCopyValue(e.target.value)}
+                              className="text-sm min-h-[100px] resize-y"
+                              autoFocus
+                            />
+                            <Button size="sm" variant="ghost" className="h-6 gap-1 text-xs" onClick={() => {
+                              const updated = { ...angleCopy, primary_copy: [{ ...angleCopy.primary_copy![0], text: editCopyValue }] };
+                              onCopyChange?.(updated);
+                              setEditingCopyField(null);
+                            }}>
+                              <Check className="h-3 w-3" /> Save
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="mt-0.5">
+                            <p className="text-sm whitespace-pre-wrap line-clamp-4">{angleCopy.primary_copy[0].text}</p>
+                            {onCopyChange && (
+                              <Button size="sm" variant="ghost" className="h-5 gap-1 text-xs text-muted-foreground mt-1" onClick={() => {
+                                setEditingCopyField("primary");
+                                setEditCopyValue(angleCopy.primary_copy![0].text);
+                              }}>
+                                <Pencil className="h-3 w-3" /> Edit
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Description */}
+                    {angleCopy.descriptions?.[0] && (
+                      <div>
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase">Description</span>
+                        <p className="text-sm text-muted-foreground mt-0.5">{angleCopy.descriptions[0].text}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-muted/30 border border-dashed">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="h-4 w-4" />
+                    <p className="text-sm">No ad copy yet — generate copy in the Build tab or edit in Ad Preview</p>
+                  </div>
                 </div>
               )}
               

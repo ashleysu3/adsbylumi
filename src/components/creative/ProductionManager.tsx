@@ -481,6 +481,24 @@ export function ProductionManager({
     const key = getAngleCopyKeyForItem(item);
     return key ? angleCopy[key] : undefined;
   };
+
+  // Handle copy changes from checklist cards
+  const handleChecklistCopyChange = (item: ProductionItem, updatedCopy: any) => {
+    let copyKey = getAngleCopyKeyForItem(item);
+    if (!copyKey) {
+      const itemAny = item as any;
+      copyKey = itemAny.angleId || itemAny.angle_id || item.angleName || item.id;
+    }
+    if (copyKey) {
+      const updatedAngleCopy = { ...angleCopy, [copyKey]: updatedCopy };
+      onUpdateWorkspace({
+        creative_json: {
+          ...(workspace?.creative_json || {}),
+          angle_copy: updatedAngleCopy,
+        },
+      });
+    }
+  };
   
   if (productionItems.length === 0) {
     return (
@@ -731,7 +749,7 @@ export function ProductionManager({
                       const item = productionItems.find(p => p.id === rankedItem.id);
                       if (!item) return null;
                       return (
-                        <CreativeChecklistCard
+                         <CreativeChecklistCard
                           key={item.id}
                           item={item}
                           uploadedAsset={getAssetForItem(item)}
@@ -747,6 +765,8 @@ export function ProductionManager({
                           onRefineScript={onRefineScript}
                           selected={bulkSelectMode ? selectedIds.has(item.id) : undefined}
                           onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
+                          angleCopy={getCopyForItem(item)}
+                          onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                         />
                       );
                     })}
@@ -781,6 +801,8 @@ export function ProductionManager({
                               onRefineScript={onRefineScript}
                               selected={bulkSelectMode ? selectedIds.has(item.id) : undefined}
                               onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
+                              angleCopy={getCopyForItem(item)}
+                              onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                             />
                           );
                         })}
@@ -833,6 +855,8 @@ export function ProductionManager({
                                   onSaveToLibrary={onSaveToLibrary ? () => handleSaveToLibrary(item) : undefined}
                                   savingToLibrary={savingToLibrary === item.id}
                                   onRefineScript={onRefineScript}
+                                  angleCopy={getCopyForItem(item)}
+                                  onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                                 />
                               ))}
                             </div>
@@ -953,7 +977,12 @@ export function ProductionManager({
           brandName={workspace?.brands?.name}
           websiteUrl={workspace?.offer_url || workspace?.brands?.website_url}
           onCopyChange={(updatedCopy) => {
-            const copyKey = getAngleCopyKeyForItem(adPreviewItem);
+            let copyKey = getAngleCopyKeyForItem(adPreviewItem);
+            // If no key found, create one from angle name
+            if (!copyKey) {
+              const itemAny = adPreviewItem as any;
+              copyKey = itemAny.angleId || itemAny.angle_id || adPreviewItem.angleName || adPreviewItem.id;
+            }
             if (copyKey) {
               const updatedAngleCopy = { ...angleCopy, [copyKey]: updatedCopy };
               onUpdateWorkspace({

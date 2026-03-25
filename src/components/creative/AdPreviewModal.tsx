@@ -199,17 +199,31 @@ export function AdPreviewModal({
     }
 
     const baseCopy = angleCopy || { headlines: [], descriptions: [], primary_copy: [] };
-    const updated = { ...baseCopy };
+    const updated = {
+      headlines: [...(baseCopy.headlines || [])],
+      descriptions: [...(baseCopy.descriptions || [])],
+      primary_copy: [...(baseCopy.primary_copy || [])],
+    };
 
-    if (editingField === "headline" && updated.headlines?.[selectedHeadline]) {
-      updated.headlines = [...updated.headlines];
-      updated.headlines[selectedHeadline] = { ...updated.headlines[selectedHeadline], text: editValue };
-    } else if (editingField === "description" && updated.descriptions?.[selectedDescription]) {
-      updated.descriptions = [...updated.descriptions];
-      updated.descriptions[selectedDescription] = { ...updated.descriptions[selectedDescription], text: editValue };
-    } else if (editingField === "primary" && updated.primary_copy?.[selectedPrimary]) {
-      updated.primary_copy = [...updated.primary_copy];
-      updated.primary_copy[selectedPrimary] = { ...updated.primary_copy[selectedPrimary], text: editValue };
+    if (editingField === "headline") {
+      if (updated.headlines[selectedHeadline]) {
+        updated.headlines[selectedHeadline] = { ...updated.headlines[selectedHeadline], text: editValue };
+      } else {
+        // Create entry if it doesn't exist (copy came from fallback)
+        updated.headlines = [{ text: editValue }];
+      }
+    } else if (editingField === "description") {
+      if (updated.descriptions[selectedDescription]) {
+        updated.descriptions[selectedDescription] = { ...updated.descriptions[selectedDescription], text: editValue };
+      } else {
+        updated.descriptions = [{ text: editValue }];
+      }
+    } else if (editingField === "primary") {
+      if (updated.primary_copy[selectedPrimary]) {
+        updated.primary_copy[selectedPrimary] = { ...updated.primary_copy[selectedPrimary], text: editValue };
+      } else {
+        updated.primary_copy = [{ text: editValue }];
+      }
     }
 
     onCopyChange(updated);
@@ -304,7 +318,10 @@ export function AdPreviewModal({
                     
                     {/* Primary Text */}
                     <div className="px-4 py-3">
-                      <p className="text-sm whitespace-pre-wrap">{currentPrimary}</p>
+                      <p className="text-sm whitespace-pre-wrap line-clamp-4">{currentPrimary}</p>
+                      {currentPrimary.length > 200 && (
+                        <span className="text-xs text-muted-foreground">... see more</span>
+                      )}
                     </div>
                     
                     {/* Media */}
@@ -679,7 +696,7 @@ export function AdPreviewModal({
                         <Textarea
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
-                          className="text-sm min-h-[100px] resize-y"
+                          className="text-sm min-h-[160px] resize-y"
                           autoFocus
                         />
                         <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={saveEdit}>
@@ -689,7 +706,7 @@ export function AdPreviewModal({
                       </div>
                     ) : (
                       <div>
-                        <div className="max-h-32 overflow-y-auto">
+                        <div className="max-h-48 overflow-y-auto">
                           <p className="text-sm whitespace-pre-wrap">{currentPrimary}</p>
                         </div>
                         {onCopyChange && (
