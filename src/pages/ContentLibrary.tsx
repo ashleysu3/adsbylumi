@@ -142,7 +142,7 @@ export default function ContentLibrary() {
       // Fetch offers, ideas, and campaigns in parallel
       const [offersRes, ideasRes, campaignsRes] = await Promise.all([supabase.from("offers").select("id, name").eq("brand_id", brandData.id).eq("archived", false).order("name"), supabase.from("content_ideas").select("*").eq("brand_id", brandData.id).order("created_at", {
         ascending: false
-      }), supabase.from("campaign_workspaces").select("id, name, offer_name, progress_status, strategy_json").eq("brand_id", brandData.id).not("strategy_json", "is", null).order("updated_at", {
+      }), supabase.from("campaign_workspaces").select("id, name, offer_name, progress_status").eq("brand_id", brandData.id).eq("archived", false).order("updated_at", {
         ascending: false
       }).limit(20)]);
       if (offersRes.data) setOffers(offersRes.data);
