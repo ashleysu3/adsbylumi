@@ -429,7 +429,7 @@ export function AdPreviewModal({
                 <TabsContent value="stories" className="mt-0">
                   <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
                     <AspectRatio ratio={9/16}>
-                      {renderMedia()}
+                      {renderMedia("vertical")}
                       
                       {/* Overlay */}
                       <div className="absolute inset-0 flex flex-col pointer-events-none">
@@ -468,7 +468,7 @@ export function AdPreviewModal({
                 <TabsContent value="reels" className="mt-0">
                   <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
                     <AspectRatio ratio={9/16}>
-                      {renderMedia()}
+                      {renderMedia("vertical")}
                       
                       {/* Overlay */}
                       <div className="absolute inset-0 flex pointer-events-none">
