@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Sparkles, ArrowRight, Lock, Pin, Plus, Loader2, Wand2 } from "lucide-react";
+import { Sparkles, ArrowRight, Lock, Pin, Plus, Loader2, Wand2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -174,12 +174,13 @@ export function AngleSelector({
           const isSelected = selectedAngles.includes(angle.id);
           const isDefault = angle.isDefault === true;
           const isDisabled = isDefault || (!isSelected && selectedAngles.length >= 5);
+          const isThisRegenerating = regeneratingAngleId === angle.id;
 
           return (
             <Card
               key={angle.id}
               className={cn(
-                "cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] border-2",
+                "cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] border-2 group relative",
                 isDefault && "border-primary/30 border-dashed bg-primary/5 cursor-default",
                 !isDefault && isSelected && "border-primary ring-2 ring-primary/20 bg-primary/5 shadow-md",
                 !isDefault && !isSelected && !isDisabled && "border-transparent hover:border-primary/40",
