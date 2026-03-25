@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Lightbulb, FileText, Video, Image, Sparkles, MoreHorizontal, Edit2, Trash2, FolderOpen, Filter, Tag, Wand2, Check, X, Loader2, Brain, RefreshCw, CheckCheck } from "lucide-react";
+import { Plus, Search, Lightbulb, FileText, Video, Image, Sparkles, MoreHorizontal, Edit2, Trash2, FolderOpen, Filter, Tag, Wand2, Check, X, Loader2, Brain, RefreshCw, CheckCheck, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -107,6 +107,11 @@ export default function ContentLibrary() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [campaignSelectOpen, setCampaignSelectOpen] = useState(false);
+
+  // Add to Production state
+  const [productionPickerOpen, setProductionPickerOpen] = useState(false);
+  const [ideaForProduction, setIdeaForProduction] = useState<ContentIdea | null>(null);
+  const [addingToProduction, setAddingToProduction] = useState<string | null>(null);
   useEffect(() => {
     if (!brandContextLoading && activeBrand) {
       fetchData();
@@ -137,7 +142,7 @@ export default function ContentLibrary() {
       // Fetch offers, ideas, and campaigns in parallel
       const [offersRes, ideasRes, campaignsRes] = await Promise.all([supabase.from("offers").select("id, name").eq("brand_id", brandData.id).eq("archived", false).order("name"), supabase.from("content_ideas").select("*").eq("brand_id", brandData.id).order("created_at", {
         ascending: false
-      }), supabase.from("campaign_workspaces").select("id, name, offer_name, progress_status, strategy_json").eq("brand_id", brandData.id).not("strategy_json", "is", null).order("updated_at", {
+      }), supabase.from("campaign_workspaces").select("id, name, offer_name, progress_status").eq("brand_id", brandData.id).eq("archived", false).order("updated_at", {
         ascending: false
       }).limit(20)]);
       if (offersRes.data) setOffers(offersRes.data);
@@ -252,6 +257,57 @@ export default function ContentLibrary() {
       toast.success("Status updated");
     } catch (error) {
       console.error("Error updating status:", error);
+    }
+  };
+
+  // Add to Production Checklist
+  const openProductionPicker = (idea: ContentIdea) => {
+    setIdeaForProduction(idea);
+    setProductionPickerOpen(true);
+  };
+
+  const addToProduction = async (workspaceId: string) => {
+    if (!ideaForProduction) return;
+    setAddingToProduction(workspaceId);
+    try {
+      const { data: ws, error: fetchErr } = await supabase
+        .from("campaign_workspaces")
+        .select("production_items")
+        .eq("id", workspaceId)
+        .single();
+      if (fetchErr) throw fetchErr;
+
+      const existing = (ws?.production_items as any[]) || [];
+      const newItem = {
+        id: `prod_${Date.now()}`,
+        hook: ideaForProduction.title,
+        guidance: ideaForProduction.content || "",
+        format: ideaForProduction.type === "script" ? "talking_head" : ideaForProduction.type === "visual" ? "static" : ideaForProduction.type === "video" ? "b_roll" : "talking_head",
+        angleName: ideaForProduction.tags?.[0] || "From Library",
+        completed: false,
+        source: "concept_library",
+      };
+
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({
+          production_items: [...existing, newItem],
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", workspaceId);
+      if (error) throw error;
+
+      await supabase.from("content_ideas").update({ status: "in_progress" }).eq("id", ideaForProduction.id);
+      setIdeas(prev => prev.map(i => i.id === ideaForProduction.id ? { ...i, status: "in_progress" } : i));
+
+      toast.success("Added to production checklist!");
+      setProductionPickerOpen(false);
+      setIdeaForProduction(null);
+    } catch (error: any) {
+      console.error("Error adding to production:", error);
+      toast.error("Failed to add to production checklist");
+    } finally {
+      setAddingToProduction(null);
     }
   };
 
@@ -542,7 +598,14 @@ export default function ContentLibrary() {
                           updateStatus(idea.id, status.value);
                         }}>
                                     Mark as {status.label}
-                                  </DropdownMenuItem>)}
+                                   </DropdownMenuItem>)}
+                                <DropdownMenuItem onClick={e => {
+                          e.stopPropagation();
+                          openProductionPicker(idea);
+                        }}>
+                                  <ClipboardList className="h-4 w-4 mr-2" />
+                                  Add to Production
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={e => {
                           e.stopPropagation();
                           handleDelete(idea.id);
@@ -800,5 +863,53 @@ export default function ContentLibrary() {
 
       {/* Creative Flow Modal */}
       <CreativeFlowModal open={creativeModalOpen} onOpenChange={setCreativeModalOpen} workspaceId={selectedCampaignId} />
+
+      {/* Add to Production Picker Dialog */}
+      <Dialog open={productionPickerOpen} onOpenChange={setProductionPickerOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-primary" />
+              Add to Production Checklist
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Choose which campaign to add <span className="font-medium text-foreground">"{ideaForProduction?.title?.slice(0, 50)}{(ideaForProduction?.title?.length || 0) > 50 ? '...' : ''}"</span> to:
+          </p>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {campaigns.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground mb-2">No campaigns found</p>
+                <Button variant="outline" size="sm" onClick={() => { setProductionPickerOpen(false); navigate("/campaigns"); }}>
+                  Create a Campaign
+                </Button>
+              </div>
+            ) : (
+              campaigns.map(campaign => (
+                <Card 
+                  key={campaign.id} 
+                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => addToProduction(campaign.id)}
+                >
+                  <CardContent className="p-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{campaign.name}</p>
+                      {campaign.offer_name && (
+                        <p className="text-xs text-muted-foreground">{campaign.offer_name}</p>
+                      )}
+                      <Badge variant="outline" className="text-xs mt-1">
+                        {campaign.progress_status?.replace(/_/g, ' ')}
+                      </Badge>
+                    </div>
+                    {addingToProduction === campaign.id && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>;
 }
