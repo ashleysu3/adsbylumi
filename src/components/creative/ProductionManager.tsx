@@ -481,6 +481,24 @@ export function ProductionManager({
     const key = getAngleCopyKeyForItem(item);
     return key ? angleCopy[key] : undefined;
   };
+
+  // Handle copy changes from checklist cards
+  const handleChecklistCopyChange = (item: ProductionItem, updatedCopy: any) => {
+    let copyKey = getAngleCopyKeyForItem(item);
+    if (!copyKey) {
+      const itemAny = item as any;
+      copyKey = itemAny.angleId || itemAny.angle_id || item.angleName || item.id;
+    }
+    if (copyKey) {
+      const updatedAngleCopy = { ...angleCopy, [copyKey]: updatedCopy };
+      onUpdateWorkspace({
+        creative_json: {
+          ...(workspace?.creative_json || {}),
+          angle_copy: updatedAngleCopy,
+        },
+      });
+    }
+  };
   
   if (productionItems.length === 0) {
     return (
