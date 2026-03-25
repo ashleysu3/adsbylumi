@@ -64,15 +64,23 @@ function getKpiColor(actual: number, target: number, goalType: 'less_than' | 'gr
 }
 
 export function ReviewForm({ brandName, brandId, campaigns, kpiTargets, onSave, onGenerateActionPlan, isGenerating, isSaving }: ReviewFormProps) {
-  const [metrics, setMetrics] = useState<CampaignMetricEntry[]>(
-    campaigns.map((c) => ({
+  const buildInitialMetrics = (camps: Array<{ id: string; name: string }>) =>
+    camps.map((c) => ({
       campaign_id: c.id,
       campaign_name: c.name,
       spend_3d: '', spend_7d: '', cpl_3d: '', cpl_7d: '', roas_3d: '', roas_7d: '', ctr_3d: '', ctr_7d: '', notes: '',
-    }))
-  );
+    }));
+
+  const [metrics, setMetrics] = useState<CampaignMetricEntry[]>(buildInitialMetrics(campaigns));
   const [ads, setAds] = useState<AdEntry[]>([]);
   const [notes, setNotes] = useState('');
+
+  // Reset form state when client/campaigns change
+  useEffect(() => {
+    setMetrics(buildInitialMetrics(campaigns));
+    setAds([]);
+    setNotes('');
+  }, [brandId]);
   const [newAdName, setNewAdName] = useState('');
 
   const updateMetric = (idx: number, field: keyof CampaignMetricEntry, value: string) => {
