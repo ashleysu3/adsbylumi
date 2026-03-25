@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Briefcase, Palette, TrendingUp, Calendar, DollarSign, CreditCard, Award, Loader2 } from "lucide-react";
+import { Users, Briefcase, Palette, TrendingUp, Calendar, DollarSign, CreditCard, Award, Loader2, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface AnalyticsData {
@@ -29,6 +29,16 @@ interface RevenueData {
     monthly_amount_cents: number;
     subscriber_count: number;
     interval: string;
+    effective_label: string;
+    subscribers: Array<{
+      email: string | null;
+      customer_id: string;
+      subscription_id: string;
+      monthly_amount_cents: number;
+      discount_label: string | null;
+      app_user_id: string | null;
+      user_full_name: string | null;
+    }>;
   }>;
 }
 
@@ -41,17 +51,26 @@ interface TopAffiliate {
 }
 
 export default function Analytics() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
   const [revenueLoading, setRevenueLoading] = useState(false);
   const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
+  const [expandedPricePoints, setExpandedPricePoints] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchAnalytics();
     fetchTopAffiliates();
     fetchRevenue();
   }, []);
+
+  const togglePricePoint = (priceId: string) => {
+    setExpandedPricePoints((prev) => ({
+      ...prev,
+      [priceId]: !prev[priceId],
+    }));
+  };
 
   const fetchRevenue = async () => {
     setRevenueLoading(true);
@@ -270,25 +289,80 @@ export default function Analytics() {
 
                 {/* Price Breakdown */}
                 <div>
-                  <h3 className="text-sm font-medium mb-3">Subscribers by Price Point</h3>
+                  <h3 className="text-sm font-medium mb-3">Subscribers by Price Point (click to view users)</h3>
                   <div className="space-y-2">
                     {revenue.price_breakdown.map((tier) => (
-                      <div key={tier.price_id} className="flex items-center justify-between rounded-lg border p-3">
-                        <div className="flex items-center gap-3">
-                          <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-sm font-medium">{tier.product_name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              ${(tier.monthly_amount_cents / 100).toFixed(2)}/{tier.interval === "year" ? "mo (annual)" : "mo"}
-                            </p>
+                      <div key={tier.price_id} className="rounded-lg border">
+                        <button
+                          type="button"
+                          onClick={() => togglePricePoint(tier.price_id)}
+                          className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/40 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{tier.product_name}</p>
+                              <p className="text-xs text-muted-foreground">{tier.effective_label}</p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold">{tier.subscriber_count}</p>
-                          <p className="text-xs text-muted-foreground">
-                            ${((tier.monthly_amount_cents * tier.subscriber_count) / 100).toFixed(2)}/mo
-                          </p>
-                        </div>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="text-sm font-bold">{tier.subscriber_count}</p>
+                              <p className="text-xs text-muted-foreground">
+                                ${((tier.monthly_amount_cents * tier.subscriber_count) / 100).toFixed(2)}/mo
+                              </p>
+                            </div>
+                            {expandedPricePoints[tier.price_id] ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </button>
+
+                        {expandedPricePoints[tier.price_id] && (
+                          <div className="border-t bg-muted/20 p-3 space-y-2">
+                            {tier.subscribers.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">No subscribers in this price point.</p>
+                            ) : (
+                              tier.subscribers.map((subscriber) => {
+                                const accountQuery = subscriber.app_user_id
+                                  ? `userId=${encodeURIComponent(subscriber.app_user_id)}`
+                                  : `email=${encodeURIComponent(subscriber.email || "")}`;
+
+                                return (
+                                  <div
+                                    key={`${tier.price_id}-${subscriber.subscription_id}`}
+                                    className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border bg-background p-2"
+                                  >
+                                    <div>
+                                      <p className="text-sm font-medium">
+                                        {subscriber.user_full_name || subscriber.email || "Unknown user"}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">{subscriber.email || "No email on file"}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="secondary">
+                                        ${(subscriber.monthly_amount_cents / 100).toFixed(2)}/mo
+                                      </Badge>
+                                      {subscriber.discount_label ? (
+                                        <Badge variant="outline">{subscriber.discount_label}</Badge>
+                                      ) : null}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => navigate(`/admin/users?${accountQuery}`)}
+                                      >
+                                        View account
+                                        <ExternalLink className="ml-1 h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
