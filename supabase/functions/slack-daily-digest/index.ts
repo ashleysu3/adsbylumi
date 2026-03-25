@@ -4,6 +4,8 @@ const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
 const SLACK_CHANNEL = 'lumi-alerts';
 
 Deno.serve(async (req) => {
+  // Slack daily digest disabled — returning early
+  return new Response(JSON.stringify({ success: true, disabled: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204 });
   }

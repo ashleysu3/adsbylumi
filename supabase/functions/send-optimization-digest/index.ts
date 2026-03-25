@@ -110,17 +110,7 @@ Deno.serve(async (req) => {
       throw new Error(emailError.message);
     }
 
-    // Send to Slack if configured
-    const slackChannel = slackChannelOverride || digestSettings?.slack_channel_id;
-    if (slackChannel) {
-      try {
-        const slackText = buildSlackMessage(brand.name, report.date_range_start, report.date_range_end, summary, shareUrl);
-        await sendSlackMessage(slackChannel, slackText);
-        console.log(`Slack message sent to #${slackChannel}`);
-      } catch (slackErr) {
-        console.error('Slack send failed (non-fatal):', slackErr);
-      }
-    }
+    // Slack notification disabled
 
     // Update last_sent_at
     await supabase
