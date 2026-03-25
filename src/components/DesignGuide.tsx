@@ -60,7 +60,7 @@ export function DesignGuide({ concept = {}, onComplete, onBack }: DesignGuidePro
               }
             />
             <Label htmlFor="dimensions" className="cursor-pointer">
-              Set up canvas: 1080x1080px (square) or 1080x1920px (story)
+              Set up canvas at <span className="font-semibold text-primary">1080×1080px (square)</span> — all static and carousel creatives must be 1:1
             </Label>
           </div>
           <div className="flex items-center space-x-3">
@@ -172,6 +172,21 @@ export function DesignGuide({ concept = {}, onComplete, onBack }: DesignGuidePro
           </div>
         </Card>
       )}
+
+      {/* Format Requirements */}
+      <Card className="p-6 space-y-3 border-primary/30 bg-primary/5">
+        <h3 className="font-semibold text-lg">📐 Format Requirements</h3>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-start gap-2">
+            <span className="font-semibold text-primary mt-0.5">Images & Carousels:</span>
+            <span className="text-muted-foreground">All static images and carousel slides must be <span className="font-semibold text-foreground">1:1 (1080×1080px)</span>. You can optionally add a 9:16 vertical version for Stories/Reels placements.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <span className="font-semibold text-primary mt-0.5">Videos:</span>
+            <span className="text-muted-foreground">All video assets must be <span className="font-semibold text-foreground">9:16 vertical (1080×1920px)</span>. Landscape or square videos will be rejected.</span>
+          </div>
+        </div>
+      </Card>
 
       {/* Pro Tips */}
       <Card className="p-6 space-y-3 bg-primary/5 border-primary/20">

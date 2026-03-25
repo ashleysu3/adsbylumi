@@ -310,6 +310,7 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
         </CardTitle>
         <CardDescription>
           Drag and drop files or click to browse. Max 50MB per file.
+          <span className="block mt-1 text-xs font-medium">Images: 1:1 (1080×1080px) • Videos: 9:16 vertical only</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
