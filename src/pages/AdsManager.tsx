@@ -131,11 +131,15 @@ export default function AdsManager() {
         // Auto-compute health status from campaign performance
         let autoHealth = 'healthy';
         const activeCampaigns = enrichedCampaigns.filter((c: any) => c.hasLiveData);
-        if (activeCampaigns.length > 0) {
-          const statuses = activeCampaigns.map((c: any) => {
+        const campaignsWithGoalsAndData = activeCampaigns.filter((c: any) => {
+          const report = c.performance_report_latest as any;
+          return report?.metrics && c.goal;
+        });
+
+        if (campaignsWithGoalsAndData.length > 0) {
+          const statuses = campaignsWithGoalsAndData.map((c: any) => {
             const report = c.performance_report_latest as any;
             const goal = c.goal;
-            if (!report?.metrics || !goal) return 'unknown';
             const m = report.metrics;
             const kpi = goal.primary_kpi;
             const threshold = goal.primary_kpi_threshold;
@@ -150,14 +154,15 @@ export default function AdsManager() {
             if (value >= threshold) return 'green';
             if (value >= threshold * 0.7) return 'amber';
             return 'red';
-          });
+          }).filter((s: string) => s !== 'unknown');
+
           if (statuses.includes('red')) autoHealth = 'needs_attention';
           else if (statuses.includes('amber')) autoHealth = 'watching';
-          else autoHealth = 'healthy';
+          else if (statuses.length > 0) autoHealth = 'healthy';
         }
 
-        if (client.health_status !== autoHealth && activeCampaigns.length > 0) {
-          supabase.from('agency_clients').update({ health_status: autoHealth }).eq('id', client.id);
+        if (client.health_status !== autoHealth && campaignsWithGoalsAndData.length > 0) {
+          await supabase.from('agency_clients').update({ health_status: autoHealth }).eq('id', client.id);
         }
 
         return { ...client, health_status: activeCampaigns.length > 0 ? autoHealth : client.health_status, brand: brandRes.data, campaigns: enrichedCampaigns };
