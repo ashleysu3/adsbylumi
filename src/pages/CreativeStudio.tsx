@@ -574,10 +574,11 @@ export default function CreativeStudio() {
 
   const handleSaveCopy = useCallback(async () => {
     if (!workspace) return;
+    // Flush any pending debounced save immediately
+    if (copySaveTimerRef.current) clearTimeout(copySaveTimerRef.current);
     setCopySaveStatus("saving");
     try {
-      // Use the ref for latest state instead of stale workspace closure
-      const merged = { ...creativeJsonRef.current, angle_copy: angleCopy };
+      const merged = { ...creativeJsonRef.current, angle_copy: angleCopyRef.current };
       creativeJsonRef.current = merged;
       await supabase
         .from("campaign_workspaces")
@@ -589,14 +590,13 @@ export default function CreativeStudio() {
       setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
       setCopySaveStatus("saved");
       setTimeout(() => setCopySaveStatus("idle"), 2000);
-      toast.success("Copy saved!");
     } catch (e) {
       console.error("Failed to save copy:", e);
       setCopySaveStatus("error");
       setTimeout(() => setCopySaveStatus("idle"), 3000);
       toast.error("Failed to save copy");
     }
-  }, [workspace?.id, angleCopy]);
+  }, [workspace?.id]);
 
   const handleAddCustomAngle = useCallback((newAngle: CreativeAngle) => {
     setAvailableAngles(prev => [...prev, newAngle]);
