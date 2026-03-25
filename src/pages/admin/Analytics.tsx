@@ -241,19 +241,7 @@ export default function Analytics() {
             <CardDescription>Monthly recurring revenue and subscriber breakdown</CardDescription>
           </CardHeader>
           <CardContent>
-            {!secretLocked ? (
-              <div className="flex items-center gap-2 max-w-md">
-                <KeyRound className="h-4 w-4 text-muted-foreground shrink-0" />
-                <Input
-                  type="password"
-                  placeholder="Enter admin secret to view revenue..."
-                  value={adminSecret}
-                  onChange={(e) => setAdminSecret(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && lockSecret()}
-                />
-                <Button size="sm" onClick={lockSecret}>Unlock</Button>
-              </div>
-            ) : revenueLoading ? (
+            {revenueLoading ? (
               <div className="flex items-center gap-2 py-8 justify-center">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span className="text-sm text-muted-foreground">Loading revenue data from Stripe...</span>
