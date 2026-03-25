@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords } = await req.json();
+    const { brandName, strategyData, audiencePsychology, offerData, conversationInsights, brandId, offerId, offerAudiencePsychology, productPsychology, preGenerationContext, creativeIntelligence, previouslyUsedAngles, neverUseWords, singleAngleReplacement, maxAngles } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -208,7 +208,7 @@ ${preGenerationContext?.perspectiveRole === 'buyer'
 }
 
 RULES:
-- Generate exactly 11 creative angles
+- Generate exactly ${maxAngles === 1 ? '1 creative angle' : '11 creative angles'}${singleAngleReplacement ? `\n- You are REPLACING the angle "${singleAngleReplacement}" — generate a COMPLETELY DIFFERENT angle that serves a similar strategic purpose but takes a fresh approach` : ''}
 - Each angle must have a short, plain-language name (2-4 words)
 - Each angle must have a one-sentence description written for non-marketers
 - Do NOT use marketing jargon, funnel language, or technical terms
@@ -283,7 +283,7 @@ ${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audie
 
 ${productPsychology ? `PRODUCT PSYCHOLOGY:\n${JSON.stringify(productPsychology, null, 2)}` : ""}
 
-Generate exactly 11 creative angles that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}${isDmLeads ? " Remember: every angle must drive DM conversations, not link clicks or purchases." : ""}`;
+Generate ${maxAngles === 1 ? 'exactly 1 creative angle as a replacement for "' + (singleAngleReplacement || '') + '"' : 'exactly 11 creative angles'} that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}${isDmLeads ? " Remember: every angle must drive DM conversations, not link clicks or purchases." : ""}`;
 
     console.log("[generate-creative-angles] Calling AI API...");
 

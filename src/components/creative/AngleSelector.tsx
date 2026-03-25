@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Sparkles, ArrowRight, Lock, Pin, Plus, Loader2, Wand2 } from "lucide-react";
+import { Sparkles, ArrowRight, Lock, Pin, Plus, Loader2, Wand2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -32,6 +32,8 @@ interface AngleSelectorProps {
   onContinue: () => void;
   isGenerating?: boolean;
   onAddCustomAngle?: (angle: CreativeAngle) => void;
+  onRegenerateAngle?: (angleId: string) => void;
+  regeneratingAngleId?: string | null;
   brandName?: string;
   offerData?: { name?: string; description?: string; price?: string };
 }
@@ -43,6 +45,8 @@ export function AngleSelector({
   onContinue,
   isGenerating,
   onAddCustomAngle,
+  onRegenerateAngle,
+  regeneratingAngleId,
   brandName,
   offerData
 }: AngleSelectorProps) {
@@ -170,19 +174,26 @@ export function AngleSelector({
           const isSelected = selectedAngles.includes(angle.id);
           const isDefault = angle.isDefault === true;
           const isDisabled = isDefault || (!isSelected && selectedAngles.length >= 5);
+          const isThisRegenerating = regeneratingAngleId === angle.id;
 
           return (
             <Card
               key={angle.id}
               className={cn(
-                "cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] border-2",
+                "cursor-pointer transition-all duration-200 hover:shadow-lg active:scale-[0.98] border-2 group relative",
                 isDefault && "border-primary/30 border-dashed bg-primary/5 cursor-default",
                 !isDefault && isSelected && "border-primary ring-2 ring-primary/20 bg-primary/5 shadow-md",
                 !isDefault && !isSelected && !isDisabled && "border-transparent hover:border-primary/40",
-                !isDefault && isDisabled && "opacity-50 cursor-not-allowed border-muted"
+                !isDefault && isDisabled && "opacity-50 cursor-not-allowed border-muted",
+                isThisRegenerating && "opacity-60 pointer-events-none"
               )}
-              onClick={() => !isDefault && !isDisabled && toggleAngle(angle.id)}
+              onClick={() => !isDefault && !isDisabled && !isThisRegenerating && toggleAngle(angle.id)}
             >
+              {isThisRegenerating && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-lg z-10">
+                  <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                </div>
+              )}
               <CardHeader className="pb-2 p-3 sm:p-4 sm:pb-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -192,6 +203,21 @@ export function AngleSelector({
                     </CardTitle>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {!isDefault && onRegenerateAngle && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRegenerateAngle(angle.id);
+                        }}
+                        disabled={isThisRegenerating}
+                        title="Regenerate this angle"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
+                    )}
                     {isDefault && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5">Always included</Badge>
                     )}

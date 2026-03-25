@@ -11,7 +11,7 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
-  X, Check, FileDown, Printer, BarChart3
+  X, Check, FileDown, Printer, BarChart3, RefreshCw
 } from "lucide-react";
 import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
@@ -174,6 +174,8 @@ export default function CreativeStudio() {
 
   // Regeneration confirmation state
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [regeneratingCellId, setRegeneratingCellId] = useState<string | null>(null);
+  const [regeneratingAngleId, setRegeneratingAngleId] = useState<string | null>(null);
  
   // Pre-generation context state
   const [showContextInput, setShowContextInput] = useState(false);
@@ -454,24 +456,26 @@ export default function CreativeStudio() {
     } catch (e) { console.error(e); }
   };
 
-  // Save last active tab to workspace when it changes
+  // Save last active tab to workspace when it changes + flush pending copy saves
   useEffect(() => {
     if (workspace && activeTab && activeTab !== "angles") {
       const cur = (workspace.creative_json || {}) as Record<string, any>;
       // Only save if different from current stored value
       if (cur.lastActiveTab !== activeTab) {
+        // Flush copy state on tab switch to prevent data loss
+        const merged = { ...creativeJsonRef.current, lastActiveTab: activeTab, angle_copy: angleCopy };
+        creativeJsonRef.current = merged;
         supabase
           .from("campaign_workspaces")
           .update({ 
-            creative_json: { ...cur, lastActiveTab: activeTab },
+            creative_json: merged,
             updated_at: new Date().toISOString()
           })
           .eq("id", workspace.id)
           .then(() => {
-            // Update local workspace state
             setWorkspace((prev: any) => ({
               ...prev,
-              creative_json: { ...prev?.creative_json, lastActiveTab: activeTab }
+              creative_json: merged
             }));
           });
       }
@@ -538,12 +542,43 @@ export default function CreativeStudio() {
     setAngleCopy(prev => ({ ...prev, [angleId]: copy }));
   }, []);
 
+  // Auto-save angleCopy whenever it changes (debounced)
+  const angleCopyRef = useRef(angleCopy);
+  angleCopyRef.current = angleCopy;
+  const copySaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!workspace || Object.keys(angleCopy).length === 0) return;
+    // Debounce: save 1.5s after last change
+    if (copySaveTimerRef.current) clearTimeout(copySaveTimerRef.current);
+    copySaveTimerRef.current = setTimeout(async () => {
+      setCopySaveStatus("saving");
+      try {
+        const merged = { ...creativeJsonRef.current, angle_copy: angleCopyRef.current };
+        creativeJsonRef.current = merged;
+        await supabase
+          .from("campaign_workspaces")
+          .update({ creative_json: merged, updated_at: new Date().toISOString() })
+          .eq("id", workspace.id);
+        setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
+        setCopySaveStatus("saved");
+        setTimeout(() => setCopySaveStatus("idle"), 2000);
+      } catch (e) {
+        console.error("Auto-save copy failed:", e);
+        setCopySaveStatus("error");
+        setTimeout(() => setCopySaveStatus("idle"), 3000);
+      }
+    }, 1500);
+    return () => { if (copySaveTimerRef.current) clearTimeout(copySaveTimerRef.current); };
+  }, [angleCopy, workspace?.id]);
+
   const handleSaveCopy = useCallback(async () => {
     if (!workspace) return;
+    // Flush any pending debounced save immediately
+    if (copySaveTimerRef.current) clearTimeout(copySaveTimerRef.current);
     setCopySaveStatus("saving");
     try {
-      // Use the ref for latest state instead of stale workspace closure
-      const merged = { ...creativeJsonRef.current, angle_copy: angleCopy };
+      const merged = { ...creativeJsonRef.current, angle_copy: angleCopyRef.current };
       creativeJsonRef.current = merged;
       await supabase
         .from("campaign_workspaces")
@@ -555,14 +590,13 @@ export default function CreativeStudio() {
       setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
       setCopySaveStatus("saved");
       setTimeout(() => setCopySaveStatus("idle"), 2000);
-      toast.success("Copy saved!");
     } catch (e) {
       console.error("Failed to save copy:", e);
       setCopySaveStatus("error");
       setTimeout(() => setCopySaveStatus("idle"), 3000);
       toast.error("Failed to save copy");
     }
-  }, [workspace?.id, angleCopy]);
+  }, [workspace?.id]);
 
   const handleAddCustomAngle = useCallback((newAngle: CreativeAngle) => {
     setAvailableAngles(prev => [...prev, newAngle]);
@@ -832,6 +866,95 @@ export default function CreativeStudio() {
       confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
     } catch (e: any) { toast.error(e.message || "Failed"); }
     finally { setGenerating(false); setGeneratingPhase(null); }
+  };
+
+  // Regenerate a single concept cell
+  const regenerateGridCell = async (cellId: string) => {
+    const cell = gridData.find(c => c.id === cellId);
+    if (!cell || !workspace) return;
+    const angle = availableAngles.find(a => a.id === cell.angleId);
+    if (!angle) return;
+
+    setRegeneratingCellId(cellId);
+    try {
+      let messagingGuidelines = null;
+      let productPsychology = null;
+      if (workspace.offer_id) {
+        const { data: offerData } = await supabase
+          .from('offers')
+          .select('messaging_guidelines, product_psychology')
+          .eq('id', workspace.offer_id)
+          .single();
+        if (offerData) {
+          messagingGuidelines = offerData.messaging_guidelines;
+          productPsychology = offerData.product_psychology;
+        }
+      }
+      const { data, error } = await supabase.functions.invoke('regenerate-creative-cell', {
+        body: {
+          cell: { id: cell.id, format: cell.format, hook: cell.hook, guidance: cell.guidance, row: cell.row },
+          angle: { name: angle.name, description: angle.description },
+          brandName: workspace.brands?.name,
+          strategyData: workspace.strategy_json,
+          audiencePsychology: workspace.brands?.audience_psychology,
+          offerData: { name: workspace.offer_name, description: workspace.offer_description, price: workspace.offer_price },
+          brandVoice: workspace.brands?.brand_voice,
+          messagingGuidelines,
+          productPsychology,
+        }
+      });
+      if (error) throw error;
+      const updatedCell = data.cell;
+      const updatedGrid = gridData.map(c => c.id === cellId ? { ...c, ...updatedCell, id: cellId, angleId: cell.angleId, row: cell.row } : c);
+      setGridData(updatedGrid);
+      await saveCreativeState({ gridData: updatedGrid });
+      toast.success("Concept refreshed!");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to regenerate concept");
+    } finally {
+      setRegeneratingCellId(null);
+    }
+  };
+
+  // Regenerate a single angle
+  const regenerateSingleAngle = async (angleId: string) => {
+    if (angleId === "direct_from_page") return;
+    const existingAngle = availableAngles.find(a => a.id === angleId);
+    if (!existingAngle || !workspace) return;
+
+    setRegeneratingAngleId(angleId);
+    try {
+      const otherAngleNames = availableAngles
+        .filter(a => a.id !== angleId && a.id !== "direct_from_page")
+        .map(a => a.name);
+
+      const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
+        body: {
+          brandName: workspace.brands?.name,
+          strategyData: workspace.strategy_json,
+          audiencePsychology: workspace.brands?.audience_psychology,
+          offerData: { name: workspace.offer_name, description: workspace.offer_description, price: workspace.offer_price },
+          previouslyUsedAngles: otherAngleNames,
+          neverUseWords: (workspace.brands as any)?.never_use_words || [],
+          brandId,
+          offerId: workspace.offer_id,
+          singleAngleReplacement: existingAngle.name,
+          maxAngles: 1,
+        }
+      });
+      if (error) throw error;
+      const newAngle = data.angles?.[0];
+      if (!newAngle) throw new Error("No angle returned");
+
+      const updatedAngles = availableAngles.map(a => a.id === angleId ? { ...newAngle, id: angleId } : a);
+      setAvailableAngles(updatedAngles);
+      await saveCreativeState({ angles: updatedAngles });
+      toast.success(`"${newAngle.name}" replaced!`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to regenerate angle");
+    } finally {
+      setRegeneratingAngleId(null);
+    }
   };
 
   const addToChecklist = (cell: CreativeCellData) => {
@@ -1173,7 +1296,7 @@ export default function CreativeStudio() {
                 {creativeIntelligence && (
                   <CreativeIntelligenceCard intelligence={creativeIntelligence} />
                 )}
-                <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} brandName={workspace?.brands?.name} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
+                <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} onRegenerateAngle={regenerateSingleAngle} regeneratingAngleId={regeneratingAngleId} brandName={workspace?.brands?.name} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
                 <div className="flex justify-end gap-2">
                   {workspace?.brands?.meta_account_id && (
                     <Button variant="outline" onClick={() => setShowRefreshDialog(true)} disabled={generating}>
@@ -1231,15 +1354,34 @@ export default function CreativeStudio() {
                   {gridData.filter(c => c.angleId === activeAngleId).map(cell => {
                     const Icon = formatIcons[cell.format];
                     const isAdded = productionItems.some(p => p.hook === cell.hook);
+                    const isRegenerating = regeneratingCellId === cell.id;
                     return (
                       <Card key={cell.id} className={cn(
-                        "transition-all rounded-2xl",
-                        isAdded ? "ring-1 ring-green-200 bg-green-50/50 dark:ring-green-800 dark:bg-green-950/20" : "hover:shadow-md border"
+                        "transition-all rounded-2xl relative group",
+                        isAdded ? "ring-1 ring-green-200 bg-green-50/50 dark:ring-green-800 dark:bg-green-950/20" : "hover:shadow-md border",
+                        isRegenerating && "opacity-60 pointer-events-none"
                       )}>
+                        {isRegenerating && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded-2xl z-10">
+                            <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+                          </div>
+                        )}
                         <CardContent className="pt-4 p-6 space-y-3">
                           <div className="flex items-center justify-between">
                             <Badge variant="secondary" className="gap-1"><Icon className="h-3 w-3" />{formatLabels[cell.format]}</Badge>
-                            {isAdded && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => regenerateGridCell(cell.id)}
+                                disabled={isRegenerating}
+                                title="Regenerate this concept"
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" />
+                              </Button>
+                              {isAdded && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                            </div>
                           </div>
                           <p className="font-semibold text-base leading-snug">{cell.hook}</p>
                           <p className="text-xs text-muted-foreground line-clamp-3">{cell.guidance}</p>
