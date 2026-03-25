@@ -32,6 +32,8 @@ interface AngleSelectorProps {
   onContinue: () => void;
   isGenerating?: boolean;
   onAddCustomAngle?: (angle: CreativeAngle) => void;
+  onRegenerateAngle?: (angleId: string) => void;
+  regeneratingAngleId?: string | null;
   brandName?: string;
   offerData?: { name?: string; description?: string; price?: string };
 }
@@ -43,6 +45,8 @@ export function AngleSelector({
   onContinue,
   isGenerating,
   onAddCustomAngle,
+  onRegenerateAngle,
+  regeneratingAngleId,
   brandName,
   offerData
 }: AngleSelectorProps) {
