@@ -46,35 +46,31 @@ export default function Analytics() {
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
   const [revenueLoading, setRevenueLoading] = useState(false);
   const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
-  const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem("stripe_admin_secret") || "");
-  const [secretLocked, setSecretLocked] = useState(() => !!sessionStorage.getItem("stripe_admin_secret"));
 
   useEffect(() => {
     fetchAnalytics();
     fetchTopAffiliates();
+    fetchRevenue();
   }, []);
 
-  useEffect(() => {
-    if (secretLocked) fetchRevenue();
-  }, [secretLocked]);
-
-  const lockSecret = () => {
-    if (!adminSecret.trim()) { toast.error("Enter your admin secret first."); return; }
-    sessionStorage.setItem("stripe_admin_secret", adminSecret.trim());
-    setSecretLocked(true);
-    toast.success("Admin secret saved for this session.");
-  };
-
   const fetchRevenue = async () => {
-    const secret = sessionStorage.getItem("stripe_admin_secret");
-    if (!secret) return;
     setRevenueLoading(true);
     try {
-      const res = await fetch(FUNCTION_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
-        body: JSON.stringify({ action: "revenue_overview" }),
-      });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) { toast.error("Not authenticated"); return; }
+
+      const res = await fetch(
+        `https://sqwjbndgighjtifijgws.supabase.co/functions/v1/stripe-admin`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ action: "revenue_overview" }),
+        }
+      );
       if (!res.ok) throw new Error("Failed to fetch revenue");
       const data = await res.json();
       setRevenue(data);
