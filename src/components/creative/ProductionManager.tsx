@@ -855,6 +855,8 @@ export function ProductionManager({
                                   onSaveToLibrary={onSaveToLibrary ? () => handleSaveToLibrary(item) : undefined}
                                   savingToLibrary={savingToLibrary === item.id}
                                   onRefineScript={onRefineScript}
+                                  angleCopy={getCopyForItem(item)}
+                                  onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                                 />
                               ))}
                             </div>
