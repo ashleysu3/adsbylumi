@@ -128,11 +128,45 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
     event.target.value = '';
   };
 
+  // Validate video aspect ratio — must be 9:16 (vertical)
+  const validateVideoAspectRatio = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        URL.revokeObjectURL(video.src);
+        const ratio = video.videoWidth / video.videoHeight;
+        if (ratio > 0.65) {
+          toast.error("Videos must be in 9:16 (vertical/reel) format. Please upload a vertical video.", { duration: 5000 });
+          resolve(false);
+        } else {
+          resolve(true);
+        }
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(video.src);
+        resolve(true);
+      };
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
   const uploadFiles = async (files: File[]) => {
     if (files.length === 0) return;
 
     const validFiles = validateFiles(files);
     if (validFiles.length === 0) return;
+
+    // Validate video aspect ratios
+    const approvedFiles: File[] = [];
+    for (const file of validFiles) {
+      if (file.type.startsWith('video/')) {
+        const isValid = await validateVideoAspectRatio(file);
+        if (!isValid) continue;
+      }
+      approvedFiles.push(file);
+    }
+    if (approvedFiles.length === 0) return;
 
     setUploading(true);
     setUploadProgress(0);
