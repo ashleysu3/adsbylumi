@@ -175,8 +175,8 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
       const brandId = workspace.brand_id;
       const newAssets: any[] = [];
 
-      for (let i = 0; i < validFiles.length; i++) {
-        const file = validFiles[i];
+      for (let i = 0; i < approvedFiles.length; i++) {
+        const file = approvedFiles[i];
         const fileExt = file.name.split('.').pop();
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
