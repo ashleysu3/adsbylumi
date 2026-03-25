@@ -1,89 +1,73 @@
 
 
-## Align Weekly Email Reports with DIY Report + Add Email Approve Buttons
+## Agency Ads Manager Improvements: Auto-Status, Reports, Ad Literacy Levels, and Bug Fixes
 
-### What's Changing
+### Problems to Fix
 
-The weekly email report currently shows detailed metrics (CTR, CPC, Frequency, Reach, Budget) and generic creative fatigue suggestions. The user wants it to mirror the DIY self-serve report — simpler metrics, consistent advice language, and actionable sections (budget overview, to-do list, approve buttons) directly in the email.
+1. **Health status is manually set** — should auto-derive from latest performance reports
+2. **Reports tab shows all reports as a flat list** — should be dropdown per client, one per week max
+3. **Reports should match DFY report format** with white-label support and approve actions flowing to Approve tab
+4. **Review tab bug**: changing client doesn't update campaigns (ReviewForm initializes campaigns on mount but doesn't re-initialize when `campaigns` prop changes)
+5. **No client ad literacy level** — need per-client setting that adjusts report language complexity
+6. **Campaign notes (from agency_clients) not fed into report generation**
 
 ### Plan
 
-**1. Update the `generate-client-report` AI prompt to exclude landing page and retargeting advice**
+**1. Auto-assign health status from performance data**
 
-Add explicit rules to the prompt in `generate-client-report/index.ts`:
-- "NEVER recommend landing page changes, landing page optimization, or A/B testing landing pages"
-- "NEVER recommend retargeting campaigns or retargeting audiences — these are less effective due to Meta's Andromeda changes"
-- These rules apply to both `self-serve` and `agency` modes
+In `AdsManager.tsx` during `loadData`, after enriching campaigns, compute an aggregate health status per client based on campaign goal statuses (green/amber/red from `performance_report_latest`). Write this back to `agency_clients.health_status` automatically. Override the manually-set client edit to be read-only or advisory.
 
-**2. Simplify the email campaign rows to match DIY report metrics**
+**2. Add `ad_literacy_level` column to `agency_clients`**
 
-In `send-weekly-reports/index.ts`, trim each campaign card to show only:
-- **Ad Spend** (amount)
-- **Key Metric** with goal (e.g., "CPL: $4.82 / Goal: < $6.00")
-- **Results** count (leads, purchases, etc.)
+New migration adding:
+- `ad_literacy_level text default 'beginner'` — values: `beginner`, `intermediate`, `advanced`
 
-Remove the current detailed metrics (CTR, CPC, Frequency, Reach, Budget per campaign). Keep the status emoji and "What's Happening" / "LUMI Recommends" sections.
+Add a selector in the client edit dialog. Pass this value to `generate-client-report` so the AI prompt adjusts language complexity:
+- **Beginner**: "Explain everything like they've never run ads. Use analogies. Avoid all acronyms."
+- **Intermediate**: "They understand basics (CTR, CPL) but spell out less common terms."
+- **Advanced**: "Use standard ad terminology freely."
 
-**3. Add "What's Happening" and "LUMI Recommends" per campaign in the email**
+**3. Fix Review tab campaign switching bug**
 
-Currently the email only shows status notes. Enhance it by using the `performance_report_latest` data from each workspace (which already contains the AI-generated report). Parse the "What's Happening" and "LUMI Recommends" sections from the stored report text and include them in the email under each campaign row.
+In `ReviewForm.tsx`, the `metrics` state is initialized from `campaigns` in `useState` but never updates when `campaigns` prop changes. Add a `useEffect` that resets `metrics` and `ads` when `campaigns` changes (use `brandId` as the dependency key).
 
-**4. Add Budget Overview section to the email**
+**4. Restructure Reports tab as dropdown per client**
 
-After all campaign rows, add a summary table showing each campaign's daily budget and total daily budget + total spend — mirroring the DIY report's budget overview.
+Replace flat list with:
+- Client selector dropdown at the top
+- Show reports for selected client only, sorted newest first
+- Limit to one report per week (show latest per week group)
+- Add "Generate Report" button that calls `generate-client-report` with `mode: 'agency'`
+- Add manual date range picker for on-demand report pulls
+- Pass `ad_literacy_level` from the client to the report generation
 
-**5. Add To-Do List section to the email**
+**5. White-label reports**
 
-Parse the stored report's "Your To-Do List" section and render it in the email. Each item gets a "Get Started →" link pointing to the relevant creative studio page.
+When generating reports for the Reports tab, check `agency_branding` for the brand. If `white_label_reports` is true, pass branding data (company name, colors) to the report so "LUMI" references are replaced with the agency's name.
 
-**6. Add "Approve These Changes" section with working email buttons**
+**6. Approve actions flow to Approve tab**
 
-This is the most complex part. The approach:
-- Parse the stored report's "Approve These Changes" items
-- For each item, generate a unique approval token (UUID) and store it in a new `email_approval_tokens` table with the action details
-- Render each item in the email with an "Approve" button that links to an edge function URL: `https://sqwjbndgighjtifijgws.supabase.co/functions/v1/approve-from-email?token=XXX`
-- Create a new `approve-from-email` edge function that:
-  1. Validates the token
-  2. Inserts the action into `pending_optimizations` as approved
-  3. Calls `apply-optimizations`
-  4. Returns an HTML page showing success/failure
-  5. Sends a follow-up confirmation email to the user with the result
+When a report contains "What We Need From You" or "Agency Action Items", parse those checklist items and create `pending_optimizations` entries with `status: 'pending'`. These appear in the existing Approve tab for review/execution.
 
-**7. Exclude landing page and retargeting advice from email fatigue suggestions**
+**7. Feed campaign notes into report generation**
 
-Update the hardcoded fatigue suggestions in the email function to never mention landing pages or retargeting. Keep suggestions focused on creative refreshes (new hooks, testimonials, cut-downs, etc.).
+In `generate-client-report`, fetch `agency_clients.notes` for the brand and include in the AI prompt as "AGENCY NOTES (internal context — consider tone and priorities): {notes}". This lets notes like "client is stressed about this one" influence the report tone.
 
 ### Database Changes
 
-New table: `email_approval_tokens`
-- `id` UUID primary key
-- `user_id` UUID (references profiles)
-- `brand_id` UUID (references brands)
-- `workspace_id` UUID nullable
-- `action_description` text
-- `token` text unique
-- `status` text default 'pending' (pending/used/expired)
-- `created_at` timestamptz
-- `expires_at` timestamptz (7 days from creation)
-- RLS: service role only (accessed by edge functions)
-
-### New Edge Function
-
-`approve-from-email/index.ts` — handles GET requests with a `token` param:
-1. Look up token in `email_approval_tokens`
-2. Validate not expired/used
-3. Insert into `pending_optimizations`
-4. Call `apply-optimizations`
-5. Mark token as used
-6. Send confirmation email via Resend
-7. Return branded HTML success page
+Migration: Add `ad_literacy_level` to `agency_clients`:
+```sql
+ALTER TABLE public.agency_clients 
+ADD COLUMN ad_literacy_level text NOT NULL DEFAULT 'beginner';
+```
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-client-report/index.ts` | Add no-landing-page and no-retargeting rules to AI prompt |
-| `supabase/functions/send-weekly-reports/index.ts` | Simplify metrics, add What's Happening/LUMI Recommends/Budget/To-Do/Approve sections; generate approval tokens; exclude landing page/retargeting advice from fatigue suggestions |
-| `supabase/functions/approve-from-email/index.ts` | **New** — handles email approval clicks, executes action, sends confirmation |
-| Database migration | Create `email_approval_tokens` table |
+| `src/pages/AdsManager.tsx` | Auto-compute health status; restructure Reports tab with client dropdown + date picker + generate button; pass literacy level |
+| `src/components/ads-manager/ReviewForm.tsx` | Add useEffect to reset state when campaigns/brandId changes |
+| `src/components/ads-manager/ReportDraftPreview.tsx` | Support white-label branding display |
+| `supabase/functions/generate-client-report/index.ts` | Accept `adLiteracyLevel` param; fetch agency notes; adjust prompt language by literacy; include notes context |
+| Database migration | Add `ad_literacy_level` column to `agency_clients` |
 
