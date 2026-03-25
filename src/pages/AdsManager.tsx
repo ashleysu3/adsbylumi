@@ -542,7 +542,7 @@ export default function AdsManager() {
                 <div><Label>Slack Internal Channel</Label><Input value={formData.slack_internal_channel} onChange={(e) => setFormData((p) => ({ ...p, slack_internal_channel: e.target.value }))} /></div>
               </div>
               <div>
-                <Label>Health Status</Label>
+                <Label>Health Status <span className="text-muted-foreground text-xs">(auto-computed from performance)</span></Label>
                 <Select value={formData.health_status} onValueChange={(v) => setFormData((p) => ({ ...p, health_status: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -553,7 +553,18 @@ export default function AdsManager() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Notes</Label><Textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} /></div>
+              <div>
+                <Label>Ad Literacy Level</Label>
+                <Select value={formData.ad_literacy_level} onValueChange={(v) => setFormData((p) => ({ ...p, ad_literacy_level: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">🌱 Beginner — No ad knowledge</SelectItem>
+                    <SelectItem value="intermediate">📊 Intermediate — Knows basics</SelectItem>
+                    <SelectItem value="advanced">🎯 Advanced — Fluent in ad lingo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div><Label>Notes</Label><Textarea value={formData.notes} onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))} placeholder="Internal notes about this client (e.g. 'client is stressed about lead costs')..." /></div>
               <Button onClick={handleSaveClient} className="w-full">{editingClient ? 'Update Client' : 'Add Client'}</Button>
             </div>
           </DialogContent>
