@@ -598,7 +598,14 @@ export default function ContentLibrary() {
                           updateStatus(idea.id, status.value);
                         }}>
                                     Mark as {status.label}
-                                  </DropdownMenuItem>)}
+                                   </DropdownMenuItem>)}
+                                <DropdownMenuItem onClick={e => {
+                          e.stopPropagation();
+                          openProductionPicker(idea);
+                        }}>
+                                  <ClipboardList className="h-4 w-4 mr-2" />
+                                  Add to Production
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={e => {
                           e.stopPropagation();
                           handleDelete(idea.id);
