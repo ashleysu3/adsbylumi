@@ -139,12 +139,14 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdP
                       className="w-full h-full object-cover"
                       muted
                       playsInline
+                      onLoadedMetadata={handleVideoLoad}
                     />
                   ) : (
                     <img 
                       src={assetUrl} 
                       alt="Ad creative"
                       className="w-full h-full object-cover"
+                      onLoad={handleImageLoad}
                     />
                   )
                 ) : (
