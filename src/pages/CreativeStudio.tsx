@@ -842,6 +842,95 @@ export default function CreativeStudio() {
     finally { setGenerating(false); setGeneratingPhase(null); }
   };
 
+  // Regenerate a single concept cell
+  const regenerateGridCell = async (cellId: string) => {
+    const cell = gridData.find(c => c.id === cellId);
+    if (!cell || !workspace) return;
+    const angle = availableAngles.find(a => a.id === cell.angleId);
+    if (!angle) return;
+
+    setRegeneratingCellId(cellId);
+    try {
+      let messagingGuidelines = null;
+      let productPsychology = null;
+      if (workspace.offer_id) {
+        const { data: offerData } = await supabase
+          .from('offers')
+          .select('messaging_guidelines, product_psychology')
+          .eq('id', workspace.offer_id)
+          .single();
+        if (offerData) {
+          messagingGuidelines = offerData.messaging_guidelines;
+          productPsychology = offerData.product_psychology;
+        }
+      }
+      const { data, error } = await supabase.functions.invoke('regenerate-creative-cell', {
+        body: {
+          cell: { id: cell.id, format: cell.format, hook: cell.hook, guidance: cell.guidance, row: cell.row },
+          angle: { name: angle.name, description: angle.description },
+          brandName: workspace.brands?.name,
+          strategyData: workspace.strategy_json,
+          audiencePsychology: workspace.brands?.audience_psychology,
+          offerData: { name: workspace.offer_name, description: workspace.offer_description, price: workspace.offer_price },
+          brandVoice: workspace.brands?.brand_voice,
+          messagingGuidelines,
+          productPsychology,
+        }
+      });
+      if (error) throw error;
+      const updatedCell = data.cell;
+      const updatedGrid = gridData.map(c => c.id === cellId ? { ...c, ...updatedCell, id: cellId, angleId: cell.angleId, row: cell.row } : c);
+      setGridData(updatedGrid);
+      await saveCreativeState({ gridData: updatedGrid });
+      toast.success("Concept refreshed!");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to regenerate concept");
+    } finally {
+      setRegeneratingCellId(null);
+    }
+  };
+
+  // Regenerate a single angle
+  const regenerateSingleAngle = async (angleId: string) => {
+    if (angleId === "direct_from_page") return;
+    const existingAngle = availableAngles.find(a => a.id === angleId);
+    if (!existingAngle || !workspace) return;
+
+    setRegeneratingAngleId(angleId);
+    try {
+      const otherAngleNames = availableAngles
+        .filter(a => a.id !== angleId && a.id !== "direct_from_page")
+        .map(a => a.name);
+
+      const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
+        body: {
+          brandName: workspace.brands?.name,
+          strategyData: workspace.strategy_json,
+          audiencePsychology: workspace.brands?.audience_psychology,
+          offerData: { name: workspace.offer_name, description: workspace.offer_description, price: workspace.offer_price },
+          previouslyUsedAngles: otherAngleNames,
+          neverUseWords: (workspace.brands as any)?.never_use_words || [],
+          brandId,
+          offerId: workspace.offer_id,
+          singleAngleReplacement: existingAngle.name,
+          maxAngles: 1,
+        }
+      });
+      if (error) throw error;
+      const newAngle = data.angles?.[0];
+      if (!newAngle) throw new Error("No angle returned");
+
+      const updatedAngles = availableAngles.map(a => a.id === angleId ? { ...newAngle, id: angleId } : a);
+      setAvailableAngles(updatedAngles);
+      await saveCreativeState({ angles: updatedAngles });
+      toast.success(`"${newAngle.name}" replaced!`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to regenerate angle");
+    } finally {
+      setRegeneratingAngleId(null);
+    }
+  };
+
   const addToChecklist = (cell: CreativeCellData) => {
     const angle = availableAngles.find(a => a.id === cell.angleId);
     const currentRound = (workspace?.creative_json as Record<string, any>)?.currentRound || null;
