@@ -210,7 +210,7 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
             productionItem?.concept?.title || productionItem?.linked_concept_title || (productionItem as any)?.hook || null,
         });
 
-        setUploadProgress(((i + 1) / validFiles.length) * 100);
+        setUploadProgress(((i + 1) / approvedFiles.length) * 100);
       }
 
       // Update workspace with new assets
@@ -228,7 +228,7 @@ export function DragDropUploader({ workspace, onUpdate, productionItem }: DragDr
 
       onUpdate({ user_uploaded_assets: updatedAssets });
 
-      toast.success(`Uploaded ${validFiles.length} file${validFiles.length > 1 ? 's' : ''} successfully!`);
+      toast.success(`Uploaded ${approvedFiles.length} file${approvedFiles.length > 1 ? 's' : ''} successfully!`);
 
     } catch (error: any) {
       console.error('Upload error:', error);
