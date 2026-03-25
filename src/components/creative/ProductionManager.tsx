@@ -644,6 +644,13 @@ export function ProductionManager({
         className="hidden"
         onChange={(e) => uploadingItemId && handleFileSelect(e, uploadingItemId)}
       />
+      <input
+        ref={verticalFileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => uploadingVerticalItemId && handleVerticalFileSelect(e, uploadingVerticalItemId)}
+      />
       
       <div className="space-y-4">
         {/* Creative Checklist - Full Width */}
