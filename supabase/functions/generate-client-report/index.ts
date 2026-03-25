@@ -434,7 +434,7 @@ After all campaigns:
 
 ---
 
-${reportMode === 'self-serve' ? `### 📋 Your To-Do List
+### 📋 Your To-Do List
 [List creative tasks the user should do themselves. Format as a checklist:]
 - [ ] Record a new hook video for [Campaign] — by [Date]
 - [ ] Refresh creative assets for [Campaign]
@@ -444,24 +444,11 @@ If no creative tasks, write "No creative tasks this period — your content is p
 ---
 
 ### 🤝 Approve These Changes
-[List actions that LUMI can execute once the user approves. Budget changes, pausing/enabling ads, swapping bench creative. Format:]
+[List actions that ${advisorName} can execute once approved. Budget changes, pausing/enabling ads, swapping bench creative. Format:]
 - [ ] Approve budget increase for [Campaign] from $X/day → $X/day
 - [ ] Approve pausing underperforming ad "[Ad Name]" in [Campaign]
 - [ ] Approve swapping in bench creative for [Campaign]
-If nothing needs approval, write "No changes pending your approval this week ✅"` : `### 📋 Agency Action Items
-[List every commitment your team made above with a specific date. Format as a checklist:]
-- [ ] [Action] — by [Date]
-- [ ] [Action] — by [Date]
-If no date-specific actions, write "No scheduled action items this period."
-
----
-
-### 🤝 What We Need From You
-[List items that need client approval or action. Budget changes MUST appear here. Format:]
-- [ ] Approve budget increase for [Campaign] from $X/day → $X/day
-- [ ] Send updated creative assets for [Campaign]
-- [ ] Confirm [specific thing]
-If nothing is needed, write "Nothing needed from you this week — we're on it! ✅"`}
+If nothing needs approval, write "No changes pending approval this week ✅"
 
 DECISION TREE FOR EACH CAMPAIGN:
 1. **MEETING TARGET**: State clearly this is performing well. Recommend scaling 15-20%. Cite specific metric vs target.

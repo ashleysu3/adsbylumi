@@ -559,7 +559,7 @@ export function InsightsHome({
             onCustomDateRangeChange={onCustomDateRangeChange}
           />
         </div>
-        {brandId && campaigns.length > 0 && isAgencyUser && (
+        {brandId && campaigns.length > 0 && (
           <Button
             variant="outline"
             size="sm"
@@ -567,7 +567,7 @@ export function InsightsHome({
             onClick={() => setReportModalOpen(true)}
           >
             <FileText className="h-3.5 w-3.5" />
-            Generate Report
+            Performance Report
           </Button>
         )}
       </div>
