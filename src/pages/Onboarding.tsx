@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight, CheckCircle2, ChevronLeft, User, Smile, Link2, X, Mail } from "lucide-react";
+import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight, CheckCircle2, ChevronLeft, User, Smile, Link2, X, Mail, Brain, Heart, AlertCircle, Zap, Users, Pencil, PlusCircle, Download } from "lucide-react";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { PostConnectionAnalysisModal } from "@/components/PostConnectionAnalysisModal";
@@ -19,10 +19,20 @@ import { motion } from "framer-motion";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { formatInvokeError } from "@/lib/formatInvokeError";
 import { useBrand } from "@/contexts/BrandContext";
+import { LumiThinkingInline } from "@/components/LumiThinking";
 
-const STEP_LABELS = ["Brand Basics", "Positioning", "Meet Lumi", "Connect Meta"];
+const STEP_LABELS = ["Brand Basics", "Positioning", "Psychology", "Meet Lumi", "Connect Meta", "What's Next"];
 const DEFAULT_EMOJIS = ['✨', '🎯', '💡', '🚀', '💪', '⭐'];
 const BULLET_OPTIONS = ['✅', '→', '•', '✓', '▸', '★', '💫', '🔥'];
+
+const PSYCHOLOGY_LOADING_COPY = [
+  "Analyzing your brand's positioning...",
+  "Understanding your ideal client...",
+  "Mapping psychological pain points...",
+  "Identifying what motivates your audience...",
+  "Building your psychology profile...",
+  "This takes a moment — worth it.",
+];
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -37,6 +47,7 @@ export default function Onboarding() {
   const [autoExtractPending, setAutoExtractPending] = useState(false);
   const [createdBrandId, setCreatedBrandId] = useState<string | null>(null);
   const [showPostConnectionAnalysis, setShowPostConnectionAnalysis] = useState(false);
+
   // Step 1
   const [brandName, setBrandName] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -46,7 +57,14 @@ export default function Onboarding() {
   const [valueProposition, setValueProposition] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
 
-  // Step 3 - Copy Style
+  // Step 3 - Psychology
+  const [psychologyData, setPsychologyData] = useState<any>(null);
+  const [psychologyStatus, setPsychologyStatus] = useState<string>("pending");
+  const [pollingPsychology, setPollingPsychology] = useState(false);
+  const [editingPsychology, setEditingPsychology] = useState(false);
+  const [editedPsychology, setEditedPsychology] = useState<any>(null);
+
+  // Step 4 - Copy Style
   const [copyPerspective, setCopyPerspective] = useState<'I' | 'We'>('I');
   const [useEmojis, setUseEmojis] = useState(true);
   const [brandEmojis, setBrandEmojis] = useState<string[]>(DEFAULT_EMOJIS);
@@ -54,9 +72,13 @@ export default function Onboarding() {
   const [newEmoji, setNewEmoji] = useState('');
 
   const extractDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     checkAuth();
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
   }, []);
 
   const checkAuth = async () => {
@@ -74,12 +96,9 @@ export default function Onboarding() {
   const triggerAutoExtract = useCallback((url: string) => {
     const normalizedUrl = normalizeWebsiteUrl(url);
     if (!normalizedUrl || normalizedUrl.length < 10) return;
-    // Don't re-extract the same URL
     if (hasExtractedUrlRef.current === normalizedUrl) return;
     
-    if (extractDebounceRef.current) {
-      clearTimeout(extractDebounceRef.current);
-    }
+    if (extractDebounceRef.current) clearTimeout(extractDebounceRef.current);
     
     setAutoExtractPending(true);
     
@@ -97,15 +116,12 @@ export default function Onboarding() {
         const { data, error } = await supabase.functions.invoke("extract-brand-info", {
           body: { websiteUrl: normalizedUrl },
         });
-
         if (error) throw error;
-
         setValueProposition(data.value_proposition || "");
         setTargetAudience(data.target_audience || "");
         setIndustry(data.industry || "");
         setHasExtracted(true);
         hasExtractedUrlRef.current = normalizedUrl;
-
         toast.success("✨ Website analyzed! Review the extracted info below.");
       } catch (error: any) {
         console.error("Auto-extract error:", error);
@@ -128,30 +144,23 @@ export default function Onboarding() {
 
   const handleStep1Next = async () => {
     const normalizedWebsiteUrl = normalizeWebsiteUrl(websiteUrl);
-
     if (!brandName.trim() || !normalizedWebsiteUrl) {
       toast.error("Please fill in brand name and website URL");
       return;
     }
-
     if (normalizedWebsiteUrl !== websiteUrl) setWebsiteUrl(normalizedWebsiteUrl);
-
     if (!hasExtracted && !valueProposition && !targetAudience && !industry) {
       setExtracting(true);
       toast.info("Analyzing your website before continuing...");
-
       try {
         const { data, error } = await supabase.functions.invoke("extract-brand-info", {
           body: { websiteUrl: normalizedWebsiteUrl },
         });
-
         if (error) throw error;
-
         setValueProposition(data.value_proposition);
         setTargetAudience(data.target_audience);
         setIndustry(data.industry);
         setHasExtracted(true);
-
         toast.success("Brand info extracted successfully");
       } catch (error: any) {
         console.error("Error extracting brand info:", error);
@@ -161,14 +170,12 @@ export default function Onboarding() {
         setExtracting(false);
       }
     }
-
     setStep(2);
   };
 
-  // Step 2 -> Save brand and go to step 3
+  // Step 2 -> Save brand, trigger psychology, go to step 3 (Psychology Review)
   const handleStep2Next = async () => {
     setLoading(true);
-
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -188,7 +195,7 @@ export default function Onboarding() {
           industry,
           value_proposition: valueProposition,
           target_audience: targetAudience,
-          psychology_status: "pending",
+          psychology_status: "generating",
         })
         .select()
         .single();
@@ -199,33 +206,29 @@ export default function Onboarding() {
       if (!existingSub) {
         const { error: subError } = await supabase
           .from("subscriptions")
-          .insert({
-            user_id: user.id,
-            tier: "starter",
-            status: "active"
-          });
-
+          .insert({ user_id: user.id, tier: "starter", status: "active" });
         if (subError) throw subError;
       }
 
-      // Auto-create digest settings so weekly reports are enabled by default
-      await supabase
-        .from("digest_settings")
-        .insert({
-          brand_id: brandData.id,
-          created_by: user.id,
-          enabled: true,
-          send_day: "monday",
-          send_time: "08:00",
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York",
-          date_range_days: 7,
-        });
+      // Auto-create digest settings
+      await supabase.from("digest_settings").insert({
+        brand_id: brandData.id,
+        created_by: user.id,
+        enabled: true,
+        send_day: "monday",
+        send_time: "08:00",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York",
+        date_range_days: 7,
+      });
 
-      toast.info("Building your audience profile...");
+      // Trigger psychology generation
+      setPsychologyStatus("generating");
       supabase.functions.invoke('generate-audience-psychology', {
         body: { brandId: brandData.id }
       });
 
+      // Start polling for psychology completion
+      startPsychologyPolling(brandData.id);
       setStep(3);
     } catch (error: any) {
       console.error('Error during onboarding:', error);
@@ -235,13 +238,96 @@ export default function Onboarding() {
     }
   };
 
-  // Step 3 -> Save copy style settings and go to step 4
-  const handleStep3Next = async () => {
-    if (!createdBrandId) {
+  const startPsychologyPolling = (brandId: string) => {
+    setPollingPsychology(true);
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    
+    pollIntervalRef.current = setInterval(async () => {
+      const { data } = await supabase
+        .from('brands')
+        .select('audience_psychology, psychology_status')
+        .eq('id', brandId)
+        .single();
+      
+      if (data?.psychology_status === 'completed' || data?.psychology_status === 'approved') {
+        setPsychologyData(data.audience_psychology);
+        setPsychologyStatus(data.psychology_status);
+        setPollingPsychology(false);
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      } else if (data?.psychology_status === 'error') {
+        setPsychologyStatus('error');
+        setPollingPsychology(false);
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      }
+    }, 3000);
+  };
+
+  const handleApprovePsychology = async () => {
+    if (!createdBrandId) return;
+    try {
+      const { error } = await supabase
+        .from('brands')
+        .update({ psychology_status: 'approved' })
+        .eq('id', createdBrandId);
+      if (error) throw error;
+      setPsychologyStatus('approved');
+      toast.success("Psychology profile approved! ✨");
       setStep(4);
+    } catch (error: any) {
+      toast.error("Failed to approve");
+    }
+  };
+
+  const handleEditPsychology = () => {
+    setEditedPsychology(psychologyData ? { ...psychologyData } : {});
+    setEditingPsychology(true);
+  };
+
+  const handleSavePsychologyEdits = async () => {
+    if (!createdBrandId) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('brands')
+        .update({
+          audience_psychology: editedPsychology,
+          psychology_status: 'approved',
+        })
+        .eq('id', createdBrandId);
+      if (error) throw error;
+      setPsychologyData(editedPsychology);
+      setPsychologyStatus('approved');
+      setEditingPsychology(false);
+      toast.success("Psychology profile updated and approved!");
+      setStep(4);
+    } catch (error: any) {
+      toast.error("Failed to save changes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRetryPsychology = async () => {
+    if (!createdBrandId) return;
+    setPsychologyStatus("generating");
+    setPollingPsychology(true);
+    supabase.functions.invoke('generate-audience-psychology', {
+      body: { brandId: createdBrandId }
+    });
+    startPsychologyPolling(createdBrandId);
+  };
+
+  const updatePsychologyArrayField = (field: string, value: string) => {
+    const items = value.split('\n').filter(item => item.trim());
+    setEditedPsychology((prev: any) => ({ ...prev, [field]: items }));
+  };
+
+  // Step 4 -> Save copy style settings and go to step 5
+  const handleStep4Next = async () => {
+    if (!createdBrandId) {
+      setStep(5);
       return;
     }
-
     setLoading(true);
     try {
       const { error } = await supabase
@@ -253,9 +339,8 @@ export default function Onboarding() {
           bullet_emoji: bulletEmoji,
         })
         .eq('id', createdBrandId);
-
       if (error) throw error;
-      setStep(4);
+      setStep(5);
     } catch (error: any) {
       console.error('Error saving copy style:', error);
       toast.error('Failed to save copy style settings');
@@ -264,25 +349,25 @@ export default function Onboarding() {
     }
   };
 
-  const handleFinishOnboarding = async () => {
-    // Refresh brand list so the new brand appears in the selector
+  const handleFinishOnboarding = async (destination?: 'create' | 'import') => {
     await refreshBrands();
-    
-    // If we have a created brand ID, set it as active
     if (createdBrandId) {
       const { data: newBrand } = await supabase
         .from('brands')
         .select('id, name, website_url, industry, meta_account_id, created_at')
         .eq('id', createdBrandId)
         .single();
-      
-      if (newBrand) {
-        setActiveBrand(newBrand);
-      }
+      if (newBrand) setActiveBrand(newBrand);
     }
-    
     toast.success("Welcome to Lumi! ✨");
-    navigate(isAddBrandMode ? "/campaigns" : "/start");
+    
+    if (destination === 'create') {
+      navigate('/create');
+    } else if (destination === 'import') {
+      navigate('/data?import=true');
+    } else {
+      navigate(isAddBrandMode ? "/campaigns" : "/start");
+    }
   };
 
   const addEmoji = () => {
@@ -311,16 +396,36 @@ export default function Onboarding() {
     );
   }
 
-  const progressPercentage = (step / 4) * 100;
+  const totalSteps = 6;
+  const progressPercentage = (step / totalSteps) * 100;
+
+  const renderPsychologySection = (label: string, icon: React.ReactNode, items: string[] | undefined) => {
+    if (!items || items.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          {icon}
+          {label}
+        </div>
+        <ul className="space-y-1.5 pl-1">
+          {items.map((item, i) => (
+            <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+              <span className="text-primary mt-0.5">•</span>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-background via-background to-lumi-purple-1/10">
       <Card variant="gradient" className="w-full max-w-2xl rounded-2xl shadow-elevated">
         <CardHeader className="pb-3">
-          {/* Step progress */}
           <div className="space-y-3 mb-2">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Step {step} of 4</span>
+              <span>Step {step} of {totalSteps}</span>
               <span>{STEP_LABELS[step - 1]}</span>
             </div>
             <Progress value={progressPercentage} className="h-2" />
@@ -341,19 +446,24 @@ export default function Onboarding() {
           <CardTitle className="font-display text-2xl">
             {step === 1 ? "Welcome to Lumi! ✨" :
              step === 2 ? "Your Positioning" :
-             step === 3 ? "Meet Lumi ✨" :
-             "Connect Meta"}
+             step === 3 ? "Your Audience Psychology" :
+             step === 4 ? "Meet Lumi ✨" :
+             step === 5 ? "Connect Meta" :
+             "What would you like to do first?"}
           </CardTitle>
           <CardDescription>
             {step === 1 ? "Let's get to know your brand" :
              step === 2 ? "Here's what Lumi found — feel free to tweak anything" :
-             step === 3 ? "Your AI-powered Meta Ads assistant" :
-             "Link your Meta ad account to launch campaigns"}
+             step === 3 ? "Review and approve your audience's psychological profile — this powers all your ad copy" :
+             step === 4 ? "Your AI-powered Meta Ads assistant" :
+             step === 5 ? "Link your Meta ad account to launch campaigns" :
+             "Choose your starting point"}
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           {step === 1 ? (
+            /* ── Step 1: Brand Basics ── */
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="brandName">Brand Name</Label>
@@ -460,6 +570,7 @@ export default function Onboarding() {
               </Button>
             </div>
           ) : step === 2 ? (
+            /* ── Step 2: Positioning ── */
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="valueProposition">What do you offer?</Label>
@@ -503,7 +614,137 @@ export default function Onboarding() {
               </div>
             </div>
           ) : step === 3 ? (
-            // Meet Lumi
+            /* ── Step 3: Psychology Review ── */
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6 py-2"
+            >
+              {(psychologyStatus === 'generating' || pollingPsychology) ? (
+                <div className="space-y-6 py-8">
+                  <div className="flex justify-center">
+                    <SparkleIcon size="xl" state="thinking" glow className="animate-float" />
+                  </div>
+                  <LumiThinkingInline
+                    isOpen={true}
+                    customCopy={PSYCHOLOGY_LOADING_COPY}
+                  />
+                  <p className="text-xs text-center text-muted-foreground">
+                    Lumi is building a deep psychological profile of your audience. This usually takes 15–30 seconds.
+                  </p>
+                </div>
+              ) : psychologyStatus === 'error' ? (
+                <div className="space-y-4 py-4 text-center">
+                  <AlertCircle className="h-12 w-12 mx-auto text-destructive" />
+                  <p className="text-sm text-muted-foreground">
+                    Something went wrong generating your psychology profile.
+                  </p>
+                  <Button onClick={handleRetryPsychology} variant="lumi">
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Try Again
+                  </Button>
+                </div>
+              ) : editingPsychology && editedPsychology ? (
+                /* Editing mode */
+                <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
+                  <div className="space-y-2">
+                    <Label>Pain Points (one per line)</Label>
+                    <Textarea
+                      value={(editedPsychology.pain_points || []).join('\n')}
+                      onChange={(e) => updatePsychologyArrayField('pain_points', e.target.value)}
+                      rows={4}
+                      placeholder="What keeps them up at night?"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Desires (one per line)</Label>
+                    <Textarea
+                      value={(editedPsychology.desires || []).join('\n')}
+                      onChange={(e) => updatePsychologyArrayField('desires', e.target.value)}
+                      rows={4}
+                      placeholder="What do they dream about?"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Objections (one per line)</Label>
+                    <Textarea
+                      value={(editedPsychology.objections || []).join('\n')}
+                      onChange={(e) => updatePsychologyArrayField('objections', e.target.value)}
+                      rows={4}
+                      placeholder="What stops them from buying?"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Motivations</Label>
+                    <Textarea
+                      value={editedPsychology.motivations || ''}
+                      onChange={(e) => setEditedPsychology((prev: any) => ({ ...prev, motivations: e.target.value }))}
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" onClick={() => setEditingPsychology(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSavePsychologyEdits} disabled={loading} variant="lumi" className="flex-1">
+                      {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                      Save & Approve
+                    </Button>
+                  </div>
+                </div>
+              ) : psychologyData ? (
+                /* Review mode */
+                <div className="space-y-5">
+                  <div className="rounded-xl border bg-muted/30 p-4 space-y-4 max-h-[45vh] overflow-y-auto">
+                    {renderPsychologySection("Pain Points", <Heart className="h-4 w-4 text-destructive" />, psychologyData.pain_points)}
+                    {renderPsychologySection("Desires", <Sparkles className="h-4 w-4 text-amber-500" />, psychologyData.desires)}
+                    {renderPsychologySection("Objections", <AlertCircle className="h-4 w-4 text-orange-500" />, psychologyData.objections)}
+                    
+                    {psychologyData.motivations && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Zap className="h-4 w-4 text-primary" />
+                          Motivations
+                        </div>
+                        <p className="text-sm text-muted-foreground">{psychologyData.motivations}</p>
+                      </div>
+                    )}
+                    
+                    {psychologyData.demographics && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Users className="h-4 w-4 text-primary" />
+                          Demographics
+                        </div>
+                        <p className="text-sm text-muted-foreground">{psychologyData.demographics}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground text-center">
+                    This profile powers all your ad copy. Make sure it sounds like your audience.
+                  </p>
+
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setStep(2)}>
+                      <ChevronLeft className="mr-1 h-4 w-4" />
+                      Back
+                    </Button>
+                    <Button variant="outline" onClick={handleEditPsychology} className="gap-1">
+                      <Pencil className="h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button onClick={handleApprovePsychology} variant="lumi" className="flex-1 gap-1">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Looks Good — Approve
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </motion.div>
+          ) : step === 4 ? (
+            /* ── Step 4: Meet Lumi ── */
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -561,29 +802,12 @@ export default function Onboarding() {
                   className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
                 >
                   <div className="p-2 rounded-lg bg-gradient-lumi">
-                    <Sparkles className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm mb-1">Always Here to Help</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Whether you're new to ads or a pro, Lumi adapts to guide you through creating campaigns that convert.
-                    </p>
-                  </div>
-                </motion.div>
-
-                <motion.div 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.8 }}
-                  className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
-                >
-                  <div className="p-2 rounded-lg bg-gradient-lumi">
                     <Mail className="h-5 w-5 text-white" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-sm mb-1">Your Weekly Lumi Digest</h4>
                     <p className="text-sm text-muted-foreground">
-                      Every Monday, Lumi sends you a performance recap and tells you exactly what to focus on that week — so you always know your next move.
+                      Every Monday, Lumi sends you a performance recap and tells you exactly what to focus on that week.
                     </p>
                   </div>
                 </motion.div>
@@ -592,15 +816,15 @@ export default function Onboarding() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.0 }}
+                transition={{ delay: 0.8 }}
                 className="flex gap-2"
               >
-                <Button variant="outline" onClick={() => setStep(2)}>
+                <Button variant="outline" onClick={() => setStep(3)}>
                   <ChevronLeft className="mr-1 h-4 w-4" />
                   Back
                 </Button>
                 <Button 
-                  onClick={() => setStep(4)} 
+                  onClick={() => setStep(5)} 
                   variant="lumi" 
                   className="flex-1 group"
                   size="lg"
@@ -613,13 +837,13 @@ export default function Onboarding() {
                 variant="ghost" 
                 size="sm" 
                 className="w-full text-muted-foreground text-xs mt-1"
-                onClick={() => setStep(4)}
+                onClick={() => setStep(5)}
               >
                 Skip intro →
               </Button>
             </motion.div>
-          ) : (
-            // Step 4: Connect Meta
+          ) : step === 5 ? (
+            /* ── Step 5: Connect Meta ── */
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -658,18 +882,18 @@ export default function Onboarding() {
                   open={showPostConnectionAnalysis}
                   onClose={() => {
                     setShowPostConnectionAnalysis(false);
-                    handleFinishOnboarding();
+                    setStep(6);
                   }}
                 />
               )}
 
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setStep(3)}>
+                <Button variant="outline" onClick={() => setStep(4)}>
                   <ChevronLeft className="mr-1 h-4 w-4" />
                   Back
                 </Button>
                 <Button
-                  onClick={handleFinishOnboarding}
+                  onClick={() => setStep(6)}
                   variant="ghost"
                   className="flex-1"
                 >
@@ -680,6 +904,80 @@ export default function Onboarding() {
               <p className="text-xs text-center text-muted-foreground">
                 You can always connect later from My Brand → Brand Settings.
               </p>
+            </motion.div>
+          ) : (
+            /* ── Step 6: What's Next ── */
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6 py-4"
+            >
+              <div className="flex justify-center">
+                <motion.div
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                >
+                  <SparkleIcon size="xl" state="idle" glow className="animate-float" />
+                </motion.div>
+              </div>
+
+              <div className="text-center space-y-2">
+                <h3 className="text-lg font-semibold">You're all set! 🎉</h3>
+                <p className="text-sm text-muted-foreground">
+                  Choose how you'd like to get started with Lumi
+                </p>
+              </div>
+
+              <div className="grid gap-3">
+                <motion.button
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                  onClick={() => handleFinishOnboarding('create')}
+                  className="flex items-start gap-4 p-5 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                >
+                  <div className="p-3 rounded-xl bg-gradient-lumi shrink-0">
+                    <PlusCircle className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1 group-hover:text-primary transition-colors">Create a New Ad</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Start from scratch — Lumi will guide you through strategy, creative, and copy.
+                    </p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary mt-1 shrink-0 transition-transform group-hover:translate-x-1" />
+                </motion.button>
+
+                <motion.button
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                  onClick={() => handleFinishOnboarding('import')}
+                  className="flex items-start gap-4 p-5 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                >
+                  <div className="p-3 rounded-xl bg-gradient-lumi shrink-0">
+                    <Download className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1 group-hover:text-primary transition-colors">Import Existing Ads from Meta</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Already running campaigns? Import them so Lumi can analyze performance and suggest improvements.
+                    </p>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary mt-1 shrink-0 transition-transform group-hover:translate-x-1" />
+                </motion.button>
+              </div>
+
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full text-muted-foreground text-xs"
+                onClick={() => setStep(5)}
+              >
+                <ChevronLeft className="mr-1 h-3 w-3" />
+                Back
+              </Button>
             </motion.div>
           )}
         </CardContent>
