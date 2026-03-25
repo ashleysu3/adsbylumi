@@ -565,6 +565,19 @@ export function ProductionManager({
     setUploadingItemId(itemId);
     fileInputRef.current?.click();
   };
+
+  const handleUploadVerticalClick = (itemId: string) => {
+    setUploadingVerticalItemId(itemId);
+    verticalFileInputRef.current?.click();
+  };
+
+  // Get the vertical (9:16) version of an asset for an item
+  const getVerticalAssetForItem = (item: ProductionItem) => {
+    const verticalConceptId = `${item.id}_vertical`;
+    const verticalAsset = uploadedAssets.find((a: any) => a.linked_concept_id === verticalConceptId);
+    if (!verticalAsset) return null;
+    return normalizeUploadedAsset(verticalAsset);
+  };
   
   const getAngleCopyKeyForItem = (item: ProductionItem): string | null => {
     const itemAny = item as any;
