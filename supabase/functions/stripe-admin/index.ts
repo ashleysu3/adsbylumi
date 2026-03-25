@@ -234,6 +234,78 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "revenue_overview": {
+        logStep("Fetching revenue overview");
+
+        // Get all active subscriptions
+        const allSubs: any[] = [];
+        let hasMore = true;
+        let startingAfter: string | undefined;
+        while (hasMore) {
+          const listParams: any = { status: "active", limit: 100 };
+          if (startingAfter) listParams.starting_after = startingAfter;
+          const page = await stripe.subscriptions.list(listParams);
+          allSubs.push(...page.data);
+          hasMore = page.has_more;
+          if (page.data.length > 0) startingAfter = page.data[page.data.length - 1].id;
+        }
+
+        // Calculate MRR and group by price
+        let totalMRR = 0;
+        const priceBreakdown: Record<string, { count: number; amount: number; productName: string; interval: string }> = {};
+
+        for (const sub of allSubs) {
+          for (const item of sub.items.data) {
+            const price = item.price;
+            let monthlyAmount = price.unit_amount || 0;
+            if (price.recurring?.interval === "year") {
+              monthlyAmount = Math.round(monthlyAmount / 12);
+            }
+            totalMRR += monthlyAmount;
+
+            const priceId = price.id;
+            if (!priceBreakdown[priceId]) {
+              priceBreakdown[priceId] = {
+                count: 0,
+                amount: monthlyAmount,
+                productName: typeof price.product === "string" ? price.product : (price.product as any)?.name || "Unknown",
+                interval: price.recurring?.interval || "month",
+              };
+            }
+            priceBreakdown[priceId].count += 1;
+          }
+        }
+
+        // Resolve product names
+        const productIds = [...new Set(Object.values(priceBreakdown).map(p => p.productName).filter(n => n.startsWith("prod_")))];
+        const productNames: Record<string, string> = {};
+        for (const pid of productIds) {
+          try {
+            const prod = await stripe.products.retrieve(pid);
+            productNames[pid] = prod.name;
+          } catch { productNames[pid] = pid; }
+        }
+        for (const key of Object.keys(priceBreakdown)) {
+          const entry = priceBreakdown[key];
+          if (productNames[entry.productName]) {
+            entry.productName = productNames[entry.productName];
+          }
+        }
+
+        result = {
+          total_mrr: totalMRR,
+          total_subscribers: allSubs.length,
+          price_breakdown: Object.entries(priceBreakdown).map(([priceId, data]) => ({
+            price_id: priceId,
+            product_name: data.productName,
+            monthly_amount_cents: data.amount,
+            subscriber_count: data.count,
+            interval: data.interval,
+          })).sort((a, b) => b.subscriber_count - a.subscriber_count),
+        };
+        break;
+      }
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }
