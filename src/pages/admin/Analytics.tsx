@@ -7,10 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Briefcase, Palette, TrendingUp, Calendar, DollarSign, CreditCard, Award, Loader2, KeyRound } from "lucide-react";
+import { Users, Briefcase, Palette, TrendingUp, Calendar, DollarSign, CreditCard, Award, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-const FUNCTION_URL = `https://sqwjbndgighjtifijgws.supabase.co/functions/v1/stripe-admin`;
 
 interface AnalyticsData {
   totalUsers: number;
@@ -48,35 +46,31 @@ export default function Analytics() {
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
   const [revenueLoading, setRevenueLoading] = useState(false);
   const [topAffiliates, setTopAffiliates] = useState<TopAffiliate[]>([]);
-  const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem("stripe_admin_secret") || "");
-  const [secretLocked, setSecretLocked] = useState(() => !!sessionStorage.getItem("stripe_admin_secret"));
 
   useEffect(() => {
     fetchAnalytics();
     fetchTopAffiliates();
+    fetchRevenue();
   }, []);
 
-  useEffect(() => {
-    if (secretLocked) fetchRevenue();
-  }, [secretLocked]);
-
-  const lockSecret = () => {
-    if (!adminSecret.trim()) { toast.error("Enter your admin secret first."); return; }
-    sessionStorage.setItem("stripe_admin_secret", adminSecret.trim());
-    setSecretLocked(true);
-    toast.success("Admin secret saved for this session.");
-  };
-
   const fetchRevenue = async () => {
-    const secret = sessionStorage.getItem("stripe_admin_secret");
-    if (!secret) return;
     setRevenueLoading(true);
     try {
-      const res = await fetch(FUNCTION_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
-        body: JSON.stringify({ action: "revenue_overview" }),
-      });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) { toast.error("Not authenticated"); return; }
+
+      const res = await fetch(
+        `https://sqwjbndgighjtifijgws.supabase.co/functions/v1/stripe-admin`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify({ action: "revenue_overview" }),
+        }
+      );
       if (!res.ok) throw new Error("Failed to fetch revenue");
       const data = await res.json();
       setRevenue(data);
@@ -247,19 +241,7 @@ export default function Analytics() {
             <CardDescription>Monthly recurring revenue and subscriber breakdown</CardDescription>
           </CardHeader>
           <CardContent>
-            {!secretLocked ? (
-              <div className="flex items-center gap-2 max-w-md">
-                <KeyRound className="h-4 w-4 text-muted-foreground shrink-0" />
-                <Input
-                  type="password"
-                  placeholder="Enter admin secret to view revenue..."
-                  value={adminSecret}
-                  onChange={(e) => setAdminSecret(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && lockSecret()}
-                />
-                <Button size="sm" onClick={lockSecret}>Unlock</Button>
-              </div>
-            ) : revenueLoading ? (
+            {revenueLoading ? (
               <div className="flex items-center gap-2 py-8 justify-center">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span className="text-sm text-muted-foreground">Loading revenue data from Stripe...</span>

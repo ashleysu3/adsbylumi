@@ -15,12 +15,46 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify admin secret
+    // Auth: accept either admin secret header OR JWT from an admin user
     const adminSecret = Deno.env.get("STRIPE_ADMIN_SECRET");
-    if (!adminSecret) throw new Error("STRIPE_ADMIN_SECRET not configured");
-
     const providedSecret = req.headers.get("x-admin-secret");
-    if (providedSecret !== adminSecret) {
+    let authorized = false;
+
+    if (adminSecret && providedSecret === adminSecret) {
+      authorized = true;
+      logStep("Authorized via admin secret");
+    } else {
+      // Try JWT-based admin auth
+      const authHeader = req.headers.get("Authorization");
+      if (authHeader) {
+        const { createClient } = await import("npm:@supabase/supabase-js@2");
+        const supabaseClient = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        );
+        const token = authHeader.replace("Bearer ", "");
+        const { data: userData } = await supabaseClient.auth.getUser(token);
+        if (userData?.user) {
+          const serviceClient = createClient(
+            Deno.env.get("SUPABASE_URL") ?? "",
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+            { auth: { persistSession: false } },
+          );
+          const { data: roleData } = await serviceClient
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userData.user.id)
+            .eq("role", "admin")
+            .maybeSingle();
+          if (roleData) {
+            authorized = true;
+            logStep("Authorized via JWT admin role", { userId: userData.user.id });
+          }
+        }
+      }
+    }
+
+    if (!authorized) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
