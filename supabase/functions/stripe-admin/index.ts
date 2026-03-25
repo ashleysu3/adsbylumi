@@ -306,33 +306,14 @@ Deno.serve(async (req) => {
           }
         };
 
-        const resolveDiscount = async (sub: any) => {
-          let percentOff = 0;
-          let amountOff = 0;
-          let label: string | null = null;
-
-          const directCoupon = sub.discount?.coupon;
-          if (directCoupon?.percent_off) {
-            percentOff = Number(directCoupon.percent_off);
-          } else if (directCoupon?.amount_off) {
-            amountOff = Number(directCoupon.amount_off);
-          }
-
-          if (percentOff > 0) {
-            label = `${percentOff}% off`;
-          } else if (amountOff > 0) {
-            label = `$${(amountOff / 100).toFixed(2)} off`;
-          }
-
-          logStep("Discount resolved", {
-            subscriptionId: sub.id,
-            percentOff,
-            amountOff,
-            label,
-            hasDiscount: !!sub.discount,
+        const getLatestPaidInvoice = async (subscriptionId: string) => {
+          const paidInvoices = await stripe.invoices.list({
+            subscription: subscriptionId,
+            status: "paid",
+            limit: 1,
+            expand: ["data.lines.data.price"],
           });
-
-          return { percentOff, amountOff, label };
+          return paidInvoices.data[0] ?? null;
         };
 
         const customerCache = new Map<string, { id: string; email: string | null; name: string | null }>();
@@ -371,6 +352,7 @@ Deno.serve(async (req) => {
         };
 
         let totalMRR = 0;
+        let totalPayingSubscribers = 0;
         const priceBreakdown: Record<string, {
           count: number;
           amount: number;
@@ -390,9 +372,18 @@ Deno.serve(async (req) => {
 
         for (const sub of allSubs) {
           const customer = await getCustomerInfo(sub.customer);
-          const { percentOff, amountOff, label } = await resolveDiscount(sub);
+          const latestPaidInvoice = await getLatestPaidInvoice(sub.id);
+
+          if (!latestPaidInvoice) {
+            logStep("Skipping subscription without paid invoice", { subscriptionId: sub.id });
+            continue;
+          }
+
+          const invoiceLines = (latestPaidInvoice.lines?.data || []).filter((line: any) => line.type === "subscription");
+          const paidCycleTotal = invoiceLines.reduce((sum: number, line: any) => sum + (line.amount || 0), 0);
 
           const items = sub.items?.data || [];
+          let subscriptionMonthlyTotal = 0;
           const cycleBaseAmounts = items.map((item: any) => {
             const unitAmount = item.price?.unit_amount || 0;
             const quantity = item.quantity || 1;
@@ -405,16 +396,25 @@ Deno.serve(async (req) => {
             const price = item.price;
             const cycleBaseAmount = cycleBaseAmounts[index] || 0;
 
-            let discountedCycleAmount = cycleBaseAmount;
-            if (percentOff > 0) {
-              discountedCycleAmount = Math.round(cycleBaseAmount * (1 - percentOff / 100));
-            } else if (amountOff > 0 && totalCycleBase > 0) {
-              const allocatedDiscount = Math.round((cycleBaseAmount / totalCycleBase) * amountOff);
-              discountedCycleAmount = Math.max(0, cycleBaseAmount - allocatedDiscount);
+            const matchingLine = invoiceLines.find((line: any) => {
+              const linePriceId = typeof line.price === "string" ? line.price : line.price?.id;
+              return linePriceId === price.id;
+            });
+
+            let netCycleAmount = matchingLine?.amount ?? 0;
+            if (!netCycleAmount && totalCycleBase > 0) {
+              const baseForAllocation = paidCycleTotal > 0
+                ? paidCycleTotal
+                : (latestPaidInvoice.amount_paid || latestPaidInvoice.amount_due || 0);
+              netCycleAmount = Math.round((cycleBaseAmount / totalCycleBase) * baseForAllocation);
             }
 
-            const monthlyAmount = normalizeToMonthly(discountedCycleAmount, price.recurring);
+            const monthlyAmount = normalizeToMonthly(netCycleAmount, price.recurring);
             totalMRR += monthlyAmount;
+            subscriptionMonthlyTotal += monthlyAmount;
+
+            const discountAmount = Math.max(0, cycleBaseAmount - netCycleAmount);
+            const label = discountAmount > 0 ? `$${(discountAmount / 100).toFixed(2)} off` : null;
 
             const productName = typeof price.product === "string"
               ? price.product
@@ -439,6 +439,19 @@ Deno.serve(async (req) => {
               monthly_amount_cents: monthlyAmount,
               discount_label: label,
             });
+
+            logStep("Revenue line item", {
+              subscriptionId: sub.id,
+              priceId: price.id,
+              cycleBaseAmount,
+              netCycleAmount,
+              monthlyAmount,
+              invoiceId: latestPaidInvoice.id,
+            });
+          }
+
+          if (subscriptionMonthlyTotal > 0) {
+            totalPayingSubscribers += 1;
           }
         }
 
@@ -508,7 +521,7 @@ Deno.serve(async (req) => {
 
         result = {
           total_mrr: totalMRR,
-          total_subscribers: allSubs.length,
+          total_subscribers: totalPayingSubscribers,
           price_breakdown: Object.entries(priceBreakdown).map(([priceId, data]) => ({
             price_id: priceId,
             product_name: data.productName,

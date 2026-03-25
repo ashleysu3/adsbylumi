@@ -279,7 +279,7 @@ export default function Analytics() {
                     </p>
                   </div>
                   <div className="rounded-lg border p-4">
-                    <p className="text-sm text-muted-foreground">Active Subscribers</p>
+                    <p className="text-sm text-muted-foreground">Paying Subscribers</p>
                     <p className="text-3xl font-bold mt-1">{revenue.total_subscribers}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Avg. ${revenue.total_subscribers > 0 ? ((revenue.total_mrr / revenue.total_subscribers) / 100).toFixed(2) : '0'}/mo per subscriber
