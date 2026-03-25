@@ -85,6 +85,7 @@ export function ProductionManager({
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [resolvedAssetUrls, setResolvedAssetUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const verticalFileInputRef = useRef<HTMLInputElement>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
   const uploadedAssetSignature = uploadedAssets
