@@ -749,7 +749,7 @@ export function ProductionManager({
                       const item = productionItems.find(p => p.id === rankedItem.id);
                       if (!item) return null;
                       return (
-                        <CreativeChecklistCard
+                         <CreativeChecklistCard
                           key={item.id}
                           item={item}
                           uploadedAsset={getAssetForItem(item)}
@@ -765,6 +765,8 @@ export function ProductionManager({
                           onRefineScript={onRefineScript}
                           selected={bulkSelectMode ? selectedIds.has(item.id) : undefined}
                           onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
+                          angleCopy={getCopyForItem(item)}
+                          onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                         />
                       );
                     })}
@@ -799,6 +801,8 @@ export function ProductionManager({
                               onRefineScript={onRefineScript}
                               selected={bulkSelectMode ? selectedIds.has(item.id) : undefined}
                               onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
+                              angleCopy={getCopyForItem(item)}
+                              onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                             />
                           );
                         })}
