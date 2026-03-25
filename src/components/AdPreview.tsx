@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,11 +34,30 @@ interface AdPreviewProps {
 }
 
 export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdPreviewProps) {
+  const [mediaAspect, setMediaAspect] = useState<number | null>(null);
+  
+  const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      setMediaAspect(img.naturalWidth / img.naturalHeight);
+    }
+  }, []);
+
+  const handleVideoLoad = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const vid = e.currentTarget;
+    if (vid.videoWidth && vid.videoHeight) {
+      setMediaAspect(vid.videoWidth / vid.videoHeight);
+    }
+  }, []);
+
   const conceptData = concept as any;
   const assetUrl = concept.linkedAsset?.url || conceptData.uploaded_asset_url || conceptData.asset_url || null;
   const assetType = concept.linkedAsset?.type || conceptData.linkedAsset?.file_type || 'image';
   const isVideo = assetType.includes('video') || /\.(mp4|mov|webm|m4v)$/i.test(assetUrl || '');
   
+  // Whether the asset needs Meta-style padding in vertical containers (square or wider in 9:16)
+  const needsMetaPadding = mediaAspect !== null && mediaAspect > 0.7;
+
   // Normalize copy fields (handle both naming conventions + flattened shapes)
   const copy = concept.finalCopy || concept.final_copy || {
     headline: conceptData.headline,
@@ -119,12 +139,14 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdP
                       className="w-full h-full object-cover"
                       muted
                       playsInline
+                      onLoadedMetadata={handleVideoLoad}
                     />
                   ) : (
                     <img 
                       src={assetUrl} 
                       alt="Ad creative"
                       className="w-full h-full object-cover"
+                      onLoad={handleImageLoad}
                     />
                   )
                 ) : (
@@ -177,20 +199,33 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdP
                 {/* Stories Frame */}
                 <AspectRatio ratio={9/16}>
                   {assetUrl ? (
-                    isVideo ? (
-                      <video 
-                        src={assetUrl} 
-                        className="w-full h-full object-cover"
-                        muted
-                        playsInline
-                      />
-                    ) : (
-                      <img 
-                        src={assetUrl} 
-                        alt="Ad creative"
-                        className="w-full h-full object-cover"
-                      />
-                    )
+                    <div className="relative w-full h-full overflow-hidden">
+                      {/* Blurred background for non-vertical assets */}
+                      {needsMetaPadding && (
+                        isVideo ? (
+                          <video src={assetUrl} className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" muted playsInline />
+                        ) : (
+                          <img src={assetUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" />
+                        )
+                      )}
+                      {needsMetaPadding && <div className="absolute inset-0 bg-black/30 z-[5]" />}
+                      {isVideo ? (
+                        <video 
+                          src={assetUrl} 
+                          className={`w-full h-full ${needsMetaPadding ? 'object-contain relative z-10' : 'object-cover'}`}
+                          muted
+                          playsInline
+                          onLoadedMetadata={handleVideoLoad}
+                        />
+                      ) : (
+                        <img 
+                          src={assetUrl} 
+                          alt="Ad creative"
+                          className={`w-full h-full ${needsMetaPadding ? 'object-contain relative z-10' : 'object-cover'}`}
+                          onLoad={handleImageLoad}
+                        />
+                      )}
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-primary/30 to-primary/10 text-white">
                       <div className="text-center">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -230,23 +230,88 @@ export function AdPreviewModal({
     setEditingField(null);
   };
 
-  const renderMedia = (className?: string) => {
+  const [mediaAspect, setMediaAspect] = useState<number | null>(null);
+
+  const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      setMediaAspect(img.naturalWidth / img.naturalHeight);
+    }
+  }, []);
+
+  const handleVideoLoad = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const vid = e.currentTarget;
+    if (vid.videoWidth && vid.videoHeight) {
+      setMediaAspect(vid.videoWidth / vid.videoHeight);
+    }
+  }, []);
+
+  // Reset aspect when asset changes
+  useEffect(() => {
+    setMediaAspect(null);
+  }, [assetUrl]);
+
+  const isVerticalAsset = mediaAspect !== null && mediaAspect < 0.7; // ~9:16 or taller
+  const needsMetaPadding = (placement: "feed" | "vertical") => 
+    placement === "vertical" && mediaAspect !== null && mediaAspect > 0.7; // square-ish or wider in a vertical container
+
+  const renderMedia = (placement: "feed" | "vertical" = "feed", className?: string) => {
     if (assetUrl) {
-      return isVideo ? (
+      const showBlurBg = needsMetaPadding(placement);
+
+      const mediaElement = isVideo ? (
         <video 
           src={assetUrl} 
-          className={cn("w-full h-full object-cover", className)}
+          className={cn(
+            "w-full h-full",
+            showBlurBg ? "object-contain relative z-10" : "object-cover",
+            className
+          )}
           controls
           muted
           playsInline
+          onLoadedMetadata={handleVideoLoad}
         />
       ) : (
         <img 
           src={assetUrl} 
           alt="Ad creative"
-          className={cn("w-full h-full object-cover", className)}
+          className={cn(
+            "w-full h-full",
+            showBlurBg ? "object-contain relative z-10" : "object-cover",
+            className
+          )}
+          onLoad={handleImageLoad}
         />
       );
+
+      if (showBlurBg) {
+        return (
+          <div className="relative w-full h-full overflow-hidden">
+            {/* Blurred background layer */}
+            {isVideo ? (
+              <video
+                src={assetUrl}
+                className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
+                muted
+                playsInline
+              />
+            ) : (
+              <img
+                src={assetUrl}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
+              />
+            )}
+            {/* Dark overlay for depth */}
+            <div className="absolute inset-0 bg-black/30 z-[5]" />
+            {/* Actual media centered */}
+            {mediaElement}
+          </div>
+        );
+      }
+
+      return mediaElement;
     }
     return (
       <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-gradient-to-br from-muted to-muted/50">
@@ -364,7 +429,7 @@ export function AdPreviewModal({
                 <TabsContent value="stories" className="mt-0">
                   <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
                     <AspectRatio ratio={9/16}>
-                      {renderMedia()}
+                      {renderMedia("vertical")}
                       
                       {/* Overlay */}
                       <div className="absolute inset-0 flex flex-col pointer-events-none">
@@ -403,7 +468,7 @@ export function AdPreviewModal({
                 <TabsContent value="reels" className="mt-0">
                   <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
                     <AspectRatio ratio={9/16}>
-                      {renderMedia()}
+                      {renderMedia("vertical")}
                       
                       {/* Overlay */}
                       <div className="absolute inset-0 flex pointer-events-none">
