@@ -37,6 +37,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [inProgressWorkspace, setInProgressWorkspace] = useState<{ id: string; name: string } | null>(null);
   const [progressBannerDismissed, setProgressBannerDismissed] = useState(false);
   const { activeBrand, isAgencyUser } = useBrand();
+  const [agencyName, setAgencyName] = useState<string | null>(null);
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
   const [walkthroughSteps, setWalkthroughSteps] = useState<any[]>([]);
   const [tourActive, setTourActive] = useState(false);
