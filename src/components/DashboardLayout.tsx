@@ -95,7 +95,14 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       .then(({ data }) => setInProgressWorkspace(data || null));
   }, [activeBrand?.id, location.pathname]);
 
-  // Register desktop layout with LumiAssistant context
+  // Fetch agency name for Manage All Accounts view
+  useEffect(() => {
+    if (!isAgencyUser || !activeBrand?.id) return;
+    supabase.from('agency_branding').select('company_name').eq('brand_id', activeBrand.id).maybeSingle()
+      .then(({ data }) => setAgencyName(data?.company_name || null));
+  }, [isAgencyUser, activeBrand?.id]);
+
+
   useEffect(() => {
     if (!isMobile) {
       setDesktopNavLayout(true);
