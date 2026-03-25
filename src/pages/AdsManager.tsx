@@ -160,6 +160,7 @@ export default function AdsManager() {
         contact_email: formData.contact_email || null,
         health_status: formData.health_status,
         notes: formData.notes || null,
+        ad_literacy_level: formData.ad_literacy_level || 'beginner',
         updated_at: new Date().toISOString(),
       }).eq('id', editingClient.id);
     } else {
