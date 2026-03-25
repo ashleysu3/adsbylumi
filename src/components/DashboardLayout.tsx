@@ -174,9 +174,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <header className="h-12 flex items-center justify-between border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40 px-4">
             <SidebarTrigger />
             <div className="flex items-center gap-2">
-            const isAdminRoute = location.pathname.startsWith('/admin');
               <span className="text-xs text-muted-foreground hidden sm:block truncate max-w-[200px]">
-                {isAdminRoute
+                {location.pathname.startsWith('/admin')
                   ? 'Admin'
                   : location.pathname === '/ads-manager' && isAgencyUser
                   ? (agencyName || profile?.full_name || 'Agency')
@@ -184,7 +183,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </span>
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {isAdminRoute
+                  {location.pathname.startsWith('/admin')
                     ? 'A'
                     : location.pathname === '/ads-manager' && isAgencyUser
                     ? (agencyName || profile?.full_name || 'A').charAt(0).toUpperCase()
