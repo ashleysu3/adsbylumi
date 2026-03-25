@@ -190,12 +190,60 @@ export default function AdsManager() {
         contact_email: client.contact_email || '',
         health_status: client.health_status || 'healthy',
         notes: client.notes || '',
+        ad_literacy_level: client.ad_literacy_level || 'beginner',
       });
     } else {
       setEditingClient(null);
-      setFormData({ brand_id: '', slack_client_channel: '', slack_internal_channel: '', contact_name: '', contact_email: '', health_status: 'healthy', notes: '' });
+      setFormData({ brand_id: '', slack_client_channel: '', slack_internal_channel: '', contact_name: '', contact_email: '', health_status: 'healthy', notes: '', ad_literacy_level: 'beginner' });
     }
     setEditDialog(true);
+  };
+
+  const handleGenerateReport = async () => {
+    if (!reportClientId) { toast.error('Select a client first'); return; }
+    setIsGeneratingReport(true);
+    try {
+      const client = clients.find((c: any) => c.brand_id === reportClientId);
+      const { data: agencyBranding } = await supabase.from('agency_branding').select('*').eq('brand_id', reportClientId).maybeSingle();
+
+      const { data, error } = await supabase.functions.invoke('generate-client-report', {
+        body: {
+          brandId: reportClientId,
+          dateRangeStart: reportDateStart,
+          dateRangeEnd: reportDateEnd,
+          mode: 'agency',
+          adLiteracyLevel: client?.ad_literacy_level || 'beginner',
+          agencyNotes: client?.notes || '',
+          whiteLabel: agencyBranding?.white_label_reports ? { companyName: agencyBranding.company_name } : null,
+        },
+      });
+      if (error) throw error;
+
+      // Parse agency action items from report and create pending_optimizations
+      const reportText = data?.report || '';
+      const actionSection = reportText.match(/###\s*(?:📋\s*)?Agency Action Items([\s\S]*?)(?=###|$)/i)?.[1] || '';
+      const actionItems = actionSection.match(/- \[[ x]?\]\s*(.+)/g) || [];
+      if (actionItems.length > 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        for (const item of actionItems) {
+          const desc = item.replace(/- \[[ x]?\]\s*/, '').trim();
+          if (desc && desc.length > 5) {
+            await supabase.from('pending_optimizations').insert({
+              brand_id: reportClientId,
+              recommendation_type: 'agency_report',
+              action_description: desc,
+              status: 'pending',
+            });
+          }
+        }
+      }
+
+      toast.success('Report generated');
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to generate report');
+    }
+    setIsGeneratingReport(false);
   };
 
   const handleSaveReview = async (data: any) => {
