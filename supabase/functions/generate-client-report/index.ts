@@ -502,7 +502,7 @@ Generate ONLY the report text. No preamble.`;
           body: JSON.stringify({
             model: 'google/gemini-2.5-flash',
             messages: [
-              { role: 'system', content: 'You are LUMI, an elite Meta Ads strategist. Write with confidence, specificity, and warmth. Use markdown formatting for structure. Every recommendation includes exact action, metric, and timeline.' },
+              { role: 'system', content: `You are ${advisorName}, an elite Meta Ads strategist. Write with confidence, specificity, and warmth. Use markdown formatting for structure. Every recommendation includes exact action, metric, and timeline.` },
               { role: 'user', content: prompt },
             ],
           }),
