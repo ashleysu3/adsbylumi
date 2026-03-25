@@ -456,24 +456,26 @@ export default function CreativeStudio() {
     } catch (e) { console.error(e); }
   };
 
-  // Save last active tab to workspace when it changes
+  // Save last active tab to workspace when it changes + flush pending copy saves
   useEffect(() => {
     if (workspace && activeTab && activeTab !== "angles") {
       const cur = (workspace.creative_json || {}) as Record<string, any>;
       // Only save if different from current stored value
       if (cur.lastActiveTab !== activeTab) {
+        // Flush copy state on tab switch to prevent data loss
+        const merged = { ...creativeJsonRef.current, lastActiveTab: activeTab, angle_copy: angleCopy };
+        creativeJsonRef.current = merged;
         supabase
           .from("campaign_workspaces")
           .update({ 
-            creative_json: { ...cur, lastActiveTab: activeTab },
+            creative_json: merged,
             updated_at: new Date().toISOString()
           })
           .eq("id", workspace.id)
           .then(() => {
-            // Update local workspace state
             setWorkspace((prev: any) => ({
               ...prev,
-              creative_json: { ...prev?.creative_json, lastActiveTab: activeTab }
+              creative_json: merged
             }));
           });
       }
@@ -537,7 +539,11 @@ export default function CreativeStudio() {
   }, [workspace]);
 
   const handleCopyChange = useCallback((angleId: string, copy: any) => {
-    setAngleCopy(prev => ({ ...prev, [angleId]: copy }));
+    setAngleCopy(prev => {
+      const updated = { ...prev, [angleId]: copy };
+      // Auto-save copy to DB immediately (debounced by the calling component)
+      return updated;
+    });
   }, []);
 
   const handleSaveCopy = useCallback(async () => {
