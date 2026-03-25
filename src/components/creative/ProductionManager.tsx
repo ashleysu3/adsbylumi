@@ -65,6 +65,7 @@ export function ProductionManager({
   onUrlChange,
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
+  const [uploadingVerticalItemId, setUploadingVerticalItemId] = useState<string | null>(null);
   const [previewAsset, setPreviewAsset] = useState<any>(null);
   const [adPreviewItem, setAdPreviewItem] = useState<ProductionItem | null>(null);
   const [savingToLibrary, setSavingToLibrary] = useState<string | null>(null);
