@@ -107,6 +107,11 @@ export default function ContentLibrary() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [campaignSelectOpen, setCampaignSelectOpen] = useState(false);
+
+  // Add to Production state
+  const [productionPickerOpen, setProductionPickerOpen] = useState(false);
+  const [ideaForProduction, setIdeaForProduction] = useState<ContentIdea | null>(null);
+  const [addingToProduction, setAddingToProduction] = useState<string | null>(null);
   useEffect(() => {
     if (!brandContextLoading && activeBrand) {
       fetchData();
