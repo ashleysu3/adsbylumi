@@ -442,10 +442,54 @@ export default function AdsManager() {
 
           {/* Reports Tab */}
           <TabsContent value="reports" className="space-y-4">
-            {weeklyReports.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-muted-foreground">No reports yet.</CardContent></Card>
-            ) : (
-              weeklyReports.map((r: any) => (
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <Label className="text-xs">Client</Label>
+                <Select value={reportClientId} onValueChange={setReportClientId}>
+                  <SelectTrigger className="w-56"><SelectValue placeholder="Select client..." /></SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c: any) => (
+                      <SelectItem key={c.brand_id} value={c.brand_id}>{c.brand?.name || 'Unknown'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">From</Label>
+                <Input type="date" value={reportDateStart} onChange={(e) => setReportDateStart(e.target.value)} className="w-40 h-10" />
+              </div>
+              <div>
+                <Label className="text-xs">To</Label>
+                <Input type="date" value={reportDateEnd} onChange={(e) => setReportDateEnd(e.target.value)} className="w-40 h-10" />
+              </div>
+              <Button onClick={handleGenerateReport} disabled={isGeneratingReport || !reportClientId} size="sm">
+                {isGeneratingReport ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <FileText className="h-3 w-3 mr-1" />}
+                Generate Report
+              </Button>
+            </div>
+
+            {(() => {
+              const filteredReports = reportClientId
+                ? weeklyReports.filter((r: any) => r.brand_id === reportClientId)
+                : weeklyReports;
+              // Group by week and show latest per week
+              const byWeek = new Map<string, any>();
+              filteredReports.forEach((r: any) => {
+                const weekKey = `${r.brand_id}-${r.date_range_start}`;
+                if (!byWeek.has(weekKey) || new Date(r.created_at) > new Date(byWeek.get(weekKey).created_at)) {
+                  byWeek.set(weekKey, r);
+                }
+              });
+              const dedupedReports = Array.from(byWeek.values()).sort((a: any, b: any) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+
+              if (dedupedReports.length === 0) {
+                return <Card><CardContent className="py-12 text-center text-muted-foreground">
+                  {reportClientId ? 'No reports for this client yet. Generate one above.' : 'Select a client to view reports.'}
+                </CardContent></Card>;
+              }
+              return dedupedReports.map((r: any) => (
                 <ReportDraftPreview
                   key={r.id}
                   report={r}
@@ -454,8 +498,8 @@ export default function AdsManager() {
                   onSend={() => toast.success('Report sent')}
                   onUpdateText={() => {}}
                 />
-              ))
-            )}
+              ));
+            })()}
           </TabsContent>
 
           {/* Audit Log Tab */}
