@@ -398,7 +398,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
             assetUrl: item.linkedAsset.url,
