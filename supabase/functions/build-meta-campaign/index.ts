@@ -534,12 +534,23 @@ Deno.serve(async (req) => {
     };
 
     const locationTargeting = answers?.locationTargeting;
-    if (locationTargeting?.addresses?.length > 0 && locationTargeting.radius) {
+    const locationAddresses = Array.isArray(locationTargeting?.addresses)
+      ? locationTargeting.addresses
+          .map((addr: unknown) => (typeof addr === 'string' ? addr.trim() : ''))
+          .filter((addr: string) => addr.length > 0)
+      : [];
+    const parsedRadius = Number(locationTargeting?.radius);
+    const radiusMiles = Number.isFinite(parsedRadius)
+      ? Math.max(1, Math.min(50, parsedRadius))
+      : null;
+    const hasLocationTargeting = locationAddresses.length > 0 && radiusMiles !== null;
+
+    if (hasLocationTargeting) {
       // Radius-based targeting — use address strings as custom locations
       // Meta expects lat/lng, but we pass addresses for the geo search API to resolve
-      const customLocations = locationTargeting.addresses.map((addr: string) => ({
+      const customLocations = locationAddresses.map((addr: string) => ({
         address_string: addr,
-        radius: locationTargeting.radius,
+        radius: radiusMiles,
         distance_unit: 'mile',
       }));
       targeting = {
@@ -547,14 +558,14 @@ Deno.serve(async (req) => {
         age_min: 18,
         age_max: 65,
       };
-      console.log(`Using radius targeting: ${customLocations.length} location(s), ${locationTargeting.radius} mile radius`);
+      console.log(`Using radius targeting: ${customLocations.length} location(s), ${radiusMiles} mile radius`);
     }
 
     // Create Cold Audience Ad Set
     const coldAdSetParams: Record<string, string> = {
       campaign_id: result.campaignId!,
-      name: locationTargeting?.addresses?.length > 0
-        ? `Local - ${locationTargeting.radius}mi - ${productName}`
+      name: hasLocationTargeting && radiusMiles !== null
+        ? `Local - ${radiusMiles}mi - ${productName}`
         : `Cold - Broad - ${productName}`,
       optimization_goal: optimizationGoal,
       billing_event: 'IMPRESSIONS',
@@ -590,11 +601,49 @@ Deno.serve(async (req) => {
     
     if (coldAdSetData.error) {
       console.error('Cold ad set creation failed:', coldAdSetData.error);
-      throw new Error(`Failed to create ad set: ${coldAdSetData.error.message || 'Unknown error'}`);
-    }
 
-    result.adSetIds.push(coldAdSetData.id);
-    console.log('Cold ad set created:', coldAdSetData.id);
+      if (hasLocationTargeting) {
+        const locationErrorMessage = coldAdSetData.error.error_user_msg || coldAdSetData.error.message || 'Unknown error';
+        result.warnings.push(`Location targeting failed (${locationErrorMessage}). Falling back to broad US targeting.`);
+
+        const fallbackTargeting = {
+          geo_locations: { countries: ['US'] },
+          age_min: 18,
+          age_max: 65,
+        };
+
+        const fallbackAdSetParams: Record<string, string> = {
+          ...coldAdSetParams,
+          name: `Cold - Broad - ${productName}`,
+          targeting: JSON.stringify(fallbackTargeting),
+        };
+
+        const fallbackAdSetResponse = await fetch(
+          `https://graph.facebook.com/v21.0/act_${accountId}/adsets`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(fallbackAdSetParams)
+          }
+        );
+
+        const fallbackAdSetData = await fallbackAdSetResponse.json();
+        if (fallbackAdSetData.error) {
+          console.error('Fallback broad ad set creation failed:', fallbackAdSetData.error);
+          const fallbackErrorMessage = fallbackAdSetData.error.error_user_msg || fallbackAdSetData.error.message || 'Unknown error';
+          throw new Error(`Failed to create ad set: ${fallbackErrorMessage}`);
+        }
+
+        result.adSetIds.push(fallbackAdSetData.id);
+        console.log('Cold ad set created with broad fallback:', fallbackAdSetData.id);
+      } else {
+        const adSetErrorMessage = coldAdSetData.error.error_user_msg || coldAdSetData.error.message || 'Unknown error';
+        throw new Error(`Failed to create ad set: ${adSetErrorMessage}`);
+      }
+    } else {
+      result.adSetIds.push(coldAdSetData.id);
+      console.log('Cold ad set created:', coldAdSetData.id);
+    }
 
     // Create Warm Retargeting Ad Set (if enabled)
     let warmAdSetId: string | null = null;
