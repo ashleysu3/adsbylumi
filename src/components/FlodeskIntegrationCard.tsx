@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { CheckCircle2, XCircle, Loader2, ExternalLink, Link2, Unlink } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, ExternalLink, Link2, Unlink, ChevronRight } from 'lucide-react';
 
 interface FlodeskIntegrationCardProps {
   brand: any;
@@ -17,6 +16,7 @@ export function FlodeskIntegrationCard({ brand, onRefresh }: FlodeskIntegrationC
   const [apiKey, setApiKey] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [showSteps, setShowSteps] = useState(false);
 
   const isConnected = !!(brand?.flodesk_api_key);
   const hasWebhook = !!(brand?.flodesk_webhook_id);
@@ -24,7 +24,7 @@ export function FlodeskIntegrationCard({ brand, onRefresh }: FlodeskIntegrationC
 
   const handleConnect = async () => {
     if (!apiKey.trim()) {
-      toast.error('Please enter your Flodesk API key');
+      toast.error('Please paste your Flodesk connection key');
       return;
     }
     if (!brand?.id) {
@@ -41,8 +41,9 @@ export function FlodeskIntegrationCard({ brand, onRefresh }: FlodeskIntegrationC
       if (error) throw error;
 
       if (data?.success) {
-        toast.success(data.message || 'Flodesk connected!');
+        toast.success(data.message || 'Flodesk connected! 🎉');
         setApiKey('');
+        setShowSteps(false);
         onRefresh();
       } else {
         toast.error(data?.error || 'Failed to connect Flodesk');
@@ -83,7 +84,7 @@ export function FlodeskIntegrationCard({ brand, onRefresh }: FlodeskIntegrationC
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <svg viewBox="0 0 24 24" className="h-6 w-6 text-primary" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
               </svg>
             </div>
             <div>
@@ -153,45 +154,104 @@ export function FlodeskIntegrationCard({ brand, onRefresh }: FlodeskIntegrationC
               Disconnect Flodesk
             </Button>
           </>
-        ) : (
+        ) : !showSteps ? (
           <>
             <p className="text-sm text-muted-foreground">
-              Connect your Flodesk account to automatically send Lead events to Meta when someone submits one of your forms.
+              Connect your Flodesk account so LUMI can automatically tell Meta when someone fills out one of your forms — giving your ads better data to find more people like your leads.
             </p>
-
-            <div className="space-y-2">
-              <Label htmlFor="flodesk-api-key">Flodesk API Key</Label>
-              <Input
-                id="flodesk-api-key"
-                type="password"
-                variant="glow"
-                placeholder="Enter your Flodesk API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Find your API key in{' '}
-                <a
-                  href="https://app.flodesk.com/account/integrations"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  Flodesk → Account → Integrations
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </p>
-            </div>
 
             <Button
               variant="lumi"
-              onClick={handleConnect}
-              disabled={connecting || !apiKey.trim()}
-              className="gap-2"
+              onClick={() => setShowSteps(true)}
+              className="w-full gap-2"
             >
-              {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+              <Link2 className="h-4 w-4" />
               Connect Flodesk
+              <ChevronRight className="h-4 w-4 ml-auto" />
             </Button>
+          </>
+        ) : (
+          <>
+            {/* Guided walkthrough */}
+            <div className="space-y-4">
+              <p className="text-sm font-medium">
+                This takes about 30 seconds ✨
+              </p>
+
+              {/* Step 1 */}
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                  1
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <p className="text-sm font-medium">Open your Flodesk integrations page</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-xs"
+                    onClick={() => window.open('https://app.flodesk.com/account/integrations', '_blank')}
+                  >
+                    Open Flodesk Integrations
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                  2
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Scroll to "API Key" and click <span className="font-semibold text-primary">Copy</span></p>
+                  <p className="text-xs text-muted-foreground">
+                    Look for the section labeled "API & Integrations" — your key will be a long string of letters and numbers.
+                  </p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex gap-3">
+                <div className="flex-shrink-0 h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                  3
+                </div>
+                <div className="space-y-2 flex-1">
+                  <p className="text-sm font-medium">Paste it here and hit connect</p>
+                  <Input
+                    type="password"
+                    variant="glow"
+                    placeholder="Paste your Flodesk key here"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="lumi"
+                onClick={handleConnect}
+                disabled={connecting || !apiKey.trim()}
+                className="gap-2 flex-1"
+              >
+                {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                {connecting ? 'Connecting...' : 'Connect Flodesk'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setShowSteps(false); setApiKey(''); }}
+                className="text-muted-foreground"
+              >
+                Cancel
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Your key is stored securely and only used to listen for form submissions.
+            </p>
           </>
         )}
       </CardContent>
