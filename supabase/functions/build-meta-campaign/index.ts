@@ -133,6 +133,22 @@ interface BuildResult {
   warnings: string[];
 }
 
+function getMetaErrorMessage(metaError: any): string {
+  if (!metaError) return 'Unknown Meta error';
+
+  const userTitle = typeof metaError.error_user_title === 'string' ? metaError.error_user_title.trim() : '';
+  const userMsg = typeof metaError.error_user_msg === 'string' ? metaError.error_user_msg.trim() : '';
+  const baseMsg = typeof metaError.message === 'string' ? metaError.message.trim() : 'Unknown Meta error';
+  const code = [metaError.code, metaError.error_subcode].filter(Boolean).join('/');
+
+  if (userMsg) {
+    return userTitle ? `${userTitle}: ${userMsg}` : userMsg;
+  }
+
+  if (code) return `${baseMsg} (Meta ${code})`;
+  return baseMsg;
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -801,7 +817,7 @@ Deno.serve(async (req) => {
           result.failedAds.push({
             conceptId: item.id,
             conceptTitle: item.concept?.title || 'Unknown',
-            error: `Creative creation failed: ${creativeData.error.message || 'Unknown error'}`
+            error: `Creative creation failed: ${getMetaErrorMessage(creativeData.error)}`
           });
           continue;
         }
@@ -832,7 +848,7 @@ Deno.serve(async (req) => {
           result.failedAds.push({
             conceptId: item.id,
             conceptTitle: item.concept?.title || 'Unknown',
-            error: `Ad creation failed: ${adData.error.message || 'Unknown error'}`
+            error: `Ad creation failed: ${getMetaErrorMessage(adData.error)}`
           });
           continue;
         }
@@ -890,7 +906,7 @@ Deno.serve(async (req) => {
               result.failedAds.push({
                 conceptId: post.id,
                 conceptTitle: `Instagram Post`,
-                error: `Existing post creative failed: ${creativeData.error.message || 'Unknown'}`,
+                error: `Existing post creative failed: ${getMetaErrorMessage(creativeData.error)}`,
               });
               continue;
             }
@@ -917,7 +933,7 @@ Deno.serve(async (req) => {
               result.failedAds.push({
                 conceptId: post.id,
                 conceptTitle: `Instagram Post`,
-                error: `Existing post ad failed: ${adData.error.message || 'Unknown'}`,
+                error: `Existing post ad failed: ${getMetaErrorMessage(adData.error)}`,
               });
               continue;
             }
@@ -942,8 +958,9 @@ Deno.serve(async (req) => {
     result.success = result.adIds.length > 0;
 
     if (!result.success) {
-      // Complete failure - no ads created
-      throw new Error('Failed to create any ads. Please check your creative content and try again.');
+      // Complete failure - no ads created; surface the exact Meta rejection reason
+      const primaryReason = result.failedAds[0]?.error || 'No ad was created.';
+      throw new Error(`Failed to create any ads. ${primaryReason}`);
     }
 
     // Partial success - save what we have
