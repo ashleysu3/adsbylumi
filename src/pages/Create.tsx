@@ -481,7 +481,7 @@ export default function Create() {
           selectedAngleIds: [], // Let user select in Creative Studio
           selectedCreativeTemplates: [],
           phase1Flow: true,
-          ...(isLocalStrategy ? { localStrategy: true, locationSlug: LOCAL_STRATEGY_SLUG_MAP[selectedOfferId] } : {})
+          ...(LOCAL_STRATEGY_IDS.includes(selectedOfferId) ? { localStrategy: true, locationSlug: LOCAL_STRATEGY_SLUG_MAP[selectedOfferId] } : {})
         } as any
       };
 
