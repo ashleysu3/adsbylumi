@@ -1,6 +1,38 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
 
+type FlodeskAuthMode = 'basic' | 'bearer';
+
+const FLODESK_USER_AGENT = 'LUMI (youradassistant.lovable.app)';
+
+function buildFlodeskHeaders(token: string, mode: FlodeskAuthMode): HeadersInit {
+  const authorization = mode === 'basic'
+    ? `Basic ${btoa(`${token}:`)}`
+    : `Bearer ${token}`;
+
+  return {
+    'Authorization': authorization,
+    'Content-Type': 'application/json',
+    'User-Agent': FLODESK_USER_AGENT,
+  };
+}
+
+async function deleteFlodeskWebhook(webhookId: string, token: string): Promise<void> {
+  for (const mode of ['basic', 'bearer'] as const) {
+    try {
+      const res = await fetch(`https://api.flodesk.com/v1/webhooks/${webhookId}`, {
+        method: 'DELETE',
+        headers: buildFlodeskHeaders(token, mode),
+      });
+
+      // Treat not found as already deleted
+      if (res.ok || res.status === 404) return;
+    } catch {
+      // Try next auth mode
+    }
+  }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -58,15 +90,8 @@ Deno.serve(async (req) => {
     if (action === 'disconnect') {
       // Delete existing webhook from Flodesk if we have one
       if (brand.flodesk_webhook_id && brand.flodesk_api_key) {
-        const flodeskAuth = btoa(`${brand.flodesk_api_key}:`);
         try {
-          await fetch(`https://api.flodesk.com/v1/webhooks/${brand.flodesk_webhook_id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Basic ${flodeskAuth}`,
-              'Content-Type': 'application/json',
-            },
-          });
+          await deleteFlodeskWebhook(brand.flodesk_webhook_id, brand.flodesk_api_key);
         } catch (e) {
           console.log('[FLODESK-CONNECT] Failed to delete webhook, continuing disconnect:', e);
         }
@@ -90,22 +115,37 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Validate the API key by fetching subscribers
-    const flodeskAuth = btoa(`${apiKey}:`);
-    const validateRes = await fetch('https://api.flodesk.com/v1/subscribers?per_page=1', {
-      headers: {
-        'Authorization': `Basic ${flodeskAuth}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    // Validate credentials (support both API key Basic auth and OAuth Bearer tokens)
+    let authMode: FlodeskAuthMode | null = null;
+    let flodeskHeaders: HeadersInit | null = null;
+    let validationError = 'Failed to validate Flodesk credentials.';
 
-    if (!validateRes.ok) {
-      const errText = await validateRes.text();
-      console.error('[FLODESK-CONNECT] API key validation failed:', validateRes.status, errText);
-      return new Response(JSON.stringify({ error: 'Invalid Flodesk API key' }), {
+    for (const mode of ['basic', 'bearer'] as const) {
+      try {
+        const headers = buildFlodeskHeaders(apiKey, mode);
+        const validateRes = await fetch('https://api.flodesk.com/v1/subscribers?per_page=1', { headers });
+
+        if (validateRes.ok) {
+          authMode = mode;
+          flodeskHeaders = headers;
+          break;
+        }
+
+        const errText = await validateRes.text();
+        validationError = `${mode} auth failed (${validateRes.status}): ${errText}`;
+      } catch (error) {
+        validationError = `${mode} auth request failed: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    }
+
+    if (!authMode || !flodeskHeaders) {
+      console.error('[FLODESK-CONNECT] Credential validation failed:', validationError);
+      return new Response(JSON.stringify({ error: `Invalid Flodesk credentials. ${validationError}` }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    console.log('[FLODESK-CONNECT] Flodesk auth validated via mode:', authMode);
 
     // Register webhook for subscriber.created events
     const webhookUrl = `${supabaseUrl}/functions/v1/flodesk-webhook`;
@@ -113,13 +153,7 @@ Deno.serve(async (req) => {
     // Delete old webhook if one exists
     if (brand.flodesk_webhook_id) {
       try {
-        await fetch(`https://api.flodesk.com/v1/webhooks/${brand.flodesk_webhook_id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Basic ${flodeskAuth}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        await deleteFlodeskWebhook(brand.flodesk_webhook_id, apiKey);
       } catch (e) {
         console.log('[FLODESK-CONNECT] Failed to delete old webhook:', e);
       }
@@ -137,23 +171,58 @@ Deno.serve(async (req) => {
     for (const body of webhookBodies) {
       const webhookRes = await fetch('https://api.flodesk.com/v1/webhooks', {
         method: 'POST',
-        headers: {
-          'Authorization': `Basic ${flodeskAuth}`,
-          'Content-Type': 'application/json',
-        },
+        headers: flodeskHeaders,
         body: JSON.stringify(body),
       });
 
       if (webhookRes.ok) {
         const webhookData = await webhookRes.json();
-        webhookId = webhookData.id;
-        console.log('[FLODESK-CONNECT] Webhook registered:', webhookId, 'payloadKeys=', Object.keys(body));
-        break;
+        const candidateId = webhookData?.id || webhookData?.data?.id || webhookData?.webhook?.id;
+
+        if (candidateId) {
+          webhookId = candidateId;
+          console.log('[FLODESK-CONNECT] Webhook registered:', webhookId, 'payloadKeys=', Object.keys(body));
+          break;
+        }
+
+        lastWebhookError = `Webhook created but no ID returned. Response: ${JSON.stringify(webhookData)}`;
+        console.error('[FLODESK-CONNECT] Webhook registration returned no id:', webhookData);
+        continue;
       }
 
       const errText = await webhookRes.text();
       lastWebhookError = `${webhookRes.status} - ${errText}`;
       console.error('[FLODESK-CONNECT] Webhook registration attempt failed:', lastWebhookError, 'payloadKeys=', Object.keys(body));
+    }
+
+    // Fallback: if create calls fail due duplicates or malformed response, reuse existing webhook by URL
+    if (!webhookId) {
+      try {
+        const listRes = await fetch('https://api.flodesk.com/v1/webhooks?per_page=100', {
+          method: 'GET',
+          headers: flodeskHeaders,
+        });
+
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          const hooks = Array.isArray(listData?.data) ? listData.data : [];
+          const existing = hooks.find((hook: any) => {
+            const hookUrl = hook?.post_url || hook?.PostUrl || hook?.url;
+            const events = Array.isArray(hook?.events) ? hook.events : [];
+            return hookUrl === webhookUrl && events.includes('subscriber.created');
+          });
+
+          if (existing?.id) {
+            webhookId = existing.id;
+            console.log('[FLODESK-CONNECT] Reusing existing webhook id:', webhookId);
+          }
+        } else {
+          const errText = await listRes.text();
+          lastWebhookError = `${lastWebhookError} | list webhooks failed: ${listRes.status} - ${errText}`;
+        }
+      } catch (error) {
+        lastWebhookError = `${lastWebhookError} | list webhooks error: ${error instanceof Error ? error.message : String(error)}`;
+      }
     }
 
     if (!webhookId) {

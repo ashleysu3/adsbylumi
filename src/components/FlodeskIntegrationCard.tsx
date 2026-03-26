@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { formatInvokeError } from '@/lib/formatInvokeError';
 import { toast } from 'sonner';
 import { CheckCircle2, XCircle, Loader2, ExternalLink, Link2, Unlink, ChevronRight } from 'lucide-react';
 
@@ -50,7 +51,7 @@ export function FlodeskIntegrationCard({ brand, onRefresh }: FlodeskIntegrationC
       }
     } catch (err: any) {
       console.error('Flodesk connect error:', err);
-      toast.error(err.message || 'Failed to connect Flodesk');
+      toast.error(formatInvokeError(err) || 'Failed to connect Flodesk');
     } finally {
       setConnecting(false);
     }
@@ -71,7 +72,7 @@ export function FlodeskIntegrationCard({ brand, onRefresh }: FlodeskIntegrationC
       onRefresh();
     } catch (err: any) {
       console.error('Flodesk disconnect error:', err);
-      toast.error('Failed to disconnect Flodesk');
+      toast.error(formatInvokeError(err) || 'Failed to disconnect Flodesk');
     } finally {
       setDisconnecting(false);
     }
