@@ -24,6 +24,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 import EmojiQuickPicker from '@/components/EmojiQuickPicker';
 import { CancellationPolicyBanner } from '@/components/CancellationPolicyBanner';
+import { FlodeskIntegrationCard } from '@/components/FlodeskIntegrationCard';
 
 interface NotificationPrefs {
   report_frequency: 'off' | 'daily' | 'weekly';
