@@ -174,6 +174,34 @@ export default function MetaSettings() {
     }
   };
 
+  const handleManualRefresh = async () => {
+    if (!brand?.id) return;
+    setRefreshing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('refresh-meta-token', {
+        body: { brandId: brand.id }
+      });
+      if (error) throw error;
+      if (data.success) {
+        toast.success("Meta token refreshed successfully", {
+          description: `Valid until ${new Date(data.newExpiresAt).toLocaleDateString()}`
+        });
+        fetchBrand();
+      } else {
+        toast.error("Could not refresh token", {
+          description: data.error || "Please reconnect your Meta account"
+        });
+      }
+    } catch (error: any) {
+      console.error('Manual refresh error:', error);
+      toast.error("Failed to refresh token", {
+        description: "Please try reconnecting your Meta account"
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleTestConnection = async () => {
     if (!brand?.id) {
       toast.error('No brand found');
