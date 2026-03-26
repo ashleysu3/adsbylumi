@@ -392,7 +392,7 @@ export function AngleCopyEditor({
                         value={h.text}
                         onChange={(e) => updateVariation("headlines", i, e.target.value)}
                         placeholder="Enter headline..."
-                        maxLength={25}
+                        maxLength={26}
                         className="pr-12"
                       />
                       <span className={cn(

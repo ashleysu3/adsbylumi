@@ -604,7 +604,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
                 ? "Stop scrolling!"
                 : "Watch this..."
             }
-            maxLength={40}
+            maxLength={26}
           />
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">{copy.headline.length}/40</span>
