@@ -28,7 +28,10 @@ Deno.serve(async (req) => {
     const { brandId, instagramAccountId, objective, audiencePsychology, simple } = await req.json();
 
     if (!brandId || !instagramAccountId) {
-      throw new Error('brandId and instagramAccountId are required');
+      return new Response(
+        JSON.stringify({ error: 'Brand ID and Instagram account ID are required.', code: 'MISSING_PARAMS' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -43,7 +46,10 @@ Deno.serve(async (req) => {
       .single();
 
     if (brandError || !brand?.meta_access_token) {
-      throw new Error('Meta access token not found. Please reconnect your Meta account.');
+      return new Response(
+        JSON.stringify({ error: 'Your Meta connection has expired. Please go to Meta Settings and reconnect your account.', code: 'TOKEN_MISSING' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const accessToken = brand.meta_access_token;
@@ -77,9 +83,15 @@ Deno.serve(async (req) => {
       console.error('Error fetching posts:', postsData);
       const metaError = postsData.error?.message || 'Failed to fetch Instagram posts';
       if (postsData.error?.code === 10) {
-        throw new Error('Instagram permissions are still incomplete for post access. Please reconnect Meta and accept all requested permissions, then try again.');
+        return new Response(
+          JSON.stringify({ error: 'Instagram permissions are incomplete. Please reconnect Meta in Settings and accept all requested permissions.', code: 'PERMISSIONS_ERROR' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      throw new Error(metaError);
+      return new Response(
+        JSON.stringify({ error: `Could not load posts: ${metaError}`, code: 'API_ERROR' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const posts: InstagramPost[] = postsData.data || [];
@@ -168,8 +180,8 @@ Deno.serve(async (req) => {
   } catch (error: any) {
     console.error('Error in analyze-instagram-posts:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error.message || 'Something went wrong loading your posts. Please try again.', code: 'UNKNOWN_ERROR' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

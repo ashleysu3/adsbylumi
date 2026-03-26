@@ -43,8 +43,12 @@ export function ExistingPostPicker({
           body: { brandId, instagramAccountId, simple: true },
         }
       );
+      if (data?.error) {
+        setError(data.error);
+        setLoading(false);
+        return;
+      }
       if (fnError) throw fnError;
-      if (data?.error) throw new Error(data.error);
       const fetched = (data?.posts || []).map((p: any) => ({
         id: p.id,
         caption: p.caption || "",
