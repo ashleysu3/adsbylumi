@@ -271,6 +271,7 @@ export default function Onboarding() {
       if (error) throw error;
       setPsychologyStatus('approved');
       toast.success("Psychology profile approved! ✨");
+      saveCopyStyleDefaults();
       setStep(4);
     } catch (error: any) {
       toast.error("Failed to approve");
@@ -298,6 +299,7 @@ export default function Onboarding() {
       setPsychologyStatus('approved');
       setEditingPsychology(false);
       toast.success("Psychology profile updated and approved!");
+      saveCopyStyleDefaults();
       setStep(4);
     } catch (error: any) {
       toast.error("Failed to save changes");
