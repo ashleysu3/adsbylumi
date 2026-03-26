@@ -133,7 +133,7 @@ Before including ANY variation, validate it passes ALL checks:
 ✔ HOOK EFFECTIVENESS - Opening uses proven Hook Library patterns
 ✔ OFFER RELEVANCE - Copy properly represents this specific offer
 ✔ COMPLIANCE CHECK - No banned phrases or problematic claims
-✔ CHARACTER LIMITS - Headlines <40, Descriptions <30
+✔ CHARACTER LIMITS - Headlines ≤26 chars, Descriptions <30
 
 If ANY check fails → regenerate before including.
 
