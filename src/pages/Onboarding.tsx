@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight, CheckCircle2, ChevronLeft, User, Smile, Link2, X, Mail, Brain, Heart, AlertCircle, Zap, Users, Pencil, PlusCircle, Download } from "lucide-react";
+import { Loader2, Sparkles, ArrowRight, CheckCircle2, ChevronLeft, Link2, Heart, AlertCircle, Zap, Users, Pencil, PlusCircle, Download } from "lucide-react";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { PostConnectionAnalysisModal } from "@/components/PostConnectionAnalysisModal";
