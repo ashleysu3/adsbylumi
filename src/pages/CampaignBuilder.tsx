@@ -132,7 +132,11 @@ export default function CampaignBuilder() {
     setPublishing(true);
     try {
       const { data, error } = await supabase.functions.invoke('build-meta-campaign', {
-        body: { workspaceId, answers: { ...answers, launchStatus } },
+        body: {
+          workspaceId,
+          answers: { ...answers, launchStatus },
+          ...(isImpersonating && impersonatedUser ? { actAsUserId: impersonatedUser.id } : {}),
+        },
       });
       if (error) throw error;
       if (data.success) {
