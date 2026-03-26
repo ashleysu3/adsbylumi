@@ -125,7 +125,7 @@ const Sales = () => {
         {!bannerDismissed && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="sticky top-0 z-50 bg-gradient-to-r from-primary to-accent text-primary-foreground">
             <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-4">
-              <p className="text-xs sm:text-sm font-medium flex items-center gap-2"><Sparkles className="w-4 h-4" /> <span><strong>Founding Member Pricing</strong> — 50% off for life ends March 30th.</span></p>
+              <p className="text-xs sm:text-sm font-medium flex items-center gap-2"><Sparkles className="w-4 h-4" /> <span>Use code <strong>LUMIBETA</strong> for special Beta pricing of 50% off until March 30th</span></p>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="secondary" className="text-xs h-7 px-3 font-semibold" onClick={goCheckout} disabled={checkoutLoading}>Claim Offer</Button>
                 <button onClick={dismissBanner} className="text-primary-foreground/60 hover:text-primary-foreground"><X className="w-4 h-4" /></button>
@@ -165,7 +165,7 @@ const Sales = () => {
         </div>
         <div className="container mx-auto px-4 relative z-10 text-center max-w-4xl">
           <FadeUp>
-            <Badge variant="outline" className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5 backdrop-blur-sm rounded-full">✨ Founding Member Pricing — 50% Off for Life (Ends March 30th)</Badge>
+            <Badge variant="outline" className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5 backdrop-blur-sm rounded-full">✨ Use code LUMIBETA for 50% off Beta pricing</Badge>
           </FadeUp>
           <FadeUp delay={0.1}>
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.08] mb-4">
@@ -183,7 +183,7 @@ const Sales = () => {
                  Become a Founding Member <ArrowRight className="w-4 h-4 ml-1.5" />
                </CheckoutButton>
              </div>
-             <p className="text-xs text-muted-foreground">50% founding member discount auto-applied at checkout. No contracts. Cancel anytime.</p>
+             <p className="text-xs text-muted-foreground">Use code LUMIBETA at checkout for 50% off. No contracts. Cancel anytime.</p>
           </FadeUp>
         </div>
       </section>
@@ -386,7 +386,7 @@ const Sales = () => {
             <div className="mx-auto max-w-md">
               <Card variant="gradient" className="overflow-hidden">
                 <CardContent className="p-6 sm:p-8">
-                  <Badge className="bg-destructive/90 text-destructive-foreground mb-4">🔥 Founders Pricing — Limited Time</Badge>
+                  <Badge className="bg-destructive/90 text-destructive-foreground mb-4">🔥 Beta Pricing — Use code LUMIBETA</Badge>
 
                   {/* Price — Monthly only */}
                   <div className="text-center mb-2">
@@ -406,7 +406,7 @@ const Sales = () => {
                   <p className="text-[11px] text-muted-foreground text-center mb-4">You control your ad budget completely — LUMI just manages it smarter. Most beginners start with $10–$20/day.</p>
 
                   <CheckoutButton className="w-full">
-                    {partnerCodeValid ? "Start Your 14-Day Free Trial" : "Get Started for 50% Off"} <ArrowRight className="w-4 h-4 ml-1" />
+                    {partnerCodeValid ? "Start Your 14-Day Free Trial" : "Get Started — Use Code LUMIBETA"} <ArrowRight className="w-4 h-4 ml-1" />
                   </CheckoutButton>
                   {/* #4 — Post-click clarity */}
                   <p className="text-[11px] text-muted-foreground text-center mt-2">
@@ -477,8 +477,8 @@ const Sales = () => {
           <FadeUp delay={0.2}>
             <div className="text-center mt-10">
               <p className="text-muted-foreground mb-3">Ready to try it?</p>
-              <CheckoutButton>Start for 50% Off <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
-              <p className="text-[11px] text-muted-foreground mt-2">Pay first, then create your account. Use code LUMIBETA at checkout.</p>
+               <CheckoutButton>Get Started — Code LUMIBETA <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
+               <p className="text-[11px] text-muted-foreground mt-2">Pay first, then create your account. Use code LUMIBETA at checkout for 50% off.</p>
             </div>
           </FadeUp>
         </div>
@@ -491,7 +491,7 @@ const Sales = () => {
           <FadeUp delay={0.1}><p className="text-primary-foreground/80 max-w-lg mx-auto mb-8 text-base sm:text-lg">Stop leaving money on the table. LUMI builds, runs, and optimizes your Meta ads — starting today.</p></FadeUp>
           <FadeUp delay={0.2}>
             <Button size="lg" onClick={goCheckout} disabled={checkoutLoading} className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 rounded-2xl text-base font-semibold shadow-elevated px-8">
-              {checkoutLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading...</> : <>Start for 50% Off with Code LUMIBETA <ArrowRight className="w-4 h-4 ml-1" /></>}
+              {checkoutLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading...</> : <>Get Started — Code LUMIBETA <ArrowRight className="w-4 h-4 ml-1" /></>}
             </Button>
           </FadeUp>
         </div>

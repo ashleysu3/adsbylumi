@@ -21,7 +21,7 @@ import { formatInvokeError } from "@/lib/formatInvokeError";
 import { useBrand } from "@/contexts/BrandContext";
 import { LumiThinkingInline } from "@/components/LumiThinking";
 
-const STEP_LABELS = ["Brand Basics", "Positioning", "Psychology", "Meet Lumi", "Connect Meta", "What's Next"];
+const STEP_LABELS = ["Brand Basics", "Positioning", "Psychology", "Connect Meta", "What's Next"];
 const DEFAULT_EMOJIS = ['✨', '🎯', '💡', '🚀', '💪', '⭐'];
 const BULLET_OPTIONS = ['✅', '→', '•', '✓', '▸', '★', '💫', '🔥'];
 
@@ -64,12 +64,11 @@ export default function Onboarding() {
   const [editingPsychology, setEditingPsychology] = useState(false);
   const [editedPsychology, setEditedPsychology] = useState<any>(null);
 
-  // Step 4 - Copy Style
-  const [copyPerspective, setCopyPerspective] = useState<'I' | 'We'>('I');
-  const [useEmojis, setUseEmojis] = useState(true);
-  const [brandEmojis, setBrandEmojis] = useState<string[]>(DEFAULT_EMOJIS);
-  const [bulletEmoji, setBulletEmoji] = useState('✅');
-  const [newEmoji, setNewEmoji] = useState('');
+  // Copy style defaults (saved silently with brand)
+  const copyPerspective = 'I';
+  const useEmojis = true;
+  const brandEmojis = DEFAULT_EMOJIS;
+  const bulletEmoji = '✅';
 
   const extractDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -322,15 +321,11 @@ export default function Onboarding() {
     setEditedPsychology((prev: any) => ({ ...prev, [field]: items }));
   };
 
-  // Step 4 -> Save copy style settings and go to step 5
-  const handleStep4Next = async () => {
-    if (!createdBrandId) {
-      setStep(5);
-      return;
-    }
-    setLoading(true);
+  // Save copy style defaults when psychology is approved (step 3 → step 4)
+  const saveCopyStyleDefaults = async () => {
+    if (!createdBrandId) return;
     try {
-      const { error } = await supabase
+      await supabase
         .from('brands')
         .update({
           copy_perspective: copyPerspective,
@@ -339,13 +334,8 @@ export default function Onboarding() {
           bullet_emoji: bulletEmoji,
         })
         .eq('id', createdBrandId);
-      if (error) throw error;
-      setStep(5);
     } catch (error: any) {
       console.error('Error saving copy style:', error);
-      toast.error('Failed to save copy style settings');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -370,22 +360,8 @@ export default function Onboarding() {
     }
   };
 
-  const addEmoji = () => {
-    if (!newEmoji.trim()) return;
-    if (brandEmojis.length >= 6) {
-      toast.error('Maximum 6 emojis allowed');
-      return;
-    }
-    if (brandEmojis.includes(newEmoji.trim())) {
-      toast.error('Emoji already added');
-      return;
-    }
-    setBrandEmojis(prev => [...prev, newEmoji.trim()]);
-    setNewEmoji('');
-  };
-
   const removeEmoji = (emoji: string) => {
-    setBrandEmojis(prev => prev.filter(e => e !== emoji));
+    // no-op: emoji customization moved to brand settings
   };
 
   if (checkingAuth) {
@@ -396,7 +372,7 @@ export default function Onboarding() {
     );
   }
 
-  const totalSteps = 6;
+  const totalSteps = 5;
   const progressPercentage = (step / totalSteps) * 100;
 
   const renderPsychologySection = (label: string, icon: React.ReactNode, items: string[] | undefined) => {
