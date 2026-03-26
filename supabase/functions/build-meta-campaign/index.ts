@@ -758,15 +758,10 @@ Deno.serve(async (req) => {
           };
         }
 
-        // Create ad creative — disable personalized destinations (Advantage+ creative destinations)
+        // Create ad creative
         const creativeParams: Record<string, string> = {
           name: `Creative - ${adName}`,
           object_story_spec: JSON.stringify(objectStorySpec),
-          degrees_of_freedom_spec: JSON.stringify({
-            creative_features_spec: {
-              standard_enhancements: { enroll_status: 'OPT_OUT' }
-            }
-          }),
           access_token: metaAccessToken
         };
 
