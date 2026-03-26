@@ -729,18 +729,38 @@ Deno.serve(async (req) => {
         let objectStorySpec: any;
         
         if (assetType === 'video') {
+          // Fetch video thumbnail from Meta API
+          let videoThumbnailUrl = '';
+          try {
+            const thumbResponse = await fetch(
+              `https://graph.facebook.com/v21.0/${assetId}?fields=thumbnails&access_token=${metaAccessToken}`
+            );
+            const thumbData = await thumbResponse.json();
+            if (thumbData.thumbnails?.data?.[0]?.uri) {
+              videoThumbnailUrl = thumbData.thumbnails.data[0].uri;
+            }
+          } catch (e) {
+            console.log('Could not fetch video thumbnail, Meta will auto-generate');
+          }
+          
+          const videoData: any = {
+            video_id: assetId,
+            title: copy.headline || 'Watch Now',
+            message: copy.primaryText || '',
+            link_description: copy.description || '',
+            call_to_action: {
+              type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_'),
+              value: { link: answers?.finalUrl || workspace.offer_url || '' }
+            }
+          };
+          
+          if (videoThumbnailUrl) {
+            videoData.image_url = videoThumbnailUrl;
+          }
+          
           objectStorySpec = {
             page_id: pageId,
-            video_data: {
-              video_id: assetId,
-              title: copy.headline || 'Watch Now',
-              message: copy.primaryText || '',
-              link_description: copy.description || '',
-              call_to_action: {
-                type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_'),
-                value: { link: answers?.finalUrl || workspace.offer_url || '' }
-              }
-            }
+            video_data: videoData
           };
         } else {
           objectStorySpec = {
@@ -758,15 +778,10 @@ Deno.serve(async (req) => {
           };
         }
 
-        // Create ad creative — disable personalized destinations (Advantage+ creative destinations)
+        // Create ad creative
         const creativeParams: Record<string, string> = {
           name: `Creative - ${adName}`,
           object_story_spec: JSON.stringify(objectStorySpec),
-          degrees_of_freedom_spec: JSON.stringify({
-            creative_features_spec: {
-              standard_enhancements: { enroll_status: 'OPT_OUT' }
-            }
-          }),
           access_token: metaAccessToken
         };
 
