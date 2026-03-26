@@ -10,18 +10,18 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Loader2, Sparkles, MessageCircle, Lightbulb, ArrowRight, CheckCircle2, ChevronLeft, User, Smile, Link2, X, Mail, Brain, Heart, AlertCircle, Zap, Users, Pencil, PlusCircle, Download } from "lucide-react";
+import { Loader2, Sparkles, ArrowRight, CheckCircle2, ChevronLeft, Link2, Heart, AlertCircle, Zap, Users, Pencil, PlusCircle, Download } from "lucide-react";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { PostConnectionAnalysisModal } from "@/components/PostConnectionAnalysisModal";
-import EmojiQuickPicker from "@/components/EmojiQuickPicker";
+
 import { motion } from "framer-motion";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { formatInvokeError } from "@/lib/formatInvokeError";
 import { useBrand } from "@/contexts/BrandContext";
 import { LumiThinkingInline } from "@/components/LumiThinking";
 
-const STEP_LABELS = ["Brand Basics", "Positioning", "Psychology", "Meet Lumi", "Connect Meta", "What's Next"];
+const STEP_LABELS = ["Brand Basics", "Positioning", "Psychology", "Connect Meta", "What's Next"];
 const DEFAULT_EMOJIS = ['✨', '🎯', '💡', '🚀', '💪', '⭐'];
 const BULLET_OPTIONS = ['✅', '→', '•', '✓', '▸', '★', '💫', '🔥'];
 
@@ -64,12 +64,11 @@ export default function Onboarding() {
   const [editingPsychology, setEditingPsychology] = useState(false);
   const [editedPsychology, setEditedPsychology] = useState<any>(null);
 
-  // Step 4 - Copy Style
-  const [copyPerspective, setCopyPerspective] = useState<'I' | 'We'>('I');
-  const [useEmojis, setUseEmojis] = useState(true);
-  const [brandEmojis, setBrandEmojis] = useState<string[]>(DEFAULT_EMOJIS);
-  const [bulletEmoji, setBulletEmoji] = useState('✅');
-  const [newEmoji, setNewEmoji] = useState('');
+  // Copy style defaults (saved silently with brand)
+  const copyPerspective = 'I';
+  const useEmojis = true;
+  const brandEmojis = DEFAULT_EMOJIS;
+  const bulletEmoji = '✅';
 
   const extractDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -272,6 +271,7 @@ export default function Onboarding() {
       if (error) throw error;
       setPsychologyStatus('approved');
       toast.success("Psychology profile approved! ✨");
+      saveCopyStyleDefaults();
       setStep(4);
     } catch (error: any) {
       toast.error("Failed to approve");
@@ -299,6 +299,7 @@ export default function Onboarding() {
       setPsychologyStatus('approved');
       setEditingPsychology(false);
       toast.success("Psychology profile updated and approved!");
+      saveCopyStyleDefaults();
       setStep(4);
     } catch (error: any) {
       toast.error("Failed to save changes");
@@ -322,15 +323,11 @@ export default function Onboarding() {
     setEditedPsychology((prev: any) => ({ ...prev, [field]: items }));
   };
 
-  // Step 4 -> Save copy style settings and go to step 5
-  const handleStep4Next = async () => {
-    if (!createdBrandId) {
-      setStep(5);
-      return;
-    }
-    setLoading(true);
+  // Save copy style defaults when psychology is approved (step 3 → step 4)
+  const saveCopyStyleDefaults = async () => {
+    if (!createdBrandId) return;
     try {
-      const { error } = await supabase
+      await supabase
         .from('brands')
         .update({
           copy_perspective: copyPerspective,
@@ -339,13 +336,8 @@ export default function Onboarding() {
           bullet_emoji: bulletEmoji,
         })
         .eq('id', createdBrandId);
-      if (error) throw error;
-      setStep(5);
     } catch (error: any) {
       console.error('Error saving copy style:', error);
-      toast.error('Failed to save copy style settings');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -370,22 +362,8 @@ export default function Onboarding() {
     }
   };
 
-  const addEmoji = () => {
-    if (!newEmoji.trim()) return;
-    if (brandEmojis.length >= 6) {
-      toast.error('Maximum 6 emojis allowed');
-      return;
-    }
-    if (brandEmojis.includes(newEmoji.trim())) {
-      toast.error('Emoji already added');
-      return;
-    }
-    setBrandEmojis(prev => [...prev, newEmoji.trim()]);
-    setNewEmoji('');
-  };
-
   const removeEmoji = (emoji: string) => {
-    setBrandEmojis(prev => prev.filter(e => e !== emoji));
+    // no-op: emoji customization moved to brand settings
   };
 
   if (checkingAuth) {
@@ -396,7 +374,7 @@ export default function Onboarding() {
     );
   }
 
-  const totalSteps = 6;
+  const totalSteps = 5;
   const progressPercentage = (step / totalSteps) * 100;
 
   const renderPsychologySection = (label: string, icon: React.ReactNode, items: string[] | undefined) => {
@@ -447,16 +425,14 @@ export default function Onboarding() {
             {step === 1 ? "Welcome to Lumi! ✨" :
              step === 2 ? "Your Positioning" :
              step === 3 ? "Your Audience Psychology" :
-             step === 4 ? "Meet Lumi ✨" :
-             step === 5 ? "Connect Meta" :
+             step === 4 ? "Connect Meta" :
              "What would you like to do first?"}
           </CardTitle>
           <CardDescription>
             {step === 1 ? "Let's get to know your brand" :
              step === 2 ? "Here's what Lumi found — feel free to tweak anything" :
              step === 3 ? "Review and approve your audience's psychological profile — this powers all your ad copy" :
-             step === 4 ? "Your AI-powered Meta Ads assistant" :
-             step === 5 ? "Link your Meta ad account to launch campaigns" :
+             step === 4 ? "Link your Meta ad account to launch campaigns" :
              "Choose your starting point"}
           </CardDescription>
         </CardHeader>
@@ -744,106 +720,7 @@ export default function Onboarding() {
               ) : null}
             </motion.div>
           ) : step === 4 ? (
-            /* ── Step 4: Meet Lumi ── */
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-8 py-4"
-            >
-              <div className="flex justify-center">
-                <motion.div
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                >
-                  <SparkleIcon size="xl" state="idle" glow className="animate-float" />
-                </motion.div>
-              </div>
-
-              <div className="space-y-4">
-                <motion.div 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
-                >
-                  <div className="p-2 rounded-lg bg-gradient-lumi">
-                    <Lightbulb className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm mb-1">Smart Recommendations</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Lumi will pop up with personalized tips and next steps as you work — look for the sparkle button in the bottom right.
-                    </p>
-                  </div>
-                </motion.div>
-
-                <motion.div 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
-                >
-                  <div className="p-2 rounded-lg bg-gradient-lumi">
-                    <MessageCircle className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm mb-1">Ask Anything</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Click the sparkle button anytime to ask questions, get help with strategy, or learn what to do next.
-                    </p>
-                  </div>
-                </motion.div>
-
-                <motion.div 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.6 }}
-                  className="flex items-start gap-4 p-4 rounded-xl bg-muted/50 border border-border/50"
-                >
-                  <div className="p-2 rounded-lg bg-gradient-lumi">
-                    <Mail className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm mb-1">Your Weekly Lumi Digest</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Every Monday, Lumi sends you a performance recap and tells you exactly what to focus on that week.
-                    </p>
-                  </div>
-                </motion.div>
-              </div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                className="flex gap-2"
-              >
-                <Button variant="outline" onClick={() => setStep(3)}>
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                  Back
-                </Button>
-                <Button 
-                  onClick={() => setStep(5)} 
-                  variant="lumi" 
-                  className="flex-1 group"
-                  size="lg"
-                >
-                  Next — Connect Meta
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </motion.div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full text-muted-foreground text-xs mt-1"
-                onClick={() => setStep(5)}
-              >
-                Skip intro →
-              </Button>
-            </motion.div>
-          ) : step === 5 ? (
-            /* ── Step 5: Connect Meta ── */
+            /* ── Step 4: Connect Meta ── */
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -882,18 +759,18 @@ export default function Onboarding() {
                   open={showPostConnectionAnalysis}
                   onClose={() => {
                     setShowPostConnectionAnalysis(false);
-                    setStep(6);
+                    setStep(5);
                   }}
                 />
               )}
 
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setStep(4)}>
+                <Button variant="outline" onClick={() => setStep(3)}>
                   <ChevronLeft className="mr-1 h-4 w-4" />
                   Back
                 </Button>
                 <Button
-                  onClick={() => setStep(6)}
+                  onClick={() => setStep(5)}
                   variant="ghost"
                   className="flex-1"
                 >
@@ -906,7 +783,7 @@ export default function Onboarding() {
               </p>
             </motion.div>
           ) : (
-            /* ── Step 6: What's Next ── */
+            /* ── Step 5: What's Next ── */
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -973,7 +850,7 @@ export default function Onboarding() {
                 variant="ghost" 
                 size="sm" 
                 className="w-full text-muted-foreground text-xs"
-                onClick={() => setStep(5)}
+                onClick={() => setStep(4)}
               >
                 <ChevronLeft className="mr-1 h-3 w-3" />
                 Back
