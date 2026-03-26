@@ -368,26 +368,26 @@ export default function Create() {
       return;
     }
 
-    const isLocalStrategy = LOCAL_STRATEGY_IDS.includes(selectedOfferId);
+    const isSystemOffer = LOCAL_STRATEGY_IDS.includes(selectedOfferId) || DM_LEADS_IDS.includes(selectedOfferId);
 
-    if (!isLocalStrategy && !selectedOfferId) {
+    if (!isSystemOffer && !selectedOfferId) {
       toast.error("Please select an offer and strategy");
       return;
     }
 
     setIsGeneratingAngles(true);
     try {
-      const selectedOffer = isLocalStrategy ? null : offers.find((o) => o.id === selectedOfferId);
+      const selectedOffer = isSystemOffer ? null : offers.find((o) => o.id === selectedOfferId);
       const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
 
       if (!selectedTemplate) {
         throw new Error("Missing template selection");
       }
-      if (!isLocalStrategy && !selectedOffer) {
+      if (!isSystemOffer && !selectedOffer) {
         throw new Error("Missing offer selection");
       }
 
-      const campaignName = isLocalStrategy ?
+      const campaignName = isSystemOffer ?
       selectedTemplate.name :
       `${selectedTemplate.name} - ${selectedOffer!.name}`;
 
@@ -397,7 +397,7 @@ export default function Create() {
           brandName: brand.name,
           strategyData: selectedTemplate?.strategy_template,
           audiencePsychology: brand.audience_psychology,
-          offerData: isLocalStrategy ? {
+          offerData: isSystemOffer ? {
             name: selectedTemplate.name,
             description: selectedTemplate.description
           } : {
@@ -1421,22 +1421,26 @@ export default function Create() {
                         }
                         setIsCreatingCampaign(true);
                         try {
-                          const selectedOffer = offers.find((o) => o.id === selectedOfferId);
+                          const isSystemOfferAdv = SYSTEM_OFFER_IDS.includes(selectedOfferId);
+                          const selectedOffer = isSystemOfferAdv ? null : offers.find((o) => o.id === selectedOfferId);
                           const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
-                          if (!selectedOffer || !selectedTemplate) throw new Error("Missing selection");
+                          if (!selectedTemplate) throw new Error("Missing template selection");
+                          if (!isSystemOfferAdv && !selectedOffer) throw new Error("Missing selection");
+
+                          const advName = isSystemOfferAdv ? selectedTemplate.name : selectedOffer!.name;
 
                           const { data: strategy, error: sErr } = await supabase.
                           from("strategies").
                           insert({
                             brand_id: brand.id,
                             template_id: selectedTemplate.id,
-                            name: `Advanced Build - ${selectedOffer.name}`,
+                            name: `Advanced Build - ${advName}`,
                             campaign_type: selectedTemplate.strategy_template?.campaign_type || "cold",
                             status: "active",
-                            offer_name: selectedOffer.name,
-                            offer_url: selectedOffer.url,
-                            offer_price: selectedOffer.price_point,
-                            offer_description: selectedOffer.description
+                            offer_name: advName,
+                            offer_url: isSystemOfferAdv ? null : selectedOffer!.url,
+                            offer_price: isSystemOfferAdv ? null : selectedOffer!.price_point,
+                            offer_description: isSystemOfferAdv ? selectedTemplate.description : selectedOffer!.description
                           }).
                           select().
                           single();
@@ -1448,14 +1452,14 @@ export default function Create() {
                             brand_id: brand.id,
                             strategy_id: strategy.id,
                             template_id: selectedTemplate.id,
-                            name: `Advanced Build - ${selectedOffer.name}`,
+                            name: `Advanced Build - ${advName}`,
                             strategy_json: selectedTemplate.strategy_template as any,
                             progress_status: "draft",
-                            offer_id: selectedOffer.id,
-                            offer_name: selectedOffer.name,
-                            offer_url: selectedOffer.url,
-                            offer_price: selectedOffer.price_point,
-                            offer_description: selectedOffer.description,
+                            offer_id: isSystemOfferAdv ? null : selectedOffer!.id,
+                            offer_name: advName,
+                            offer_url: isSystemOfferAdv ? null : selectedOffer!.url,
+                            offer_price: isSystemOfferAdv ? null : selectedOffer!.price_point,
+                            offer_description: isSystemOfferAdv ? selectedTemplate.description : selectedOffer!.description,
                             campaign_builder_answers: { advancedBuild: true } as any
                           }]).
                           select().
