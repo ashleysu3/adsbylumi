@@ -257,7 +257,7 @@ Return valid JSON with this structure:
 }
 
 ## COPY REQUIREMENTS
-- Headlines: STRICT MAX 25 characters. Every headline MUST be under 26 characters total. Count carefully. This is a hard requirement — headlines over 25 characters will be rejected.
+- Headlines: STRICT MAX 26 characters. Every headline MUST be 26 characters or fewer. Count carefully. This is a hard requirement — headlines over 26 characters will be rejected.
 - Descriptions: Max 27 characters. Short action phrase that complements the headline (e.g., "Try it free", "See the results"). Don't repeat the headline.
 - Primary Copy: 
   - Short: 50-100 words

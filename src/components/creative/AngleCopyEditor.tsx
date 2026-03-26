@@ -392,14 +392,14 @@ export function AngleCopyEditor({
                         value={h.text}
                         onChange={(e) => updateVariation("headlines", i, e.target.value)}
                         placeholder="Enter headline..."
-                        maxLength={25}
+                        maxLength={26}
                         className="pr-12"
                       />
                       <span className={cn(
                         "absolute right-3 top-1/2 -translate-y-1/2 text-xs",
-                        (h.text?.length || 0) > 25 ? "text-destructive" : "text-muted-foreground"
+                        (h.text?.length || 0) > 26 ? "text-destructive" : "text-muted-foreground"
                       )}>
-                        {h.text?.length || 0}/25
+                        {h.text?.length || 0}/26
                       </span>
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => removeVariation("headlines", i)}>

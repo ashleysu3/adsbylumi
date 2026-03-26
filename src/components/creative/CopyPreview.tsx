@@ -55,7 +55,7 @@ interface CopyPreviewProps {
 
 // Character limit recommendations for Meta ads
 const charLimits = {
-  headline: { ideal: 25, max: 25 },
+  headline: { ideal: 26, max: 26 },
   description: { ideal: 27, max: 40 },
   primary: { ideal: 125, max: 200 },
 };
@@ -309,7 +309,7 @@ export function CopyPreview({
                   onChange={(e) => setEditText(e.target.value)}
                   className="text-sm"
                   autoFocus
-                  maxLength={type === "headline" ? 25 : undefined}
+                  maxLength={type === "headline" ? 26 : undefined}
                 />
               )}
               <div className="flex items-center justify-between">

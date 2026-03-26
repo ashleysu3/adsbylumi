@@ -635,7 +635,7 @@ export function CreativeChecklistCard({
                               value={editCopyValue}
                               onChange={(e) => setEditCopyValue(e.target.value)}
                               className="h-7 text-sm"
-                              maxLength={40}
+                              maxLength={26}
                               autoFocus
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {

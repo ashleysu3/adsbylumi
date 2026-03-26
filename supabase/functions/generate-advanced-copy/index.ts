@@ -127,7 +127,7 @@ serve(async (req) => {
 - Hook → Problem → Solution → Benefits → CTA
 
 ## CHARACTER LIMITS (STRICT)
-- Headline: MAXIMUM 25 characters (this is a hard limit — Meta truncates beyond this)
+- Headline: MAXIMUM 26 characters (this is a hard limit — Meta truncates beyond this)
 - Description: MAXIMUM 27 characters (short, complementary action phrase)
 - Primary text: 150-300 characters ideal, up to 500 max
 
@@ -168,7 +168,7 @@ ${guidelinesContext}
 5. Direct Benefit: Lead with the strongest tangible outcome
 
 Remember:
-- Headlines ≤ 25 chars (STRICT)
+- Headlines ≤ 26 chars (STRICT)
 - Descriptions ≤ 27 chars (short action phrase like "Try it free today" or "Start your journey")
 - Primary text: hook line → blank line → short paragraphs → CTA
 - Each variation MUST feel completely different`;
@@ -202,7 +202,7 @@ Remember:
                         type: "object",
                         properties: {
                           primary_text: { type: "string", description: "Main ad copy with hook, spacing, and CTA. Use \\n\\n for paragraph breaks." },
-                          headline: { type: "string", description: "Max 25 characters" },
+                          headline: { type: "string", description: "Max 26 characters" },
                           description: { type: "string", description: "Max 27 characters" },
                           angle: { type: "string", description: "The psychology angle used (e.g. problem-solution, social-proof, curiosity, transformation, direct-benefit)" },
                         },

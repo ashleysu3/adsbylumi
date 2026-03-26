@@ -656,7 +656,7 @@ export function AdPreviewModal({
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           className="h-7 text-sm"
-                          maxLength={40}
+                          maxLength={26}
                           autoFocus
                           onKeyDown={(e) => e.key === "Enter" && saveEdit()}
                         />
