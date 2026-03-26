@@ -441,19 +441,6 @@ export function MetaAccountConnect({
         )}
       </DialogTrigger>
       
-      {/* Manual Refresh Button - shown when connected but not expired */}
-      {isConnected && !tokenExpired && (
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="gap-2"
-          onClick={handleManualRefresh}
-          disabled={refreshing}
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Refreshing...' : 'Refresh Token'}
-        </Button>
-      )}
       
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
