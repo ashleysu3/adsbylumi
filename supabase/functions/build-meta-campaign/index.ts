@@ -729,10 +729,15 @@ Deno.serve(async (req) => {
         let objectStorySpec: any;
         
         if (assetType === 'video') {
+          // For video ads, Meta requires a thumbnail image
+          // Use the asset's original URL as the thumbnail, or fetch from Meta
+          const videoThumbnailUrl = item.linkedAsset?.url || '';
+          
           objectStorySpec = {
             page_id: pageId,
             video_data: {
               video_id: assetId,
+              image_url: videoThumbnailUrl,
               title: copy.headline || 'Watch Now',
               message: copy.primaryText || '',
               link_description: copy.description || '',
