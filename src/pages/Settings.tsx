@@ -25,6 +25,7 @@ import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 import EmojiQuickPicker from '@/components/EmojiQuickPicker';
 import { CancellationPolicyBanner } from '@/components/CancellationPolicyBanner';
 import { FlodeskIntegrationCard } from '@/components/FlodeskIntegrationCard';
+import { KitIntegrationCard } from '@/components/KitIntegrationCard';
 
 interface NotificationPrefs {
   report_frequency: 'off' | 'daily' | 'weekly';
@@ -1169,6 +1170,7 @@ export default function Settings() {
           {/* Integrations Tab */}
           <TabsContent value="integrations" className="space-y-6">
             <FlodeskIntegrationCard brand={brand} onRefresh={fetchData} />
+            <KitIntegrationCard brand={brand} onRefresh={fetchData} />
           </TabsContent>
         </Tabs>
       </div>
