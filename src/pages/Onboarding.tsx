@@ -14,7 +14,7 @@ import { Loader2, Sparkles, ArrowRight, CheckCircle2, ChevronLeft, Link2, Heart,
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { MetaAccountConnect } from "@/components/MetaAccountConnect";
 import { PostConnectionAnalysisModal } from "@/components/PostConnectionAnalysisModal";
-import EmojiQuickPicker from "@/components/EmojiQuickPicker";
+
 import { motion } from "framer-motion";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
 import { formatInvokeError } from "@/lib/formatInvokeError";
