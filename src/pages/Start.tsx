@@ -204,7 +204,7 @@ export default function Start() {
         title: "Add your first offer",
         description: "Tell us what you're promoting so we can create targeted ads.",
         icon: <Package className="h-5 w-5" />,
-        action: () => navigate("/create"),
+        action: () => navigate("/dashboard"),
         actionLabel: "Add Offer",
         severity: "critical",
       });
