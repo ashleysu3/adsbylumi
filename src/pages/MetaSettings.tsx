@@ -14,7 +14,7 @@ import { useBrand } from '@/contexts/BrandContext';
 import { 
   Link2, Link2Off, CheckCircle, XCircle, 
   AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
-  ArrowLeft, Zap, Key
+  ArrowLeft, Zap, Key, RefreshCw
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { PixelVerificationCard } from '@/components/PixelVerificationCard';
@@ -28,6 +28,7 @@ export default function MetaSettings() {
   const [brand, setBrand] = useState<any>(null);
   const [hasValidToken, setHasValidToken] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [autoTesting, setAutoTesting] = useState(false);
   const [connectionHealth, setConnectionHealth] = useState<'checking' | 'healthy' | 'warning' | 'error' | null>(null);
   const [testResult, setTestResult] = useState<{
@@ -400,7 +401,7 @@ export default function MetaSettings() {
                   )}
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex flex-wrap gap-3 pt-2">
                   <MetaAccountConnect
                     brandId={brand.id}
                     currentAccountId={brand.meta_account_id}
@@ -411,6 +412,29 @@ export default function MetaSettings() {
                     tokenExpired
                     onUpdate={fetchBrand}
                   />
+                  <Button 
+                    onClick={handleTestConnection} 
+                    disabled={testing}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    {testing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Zap className="h-4 w-4" />
+                    )}
+                    {testing ? "Testing..." : "Test Connection"}
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="default"
+                    className="gap-2"
+                    onClick={handleManualRefresh}
+                    disabled={refreshing}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshing ? 'Refreshing...' : 'Refresh Token'}
+                  </Button>
                   <Button 
                     variant="ghost" 
                     onClick={handleDisconnectMeta}
@@ -600,6 +624,16 @@ export default function MetaSettings() {
                     tokenExpired={isExpired || isExpiringSoon}
                     onUpdate={fetchBrand}
                   />
+                  <Button 
+                    variant="ghost" 
+                    size="default"
+                    className="gap-2"
+                    onClick={handleManualRefresh}
+                    disabled={refreshing}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshing ? 'Refreshing...' : 'Refresh Token'}
+                  </Button>
                   <Button 
                     variant="ghost" 
                     onClick={handleDisconnectMeta}
