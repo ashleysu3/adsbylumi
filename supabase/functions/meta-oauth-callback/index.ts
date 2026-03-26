@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     console.log('Active ad accounts found:', activeAccounts.length);
 
     // Get user's Facebook Pages (required for ad creative creation)
-    const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`;
+    const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,category,access_token,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`;
     
     console.log('Fetching Facebook Pages with Instagram accounts...');
     const pagesResponse = await fetch(pagesUrl);
@@ -175,6 +175,34 @@ Deno.serve(async (req) => {
         }
       }
       console.log('Instagram accounts found:', instagramAccounts.length);
+      // For pages without an instagram_business_account, try fetching via the page's own token
+      for (const page of pagesData.data) {
+        if (!page.instagram_business_account && page.access_token) {
+          try {
+            const pageIgUrl = `https://graph.facebook.com/v21.0/${page.id}?fields=instagram_business_account{id,name,username,profile_picture_url}&access_token=${page.access_token}`;
+            const pageIgRes = await fetch(pageIgUrl);
+            const pageIgData = await pageIgRes.json();
+            if (pageIgRes.ok && pageIgData.instagram_business_account) {
+              const ig = pageIgData.instagram_business_account;
+              const igId = ig.id;
+              if (!instagramAccounts.some((a: any) => a.id === igId)) {
+                instagramAccounts.push({
+                  id: igId,
+                  name: ig.name || ig.username,
+                  username: ig.username,
+                  profile_picture_url: ig.profile_picture_url,
+                  linked_page_id: page.id,
+                  linked_page_name: page.name,
+                  source: 'page_token_lookup',
+                });
+                console.log('Discovered IG via page token for page:', page.id, igId);
+              }
+            }
+          } catch (ptErr) {
+            console.log('Page-token IG lookup skipped (non-fatal):', ptErr);
+          }
+        }
+      }
     } else {
       console.error('Failed to fetch pages:', pagesData);
     }
@@ -217,6 +245,35 @@ Deno.serve(async (req) => {
           }
         }
         console.log('Total pages after BM merge:', pages.length);
+
+        // Fourth IG source: Instagram accounts directly under each Business Manager
+        const existingIgIdsPreBM = new Set(instagramAccounts.map((ig: any) => ig.id));
+        for (const biz of businessesData.data) {
+          try {
+            const bmIgUrl = `https://graph.facebook.com/v21.0/${biz.id}/instagram_accounts?fields=id,username,name,profile_picture_url&access_token=${finalToken}`;
+            const bmIgRes = await fetch(bmIgUrl);
+            const bmIgData = await bmIgRes.json();
+            if (bmIgRes.ok && bmIgData.data) {
+              for (const ig of bmIgData.data) {
+                if (!existingIgIdsPreBM.has(ig.id)) {
+                  instagramAccounts.push({
+                    id: ig.id,
+                    name: ig.name || ig.username,
+                    username: ig.username,
+                    profile_picture_url: ig.profile_picture_url,
+                    linked_page_id: null,
+                    linked_page_name: `Via Business Manager ${biz.name || biz.id}`,
+                    source: 'business_manager',
+                  });
+                  existingIgIdsPreBM.add(ig.id);
+                }
+              }
+            }
+          } catch (bmIgErr) {
+            console.log('BM Instagram accounts fetch skipped (non-fatal):', bmIgErr);
+          }
+        }
+        console.log('Total IG accounts after BM IG merge:', instagramAccounts.length);
       }
     } catch (bmError) {
       console.log('Business Manager pages fetch skipped (non-fatal):', bmError);
