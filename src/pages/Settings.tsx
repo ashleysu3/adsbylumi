@@ -1164,6 +1164,11 @@ export default function Settings() {
               </Card>
             )}
           </TabsContent>
+
+          {/* Integrations Tab */}
+          <TabsContent value="integrations" className="space-y-6">
+            <FlodeskIntegrationCard brand={brand} onRefresh={fetchData} />
+          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
