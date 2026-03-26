@@ -443,7 +443,7 @@ export function AdCopyLibrary({ workspace, brand, onUpdate }: AdCopyLibraryProps
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <CardTitle className="text-lg">Headlines</CardTitle>
-                  <CardDescription>Select up to 5 headlines (max 40 chars)</CardDescription>
+                  <CardDescription>Select up to 5 headlines (max 26 chars)</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Button 

@@ -590,7 +590,7 @@ export function CopyEditor({ concept, uploadedAsset, workspace, initialCopy, onA
           <Label htmlFor="headline">
             Headline 
             <span className="text-muted-foreground text-xs ml-1">
-              ({getPlacementRecommendations(activePlacement).recommendedHeadline} characters recommended for {activePlacement}, 40 max)
+              ({getPlacementRecommendations(activePlacement).recommendedHeadline} characters recommended for {activePlacement}, 26 max)
             </span>
           </Label>
           <Input
