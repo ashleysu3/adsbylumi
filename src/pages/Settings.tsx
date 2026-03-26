@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { 
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
   Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen, RotateCcw,
-  Smile, X
+  Smile, X, Link2, CheckCircle2, XCircle
 } from 'lucide-react';
 import { CancelSubscriptionModal } from '@/components/CancelSubscriptionModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -382,6 +382,10 @@ export default function Settings() {
             <TabsTrigger value="billing" className="gap-2">
               <CreditCard className="h-4 w-4" />
               Billing
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="gap-2">
+              <Link2 className="h-4 w-4" />
+              Integrations
             </TabsTrigger>
           </TabsList>
 
