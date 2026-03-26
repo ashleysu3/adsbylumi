@@ -222,6 +222,36 @@ Deno.serve(async (req) => {
       console.log('Business Manager pages fetch skipped (non-fatal):', bmError);
     }
 
+    // Also fetch Instagram accounts accessible through ad accounts
+    const existingIgIds = new Set(instagramAccounts.map((ig: any) => ig.id));
+    for (const adAccount of activeAccounts) {
+      try {
+        const adAccountId = adAccount.id; // format: act_XXXX
+        const igUrl = `https://graph.facebook.com/v21.0/${adAccountId}/instagram_accounts?fields=id,username,name,profile_picture_url&access_token=${finalToken}`;
+        const igRes = await fetch(igUrl);
+        const igData = await igRes.json();
+        if (igRes.ok && igData.data) {
+          for (const ig of igData.data) {
+            if (!existingIgIds.has(ig.id)) {
+              instagramAccounts.push({
+                id: ig.id,
+                name: ig.name || ig.username,
+                username: ig.username,
+                profile_picture_url: ig.profile_picture_url,
+                linked_page_id: null,
+                linked_page_name: `Via ad account ${adAccount.name || adAccountId}`,
+                source: 'ad_account',
+              });
+              existingIgIds.add(ig.id);
+            }
+          }
+        }
+      } catch (adIgErr) {
+        console.log('Ad account Instagram fetch skipped (non-fatal):', adIgErr);
+      }
+    }
+    console.log('Total Instagram accounts after ad-account merge:', instagramAccounts.length);
+
     // Verify Instagram media access for each discovered IG account
     const igPermissionWarnings: string[] = [];
     for (const igAccount of instagramAccounts) {
