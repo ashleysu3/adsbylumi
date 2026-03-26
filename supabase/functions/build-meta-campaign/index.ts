@@ -417,6 +417,12 @@ Deno.serve(async (req) => {
       try {
         console.log(`Uploading asset for concept ${item.id}...`);
         
+        const normalizedStoragePath = item.linkedAsset.storagePath
+          ? (item.linkedAsset.storagePath.startsWith(`${brand.id}/`)
+            ? item.linkedAsset.storagePath
+            : `${brand.id}/${item.linkedAsset.storagePath}`)
+          : undefined;
+
         const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
           method: 'POST',
           headers: {
@@ -425,7 +431,7 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             assetUrl: item.linkedAsset.url,
-            assetStoragePath: item.linkedAsset.storagePath ? `${brand.id}/${item.linkedAsset.storagePath}` : undefined,
+            assetStoragePath: normalizedStoragePath,
             brandId: brand.id,
             fileName: item.linkedAsset.url?.split('/').pop(),
           }),
