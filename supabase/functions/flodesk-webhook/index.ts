@@ -4,9 +4,22 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // Flodesk sends POST requests here when subscribers are created (form submissions).
 
 Deno.serve(async (req) => {
-  // Flodesk only sends POST
+  const jsonHeaders = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { status: 200, headers: jsonHeaders });
+  }
+
+  // Keep endpoint health-check friendly for webhook URL validation.
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response(JSON.stringify({ ok: true, method: req.method }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
   }
 
   try {
@@ -19,7 +32,7 @@ Deno.serve(async (req) => {
     if (!event || !subscriberData) {
       console.log('[FLODESK-WEBHOOK] No event or data in payload, acknowledging');
       return new Response(JSON.stringify({ received: true }), {
-        status: 200, headers: { 'Content-Type': 'application/json' }
+          status: 200, headers: jsonHeaders
       });
     }
 
@@ -27,7 +40,7 @@ Deno.serve(async (req) => {
     if (event !== 'subscriber.created') {
       console.log(`[FLODESK-WEBHOOK] Ignoring event type: ${event}`);
       return new Response(JSON.stringify({ received: true, skipped: true }), {
-        status: 200, headers: { 'Content-Type': 'application/json' }
+          status: 200, headers: jsonHeaders
       });
     }
 
@@ -35,7 +48,7 @@ Deno.serve(async (req) => {
     if (!email) {
       console.log('[FLODESK-WEBHOOK] No email in subscriber data');
       return new Response(JSON.stringify({ received: true, skipped: true }), {
-        status: 200, headers: { 'Content-Type': 'application/json' }
+          status: 200, headers: jsonHeaders
       });
     }
 
@@ -57,14 +70,14 @@ Deno.serve(async (req) => {
     if (brandsError) {
       console.error('[FLODESK-WEBHOOK] Error fetching brands:', brandsError);
       return new Response(JSON.stringify({ received: true, error: 'DB error' }), {
-        status: 200, headers: { 'Content-Type': 'application/json' }
+        status: 200, headers: jsonHeaders
       });
     }
 
     if (!brands || brands.length === 0) {
       console.log('[FLODESK-WEBHOOK] No brands with Flodesk + Meta configured');
       return new Response(JSON.stringify({ received: true, noBrands: true }), {
-        status: 200, headers: { 'Content-Type': 'application/json' }
+        status: 200, headers: jsonHeaders
       });
     }
 
@@ -129,14 +142,14 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({ received: true, results }), {
-      status: 200, headers: { 'Content-Type': 'application/json' }
+      status: 200, headers: jsonHeaders
     });
 
   } catch (error) {
     console.error('[FLODESK-WEBHOOK] Error:', error);
     // Always return 200 to Flodesk so it doesn't retry indefinitely
     return new Response(JSON.stringify({ received: true, error: String(error) }), {
-      status: 200, headers: { 'Content-Type': 'application/json' }
+      status: 200, headers: jsonHeaders
     });
   }
 });
