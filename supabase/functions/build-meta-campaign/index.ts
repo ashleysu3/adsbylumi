@@ -171,10 +171,33 @@ Deno.serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
-    const { workspaceId, answers } = await req.json();
+    const { workspaceId, answers, actAsUserId } = await req.json();
 
     if (!workspaceId) {
       throw new Error('Workspace ID is required');
+    }
+
+    // Support admin impersonation
+    let effectiveUserId = user.id;
+    if (actAsUserId && actAsUserId !== user.id) {
+      const supabaseForRoleCheck = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: adminRole } = await supabaseForRoleCheck
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (!adminRole) {
+        console.error('Non-admin attempted actAsUserId:', user.id);
+        return new Response(
+          JSON.stringify({ error: 'Admin role required for impersonation' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Admin impersonation: admin', user.id, 'acting as user', actAsUserId);
+      effectiveUserId = actAsUserId;
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -197,7 +220,7 @@ Deno.serve(async (req) => {
     const brand = workspace.brands;
 
     // 3. VERIFY OWNERSHIP
-    if (brand.user_id !== user.id) {
+    if (brand.user_id !== effectiveUserId) {
       console.error('Access denied: User', user.id, 'does not own workspace', workspaceId);
       return new Response(
         JSON.stringify({ error: 'Access denied: You do not own this workspace' }),

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 import { ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,7 @@ export default function CampaignBuilder() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { impersonatedUser, isImpersonating } = useImpersonation();
   const workspaceId = searchParams.get("workspace");
 
   const [workspace, setWorkspace] = useState<any>(null);
@@ -130,7 +132,11 @@ export default function CampaignBuilder() {
     setPublishing(true);
     try {
       const { data, error } = await supabase.functions.invoke('build-meta-campaign', {
-        body: { workspaceId, answers: { ...answers, launchStatus } },
+        body: {
+          workspaceId,
+          answers: { ...answers, launchStatus },
+          ...(isImpersonating && impersonatedUser ? { actAsUserId: impersonatedUser.id } : {}),
+        },
       });
       if (error) throw error;
       if (data.success) {
