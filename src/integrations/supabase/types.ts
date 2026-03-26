@@ -393,6 +393,8 @@ export type Database = {
           bullet_emoji: string | null
           copy_perspective: string
           created_at: string | null
+          flodesk_api_key: string | null
+          flodesk_webhook_id: string | null
           id: string
           industry: string | null
           instagram_account_id: string | null
@@ -431,6 +433,8 @@ export type Database = {
           bullet_emoji?: string | null
           copy_perspective?: string
           created_at?: string | null
+          flodesk_api_key?: string | null
+          flodesk_webhook_id?: string | null
           id?: string
           industry?: string | null
           instagram_account_id?: string | null
@@ -469,6 +473,8 @@ export type Database = {
           bullet_emoji?: string | null
           copy_perspective?: string
           created_at?: string | null
+          flodesk_api_key?: string | null
+          flodesk_webhook_id?: string | null
           id?: string
           industry?: string | null
           instagram_account_id?: string | null
