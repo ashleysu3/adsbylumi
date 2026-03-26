@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
 import { ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
