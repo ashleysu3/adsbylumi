@@ -125,43 +125,65 @@ Deno.serve(async (req) => {
       }
     }
 
-    const webhookRes = await fetch('https://api.flodesk.com/v1/webhooks', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${flodeskAuth}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: 'LUMI Lead Events',
-        post_url: webhookUrl,
-        events: ['subscriber.created'],
-      }),
-    });
+    const webhookBodies = [
+      { name: 'LUMI Lead Events', post_url: webhookUrl, events: ['subscriber.created'] },
+      { name: 'LUMI Lead Events', PostUrl: webhookUrl, events: ['subscriber.created'] },
+      { name: 'LUMI Lead Events', url: webhookUrl, events: ['subscriber.created'] },
+    ];
 
     let webhookId: string | null = null;
-    if (webhookRes.ok) {
-      const webhookData = await webhookRes.json();
-      webhookId = webhookData.id;
-      console.log('[FLODESK-CONNECT] Webhook registered:', webhookId);
-    } else {
+    let lastWebhookError = 'Unknown webhook registration error';
+
+    for (const body of webhookBodies) {
+      const webhookRes = await fetch('https://api.flodesk.com/v1/webhooks', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${flodeskAuth}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (webhookRes.ok) {
+        const webhookData = await webhookRes.json();
+        webhookId = webhookData.id;
+        console.log('[FLODESK-CONNECT] Webhook registered:', webhookId, 'payloadKeys=', Object.keys(body));
+        break;
+      }
+
       const errText = await webhookRes.text();
-      console.error('[FLODESK-CONNECT] Webhook registration failed:', webhookRes.status, errText);
-      // Still connect even if webhook fails - user can retry
+      lastWebhookError = `${webhookRes.status} - ${errText}`;
+      console.error('[FLODESK-CONNECT] Webhook registration attempt failed:', lastWebhookError, 'payloadKeys=', Object.keys(body));
+    }
+
+    if (!webhookId) {
+      return new Response(JSON.stringify({
+        error: `Flodesk connected, but webhook registration failed: ${lastWebhookError}`,
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Store API key and webhook ID using service role
     const serviceClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    await serviceClient.from('brands').update({
+    const { error: updateError } = await serviceClient.from('brands').update({
       flodesk_api_key: apiKey,
       flodesk_webhook_id: webhookId,
     }).eq('id', brandId);
 
+    if (updateError) {
+      console.error('[FLODESK-CONNECT] Failed saving Flodesk credentials:', updateError);
+      return new Response(JSON.stringify({ error: 'Failed to save Flodesk connection' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      webhookRegistered: !!webhookId,
-      message: webhookId
-        ? 'Flodesk connected and webhook registered! Form submissions will now send Lead events to Meta.'
-        : 'Flodesk connected but webhook registration failed. You can retry from settings.',
+      webhookRegistered: true,
+      message: 'Flodesk connected and webhook registered! Form submissions will now send Lead events to Meta.',
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
