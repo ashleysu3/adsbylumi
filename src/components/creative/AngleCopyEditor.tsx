@@ -397,9 +397,9 @@ export function AngleCopyEditor({
                       />
                       <span className={cn(
                         "absolute right-3 top-1/2 -translate-y-1/2 text-xs",
-                        (h.text?.length || 0) > 25 ? "text-destructive" : "text-muted-foreground"
+                        (h.text?.length || 0) > 26 ? "text-destructive" : "text-muted-foreground"
                       )}>
-                        {h.text?.length || 0}/25
+                        {h.text?.length || 0}/26
                       </span>
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => removeVariation("headlines", i)}>
