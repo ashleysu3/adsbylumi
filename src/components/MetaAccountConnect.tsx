@@ -291,12 +291,16 @@ export function MetaAccountConnect({
       return;
     }
     
-    // Find Instagram accounts linked to the selected page
+    // Find Instagram accounts linked to the selected page first, then include others
     const linkedInstagram = instagramAccounts.filter(ig => ig.linked_page_id === selectedPage);
+    const otherInstagram = instagramAccounts.filter(ig => ig.linked_page_id !== selectedPage);
     
     // If there's exactly one linked Instagram, auto-select it
     if (linkedInstagram.length === 1) {
       setSelectedInstagram(linkedInstagram[0].id);
+    } else if (linkedInstagram.length === 0 && instagramAccounts.length === 1) {
+      // If no page-linked IG but only one total, auto-select
+      setSelectedInstagram(instagramAccounts[0].id);
     }
     
     setStep('select-instagram');
