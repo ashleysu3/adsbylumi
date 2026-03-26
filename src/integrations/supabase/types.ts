@@ -399,6 +399,9 @@ export type Database = {
           industry: string | null
           instagram_account_id: string | null
           instagram_account_name: string | null
+          kit_access_token: string | null
+          kit_refresh_token: string | null
+          kit_webhook_id: string | null
           last_review_date: string | null
           meta_access_token: string | null
           meta_account_id: string | null
@@ -439,6 +442,9 @@ export type Database = {
           industry?: string | null
           instagram_account_id?: string | null
           instagram_account_name?: string | null
+          kit_access_token?: string | null
+          kit_refresh_token?: string | null
+          kit_webhook_id?: string | null
           last_review_date?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
@@ -479,6 +485,9 @@ export type Database = {
           industry?: string | null
           instagram_account_id?: string | null
           instagram_account_name?: string | null
+          kit_access_token?: string | null
+          kit_refresh_token?: string | null
+          kit_webhook_id?: string | null
           last_review_date?: string | null
           meta_access_token?: string | null
           meta_account_id?: string | null
