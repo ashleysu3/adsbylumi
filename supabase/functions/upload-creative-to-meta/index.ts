@@ -79,19 +79,12 @@ Deno.serve(async (req) => {
     }
 
     // Only check ownership for direct user calls, not service-to-service
-    if (!isServiceCall) {
-      // Re-authenticate to get user for ownership check
-      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-        global: { headers: { Authorization: authHeader } }
-      });
-      const { data: { user } } = await supabaseAuth.auth.getUser();
-      if (brand.user_id !== user?.id) {
-        console.error('Access denied: User', user?.id, 'does not own brand', brandId);
-        return new Response(
-          JSON.stringify({ success: false, error: 'Access denied' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    if (userId && brand.user_id !== userId) {
+      console.error('Access denied: User', userId, 'does not own brand', brandId);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Access denied' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const metaAccountId = brand.meta_account_id;
