@@ -156,7 +156,10 @@ export default function CampaignBuilder() {
           ? "Campaign is live! Ads will start after Meta approval."
           : "Campaign published in paused status!");
       } else {
-        throw new Error(data.error || 'Failed to publish campaign');
+        const failedAdError = Array.isArray(data?.failedAds) && data.failedAds.length > 0
+          ? data.failedAds[0]?.error
+          : null;
+        throw new Error(failedAdError || data.error || 'Failed to publish campaign');
       }
     } catch (error: any) {
       const friendlyMsg = formatInvokeError(error);

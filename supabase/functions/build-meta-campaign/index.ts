@@ -959,8 +959,13 @@ Deno.serve(async (req) => {
 
     if (!result.success) {
       // Complete failure - no ads created; surface the exact Meta rejection reason
+      console.error('All ads failed. Details:', JSON.stringify(result.failedAds));
       const primaryReason = result.failedAds[0]?.error || 'No ad was created.';
-      throw new Error(`Failed to create any ads. ${primaryReason}`);
+      const buildError = new Error(`Failed to create any ads. ${primaryReason}`) as Error & {
+        failedAds?: Array<{ conceptId: string; conceptTitle: string; error: string }>;
+      };
+      buildError.failedAds = result.failedAds;
+      throw buildError;
     }
 
     // Partial success - save what we have
@@ -1038,7 +1043,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: error.message,
+        failedAds: Array.isArray(error?.failedAds) ? error.failedAds : []
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
