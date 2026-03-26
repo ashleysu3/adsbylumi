@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { 
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
   Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen, RotateCcw,
-  Smile, X
+  Smile, X, Link2, CheckCircle2, XCircle
 } from 'lucide-react';
 import { CancelSubscriptionModal } from '@/components/CancelSubscriptionModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,6 +24,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 import EmojiQuickPicker from '@/components/EmojiQuickPicker';
 import { CancellationPolicyBanner } from '@/components/CancellationPolicyBanner';
+import { FlodeskIntegrationCard } from '@/components/FlodeskIntegrationCard';
 
 interface NotificationPrefs {
   report_frequency: 'off' | 'daily' | 'weekly';
@@ -382,6 +383,10 @@ export default function Settings() {
             <TabsTrigger value="billing" className="gap-2">
               <CreditCard className="h-4 w-4" />
               Billing
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="gap-2">
+              <Link2 className="h-4 w-4" />
+              Integrations
             </TabsTrigger>
           </TabsList>
 
@@ -1159,6 +1164,11 @@ export default function Settings() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Integrations Tab */}
+          <TabsContent value="integrations" className="space-y-6">
+            <FlodeskIntegrationCard brand={brand} onRefresh={fetchData} />
           </TabsContent>
         </Tabs>
       </div>
