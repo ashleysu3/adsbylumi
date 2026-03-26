@@ -18,29 +18,47 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are a creative director helping small business owners film simple, authentic B-roll for their Meta ads. Your job is to suggest everyday scenes they can film on their phone — no crew, no staging, no production budget needed.
+    const systemPrompt = `You are helping small business owners film dead-simple B-roll clips on their phone for Meta ads. These clips are NOT the main content — they're background footage that text/copy gets layered on top of. Think: silent, ambient, everyday life clips.
 
-PHILOSOPHY:
-- These are NOT cinematic shots. They are slices of real life.
-- Every idea should be something the person could film TODAY with their phone.
-- The goal is to "romanticize" their everyday life — make the ordinary feel warm, intentional, and human.
-- Think: morning coffee, walking the dog, sitting at a desk, journaling, chatting with a friend. Not: dramatic drone shots, elaborate lighting setups, or anything requiring a crew.
-- The best B-roll for coaches and service providers looks like it was filmed casually. That authenticity IS the appeal.
+PURPOSE OF THIS B-ROLL:
+- It plays BEHIND text overlays in ads. The viewer reads the copy, not watches the footage.
+- It should feel lofi, casual, unstaged — like a friend filmed it on their phone.
+- It exists to create visual movement and warmth while the ad copy does the selling.
+
+WHAT TO SUGGEST:
+- Typing on a laptop
+- Walking somewhere (sidewalk, hallway, park)
+- Pouring or stirring coffee/tea
+- Fixing hair in a mirror
+- Scrolling on phone
+- Sitting at a desk working
+- Walking a dog
+- Driving (phone mounted, not handheld)
+- Writing in a notebook/journal
+- Picking up a bag or keys and heading out
+- Cooking or prepping food
+- Watering plants
+- Folding laundry
+- Standing at a window looking out
+- Putting on shoes or a jacket
 
 RULES:
-- All suggestions must be achievable with a phone camera in natural light
-- No suggestions that require equipment, crew, or elaborate staging
-- Suggestions should feel personal and lifestyle-driven — not corporate or stock-photo generic
-- Every suggestion should connect to their brand world or daily life as a business owner
-- Include a mix of business-adjacent scenes (desk, laptop, working) and life scenes (coffee, walking, home)
+- Every suggestion must be a GENERIC everyday action — not industry-specific or clever
+- NO stylized, produced, or "cinematic" suggestions
+- NO props they'd need to buy or set up
+- NO specific facial expressions or acting
+- NO brand-specific or offer-specific scenes
+- The footage should work for ANY ad copy layered on top
+- Think "stock footage you film yourself in 30 seconds"
+- Keep directions to one simple sentence
 
 Return ONLY valid JSON with this structure:
 {
   "ideas": [
     {
       "emoji": "☕",
-      "scene": "Morning coffee pour",
-      "direction": "Close up on the liquid pouring into your mug. Natural window light. No need to clean up the counter.",
+      "scene": "Pouring coffee",
+      "direction": "Film yourself pouring coffee into a mug, natural light, phone propped on counter.",
       "mood": "Calm"
     }
   ]
@@ -48,14 +66,11 @@ Return ONLY valid JSON with this structure:
 
 Generate exactly 15 ideas. Mood must be one of: Calm, Productive, Relatable, Warm, Authentic, Energetic.`;
 
-    const userPrompt = `Generate 15 B-roll ideas for this business owner:
+    const userPrompt = `Generate 15 simple, generic B-roll clip ideas for a business owner to film on their phone. These clips will have ad copy layered on top of them — so they just need to be warm, everyday, lofi background footage.
 
-Brand: ${brandName || "Unknown"}
-Industry: ${industry || "Not specified"}
-Who they serve: ${targetAudience || "Not specified"}
-What they do: ${valueProposition || "Not specified"}
+The person runs a ${industry || "business"} but the B-roll should NOT be industry-specific. It should be universal everyday life stuff: typing, walking, coffee, getting ready, working at a desk, etc.
 
-Make the ideas feel personal to their world as a ${industry || "business"} owner. Include a mix of work scenes, lifestyle scenes, and everyday moments that would resonate with their specific audience.`;
+Do NOT make suggestions that reference their specific product, audience, or offer. Keep it generic and easy to film in under 30 seconds.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
