@@ -23,25 +23,33 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
-    // Create auth client with user's token
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
 
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
-      console.error('Authentication failed:', authError?.message);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid authentication' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('User authenticated:', user.id);
+    // When called from another edge function with the service role key, skip user auth
+    // (the calling function already verified ownership)
+    const isServiceCall = authHeader === `Bearer ${supabaseServiceKey}`;
 
     // Create service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    if (!isServiceCall) {
+      // Create auth client with user's token
+      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) {
+        console.error('Authentication failed:', authError?.message);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid authentication' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('User authenticated:', user.id);
+    } else {
+      console.log('Service-to-service call authenticated');
+    }
 
     // 2. Parse request - NOTE: We no longer accept metaAccessToken as a parameter
     const { assetUrl, assetStoragePath, brandId, fileName } = await req.json();
@@ -54,7 +62,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Verify brand ownership
+    // 3. Verify brand exists and get Meta details
     const { data: brand, error: brandError } = await supabase
       .from('brands')
       .select('user_id, meta_account_id, meta_access_token')
@@ -69,12 +77,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (brand.user_id !== user.id) {
-      console.error('Access denied: User', user.id, 'does not own brand', brandId);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Access denied' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Only check ownership for direct user calls, not service-to-service
+    if (!isServiceCall) {
+      // Re-authenticate to get user for ownership check
+      const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: { user } } = await supabaseAuth.auth.getUser();
+      if (brand.user_id !== user?.id) {
+        console.error('Access denied: User', user?.id, 'does not own brand', brandId);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Access denied' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const metaAccountId = brand.meta_account_id;
