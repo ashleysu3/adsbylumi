@@ -239,7 +239,7 @@ Analyze this trend and translate it for my brand. Return a complete translation 
                 adConcept: {
                   type: 'object',
                   properties: {
-                    headline: { type: 'string', description: 'Ad headline under 25 characters' },
+                    headline: { type: 'string', description: 'Ad headline under 26 characters' },
                     primaryText: { type: 'string', description: 'Primary ad copy (medium length) written in brand voice' },
                     description: { type: 'string', description: 'Ad description line' },
                     cta: { type: 'string', description: 'Call to action button text' },
