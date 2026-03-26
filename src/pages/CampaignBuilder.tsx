@@ -35,6 +35,7 @@ export default function CampaignBuilder() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { impersonatedUser, isImpersonating } = useImpersonation();
   const workspaceId = searchParams.get("workspace");
 
   const [workspace, setWorkspace] = useState<any>(null);
