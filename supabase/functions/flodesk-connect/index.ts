@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         name: 'LUMI Lead Events',
-        url: webhookUrl,
+        post_url: webhookUrl,
         events: ['subscriber.created'],
       }),
     });
