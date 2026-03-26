@@ -218,3 +218,9 @@ verify_jwt = false
 
 [functions.apply-optimizations]
 verify_jwt = false
+
+[functions.flodesk-connect]
+verify_jwt = false
+
+[functions.flodesk-webhook]
+verify_jwt = false
