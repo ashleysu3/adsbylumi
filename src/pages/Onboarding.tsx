@@ -425,16 +425,14 @@ export default function Onboarding() {
             {step === 1 ? "Welcome to Lumi! ✨" :
              step === 2 ? "Your Positioning" :
              step === 3 ? "Your Audience Psychology" :
-             step === 4 ? "Meet Lumi ✨" :
-             step === 5 ? "Connect Meta" :
+             step === 4 ? "Connect Meta" :
              "What would you like to do first?"}
           </CardTitle>
           <CardDescription>
             {step === 1 ? "Let's get to know your brand" :
              step === 2 ? "Here's what Lumi found — feel free to tweak anything" :
              step === 3 ? "Review and approve your audience's psychological profile — this powers all your ad copy" :
-             step === 4 ? "Your AI-powered Meta Ads assistant" :
-             step === 5 ? "Link your Meta ad account to launch campaigns" :
+             step === 4 ? "Link your Meta ad account to launch campaigns" :
              "Choose your starting point"}
           </CardDescription>
         </CardHeader>
