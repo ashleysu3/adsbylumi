@@ -309,6 +309,32 @@ Deno.serve(async (req) => {
     }
     console.log('Total Instagram accounts after ad-account merge:', instagramAccounts.length);
 
+    // Check critical permissions via /me/permissions
+    let permissionWarning: string | null = null;
+    try {
+      const permsUrl = `https://graph.facebook.com/v21.0/me/permissions?access_token=${finalToken}`;
+      const permsRes = await fetch(permsUrl);
+      const permsData = await permsRes.json();
+      if (permsRes.ok && permsData.data) {
+        const grantedPerms = new Set(
+          permsData.data
+            .filter((p: any) => p.status === 'granted')
+            .map((p: any) => p.permission)
+        );
+        const missing: string[] = [];
+        if (!grantedPerms.has('instagram_basic')) missing.push('instagram_basic');
+        if (!grantedPerms.has('pages_read_user_content')) missing.push('pages_read_user_content');
+        if (missing.length > 0) {
+          permissionWarning = `Instagram post access was not granted (missing: ${missing.join(', ')}). You may have unchecked this permission. Please disconnect and reconnect, making sure to accept all permissions when prompted.`;
+          console.warn('Missing critical permissions:', missing);
+        } else {
+          console.log('All critical permissions granted');
+        }
+      }
+    } catch (permErr) {
+      console.warn('Permission check skipped (non-fatal):', permErr);
+    }
+
     // Verify Instagram media access for each discovered IG account
     const igPermissionWarnings: string[] = [];
     for (const igAccount of instagramAccounts) {
@@ -392,7 +418,8 @@ Deno.serve(async (req) => {
         accounts: activeAccounts,
         pages: pages,
         instagramAccounts: instagramAccounts,
-        ...(igPermissionWarnings.length > 0 ? { igPermissionWarnings } : {})
+        ...(igPermissionWarnings.length > 0 ? { igPermissionWarnings } : {}),
+        ...(permissionWarning ? { permissionWarning } : {})
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

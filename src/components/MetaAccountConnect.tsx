@@ -200,6 +200,11 @@ export function MetaAccountConnect({
               setPages(callbackData.pages || []);
               setInstagramAccounts(callbackData.instagramAccounts || []);
 
+              // Check for critical permission warnings
+              if (callbackData.permissionWarning) {
+                toast.warning(callbackData.permissionWarning, { duration: 12000 });
+              }
+
               const accountCount = callbackData.accounts?.length || 0;
               const pageCount = callbackData.pages?.length || 0;
               const igCount = callbackData.instagramAccounts?.length || 0;
