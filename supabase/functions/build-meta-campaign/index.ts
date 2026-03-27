@@ -316,17 +316,11 @@ Deno.serve(async (req) => {
     // Copy can come from either item-level finalCopy OR angle-level angle_copy
     const approvedConcepts: ProductionItem[] = productionItems.filter(
       (item: ProductionItem) => {
-        // Check status - accept 'approved', completed:true, or any item with an asset
-        const isApproved = item.status === 'approved' || (item as any).completed === true;
-        // Check for asset (new or legacy)
-        const hasAsset = item.linkedAsset || item.uploaded_asset_id;
-        if (!hasAsset) return false;
-        // Check for copy - either item-level or angle-level
-        const hasItemCopy = item.finalCopy || item.final_copy;
-        const hasAngleCopy = item.angleName && angleCopy && Object.keys(angleCopy).length > 0;
-        // If item has asset + copy, include it (even if not explicitly approved)
-        // This handles the case where items have no status field but have all required data
-        return hasAsset && (hasItemCopy || hasAngleCopy || isApproved);
+        // Any production item with a linked asset is valid for publishing.
+        // The act of uploading an asset means the creative is ready.
+        const hasLinkedAsset = !!(item.linkedAsset?.url || item.linkedAsset?.storagePath);
+        const hasUploadedAssetId = !!item.uploaded_asset_id;
+        return hasLinkedAsset || hasUploadedAssetId;
       }
     );
     
