@@ -453,9 +453,17 @@ Deno.serve(async (req) => {
           }),
         });
 
-        const uploadResult = await uploadResponse.json();
+        const uploadRawText = await uploadResponse.text();
+        let uploadResult: any = null;
+        if (uploadRawText) {
+          try {
+            uploadResult = JSON.parse(uploadRawText);
+          } catch {
+            uploadResult = null;
+          }
+        }
 
-        if (uploadResult.success && uploadResult.assetId) {
+        if (uploadResult?.success && uploadResult?.assetId) {
           uploadedAssets.push({
             item,
             assetId: uploadResult.assetId,
@@ -463,11 +471,25 @@ Deno.serve(async (req) => {
           });
           console.log(`Asset uploaded: ${uploadResult.assetType} - ${uploadResult.assetId}`);
         } else {
-          console.error(`Failed to upload asset for ${item.id}:`, uploadResult.error);
+          const uploadErrorMessage =
+            uploadResult?.error ||
+            uploadResult?.message ||
+            uploadResult?.details ||
+            (!uploadResponse.ok ? `Upload service returned ${uploadResponse.status}` : '') ||
+            (uploadRawText?.trim() ? uploadRawText.trim().slice(0, 500) : '') ||
+            'Unknown error';
+
+          console.error(`Failed to upload asset for ${item.id}:`, {
+            status: uploadResponse.status,
+            ok: uploadResponse.ok,
+            result: uploadResult,
+            raw: uploadRawText?.slice(0, 500) || '',
+          });
+
           result.failedAds.push({
             conceptId: item.id,
             conceptTitle: item.concept?.title || 'Unknown',
-            error: `Asset upload failed: ${uploadResult.error || 'Unknown error'}`
+            error: `Asset upload failed: ${uploadErrorMessage}`
           });
         }
       } catch (uploadError: any) {
