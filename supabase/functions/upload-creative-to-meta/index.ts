@@ -265,35 +265,42 @@ Deno.serve(async (req) => {
       // Upload image
       console.log('Uploading image to Meta...');
 
-      // Convert blob to base64
-      const arrayBuffer = await assetData.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const base64 = btoa(binary);
+      // Use multipart upload to avoid loading and re-encoding large assets in memory
+      const imageFormData = new FormData();
+      imageFormData.append('access_token', metaAccessToken);
+      imageFormData.append('filename', assetData, fileName || 'image.jpg');
 
       const imageResponse = await fetch(
         `https://graph.facebook.com/v21.0/act_${accountId}/adimages`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            access_token: metaAccessToken,
-            bytes: base64,
-          }),
+          body: imageFormData,
         }
       );
 
-      const imageData = await imageResponse.json();
+      const imageRawText = await imageResponse.text();
+      let imageData: any = null;
+      try {
+        imageData = imageRawText ? JSON.parse(imageRawText) : null;
+      } catch {
+        imageData = null;
+      }
 
-      if (imageData.error) {
-        console.error('Image upload error:', imageData.error);
+      if (!imageResponse.ok || imageData?.error) {
+        const imageErrorMessage =
+          imageData?.error?.message ||
+          imageData?.message ||
+          (imageRawText?.trim() ? imageRawText.trim().slice(0, 500) : '') ||
+          `Meta image upload failed (HTTP ${imageResponse.status})`;
+
+        console.error('Image upload error:', {
+          status: imageResponse.status,
+          response: imageData,
+          raw: imageRawText?.slice(0, 500) || '',
+        });
+
         return new Response(
-          JSON.stringify({ success: false, error: imageData.error.message || 'Failed to upload image' }),
+          JSON.stringify({ success: false, error: imageErrorMessage }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -326,10 +333,14 @@ Deno.serve(async (req) => {
     }
   } catch (error: any) {
     console.error('Error uploading asset to Meta:', error);
+    const errorMessage =
+      (typeof error?.message === 'string' && error.message) ||
+      (typeof error === 'string' && error) ||
+      'Unexpected upload error';
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: errorMessage
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
