@@ -196,22 +196,49 @@ export function MetaAccountConnect({
                 throw new Error('No data received from OAuth callback');
               }
 
-              setAccounts(callbackData.accounts || []);
-              setPages(callbackData.pages || []);
-              setInstagramAccounts(callbackData.instagramAccounts || []);
+              const returnedAccounts = callbackData.accounts || [];
+              const returnedPages = callbackData.pages || [];
+              const returnedInstagram = callbackData.instagramAccounts || [];
+
+              setAccounts(returnedAccounts);
+              setPages(returnedPages);
+              setInstagramAccounts(returnedInstagram);
 
               // Check for critical permission warnings
               if (callbackData.permissionWarning) {
                 toast.warning(callbackData.permissionWarning, { duration: 12000 });
               }
 
-              const accountCount = callbackData.accounts?.length || 0;
-              const pageCount = callbackData.pages?.length || 0;
-              const igCount = callbackData.instagramAccounts?.length || 0;
+              const accountCount = returnedAccounts.length;
+              const pageCount = returnedPages.length;
+              const igCount = returnedInstagram.length;
 
               toast.success(
                 `Found ${accountCount} ad account${accountCount !== 1 ? 's' : ''}, ${pageCount} Page${pageCount !== 1 ? 's' : ''}, and ${igCount} Instagram account${igCount !== 1 ? 's' : ''}`
               );
+
+              // On reconnection, auto-confirm previous selections if they still exist
+              // in the returned data — no need to make the user re-pick everything
+              if (tokenExpired && currentAccountId && currentPageId) {
+                const prevAccountStillExists = returnedAccounts.some((a: AdAccount) => a.id === currentAccountId);
+                const prevPageStillExists = returnedPages.some((p: FacebookPage) => p.id === currentPageId);
+                const prevIgStillExists = !currentInstagramId || returnedInstagram.some((ig: InstagramAccount) => ig.id === currentInstagramId);
+
+                if (prevAccountStillExists && prevPageStillExists && prevIgStillExists) {
+                  // Previous selections still valid — save directly without making user re-click
+                  setSelectedAccount(currentAccountId);
+                  setSelectedPage(currentPageId);
+                  if (currentInstagramId) setSelectedInstagram(currentInstagramId);
+                  toast.info('Reconnected — your previous ad account, Page, and Instagram selections are still valid.');
+                  // Trigger save automatically
+                  setStep('select-account'); // briefly set step so handleSaveConnection can run
+                  // Use setTimeout to let state settle, then auto-save
+                  setTimeout(() => {
+                    autoSaveReconnection(currentAccountId, currentPageId, currentInstagramId || undefined, returnedPages, returnedInstagram);
+                  }, 100);
+                  return;
+                }
+              }
 
               setStep('select-account');
             } catch (err: any) {
@@ -287,6 +314,70 @@ export function MetaAccountConnect({
       });
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  // Auto-save reconnection when previous selections are still valid
+  const autoSaveReconnection = async (
+    accountId: string,
+    pageId: string,
+    instagramId?: string,
+    availablePages?: FacebookPage[],
+    availableInstagram?: InstagramAccount[]
+  ) => {
+    const selectedPageData = (availablePages || pages).find(p => p.id === pageId);
+    const selectedInstagramData = instagramId
+      ? (availableInstagram || instagramAccounts).find(ig => ig.id === instagramId)
+      : null;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('brands')
+        .update({
+          meta_account_id: accountId,
+          page_id: pageId,
+          page_name: selectedPageData?.name || null,
+          instagram_account_id: instagramId || null,
+          instagram_account_name: selectedInstagramData?.name || selectedInstagramData?.username || null,
+          multi_advertiser_ads: false,
+          site_links_enabled: false
+        })
+        .eq('id', brandId);
+
+      if (error) throw error;
+
+      toast.success("Meta reconnected successfully");
+
+      // Trigger campaign sync
+      const syncToastId = toast.loading("Syncing campaigns from Meta...");
+      const { data: syncResult, error: syncError } = await supabase.functions.invoke(
+        'sync-meta-campaigns',
+        { body: { brandId, metaAccountId: accountId } }
+      );
+
+      if (syncError) {
+        toast.error("Campaign sync failed", { id: syncToastId, description: "You can manually sync from the Data page" });
+      } else {
+        const count = syncResult?.synced || 0;
+        if (count > 0) {
+          toast.success(`Synced ${count} campaign${count !== 1 ? 's' : ''}`, { id: syncToastId });
+        } else {
+          toast.success("All campaigns up to date", { id: syncToastId });
+        }
+      }
+
+      try { sessionStorage.removeItem("meta_oauth_needs_selection"); } catch { /* ignore */ }
+
+      onUpdate();
+      setOpen(false);
+      resetState();
+    } catch (error: any) {
+      console.error('Auto-save reconnection error:', error);
+      toast.error("Failed to save — please select your accounts manually");
+      setStep('select-account');
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -112,8 +112,9 @@ export default function MetaSettings() {
         return;
       }
 
+      // Include meta_access_token so hasValidToken reflects actual token state (not just expiration date)
       const brandSelect =
-        'id,user_id,name,meta_account_id,page_id,page_name,instagram_account_id,instagram_account_name,meta_token_expires_at,meta_pixel_id,meta_pixel_name,meta_pixel_events' as const;
+        'id,user_id,name,meta_account_id,page_id,page_name,instagram_account_id,instagram_account_name,meta_token_expires_at,meta_access_token,meta_pixel_id,meta_pixel_name,meta_pixel_events' as const;
 
       const { data, error } = await supabase
         .from('brands')
@@ -127,7 +128,8 @@ export default function MetaSettings() {
       setBrand(data);
       if (data?.id) {
         setLumiBrandId(data.id);
-        setHasValidToken(!!data.meta_token_expires_at);
+        // Token is valid only if both the token itself AND expiration date exist
+        setHasValidToken(!!data.meta_token_expires_at && !!data.meta_access_token);
       } else {
         setHasValidToken(false);
       }

@@ -33,10 +33,10 @@ Deno.serve(async (req) => {
     const META_APP_SECRET = Deno.env.get('META_APP_SECRET');
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
-    // Fetch all brands with Meta connected
+    // Fetch all brands with Meta connected (include meta_access_token for direct verification)
     const { data: brands, error: brandsError } = await supabase
       .from('brands')
-      .select('id, name, user_id, meta_account_id, meta_token_expires_at')
+      .select('id, name, user_id, meta_account_id, meta_token_expires_at, meta_access_token')
       .not('meta_account_id', 'is', null);
 
     if (brandsError) {
@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
 
         // If token might be problematic, verify with Meta API
         if (result.status !== 'valid' || !brand.meta_token_expires_at) {
-          const tokenValid = await verifyTokenWithMeta(supabase, brand.id);
+          const tokenValid = await verifyTokenWithMeta(supabase, brand.id, brand.meta_access_token);
           if (!tokenValid) {
             result.status = 'invalid';
           }
@@ -191,13 +191,25 @@ Deno.serve(async (req) => {
   }
 });
 
-async function verifyTokenWithMeta(supabase: any, brandId: string): Promise<boolean> {
+async function verifyTokenWithMeta(supabase: any, brandId: string, tokenFromBrand?: string | null): Promise<boolean> {
   try {
-    const { data: token, error } = await supabase.rpc('get_meta_token', { p_brand_id: brandId });
-    
-    if (error || !token) {
-      console.log(`[VERIFY-META-TOKENS] No token found for brand ${brandId}`);
-      return false;
+    // NOTE: get_meta_token RPC fails with "permission denied for function _crypto_aead_det_noncegen".
+    // Read token directly from brands table instead (matching pattern in test-meta-connection,
+    // sync-meta-campaigns, and refresh-meta-token).
+    let token = tokenFromBrand;
+
+    if (!token) {
+      const { data: brand, error } = await supabase
+        .from('brands')
+        .select('meta_access_token')
+        .eq('id', brandId)
+        .single();
+
+      if (error || !brand?.meta_access_token) {
+        console.log(`[VERIFY-META-TOKENS] No token found for brand ${brandId}`);
+        return false;
+      }
+      token = brand.meta_access_token;
     }
 
     // Make a simple API call to verify the token
@@ -399,13 +411,20 @@ async function attemptTokenRefresh(
   appSecret: string
 ): Promise<boolean> {
   try {
-    const { data: currentToken, error: tokenError } = await supabase.rpc('get_meta_token', {
-      p_brand_id: brandId
-    });
+    // NOTE: get_meta_token RPC fails with crypto permissions error.
+    // Read token directly from brands table instead.
+    const { data: brand, error: tokenError } = await supabase
+      .from('brands')
+      .select('meta_access_token')
+      .eq('id', brandId)
+      .single();
 
-    if (tokenError || !currentToken) {
+    if (tokenError || !brand?.meta_access_token) {
+      console.log(`[VERIFY-META-TOKENS] No token found for refresh, brand ${brandId}`);
       return false;
     }
+
+    const currentToken = brand.meta_access_token;
 
     const refreshUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token');
     refreshUrl.searchParams.set('grant_type', 'fb_exchange_token');
@@ -420,20 +439,25 @@ async function attemptTokenRefresh(
       return false;
     }
 
-    // Store new token
-    await supabase.rpc('store_meta_token', {
-      p_brand_id: brandId,
-      p_token: data.access_token
-    });
+    // Store new token in vault (best-effort) and in brands table (primary)
+    try {
+      await supabase.rpc('store_meta_token', {
+        p_brand_id: brandId,
+        p_token: data.access_token
+      });
+    } catch (vaultErr) {
+      console.warn('[VERIFY-META-TOKENS] Vault store failed (non-fatal):', vaultErr);
+    }
 
-    // Update expiration
+    // Update token and expiration in brands table
     const expiresInSeconds = data.expires_in || 5184000;
     const newExpiresAt = new Date();
     newExpiresAt.setSeconds(newExpiresAt.getSeconds() + expiresInSeconds);
 
     await supabase
       .from('brands')
-      .update({ 
+      .update({
+        meta_access_token: data.access_token,
         meta_token_expires_at: newExpiresAt.toISOString(),
         updated_at: new Date().toISOString()
       })
