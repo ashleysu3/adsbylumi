@@ -455,7 +455,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {readyConcepts.map((item: any, index: number) => (
-                        <AdPreview key={index} concept={item} brandName={brandName} websiteUrl={websiteUrl} />
+                        <AdPreview key={index} concept={item} brandName={brandName} websiteUrl={websiteUrl} isDmCampaign={isDmCampaign} />
                       ))}
                     </div>
                   </div>
