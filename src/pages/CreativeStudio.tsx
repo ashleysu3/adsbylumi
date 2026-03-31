@@ -1192,13 +1192,25 @@ export default function CreativeStudio() {
               )}
               {primaryAction && (
                 <Button 
-                  variant="lumi"
+                  variant="outline"
+                  size="sm"
                   onClick={primaryAction.action} 
                   disabled={primaryAction.disabled}
                   className="gap-2 hidden sm:flex"
                 >
                   <primaryAction.icon className="h-4 w-4" />
                   {primaryAction.label}
+                </Button>
+              )}
+              {workspace && (
+                <Button 
+                  variant="lumi"
+                  size="sm"
+                  onClick={() => setShowBYOUploader(true)}
+                  className="gap-2 hidden sm:flex"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload My Own Ads
                 </Button>
               )}
             </div>
