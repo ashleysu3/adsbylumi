@@ -1271,6 +1271,33 @@ export default function CreativeStudio() {
             })}
           </TabsList>
 
+          {/* Top-right Give Feedback button per tab */}
+          {((activeTab === "angles" && availableAngles.length > 0) ||
+            (activeTab === "concepts" && gridData.length > 0) ||
+            (activeTab === "copy" && Object.keys(angleCopy).length > 0)) && (
+            <div className="flex justify-end -mt-1 mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-7 px-2.5"
+                onClick={() => {
+                  if (activeTab === "angles") {
+                    handleRegenerateClick();
+                  } else if (activeTab === "concepts") {
+                    // Regenerate concepts for active angle
+                    if (activeAngleId) regenerateAngleConcepts(activeAngleId);
+                  } else if (activeTab === "copy") {
+                    // Copy feedback handled inside AngleCopyEditor
+                    toast.info("Use the 'Give Feedback' button inside the copy editor to refine your copy.");
+                  }
+                }}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Give Feedback
+              </Button>
+            </div>
+          )}
+
           <TabsContent value="angles">
             {!workspace ? (
               <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold">Select a campaign above</h3></CardContent></Card>
