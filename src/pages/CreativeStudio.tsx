@@ -1192,13 +1192,25 @@ export default function CreativeStudio() {
               )}
               {primaryAction && (
                 <Button 
-                  variant="lumi"
+                  variant="outline"
+                  size="sm"
                   onClick={primaryAction.action} 
                   disabled={primaryAction.disabled}
                   className="gap-2 hidden sm:flex"
                 >
                   <primaryAction.icon className="h-4 w-4" />
                   {primaryAction.label}
+                </Button>
+              )}
+              {workspace && (
+                <Button 
+                  variant="lumi"
+                  size="sm"
+                  onClick={() => setShowBYOUploader(true)}
+                  className="gap-2 hidden sm:flex"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload My Own Ads
                 </Button>
               )}
             </div>
@@ -1296,22 +1308,7 @@ export default function CreativeStudio() {
                           <Sparkles className="h-4 w-4" />
                           Generate Angles
                         </Button>
-                        
-                        <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                          <div className="h-px w-8 bg-border" />
-                          <span>or</span>
-                          <div className="h-px w-8 bg-border" />
-                        </div>
-                        
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowBYOUploader(true)}
-                          className="gap-2"
-                        >
-                          <Upload className="h-4 w-4" />
-                          Upload My Own Ads
-                        </Button>
-                        
+                         
                         {workspace?.brands?.meta_account_id && (
                           <Button
                             variant="outline"
@@ -1336,9 +1333,6 @@ export default function CreativeStudio() {
                 )}
                 <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} onRegenerateAngle={regenerateSingleAngle} regeneratingAngleId={regeneratingAngleId} brandName={workspace?.brands?.name} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowBYOUploader(true)} disabled={generating}>
-                    <Upload className="h-4 w-4 mr-2" />Upload My Own Ads
-                  </Button>
                   {workspace?.brands?.meta_account_id && (
                     <Button variant="outline" onClick={() => setShowRefreshDialog(true)} disabled={generating}>
                       <BarChart3 className="h-4 w-4 mr-2" />See What's Worked
@@ -1603,11 +1597,11 @@ export default function CreativeStudio() {
         </Tabs>
       </div>
 
-      {/* Mobile floating primary action */}
-      {primaryAction && (
-        <div className="sm:hidden fixed bottom-6 left-4 right-4 z-30">
+      {/* Mobile floating actions */}
+      <div className="sm:hidden fixed bottom-6 left-4 right-4 z-30 flex flex-col gap-2">
+        {primaryAction && (
           <Button 
-            variant="lumi"
+            variant="outline"
             onClick={primaryAction.action} 
             disabled={primaryAction.disabled}
             className="w-full gap-2 shadow-lg"
@@ -1616,8 +1610,19 @@ export default function CreativeStudio() {
             <primaryAction.icon className="h-4 w-4" />
             {primaryAction.label}
           </Button>
-        </div>
-      )}
+        )}
+        {workspace && (
+          <Button 
+            variant="lumi"
+            onClick={() => setShowBYOUploader(true)}
+            className="w-full gap-2 shadow-lg"
+            size="lg"
+          >
+            <Upload className="h-4 w-4" />
+            Upload My Own Ads
+          </Button>
+        )}
+      </div>
       
       
       <LumiThinking isOpen={generating} customCopy={creativeGenerationCopy} />
