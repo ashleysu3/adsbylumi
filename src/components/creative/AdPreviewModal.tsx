@@ -480,11 +480,20 @@ export function AdPreviewModal({
                         
                         {/* Bottom CTA */}
                         <div className="p-4 bg-gradient-to-t from-black/70 via-black/40 to-transparent pt-16">
-                          <p className="text-white text-sm mb-3 font-medium drop-shadow-lg line-clamp-2">{currentHeadline}</p>
-                          <button className="w-full py-3 bg-white text-black font-bold rounded-full flex items-center justify-center gap-2 pointer-events-auto hover:bg-white/90 transition-colors">
-                            Learn More
-                            <ExternalLink className="h-4 w-4" />
-                          </button>
+                          {isDmCampaign ? (
+                            <button className="w-full py-3 bg-white text-black font-bold rounded-full flex items-center justify-center gap-2">
+                              <MessageCircle className="h-4 w-4" />
+                              Send Message
+                            </button>
+                          ) : (
+                            <>
+                              <p className="text-white text-sm mb-3 font-medium drop-shadow-lg line-clamp-2">{currentHeadline}</p>
+                              <button className="w-full py-3 bg-white text-black font-bold rounded-full flex items-center justify-center gap-2 pointer-events-auto hover:bg-white/90 transition-colors">
+                                Learn More
+                                <ExternalLink className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </AspectRatio>
