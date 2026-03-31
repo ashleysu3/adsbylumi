@@ -34,7 +34,7 @@ interface AdPreviewProps {
   isDmCampaign?: boolean;
 }
 
-export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdPreviewProps) {
+export function AdPreview({ concept, brandName = "Your Brand", websiteUrl, isDmCampaign = false }: AdPreviewProps) {
   const [mediaAspect, setMediaAspect] = useState<number | null>(null);
   
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
