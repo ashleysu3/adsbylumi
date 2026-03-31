@@ -195,7 +195,7 @@ export default function CreativeStudio() {
   const urlWorkspaceId = searchParams.get("workspace");
   const isRefreshCreativeMode = searchParams.get("refreshCreative") === "true";
   const [showRefreshDialog, setShowRefreshDialog] = useState(false);
-
+  const [showBYOUploader, setShowBYOUploader] = useState(false);
 
   useEffect(() => { 
     if (!brandLoading && activeBrand) {
