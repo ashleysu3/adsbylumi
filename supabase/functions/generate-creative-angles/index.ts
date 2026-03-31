@@ -283,7 +283,7 @@ ${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audie
 
 ${productPsychology ? `PRODUCT PSYCHOLOGY:\n${JSON.stringify(productPsychology, null, 2)}` : ""}
 
-Generate ${maxAngles === 1 ? 'exactly 1 creative angle as a replacement for "' + (singleAngleReplacement || '') + '"' : 'exactly 8 creative angles'} that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}${isDmLeads ? " Remember: every angle must drive DM conversations, not link clicks or purchases." : ""}`;
+Generate ${maxAngles === 1 ? 'exactly 1 creative angle as a replacement for "' + (singleAngleReplacement || '') + '"' : 'exactly 10 creative angles'} that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}${isDmLeads ? " Remember: every angle must drive DM conversations, not link clicks or purchases." : ""}`;
 
     console.log("[generate-creative-angles] Calling AI API...");
 
