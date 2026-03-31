@@ -137,6 +137,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           onShowWalkthrough={() => startTour()}
         />
         <SubscriptionBanner />
+        <InstagramPermissionFixModal />
         <main className="px-4 py-4">{children}</main>
         <DashboardFooter />
         <MobileBottomNav />
