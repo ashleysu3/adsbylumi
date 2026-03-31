@@ -1284,14 +1284,8 @@ export default function CreativeStudio() {
                 size="sm"
                 className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-7 px-2.5"
                 onClick={() => {
-                  if (activeTab === "angles") {
-                    handleRegenerateClick();
-                  } else if (activeTab === "concepts") {
-                    // Re-generate the creative grid for concepts
-                    generateCreativeGrid();
-                  } else if (activeTab === "copy") {
-                    toast.info("Use the 'Give Feedback' button inside the copy editor to refine your copy.");
-                  }
+                  setFeedbackTab(activeTab);
+                  setShowFeedbackDialog(true);
                 }}
               >
                 <MessageSquare className="h-3.5 w-3.5" />
