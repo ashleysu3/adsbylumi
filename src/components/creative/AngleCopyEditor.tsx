@@ -408,21 +408,33 @@ export function AngleCopyEditor({
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-2 space-y-2">
+                {manualEntry && (
+                  <div className="text-xs text-muted-foreground bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-1.5">
+                    <p className="font-medium text-foreground">📍 Where this shows up</p>
+                    <p>Headlines appear <span className="font-medium text-foreground">below your creative</span> in-feed, next to the CTA button. On Stories/Reels, they overlay at the bottom.</p>
+                    <p className="pt-1">✨ <span className="font-medium text-foreground">Keep it under 27 characters</span> — anything longer gets truncated on mobile. Short, punchy, benefit-driven headlines win.</p>
+                    <p>💡 Try: a specific result, a curiosity gap, or a direct call-out to your audience.</p>
+                  </div>
+                )}
                 {currentCopy.headlines?.map((h, i) => (
                   <div key={i} className="flex gap-2">
                     <div className="flex-1 relative">
                       <Input
                         value={h.text}
                         onChange={(e) => updateVariation("headlines", i, e.target.value)}
-                        placeholder="Enter headline..."
-                        maxLength={26}
+                        placeholder={
+                          manualEntry
+                            ? ["The 7-day method", "Stop guessing, start scaling", "Your next client is waiting"][i % 3]
+                            : "Enter headline..."
+                        }
+                        maxLength={40}
                         className="pr-12"
                       />
                       <span className={cn(
                         "absolute right-3 top-1/2 -translate-y-1/2 text-xs",
-                        (h.text?.length || 0) > 26 ? "text-destructive" : "text-muted-foreground"
+                        (h.text?.length || 0) > 27 ? "text-destructive" : "text-muted-foreground"
                       )}>
-                        {h.text?.length || 0}/26
+                        {h.text?.length || 0}/27
                       </span>
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => removeVariation("headlines", i)}>
@@ -450,17 +462,32 @@ export function AngleCopyEditor({
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-2 space-y-2">
+                {manualEntry && (
+                  <div className="text-xs text-muted-foreground bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-1.5">
+                    <p className="font-medium text-foreground">📍 Where this shows up</p>
+                    <p>Descriptions appear as <span className="font-medium text-foreground">secondary text below the headline</span> — not always visible, but Meta uses them for search and in certain placements.</p>
+                    <p className="pt-1">✨ <span className="font-medium text-foreground">Keep it under 27 characters.</span> Think of it as a micro-CTA or a quick benefit reinforcement.</p>
+                    <p>💡 Try: "Try it free today" · "Limited spots" · "No experience needed"</p>
+                  </div>
+                )}
                 {currentCopy.descriptions?.map((d, i) => (
                   <div key={i} className="flex gap-2">
                     <div className="flex-1 relative">
                       <Input
                         value={d.text}
                         onChange={(e) => updateVariation("descriptions", i, e.target.value)}
-                        placeholder="Try it free today"
-                        maxLength={27}
+                        placeholder={
+                          manualEntry
+                            ? ["Try it free today", "No experience needed"][i % 2]
+                            : "Try it free today"
+                        }
+                        maxLength={30}
                         className="pr-12"
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      <span className={cn(
+                        "absolute right-3 top-1/2 -translate-y-1/2 text-xs",
+                        (d.text?.length || 0) > 27 ? "text-destructive" : "text-muted-foreground"
+                      )}>
                         {d.text?.length || 0}/27
                       </span>
                     </div>
@@ -489,6 +516,20 @@ export function AngleCopyEditor({
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-2 space-y-3">
+                {manualEntry && (
+                  <div className="text-xs text-muted-foreground bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-1.5">
+                    <p className="font-medium text-foreground">📍 Where this shows up</p>
+                    <p>Primary copy is the <span className="font-medium text-foreground">main text above your creative</span> in the feed — the first thing people read. Only the first 3 lines show before "See more."</p>
+                    <div className="pt-1 space-y-1">
+                      <p>✨ <span className="font-medium text-foreground">Best practices:</span></p>
+                      <p>• <span className="font-medium text-foreground">Lead with a hook</span> — your first line decides if they read or scroll</p>
+                      <p>• <span className="font-medium text-foreground">Break it up</span> into short paragraphs (1-2 sentences each) for scannability</p>
+                      <p>• <span className="font-medium text-foreground">Emojis boost engagement ~25%</span> — use them as bullet points or line openers</p>
+                      <p>• <span className="font-medium text-foreground">Short copy (40-80 words)</span> works best for cold audiences; longer for warm</p>
+                      <p>• End with a clear CTA: "Click the link" · "DM me" · "Sign up below"</p>
+                    </div>
+                  </div>
+                )}
                 {currentCopy.primary_copy?.map((p, i) => (
                   <div key={i} className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -500,10 +541,21 @@ export function AngleCopyEditor({
                     <Textarea
                       value={p.text}
                       onChange={(e) => updateVariation("primary_copy", i, e.target.value)}
-                      placeholder="Enter primary copy..."
-                      rows={3}
+                      placeholder={
+                        manualEntry
+                          ? i === 0
+                            ? "Hook line here — stop the scroll ✋\n\nThen explain the problem...\n\nShare the solution.\n\n👉 CTA: Click below to get started"
+                            : "Try a different angle or length here.\n\nKeep paragraphs short.\n\nUse emojis as visual breaks 🎯"
+                          : "Enter primary copy..."
+                      }
+                      rows={manualEntry ? 5 : 3}
                       className="resize-none"
                     />
+                    {manualEntry && p.text && (
+                      <p className="text-xs text-muted-foreground text-right">
+                        {p.text.split(/\s+/).filter(Boolean).length} words · {p.text.length} chars
+                      </p>
+                    )}
                   </div>
                 ))}
                 {(currentCopy.primary_copy?.length || 0) < 5 && (
