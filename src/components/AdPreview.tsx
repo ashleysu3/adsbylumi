@@ -160,18 +160,27 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl, isDmC
                 )}
               </AspectRatio>
               
-              {/* Link Preview */}
-              <div className="p-3 border-t bg-muted/30">
-                <p className="text-xs text-muted-foreground uppercase">{domain}</p>
-                <p className="font-semibold text-sm line-clamp-1">{headline}</p>
-                {description && (
-                  <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
-                )}
-                <button className="mt-2 w-full py-2 px-4 bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-sm rounded transition-colors flex items-center justify-center gap-2">
-                  {cta}
-                  <ExternalLink className="h-3 w-3" />
-                </button>
-              </div>
+              {/* Link Preview / CTA */}
+              {isDmCampaign ? (
+                <div className="p-3 border-t">
+                  <button className="w-full py-2.5 px-4 bg-primary text-primary-foreground font-semibold text-sm rounded transition-colors flex items-center justify-center gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Send Message
+                  </button>
+                </div>
+              ) : (
+                <div className="p-3 border-t bg-muted/30">
+                  <p className="text-xs text-muted-foreground uppercase">{domain}</p>
+                  <p className="font-semibold text-sm line-clamp-1">{headline}</p>
+                  {description && (
+                    <p className="text-xs text-muted-foreground line-clamp-1">{description}</p>
+                  )}
+                  <button className="mt-2 w-full py-2 px-4 bg-primary/10 hover:bg-primary/20 text-primary font-semibold text-sm rounded transition-colors flex items-center justify-center gap-2">
+                    {cta}
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
               
               {/* Engagement */}
               <div className="flex items-center justify-between px-3 py-2 border-t">
