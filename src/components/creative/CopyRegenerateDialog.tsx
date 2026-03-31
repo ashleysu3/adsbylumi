@@ -20,6 +20,8 @@ interface CopyRegenerateDialogProps {
   onSkip: () => void;
   isGenerating: boolean;
   angleCount?: number;
+  title?: string;
+  description?: string;
 }
 
 const QUICK_SELECT_OPTIONS = [
