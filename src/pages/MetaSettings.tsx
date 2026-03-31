@@ -585,8 +585,9 @@ export default function MetaSettings() {
                             {testResult.details.hasInstagramMediaAccess === false && (
                               <Alert className="mt-2 border-amber-500/30 bg-amber-500/5">
                                 <AlertTriangle className="h-4 w-4 text-amber-500" />
-                                <AlertDescription className="text-xs">
-                                  <span className="font-medium">Instagram post access is missing.</span> You won't be able to pull existing posts for ads. Disconnect and reconnect your Meta account to grant the latest permissions.
+                                <AlertDescription className="text-xs space-y-2">
+                                  <p><span className="font-medium">Instagram post access is missing.</span> You won't be able to pull existing posts for ads.</p>
+                                  <p>To fix: Go to <a href="https://www.facebook.com/settings/?tab=business_tools" target="_blank" rel="noopener noreferrer" className="text-primary underline">Facebook → Settings → Business Integrations</a>, remove our app, then reconnect here with all permissions checked.</p>
                                 </AlertDescription>
                               </Alert>
                             )}
