@@ -1284,10 +1284,9 @@ export default function CreativeStudio() {
                   if (activeTab === "angles") {
                     handleRegenerateClick();
                   } else if (activeTab === "concepts") {
-                    // Regenerate concepts for active angle
-                    if (activeAngleId) regenerateAngleConcepts(activeAngleId);
+                    // Re-generate the creative grid for concepts
+                    generateCreativeGrid();
                   } else if (activeTab === "copy") {
-                    // Copy feedback handled inside AngleCopyEditor
                     toast.info("Use the 'Give Feedback' button inside the copy editor to refine your copy.");
                   }
                 }}
