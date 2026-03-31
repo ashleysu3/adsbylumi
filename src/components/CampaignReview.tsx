@@ -37,6 +37,7 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
   const [detailsOpen, setDetailsOpen] = useState(false);
   
   const isSocialGrowth = !!(workspace?.creative_json as any)?.socialGrowth;
+  const isDmCampaign = !!(workspace?.creative_json as any)?.dmLeadsCampaign || !!(workspace?.creative_json as any)?.commentDmCampaign;
   const selectedPosts = isSocialGrowth ? ((workspace?.creative_json as any)?.selectedPosts || []) : [];
   const additionalPosts = answers?.additionalPosts || [];
   
