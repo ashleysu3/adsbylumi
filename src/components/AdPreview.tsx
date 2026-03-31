@@ -268,11 +268,20 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl, isDmC
                     
                     {/* Bottom CTA */}
                     <div className="p-3 bg-gradient-to-t from-black/60 to-transparent">
-                      <p className="text-white text-xs mb-2 line-clamp-2 drop-shadow">{headline}</p>
-                      <button className="w-full py-2 bg-white text-black font-semibold text-xs rounded-full flex items-center justify-center gap-1">
-                        {cta}
-                        <ExternalLink className="h-3 w-3" />
-                      </button>
+                      {isDmCampaign ? (
+                        <button className="w-full py-2 bg-white text-black font-semibold text-xs rounded-full flex items-center justify-center gap-1">
+                          <MessageCircle className="h-3 w-3" />
+                          Send Message
+                        </button>
+                      ) : (
+                        <>
+                          <p className="text-white text-xs mb-2 line-clamp-2 drop-shadow">{headline}</p>
+                          <button className="w-full py-2 bg-white text-black font-semibold text-xs rounded-full flex items-center justify-center gap-1">
+                            {cta}
+                            <ExternalLink className="h-3 w-3" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </AspectRatio>
