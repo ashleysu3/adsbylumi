@@ -24,13 +24,21 @@ export function InstagramPermissionFixModal() {
   const [step, setStep] = useState<"checking" | "issue" | "instructions">("checking");
 
   useEffect(() => {
-    // Only check once per session
     if (sessionStorage.getItem(SESSION_KEY)) return;
-    if (!activeBrand?.meta_access_token || !activeBrand?.instagram_account_id) return;
+    if (!activeBrand?.id || !activeBrand?.meta_account_id) return;
 
     const checkPermissions = async () => {
       setChecking(true);
       try {
+        // First check if brand has Instagram connected
+        const { data: brandData } = await supabase
+          .from("brands")
+          .select("meta_access_token, instagram_account_id")
+          .eq("id", activeBrand.id)
+          .single();
+
+        if (!brandData?.meta_access_token || !brandData?.instagram_account_id) return;
+
         const { data, error } = await supabase.functions.invoke("test-meta-connection", {
           body: { brandId: activeBrand.id },
         });
@@ -39,22 +47,20 @@ export function InstagramPermissionFixModal() {
 
         if (error) return;
 
-        // Check if Instagram media access is missing
         if (data?.details?.hasInstagramMediaAccess === false) {
           setStep("issue");
           setOpen(true);
         }
       } catch {
-        // Silent fail — don't block the user
+        // Silent fail
       } finally {
         setChecking(false);
       }
     };
 
-    // Delay slightly so dashboard loads first
     const timer = setTimeout(checkPermissions, 2000);
     return () => clearTimeout(timer);
-  }, [activeBrand?.id, activeBrand?.meta_access_token, activeBrand?.instagram_account_id]);
+  }, [activeBrand?.id, activeBrand?.meta_account_id]);
 
   if (!open) return null;
 
