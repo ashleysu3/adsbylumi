@@ -11,7 +11,7 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
-  X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload
+  X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload, MessageSquare
 } from "lucide-react";
 import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
