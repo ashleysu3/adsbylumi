@@ -40,6 +40,7 @@ interface AdPreviewModalProps {
   selectedCopy?: Record<string, any>;
   brandName?: string;
   websiteUrl?: string;
+  isDmCampaign?: boolean;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
   onUrlChange?: (url: string) => void;
 }
@@ -53,6 +54,7 @@ export function AdPreviewModal({
   selectedCopy,
   brandName = "Your Brand",
   websiteUrl,
+  isDmCampaign = false,
   onCopyChange,
   onUrlChange,
 }: AdPreviewModalProps) {
@@ -410,18 +412,27 @@ export function AdPreviewModal({
                       {renderMedia()}
                     </AspectRatio>
                     
-                    {/* Link Preview */}
-                    <div className="p-4 border-t bg-muted/30">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{domain}</p>
-                      <p className="font-semibold mt-1">{currentHeadline}</p>
-                      {currentDescription && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{currentDescription}</p>
-                      )}
-                      <button className="mt-3 w-full py-2.5 px-4 bg-primary text-primary-foreground font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
-                        Learn More
-                        <ExternalLink className="h-4 w-4" />
-                      </button>
-                    </div>
+                    {/* Link Preview / CTA */}
+                    {isDmCampaign ? (
+                      <div className="p-4 border-t">
+                        <button className="w-full py-2.5 px-4 bg-primary text-primary-foreground font-semibold rounded-lg flex items-center justify-center gap-2">
+                          <MessageCircle className="h-4 w-4" />
+                          Send Message
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-4 border-t bg-muted/30">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{domain}</p>
+                        <p className="font-semibold mt-1">{currentHeadline}</p>
+                        {currentDescription && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{currentDescription}</p>
+                        )}
+                        <button className="mt-3 w-full py-2.5 px-4 bg-primary text-primary-foreground font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+                          Learn More
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                     
                     {/* Engagement */}
                     <div className="flex items-center justify-around px-4 py-3 border-t">
@@ -469,11 +480,20 @@ export function AdPreviewModal({
                         
                         {/* Bottom CTA */}
                         <div className="p-4 bg-gradient-to-t from-black/70 via-black/40 to-transparent pt-16">
-                          <p className="text-white text-sm mb-3 font-medium drop-shadow-lg line-clamp-2">{currentHeadline}</p>
-                          <button className="w-full py-3 bg-white text-black font-bold rounded-full flex items-center justify-center gap-2 pointer-events-auto hover:bg-white/90 transition-colors">
-                            Learn More
-                            <ExternalLink className="h-4 w-4" />
-                          </button>
+                          {isDmCampaign ? (
+                            <button className="w-full py-3 bg-white text-black font-bold rounded-full flex items-center justify-center gap-2">
+                              <MessageCircle className="h-4 w-4" />
+                              Send Message
+                            </button>
+                          ) : (
+                            <>
+                              <p className="text-white text-sm mb-3 font-medium drop-shadow-lg line-clamp-2">{currentHeadline}</p>
+                              <button className="w-full py-3 bg-white text-black font-bold rounded-full flex items-center justify-center gap-2 pointer-events-auto hover:bg-white/90 transition-colors">
+                                Learn More
+                                <ExternalLink className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </AspectRatio>
@@ -577,8 +597,11 @@ export function AdPreviewModal({
                     {/* CTA */}
                     <div className="px-3 pb-4">
                       <button className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
-                        Learn More
-                        <ExternalLink className="h-4 w-4" />
+                        {isDmCampaign ? (
+                          <><MessageCircle className="h-4 w-4" /> Send Message</>
+                        ) : (
+                          <>Learn More <ExternalLink className="h-4 w-4" /></>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -589,39 +612,49 @@ export function AdPreviewModal({
           
           {/* Right: Copy Editor & Info */}
           <div className="w-80 border-l bg-background p-4 space-y-5 overflow-y-auto">
-            {/* Destination URL */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold">Destination URL</span>
+            {/* Destination URL - hidden for DM campaigns */}
+            {!isDmCampaign && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Destination URL</span>
+                  </div>
+                  {localUrl && (
+                    <a
+                      href={localUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
                 </div>
-                {localUrl && (
-                  <a
-                    href={localUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                )}
+                <Input
+                  value={localUrl || ""}
+                  onChange={(e) => setLocalUrl(e.target.value)}
+                  onBlur={() => {
+                    if (onUrlChange && localUrl !== websiteUrl) onUrlChange(localUrl || "");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="https://yourwebsite.com"
+                  className="text-sm"
+                />
               </div>
-              <Input
-                value={localUrl || ""}
-                onChange={(e) => setLocalUrl(e.target.value)}
-                onBlur={() => {
-                  if (onUrlChange && localUrl !== websiteUrl) onUrlChange(localUrl || "");
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.currentTarget.blur();
-                  }
-                }}
-                placeholder="https://yourwebsite.com"
-                className="text-sm"
-              />
-            </div>
+            )}
+            {isDmCampaign && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                <MessageCircle className="h-4 w-4 text-primary shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  This is a DM campaign — Meta will automatically add a "Send Message" button. No destination URL needed.
+                </p>
+              </div>
+            )}
             
             <div className="h-px bg-border" />
             

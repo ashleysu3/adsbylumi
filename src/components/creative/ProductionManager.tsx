@@ -1113,6 +1113,7 @@ export function ProductionManager({
           selectedCopy={selectedCopy}
           brandName={workspace?.brands?.name}
           websiteUrl={workspace?.offer_url || workspace?.brands?.website_url}
+          isDmCampaign={!!(workspace?.creative_json as any)?.dmLeadsCampaign || !!(workspace?.creative_json as any)?.commentDmCampaign}
           onCopyChange={(updatedCopy) => {
             let copyKey = getAngleCopyKeyForItem(adPreviewItem);
             // If no key found, create one from angle name
