@@ -612,39 +612,49 @@ export function AdPreviewModal({
           
           {/* Right: Copy Editor & Info */}
           <div className="w-80 border-l bg-background p-4 space-y-5 overflow-y-auto">
-            {/* Destination URL */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold">Destination URL</span>
+            {/* Destination URL - hidden for DM campaigns */}
+            {!isDmCampaign && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-semibold">Destination URL</span>
+                  </div>
+                  {localUrl && (
+                    <a
+                      href={localUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
                 </div>
-                {localUrl && (
-                  <a
-                    href={localUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                )}
+                <Input
+                  value={localUrl || ""}
+                  onChange={(e) => setLocalUrl(e.target.value)}
+                  onBlur={() => {
+                    if (onUrlChange && localUrl !== websiteUrl) onUrlChange(localUrl || "");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="https://yourwebsite.com"
+                  className="text-sm"
+                />
               </div>
-              <Input
-                value={localUrl || ""}
-                onChange={(e) => setLocalUrl(e.target.value)}
-                onBlur={() => {
-                  if (onUrlChange && localUrl !== websiteUrl) onUrlChange(localUrl || "");
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.currentTarget.blur();
-                  }
-                }}
-                placeholder="https://yourwebsite.com"
-                className="text-sm"
-              />
-            </div>
+            )}
+            {isDmCampaign && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                <MessageCircle className="h-4 w-4 text-primary shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  This is a DM campaign — Meta will automatically add a "Send Message" button. No destination URL needed.
+                </p>
+              </div>
+            )}
             
             <div className="h-px bg-border" />
             
