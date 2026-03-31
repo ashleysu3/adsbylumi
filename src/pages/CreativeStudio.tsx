@@ -1348,15 +1348,13 @@ export default function CreativeStudio() {
                         </Button>
                          
                         {workspace?.brands?.meta_account_id && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-2 text-muted-foreground"
+                          <button
                             onClick={() => setShowRefreshDialog(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary/5 text-primary border border-primary/20 hover:bg-primary/10 transition-colors"
                           >
-                            <BarChart3 className="h-4 w-4" />
-                            See What's Worked
-                          </Button>
+                            <BarChart3 className="h-3 w-3" />
+                            Insights Available
+                          </button>
                         )}
                       </div>
                     )}
