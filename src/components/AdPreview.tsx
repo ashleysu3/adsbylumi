@@ -31,6 +31,7 @@ interface AdPreviewProps {
   };
   brandName?: string;
   websiteUrl?: string;
+  isDmCampaign?: boolean;
 }
 
 export function AdPreview({ concept, brandName = "Your Brand", websiteUrl }: AdPreviewProps) {
