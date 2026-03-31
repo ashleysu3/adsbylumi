@@ -1597,11 +1597,11 @@ export default function CreativeStudio() {
         </Tabs>
       </div>
 
-      {/* Mobile floating primary action */}
-      {primaryAction && (
-        <div className="sm:hidden fixed bottom-6 left-4 right-4 z-30">
+      {/* Mobile floating actions */}
+      <div className="sm:hidden fixed bottom-6 left-4 right-4 z-30 flex flex-col gap-2">
+        {primaryAction && (
           <Button 
-            variant="lumi"
+            variant="outline"
             onClick={primaryAction.action} 
             disabled={primaryAction.disabled}
             className="w-full gap-2 shadow-lg"
@@ -1610,8 +1610,19 @@ export default function CreativeStudio() {
             <primaryAction.icon className="h-4 w-4" />
             {primaryAction.label}
           </Button>
-        </div>
-      )}
+        )}
+        {workspace && (
+          <Button 
+            variant="lumi"
+            onClick={() => setShowBYOUploader(true)}
+            className="w-full gap-2 shadow-lg"
+            size="lg"
+          >
+            <Upload className="h-4 w-4" />
+            Upload My Own Ads
+          </Button>
+        )}
+      </div>
       
       
       <LumiThinking isOpen={generating} customCopy={creativeGenerationCopy} />
