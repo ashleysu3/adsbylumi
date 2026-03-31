@@ -18,6 +18,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ArrowRight, X } from "lucide-react";
 import { SubscriptionBanner } from "@/components/SubscriptionGate";
 import { DashboardFooter } from "@/components/DashboardFooter";
+import { InstagramPermissionFixModal } from "@/components/InstagramPermissionFixModal";
 
 
 interface DashboardLayoutProps {
