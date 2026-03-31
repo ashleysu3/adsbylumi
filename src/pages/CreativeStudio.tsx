@@ -1308,22 +1308,7 @@ export default function CreativeStudio() {
                           <Sparkles className="h-4 w-4" />
                           Generate Angles
                         </Button>
-                        
-                        <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                          <div className="h-px w-8 bg-border" />
-                          <span>or</span>
-                          <div className="h-px w-8 bg-border" />
-                        </div>
-                        
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowBYOUploader(true)}
-                          className="gap-2"
-                        >
-                          <Upload className="h-4 w-4" />
-                          Upload My Own Ads
-                        </Button>
-                        
+                         
                         {workspace?.brands?.meta_account_id && (
                           <Button
                             variant="outline"
