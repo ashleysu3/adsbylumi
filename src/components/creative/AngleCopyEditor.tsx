@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Sparkles, Loader2, Plus, X, Save, RefreshCw,
+  Sparkles, Loader2, Plus, X, RefreshCw,
   FileText, ChevronDown, ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";

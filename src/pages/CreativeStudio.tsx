@@ -1368,14 +1368,17 @@ export default function CreativeStudio() {
                   <CreativeIntelligenceCard intelligence={creativeIntelligence} />
                 )}
                 <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} onRegenerateAngle={regenerateSingleAngle} regeneratingAngleId={regeneratingAngleId} brandName={workspace?.brands?.name} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
-                <div className="flex justify-center gap-2">
-                  {workspace?.brands?.meta_account_id && (
-                    <Button variant="outline" onClick={() => setShowRefreshDialog(true)} disabled={generating}>
-                      <BarChart3 className="h-4 w-4 mr-2" />See What's Worked
-                    </Button>
-                  )}
-                  <Button variant="outline" onClick={handleRegenerateClick} disabled={generating}><Sparkles className="h-4 w-4 mr-2" />Regenerate</Button>
-                </div>
+                {workspace?.brands?.meta_account_id && (
+                  <div className="flex justify-center mt-2">
+                    <button
+                      onClick={() => setShowRefreshDialog(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary/5 text-primary border border-primary/20 hover:bg-primary/10 transition-colors"
+                    >
+                      <BarChart3 className="h-3 w-3" />
+                      Insights Available
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>

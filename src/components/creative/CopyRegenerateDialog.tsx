@@ -113,10 +113,10 @@ export function CopyRegenerateDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <RefreshCw className="h-5 w-5 text-primary" />
-            Regenerate Ad Copy
+            {title || "Regenerate Ad Copy"}
           </DialogTitle>
           <DialogDescription>
-            Help Lumi create better copy for your {angleCount} angle{angleCount !== 1 ? "s" : ""}.
+            {description || `Help Lumi create better copy for your ${angleCount} angle${angleCount !== 1 ? "s" : ""}.`}
           </DialogDescription>
         </DialogHeader>
         
