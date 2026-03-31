@@ -59,6 +59,7 @@ import {
  import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDialog";
 import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
+import { CopyRegenerateDialog, CopyFeedback } from "@/components/creative/CopyRegenerateDialog";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
@@ -197,6 +198,8 @@ export default function CreativeStudio() {
   const isRefreshCreativeMode = searchParams.get("refreshCreative") === "true";
   const [showRefreshDialog, setShowRefreshDialog] = useState(false);
   const [showBYOUploader, setShowBYOUploader] = useState(false);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedbackTab, setFeedbackTab] = useState<WorkflowTab>("angles");
 
   useEffect(() => { 
     if (!brandLoading && activeBrand) {
@@ -1281,14 +1284,8 @@ export default function CreativeStudio() {
                 size="sm"
                 className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-7 px-2.5"
                 onClick={() => {
-                  if (activeTab === "angles") {
-                    handleRegenerateClick();
-                  } else if (activeTab === "concepts") {
-                    // Re-generate the creative grid for concepts
-                    generateCreativeGrid();
-                  } else if (activeTab === "copy") {
-                    toast.info("Use the 'Give Feedback' button inside the copy editor to refine your copy.");
-                  }
+                  setFeedbackTab(activeTab);
+                  setShowFeedbackDialog(true);
                 }}
               >
                 <MessageSquare className="h-3.5 w-3.5" />
@@ -1798,6 +1795,40 @@ export default function CreativeStudio() {
           }}
           brandId={brandId}
           campaignObjective={workspace?.strategy_json?.objective}
+        />
+        {/* Top-level Give Feedback Dialog */}
+        <CopyRegenerateDialog
+          open={showFeedbackDialog}
+          onOpenChange={setShowFeedbackDialog}
+          title={
+            feedbackTab === "angles" ? "Feedback on Angles" :
+            feedbackTab === "concepts" ? "Feedback on Concepts" :
+            "Feedback on Ad Copy"
+          }
+          description={
+            feedbackTab === "angles" ? "Tell Lumi what to improve about your creative angles." :
+            feedbackTab === "concepts" ? "Tell Lumi what to change about your creative concepts." :
+            "Help Lumi create better ad copy for your campaign."
+          }
+          onRegenerate={(feedback) => {
+            setShowFeedbackDialog(false);
+            if (feedbackTab === "angles") {
+              // Save feedback context then regenerate angles
+              const context = feedback ? { feedbackNotes: feedback.additionalNotes, feedbackSelections: feedback.quickSelections } : undefined;
+              setShowContextInput(true);
+            } else if (feedbackTab === "concepts") {
+              generateCreativeGrid();
+            }
+          }}
+          onSkip={() => {
+            setShowFeedbackDialog(false);
+            if (feedbackTab === "angles") {
+              handleRegenerateClick();
+            } else if (feedbackTab === "concepts") {
+              generateCreativeGrid();
+            }
+          }}
+          isGenerating={generating}
         />
         {/* Auto-save status indicator - unified across all tabs */}
         {workspace && (
