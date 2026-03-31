@@ -56,6 +56,7 @@ export function AngleCopyEditor({
   onSave,
   productionItemCount,
   autoGenerate = false,
+  manualEntry = false,
   brandId,
   offerId,
   perspectiveRole,
