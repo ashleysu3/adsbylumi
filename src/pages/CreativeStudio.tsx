@@ -303,9 +303,18 @@ export default function CreativeStudio() {
         description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
         isDefault: true
       };
+      const MAX_GENERATED_ANGLES = 10;
       let loadedAngles = c?.angles || [];
       if (loadedAngles.length > 0 && !loadedAngles.some((a: any) => a.id === "direct_from_page")) {
         loadedAngles = [DEFAULT_ANGLE, ...loadedAngles];
+      }
+      // Normalize: keep default + max 10 generated angles to fill 4x3 grid (+ Add Your Own card)
+      const defaultAngles = loadedAngles.filter((a: any) => a.isDefault || a.id === "direct_from_page");
+      const generatedAngles = loadedAngles.filter((a: any) => !a.isDefault && a.id !== "direct_from_page");
+      if (generatedAngles.length > MAX_GENERATED_ANGLES) {
+        const removedIds = new Set(generatedAngles.slice(MAX_GENERATED_ANGLES).map((a: any) => a.id));
+        loadedAngles = [...defaultAngles, ...generatedAngles.slice(0, MAX_GENERATED_ANGLES)];
+        console.log(`[CreativeStudio] Trimmed ${removedIds.size} overflow angles for 4x3 grid`);
       }
       const loadedAngleIds = new Set(loadedAngles.map((a: any) => a.id));
       
@@ -751,7 +760,9 @@ export default function CreativeStudio() {
         description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
         isDefault: true
       };
-      const allAngles = [DEFAULT_ANGLE, ...(data.angles || []).filter((a: any) => a.id !== "direct_from_page")];
+      const MAX_GENERATED_ANGLES = 10;
+      const rawAngles = (data.angles || []).filter((a: any) => a.id !== "direct_from_page").slice(0, MAX_GENERATED_ANGLES);
+      const allAngles = [DEFAULT_ANGLE, ...rawAngles];
       
       // ===== Preserve existing angle_copy by remapping old angle names → new angle IDs =====
       const oldAngles = (workspace.creative_json as Record<string, any>)?.angles || [];
