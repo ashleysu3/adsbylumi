@@ -208,7 +208,7 @@ ${preGenerationContext?.perspectiveRole === 'buyer'
 }
 
 RULES:
-- Generate exactly ${maxAngles === 1 ? '1 creative angle' : '11 creative angles'}${singleAngleReplacement ? `\n- You are REPLACING the angle "${singleAngleReplacement}" — generate a COMPLETELY DIFFERENT angle that serves a similar strategic purpose but takes a fresh approach` : ''}
+- Generate exactly ${maxAngles === 1 ? '1 creative angle' : '8 creative angles'}${singleAngleReplacement ? `\n- You are REPLACING the angle "${singleAngleReplacement}" — generate a COMPLETELY DIFFERENT angle that serves a similar strategic purpose but takes a fresh approach` : ''}
 - Each angle must have a short, plain-language name (2-4 words)
 - Each angle must have a one-sentence description written for non-marketers
 - Do NOT use marketing jargon, funnel language, or technical terms
@@ -283,7 +283,7 @@ ${audiencePsychology ? `BRAND-LEVEL AUDIENCE PSYCHOLOGY:\n${JSON.stringify(audie
 
 ${productPsychology ? `PRODUCT PSYCHOLOGY:\n${JSON.stringify(productPsychology, null, 2)}` : ""}
 
-Generate ${maxAngles === 1 ? 'exactly 1 creative angle as a replacement for "' + (singleAngleReplacement || '') + '"' : 'exactly 11 creative angles'} that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}${isDmLeads ? " Remember: every angle must drive DM conversations, not link clicks or purchases." : ""}`;
+Generate ${maxAngles === 1 ? 'exactly 1 creative angle as a replacement for "' + (singleAngleReplacement || '') + '"' : 'exactly 8 creative angles'} that would resonate with this audience and offer. Use both the brand-level psychology for broad appeal and the offer-specific insights for targeted messaging.${conversationInsights?.length > 0 ? " Make sure to incorporate the user's specific insights from their previous conversations." : ""}${isDmLeads ? " Remember: every angle must drive DM conversations, not link clicks or purchases." : ""}`;
 
     console.log("[generate-creative-angles] Calling AI API...");
 
