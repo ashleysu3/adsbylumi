@@ -1508,6 +1508,7 @@ export default function CreativeStudio() {
                   onSave={handleSaveCopy}
                   productionItemCount={productionItems.length}
                   autoGenerate={shouldAutoGenerateCopy}
+                  manualEntry={manualCopyEntry}
                   brandId={brandId}
                   offerId={workspace?.offer_id}
                   perspectiveRole={(workspace?.creative_json as Record<string, any>)?.preGenerationContext?.perspectiveRole || 'seller'}
