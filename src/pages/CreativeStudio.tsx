@@ -57,7 +57,8 @@ import {
    SheetTitle,
  } from "@/components/ui/sheet";
  import { ScrollArea } from "@/components/ui/scroll-area";
- import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDialog";
+import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDialog";
+import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
