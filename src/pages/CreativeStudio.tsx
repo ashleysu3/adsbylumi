@@ -760,7 +760,9 @@ export default function CreativeStudio() {
         description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
         isDefault: true
       };
-      const allAngles = [DEFAULT_ANGLE, ...(data.angles || []).filter((a: any) => a.id !== "direct_from_page")];
+      const MAX_GENERATED_ANGLES = 10;
+      const rawAngles = (data.angles || []).filter((a: any) => a.id !== "direct_from_page").slice(0, MAX_GENERATED_ANGLES);
+      const allAngles = [DEFAULT_ANGLE, ...rawAngles];
       
       // ===== Preserve existing angle_copy by remapping old angle names → new angle IDs =====
       const oldAngles = (workspace.creative_json as Record<string, any>)?.angles || [];

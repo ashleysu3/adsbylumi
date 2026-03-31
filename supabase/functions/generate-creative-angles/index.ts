@@ -459,16 +459,27 @@ Generate ${maxAngles === 1 ? 'exactly 1 creative angle as a replacement for "' +
       }
     }
 
-    console.log("[generate-creative-angles] Success - generated", angles?.length || 0, "angles");
+    // Dedupe by id, then hard-cap to requested count
+    const seenIds = new Set<string>();
+    const dedupedAngles: any[] = [];
+    for (const a of angles) {
+      if (a?.id && !seenIds.has(a.id)) {
+        seenIds.add(a.id);
+        dedupedAngles.push(a);
+      }
+    }
+    const hardCap = maxAngles === 1 ? 1 : 10;
+    const cappedAngles = dedupedAngles.slice(0, hardCap);
+
+    console.log("[generate-creative-angles] Success - generated", cappedAngles.length, "angles (raw:", angles?.length, ", cap:", hardCap, ")");
     
-    // Log first angle name for debugging
-    if (angles?.length > 0) {
-      console.log("[generate-creative-angles] First angle:", angles[0]?.name);
+    if (cappedAngles.length > 0) {
+      console.log("[generate-creative-angles] First angle:", cappedAngles[0]?.name);
     } else {
       console.error("[generate-creative-angles] WARNING: 0 angles generated. Raw content preview:", rawContent.substring(0, 500));
     }
 
-    return new Response(JSON.stringify({ angles }), {
+    return new Response(JSON.stringify({ angles: cappedAngles }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
