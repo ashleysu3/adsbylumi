@@ -54,6 +54,7 @@ export function AdPreviewModal({
   selectedCopy,
   brandName = "Your Brand",
   websiteUrl,
+  isDmCampaign = false,
   onCopyChange,
   onUrlChange,
 }: AdPreviewModalProps) {
