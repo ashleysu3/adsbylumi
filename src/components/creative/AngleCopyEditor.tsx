@@ -584,16 +584,6 @@ export function AngleCopyEditor({
           </p>
         </div>
         
-        {/* Save Button */}
-        {hasCopy && (
-          <div className="space-y-1">
-            <Button onClick={onSave} className="w-full gap-2">
-              <Save className="h-4 w-4" />
-              Save Copy
-            </Button>
-            <p className="text-xs text-center text-muted-foreground">Auto-saves as you type</p>
-          </div>
-        )}
       </CardContent>
       
       {/* Regenerate Feedback Dialog */}
