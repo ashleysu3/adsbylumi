@@ -11,7 +11,7 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
-  X, Check, FileDown, Printer, BarChart3, RefreshCw
+  X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload
 } from "lucide-react";
 import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
@@ -57,7 +57,8 @@ import {
    SheetTitle,
  } from "@/components/ui/sheet";
  import { ScrollArea } from "@/components/ui/scroll-area";
- import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDialog";
+import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDialog";
+import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
@@ -194,7 +195,7 @@ export default function CreativeStudio() {
   const urlWorkspaceId = searchParams.get("workspace");
   const isRefreshCreativeMode = searchParams.get("refreshCreative") === "true";
   const [showRefreshDialog, setShowRefreshDialog] = useState(false);
-
+  const [showBYOUploader, setShowBYOUploader] = useState(false);
 
   useEffect(() => { 
     if (!brandLoading && activeBrand) {
@@ -1249,6 +1250,23 @@ export default function CreativeStudio() {
           <TabsContent value="angles">
             {!workspace ? (
               <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold">Select a campaign above</h3></CardContent></Card>
+            ) : showBYOUploader ? (
+              <BYOCreativeUploader
+                workspaceId={workspace.id}
+                brandId={brandId}
+                onComplete={async (items, copyChoice) => {
+                  setShowBYOUploader(false);
+                  // Reload workspace to pick up new data
+                  await loadWorkspace(workspace.id);
+                  if (copyChoice === "lumi") {
+                    setShouldAutoGenerateCopy(true);
+                    setActiveTab("copy");
+                  } else {
+                    setActiveTab("copy");
+                  }
+                }}
+                onCancel={() => setShowBYOUploader(false)}
+              />
             ) : availableAngles.length === 0 ? (
                <Card className="rounded-2xl">
                  <CardContent className="pt-6 text-center py-16">
@@ -1274,6 +1292,22 @@ export default function CreativeStudio() {
                           <Sparkles className="h-4 w-4" />
                           Generate Angles
                         </Button>
+                        
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                          <div className="h-px w-8 bg-border" />
+                          <span>or</span>
+                          <div className="h-px w-8 bg-border" />
+                        </div>
+                        
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowBYOUploader(true)}
+                          className="gap-2"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Upload My Own Ads
+                        </Button>
+                        
                         {workspace?.brands?.meta_account_id && (
                           <Button
                             variant="outline"
