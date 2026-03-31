@@ -1796,6 +1796,40 @@ export default function CreativeStudio() {
           brandId={brandId}
           campaignObjective={workspace?.strategy_json?.objective}
         />
+        {/* Top-level Give Feedback Dialog */}
+        <CopyRegenerateDialog
+          open={showFeedbackDialog}
+          onOpenChange={setShowFeedbackDialog}
+          title={
+            feedbackTab === "angles" ? "Feedback on Angles" :
+            feedbackTab === "concepts" ? "Feedback on Concepts" :
+            "Feedback on Ad Copy"
+          }
+          description={
+            feedbackTab === "angles" ? "Tell Lumi what to improve about your creative angles." :
+            feedbackTab === "concepts" ? "Tell Lumi what to change about your creative concepts." :
+            "Help Lumi create better ad copy for your campaign."
+          }
+          onRegenerate={(feedback) => {
+            setShowFeedbackDialog(false);
+            if (feedbackTab === "angles") {
+              // Save feedback context then regenerate angles
+              const context = feedback ? { feedbackNotes: feedback.additionalNotes, feedbackSelections: feedback.quickSelections } : undefined;
+              setShowContextInput(true);
+            } else if (feedbackTab === "concepts") {
+              generateCreativeGrid();
+            }
+          }}
+          onSkip={() => {
+            setShowFeedbackDialog(false);
+            if (feedbackTab === "angles") {
+              handleRegenerateClick();
+            } else if (feedbackTab === "concepts") {
+              generateCreativeGrid();
+            }
+          }}
+          isGenerating={generating}
+        />
         {/* Auto-save status indicator - unified across all tabs */}
         {workspace && (
           <div className="fixed bottom-4 right-4 z-30 bg-background/80 backdrop-blur-sm rounded-full px-3 py-1.5 border shadow-sm">
