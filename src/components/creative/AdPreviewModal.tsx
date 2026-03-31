@@ -597,8 +597,11 @@ export function AdPreviewModal({
                     {/* CTA */}
                     <div className="px-3 pb-4">
                       <button className="w-full py-2.5 bg-primary text-primary-foreground font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
-                        Learn More
-                        <ExternalLink className="h-4 w-4" />
+                        {isDmCampaign ? (
+                          <><MessageCircle className="h-4 w-4" /> Send Message</>
+                        ) : (
+                          <>Learn More <ExternalLink className="h-4 w-4" /></>
+                        )}
                       </button>
                     </div>
                   </div>
