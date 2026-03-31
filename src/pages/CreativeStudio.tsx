@@ -198,6 +198,8 @@ export default function CreativeStudio() {
   const isRefreshCreativeMode = searchParams.get("refreshCreative") === "true";
   const [showRefreshDialog, setShowRefreshDialog] = useState(false);
   const [showBYOUploader, setShowBYOUploader] = useState(false);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedbackTab, setFeedbackTab] = useState<WorkflowTab>("angles");
 
   useEffect(() => { 
     if (!brandLoading && activeBrand) {
