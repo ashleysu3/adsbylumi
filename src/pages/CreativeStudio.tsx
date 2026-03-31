@@ -1333,9 +1333,6 @@ export default function CreativeStudio() {
                 )}
                 <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} onRegenerateAngle={regenerateSingleAngle} regeneratingAngleId={regeneratingAngleId} brandName={workspace?.brands?.name} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowBYOUploader(true)} disabled={generating}>
-                    <Upload className="h-4 w-4 mr-2" />Upload My Own Ads
-                  </Button>
                   {workspace?.brands?.meta_account_id && (
                     <Button variant="outline" onClick={() => setShowRefreshDialog(true)} disabled={generating}>
                       <BarChart3 className="h-4 w-4 mr-2" />See What's Worked
