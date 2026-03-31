@@ -183,6 +183,7 @@ export default function CreativeStudio() {
 
   // Auto-generate copy state
   const [shouldAutoGenerateCopy, setShouldAutoGenerateCopy] = useState(false);
+  const [manualCopyEntry, setManualCopyEntry] = useState(false);
 
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
