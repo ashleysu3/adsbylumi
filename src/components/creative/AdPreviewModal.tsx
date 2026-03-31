@@ -412,18 +412,27 @@ export function AdPreviewModal({
                       {renderMedia()}
                     </AspectRatio>
                     
-                    {/* Link Preview */}
-                    <div className="p-4 border-t bg-muted/30">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{domain}</p>
-                      <p className="font-semibold mt-1">{currentHeadline}</p>
-                      {currentDescription && (
-                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{currentDescription}</p>
-                      )}
-                      <button className="mt-3 w-full py-2.5 px-4 bg-primary text-primary-foreground font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
-                        Learn More
-                        <ExternalLink className="h-4 w-4" />
-                      </button>
-                    </div>
+                    {/* Link Preview / CTA */}
+                    {isDmCampaign ? (
+                      <div className="p-4 border-t">
+                        <button className="w-full py-2.5 px-4 bg-primary text-primary-foreground font-semibold rounded-lg flex items-center justify-center gap-2">
+                          <MessageCircle className="h-4 w-4" />
+                          Send Message
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-4 border-t bg-muted/30">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{domain}</p>
+                        <p className="font-semibold mt-1">{currentHeadline}</p>
+                        {currentDescription && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{currentDescription}</p>
+                        )}
+                        <button className="mt-3 w-full py-2.5 px-4 bg-primary text-primary-foreground font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors">
+                          Learn More
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                     
                     {/* Engagement */}
                     <div className="flex items-center justify-around px-4 py-3 border-t">
