@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
       const metaError = postsData.error?.message || 'Failed to fetch Instagram posts';
       if (postsData.error?.code === 10) {
         return new Response(
-          JSON.stringify({ error: 'Instagram permissions are incomplete. Please reconnect Meta in Settings and accept all requested permissions.', code: 'PERMISSIONS_ERROR' }),
+          JSON.stringify({ error: 'Instagram permissions are incomplete. To fix this: go to Facebook → Settings → Business Integrations, remove our app, then reconnect your Meta account in Settings and make sure all permission checkboxes are checked.', code: 'PERMISSIONS_ERROR' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
