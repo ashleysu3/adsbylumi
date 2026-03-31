@@ -345,7 +345,7 @@ export function AngleCopyEditor({
                 className="gap-2"
               >
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Regenerate
+                Give Feedback
               </Button>
               {selectedAngles.length > 1 && (
                 <Button 
@@ -356,7 +356,7 @@ export function AngleCopyEditor({
                   className="gap-2"
                 >
                   {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  Regenerate All
+                  Give Feedback (All)
                 </Button>
               )}
             </>
