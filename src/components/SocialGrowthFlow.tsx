@@ -238,13 +238,47 @@ export function SocialGrowthFlow({
 
         {error ? (
           <Card className="border-destructive/30 bg-destructive/5">
-            <CardContent className="p-6 text-center space-y-3">
-              <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-              <p className="font-medium">Couldn't load your posts</p>
-              <p className="text-sm text-muted-foreground">{error}</p>
-              <Button variant="outline" size="sm" onClick={onConnectInstagram}>
-                Reconnect Meta
-              </Button>
+            <CardContent className="p-6 space-y-4">
+              <div className="text-center space-y-2">
+                <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+                <p className="font-medium">Couldn't load your posts</p>
+                <p className="text-sm text-muted-foreground">{error}</p>
+              </div>
+              
+              <div className="bg-background rounded-lg p-4 border space-y-3">
+                <p className="text-sm font-medium">How to fix this:</p>
+                <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                  <li>
+                    Go to{" "}
+                    <a 
+                      href="https://www.facebook.com/settings/?tab=business_tools" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary underline hover:no-underline"
+                    >
+                      Facebook → Settings → Business Integrations
+                    </a>
+                  </li>
+                  <li>Find <strong>"Ads by Lumi"</strong> (or "Your Ad Assistant") and click <strong>Remove</strong></li>
+                  <li>Come back here and reconnect your Meta account</li>
+                  <li>When prompted, make sure <strong>all permission checkboxes are checked</strong></li>
+                </ol>
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => window.open("https://www.facebook.com/settings/?tab=business_tools", "_blank")}
+                >
+                  Open Facebook Settings
+                </Button>
+                <Button size="sm" className="flex-1" onClick={onConnectInstagram}>
+                  <Instagram className="h-4 w-4 mr-2" />
+                  Reconnect Meta
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : posts.length === 0 ? (
