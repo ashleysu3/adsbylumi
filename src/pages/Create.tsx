@@ -331,6 +331,9 @@ export default function Create() {
   // When offer is selected, find recommended template
   useEffect(() => {
     if (selectedOfferId) {
+      // Skip template override for system offers — they set their own template directly
+      if (SYSTEM_OFFER_IDS.includes(selectedOfferId)) return;
+      
       const offer = offers.find((o) => o.id === selectedOfferId);
       if (offer?.recommended_template_id) {
         const template = templates.find((t) => t.id === offer.recommended_template_id);
