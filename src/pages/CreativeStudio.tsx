@@ -303,9 +303,18 @@ export default function CreativeStudio() {
         description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
         isDefault: true
       };
+      const MAX_GENERATED_ANGLES = 10;
       let loadedAngles = c?.angles || [];
       if (loadedAngles.length > 0 && !loadedAngles.some((a: any) => a.id === "direct_from_page")) {
         loadedAngles = [DEFAULT_ANGLE, ...loadedAngles];
+      }
+      // Normalize: keep default + max 10 generated angles to fill 4x3 grid (+ Add Your Own card)
+      const defaultAngles = loadedAngles.filter((a: any) => a.isDefault || a.id === "direct_from_page");
+      const generatedAngles = loadedAngles.filter((a: any) => !a.isDefault && a.id !== "direct_from_page");
+      if (generatedAngles.length > MAX_GENERATED_ANGLES) {
+        const removedIds = new Set(generatedAngles.slice(MAX_GENERATED_ANGLES).map((a: any) => a.id));
+        loadedAngles = [...defaultAngles, ...generatedAngles.slice(0, MAX_GENERATED_ANGLES)];
+        console.log(`[CreativeStudio] Trimmed ${removedIds.size} overflow angles for 4x3 grid`);
       }
       const loadedAngleIds = new Set(loadedAngles.map((a: any) => a.id));
       
