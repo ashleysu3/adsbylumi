@@ -40,6 +40,7 @@ interface AdPreviewModalProps {
   selectedCopy?: Record<string, any>;
   brandName?: string;
   websiteUrl?: string;
+  isDmCampaign?: boolean;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
   onUrlChange?: (url: string) => void;
 }
