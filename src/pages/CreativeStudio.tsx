@@ -59,6 +59,7 @@ import {
  import { ScrollArea } from "@/components/ui/scroll-area";
 import { CreativeRefreshDialog } from "@/components/creative/CreativeRefreshDialog";
 import { BYOCreativeUploader } from "@/components/creative/BYOCreativeUploader";
+import { CopyRegenerateDialog, CopyFeedback } from "@/components/creative/CopyRegenerateDialog";
 
 type WorkflowTab = "angles" | "concepts" | "copy" | "build";
 
