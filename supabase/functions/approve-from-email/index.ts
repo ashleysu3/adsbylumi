@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { Resend } from 'npm:resend@2.0.0';
+import { Resend } from 'npm:resend@4.0.0';
 
 Deno.serve(async (req) => {
   try {
