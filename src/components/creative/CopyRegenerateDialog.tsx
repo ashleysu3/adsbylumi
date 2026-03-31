@@ -63,7 +63,9 @@ export function CopyRegenerateDialog({
   onRegenerate,
   onSkip,
   isGenerating,
-  angleCount = 1
+  angleCount = 1,
+  title,
+  description,
 }: CopyRegenerateDialogProps) {
   const [expanded, setExpanded] = useState(true);
   const [quickSelections, setQuickSelections] = useState<string[]>([]);
