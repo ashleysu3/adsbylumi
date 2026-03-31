@@ -1250,6 +1250,23 @@ export default function CreativeStudio() {
           <TabsContent value="angles">
             {!workspace ? (
               <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold">Select a campaign above</h3></CardContent></Card>
+            ) : showBYOUploader ? (
+              <BYOCreativeUploader
+                workspaceId={workspace.id}
+                brandId={brandId}
+                onComplete={async (items, copyChoice) => {
+                  setShowBYOUploader(false);
+                  // Reload workspace to pick up new data
+                  await loadWorkspace(workspace.id);
+                  if (copyChoice === "lumi") {
+                    setShouldAutoGenerateCopy(true);
+                    setActiveTab("copy");
+                  } else {
+                    setActiveTab("copy");
+                  }
+                }}
+                onCancel={() => setShowBYOUploader(false)}
+              />
             ) : availableAngles.length === 0 ? (
                <Card className="rounded-2xl">
                  <CardContent className="pt-6 text-center py-16">
@@ -1275,6 +1292,22 @@ export default function CreativeStudio() {
                           <Sparkles className="h-4 w-4" />
                           Generate Angles
                         </Button>
+                        
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                          <div className="h-px w-8 bg-border" />
+                          <span>or</span>
+                          <div className="h-px w-8 bg-border" />
+                        </div>
+                        
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowBYOUploader(true)}
+                          className="gap-2"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Upload My Own Ads
+                        </Button>
+                        
                         {workspace?.brands?.meta_account_id && (
                           <Button
                             variant="outline"
