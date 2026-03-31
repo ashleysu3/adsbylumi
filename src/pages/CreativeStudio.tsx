@@ -1332,7 +1332,7 @@ export default function CreativeStudio() {
                   <CreativeIntelligenceCard intelligence={creativeIntelligence} />
                 )}
                 <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} onRegenerateAngle={regenerateSingleAngle} regeneratingAngleId={regeneratingAngleId} brandName={workspace?.brands?.name} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-center gap-2">
                   {workspace?.brands?.meta_account_id && (
                     <Button variant="outline" onClick={() => setShowRefreshDialog(true)} disabled={generating}>
                       <BarChart3 className="h-4 w-4 mr-2" />See What's Worked
