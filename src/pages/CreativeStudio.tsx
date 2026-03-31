@@ -1261,8 +1261,11 @@ export default function CreativeStudio() {
                   await loadWorkspace(workspace.id);
                   if (copyChoice === "lumi") {
                     setShouldAutoGenerateCopy(true);
+                    setManualCopyEntry(false);
                     setActiveTab("copy");
                   } else {
+                    setManualCopyEntry(true);
+                    setShouldAutoGenerateCopy(false);
                     setActiveTab("copy");
                   }
                 }}
