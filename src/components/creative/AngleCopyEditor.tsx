@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Sparkles, Loader2, Plus, X, Save, RefreshCw,
+  Sparkles, Loader2, Plus, X, RefreshCw,
   FileText, ChevronDown, ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
@@ -345,7 +345,7 @@ export function AngleCopyEditor({
                 className="gap-2"
               >
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Regenerate
+                Give Feedback
               </Button>
               {selectedAngles.length > 1 && (
                 <Button 
@@ -356,7 +356,7 @@ export function AngleCopyEditor({
                   className="gap-2"
                 >
                   {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                  Regenerate All
+                  Give Feedback (All)
                 </Button>
               )}
             </>
@@ -584,16 +584,6 @@ export function AngleCopyEditor({
           </p>
         </div>
         
-        {/* Save Button */}
-        {hasCopy && (
-          <div className="space-y-1">
-            <Button onClick={onSave} className="w-full gap-2">
-              <Save className="h-4 w-4" />
-              Save Copy
-            </Button>
-            <p className="text-xs text-center text-muted-foreground">Auto-saves as you type</p>
-          </div>
-        )}
       </CardContent>
       
       {/* Regenerate Feedback Dialog */}

@@ -11,7 +11,7 @@ import {
   Target, Lightbulb, FileText, Rocket, 
   ChevronRight, CheckCircle2, Circle, Loader2,
   Sparkles, ArrowRight, Video, Film, Image, Trash2,
-  X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload
+  X, Check, FileDown, Printer, BarChart3, RefreshCw, Upload, MessageSquare
 } from "lucide-react";
 import { printCreativeBrief } from "@/lib/print-creative-brief";
 import { toast } from "sonner";
@@ -1271,6 +1271,32 @@ export default function CreativeStudio() {
             })}
           </TabsList>
 
+          {/* Top-right Give Feedback button per tab */}
+          {((activeTab === "angles" && availableAngles.length > 0) ||
+            (activeTab === "concepts" && gridData.length > 0) ||
+            (activeTab === "copy" && Object.keys(angleCopy).length > 0)) && (
+            <div className="flex justify-end -mt-1 mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 text-xs text-muted-foreground hover:text-foreground h-7 px-2.5"
+                onClick={() => {
+                  if (activeTab === "angles") {
+                    handleRegenerateClick();
+                  } else if (activeTab === "concepts") {
+                    // Re-generate the creative grid for concepts
+                    generateCreativeGrid();
+                  } else if (activeTab === "copy") {
+                    toast.info("Use the 'Give Feedback' button inside the copy editor to refine your copy.");
+                  }
+                }}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Give Feedback
+              </Button>
+            </div>
+          )}
+
           <TabsContent value="angles">
             {!workspace ? (
               <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold">Select a campaign above</h3></CardContent></Card>
@@ -1321,15 +1347,13 @@ export default function CreativeStudio() {
                         </Button>
                          
                         {workspace?.brands?.meta_account_id && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-2 text-muted-foreground"
+                          <button
                             onClick={() => setShowRefreshDialog(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary/5 text-primary border border-primary/20 hover:bg-primary/10 transition-colors"
                           >
-                            <BarChart3 className="h-4 w-4" />
-                            See What's Worked
-                          </Button>
+                            <BarChart3 className="h-3 w-3" />
+                            Insights Available
+                          </button>
                         )}
                       </div>
                     )}
@@ -1343,14 +1367,17 @@ export default function CreativeStudio() {
                   <CreativeIntelligenceCard intelligence={creativeIntelligence} />
                 )}
                 <AngleSelector angles={availableAngles} selectedAngles={selectedAngleIds} onSelectionChange={setSelectedAngleIds} onContinue={generateCreativeGrid} isGenerating={generating} onAddCustomAngle={handleAddCustomAngle} onRegenerateAngle={regenerateSingleAngle} regeneratingAngleId={regeneratingAngleId} brandName={workspace?.brands?.name} offerData={{ name: workspace?.offer_name, description: workspace?.offer_description, price: workspace?.offer_price }} />
-                <div className="flex justify-center gap-2">
-                  {workspace?.brands?.meta_account_id && (
-                    <Button variant="outline" onClick={() => setShowRefreshDialog(true)} disabled={generating}>
-                      <BarChart3 className="h-4 w-4 mr-2" />See What's Worked
-                    </Button>
-                  )}
-                  <Button variant="outline" onClick={handleRegenerateClick} disabled={generating}><Sparkles className="h-4 w-4 mr-2" />Regenerate</Button>
-                </div>
+                {workspace?.brands?.meta_account_id && (
+                  <div className="flex justify-center mt-2">
+                    <button
+                      onClick={() => setShowRefreshDialog(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary/5 text-primary border border-primary/20 hover:bg-primary/10 transition-colors"
+                    >
+                      <BarChart3 className="h-3 w-3" />
+                      Insights Available
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </TabsContent>

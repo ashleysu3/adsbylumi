@@ -20,6 +20,8 @@ interface CopyRegenerateDialogProps {
   onSkip: () => void;
   isGenerating: boolean;
   angleCount?: number;
+  title?: string;
+  description?: string;
 }
 
 const QUICK_SELECT_OPTIONS = [
@@ -61,7 +63,9 @@ export function CopyRegenerateDialog({
   onRegenerate,
   onSkip,
   isGenerating,
-  angleCount = 1
+  angleCount = 1,
+  title,
+  description,
 }: CopyRegenerateDialogProps) {
   const [expanded, setExpanded] = useState(true);
   const [quickSelections, setQuickSelections] = useState<string[]>([]);
@@ -109,10 +113,10 @@ export function CopyRegenerateDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <RefreshCw className="h-5 w-5 text-primary" />
-            Regenerate Ad Copy
+            {title || "Regenerate Ad Copy"}
           </DialogTitle>
           <DialogDescription>
-            Help Lumi create better copy for your {angleCount} angle{angleCount !== 1 ? "s" : ""}.
+            {description || `Help Lumi create better copy for your ${angleCount} angle${angleCount !== 1 ? "s" : ""}.`}
           </DialogDescription>
         </DialogHeader>
         
