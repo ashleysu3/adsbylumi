@@ -183,6 +183,7 @@ export default function CreativeStudio() {
 
   // Auto-generate copy state
   const [shouldAutoGenerateCopy, setShouldAutoGenerateCopy] = useState(false);
+  const [manualCopyEntry, setManualCopyEntry] = useState(false);
 
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -1260,8 +1261,11 @@ export default function CreativeStudio() {
                   await loadWorkspace(workspace.id);
                   if (copyChoice === "lumi") {
                     setShouldAutoGenerateCopy(true);
+                    setManualCopyEntry(false);
                     setActiveTab("copy");
                   } else {
+                    setManualCopyEntry(true);
+                    setShouldAutoGenerateCopy(false);
                     setActiveTab("copy");
                   }
                 }}
@@ -1504,6 +1508,7 @@ export default function CreativeStudio() {
                   onSave={handleSaveCopy}
                   productionItemCount={productionItems.length}
                   autoGenerate={shouldAutoGenerateCopy}
+                  manualEntry={manualCopyEntry}
                   brandId={brandId}
                   offerId={workspace?.offer_id}
                   perspectiveRole={(workspace?.creative_json as Record<string, any>)?.preGenerationContext?.perspectiveRole || 'seller'}

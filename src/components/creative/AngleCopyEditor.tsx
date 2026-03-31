@@ -39,6 +39,7 @@ interface AngleCopyEditorProps {
   onSave: () => void;
   productionItemCount: number;
   autoGenerate?: boolean;
+  manualEntry?: boolean;
   brandId?: string;
   offerId?: string;
   perspectiveRole?: string;
@@ -55,6 +56,7 @@ export function AngleCopyEditor({
   onSave,
   productionItemCount,
   autoGenerate = false,
+  manualEntry = false,
   brandId,
   offerId,
   perspectiveRole,
@@ -101,6 +103,27 @@ export function AngleCopyEditor({
       generateAllCopy();
     }
   }, [autoGenerate, allAnglesHaveCopy, generating, selectedAngleIds.length]);
+  
+  // Seed empty fields for manual entry mode
+  const hasSeededManualRef = useRef(false);
+  useEffect(() => {
+    if (manualEntry && !hasSeededManualRef.current && !allAnglesHaveCopy && selectedAngleIds.length > 0) {
+      hasSeededManualRef.current = true;
+      // Seed each selected angle with empty starter fields
+      for (const angleId of selectedAngleIds) {
+        const existing = angleCopy[angleId];
+        if (!existing || (!existing.headlines?.length && !existing.descriptions?.length && !existing.primary_copy?.length)) {
+          onCopyChange(angleId, {
+            headlines: [{ text: "" }, { text: "" }, { text: "" }],
+            descriptions: [{ text: "" }, { text: "" }],
+            primary_copy: [{ text: "", length: "short" }, { text: "", length: "medium" }],
+          });
+        }
+      }
+      // Expand all sections for easy input
+      setExpandedSections({ headlines: true, descriptions: true, primary_copy: true });
+    }
+  }, [manualEntry, allAnglesHaveCopy, selectedAngleIds.length]);
   
   // Reset the ref when angles change significantly
   useEffect(() => {
