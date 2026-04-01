@@ -149,7 +149,7 @@ export default function MetaSettings() {
     }
 
     try {
-      // Delete token from vault
+      // Delete token from vault + brands table (updated RPC handles both)
       await supabase.rpc('delete_meta_token', { p_brand_id: brand.id });
 
       const { error } = await supabase
@@ -162,12 +162,19 @@ export default function MetaSettings() {
           instagram_account_id: null,
           instagram_account_name: null,
           meta_token_expires_at: null,
+          meta_pixel_id: null,
+          meta_pixel_name: null,
+          meta_pixel_events: null,
+          meta_pixel_verified_at: null,
         })
         .eq('id', brand.id);
 
       if (error) throw error;
 
+      // Reset all UI state so stale "healthy" status doesn't persist
       setHasValidToken(false);
+      setTestResult(null);
+      setConnectionHealth(null);
       toast.success('Meta account disconnected');
       fetchBrand();
     } catch (error) {
