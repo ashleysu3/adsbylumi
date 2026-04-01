@@ -384,7 +384,7 @@ Deno.serve(async (req) => {
         if (!grantedPerms.has('instagram_basic')) missing.push('instagram_basic');
         if (!grantedPerms.has('pages_read_user_content')) missing.push('pages_read_user_content');
         if (missing.length > 0) {
-          permissionWarning = `Instagram post access was not granted (missing: ${missing.join(', ')}). You may have unchecked this permission. Please disconnect and reconnect, making sure to accept all permissions when prompted.`;
+          permissionWarning = `Meta did not grant Instagram post access for this connection (missing: ${missing.join(', ')}). There is no separate access toggle inside Lumi. If reconnecting still returns the same result, the Instagram permission likely still needs to be enabled on the Meta app and the Instagram account must be linked to the selected Facebook Page/ad account.`;
           console.warn('Missing critical permissions:', missing);
         } else {
           console.log('All critical permissions granted');
@@ -421,7 +421,7 @@ Deno.serve(async (req) => {
     } else if (igPermissionWarnings.length > 0 && readableInstagramIds.size === 0) {
       console.warn('No Instagram accounts have readable media access');
       if (!permissionWarning) {
-        permissionWarning = 'We found Instagram accounts but none currently grant post access. Make sure the Instagram profile is a Business or Creator account connected to your Facebook Page.';
+        permissionWarning = 'We found Instagram accounts, but Meta is still blocking post access for all of them. There is no extra access picker inside Lumi. Confirm the Instagram profile is Business/Creator, linked to the selected Facebook Page and ad account, and if reconnecting still fails, check the Meta app configuration for Instagram access.';
       }
     }
 

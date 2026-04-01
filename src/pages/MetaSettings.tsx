@@ -42,6 +42,7 @@ export default function MetaSettings() {
       permissions?: string[];
       missingPermissions?: string[];
       hasInstagramMediaAccess?: boolean;
+      instagramMediaError?: string;
       adAccountName?: string;
       adAccountId?: string;
     };
@@ -80,7 +81,7 @@ export default function MetaSettings() {
       }
 
       if (data.success) {
-        if (data.details?.permissionsValid === false) {
+        if (data.details?.permissionsValid === false || data.details?.hasInstagramMediaAccess === false) {
           setConnectionHealth('warning');
         } else {
           setConnectionHealth('healthy');
@@ -239,7 +240,7 @@ export default function MetaSettings() {
 
       // Update health status based on result
       if (data.success) {
-        if (data.details?.permissionsValid === false) {
+        if (data.details?.permissionsValid === false || data.details?.hasInstagramMediaAccess === false) {
           setConnectionHealth('warning');
         } else {
           setConnectionHealth('healthy');
@@ -585,7 +586,13 @@ export default function MetaSettings() {
                                 <Shield className="h-4 w-4 text-muted-foreground" />
                                 <span className="text-muted-foreground">Permissions:</span>
                                 <Badge variant={testResult.details.permissionsValid ? "default" : "destructive"} className={testResult.details.permissionsValid ? "bg-green-500/10 text-green-600 border-green-500/30" : ""}>
-                                  {testResult.details.permissionsValid ? "All granted" : `Missing: ${testResult.details.missingPermissions?.join(', ') || 'some permissions'}`}
+                                  {testResult.details.permissionsValid
+                                    ? "All granted"
+                                    : testResult.details.missingPermissions?.length
+                                    ? `Missing: ${testResult.details.missingPermissions.join(', ')}`
+                                    : testResult.details.hasInstagramMediaAccess === false
+                                    ? "Instagram access blocked"
+                                    : "Needs attention"}
                                 </Badge>
                               </div>
                             )}
@@ -593,8 +600,12 @@ export default function MetaSettings() {
                               <Alert className="mt-2 border-amber-500/30 bg-amber-500/5">
                                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                                 <AlertDescription className="text-xs space-y-2">
-                                  <p><span className="font-medium">Instagram post access is missing.</span> You won't be able to pull existing posts for ads.</p>
-                                  <p>To fix: Go to <a href="https://www.facebook.com/settings/?tab=business_tools" target="_blank" rel="noopener noreferrer" className="text-primary underline">Facebook → Settings → Business Integrations</a>, remove our app, then reconnect here with all permissions checked.</p>
+                                  <p><span className="font-medium">Instagram post access is blocked by Meta.</span> Lumi is requesting the connection, but Meta is still denying post reads for this Instagram account.</p>
+                                  <p>There is no separate access toggle inside Lumi. First, go to <a href="https://www.facebook.com/settings/?tab=business_tools" target="_blank" rel="noopener noreferrer" className="text-primary underline">Facebook → Settings → Business Integrations</a>, remove our app, reconnect here, and confirm the Instagram profile is a Business or Creator account linked to the selected Facebook Page and ad account.</p>
+                                  <p>If reconnecting still gives the same result, the missing access is likely in the Meta app configuration rather than this user flow.</p>
+                                  {testResult.details.instagramMediaError && (
+                                    <p><span className="font-medium">Meta returned:</span> {testResult.details.instagramMediaError}</p>
+                                  )}
                                 </AlertDescription>
                               </Alert>
                             )}
@@ -616,7 +627,10 @@ export default function MetaSettings() {
                                 <li>Your token may have expired. Try reconnecting your Meta account.</li>
                               )}
                               {testResult.details?.permissionsValid === false && (
-                                <li>Some permissions are missing. Reconnect and approve all requested permissions.</li>
+                                <li>Meta did not return all required Instagram scopes. There is no separate toggle in Lumi, so if reconnecting does not help, check the Meta app’s Instagram permissions.</li>
+                              )}
+                              {testResult.details?.hasInstagramMediaAccess === false && (
+                                <li>Instagram media reads are still being denied. Confirm the selected Instagram account is Business/Creator and linked to the selected Facebook Page and ad account.</li>
                               )}
                               {!testResult.details?.tokenValid && (
                                 <li>Check if you've changed your Meta password recently.</li>
