@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
       .lte('created_at', sevenDaysAgo);
 
     if (fetchError) {
-      console.error('Error fetching beta users:', fetchError);
+      console.error('Error fetching founding members:', fetchError);
       throw new Error(fetchError.message);
     }
 
