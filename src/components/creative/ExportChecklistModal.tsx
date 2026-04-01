@@ -107,38 +107,6 @@ export function ExportChecklistModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Mode toggle */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setMode('brief')}
-              className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
-                mode === 'brief' 
-                  ? 'border-primary bg-primary/5 ring-1 ring-primary/30' 
-                  : 'border-border hover:border-primary/30'
-              }`}
-            >
-              <Users className="h-4 w-4 text-primary shrink-0" />
-              <div>
-                <p className="text-sm font-medium">Team Brief</p>
-                <p className="text-[11px] text-muted-foreground">Hooks, scripts, direction & copy — clean handoff for your team or contractor</p>
-              </div>
-            </button>
-            <button
-              onClick={() => setMode('full')}
-              className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
-                mode === 'full' 
-                  ? 'border-primary bg-primary/5 ring-1 ring-primary/30' 
-                  : 'border-border hover:border-primary/30'
-              }`}
-            >
-              <ClipboardList className="h-4 w-4 text-primary shrink-0" />
-              <div>
-                <p className="text-sm font-medium">Detailed Checklist</p>
-                <p className="text-[11px] text-muted-foreground">Customizable columns with psychology notes & status tracking</p>
-              </div>
-            </button>
-          </div>
-
           {/* Format Filter */}
           {availableFormats.size > 1 && (
             <div className="space-y-2">
