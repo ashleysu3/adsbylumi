@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     const { error: emailError } = await resend.emails.send({
       from: 'Lumi <hello@adsbylumi.com>',
       to: [email],
-      subject: `Welcome to the Lumi Beta, ${firstName} 🧪✨`,
+      subject: `Welcome to Lumi, ${firstName} — You're a Founding Member ✨`,
       html: buildBetaWelcomeHtml(firstName),
     });
 
