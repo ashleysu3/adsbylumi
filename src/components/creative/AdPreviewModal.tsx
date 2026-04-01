@@ -454,7 +454,7 @@ export function AdPreviewModal({
                 
                 {/* Stories Preview */}
                 <TabsContent value="stories" className="mt-0">
-                  <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
+                  <div className="w-[280px] max-h-[calc(90vh-180px)] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
                     <AspectRatio ratio={9/16}>
                       {renderMedia("vertical")}
                       
