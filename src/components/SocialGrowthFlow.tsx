@@ -237,48 +237,17 @@ export function SocialGrowthFlow({
         </div>
 
         {error ? (
-          <Card className="border-destructive/30 bg-destructive/5">
+          <Card className="border-amber-500/30 bg-amber-500/5">
             <CardContent className="p-6 space-y-4">
-              <div className="text-center space-y-2">
-                <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
-                <p className="font-medium">Couldn't load your posts</p>
-                <p className="text-sm text-muted-foreground">{error}</p>
-              </div>
-              
-              <div className="bg-background rounded-lg p-4 border space-y-3">
-                <p className="text-sm font-medium">How to fix this:</p>
-                <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                  <li>
-                    Go to{" "}
-                    <a 
-                      href="https://www.facebook.com/settings/?tab=business_tools" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-primary underline hover:no-underline"
-                    >
-                      Facebook → Settings → Business Integrations
-                    </a>
-                  </li>
-                  <li>Find <strong>"Ads by Lumi"</strong> and click <strong>Remove</strong></li>
-                  <li>Come back here, go to <strong>Meta Connection</strong> in the sidebar and click <strong>Disconnect</strong>, then <strong>Reconnect</strong></li>
-                  <li>When prompted, make sure <strong>all permission checkboxes are checked</strong></li>
-                  <li>Make sure your Instagram is a <strong>Business or Creator</strong> account (not Personal) and is connected to a Facebook Page</li>
-                </ol>
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => window.open("https://www.facebook.com/settings/?tab=business_tools", "_blank")}
-                >
-                  Open Facebook Settings
-                </Button>
-                <Button size="sm" className="flex-1" onClick={onConnectInstagram}>
-                  <Instagram className="h-4 w-4 mr-2" />
-                  Reconnect Meta
-                </Button>
+              <div className="text-center space-y-3">
+                <AlertCircle className="h-8 w-8 text-amber-500 mx-auto" />
+                <p className="font-semibold text-lg">We're on it! 🛠️</p>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  This is a known issue — we're actively working with Meta to restore Instagram post access. We anticipate it being fixed within the next <strong>24–48 hours</strong>.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  You don't need to do anything on your end. We'll have this sorted soon!
+                </p>
               </div>
             </CardContent>
           </Card>
