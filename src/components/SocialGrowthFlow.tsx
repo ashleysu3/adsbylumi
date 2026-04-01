@@ -259,9 +259,10 @@ export function SocialGrowthFlow({
                       Facebook → Settings → Business Integrations
                     </a>
                   </li>
-                  <li>Find <strong>"Ads by Lumi"</strong> (or "Your Ad Assistant") and click <strong>Remove</strong></li>
-                  <li>Come back here and reconnect your Meta account</li>
+                  <li>Find <strong>"Ads by Lumi"</strong> and click <strong>Remove</strong></li>
+                  <li>Come back here, go to <strong>Meta Connection</strong> in the sidebar and click <strong>Disconnect</strong>, then <strong>Reconnect</strong></li>
                   <li>When prompted, make sure <strong>all permission checkboxes are checked</strong></li>
+                  <li>Make sure your Instagram is a <strong>Business or Creator</strong> account (not Personal) and is connected to a Facebook Page</li>
                 </ol>
               </div>
 

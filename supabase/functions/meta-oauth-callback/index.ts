@@ -396,6 +396,7 @@ Deno.serve(async (req) => {
 
     // Verify Instagram media access for each discovered IG account
     const igPermissionWarnings: string[] = [];
+    const readableInstagramIds = new Set<string>();
     for (const igAccount of instagramAccounts) {
       try {
         const testUrl = `https://graph.facebook.com/v21.0/${igAccount.id}/media?fields=id&limit=1&access_token=${finalToken}`;
@@ -405,10 +406,22 @@ Deno.serve(async (req) => {
           console.warn(`Instagram media access failed for ${igAccount.id}:`, testData.error?.message);
           igPermissionWarnings.push(`Cannot read posts for @${igAccount.username || igAccount.id}: ${testData.error?.message || 'Permission denied'}`);
         } else {
+          readableInstagramIds.add(igAccount.id);
           console.log(`Instagram media access verified for ${igAccount.id}`);
         }
       } catch (testErr) {
         console.warn(`Instagram media test error for ${igAccount.id}:`, testErr);
+      }
+    }
+
+    // Filter Instagram accounts to only those with verified media access
+    if (igPermissionWarnings.length > 0 && readableInstagramIds.size > 0) {
+      instagramAccounts = instagramAccounts.filter((ig: any) => readableInstagramIds.has(ig.id));
+      console.log('Filtered Instagram accounts to readable set:', instagramAccounts.length);
+    } else if (igPermissionWarnings.length > 0 && readableInstagramIds.size === 0) {
+      console.warn('No Instagram accounts have readable media access');
+      if (!permissionWarning) {
+        permissionWarning = 'We found Instagram accounts but none currently grant post access. Make sure the Instagram profile is a Business or Creator account connected to your Facebook Page.';
       }
     }
 

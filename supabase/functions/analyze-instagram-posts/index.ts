@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     // Get Meta access token from brand record (vault RPC has crypto permission issues)
     const { data: brand, error: brandError } = await supabase
       .from('brands')
-      .select('meta_access_token, instagram_account_id')
+      .select('meta_access_token, instagram_account_id, instagram_account_name, meta_account_id, page_id')
       .eq('id', brandId)
       .single();
 
@@ -62,27 +62,60 @@ Deno.serve(async (req) => {
     const engagementFields = 'like_count,comments_count';
     const requestedFields = simple ? baseFields : `${baseFields},${engagementFields}`;
 
-    const fetchPostsByFields = async (fields: string) => {
-      const postsUrl = `https://graph.facebook.com/v21.0/${instagramAccountId}/media?fields=${fields}&limit=25&access_token=${accessToken}`;
+    const fetchPostsByFields = async (igId: string, fields: string) => {
+      const postsUrl = `https://graph.facebook.com/v21.0/${igId}/media?fields=${fields}&limit=25&access_token=${accessToken}`;
       const response = await fetch(postsUrl);
       const data = await response.json();
       return { response, data };
     };
 
-    let { response: postsResponse, data: postsData } = await fetchPostsByFields(requestedFields);
+    // Helper to try fetching posts for a given IG account, with engagement field fallback
+    const fetchPostsForAccount = async (igId: string) => {
+      let result = await fetchPostsByFields(igId, requestedFields);
+      if (!result.response.ok && result.data?.error?.code === 10 && !simple) {
+        console.warn(`Retrying without engagement fields for ${igId}`);
+        result = await fetchPostsByFields(igId, baseFields);
+      }
+      return result;
+    };
 
-    // If engagement fields trigger permission errors, gracefully retry with basic fields.
-    if (!postsResponse.ok && postsData?.error?.code === 10 && !simple) {
-      console.warn('Retrying Instagram media fetch without engagement fields due to permission error');
-      const retry = await fetchPostsByFields(baseFields);
-      postsResponse = retry.response;
-      postsData = retry.data;
+    let activeIgId = instagramAccountId;
+    let { response: postsResponse, data: postsData } = await fetchPostsForAccount(activeIgId);
+
+    if (!postsResponse.ok) {
+      console.error('Primary IG account failed, attempting auto-recovery:', postsData?.error);
+
+      // Try to find a readable Instagram account automatically
+      const recovered = await tryRecoverInstagramAccount({
+        failedIgId: activeIgId,
+        accessToken,
+        metaAccountId: brand.meta_account_id,
+        fetchPostsForAccount,
+      });
+
+      if (recovered) {
+        activeIgId = recovered.igId;
+        postsResponse = recovered.response;
+        postsData = recovered.data;
+        console.log('Auto-recovered with IG account:', activeIgId);
+
+        // Persist the working IG account so future requests don't fail
+        await supabase
+          .from('brands')
+          .update({
+            instagram_account_id: activeIgId,
+            instagram_account_name: recovered.name || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', brandId);
+      }
     }
 
     if (!postsResponse.ok) {
-      console.error('Error fetching posts:', postsData);
-      const metaError = postsData.error?.message || 'Failed to fetch Instagram posts';
-      if (postsData.error?.code === 10) {
+      console.error('Error fetching posts after recovery attempt:', postsData);
+      const metaError = postsData?.error?.message || 'Failed to fetch Instagram posts';
+      const code = postsData?.error?.code;
+      if (code === 10) {
         return new Response(
           JSON.stringify({ error: 'Instagram permissions are incomplete. To fix this: go to Facebook → Settings → Business Integrations, remove our app, then reconnect your Meta account in Settings and make sure all permission checkboxes are checked.', code: 'PERMISSIONS_ERROR' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -185,6 +218,112 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// Auto-recovery: discover alternative Instagram accounts and find one that
+// grants media read access. This handles the case where the saved IG account
+// ID is stale or belongs to an account that no longer grants permissions.
+// ---------------------------------------------------------------------------
+
+interface RecoveredAccount {
+  igId: string;
+  name: string | null;
+  response: Response;
+  data: any;
+}
+
+async function tryRecoverInstagramAccount({
+  failedIgId,
+  accessToken,
+  metaAccountId,
+  fetchPostsForAccount,
+}: {
+  failedIgId: string;
+  accessToken: string;
+  metaAccountId?: string | null;
+  fetchPostsForAccount: (igId: string) => Promise<{ response: Response; data: any }>;
+}): Promise<RecoveredAccount | null> {
+  const candidates = await discoverInstagramCandidates(accessToken, metaAccountId);
+  if (candidates.length === 0) return null;
+
+  for (const candidate of candidates) {
+    if (candidate.id === failedIgId) continue;
+
+    try {
+      const result = await fetchPostsForAccount(candidate.id);
+      if (result.response.ok && !result.data?.error) {
+        return {
+          igId: candidate.id,
+          name: candidate.name || candidate.username || null,
+          response: result.response,
+          data: result.data,
+        };
+      }
+    } catch (err) {
+      console.warn(`Recovery candidate ${candidate.id} failed:`, err);
+    }
+  }
+
+  return null;
+}
+
+async function discoverInstagramCandidates(
+  accessToken: string,
+  metaAccountId?: string | null,
+): Promise<Array<{ id: string; name?: string; username?: string; source: string }>> {
+  const candidates: Array<{ id: string; name?: string; username?: string; source: string }> = [];
+  const seen = new Set<string>();
+
+  const add = (c: { id: string; name?: string; username?: string; source: string }) => {
+    if (!c.id || seen.has(c.id)) return;
+    seen.add(c.id);
+    candidates.push(c);
+  };
+
+  // Source 1: Pages → instagram_business_account
+  try {
+    const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,name,username}&access_token=${accessToken}`;
+    const pagesRes = await fetch(pagesUrl);
+    const pagesData = await pagesRes.json();
+    if (pagesRes.ok && Array.isArray(pagesData.data)) {
+      for (const page of pagesData.data) {
+        if (page.instagram_business_account) {
+          add({ ...page.instagram_business_account, source: 'page_field' });
+        }
+        // Source 2: Page edge /instagram_accounts (using page token)
+        if (page.access_token) {
+          try {
+            const edgeUrl = `https://graph.facebook.com/v21.0/${page.id}/instagram_accounts?fields=id,username,name&access_token=${page.access_token}`;
+            const edgeRes = await fetch(edgeUrl);
+            const edgeData = await edgeRes.json();
+            if (edgeRes.ok && Array.isArray(edgeData.data)) {
+              for (const ig of edgeData.data) add({ ...ig, source: 'page_edge' });
+            }
+          } catch { /* non-fatal */ }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('IG recovery: Pages discovery failed:', err);
+  }
+
+  // Source 3: Ad account /instagram_accounts
+  if (metaAccountId) {
+    const actId = metaAccountId.startsWith('act_') ? metaAccountId : `act_${metaAccountId}`;
+    try {
+      const adIgUrl = `https://graph.facebook.com/v21.0/${actId}/instagram_accounts?fields=id,username,name&access_token=${accessToken}`;
+      const adIgRes = await fetch(adIgUrl);
+      const adIgData = await adIgRes.json();
+      if (adIgRes.ok && Array.isArray(adIgData.data)) {
+        for (const ig of adIgData.data) add({ ...ig, source: 'ad_account' });
+      }
+    } catch (err) {
+      console.warn('IG recovery: Ad account discovery failed:', err);
+    }
+  }
+
+  return candidates;
+}
 
 async function analyzePostsWithAI(
   posts: InstagramPost[],
