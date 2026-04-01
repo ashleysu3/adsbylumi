@@ -144,9 +144,12 @@ export function MetaAccountConnect({
   const handleOAuthFlow = async () => {
     setOauthLoading(true);
 
-    // Open the popup immediately (in the click handler / user-gesture context)
-    // so browsers don't block it. We'll navigate it after the API call returns.
-    const popup = window.open('about:blank', 'Meta OAuth', 'width=600,height=700,scrollbars=yes');
+    // Mobile Safari (and most mobile browsers) block popups even with immediate window.open.
+    // Detect mobile and use same-tab redirect flow instead.
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // On desktop, open popup immediately (user-gesture context) to avoid blockers.
+    const popup = isMobile ? null : window.open('about:blank', 'Meta OAuth', 'width=600,height=700,scrollbars=yes');
 
     try {
       const redirectUri = `${window.location.origin}/meta-oauth-callback`;
@@ -160,10 +163,8 @@ export function MetaAccountConnect({
         throw error;
       }
 
-      if (popup) {
-        popup.location.href = data.authUrl;
-      } else {
-        // Fallback: popup was still blocked despite immediate open
+      if (isMobile) {
+        // Same-tab redirect for mobile — avoids popup blocking entirely
         window.location.href = data.authUrl;
         return;
       }
