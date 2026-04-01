@@ -277,12 +277,14 @@ export function AdPreviewModal({
     if (assetUrl) {
       const showBlurBg = needsMetaPadding(placement);
 
+      const useContain = showBlurBg || (placement === "vertical" && isVerticalAsset);
+      
       const mediaElement = isVideo ? (
         <video 
           src={assetUrl} 
           className={cn(
             "w-full h-full",
-            showBlurBg ? "object-contain relative z-10" : "object-cover",
+            useContain ? "object-contain relative z-10" : "object-cover",
             className
           )}
           controls
@@ -296,7 +298,7 @@ export function AdPreviewModal({
           alt="Ad creative"
           className={cn(
             "w-full h-full",
-            showBlurBg ? "object-contain relative z-10" : "object-cover",
+            useContain ? "object-contain relative z-10" : "object-cover",
             className
           )}
           onLoad={handleImageLoad}
@@ -381,7 +383,7 @@ export function AdPreviewModal({
                 </TabsList>
               </div>
               
-              <div className="flex-1 p-6 flex items-start justify-center">
+              <div className="flex-1 p-4 md:p-6 flex items-start justify-center overflow-y-auto">
                 {/* Facebook Feed */}
                 <TabsContent value="feed" className="mt-0 w-full max-w-md">
                   <div className="bg-card border rounded-xl overflow-hidden shadow-lg">
@@ -454,8 +456,8 @@ export function AdPreviewModal({
                 
                 {/* Stories Preview */}
                 <TabsContent value="stories" className="mt-0">
-                  <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
-                    <AspectRatio ratio={9/16}>
+                  <div className="w-[280px] max-h-[calc(90vh-180px)] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
+                    <AspectRatio ratio={9/16} className="max-h-[calc(90vh-180px)]">
                       {renderMedia("vertical")}
                       
                       {/* Overlay */}
@@ -502,8 +504,8 @@ export function AdPreviewModal({
                 
                 {/* Reels Preview */}
                 <TabsContent value="reels" className="mt-0">
-                  <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
-                    <AspectRatio ratio={9/16}>
+                  <div className="w-[280px] max-h-[calc(90vh-180px)] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
+                    <AspectRatio ratio={9/16} className="max-h-[calc(90vh-180px)]">
                       {renderMedia("vertical")}
                       
                       {/* Overlay */}
