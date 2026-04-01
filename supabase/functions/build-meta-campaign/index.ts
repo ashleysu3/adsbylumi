@@ -981,6 +981,7 @@ Deno.serve(async (req) => {
                   name: `IG Post - ${post.caption?.slice(0, 30) || post.id}`,
                   creative: JSON.stringify({ creative_id: creativeData.id }),
                   status: launchStatus,
+                  multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
                   access_token: metaAccessToken,
                 }),
               }

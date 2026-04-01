@@ -162,7 +162,8 @@ Deno.serve(async (req) => {
       console.warn('Could not fetch existing ad settings:', e);
     }
 
-    const multiAdvertiserAds = brand.multi_advertiser_ads === true;
+    // Multi-advertiser ads: ALWAYS OFF
+    const multiAdvertiserAds = false;
 
     console.log(`Adding ${posts.length} post(s) as new ads to ad set ${adSetId}`);
 
