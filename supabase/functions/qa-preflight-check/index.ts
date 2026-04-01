@@ -86,6 +86,16 @@ serve(async (req) => {
   }
 });
 
+function extractUrlFromProductionItems(items: any[]): string | null {
+  if (!items || !Array.isArray(items)) return null;
+  for (const item of items) {
+    const copy = item?.finalCopy || item?.final_copy || {};
+    const url = copy?.destinationUrl || copy?.destination_url || copy?.url;
+    if (url && typeof url === 'string' && url.trim()) return url.trim();
+  }
+  return null;
+}
+
 function checkMetaConnection(brand: any): CheckResult {
   const hasAdAccount = !!brand?.meta_account_id;
   const hasPage = !!brand?.page_id;
