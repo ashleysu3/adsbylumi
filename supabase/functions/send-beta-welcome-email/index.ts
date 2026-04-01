@@ -88,10 +88,10 @@ function buildBetaWelcomeHtml(firstName: string): string {
             <td style="padding: 40px 40px 20px 40px;">
               <p style="margin: 0; color: #111111; font-size: 18px; font-weight: 600; line-height: 1.5;">Hey ${firstName} 👋</p>
               <p style="margin: 16px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.8; font-weight: 400;">
-                First — thank you. Seriously. You're one of the very first people using Lumi, and that means your experience matters <em>so much</em> to me.
+                First — thank you. Seriously. You're one of the very first people using Lumi, and we are <em>thrilled</em> to have you here from the beginning.
               </p>
               <p style="margin: 12px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.8; font-weight: 400;">
-                As a beta tester, you're helping shape what Lumi becomes. Every feature you use, every rough edge you notice, every "hmm, this could be better" moment — that's gold for us.
+                As a founding member, you're helping shape what Lumi becomes. Every feature you use, every idea you share, every "hmm, this could be better" moment — that's gold for us. We genuinely want to hear your feature requests, your feedback, all of it.
               </p>
             </td>
           </tr>
