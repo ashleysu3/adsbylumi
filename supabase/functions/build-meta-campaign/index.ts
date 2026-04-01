@@ -851,7 +851,7 @@ Deno.serve(async (req) => {
               adset_id: primaryAdSetId,
               name: adName,
               creative: JSON.stringify({ creative_id: creativeId }),
-              status: 'PAUSED',
+              status: launchStatus,
               access_token: metaAccessToken
             })
           }
@@ -937,7 +937,7 @@ Deno.serve(async (req) => {
                   adset_id: primaryAdSetId,
                   name: `IG Post - ${post.caption?.slice(0, 30) || post.id}`,
                   creative: JSON.stringify({ creative_id: creativeData.id }),
-                  status: 'PAUSED',
+                  status: launchStatus,
                   access_token: metaAccessToken,
                 }),
               }
@@ -999,7 +999,7 @@ Deno.serve(async (req) => {
       .from('campaign_workspaces')
       .update({
         meta_campaign_ids: campaignIds,
-        meta_campaign_status: 'paused',
+        meta_campaign_status: launchStatus === 'ACTIVE' ? 'live' : 'paused',
         meta_errors: result.failedAds.length > 0 ? result.failedAds : null,
         progress_status: 'live',
         published_at: new Date().toISOString(),
@@ -1014,7 +1014,11 @@ Deno.serve(async (req) => {
     if (result.failedAds.length > 0) {
       message += ` ${result.failedAds.length} ad(s) failed to create.`;
     }
-    message += ` Campaign is paused - activate it in Ads Manager when ready.`;
+    if (launchStatus === 'ACTIVE') {
+      message += ` Campaign is active — ads will start delivering after Meta approval.`;
+    } else {
+      message += ` Campaign is paused — activate it in Ads Manager when ready.`;
+    }
 
     return new Response(
       JSON.stringify({
@@ -1027,7 +1031,7 @@ Deno.serve(async (req) => {
         totalAdsFailed: result.failedAds.length,
         failedAds: result.failedAds,
         warnings: result.warnings,
-        status: 'paused',
+        status: launchStatus === 'ACTIVE' ? 'active' : 'paused',
         message
       }),
       {
