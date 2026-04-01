@@ -72,10 +72,8 @@ export function ExportChecklistModal({
   const handleExport = async () => {
     setExporting(true);
     try {
-      const csv = mode === 'brief'
-        ? generateCreativeBriefCSV(filteredItems, angleCopy, options)
-        : generateProductionCSV(filteredItems, angleCopy, options);
-      const filename = generateFilename(brandName, offerName, mode === 'brief');
+      const csv = generateCreativeBriefCSV(filteredItems, angleCopy, options);
+      const filename = generateFilename(brandName, offerName, true);
       downloadCSV(csv, filename);
       setExported(true);
       toast.success(`Exported ${filteredItems.length} items!`);
