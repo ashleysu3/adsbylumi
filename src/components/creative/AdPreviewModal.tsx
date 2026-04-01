@@ -502,8 +502,8 @@ export function AdPreviewModal({
                 
                 {/* Reels Preview */}
                 <TabsContent value="reels" className="mt-0">
-                  <div className="w-[280px] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
-                    <AspectRatio ratio={9/16}>
+                  <div className="w-[280px] max-h-[calc(90vh-180px)] bg-black rounded-3xl overflow-hidden shadow-2xl relative">
+                    <AspectRatio ratio={9/16} className="max-h-[calc(90vh-180px)]">
                       {renderMedia("vertical")}
                       
                       {/* Overlay */}
