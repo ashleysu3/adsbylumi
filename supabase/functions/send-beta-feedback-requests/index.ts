@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     }
 
     if (!betaUsers || betaUsers.length === 0) {
-      console.log('No beta users due for feedback email');
+      console.log('No founding members due for feedback email');
       return new Response(JSON.stringify({ sent: 0 }), {
         headers: { 'Content-Type': 'application/json' },
       });
