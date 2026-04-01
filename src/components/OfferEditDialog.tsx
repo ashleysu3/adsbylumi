@@ -63,6 +63,22 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
 
       if (error) throw error;
 
+      // Propagate URL/name/description/price changes to unpublished workspaces referencing this offer
+      const { error: wsError } = await supabase
+        .from("campaign_workspaces")
+        .update({
+          offer_url: formData.url || null,
+          offer_name: formData.name,
+          offer_description: formData.description || null,
+          offer_price: formData.price_point || null,
+        })
+        .eq("offer_id", offer.id)
+        .is("published_at", null);
+
+      if (wsError) {
+        console.warn("Failed to propagate offer changes to workspaces:", wsError);
+      }
+
       toast.success("Offer updated");
       onSuccess();
       onOpenChange(false);
