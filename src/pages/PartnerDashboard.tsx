@@ -33,15 +33,16 @@ export default function PartnerDashboard() {
     try {
       // Validate token via secure RPC function
       const { data: tokenResult, error: tokenError } = await supabase
-        .rpc('validate_partner_token', { p_token: token! });
+        .rpc('validate_partner_token' as any, { p_token: token! });
 
-      if (tokenError || !tokenResult || !tokenResult.valid) {
+      const result = tokenResult as any;
+      if (tokenError || !result || !result.valid) {
         setError("Invalid or expired access link. Please contact hello@adsbylumi.com for a new one.");
         setLoading(false);
         return;
       }
 
-      const tokenData = tokenResult;
+      const tokenData = result as { valid: boolean; email: string; partner_trial_code: string | null };
 
       setPartnerName(tokenData.email.split("@")[0]);
 
