@@ -937,7 +937,7 @@ Deno.serve(async (req) => {
                   adset_id: primaryAdSetId,
                   name: `IG Post - ${post.caption?.slice(0, 30) || post.id}`,
                   creative: JSON.stringify({ creative_id: creativeData.id }),
-                  status: 'PAUSED',
+                  status: launchStatus,
                   access_token: metaAccessToken,
                 }),
               }
