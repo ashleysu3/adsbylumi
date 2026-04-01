@@ -219,6 +219,11 @@ export function MetaAccountConnect({
                 toast.warning(callbackData.permissionWarning, { duration: 12000 });
               }
 
+              // Surface per-IG permission warnings
+              if (Array.isArray(callbackData.igPermissionWarnings) && callbackData.igPermissionWarnings.length > 0) {
+                toast.warning(callbackData.igPermissionWarnings[0], { duration: 12000 });
+              }
+
               const accountCount = returnedAccounts.length;
               const pageCount = returnedPages.length;
               const igCount = returnedInstagram.length;
