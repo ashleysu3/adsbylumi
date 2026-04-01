@@ -146,13 +146,20 @@ export function MetaReadinessChecklist({
     <Card variant="gradient">
       <CardHeader className={compact ? 'pb-2' : undefined}>
         <CardTitle className="flex items-center justify-between">
-          <span className="text-base font-display">Getting Your Ads Ready</span>
+          <span className="text-base font-display">Connection Status</span>
           <span className="text-xs font-normal text-muted-foreground">
             {completedCount}/{items.length} complete
           </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
+        {/* Info banner */}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10 mb-2">
+          <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            We're actively working with Meta to finalize full verification. Your connection is working — this checklist will update automatically within 24–48 hours.
+          </p>
+        </div>
         {items.map((item) => (
           <Collapsible
             key={item.id}
