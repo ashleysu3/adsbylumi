@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileSpreadsheet, Check, Loader2, Users, ClipboardList, Filter } from 'lucide-react';
-import { generateProductionCSV, generateCreativeBriefCSV, downloadCSV, generateFilename, ExportOptions, ProductionItem } from '@/lib/export-production-checklist';
+import { Download, FileSpreadsheet, Check, Loader2, Filter } from 'lucide-react';
+import { generateCreativeBriefCSV, downloadCSV, generateFilename, ExportOptions, ProductionItem } from '@/lib/export-production-checklist';
 import { toast } from 'sonner';
 
 const FORMAT_LABELS: Record<string, string> = {
