@@ -363,13 +363,13 @@ export default function Dashboard() {
     }));
   };
 
-  // Show onboarding wizard for incomplete profiles
+  // Show onboarding wizard for incomplete profiles — only if brand basics are missing (not for later steps)
   useEffect(() => {
     if (!loading && brand) {
       const wizardDismissedKey = `brand-wizard-dismissed-${brand.id}`;
       const wasRecentlyDismissed = localStorage.getItem(wizardDismissedKey);
-      const progress = calculateBrandProgress();
-      if (progress.percentage < 100 && !wasRecentlyDismissed) {
+      const hasBrandBasics = !!(brand?.name && brand?.website_url && brand?.industry && brand?.value_proposition);
+      if (!hasBrandBasics && !wasRecentlyDismissed) {
         const timer = setTimeout(() => setShowOnboardingWizard(true), 500);
         return () => clearTimeout(timer);
       }
