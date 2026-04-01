@@ -1,67 +1,45 @@
 
 
-## Plan: Replace "Beta" with "Founder" Language Everywhere
+# Dual-Format Upload Flow: Square + Vertical Asset Prompting
 
-### Summary
-Remove all mentions of "beta", "beta tester", "beta pricing", "LUMIBETA" across the app and emails. Replace with "founder" language that communicates: this is a new platform, you're shaping it, bugs may happen, we want your feedback and feature requests.
+## Summary
+Update the creative asset upload UX to **actively prompt** users to upload both a square (1:1) and story-sized (9:16) version for graphics, while enforcing video as 9:16 only. Add a clear fallback message: if they skip the vertical version, Lumi will auto-extend with color bars (matching Meta's default behavior).
 
----
+## What Changes
 
-### Files to Modify
+### 1. CreativeChecklistCard — Redesign the upload section
+**Current**: After uploading a square image, a subtle ghost button says "Add 9:16 version for Stories / Reels (optional)".
+**New**:
+- After uploading a square image, show a **prominent amber/blue info card** prompting the 9:16 upload — not just a ghost button
+- Card text: "Upload a 9:16 version for Stories & Reels" with subtitle "If you skip this, Lumi will auto-extend your square with color bars — just like Meta does."
+- For **videos**: after upload, show "Video uploaded (9:16 — Stories & Reels ready)" with no vertical prompt (since video is already 9:16-only)
+- Update the initial upload button label for images: "Upload Square (1:1) Version" instead of generic "Upload"
 
-#### 1. Sales Page (`src/pages/Sales.tsx`)
-- **Line 476**: Change CTA from `Get Started — Code LUMIBETA` → `Get Started — Founder Pricing`
-- **Line 477**: Change helper text from `Use code LUMIBETA at checkout for 50% off` → `Founder pricing — $97/mo. Lock in your rate before it goes up.`
-- **Line 490**: Change final CTA from `Get Started — Code LUMIBETA` → `Get Started — Founder Pricing`
-- Keep the locked-in rate callout as-is (lines 437-441) — it's already good.
+### 2. CreativeChecklistCard — Add format guidance badges
+- For image items: show a small info tooltip or inline text: "Images: upload square (1080×1080) first, then add a 9:16 version"
+- For video items: show "Videos: 9:16 vertical only"
 
-#### 2. Welcome Email (`supabase/functions/send-beta-welcome-email/index.ts`)
-- **Line 27**: Subject from `Welcome to the Lumi Beta, ${firstName} 🧪✨` → `Welcome to Lumi, ${firstName} — You're a Founding Member ✨`
-- **Line 39-40**: Log type stays `beta_welcome` (internal, not user-facing)
-- **Line 67-68**: Title from `Welcome to Lumi Beta` → `Welcome to Lumi`
-- **Line 81**: Header from `You're a Lumi Beta Tester 🧪` → `You're a Lumi Founding Member ✨`
-- **Line 82**: Subheader stays similar but remove "beta" reference
-- **Lines 89-96**: Rewrite greeting to "founding member" tone — you're among the first, you're shaping the platform
-- **Lines 99-136**: Rewrite "What being in beta means" → "What being a founding member means":
-  - You're an early insider → keep but reword without "beta"
-  - Bugs may happen → keep, reframe as "we're building fast and you may spot things before we do — let us know!"
-  - Your voice matters → keep, add feature requests language
-  - Keep the 1:1 campaign build call section
-- **Line 183**: Footer from `signed up with a beta invite code` → `you're one of our founding members`
+### 3. ProductionManager — Auto-extend fallback logic notation
+- When building the campaign (no code change to Meta build needed), if a square image has no `_vertical` asset, add a metadata flag `auto_extend: true` to signal downstream that Meta's default color-bar behavior will apply
+- Update the toast/status to inform users: "No 9:16 version — Meta will auto-extend with color bars"
 
-#### 3. Feedback Email (`supabase/functions/send-beta-feedback-email/index.ts`)
-- **Line 81**: Header from `It's Been a Week! 🎉` → keep (no beta mention)
-- This email is mostly clean. Just update footer line (~line near end): `You're receiving this because you're a beta tester` → `You're receiving this because you're a founding member`
+### 4. BYOCreativeUploader — Add format guidance to the upload step
+- Below the drop zone, add a concise format guide card:
+  - **Images**: "Upload your square (1:1) version first. You'll be prompted to add a 9:16 Stories version next."
+  - **Videos**: "9:16 vertical format only."
+- This sets expectations before users even start uploading
 
-#### 4. Feedback Request Cron (`supabase/functions/send-beta-feedback-requests/index.ts`)
-- Console logs: change "beta users" → "founding members" (cosmetic, internal)
-- No functional changes needed — it still queries `is_beta_user` column (internal DB field, not user-facing)
+### 5. AssetUploader — Update recommended formats section
+- Update the "Recommended Formats" card to explicitly mention the dual-upload flow for images
 
-#### 5. Feedback Page (`src/pages/BetaFeedback.tsx`)
-- **Line 90**: Title "How's your first week? 💭" → keep (no beta mention)
-- Page content is already clean of beta language. No changes needed.
+## Files to Modify
+1. `src/components/creative/CreativeChecklistCard.tsx` — Redesign post-upload section with prominent 9:16 prompt and fallback messaging
+2. `src/components/creative/ProductionManager.tsx` — Add auto-extend flag when no vertical version exists
+3. `src/components/creative/BYOCreativeUploader.tsx` — Add format guidance below drop zone
+4. `src/components/AssetUploader.tsx` — Update recommended formats copy
 
-#### 6. Admin Pages (internal, keep `is_beta_user` DB references)
-- `src/pages/admin/Users.tsx` line 1461: Change displayed text from `Resend the beta welcome email` → `Resend the founding member welcome email`
-- `src/pages/admin/EmailLogs.tsx` line 25: Change label from `Beta Feedback` → `Founder Feedback`
-- `src/pages/admin/InviteCodes.tsx` line 341: Change placeholder from `Beta Wave 1` → `Founding Wave 1`
-- `src/pages/admin/DisputeEvidence.tsx`: Already says "Founding Member" — no change needed.
-
-#### 7. Cancel Subscription Modal (`src/components/CancelSubscriptionModal.tsx`)
-- **Line 191**: Already says "Founding member pricing" — no change needed. ✅
-
-#### 8. General Welcome Email (`supabase/functions/send-welcome-email/index.ts`)
-- Already clean — no beta references. ✅
-
-### What NOT to change
-- Database column names (`is_beta_user`, `beta_feedback_email_sent`, `beta_feedback` table) — these are internal and renaming would require migrations with no user benefit
-- Edge function names (`send-beta-welcome-email`, `send-beta-feedback-email`) — renaming would break existing cron jobs and admin triggers
-
-### Tone guidance for rewritten copy
-- "You're a founding member" not "beta tester"
-- "You're helping shape what Lumi becomes" 
-- "This is a brand new platform — you may run into bugs, and that's okay. Here's how to let us know."
-- "We'd love your feature requests"
-- "We're thrilled you're here from the beginning"
-- No mention of "beta" anywhere in user-facing text
+## Technical Notes
+- No database schema changes needed — the `_vertical` suffix convention and `is_vertical_version` flag already exist
+- The `auto_extend` flag is informational only; Meta handles the actual color-bar extension server-side
+- Video 9:16 enforcement already exists via `validateVideoAspectRatio`
 
