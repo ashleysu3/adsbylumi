@@ -178,7 +178,7 @@ export function MetaReadinessChecklist({
                 {item.isComplete ? (
                   <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
                 ) : (
-                  <XCircle className="h-5 w-5 text-destructive shrink-0" />
+                  <Clock className="h-5 w-5 text-amber-500 shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-medium">{item.label}</span>

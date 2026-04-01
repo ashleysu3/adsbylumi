@@ -128,9 +128,24 @@ export default function CampaignBuilder() {
 
 
   const handlePublish = async (launchStatus: 'active' | 'paused' = 'paused') => {
-    setStage('publishing');
     setPublishing(true);
     try {
+      // Enforce 10 live campaign limit
+      const { count, error: countError } = await supabase
+        .from('campaign_workspaces')
+        .select('*', { count: 'exact', head: true })
+        .eq('brand_id', workspace.brand_id)
+        .in('meta_campaign_status', ['active', 'live']);
+
+      if (countError) throw countError;
+
+      if (count !== null && count >= 10) {
+        toast.error("You've reached the maximum of 10 live campaigns. Please pause or archive an existing campaign before publishing a new one.");
+        setPublishing(false);
+        return;
+      }
+
+      setStage('publishing');
       const { data, error } = await supabase.functions.invoke('build-meta-campaign', {
         body: {
           workspaceId,

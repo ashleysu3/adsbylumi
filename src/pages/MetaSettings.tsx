@@ -821,16 +821,18 @@ export default function MetaSettings() {
           </CardContent>
         </Card>
 
-        {/* Pixel Verification Card */}
-        <PixelVerificationCard 
-          brandId={brand?.id || ''} 
-          isMetaConnected={isConnected}
-          initialPixelData={brand?.meta_pixel_id ? {
-            id: brand.meta_pixel_id,
-            name: brand.meta_pixel_name || 'Meta Pixel',
-            events: brand.meta_pixel_events || {}
-          } : null}
-        />
+        {/* Pixel Verification Card — only show when connected (readiness checklist covers it otherwise) */}
+        {isConnected && (
+          <PixelVerificationCard 
+            brandId={brand?.id || ''} 
+            isMetaConnected={isConnected}
+            initialPixelData={brand?.meta_pixel_id ? {
+              id: brand.meta_pixel_id,
+              name: brand.meta_pixel_name || 'Meta Pixel',
+              events: brand.meta_pixel_events || {}
+            } : null}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
