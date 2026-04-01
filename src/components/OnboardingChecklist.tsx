@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -23,6 +24,7 @@ interface ChecklistItem {
 }
 
 export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingChecklistProps) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(true);
   const [digestEnabled, setDigestEnabled] = useState<boolean | null>(null);
 
@@ -73,10 +75,7 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
       title: "Add Your First Offer",
       description: "Add a product or service you want to promote",
       completed: offers.length > 0,
-      action: () => {
-        const section = document.querySelector('[data-section="offers"]');
-        section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      },
+      action: () => navigate("/offers"),
       actionLabel: "Add Offer"
     },
     {
@@ -84,20 +83,15 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
       title: "Connect Meta Ad Account",
       description: "Link your Facebook Ad Account to create campaigns",
       completed: !!brand?.meta_account_id,
-      action: () => {
-        const section = document.querySelector('[data-section="meta-account"]');
-        section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      },
+      action: () => navigate("/meta-settings"),
       actionLabel: "Connect Now"
     },
     {
       id: "pixel-tracking",
       title: "Configure Event Tracking",
       description: "Ensure your pixel is tracking Purchase and Lead events",
-      completed: !!(brand?.meta_pixel_events?.Purchase?.active || brand?.meta_pixel_events?.Lead?.active),
-      action: () => {
-        window.location.href = '/settings/meta#pixel';
-      },
+      completed: !!(brand?.meta_pixel_id && brand?.meta_pixel_verified_at),
+      action: () => navigate("/meta-settings"),
       actionLabel: "Check Pixel"
     },
     {
