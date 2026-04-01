@@ -1993,6 +1993,60 @@ export type Database = {
           },
         ]
       }
+      user_reviews: {
+        Row: {
+          admin_notes: string | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_quote: string | null
+          business_name: string
+          created_at: string
+          email: string
+          id: string
+          instagram_handle: string | null
+          rating: number
+          review_text: string
+          reviewer_name: string
+          status: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_quote?: string | null
+          business_name: string
+          created_at?: string
+          email: string
+          id?: string
+          instagram_handle?: string | null
+          rating?: number
+          review_text: string
+          reviewer_name: string
+          status?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_quote?: string | null
+          business_name?: string
+          created_at?: string
+          email?: string
+          id?: string
+          instagram_handle?: string | null
+          rating?: number
+          review_text?: string
+          reviewer_name?: string
+          status?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
