@@ -10,10 +10,33 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Authenticate the caller
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   const supabaseAdmin = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
+
+  const supabaseUser = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    { global: { headers: { Authorization: authHeader } } }
+  );
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+  if (claimsError || !claimsData?.claims) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+  const userId = claimsData.claims.sub;
 
   try {
     const { workspaceId, brandId, fatigueAdId, benchAdId, reason, isAutoRotation } = await req.json();
@@ -24,12 +47,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get brand's Meta token directly (service-role context lacks auth.uid() for vault RPC)
+    // Verify the authenticated user owns this brand
     const { data: brand, error: brandErr } = await supabaseAdmin
       .from('brands')
-      .select('meta_access_token')
+      .select('meta_access_token, user_id')
       .eq('id', brandId)
       .single();
+    if (brandErr || !brand) {
+      return new Response(JSON.stringify({ error: 'Brand not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (brand.user_id !== userId) {
+      return new Response(JSON.stringify({ error: 'Access denied' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     if (brandErr || !brand?.meta_access_token) {
       return new Response(JSON.stringify({ error: 'Meta access token not found' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
