@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       recipient_email: email,
       recipient_name: fullName || null,
       email_type: 'beta_welcome',
-      subject: `Welcome to the Lumi Beta, ${firstName} 🧪✨`,
+      subject: `Welcome to Lumi, ${firstName} — You're a Founding Member ✨`,
       status: 'sent',
       edge_function: 'send-beta-welcome-email',
     });
