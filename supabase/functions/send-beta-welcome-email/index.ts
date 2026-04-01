@@ -99,7 +99,7 @@ function buildBetaWelcomeHtml(firstName: string): string {
           <!-- What beta means -->
           <tr>
             <td style="padding: 10px 40px 20px 40px;">
-              <p style="margin: 0 0 16px 0; color: #111111; font-size: 17px; font-weight: 700; letter-spacing: -0.3px;">What being in beta means:</p>
+              <p style="margin: 0 0 16px 0; color: #111111; font-size: 17px; font-weight: 700; letter-spacing: -0.3px;">What being a founding member means:</p>
               
               <div style="background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%); border-radius: 12px; padding: 20px; margin-bottom: 14px; border-left: 4px solid #A78BFA;">
                 <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #4C1D95;">
