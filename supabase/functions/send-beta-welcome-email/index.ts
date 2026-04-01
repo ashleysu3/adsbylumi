@@ -96,7 +96,7 @@ function buildBetaWelcomeHtml(firstName: string): string {
             </td>
           </tr>
 
-          <!-- What beta means -->
+          <!-- What being a founding member means -->
           <tr>
             <td style="padding: 10px 40px 20px 40px;">
               <p style="margin: 0 0 16px 0; color: #111111; font-size: 17px; font-weight: 700; letter-spacing: -0.3px;">What being a founding member means:</p>
