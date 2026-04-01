@@ -58,6 +58,7 @@ export default function Dashboard() {
   });
   const [newEmoji, setNewEmoji] = useState('');
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
+  const [hasPublishedAd, setHasPublishedAd] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportModalText, setReportModalText] = useState<string | undefined>(undefined);
   const hasShownConfetti = useRef(false);
