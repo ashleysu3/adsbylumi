@@ -127,7 +127,7 @@ const Sales = () => {
             <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-4">
               <p className="text-xs sm:text-sm font-medium flex items-center gap-2"><Sparkles className="w-4 h-4" /> <span>Your AI-powered Meta Ads team for just <strong>$97/mo</strong></span></p>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="secondary" className="text-xs h-7 px-3 font-semibold" onClick={goCheckout} disabled={checkoutLoading}>Get Started</Button>
+                <Button size="sm" variant="secondary" className="text-xs h-7 px-3 font-semibold" onClick={goCheckout} disabled={checkoutLoading}>Start Free Trial</Button>
                 <button onClick={dismissBanner} className="text-primary-foreground/60 hover:text-primary-foreground"><X className="w-4 h-4" /></button>
               </div>
             </div>
