@@ -49,13 +49,6 @@ serve(async (req) => {
       logStep("No existing Stripe customer");
     }
 
-    // Auto-apply LUMIBETA founding member discount before March 30, 2026
-    const foundingMemberCutoff = new Date('2026-03-30T23:59:59Z');
-    const isFoundingPeriod = new Date() < foundingMemberCutoff;
-    const lumiBetaCouponId = 'zBPhY3uh';
-
-    logStep("Founding member check", { isFoundingPeriod });
-
     // Build checkout session options
     const returnOrigin = origin || "http://localhost:3000";
     const sessionOptions: any = {
@@ -74,9 +67,7 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
       },
-      ...(isFoundingPeriod
-        ? { discounts: [{ coupon: lumiBetaCouponId }] }
-        : { allow_promotion_codes: true }),
+      allow_promotion_codes: true,
     };
 
     const session = await stripe.checkout.sessions.create(sessionOptions);

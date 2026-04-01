@@ -402,7 +402,7 @@ const Sales = () => {
                   <p className="text-[11px] text-muted-foreground text-center mb-4">You control your ad budget completely — LUMI just manages it smarter. Most beginners start with $10–$20/day.</p>
 
                   <CheckoutButton className="w-full">
-                    {partnerCodeValid ? "Start Your 14-Day Free Trial" : "Get Started — Use Code LUMIBETA"} <ArrowRight className="w-4 h-4 ml-1" />
+                    {partnerCodeValid ? "Start Your 14-Day Free Trial" : "Get Started"} <ArrowRight className="w-4 h-4 ml-1" />
                   </CheckoutButton>
                   {/* #4 — Post-click clarity */}
                   <p className="text-[11px] text-muted-foreground text-center mt-2">
