@@ -448,8 +448,6 @@ export default function Dashboard() {
     );
   }
 
-  const { isTrial, subscriptionEnd } = useSubscription();
-
   // Calculate trial days remaining
   const trialDaysLeft = (() => {
     if (!isTrial || !subscriptionEnd) return 0;
@@ -462,11 +460,10 @@ export default function Dashboard() {
     { label: 'Brand set up', done: !!(brand?.name && brand?.website_url && brand?.industry && brand?.value_proposition) },
     { label: 'Offer added', done: offers.length > 0 },
     { label: 'Meta connected', done: !!brand?.meta_account_id },
-    { label: 'First ad published', done: false }, // We'll check below
+    { label: 'First ad published', done: hasPublishedAd },
   ];
 
   // Check if any campaign has been published
-  const [hasPublishedAd, setHasPublishedAd] = useState(false);
   useEffect(() => {
     if (!brand?.id) return;
     supabase
@@ -476,10 +473,6 @@ export default function Dashboard() {
       .not('published_at', 'is', null)
       .then(({ count }) => setHasPublishedAd((count || 0) > 0));
   }, [brand?.id]);
-
-  if (hasPublishedAd) {
-    trialMilestones[3].done = true;
-  }
 
   return (
     <DashboardLayout>
