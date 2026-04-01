@@ -63,10 +63,13 @@ serve(async (req) => {
       success_url: `${returnOrigin}/auth?signup=true&paid=true`,
       cancel_url: `${returnOrigin}/`,
       allow_promotion_codes: true,
+      subscription_data: {
+        trial_period_days: 7,
+      },
     };
 
     if (isPartnerTrial) {
-      // Partner trial: 14-day free trial on the subscription
+      // Partner trial: 14-day free trial overrides the default 7-day
       sessionOptions.subscription_data = {
         trial_period_days: 14,
         metadata: {

@@ -68,6 +68,9 @@ serve(async (req) => {
         user_id: user.id,
       },
       allow_promotion_codes: true,
+      subscription_data: {
+        trial_period_days: 7,
+      },
     };
 
     const session = await stripe.checkout.sessions.create(sessionOptions);

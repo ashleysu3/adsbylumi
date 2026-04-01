@@ -212,13 +212,13 @@ export default function Pricing() {
                           </>
                         ) : (
                           <>
-                            Get Started
+                            Start 7-Day Free Trial
                             <ArrowRight className="w-5 h-5" />
                           </>
                         )}
                       </Button>
                       <p className="text-sm text-muted-foreground text-center">
-                        Cancel anytime. No questions asked.
+                        7-day free trial · Cancel anytime · No charge until day 8
                       </p>
                     </div>
                   </div>
