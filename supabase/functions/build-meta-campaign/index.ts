@@ -704,39 +704,12 @@ Deno.serve(async (req) => {
       console.error('Cold ad set creation failed:', coldAdSetData.error);
 
       if (hasLocationTargeting) {
-        const locationErrorMessage = coldAdSetData.error.error_user_msg || coldAdSetData.error.message || 'Unknown error';
-        result.warnings.push(`Location targeting failed (${locationErrorMessage}). Falling back to broad US targeting.`);
-
-        const fallbackTargeting = {
-          geo_locations: { countries: ['US'] },
-          age_min: 18,
-          age_max: 65,
-        };
-
-        const fallbackAdSetParams: Record<string, string> = {
-          ...coldAdSetParams,
-          name: `Cold - Broad - ${productName}`,
-          targeting: JSON.stringify(fallbackTargeting),
-        };
-
-        const fallbackAdSetResponse = await fetch(
-          `https://graph.facebook.com/v21.0/act_${accountId}/adsets`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(fallbackAdSetParams)
-          }
+        // HARD FAIL for location targeting — do NOT silently fall back to broad
+        const locationErrorMessage = getMetaErrorMessage(coldAdSetData.error);
+        throw new Error(
+          `Location-targeted ad set failed: ${locationErrorMessage}. ` +
+          `Please verify your addresses and radius, then try again.`
         );
-
-        const fallbackAdSetData = await fallbackAdSetResponse.json();
-        if (fallbackAdSetData.error) {
-          console.error('Fallback broad ad set creation failed:', fallbackAdSetData.error);
-          const fallbackErrorMessage = fallbackAdSetData.error.error_user_msg || fallbackAdSetData.error.message || 'Unknown error';
-          throw new Error(`Failed to create ad set: ${fallbackErrorMessage}`);
-        }
-
-        result.adSetIds.push(fallbackAdSetData.id);
-        console.log('Cold ad set created with broad fallback:', fallbackAdSetData.id);
       } else {
         const adSetErrorMessage = coldAdSetData.error.error_user_msg || coldAdSetData.error.message || 'Unknown error';
         throw new Error(`Failed to create ad set: ${adSetErrorMessage}`);
