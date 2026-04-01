@@ -1,63 +1,67 @@
 
 
-## Plan: Creative Studio UX Refinements
+## Plan: Replace "Beta" with "Founder" Language Everywhere
 
 ### Summary
-Four related changes to the Creative Studio's action buttons, feedback flow, and auto-save behavior.
+Remove all mentions of "beta", "beta tester", "beta pricing", "LUMIBETA" across the app and emails. Replace with "founder" language that communicates: this is a new platform, you're shaping it, bugs may happen, we want your feedback and feature requests.
 
 ---
 
-### 1. Replace centered "Regenerate" with top-right "Give Feedback" button (under tabs)
+### Files to Modify
 
-**File: `src/pages/CreativeStudio.tsx`**
+#### 1. Sales Page (`src/pages/Sales.tsx`)
+- **Line 476**: Change CTA from `Get Started — Code LUMIBETA` → `Get Started — Founder Pricing`
+- **Line 477**: Change helper text from `Use code LUMIBETA at checkout for 50% off` → `Founder pricing — $97/mo. Lock in your rate before it goes up.`
+- **Line 490**: Change final CTA from `Get Started — Code LUMIBETA` → `Get Started — Founder Pricing`
+- Keep the locked-in rate callout as-is (lines 437-441) — it's already good.
 
-- Add a row below the `TabsList` (inside the `Tabs` component, before `TabsContent`) that shows a small "Give Feedback" button aligned to the right.
-- This button appears on tabs where regeneration is available: **angles** (when angles exist), **concepts** (when grid exists), **copy** (when copy exists).
-- Icon: `MessageSquare` (or `RefreshCw`). Smaller font (`text-xs`), ghost/outline variant.
-- Clicking it opens the existing `CopyRegenerateDialog` (repurposed) or a new lightweight feedback dialog that collects quick-select feedback + freeform notes, then triggers regeneration for the current tab's content.
-- Remove the centered "Regenerate" button row from the angles tab (lines ~1346-1353).
+#### 2. Welcome Email (`supabase/functions/send-beta-welcome-email/index.ts`)
+- **Line 27**: Subject from `Welcome to the Lumi Beta, ${firstName} 🧪✨` → `Welcome to Lumi, ${firstName} — You're a Founding Member ✨`
+- **Line 39-40**: Log type stays `beta_welcome` (internal, not user-facing)
+- **Line 67-68**: Title from `Welcome to Lumi Beta` → `Welcome to Lumi`
+- **Line 81**: Header from `You're a Lumi Beta Tester 🧪` → `You're a Lumi Founding Member ✨`
+- **Line 82**: Subheader stays similar but remove "beta" reference
+- **Lines 89-96**: Rewrite greeting to "founding member" tone — you're among the first, you're shaping the platform
+- **Lines 99-136**: Rewrite "What being in beta means" → "What being a founding member means":
+  - You're an early insider → keep but reword without "beta"
+  - Bugs may happen → keep, reframe as "we're building fast and you may spot things before we do — let us know!"
+  - Your voice matters → keep, add feature requests language
+  - Keep the 1:1 campaign build call section
+- **Line 183**: Footer from `signed up with a beta invite code` → `you're one of our founding members`
 
-### 2. Replace "See What's Worked" with subtle "Insights Available" badge
+#### 3. Feedback Email (`supabase/functions/send-beta-feedback-email/index.ts`)
+- **Line 81**: Header from `It's Been a Week! 🎉` → keep (no beta mention)
+- This email is mostly clean. Just update footer line (~line near end): `You're receiving this because you're a beta tester` → `You're receiving this because you're a founding member`
 
-**File: `src/pages/CreativeStudio.tsx`**
+#### 4. Feedback Request Cron (`supabase/functions/send-beta-feedback-requests/index.ts`)
+- Console logs: change "beta users" → "founding members" (cosmetic, internal)
+- No functional changes needed — it still queries `is_beta_user` column (internal DB field, not user-facing)
 
-- When `workspace?.brands?.meta_account_id` exists (insights data is available), show a subtle highlighted badge/button below the "Choose your creative angles" heading text with the label "Insights Available" and a `BarChart3` icon.
-- This replaces the current "See What's Worked" button in both locations (empty state ~lines 1323-1333 and the centered row ~lines 1347-1351).
-- Clicking opens the existing `CreativeRefreshDialog` as before.
-- Style: small, subtle highlight (e.g., `bg-primary/5 text-primary border-primary/20` pill).
+#### 5. Feedback Page (`src/pages/BetaFeedback.tsx`)
+- **Line 90**: Title "How's your first week? 💭" → keep (no beta mention)
+- Page content is already clean of beta language. No changes needed.
 
-### 3. Remove "Save Copy" button, keep auto-save indicator
+#### 6. Admin Pages (internal, keep `is_beta_user` DB references)
+- `src/pages/admin/Users.tsx` line 1461: Change displayed text from `Resend the beta welcome email` → `Resend the founding member welcome email`
+- `src/pages/admin/EmailLogs.tsx` line 25: Change label from `Beta Feedback` → `Founder Feedback`
+- `src/pages/admin/InviteCodes.tsx` line 341: Change placeholder from `Beta Wave 1` → `Founding Wave 1`
+- `src/pages/admin/DisputeEvidence.tsx`: Already says "Founding Member" — no change needed.
 
-**File: `src/components/creative/AngleCopyEditor.tsx`**
+#### 7. Cancel Subscription Modal (`src/components/CancelSubscriptionModal.tsx`)
+- **Line 191**: Already says "Founding member pricing" — no change needed. ✅
 
-- Remove the "Save Copy" button block (lines ~587-596) and the "Auto-saves as you type" text below it.
-- The auto-save mechanism already works via the debounced `useEffect` in `CreativeStudio.tsx` (lines 561-584) and the inline timer in `AngleCopyEditor` (line 242). These remain unchanged.
-- The `AutoSaveIndicator` already shows at the top of the copy section (line 1498 in CreativeStudio) and the fixed bottom-right indicator (line 1777). These stay.
-- Keep the `onSave` prop wired up for the inline auto-save timer to flush saves.
+#### 8. General Welcome Email (`supabase/functions/send-welcome-email/index.ts`)
+- Already clean — no beta references. ✅
 
-### 4. "Give Feedback" replaces individual "Regenerate" buttons
+### What NOT to change
+- Database column names (`is_beta_user`, `beta_feedback_email_sent`, `beta_feedback` table) — these are internal and renaming would require migrations with no user benefit
+- Edge function names (`send-beta-welcome-email`, `send-beta-feedback-email`) — renaming would break existing cron jobs and admin triggers
 
-**File: `src/components/creative/AngleCopyEditor.tsx`**
-
-- Rename the existing "Regenerate" / "Regenerate All" buttons (lines ~340-361) to "Give Feedback" / "Give Feedback (All)".
-- They continue to open the `CopyRegenerateDialog` which already collects quick-select feedback before regenerating.
-
-**File: `src/pages/CreativeStudio.tsx`**
-
-- The top-right "Give Feedback" button per-tab triggers the appropriate feedback flow:
-  - **Angles tab**: Opens the regenerate confirm dialog → context input (existing flow).
-  - **Concepts tab**: Could open a similar feedback dialog for concept regeneration.
-  - **Copy tab**: Opens the `CopyRegenerateDialog` (existing).
-
-### Technical Details
-
-- Reuse `CopyRegenerateDialog` as a general-purpose feedback dialog by making its title/description configurable via props.
-- Add a `feedbackContext` state to track which tab triggered feedback.
-- The auto-save in `CreativeStudio.tsx` (useEffect on `angleCopy` changes) is already robust — debounces at 1.5s and persists to `creative_json.angle_copy`. No changes needed to the save mechanism itself.
-- No new database changes required.
-
-### Files Modified
-- `src/pages/CreativeStudio.tsx` — Layout changes, button reorganization, feedback button per tab
-- `src/components/creative/AngleCopyEditor.tsx` — Remove Save button, rename Regenerate to Give Feedback
-- `src/components/creative/CopyRegenerateDialog.tsx` — Minor: make title/description configurable via props
+### Tone guidance for rewritten copy
+- "You're a founding member" not "beta tester"
+- "You're helping shape what Lumi becomes" 
+- "This is a brand new platform — you may run into bugs, and that's okay. Here's how to let us know."
+- "We'd love your feature requests"
+- "We're thrilled you're here from the beginning"
+- No mention of "beta" anywhere in user-facing text
 
