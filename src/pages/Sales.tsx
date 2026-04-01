@@ -180,10 +180,10 @@ const Sales = () => {
           <FadeUp delay={0.3}>
             <div className="flex justify-center mb-4">
                <CheckoutButton className="px-8 text-base">
-                 Become a Founding Member <ArrowRight className="w-4 h-4 ml-1.5" />
+                 Get Started <ArrowRight className="w-4 h-4 ml-1.5" />
                </CheckoutButton>
              </div>
-             <p className="text-xs text-muted-foreground">Use code LUMIBETA at checkout for 50% off. No contracts. Cancel anytime.</p>
+             <p className="text-xs text-muted-foreground">$97/mo. No contracts. Cancel anytime.</p>
           </FadeUp>
         </div>
       </section>
