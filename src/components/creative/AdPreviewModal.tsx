@@ -277,12 +277,14 @@ export function AdPreviewModal({
     if (assetUrl) {
       const showBlurBg = needsMetaPadding(placement);
 
+      const useContain = showBlurBg || (placement === "vertical" && isVerticalAsset);
+      
       const mediaElement = isVideo ? (
         <video 
           src={assetUrl} 
           className={cn(
             "w-full h-full",
-            showBlurBg ? "object-contain relative z-10" : "object-cover",
+            useContain ? "object-contain relative z-10" : "object-cover",
             className
           )}
           controls
@@ -296,7 +298,7 @@ export function AdPreviewModal({
           alt="Ad creative"
           className={cn(
             "w-full h-full",
-            showBlurBg ? "object-contain relative z-10" : "object-cover",
+            useContain ? "object-contain relative z-10" : "object-cover",
             className
           )}
           onLoad={handleImageLoad}
