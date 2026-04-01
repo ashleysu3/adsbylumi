@@ -578,19 +578,88 @@ Deno.serve(async (req) => {
     const hasLocationTargeting = locationAddresses.length > 0 && radiusMiles !== null;
 
     if (hasLocationTargeting) {
-      // Radius-based targeting — use address strings as custom locations
-      // Meta expects lat/lng, but we pass addresses for the geo search API to resolve
-      const customLocations = locationAddresses.map((addr: string) => ({
-        address_string: addr,
-        radius: radiusMiles,
-        distance_unit: 'mile',
-      }));
+      // Geocode each address to lat/lng using Meta's Location Search API
+      const geocodedLocations: Array<{ latitude: number; longitude: number; radius: number; distance_unit: string }> = [];
+      const failedAddresses: string[] = [];
+
+      for (const addr of locationAddresses) {
+        try {
+          const searchUrl = `https://graph.facebook.com/v21.0/search?type=adgeolocation&location_types=["city","zip","region"]&q=${encodeURIComponent(addr)}&access_token=${metaAccessToken}`;
+          const geoResponse = await fetch(searchUrl);
+          const geoData = await geoResponse.json();
+
+          if (geoData.data && geoData.data.length > 0) {
+            const loc = geoData.data[0];
+            // Meta's adgeolocation search returns key + type, but for custom_locations we need lat/lng
+            // Use the place search API for lat/lng
+            const placeUrl = `https://graph.facebook.com/v21.0/search?type=adgeolocation&location_types=["custom_location"]&q=${encodeURIComponent(addr)}&access_token=${metaAccessToken}`;
+            const placeResponse = await fetch(placeUrl);
+            const placeData = await placeResponse.json();
+
+            if (placeData.data && placeData.data.length > 0 && placeData.data[0].latitude && placeData.data[0].longitude) {
+              geocodedLocations.push({
+                latitude: placeData.data[0].latitude,
+                longitude: placeData.data[0].longitude,
+                radius: radiusMiles!,
+                distance_unit: 'mile',
+              });
+              console.log(`Geocoded "${addr}" → lat: ${placeData.data[0].latitude}, lng: ${placeData.data[0].longitude}`);
+            } else {
+              // Try using the first adgeolocation result directly as a named location
+              // Meta also accepts key-based geo targeting for cities/regions
+              if (loc.key && loc.type) {
+                // Use the structured location key instead of custom lat/lng
+                geocodedLocations.push({
+                  latitude: loc.latitude || 0,
+                  longitude: loc.longitude || 0,
+                  radius: radiusMiles!,
+                  distance_unit: 'mile',
+                });
+                if (loc.latitude && loc.longitude) {
+                  console.log(`Geocoded "${addr}" via adgeolocation → lat: ${loc.latitude}, lng: ${loc.longitude}`);
+                } else {
+                  failedAddresses.push(addr);
+                  console.warn(`Could not get coordinates for "${addr}" — no lat/lng in adgeolocation result`);
+                }
+              } else {
+                failedAddresses.push(addr);
+                console.warn(`Could not geocode "${addr}" — no usable results`);
+              }
+            }
+          } else {
+            failedAddresses.push(addr);
+            console.warn(`No geocoding results for "${addr}"`);
+          }
+        } catch (geoError: any) {
+          failedAddresses.push(addr);
+          console.error(`Geocoding error for "${addr}":`, geoError.message);
+        }
+      }
+
+      // Remove entries that failed to get coordinates
+      const validLocations = geocodedLocations.filter(loc => loc.latitude !== 0 && loc.longitude !== 0);
+
+      if (validLocations.length === 0) {
+        // HARD FAIL — location targeting was explicitly requested and we can't resolve any addresses
+        throw new Error(
+          `Location targeting failed: Could not resolve any of the provided addresses (${failedAddresses.join(', ')}). ` +
+          `Please check your addresses and try again. Tip: Use a city name, zip code, or well-known location.`
+        );
+      }
+
+      if (failedAddresses.length > 0) {
+        result.warnings.push(
+          `Could not resolve ${failedAddresses.length} address(es): ${failedAddresses.join(', ')}. ` +
+          `The remaining ${validLocations.length} location(s) will be used.`
+        );
+      }
+
       targeting = {
-        geo_locations: { custom_locations: customLocations },
+        geo_locations: { custom_locations: validLocations },
         age_min: 18,
         age_max: 65,
       };
-      console.log(`Using radius targeting: ${customLocations.length} location(s), ${radiusMiles} mile radius`);
+      console.log(`Using radius targeting: ${validLocations.length} location(s), ${radiusMiles} mile radius`);
     }
 
     // Create Cold Audience Ad Set
@@ -635,39 +704,12 @@ Deno.serve(async (req) => {
       console.error('Cold ad set creation failed:', coldAdSetData.error);
 
       if (hasLocationTargeting) {
-        const locationErrorMessage = coldAdSetData.error.error_user_msg || coldAdSetData.error.message || 'Unknown error';
-        result.warnings.push(`Location targeting failed (${locationErrorMessage}). Falling back to broad US targeting.`);
-
-        const fallbackTargeting = {
-          geo_locations: { countries: ['US'] },
-          age_min: 18,
-          age_max: 65,
-        };
-
-        const fallbackAdSetParams: Record<string, string> = {
-          ...coldAdSetParams,
-          name: `Cold - Broad - ${productName}`,
-          targeting: JSON.stringify(fallbackTargeting),
-        };
-
-        const fallbackAdSetResponse = await fetch(
-          `https://graph.facebook.com/v21.0/act_${accountId}/adsets`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(fallbackAdSetParams)
-          }
+        // HARD FAIL for location targeting — do NOT silently fall back to broad
+        const locationErrorMessage = getMetaErrorMessage(coldAdSetData.error);
+        throw new Error(
+          `Location-targeted ad set failed: ${locationErrorMessage}. ` +
+          `Please verify your addresses and radius, then try again.`
         );
-
-        const fallbackAdSetData = await fallbackAdSetResponse.json();
-        if (fallbackAdSetData.error) {
-          console.error('Fallback broad ad set creation failed:', fallbackAdSetData.error);
-          const fallbackErrorMessage = fallbackAdSetData.error.error_user_msg || fallbackAdSetData.error.message || 'Unknown error';
-          throw new Error(`Failed to create ad set: ${fallbackErrorMessage}`);
-        }
-
-        result.adSetIds.push(fallbackAdSetData.id);
-        console.log('Cold ad set created with broad fallback:', fallbackAdSetData.id);
       } else {
         const adSetErrorMessage = coldAdSetData.error.error_user_msg || coldAdSetData.error.message || 'Unknown error';
         throw new Error(`Failed to create ad set: ${adSetErrorMessage}`);
