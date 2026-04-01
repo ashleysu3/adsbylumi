@@ -51,6 +51,21 @@ Deno.serve(async (req) => {
 
     for (const user of users) {
       try {
+        // Skip users who are on a Stripe trial — they get trial-specific emails instead
+        const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', { apiVersion: '2025-08-27.basil' });
+        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+        if (customers.data.length > 0) {
+          const subs = await stripe.subscriptions.list({
+            customer: customers.data[0].id,
+            status: 'trialing',
+            limit: 1,
+          });
+          if (subs.data.length > 0) {
+            console.log(`Skipping trial user ${user.email} — handled by trial reminders`);
+            continue;
+          }
+        }
+
         const nextStep = user.onboarding_email_step + 1;
         const daysRequired = DRIP_SCHEDULE[nextStep];
 
