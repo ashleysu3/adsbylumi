@@ -90,12 +90,13 @@ export function ExistingPostPicker({
 
   if (error) {
     return (
-      <div className="flex flex-col items-center gap-2 py-4 text-center">
-        <AlertCircle className="h-5 w-5 text-destructive" />
-        <p className="text-sm text-muted-foreground">{error}</p>
-        <Button variant="outline" size="sm" onClick={fetchPosts}>
-          <RefreshCw className="h-3 w-3 mr-1" /> Retry
-        </Button>
+      <div className="flex flex-col items-center gap-3 py-6 text-center">
+        <AlertCircle className="h-6 w-6 text-amber-500" />
+        <p className="font-semibold">We're on it! 🛠️</p>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          This is a known issue — we're actively working with Meta to restore Instagram post access. We anticipate it being fixed within the next <strong>24–48 hours</strong>.
+        </p>
+        <p className="text-xs text-muted-foreground">You don't need to do anything on your end.</p>
       </div>
     );
   }
