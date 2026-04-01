@@ -297,6 +297,26 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
         </CardContent>
       </Card>
 
+      {/* Format Guidance */}
+      <Card className="rounded-xl border-muted bg-muted/30">
+        <CardContent className="py-4 space-y-2">
+          <div className="flex items-start gap-2">
+            <Image className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Images</p>
+              <p className="text-xs text-muted-foreground">Upload your square (1:1) version first. You'll be prompted to add a 9:16 Stories version next.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Video className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium">Videos</p>
+              <p className="text-xs text-muted-foreground">9:16 vertical format only.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {files.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">

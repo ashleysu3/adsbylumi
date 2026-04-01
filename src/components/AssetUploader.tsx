@@ -186,21 +186,28 @@ export function AssetUploader({ workspace, onUpdate }: AssetUploaderProps) {
               <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
               <div>
                 <p className="font-medium">Videos</p>
-                <p className="text-muted-foreground">MP4, H.264 codec, 9:16 or 4:5 aspect ratio, under 30MB</p>
+                <p className="text-muted-foreground">MP4, H.264 codec, 9:16 vertical only, under 30MB</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
               <div>
-                <p className="font-medium">Images</p>
-                <p className="text-muted-foreground">JPG or PNG, 1080x1080 or 1080x1920, under 10MB</p>
+                <p className="font-medium">Images — Square (1:1)</p>
+                <p className="text-muted-foreground">JPG or PNG, 1080×1080, under 10MB. Upload this first.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
+              <div>
+                <p className="font-medium">Images — Story (9:16)</p>
+                <p className="text-muted-foreground">JPG or PNG, 1080×1920. Add after your square version for best Stories & Reels display. If skipped, Meta auto-extends with color bars.</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
               <div>
                 <p className="font-medium">Carousels</p>
-                <p className="text-muted-foreground">2-10 images, each 1080x1080, JPG or PNG</p>
+                <p className="text-muted-foreground">2-10 images, each 1080×1080, JPG or PNG</p>
               </div>
             </div>
           </div>
