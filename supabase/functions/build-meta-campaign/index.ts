@@ -1031,7 +1031,7 @@ Deno.serve(async (req) => {
         totalAdsFailed: result.failedAds.length,
         failedAds: result.failedAds,
         warnings: result.warnings,
-        status: 'paused',
+        status: launchStatus === 'ACTIVE' ? 'active' : 'paused',
         message
       }),
       {
