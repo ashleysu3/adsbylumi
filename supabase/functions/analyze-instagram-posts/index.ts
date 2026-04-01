@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
       const code = postsData?.error?.code;
       if (code === 10) {
         return new Response(
-          JSON.stringify({ error: 'Instagram permissions are incomplete. To fix this: go to Facebook → Settings → Business Integrations, remove our app, then reconnect your Meta account in Settings and make sure all permission checkboxes are checked.', code: 'PERMISSIONS_ERROR' }),
+          JSON.stringify({ error: 'Meta is still blocking Instagram post access for this account. There is no separate access toggle inside Lumi. Try removing Lumi from Facebook → Settings → Business Integrations, reconnecting in Meta Settings, and confirming this Instagram profile is a Business or Creator account linked to the selected Facebook Page and ad account. If the same error persists, the missing access is likely in the Meta app configuration rather than this user flow.', code: 'PERMISSIONS_ERROR' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
