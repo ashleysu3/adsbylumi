@@ -23,6 +23,7 @@ interface ChecklistItem {
 }
 
 export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingChecklistProps) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(true);
   const [digestEnabled, setDigestEnabled] = useState<boolean | null>(null);
 
