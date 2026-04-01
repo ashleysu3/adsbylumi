@@ -172,7 +172,7 @@ export function MetaReadinessChecklist({
                   'w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left',
                   item.isComplete
                     ? 'bg-green-500/5 hover:bg-green-500/10'
-                    : 'bg-destructive/5 hover:bg-destructive/10'
+                    : 'bg-amber-500/5 hover:bg-amber-500/10'
                 )}
               >
                 {item.isComplete ? (
