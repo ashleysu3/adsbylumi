@@ -999,7 +999,7 @@ Deno.serve(async (req) => {
       .from('campaign_workspaces')
       .update({
         meta_campaign_ids: campaignIds,
-        meta_campaign_status: 'paused',
+        meta_campaign_status: launchStatus === 'ACTIVE' ? 'live' : 'paused',
         meta_errors: result.failedAds.length > 0 ? result.failedAds : null,
         progress_status: 'live',
         published_at: new Date().toISOString(),
