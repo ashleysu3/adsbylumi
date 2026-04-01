@@ -1051,7 +1051,32 @@ export function ProductionManager({
                 <div className="flex flex-col items-end gap-1">
                   <Button 
                     variant="lumi"
-                    onClick={onBuildCampaign} 
+                    onClick={() => {
+                      // Flag image items without a vertical version as auto_extend
+                      const imageItemsWithoutVertical = productionItems.filter(item => {
+                        const asset = getAssetForItem(item);
+                        if (!asset) return false;
+                        const isVideo = asset.file_type?.startsWith('video/');
+                        if (isVideo) return false;
+                        const verticalAsset = getVerticalAssetForItem(item);
+                        return !verticalAsset;
+                      });
+                      
+                      if (imageItemsWithoutVertical.length > 0) {
+                        // Update production items with auto_extend flag
+                        const updatedItems = productionItems.map(item => {
+                          const needsAutoExtend = imageItemsWithoutVertical.some(i => i.id === item.id);
+                          return needsAutoExtend ? { ...item, auto_extend: true } : item;
+                        });
+                        onUpdateWorkspace({ production_items: updatedItems });
+                        toast.info(
+                          `${imageItemsWithoutVertical.length} image${imageItemsWithoutVertical.length > 1 ? 's' : ''} without a 9:16 version — Meta will auto-extend with color bars`,
+                          { duration: 4000 }
+                        );
+                      }
+                      
+                      onBuildCampaign();
+                    }} 
                     disabled={!isReadyToBuild}
                     size="lg"
                     className="gap-2"
