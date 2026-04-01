@@ -165,7 +165,7 @@ const Sales = () => {
         </div>
         <div className="container mx-auto px-4 relative z-10 text-center max-w-4xl">
           <FadeUp>
-            <Badge variant="outline" className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5 backdrop-blur-sm rounded-full">✨ Use code LUMIBETA for 50% off Beta pricing</Badge>
+            <Badge variant="outline" className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5 backdrop-blur-sm rounded-full">✨ Your AI Ad Department — Starting at $97/mo</Badge>
           </FadeUp>
           <FadeUp delay={0.1}>
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.08] mb-4">
