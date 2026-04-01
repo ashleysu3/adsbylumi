@@ -759,14 +759,12 @@ export default function MetaSettings() {
           </CardContent>
         </Card>
 
-        {/* Meta Readiness Checklist */}
-        {brand?.id && (
+        {/* Meta Readiness Checklist — only show when NOT fully connected */}
+        {brand?.id && !isConnected && (
           <MetaReadinessChecklist
             brandId={brand.id}
             onConnectMeta={() => {
-              if (!isConnected) {
-                // Trigger the connect flow - same button already exists in connect card
-              }
+              // Connect flow is handled by the connection card above
             }}
           />
         )}
@@ -823,16 +821,18 @@ export default function MetaSettings() {
           </CardContent>
         </Card>
 
-        {/* Pixel Verification Card */}
-        <PixelVerificationCard 
-          brandId={brand?.id || ''} 
-          isMetaConnected={isConnected}
-          initialPixelData={brand?.meta_pixel_id ? {
-            id: brand.meta_pixel_id,
-            name: brand.meta_pixel_name || 'Meta Pixel',
-            events: brand.meta_pixel_events || {}
-          } : null}
-        />
+        {/* Pixel Verification Card — only show when connected (readiness checklist covers it otherwise) */}
+        {isConnected && (
+          <PixelVerificationCard 
+            brandId={brand?.id || ''} 
+            isMetaConnected={isConnected}
+            initialPixelData={brand?.meta_pixel_id ? {
+              id: brand.meta_pixel_id,
+              name: brand.meta_pixel_name || 'Meta Pixel',
+              events: brand.meta_pixel_events || {}
+            } : null}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
