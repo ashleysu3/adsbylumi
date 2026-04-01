@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Find beta users who signed up 7+ days ago and haven't received the feedback email
+    // Find founding members who signed up 7+ days ago and haven't received the feedback email
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: betaUsers, error: fetchError } = await supabase
