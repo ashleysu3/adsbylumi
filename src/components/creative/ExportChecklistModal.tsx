@@ -45,7 +45,6 @@ export function ExportChecklistModal({
   });
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState(false);
-  const [mode, setMode] = useState<'full' | 'brief'>('brief');
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
 
   // Get unique formats from production items
