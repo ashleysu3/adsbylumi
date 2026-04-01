@@ -47,12 +47,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get brand's Meta token directly (service-role context lacks auth.uid() for vault RPC)
+    // Verify the authenticated user owns this brand
     const { data: brand, error: brandErr } = await supabaseAdmin
       .from('brands')
-      .select('meta_access_token')
+      .select('meta_access_token, user_id')
       .eq('id', brandId)
       .single();
+    if (brandErr || !brand) {
+      return new Response(JSON.stringify({ error: 'Brand not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (brand.user_id !== userId) {
+      return new Response(JSON.stringify({ error: 'Access denied' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     if (brandErr || !brand?.meta_access_token) {
       return new Response(JSON.stringify({ error: 'Meta access token not found' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
