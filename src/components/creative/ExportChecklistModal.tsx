@@ -152,64 +152,9 @@ export function ExportChecklistModal({
             </Badge>
           </div>
 
-          {/* Export options (only for full mode) */}
-          {mode === 'full' && (
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-muted-foreground">Include in export:</p>
-              
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="scripts"
-                    checked={options.includeScripts}
-                    onCheckedChange={() => toggleOption('includeScripts')}
-                  />
-                  <Label htmlFor="scripts" className="text-sm cursor-pointer">
-                    Scripts & talking points
-                  </Label>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="creative"
-                    checked={options.includeCreativeDirection}
-                    onCheckedChange={() => toggleOption('includeCreativeDirection')}
-                  />
-                  <Label htmlFor="creative" className="text-sm cursor-pointer">
-                    Visual direction & text overlays
-                  </Label>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="psychology"
-                    checked={options.includePsychology}
-                    onCheckedChange={() => toggleOption('includePsychology')}
-                  />
-                  <Label htmlFor="psychology" className="text-sm cursor-pointer">
-                    Psychology notes (why it works)
-                  </Label>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="adcopy"
-                    checked={options.includeAdCopy}
-                    onCheckedChange={() => toggleOption('includeAdCopy')}
-                  />
-                  <Label htmlFor="adcopy" className="text-sm cursor-pointer">
-                    Ad copy (headlines, primary text, CTAs)
-                  </Label>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Tip */}
           <div className="text-xs text-muted-foreground bg-primary/5 p-3 rounded-lg">
-            <strong>Tip:</strong> {mode === 'brief' 
-              ? 'The Creative Brief includes everything your team needs: graphic copy, scripts, visual direction, and ad copy in a clean format.' 
-              : 'Open the CSV in Google Sheets or Excel. Share with your client for approvals, or send to your creative team for recording and graphic production.'}
+            <strong>Tip:</strong> The Creative Brief includes everything your team needs: graphic copy, scripts, visual direction, and ad copy in a clean format. Open in Google Sheets or Excel.
           </div>
         </div>
 
