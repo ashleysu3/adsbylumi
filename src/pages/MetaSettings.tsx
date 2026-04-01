@@ -759,14 +759,12 @@ export default function MetaSettings() {
           </CardContent>
         </Card>
 
-        {/* Meta Readiness Checklist */}
-        {brand?.id && (
+        {/* Meta Readiness Checklist — only show when NOT fully connected */}
+        {brand?.id && !isConnected && (
           <MetaReadinessChecklist
             brandId={brand.id}
             onConnectMeta={() => {
-              if (!isConnected) {
-                // Trigger the connect flow - same button already exists in connect card
-              }
+              // Connect flow is handled by the connection card above
             }}
           />
         )}
