@@ -1014,7 +1014,11 @@ Deno.serve(async (req) => {
     if (result.failedAds.length > 0) {
       message += ` ${result.failedAds.length} ad(s) failed to create.`;
     }
-    message += ` Campaign is paused - activate it in Ads Manager when ready.`;
+    if (launchStatus === 'ACTIVE') {
+      message += ` Campaign is active — ads will start delivering after Meta approval.`;
+    } else {
+      message += ` Campaign is paused — activate it in Ads Manager when ready.`;
+    }
 
     return new Response(
       JSON.stringify({
