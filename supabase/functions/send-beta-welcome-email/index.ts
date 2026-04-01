@@ -103,7 +103,7 @@ function buildBetaWelcomeHtml(firstName: string): string {
               
               <div style="background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%); border-radius: 12px; padding: 20px; margin-bottom: 14px; border-left: 4px solid #A78BFA;">
                 <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #4C1D95;">
-                  <strong>🔮 You're an early insider</strong> — You'll see features before anyone else and your feedback directly influences what we build next.
+                  <strong>🔮 You're an early insider</strong> — You'll see features before anyone else, and your feedback directly influences what we build next.
                 </p>
               </div>
 
