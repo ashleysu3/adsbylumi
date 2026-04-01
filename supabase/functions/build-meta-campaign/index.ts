@@ -894,6 +894,7 @@ Deno.serve(async (req) => {
               name: adName,
               creative: JSON.stringify({ creative_id: creativeId }),
               status: launchStatus,
+              multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
               access_token: metaAccessToken
             })
           }
