@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Find beta users who signed up 7+ days ago and haven't received the feedback email
+    // Find founding members who signed up 7+ days ago and haven't received the feedback email
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: betaUsers, error: fetchError } = await supabase
@@ -22,18 +22,18 @@ Deno.serve(async (req) => {
       .lte('created_at', sevenDaysAgo);
 
     if (fetchError) {
-      console.error('Error fetching beta users:', fetchError);
+      console.error('Error fetching founding members:', fetchError);
       throw new Error(fetchError.message);
     }
 
     if (!betaUsers || betaUsers.length === 0) {
-      console.log('No beta users due for feedback email');
+      console.log('No founding members due for feedback email');
       return new Response(JSON.stringify({ sent: 0 }), {
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`Found ${betaUsers.length} beta users due for feedback email`);
+    console.log(`Found ${betaUsers.length} founding members due for feedback email`);
 
     let sent = 0;
     for (const user of betaUsers) {

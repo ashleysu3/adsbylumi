@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
     const { error: emailError } = await resend.emails.send({
       from: 'Lumi <hello@adsbylumi.com>',
       to: [email],
-      subject: `Welcome to the Lumi Beta, ${firstName} 🧪✨`,
+      subject: `Welcome to Lumi, ${firstName} — You're a Founding Member ✨`,
       html: buildBetaWelcomeHtml(firstName),
     });
 
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       recipient_email: email,
       recipient_name: fullName || null,
       email_type: 'beta_welcome',
-      subject: `Welcome to the Lumi Beta, ${firstName} 🧪✨`,
+      subject: `Welcome to Lumi, ${firstName} — You're a Founding Member ✨`,
       status: 'sent',
       edge_function: 'send-beta-welcome-email',
     });
@@ -64,7 +64,7 @@ function buildBetaWelcomeHtml(firstName: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to Lumi Beta</title>
+  <title>Welcome to Lumi</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;600;700;800&display=swap');
   </style>
@@ -78,8 +78,8 @@ function buildBetaWelcomeHtml(firstName: string): string {
           <!-- Header with gradient -->
           <tr>
             <td style="background: linear-gradient(135deg, #F97316 0%, #EC4899 40%, #A78BFA 70%, #93C5FD 100%); padding: 45px 40px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 30px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">You're a Lumi Beta Tester 🧪</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px; font-weight: 500;">You're literally shaping the future of this platform.</p>
+              <h1 style="color: #ffffff; margin: 0; font-size: 30px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">You're a Lumi Founding Member ✨</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px; font-weight: 500;">You're literally helping shape the future of this platform.</p>
             </td>
           </tr>
 
@@ -88,34 +88,34 @@ function buildBetaWelcomeHtml(firstName: string): string {
             <td style="padding: 40px 40px 20px 40px;">
               <p style="margin: 0; color: #111111; font-size: 18px; font-weight: 600; line-height: 1.5;">Hey ${firstName} 👋</p>
               <p style="margin: 16px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.8; font-weight: 400;">
-                First — thank you. Seriously. You're one of the very first people using Lumi, and that means your experience matters <em>so much</em> to me.
+                First — thank you. Seriously. You're one of the very first people using Lumi, and we are <em>thrilled</em> to have you here from the beginning.
               </p>
               <p style="margin: 12px 0 0 0; color: #4a5568; font-size: 15px; line-height: 1.8; font-weight: 400;">
-                As a beta tester, you're helping shape what Lumi becomes. Every feature you use, every rough edge you notice, every "hmm, this could be better" moment — that's gold for us.
+                As a founding member, you're helping shape what Lumi becomes. Every feature you use, every idea you share, every "hmm, this could be better" moment — that's gold for us. We genuinely want to hear your feature requests, your feedback, all of it.
               </p>
             </td>
           </tr>
 
-          <!-- What beta means -->
+          <!-- What being a founding member means -->
           <tr>
             <td style="padding: 10px 40px 20px 40px;">
-              <p style="margin: 0 0 16px 0; color: #111111; font-size: 17px; font-weight: 700; letter-spacing: -0.3px;">What being in beta means:</p>
+              <p style="margin: 0 0 16px 0; color: #111111; font-size: 17px; font-weight: 700; letter-spacing: -0.3px;">What being a founding member means:</p>
               
               <div style="background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%); border-radius: 12px; padding: 20px; margin-bottom: 14px; border-left: 4px solid #A78BFA;">
                 <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #4C1D95;">
-                  <strong>🔮 You're an early insider</strong> — You'll see features before anyone else and your feedback directly influences what we build next.
+                  <strong>🔮 You're an early insider</strong> — You'll see features before anyone else, and your feedback directly influences what we build next.
                 </p>
               </div>
 
               <div style="background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%); border-radius: 12px; padding: 20px; margin-bottom: 14px; border-left: 4px solid #EC4899;">
                 <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #831843;">
-                  <strong>🐛 There might be bugs</strong> — That's expected! Things may break or feel a little rough around the edges. That's what this phase is for.
+                  <strong>🐛 This is a brand new platform</strong> — We're building fast, and you may spot things before we do. That's okay! Here's how to let us know so we can fix them quickly.
                 </p>
               </div>
 
               <div style="background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 100%); border-radius: 12px; padding: 20px; border-left: 4px solid #F97316;">
                 <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #9A3412;">
-                  <strong>💬 Your voice matters</strong> — We genuinely want to hear what's working, what's confusing, and what's missing. Don't hold back.
+                  <strong>💬 Your voice matters</strong> — We genuinely want to hear what's working, what's confusing, what's missing, and any feature requests you have. Don't hold back.
                 </p>
               </div>
 
@@ -180,7 +180,7 @@ function buildBetaWelcomeHtml(firstName: string): string {
             <td style="background: #FAF9F6; padding: 22px 40px; text-align: center; border-top: 1px solid #F5F3EE;">
               <p style="margin: 0; color: #a0aec0; font-size: 11px; line-height: 1.6;">
                 Lumi by Ads by Lumi · Meta Ads, Simplified<br/>
-                You're receiving this because you signed up with a beta invite code.
+                You're receiving this because you're one of our founding members.
               </p>
             </td>
           </tr>

@@ -473,8 +473,8 @@ const Sales = () => {
           <FadeUp delay={0.2}>
             <div className="text-center mt-10">
               <p className="text-muted-foreground mb-3">Ready to try it?</p>
-               <CheckoutButton>Get Started — Code LUMIBETA <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
-               <p className="text-[11px] text-muted-foreground mt-2">Pay first, then create your account. Use code LUMIBETA at checkout for 50% off.</p>
+               <CheckoutButton>Get Started — Founder Pricing <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
+               <p className="text-[11px] text-muted-foreground mt-2">Founder pricing — $97/mo. Lock in your rate before it goes up.</p>
             </div>
           </FadeUp>
         </div>
@@ -487,7 +487,7 @@ const Sales = () => {
           <FadeUp delay={0.1}><p className="text-primary-foreground/80 max-w-lg mx-auto mb-8 text-base sm:text-lg">Stop leaving money on the table. LUMI builds, runs, and optimizes your Meta ads — starting today.</p></FadeUp>
           <FadeUp delay={0.2}>
             <Button size="lg" onClick={goCheckout} disabled={checkoutLoading} className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 rounded-2xl text-base font-semibold shadow-elevated px-8">
-              {checkoutLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading...</> : <>Get Started — Code LUMIBETA <ArrowRight className="w-4 h-4 ml-1" /></>}
+              {checkoutLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading...</> : <>Get Started — Founder Pricing <ArrowRight className="w-4 h-4 ml-1" /></>}
             </Button>
           </FadeUp>
         </div>
