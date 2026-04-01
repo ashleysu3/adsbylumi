@@ -420,6 +420,32 @@ export default function Dashboard() {
     }
   }, [loading, brand, offers]);
 
+  // Check if any campaign has been published (for trial banner)
+  useEffect(() => {
+    if (!brand?.id) return;
+    supabase
+      .from('campaign_workspaces')
+      .select('id', { count: 'exact', head: true })
+      .eq('brand_id', brand.id)
+      .not('published_at', 'is', null)
+      .then(({ count }) => setHasPublishedAd((count || 0) > 0));
+  }, [brand?.id]);
+
+  // Calculate trial days remaining
+  const trialDaysLeft = (() => {
+    if (!isTrial || !subscriptionEnd) return 0;
+    const end = new Date(subscriptionEnd);
+    const now = new Date();
+    return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  })();
+
+  const trialMilestones = [
+    { label: 'Brand set up', done: !!(brand?.name && brand?.website_url && brand?.industry && brand?.value_proposition) },
+    { label: 'Offer added', done: offers.length > 0 },
+    { label: 'Meta connected', done: !!brand?.meta_account_id },
+    { label: 'First ad published', done: hasPublishedAd },
+  ];
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -447,32 +473,6 @@ export default function Dashboard() {
       </DashboardLayout>
     );
   }
-
-  // Calculate trial days remaining
-  const trialDaysLeft = (() => {
-    if (!isTrial || !subscriptionEnd) return 0;
-    const end = new Date(subscriptionEnd);
-    const now = new Date();
-    return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-  })();
-
-  const trialMilestones = [
-    { label: 'Brand set up', done: !!(brand?.name && brand?.website_url && brand?.industry && brand?.value_proposition) },
-    { label: 'Offer added', done: offers.length > 0 },
-    { label: 'Meta connected', done: !!brand?.meta_account_id },
-    { label: 'First ad published', done: hasPublishedAd },
-  ];
-
-  // Check if any campaign has been published
-  useEffect(() => {
-    if (!brand?.id) return;
-    supabase
-      .from('campaign_workspaces')
-      .select('id', { count: 'exact', head: true })
-      .eq('brand_id', brand.id)
-      .not('published_at', 'is', null)
-      .then(({ count }) => setHasPublishedAd((count || 0) > 0));
-  }, [brand?.id]);
 
   return (
     <DashboardLayout>
