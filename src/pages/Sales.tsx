@@ -473,8 +473,8 @@ const Sales = () => {
           <FadeUp delay={0.2}>
             <div className="text-center mt-10">
               <p className="text-muted-foreground mb-3">Ready to try it?</p>
-               <CheckoutButton>Get Started — Code LUMIBETA <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
-               <p className="text-[11px] text-muted-foreground mt-2">Pay first, then create your account. Use code LUMIBETA at checkout for 50% off.</p>
+               <CheckoutButton>Get Started — Founder Pricing <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
+               <p className="text-[11px] text-muted-foreground mt-2">Founder pricing — $97/mo. Lock in your rate before it goes up.</p>
             </div>
           </FadeUp>
         </div>
