@@ -381,7 +381,7 @@ export function AdPreviewModal({
                 </TabsList>
               </div>
               
-              <div className="flex-1 p-6 flex items-start justify-center">
+              <div className="flex-1 p-4 md:p-6 flex items-start justify-center overflow-y-auto">
                 {/* Facebook Feed */}
                 <TabsContent value="feed" className="mt-0 w-full max-w-md">
                   <div className="bg-card border rounded-xl overflow-hidden shadow-lg">
