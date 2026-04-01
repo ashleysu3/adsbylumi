@@ -723,7 +723,15 @@ export function CreativeChecklistCard({
               
               {/* Upload Section */}
               <div>
-                <h5 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Asset</h5>
+                <div className="flex items-center gap-2 mb-2">
+                  <h5 className="text-xs font-semibold text-muted-foreground uppercase">Asset</h5>
+                  {item.format === "graphic" && (
+                    <span className="text-[10px] text-muted-foreground">Upload square (1080×1080) first, then add a 9:16 version</span>
+                  )}
+                  {(item.format === "talking_head" || item.format === "broll") && (
+                    <span className="text-[10px] text-muted-foreground">9:16 vertical only</span>
+                  )}
+                </div>
                 {hasAsset ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
@@ -731,7 +739,7 @@ export function CreativeChecklistCard({
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{uploadedAsset!.file_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {uploadedAsset!.file_type?.startsWith('video/') ? 'Video uploaded (9:16)' : 'Square / Feed version'}
+                          {uploadedAsset!.file_type?.startsWith('video/') ? 'Video uploaded (9:16 — Stories & Reels ready ✓)' : 'Square / Feed version (1:1)'}
                         </p>
                       </div>
                       <div className="flex gap-1">
@@ -746,14 +754,14 @@ export function CreativeChecklistCard({
                       </div>
                     </div>
                     
-                    {/* Optional 9:16 vertical version - only for images */}
+                    {/* Prominent 9:16 vertical version prompt - only for images */}
                     {!uploadedAsset!.file_type?.startsWith('video/') && onUploadVerticalClick && (
                       uploadedAssetVertical ? (
                         <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                           <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{uploadedAssetVertical.file_name}</p>
-                            <p className="text-xs text-muted-foreground">9:16 Stories / Reels version</p>
+                            <p className="text-xs text-muted-foreground">9:16 Stories / Reels version ✓</p>
                           </div>
                           <div className="flex gap-1">
                             {onPreview && (
@@ -767,15 +775,28 @@ export function CreativeChecklistCard({
                           </div>
                         </div>
                       ) : (
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="w-full text-xs text-muted-foreground hover:text-foreground gap-1.5"
-                          onClick={onUploadVerticalClick}
-                        >
-                          <Upload className="h-3.5 w-3.5" />
-                          Add 9:16 version for Stories / Reels (optional)
-                        </Button>
+                        <div className="p-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20">
+                          <div className="flex items-start gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                              <Maximize2 className="h-4 w-4 text-amber-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Upload a 9:16 version for Stories & Reels</p>
+                              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                                If you skip this, Lumi will auto-extend your square with color bars — just like Meta does.
+                              </p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="w-full mt-2 gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                            onClick={onUploadVerticalClick}
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            Upload 9:16 Version
+                          </Button>
+                        </div>
                       )
                     )}
                   </div>
@@ -786,7 +807,11 @@ export function CreativeChecklistCard({
                     onClick={onUploadClick}
                   >
                     <Upload className="h-5 w-5" />
-                    <span>Upload {formatLabel}</span>
+                    <span>
+                      {item.format === "graphic" 
+                        ? "Upload Square (1:1) Version" 
+                        : `Upload ${formatLabel} (9:16)`}
+                    </span>
                   </Button>
                 )}
               </div>
