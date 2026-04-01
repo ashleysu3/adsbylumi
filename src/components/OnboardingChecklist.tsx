@@ -82,10 +82,7 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
       title: "Connect Meta Ad Account",
       description: "Link your Facebook Ad Account to create campaigns",
       completed: !!brand?.meta_account_id,
-      action: () => {
-        const section = document.querySelector('[data-section="meta-account"]');
-        section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      },
+      action: () => navigate("/meta-settings"),
       actionLabel: "Connect Now"
     },
     {
