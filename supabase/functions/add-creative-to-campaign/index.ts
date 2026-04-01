@@ -279,8 +279,8 @@ Deno.serve(async (req) => {
     
     // Resolve Instagram actor ID: prefer explicit param, fall back to brand setting
     const igActorId = instagramActorId || brand.instagram_account_id || null;
-    // Multi-advertiser ads: default OFF unless brand explicitly enabled it
-    const multiAdvertiserAds = brand.multi_advertiser_ads === true;
+    // Multi-advertiser ads: ALWAYS OFF
+    const multiAdvertiserAds = false;
 
     console.log(`Adding ${assets.length} creative(s) with ${copyVariations.length} copy variation(s) to ad set ${adSetId}`);
     console.log(`Using link: ${link}, CTA: ${ctaType}, IG actor: ${igActorId}, multi_advertiser: ${multiAdvertiserAds}`);
