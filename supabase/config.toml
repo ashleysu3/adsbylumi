@@ -145,7 +145,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.rotate-creative]
-verify_jwt = false
+verify_jwt = true
 
 [functions.check-creative-fatigue]
 verify_jwt = false
