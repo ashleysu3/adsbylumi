@@ -169,6 +169,15 @@ export function MetaAccountConnect({
         return;
       }
 
+      // Desktop: navigate the popup to the auth URL
+      if (popup) {
+        popup.location.href = data.authUrl;
+      } else {
+        // Popup was blocked despite immediate open — fallback to same-tab
+        window.location.href = data.authUrl;
+        return;
+      }
+
       const handleCallback = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
 
