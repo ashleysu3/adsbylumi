@@ -150,7 +150,7 @@ const Sales = () => {
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="md:hidden border-t border-border bg-background overflow-hidden">
               <div className="flex flex-col gap-2 p-4">
                 <button onClick={() => { goAuth(); setMobileMenuOpen(false); }} className="text-sm font-medium py-2">Sign In</button>
-                <CheckoutButton size="sm">Get Started</CheckoutButton>
+                <CheckoutButton size="sm">Start Free Trial</CheckoutButton>
               </div>
             </motion.div>
           )}
