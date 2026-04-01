@@ -487,7 +487,7 @@ const Sales = () => {
           <FadeUp delay={0.1}><p className="text-primary-foreground/80 max-w-lg mx-auto mb-8 text-base sm:text-lg">Stop leaving money on the table. LUMI builds, runs, and optimizes your Meta ads — starting today.</p></FadeUp>
           <FadeUp delay={0.2}>
             <Button size="lg" onClick={goCheckout} disabled={checkoutLoading} className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 rounded-2xl text-base font-semibold shadow-elevated px-8">
-              {checkoutLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading...</> : <>Get Started — Founder Pricing <ArrowRight className="w-4 h-4 ml-1" /></>}
+              {checkoutLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading...</> : <>Start Free Trial <ArrowRight className="w-4 h-4 ml-1" /></>}
             </Button>
           </FadeUp>
         </div>
