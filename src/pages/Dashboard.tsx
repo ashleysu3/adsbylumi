@@ -446,9 +446,97 @@ export default function Dashboard() {
     );
   }
 
+  const { isTrial, subscriptionEnd } = useSubscription();
+
+  // Calculate trial days remaining
+  const trialDaysLeft = (() => {
+    if (!isTrial || !subscriptionEnd) return 0;
+    const end = new Date(subscriptionEnd);
+    const now = new Date();
+    return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  })();
+
+  const trialMilestones = [
+    { label: 'Brand set up', done: !!(brand?.name && brand?.website_url && brand?.industry && brand?.value_proposition) },
+    { label: 'Offer added', done: offers.length > 0 },
+    { label: 'Meta connected', done: !!brand?.meta_account_id },
+    { label: 'First ad published', done: false }, // We'll check below
+  ];
+
+  // Check if any campaign has been published
+  const [hasPublishedAd, setHasPublishedAd] = useState(false);
+  useEffect(() => {
+    if (!brand?.id) return;
+    supabase
+      .from('campaign_workspaces')
+      .select('id', { count: 'exact', head: true })
+      .eq('brand_id', brand.id)
+      .not('published_at', 'is', null)
+      .then(({ count }) => setHasPublishedAd((count || 0) > 0));
+  }, [brand?.id]);
+
+  if (hasPublishedAd) {
+    trialMilestones[3].done = true;
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-8">
+        {/* Trial Banner */}
+        {isTrial && (
+          <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/5">
+            <CardContent className="p-4 md:p-6">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {trialDaysLeft > 0 
+                        ? `${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} left in your free trial`
+                        : 'Your free trial ends today'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {trialMilestones.filter(m => m.done).length}/{trialMilestones.length} setup steps complete
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    {trialMilestones.map((m, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          "h-2 w-8 rounded-full transition-colors",
+                          m.done ? "bg-primary" : "bg-muted"
+                        )}
+                        title={m.label}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {/* Milestone labels */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {trialMilestones.map((m, i) => (
+                  <Badge
+                    key={i}
+                    variant="outline"
+                    className={cn(
+                      "text-xs",
+                      m.done
+                        ? "border-primary/30 text-primary bg-primary/5"
+                        : "border-border text-muted-foreground"
+                    )}
+                  >
+                    {m.done ? '✓' : '○'} {m.label}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
         {/* Brand Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="space-y-1">
