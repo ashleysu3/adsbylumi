@@ -386,13 +386,9 @@ const Sales = () => {
             <div className="mx-auto max-w-md">
               <Card variant="gradient" className="overflow-hidden">
                 <CardContent className="p-6 sm:p-8">
-                  <Badge className="bg-destructive/90 text-destructive-foreground mb-4">🔥 Beta Pricing — Use code LUMIBETA</Badge>
-
                   {/* Price — Monthly only */}
                   <div className="text-center mb-2">
-                    <span className="text-muted-foreground line-through text-lg mr-2">$97/mo</span>
-                    <span className="font-display text-4xl text-foreground">$48.50/mo</span>
-                    <p className="text-xs text-primary font-medium mt-1">with code LUMIBETA</p>
+                    <span className="font-display text-4xl text-foreground">$97/mo</span>
                   </div>
 
                   {/* Features */}
