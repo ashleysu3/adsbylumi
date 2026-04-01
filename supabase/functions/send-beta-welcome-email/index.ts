@@ -78,8 +78,8 @@ function buildBetaWelcomeHtml(firstName: string): string {
           <!-- Header with gradient -->
           <tr>
             <td style="background: linear-gradient(135deg, #F97316 0%, #EC4899 40%, #A78BFA 70%, #93C5FD 100%); padding: 45px 40px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 30px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">You're a Lumi Beta Tester 🧪</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px; font-weight: 500;">You're literally shaping the future of this platform.</p>
+              <h1 style="color: #ffffff; margin: 0; font-size: 30px; font-weight: 800; font-family: 'Red Hat Display', sans-serif; letter-spacing: -0.5px;">You're a Lumi Founding Member ✨</h1>
+              <p style="color: rgba(255,255,255,0.9); margin: 12px 0 0 0; font-size: 16px; font-weight: 500;">You're literally helping shape the future of this platform.</p>
             </td>
           </tr>
 
