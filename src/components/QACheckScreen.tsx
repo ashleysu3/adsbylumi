@@ -135,7 +135,7 @@ export function QACheckScreen({
           answers,
           creativeJson: workspace.creative_json,
           productionItems: workspace.production_items,
-          offerUrl: workspace.offer_url,
+          offerUrl: workspace.offer_url || workspace.offers?.url || workspace.brands?.website_url || answers?.destinationUrl || null,
           template,
         },
       });

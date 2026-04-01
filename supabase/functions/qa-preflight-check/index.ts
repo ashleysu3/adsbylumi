@@ -44,12 +44,21 @@ serve(async (req) => {
     console.log('QA Preflight Check started');
     console.log('productionItems count:', productionItems?.length || 0);
     console.log('creativeJson keys:', creativeJson ? Object.keys(creativeJson) : 'null');
+
+    // Resolve landing page URL from multiple sources
+    const resolvedUrl = offerUrl 
+      || answers?.destinationUrl 
+      || brand?.website_url 
+      || extractUrlFromProductionItems(productionItems)
+      || null;
+    console.log('Resolved landing page URL:', resolvedUrl, '(offerUrl:', offerUrl, ')');
+
     const results: CheckResult[] = [];
 
     results.push(checkMetaConnection(brand));
     results.push(checkBudget(answers));
     results.push(checkSchedule(answers));
-    results.push(await checkLandingPage(offerUrl, brand));
+    results.push(await checkLandingPage(resolvedUrl, brand));
     results.push(checkEventTracking(brand, template));
     results.push(await checkSpellingGrammar(creativeJson, productionItems));
 
