@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star, Check, X, Edit2, ExternalLink, Instagram, Mail, Globe, Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { AdminTabs } from "@/components/AdminTabs";
+import AdminTabs from "@/components/AdminTabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
