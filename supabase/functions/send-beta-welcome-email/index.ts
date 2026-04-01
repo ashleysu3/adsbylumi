@@ -109,7 +109,7 @@ function buildBetaWelcomeHtml(firstName: string): string {
 
               <div style="background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%); border-radius: 12px; padding: 20px; margin-bottom: 14px; border-left: 4px solid #EC4899;">
                 <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #831843;">
-                  <strong>🐛 There might be bugs</strong> — That's expected! Things may break or feel a little rough around the edges. That's what this phase is for.
+                  <strong>🐛 This is a brand new platform</strong> — We're building fast, and you may spot things before we do. That's okay! Here's how to let us know so we can fix them quickly.
                 </p>
               </div>
 
