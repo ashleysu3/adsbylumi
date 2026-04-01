@@ -135,7 +135,7 @@ export function QACheckScreen({
           answers,
           creativeJson: workspace.creative_json,
           productionItems: workspace.production_items,
-          offerUrl: workspace.offer_url,
+          offerUrl: workspace.offer_url || workspace.offers?.url || workspace.brands?.website_url || answers?.destinationUrl || null,
           template,
         },
       });
@@ -297,9 +297,26 @@ src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1"
 
   const renderLandingPageExpanded = (check: CheckResult) => {
     const url = check.message;
+    const isNoUrl = !url || url === 'No landing page URL set';
     return (
       <div className="ml-10 mr-3 mb-3 space-y-3">
-        {url && (
+        {isNoUrl && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Add a landing page URL to your offer so Meta knows where to send people when they click your ad.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+              onClick={() => navigate("/offers")}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Go to Offers
+            </Button>
+          </div>
+        )}
+        {!isNoUrl && url && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground truncate max-w-[280px]" title={url}>
               {url}
@@ -315,7 +332,7 @@ src="https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1"
             </Button>
           </div>
         )}
-        {check.details && (
+        {check.details && !isNoUrl && (
           <p className="text-xs text-muted-foreground">{check.details}</p>
         )}
 
