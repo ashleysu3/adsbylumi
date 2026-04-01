@@ -127,7 +127,7 @@ const Sales = () => {
             <div className="container mx-auto px-4 py-2 flex items-center justify-center gap-4">
               <p className="text-xs sm:text-sm font-medium flex items-center gap-2"><Sparkles className="w-4 h-4" /> <span>Your AI-powered Meta Ads team for just <strong>$97/mo</strong></span></p>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="secondary" className="text-xs h-7 px-3 font-semibold" onClick={goCheckout} disabled={checkoutLoading}>Get Started</Button>
+                <Button size="sm" variant="secondary" className="text-xs h-7 px-3 font-semibold" onClick={goCheckout} disabled={checkoutLoading}>Start Free Trial</Button>
                 <button onClick={dismissBanner} className="text-primary-foreground/60 hover:text-primary-foreground"><X className="w-4 h-4" /></button>
               </div>
             </div>
@@ -141,7 +141,7 @@ const Sales = () => {
           <a href="/"><img src={lumiLogo} alt="LUMI" className="h-8 sm:h-10" /></a>
           <div className="hidden md:flex items-center gap-4">
             <button onClick={goAuth} className="text-sm font-medium text-muted-foreground hover:text-foreground transition">Sign In</button>
-            <CheckoutButton size="sm">Get Started</CheckoutButton>
+            <CheckoutButton size="sm">Start Free Trial</CheckoutButton>
            </div>
            <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}><Menu className="w-6 h-6" /></button>
         </div>
@@ -150,7 +150,7 @@ const Sales = () => {
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="md:hidden border-t border-border bg-background overflow-hidden">
               <div className="flex flex-col gap-2 p-4">
                 <button onClick={() => { goAuth(); setMobileMenuOpen(false); }} className="text-sm font-medium py-2">Sign In</button>
-                <CheckoutButton size="sm">Get Started</CheckoutButton>
+                <CheckoutButton size="sm">Start Free Trial</CheckoutButton>
               </div>
             </motion.div>
           )}
@@ -165,7 +165,7 @@ const Sales = () => {
         </div>
         <div className="container mx-auto px-4 relative z-10 text-center max-w-4xl">
           <FadeUp>
-            <Badge variant="outline" className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5 backdrop-blur-sm rounded-full">✨ Your AI Ad Department — Starting at $97/mo</Badge>
+            <Badge variant="outline" className="mb-4 px-4 py-1 text-xs font-semibold border-primary/30 bg-primary/5 backdrop-blur-sm rounded-full">✨ Try Free for 7 Days — Your AI Ad Department</Badge>
           </FadeUp>
           <FadeUp delay={0.1}>
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl leading-[1.08] mb-4">
@@ -180,10 +180,10 @@ const Sales = () => {
           <FadeUp delay={0.3}>
             <div className="flex justify-center mb-4">
                <CheckoutButton className="px-8 text-base">
-                 Get Started <ArrowRight className="w-4 h-4 ml-1.5" />
+                 Start 7-Day Free Trial <ArrowRight className="w-4 h-4 ml-1.5" />
                </CheckoutButton>
              </div>
-             <p className="text-xs text-muted-foreground">$97/mo. No contracts. Cancel anytime.</p>
+             <p className="text-xs text-muted-foreground">7-day free trial · $97/mo after · Cancel anytime</p>
           </FadeUp>
         </div>
       </section>
@@ -402,13 +402,13 @@ const Sales = () => {
                   <p className="text-[11px] text-muted-foreground text-center mb-4">You control your ad budget completely — LUMI just manages it smarter. Most beginners start with $10–$20/day.</p>
 
                   <CheckoutButton className="w-full">
-                    {partnerCodeValid ? "Start Your 14-Day Free Trial" : "Get Started"} <ArrowRight className="w-4 h-4 ml-1" />
+                    {partnerCodeValid ? "Start Your 14-Day Free Trial" : "Start 7-Day Free Trial"} <ArrowRight className="w-4 h-4 ml-1" />
                   </CheckoutButton>
                   {/* #4 — Post-click clarity */}
                   <p className="text-[11px] text-muted-foreground text-center mt-2">
                     {partnerCodeValid
                       ? "Your 14-day free trial starts now. No charge until the trial ends."
-                      : "You'll pay first, then create your account and be inside LUMI in under 2 minutes."}
+                      : "7-day free trial · No charge until day 8 · Cancel anytime"}
                   </p>
 
                   {/* Partner code input */}
@@ -473,8 +473,8 @@ const Sales = () => {
           <FadeUp delay={0.2}>
             <div className="text-center mt-10">
               <p className="text-muted-foreground mb-3">Ready to try it?</p>
-               <CheckoutButton>Get Started — Founder Pricing <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
-               <p className="text-[11px] text-muted-foreground mt-2">Founder pricing — $97/mo. Lock in your rate before it goes up.</p>
+               <CheckoutButton>Start Free Trial — Founder Pricing <ArrowRight className="w-4 h-4 ml-1" /></CheckoutButton>
+               <p className="text-[11px] text-muted-foreground mt-2">7-day free trial · Founder pricing $97/mo after · Cancel anytime</p>
             </div>
           </FadeUp>
         </div>
@@ -487,7 +487,7 @@ const Sales = () => {
           <FadeUp delay={0.1}><p className="text-primary-foreground/80 max-w-lg mx-auto mb-8 text-base sm:text-lg">Stop leaving money on the table. LUMI builds, runs, and optimizes your Meta ads — starting today.</p></FadeUp>
           <FadeUp delay={0.2}>
             <Button size="lg" onClick={goCheckout} disabled={checkoutLoading} className="bg-primary-foreground text-foreground hover:bg-primary-foreground/90 rounded-2xl text-base font-semibold shadow-elevated px-8">
-              {checkoutLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading...</> : <>Get Started — Founder Pricing <ArrowRight className="w-4 h-4 ml-1" /></>}
+              {checkoutLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Loading...</> : <>Start Free Trial <ArrowRight className="w-4 h-4 ml-1" /></>}
             </Button>
           </FadeUp>
         </div>
