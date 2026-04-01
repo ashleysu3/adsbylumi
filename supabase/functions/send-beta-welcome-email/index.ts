@@ -180,7 +180,7 @@ function buildBetaWelcomeHtml(firstName: string): string {
             <td style="background: #FAF9F6; padding: 22px 40px; text-align: center; border-top: 1px solid #F5F3EE;">
               <p style="margin: 0; color: #a0aec0; font-size: 11px; line-height: 1.6;">
                 Lumi by Ads by Lumi · Meta Ads, Simplified<br/>
-                You're receiving this because you signed up with a beta invite code.
+                You're receiving this because you're one of our founding members.
               </p>
             </td>
           </tr>
