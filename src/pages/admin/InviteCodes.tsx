@@ -338,7 +338,7 @@ export default function AdminInviteCodes() {
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="e.g., Beta Wave 1, VIP Access"
+                placeholder="e.g., Founding Wave 1, VIP Access"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

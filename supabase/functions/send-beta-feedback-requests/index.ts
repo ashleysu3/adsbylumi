@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Found ${betaUsers.length} beta users due for feedback email`);
+    console.log(`Found ${betaUsers.length} founding members due for feedback email`);
 
     let sent = 0;
     for (const user of betaUsers) {

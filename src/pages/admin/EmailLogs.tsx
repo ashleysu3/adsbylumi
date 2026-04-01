@@ -22,7 +22,7 @@ const EMAIL_TYPES = [
   { value: "cancellation", label: "Cancellation" },
   { value: "partner_approval", label: "Partner Approval" },
   { value: "partner_welcome", label: "Partner Welcome" },
-  { value: "beta_feedback_request", label: "Beta Feedback" },
+  { value: "beta_feedback_request", label: "Founder Feedback" },
   { value: "onboarding_drip", label: "Onboarding Drip" },
   { value: "bug_report", label: "Bug Report" },
   { value: "client_report", label: "Client Report" },

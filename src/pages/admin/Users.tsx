@@ -1458,7 +1458,7 @@ export default function AdminUsers() {
                     </CardHeader>
                     <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                       <p className="text-xs sm:text-sm text-muted-foreground mb-3">
-                        Resend the beta welcome email with login link and 1:1 call booking to this user.
+                        Resend the founding member welcome email with login link and 1:1 call booking to this user.
                       </p>
                       <Button
                         variant="outline"
