@@ -61,6 +61,7 @@ import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
 import AgencySettings from "./pages/AgencySettings";
 import CancellationPolicy from "./pages/CancellationPolicy";
+import Pricing from "./pages/Pricing";
 import AdsManager from "./pages/AdsManager";
 import AdsManagerClient from "./pages/AdsManagerClient";
 
@@ -100,7 +101,7 @@ const App = () => {
                   <Route path="/" element={<Sales />} />
                   <Route path="/waitlist" element={<Waitlist />} />
                   <Route path="/auth" element={<Auth />} />
-                  <Route path="/pricing" element={<Navigate to="/auth" replace />} />
+                  <Route path="/pricing" element={<Pricing />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/start" element={<Start />} />
                   <Route path="/create" element={<Create />} />
