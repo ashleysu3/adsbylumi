@@ -74,10 +74,7 @@ export function OnboardingChecklist({ brand, offers, onEditBrand }: OnboardingCh
       title: "Add Your First Offer",
       description: "Add a product or service you want to promote",
       completed: offers.length > 0,
-      action: () => {
-        const section = document.querySelector('[data-section="offers"]');
-        section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      },
+      action: () => navigate("/offers"),
       actionLabel: "Add Offer"
     },
     {
