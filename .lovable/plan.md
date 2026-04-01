@@ -1,37 +1,75 @@
 
 
-# Two Changes: Campaign Limit + Meta Settings Page Cleanup
+# One-Week Free Trial with Email Reminders
 
-## 1. Limit live campaigns to 10
+## Summary
+Add a 7-day free trial with payment info collected upfront via Stripe. Users auto-convert to paid after 7 days unless they cancel. Includes trial-specific UI and a reminder email drip.
 
-**Where to enforce**: `src/pages/CampaignBuilder.tsx` in `handlePublish`
+## Changes
 
-Before calling `build-meta-campaign`, query `campaign_workspaces` for the current brand where `meta_campaign_status` is `'active'` or `'live'` and count them. If count >= 10, block publish with a toast error: "You've reached the maximum of 10 live campaigns. Please pause or archive an existing campaign before publishing a new one." and return early (don't proceed to build).
+### 1. Add `trial_period_days: 7` to both checkout functions
+**Files:** `supabase/functions/create-checkout/index.ts`, `supabase/functions/create-guest-checkout/index.ts`
 
-Also add a visible warning in the QA check stage or configure stage if the user is at 9 or 10 live campaigns.
+- `create-checkout`: Add `subscription_data: { trial_period_days: 7 }` to `sessionOptions`
+- `create-guest-checkout`: Add `trial_period_days: 7` as default for ALL checkouts (not just partner trials). Partner trials keep 14 days as override. The `subscription_data` block moves outside the `if (isPartnerTrial)` check with 7-day default, overridden to 14 when partner code is valid.
 
-**Files**: `src/pages/CampaignBuilder.tsx`
+No changes needed to `check-subscription` — it already detects `trialing` and returns `is_trial: true`.
 
----
+### 2. Update Pricing + Sales page messaging
+**Files:** `src/pages/Pricing.tsx`, `src/pages/Sales.tsx`
 
-## 2. Clean up Meta Settings page — remove duplication, rename readiness checklist, add "working on it" note
+- Change CTA "Get Started" to "Start 7-Day Free Trial"
+- Add subtext: "7-day free trial · Cancel anytime · No charge until day 8"
+- Update the comparison card Lumi price area to mention the trial
 
-The current MetaSettings page (`src/pages/MetaSettings.tsx`) shows three separate cards that overlap in content:
-- **Connection Status Card** (lines 322-760) — shows ad account, page, Instagram, token status
-- **MetaReadinessChecklist** (lines 762-772) — shows the same 4 items (page, Instagram, ad account, pixel) with red X marks
-- **PixelVerificationCard** (lines 826-835) — dedicated pixel card
+### 3. Trial countdown banner on Dashboard
+**File:** `src/pages/Dashboard.tsx`
 
-The readiness checklist duplicates what the connection card already shows and the red X icons alarm users unnecessarily.
+When `useSubscription().isTrial` is true, render a banner at the top showing:
+- Days remaining (derived from `subscriptionEnd`)
+- Milestone progress: brand set up, offer added, Meta connected, first ad published (query from existing data)
+- "Subscribe now" CTA linking to Stripe customer portal
 
-### Changes to `MetaReadinessChecklist.tsx`:
-- Rename title from "Getting Your Ads Ready" to "Connection Status"
-- Replace red `XCircle` icons with amber/neutral `Clock` or `Minus` icons for incomplete items — less alarming
-- Add an info banner at the top: "We're actively working with Meta to finalize full verification. Your connection is working — this checklist will update automatically within 24-48 hours."
-- For incomplete items, change the background from `bg-destructive/5` to `bg-amber-500/5` (softer)
+### 4. Trial reminder email edge function
+**New file:** `supabase/functions/send-trial-reminders/index.ts`
 
-### Changes to `MetaSettings.tsx`:
-- Only show `MetaReadinessChecklist` when the user is NOT fully connected (when `!isConnected`). When connected, the connection card already shows everything.
-- Remove the `PixelVerificationCard` from showing separately when `MetaReadinessChecklist` is visible (it already has a pixel row). Keep it only when connected.
+Cron-triggered daily function that:
+1. Queries Stripe for all customers with `status: 'trialing'` subscriptions
+2. Calculates days since trial start
+3. Checks milestone completion per user (brand, offer, Meta connection, campaign) via Supabase
+4. Sends targeted Resend emails on days 0, 3, 5, 7 with milestone-aware content
+5. Logs via existing `log-email.ts`
 
-**Files**: `src/components/MetaReadinessChecklist.tsx`, `src/pages/MetaSettings.tsx`
+Email schedule:
+| Day | Subject | Content |
+|-----|---------|---------|
+| 0 | "Welcome to your free trial!" | First steps checklist |
+| 3 | "3 days in — here's your next step" | Nudge incomplete milestones |
+| 5 | "2 days left — let's get your ads live" | Push to connect Meta + publish |
+| 7 | "Your trial ends today" | Subscribe or lose access |
+
+### 5. Skip trial users in onboarding drip
+**File:** `supabase/functions/send-onboarding-drip/index.ts`
+
+Before processing each user, check if they have an active Stripe trial. If so, skip them (trial reminders handle their communication instead).
+
+### 6. Schedule the cron job
+SQL insert via Supabase to run `send-trial-reminders` daily at 9am UTC using `pg_cron` + `pg_net`.
+
+## Files Summary
+| File | Action |
+|------|--------|
+| `supabase/functions/create-checkout/index.ts` | Add trial_period_days |
+| `supabase/functions/create-guest-checkout/index.ts` | Add trial_period_days default |
+| `src/pages/Pricing.tsx` | Trial CTA + messaging |
+| `src/pages/Sales.tsx` | Trial CTA + messaging |
+| `src/pages/Dashboard.tsx` | Trial countdown banner |
+| `supabase/functions/send-trial-reminders/index.ts` | New — trial email drip |
+| `supabase/functions/send-onboarding-drip/index.ts` | Skip trialing users |
+
+## Technical Notes
+- No database schema changes needed
+- Stripe handles billing lifecycle natively — trial → active on day 8, or trial → cancelled
+- `SubscriptionContext` already exposes `isTrial` and `subscriptionEnd`
+- Existing `handle-cancellation` flow covers trial expiration (user doesn't convert)
 
