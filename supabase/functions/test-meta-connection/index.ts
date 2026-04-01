@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
 
     const requiredPermissions = ['ads_management', 'ads_read', 'business_management', 'pages_read_user_content', 'instagram_basic'];
     const missingPermissions = requiredPermissions.filter(p => !grantedPermissions.includes(p));
-    const hasInstagramMediaAccess = grantedPermissions.includes('pages_read_user_content') && grantedPermissions.includes('instagram_basic');
+    const hasGrantedInstagramScopes = grantedPermissions.includes('pages_read_user_content') && grantedPermissions.includes('instagram_basic');
 
     // Test 3: Validate ad account access
     console.log('Testing ad account access...');
@@ -167,7 +167,7 @@ Deno.serve(async (req) => {
 
     // Test 4: Validate actual Instagram media access on the selected Instagram account.
     // This is more reliable than /me/permissions alone for determining whether Lumi can load posts.
-    let hasInstagramMediaAccess: boolean | undefined;
+    let hasInstagramMediaAccess: boolean | undefined = hasGrantedInstagramScopes ? undefined : false;
     let instagramMediaError: string | undefined;
 
     if (brand.instagram_account_id) {
