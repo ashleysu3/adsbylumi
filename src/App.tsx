@@ -64,6 +64,8 @@ import CancellationPolicy from "./pages/CancellationPolicy";
 import Pricing from "./pages/Pricing";
 import AdsManager from "./pages/AdsManager";
 import AdsManagerClient from "./pages/AdsManagerClient";
+import SubmitReview from "./pages/SubmitReview";
+import AdminReviews from "./pages/admin/Reviews";
 
 function CreativeRedirect() {
   const location = useLocation();
