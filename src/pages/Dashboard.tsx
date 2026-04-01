@@ -43,6 +43,7 @@ export default function Dashboard() {
   const { setRecommendation } = useLumiRecommend();
   const { getEffectiveUserId, isImpersonating } = useImpersonation();
   const { activeBrand: contextBrand, loading: brandContextLoading } = useBrand();
+  const { isTrial, subscriptionEnd } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [brand, setBrand] = useState<any>(null);
