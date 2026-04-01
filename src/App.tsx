@@ -61,6 +61,7 @@ import ClientPortal from "./pages/ClientPortal";
 import SharedReport from "./pages/SharedReport";
 import AgencySettings from "./pages/AgencySettings";
 import CancellationPolicy from "./pages/CancellationPolicy";
+import Pricing from "./pages/Pricing";
 import AdsManager from "./pages/AdsManager";
 import AdsManagerClient from "./pages/AdsManagerClient";
 
