@@ -1,45 +1,37 @@
 
 
-# Dual-Format Upload Flow: Square + Vertical Asset Prompting
+# Two Changes: Campaign Limit + Meta Settings Page Cleanup
 
-## Summary
-Update the creative asset upload UX to **actively prompt** users to upload both a square (1:1) and story-sized (9:16) version for graphics, while enforcing video as 9:16 only. Add a clear fallback message: if they skip the vertical version, Lumi will auto-extend with color bars (matching Meta's default behavior).
+## 1. Limit live campaigns to 10
 
-## What Changes
+**Where to enforce**: `src/pages/CampaignBuilder.tsx` in `handlePublish`
 
-### 1. CreativeChecklistCard — Redesign the upload section
-**Current**: After uploading a square image, a subtle ghost button says "Add 9:16 version for Stories / Reels (optional)".
-**New**:
-- After uploading a square image, show a **prominent amber/blue info card** prompting the 9:16 upload — not just a ghost button
-- Card text: "Upload a 9:16 version for Stories & Reels" with subtitle "If you skip this, Lumi will auto-extend your square with color bars — just like Meta does."
-- For **videos**: after upload, show "Video uploaded (9:16 — Stories & Reels ready)" with no vertical prompt (since video is already 9:16-only)
-- Update the initial upload button label for images: "Upload Square (1:1) Version" instead of generic "Upload"
+Before calling `build-meta-campaign`, query `campaign_workspaces` for the current brand where `meta_campaign_status` is `'active'` or `'live'` and count them. If count >= 10, block publish with a toast error: "You've reached the maximum of 10 live campaigns. Please pause or archive an existing campaign before publishing a new one." and return early (don't proceed to build).
 
-### 2. CreativeChecklistCard — Add format guidance badges
-- For image items: show a small info tooltip or inline text: "Images: upload square (1080×1080) first, then add a 9:16 version"
-- For video items: show "Videos: 9:16 vertical only"
+Also add a visible warning in the QA check stage or configure stage if the user is at 9 or 10 live campaigns.
 
-### 3. ProductionManager — Auto-extend fallback logic notation
-- When building the campaign (no code change to Meta build needed), if a square image has no `_vertical` asset, add a metadata flag `auto_extend: true` to signal downstream that Meta's default color-bar behavior will apply
-- Update the toast/status to inform users: "No 9:16 version — Meta will auto-extend with color bars"
+**Files**: `src/pages/CampaignBuilder.tsx`
 
-### 4. BYOCreativeUploader — Add format guidance to the upload step
-- Below the drop zone, add a concise format guide card:
-  - **Images**: "Upload your square (1:1) version first. You'll be prompted to add a 9:16 Stories version next."
-  - **Videos**: "9:16 vertical format only."
-- This sets expectations before users even start uploading
+---
 
-### 5. AssetUploader — Update recommended formats section
-- Update the "Recommended Formats" card to explicitly mention the dual-upload flow for images
+## 2. Clean up Meta Settings page — remove duplication, rename readiness checklist, add "working on it" note
 
-## Files to Modify
-1. `src/components/creative/CreativeChecklistCard.tsx` — Redesign post-upload section with prominent 9:16 prompt and fallback messaging
-2. `src/components/creative/ProductionManager.tsx` — Add auto-extend flag when no vertical version exists
-3. `src/components/creative/BYOCreativeUploader.tsx` — Add format guidance below drop zone
-4. `src/components/AssetUploader.tsx` — Update recommended formats copy
+The current MetaSettings page (`src/pages/MetaSettings.tsx`) shows three separate cards that overlap in content:
+- **Connection Status Card** (lines 322-760) — shows ad account, page, Instagram, token status
+- **MetaReadinessChecklist** (lines 762-772) — shows the same 4 items (page, Instagram, ad account, pixel) with red X marks
+- **PixelVerificationCard** (lines 826-835) — dedicated pixel card
 
-## Technical Notes
-- No database schema changes needed — the `_vertical` suffix convention and `is_vertical_version` flag already exist
-- The `auto_extend` flag is informational only; Meta handles the actual color-bar extension server-side
-- Video 9:16 enforcement already exists via `validateVideoAspectRatio`
+The readiness checklist duplicates what the connection card already shows and the red X icons alarm users unnecessarily.
+
+### Changes to `MetaReadinessChecklist.tsx`:
+- Rename title from "Getting Your Ads Ready" to "Connection Status"
+- Replace red `XCircle` icons with amber/neutral `Clock` or `Minus` icons for incomplete items — less alarming
+- Add an info banner at the top: "We're actively working with Meta to finalize full verification. Your connection is working — this checklist will update automatically within 24-48 hours."
+- For incomplete items, change the background from `bg-destructive/5` to `bg-amber-500/5` (softer)
+
+### Changes to `MetaSettings.tsx`:
+- Only show `MetaReadinessChecklist` when the user is NOT fully connected (when `!isConnected`). When connected, the connection card already shows everything.
+- Remove the `PixelVerificationCard` from showing separately when `MetaReadinessChecklist` is visible (it already has a pixel row). Keep it only when connected.
+
+**Files**: `src/components/MetaReadinessChecklist.tsx`, `src/pages/MetaSettings.tsx`
 
