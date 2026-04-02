@@ -85,7 +85,10 @@ export function CampaignBuilderForm({
     answers.additionalPosts || []
   );
 
-  // Location targeting state
+  // Location targeting state — always visible, default to USA
+  const [locationMode, setLocationMode] = useState<'country' | 'specific'>(
+    answers.locationTargeting?.addresses?.length > 0 ? 'specific' : 'country'
+  );
   const [showSmartLocation, setShowSmartLocation] = useState(
     !!answers.locationTargeting && !usesLocationTargeting
   );
@@ -97,6 +100,9 @@ export function CampaignBuilderForm({
   );
   const [locationRadius, setLocationRadius] = useState(
     answers.locationTargeting?.radius || defaultRadius
+  );
+  const [selectedCountries, setSelectedCountries] = useState<string[]>(
+    answers.locationTargeting?.countries || ["United States"]
   );
 
   // Smart location detection for non-local strategies
