@@ -142,7 +142,7 @@ export function MobileCampaignBuilder({
       } : {}),
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts, showSmartLocation, locationAddresses, locationRadius]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationMode, locationAddresses, locationRadius, selectedCountries]);
 
   const handleNext = () => { if (step < 2) setStep(step + 1); };
   const handleBack = () => { if (step > 1) setStep(step - 1); };
