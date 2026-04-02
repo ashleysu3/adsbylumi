@@ -111,6 +111,18 @@ export function AdPreviewModal({
     inferredFileType.startsWith("video") ||
     /\.(mp4|mov|webm|m4v)$/i.test(assetUrl || "");
 
+  // Resolve vertical (9:16) asset for Stories/Reels
+  const verticalAssetUrl = verticalAsset?.file_url || null;
+  const verticalFileType = verticalAsset?.file_type || "";
+  const isVerticalVideo = verticalFileType.startsWith("video") || /\.(mp4|mov|webm|m4v)$/i.test(verticalAssetUrl || "");
+  // Use vertical asset for vertical placements when available
+  const getAssetForPlacement = (placement: "feed" | "vertical") => {
+    if (placement === "vertical" && verticalAssetUrl) {
+      return { url: verticalAssetUrl, isVid: isVerticalVideo };
+    }
+    return { url: assetUrl, isVid: isVideo };
+  };
+
   const pickFirstNonEmpty = (...sets: CopyVariation[][]): CopyVariation[] => {
     for (const set of sets) {
       if (set.length > 0) return set;
