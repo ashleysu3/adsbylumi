@@ -1076,9 +1076,14 @@ function LumiAssistantUI({
         recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
         userEmail={userEmail}
       />
-    </>
-  );
-}
+      {/* Help Ticket Modal */}
+      <BugReportModal 
+        open={helpTicketOpen} 
+        onOpenChange={setHelpTicketOpen}
+        context={`help_request:${context}`}
+        recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
+        userEmail={userEmail}
+      />
 
 // Context for managing recommendations across the app
 interface LumiAssistantContextType {
