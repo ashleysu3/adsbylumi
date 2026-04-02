@@ -793,6 +793,22 @@ export default function MetaSettings() {
           </CardContent>
         </Card>
 
+        {/* Setup Diagnostic — show when connected and diagnostic has results */}
+        {isConnected && diagnosticResult && (
+          <MetaSetupDiagnostic
+            result={diagnosticResult}
+            brandId={brand?.id || ''}
+            onRecheck={handleDiagnosticRecheck}
+            rechecking={diagnosticLoading}
+            recheckCount={diagnosticRecheckCount}
+            onAskLumi={() => {
+              // Open Lumi with meta-setup context
+              const event = new CustomEvent('open-lumi', { detail: { context: 'meta-setup', message: 'I need help with my Meta setup' } });
+              window.dispatchEvent(event);
+            }}
+          />
+        )}
+
         {/* Meta Readiness Checklist — only show when NOT fully connected */}
         {brand?.id && !isConnected && (
           <MetaReadinessChecklist
