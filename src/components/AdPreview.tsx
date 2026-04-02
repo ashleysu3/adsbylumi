@@ -59,6 +59,14 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl, isDmC
   const assetUrl = concept.linkedAsset?.url || conceptData.uploaded_asset_url || conceptData.asset_url || null;
   const assetType = concept.linkedAsset?.type || conceptData.linkedAsset?.file_type || 'image';
   const isVideo = assetType.includes('video') || /\.(mp4|mov|webm|m4v)$/i.test(assetUrl || '');
+
+  // Resolve vertical (9:16) asset for Stories/Reels
+  const verticalAssetUrl = concept.verticalAsset?.url || conceptData.verticalAsset?.url || conceptData.vertical_asset_url || null;
+  const verticalAssetType = concept.verticalAsset?.type || conceptData.verticalAsset?.type || assetType;
+  const isVerticalVideo = verticalAssetType.includes('video') || /\.(mp4|mov|webm|m4v)$/i.test(verticalAssetUrl || '');
+  // For stories: use vertical asset if available, otherwise fall back to main asset
+  const storiesAssetUrl = verticalAssetUrl || assetUrl;
+  const storiesIsVideo = verticalAssetUrl ? isVerticalVideo : isVideo;
   
   // Whether the asset needs Meta-style padding in vertical containers (square or wider in 9:16)
   const needsMetaPadding = mediaAspect !== null && mediaAspect > 0.7;
