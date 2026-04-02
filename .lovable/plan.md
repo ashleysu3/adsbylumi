@@ -1,78 +1,131 @@
 
 
-# Five Changes: CTA Explainer, Studio Button Labels, Universal Location, Lumi Escalation, Goal Wording
+# Meta Setup Assistance System — Full Build
 
-## 1. Add CTA explainer tooltip in Ad Preview
+## Priority Order
+1 → Pre-Connection Diagnostic Scanner
+4 → Lumi Setup Concierge Mode
+2 → Interactive Fix-It Guides
+3 → Auto-Linking Enhancements (already partially done)
+5 → Call Booking Fallback
 
-**File:** `src/components/AdPreview.tsx`
+---
 
-Next to the CTA button in the feed preview, add a small info icon with a tooltip (or a subtle note below the CTA) that explains two things:
-- **Color**: "This button will match Meta's native CTA styling in your live ad — the color shown here is just our preview color and can't be customized."
-- **Why this CTA**: "Your CTA was pre-selected as part of your campaign strategy. 'Learn More' drives clicks to your landing page, which is ideal for [objective]. Lumi chose this based on your campaign goal."
+## Phase 1: Pre-Connection Diagnostic Scanner
 
-Pull the `cta` value and the workspace objective/template to show a dynamic reason. Add a `GlossaryTooltip`-style popover or a collapsible info card below the CTA button area.
+**New Edge Function:** `supabase/functions/diagnose-meta-setup/index.ts`
 
-Also add similar explainer in `src/components/creative/AdPreviewModal.tsx`.
+After OAuth completes and assets are fetched, run a diagnostic scan that audits:
+- **Facebook Page exists?** — Check if any pages were returned
+- **Instagram linked to Page?** — Check if IG accounts have a `linked_page_id` matching a discovered page
+- **Ad Account active?** — Check `account_status === 1`
+- **Ad Account linked to Page?** — Query `/{ad_account_id}/assigned_pages` to verify
+- **Billing set up?** — Query `/{ad_account_id}?fields=funding_source_details` to check for payment method
+- **Pixel exists?** — Query `/{ad_account_id}/adspixels` to check for at least one pixel
 
-## 2. Soften Creative Studio "Continue" button labels
+Returns a structured health report with `status` (pass/warn/fail) and plain-English `fix` instructions per item.
 
-**File:** `src/pages/CreativeStudio.tsx`
+**New Component:** `src/components/MetaSetupDiagnostic.tsx`
 
-Replace the heavy "Continue to X" wording with lighter, friendlier labels:
-- `"Continue to Ad Copy"` → `"See Ad Copy"` or `"View Ad Copy"`
-- `"Continue to Build"` → `"Preview & Build"`
-- `"Next Concept"` stays as-is (already light)
+A card that renders the diagnostic results as a visual checklist with:
+- Green check / amber warning / red X per item
+- Plain-English description of what's wrong and how to fix it
+- Expandable "How to fix" section per item with step-by-step instructions
+- Overall "health score" (e.g., 5/6 ready)
 
-This affects the `getTopRightAction()` function (~lines 1122-1134) and the inline buttons (~lines 1487-1550).
+**Integration Points:**
+- `MetaAccountConnect.tsx` — After OAuth callback returns assets, auto-invoke the diagnostic function and store results in state. Show the diagnostic card above the account/page selection step.
+- `MetaSettings.tsx` — Show diagnostic card when connected but health isn't perfect (replaces/augments the existing `MetaReadinessChecklist`).
+- `meta-oauth-callback/index.ts` — Add billing + pixel checks to the existing asset discovery flow so the diagnostic data comes back with the initial OAuth response (no second round-trip needed).
 
-## 3. Add universal location targeting to all campaigns
+---
 
-**File:** `src/components/CampaignBuilderForm.tsx`
+## Phase 2: Lumi Setup Concierge Mode
 
-Currently, location targeting only shows for template-based local strategies OR when smart detection fires. Change this to **always** show a "Where should your ad be shown?" section in the budget card area for all campaigns:
+**File:** `supabase/functions/lumi-chat/index.ts`
 
-- Default country: "United States" (pre-selected)
-- Allow adding additional countries from a simple list/autocomplete
-- OR toggle to narrow down with address/city/state using existing `LocationAutocomplete`
-- Move this above the Ad Schedule card so it sits right after budget
-- Keep the existing smart-detection prompt as a secondary nudge if applicable
+Add a new context mode `meta-setup-concierge` with a dedicated system prompt:
 
-Also update `MobileCampaignBuilder.tsx` with the same universal location section.
+```
+You are Lumi in Setup Concierge mode. The user is trying to connect their Meta Business account.
+Here is their current setup status: {diagnostic_results}
 
-## 4. Lumi escalation: "Did that help?" + help desk ticket
+Guide them step-by-step through fixing each issue. Be specific — mention exact menu paths in Meta Business Suite.
+For example: "Go to business.facebook.com → Settings → Pages → Add → select your Page"
 
-**Files:** `supabase/functions/lumi-chat/index.ts`, `src/components/LumiAssistant.tsx`
+Common issues and fixes:
+- No Facebook Page: Create one at facebook.com/pages/create
+- Instagram not linked: Instagram app → Settings → Account → Linked Accounts → Facebook
+- No ad account: business.facebook.com → Settings → Ad Accounts → Add
+- No billing: business.facebook.com → Billing → Payment Methods → Add
+- No pixel: business.facebook.com → Events Manager → Connect Data Sources → Web → Meta Pixel
+```
 
-### Edge function changes:
-In the system prompt, add a rule: after 3+ back-and-forth messages on the same topic without resolution (or if the user expresses continued confusion), the AI should include a `contact_support` action type alongside its response, asking "Did that help, or would you like to speak to a person?"
+**File:** `src/components/LumiAssistant.tsx`
 
-Add `'contact_support'` to the `type` enum in the tool schema (alongside `navigate` and `bug_report`).
+- Add `meta-setup` to `contextStarters` with setup-specific quick actions:
+  - "Help me connect" / "I don't have a Facebook Page" / "My Instagram isn't showing" / "Where do I add billing?"
+- When on `/meta-settings`, auto-inject diagnostic results into the Lumi context so the AI knows exactly what's missing
 
-### Frontend changes:
-In `LumiAssistant.tsx`, handle the `contact_support` action type by opening a new **Help Ticket Modal** — reuse the `BugReportModal` component but with adjusted labels:
-- Title: "Contact Support"
-- Description placeholder: "Describe what you need help with..."
-- Category: "help_request" instead of "bug"
-- Still sends through the same `send-bug-report` edge function (or `manage-bug-report`) with a `type: 'help_request'` field so it routes through the same admin system
+**File:** `src/pages/MetaSettings.tsx`
 
-## 5. Change "book a call" goal wording
+- Add a prominent "Need help? Ask Lumi" button near the diagnostic card that opens Lumi with the setup concierge context pre-loaded
 
-**File:** `src/pages/Create.tsx` (~line 852)
+---
 
-Change:
-- Title: `"Get people to book a call with me"` → `"Get people to contact me"`
-- Description: `"Fill your calendar with discovery calls or consultations"` → `"Drive inquiries through forms, calls, or applications"`
+## Phase 3: Interactive Fix-It Guides
+
+**File:** `src/components/MetaSetupDiagnostic.tsx` (extend)
+
+For each failed diagnostic item, add an expandable guide section with:
+- Step-by-step numbered instructions with exact Meta Business Suite menu paths
+- External links that open the exact Meta settings page (e.g., `https://business.facebook.com/settings/pages`)
+- Estimated time to complete (e.g., "~2 minutes")
+- A "Done — Re-check" button that re-runs just that specific diagnostic
+
+Top 3 fix-it guides:
+1. **Instagram not linked to Page**: Settings → Instagram Accounts → Connect → Log in → Select Page
+2. **No billing/payment method**: Business Settings → Billing → Payment Methods → Add Card
+3. **No Facebook Page**: facebook.com/pages/create → Fill details → Connect to Business Manager
+
+---
+
+## Phase 4: Auto-Linking Enhancements
+
+**File:** `supabase/functions/meta-oauth-callback/index.ts`
+
+The auto-connect IG → ad account logic already exists (lines 316-340). Enhance it:
+- When only 1 ad account + 1 page + 1 IG account are found, auto-select all three and save to the brand record immediately (skip the selection UI entirely)
+- Log auto-selections so user sees "We automatically selected your only ad account, Page, and Instagram" in a success toast
+- After auto-selection, still show the diagnostic card so they can verify everything looks right
+
+**File:** `src/components/MetaAccountConnect.tsx`
+
+- Detect single-option scenarios and show a confirmation card instead of radio buttons: "We found one ad account (Act 12345), one Page (My Brand), and one Instagram (@mybrand). Does this look right?"
+- Single "Confirm & Continue" button
+
+---
+
+## Phase 5: Call Booking Fallback
+
+**File:** `src/components/MetaSetupDiagnostic.tsx` (extend)
+
+- After 2+ failed re-checks OR if diagnostic shows 3+ failing items, show a "Need hands-on help?" card with:
+  - Brief message: "Some setups need a quick walkthrough. Book a free 15-minute setup call with our team."
+  - Button that either opens a Calendly/booking link or submits a help ticket through the existing bug report system with category `setup_help`
+  - The ticket auto-includes the diagnostic results so support knows exactly what's wrong
+
+---
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `src/components/AdPreview.tsx` | CTA explainer tooltip |
-| `src/components/creative/AdPreviewModal.tsx` | CTA explainer tooltip |
-| `src/pages/CreativeStudio.tsx` | Soften continue button labels |
-| `src/components/CampaignBuilderForm.tsx` | Universal location targeting section |
-| `src/components/MobileCampaignBuilder.tsx` | Universal location targeting section |
-| `supabase/functions/lumi-chat/index.ts` | Add escalation logic + contact_support action |
-| `src/components/LumiAssistant.tsx` | Handle contact_support action, open help ticket modal |
-| `src/pages/Create.tsx` | Update "book a call" goal text |
+| `supabase/functions/meta-oauth-callback/index.ts` | Add billing + pixel diagnostic checks to response; auto-select single-option scenarios |
+| `supabase/functions/diagnose-meta-setup/index.ts` | **New** — standalone diagnostic function for re-checks |
+| `src/components/MetaSetupDiagnostic.tsx` | **New** — diagnostic card with health report, fix-it guides, re-check, and booking fallback |
+| `src/components/MetaAccountConnect.tsx` | Show diagnostic after OAuth; single-option confirmation flow |
+| `src/pages/MetaSettings.tsx` | Integrate diagnostic card; "Ask Lumi" button |
+| `supabase/functions/lumi-chat/index.ts` | Add setup concierge system prompt + context handling |
+| `src/components/LumiAssistant.tsx` | Add meta-setup context starters; inject diagnostic data |
 
