@@ -896,10 +896,11 @@ function LumiAssistantUI({
                                         ? "bg-gradient-lumi text-white hover:opacity-90" 
                                         : ""
                                     )}
-                                    variant={action.type === 'bug_report' ? 'outline' : 'default'}
+                                    variant={action.type === 'bug_report' || action.type === 'contact_support' ? 'outline' : 'default'}
                                   >
                                     {action.type === 'navigate' && <ArrowRight className="h-3 w-3" />}
                                     {action.type === 'bug_report' && <Bug className="h-3 w-3" />}
+                                    {action.type === 'contact_support' && <Headphones className="h-3 w-3" />}
                                     {action.label}
                                   </Button>
                                 ))}

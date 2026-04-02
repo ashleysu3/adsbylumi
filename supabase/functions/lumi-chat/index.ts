@@ -161,8 +161,8 @@ Deno.serve(async (req) => {
                       properties: {
                         type: {
                           type: 'string',
-                          enum: ['navigate', 'bug_report'],
-                          description: 'navigate = go to a page, bug_report = open bug report form'
+                          enum: ['navigate', 'bug_report', 'contact_support'],
+                          description: 'navigate = go to a page, bug_report = open bug report form, contact_support = open help ticket form'
                         },
                         label: {
                           type: 'string',
