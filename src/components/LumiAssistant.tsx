@@ -158,6 +158,7 @@ function LumiAssistantUI({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [helpTicketOpen, setHelpTicketOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
