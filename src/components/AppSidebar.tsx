@@ -165,6 +165,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
     : "Meta Connection";
 
   return (
+    <>
     <Sidebar collapsible="icon">
       {/* Header: Logo + Brand Selector */}
       <SidebarHeader className="p-3 pb-2">
