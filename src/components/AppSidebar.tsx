@@ -379,6 +379,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   <LadybugIcon className="h-4 w-4" />
                   {!collapsed && <span>Report a Bug</span>}
                 </SidebarMenuButton>
+              </SidebarMenuItem>
               {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Admin">
