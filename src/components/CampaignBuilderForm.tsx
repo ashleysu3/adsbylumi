@@ -677,3 +677,60 @@ function LumiSettingRow({
     </div>
   );
 }
+
+const COMMON_COUNTRIES = [
+  "United States", "Canada", "United Kingdom", "Australia", "Germany",
+  "France", "Spain", "Italy", "Netherlands", "Brazil", "Mexico", "India",
+  "Japan", "South Korea", "New Zealand", "Ireland", "Sweden", "Norway",
+  "Denmark", "Switzerland", "Belgium", "Austria", "Portugal", "Singapore",
+];
+
+function CountryAdder({
+  selectedCountries,
+  onAdd,
+}: {
+  selectedCountries: string[];
+  onAdd: (country: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const filteredCountries = COMMON_COUNTRIES.filter(
+    (c) =>
+      !selectedCountries.includes(c) &&
+      c.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <Input
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        placeholder="Add another country..."
+        className="text-sm"
+      />
+      {isOpen && search.length > 0 && filteredCountries.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-lg overflow-hidden max-h-40 overflow-y-auto">
+          {filteredCountries.slice(0, 6).map((country) => (
+            <button
+              key={country}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+              onClick={() => {
+                onAdd(country);
+                setSearch("");
+                setIsOpen(false);
+              }}
+            >
+              {country}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
