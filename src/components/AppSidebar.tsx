@@ -429,6 +429,13 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-    </Sidebar>
+     </Sidebar>
+      <BugReportModal
+        open={bugReportOpen}
+        onOpenChange={setBugReportOpen}
+        context={location.pathname}
+        userEmail={userEmail}
+      />
+    </>
   );
 }
