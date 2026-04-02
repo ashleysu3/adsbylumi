@@ -149,16 +149,21 @@ export function CampaignBuilderForm({
 
   const addLocationAddress = () => {
     setLocationAddresses([...locationAddresses, ""]);
+    setConfirmedAddresses([...confirmedAddresses, false]);
   };
 
   const removeLocationAddress = (index: number) => {
     setLocationAddresses(locationAddresses.filter((_, i) => i !== index));
+    setConfirmedAddresses(confirmedAddresses.filter((_, i) => i !== index));
   };
 
-  const updateLocationAddress = (index: number, value: string) => {
+  const updateLocationAddress = (index: number, value: string, isConfirmed = false) => {
     const updated = [...locationAddresses];
     updated[index] = value;
     setLocationAddresses(updated);
+    const updatedConfirmed = [...confirmedAddresses];
+    updatedConfirmed[index] = isConfirmed;
+    setConfirmedAddresses(updatedConfirmed);
   };
 
   return (
