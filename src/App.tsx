@@ -12,7 +12,7 @@ import { LumiAssistantProvider } from "@/components/LumiAssistant";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { GlobalAnnouncementBanner } from "@/components/GlobalAnnouncementBanner";
 import SplashScreen from "@/components/SplashScreen";
-import { FloatingBugButton } from "@/components/FloatingBugButton";
+
 import Index from "./pages/Index";
 import Sales from "./pages/Sales";
 import Waitlist from "./pages/Waitlist";
