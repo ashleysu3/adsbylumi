@@ -399,7 +399,6 @@ export function CampaignBuilderForm({
           )}
         </CardContent>
       </Card>
-      )}
 
       {/* Ad Schedule */}
       <Card>
