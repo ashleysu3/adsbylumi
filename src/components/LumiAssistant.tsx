@@ -196,6 +196,7 @@ function LumiAssistantUI({
     if (location.pathname.includes('/creative-studio')) return 'creative';
     if (location.pathname.includes('/data')) return 'data';
     if (location.pathname.includes('/campaigns')) return 'campaigns';
+    if (location.pathname.includes('/meta-settings')) return 'meta-setup';
     if (location.pathname.includes('/settings')) return 'settings';
     if (location.pathname.includes('/dashboard')) return 'dashboard';
     if (location.pathname.includes('/start')) return 'start';
