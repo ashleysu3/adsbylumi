@@ -556,6 +556,7 @@ export function MetaAccountConnect({
     setSelectedInstagram("");
     setStep('connect');
     setOauthLoading(false);
+    setDiagnosticResult(null);
   };
 
   const isConnected = currentAccountId && currentPageId;
