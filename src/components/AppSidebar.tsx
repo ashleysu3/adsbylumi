@@ -57,6 +57,8 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   const [hasCampaigns, setHasCampaigns] = useState(false);
   const [metaStatus, setMetaStatus] = useState<'connected' | 'expired' | 'disconnected'>('disconnected');
   const [hasRedAlert, setHasRedAlert] = useState(false);
+  const [bugReportOpen, setBugReportOpen] = useReactState(false);
+  const [userEmail, setUserEmail] = useReactState("");
 
   // Lightweight check for campaign count
   useEffect(() => {
