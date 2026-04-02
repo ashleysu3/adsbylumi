@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FolderKanban, Sparkles, BarChart3, Library, Building2, BookOpen, Settings, Shield, LogOut, Package, Link2, LifeBuoy, Plus, CheckCircle2, AlertTriangle, Gift, Wrench, TrendingUp, Lock, Palette, LayoutGrid } from "lucide-react";
+import { LadybugIcon } from "@/components/LadybugIcon";
+import { useState as useReactState } from "react";
+import { BugReportModal } from "@/components/BugReportModal";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
 import { SparkleIcon } from "@/components/SparkleIcon";
@@ -54,6 +57,15 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   const [hasCampaigns, setHasCampaigns] = useState(false);
   const [metaStatus, setMetaStatus] = useState<'connected' | 'expired' | 'disconnected'>('disconnected');
   const [hasRedAlert, setHasRedAlert] = useState(false);
+  const [bugReportOpen, setBugReportOpen] = useReactState(false);
+  const [userEmail, setUserEmail] = useReactState("");
+
+  // Fetch user email for bug reports
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setUserEmail(user.email);
+    });
+  }, []);
 
   // Lightweight check for campaign count
   useEffect(() => {
@@ -153,6 +165,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
     : "Meta Connection";
 
   return (
+    <>
     <Sidebar collapsible="icon">
       {/* Header: Logo + Brand Selector */}
       <SidebarHeader className="p-3 pb-2">
@@ -357,6 +370,16 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Report a Bug"
+                  onClick={() => setBugReportOpen(true)}
+                  className="transition-all duration-200"
+                >
+                  <LadybugIcon className="h-4 w-4" />
+                  {!collapsed && <span>Report a Bug</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Admin">
@@ -408,6 +431,13 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-    </Sidebar>
+     </Sidebar>
+      <BugReportModal
+        open={bugReportOpen}
+        onOpenChange={setBugReportOpen}
+        context={location.pathname}
+        userEmail={userEmail}
+      />
+    </>
   );
 }

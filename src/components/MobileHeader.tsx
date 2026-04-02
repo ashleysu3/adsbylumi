@@ -1,8 +1,11 @@
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Shield, LogOut, Library, Settings, Building2, BookOpen, Home, Link2, Gift, Package } from "lucide-react";
+import { LadybugIcon } from "@/components/LadybugIcon";
+import { BugReportModal } from "@/components/BugReportModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandSelector } from "@/components/BrandSelector";
@@ -17,6 +20,8 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: MobileHeaderProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [bugReportOpen, setBugReportOpen] = useState(false);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -25,6 +30,7 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
   };
 
   return (
+    <>
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-lg border-b border-border">
       <div className="flex items-center justify-between h-14 px-4">
         {/* Logo */}
@@ -104,6 +110,10 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
               <Gift className="mr-3 h-4 w-4" />
               Refer & Earn
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setBugReportOpen(true)} className="min-h-[44px]">
+              <LadybugIcon className="mr-3 h-4 w-4" />
+              Report a Bug
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="min-h-[44px] text-destructive">
               <LogOut className="mr-3 h-4 w-4" />
@@ -114,5 +124,12 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
         </div>
       </div>
     </header>
+    <BugReportModal
+      open={bugReportOpen}
+      onOpenChange={setBugReportOpen}
+      context={location.pathname}
+      userEmail={user?.email || ""}
+    />
+    </>
   );
 }
