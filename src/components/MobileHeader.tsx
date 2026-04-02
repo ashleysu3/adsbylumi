@@ -20,6 +20,7 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: MobileHeaderProps) {
   const navigate = useNavigate();
+  const [bugReportOpen, setBugReportOpen] = useState(false);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
