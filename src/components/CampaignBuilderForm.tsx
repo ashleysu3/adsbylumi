@@ -357,11 +357,12 @@ export function CampaignBuilderForm({
                 <div className="space-y-2">
                   {locationAddresses.map((address, index) => (
                     <div key={index} className="flex gap-2">
-                      <Input
-                        placeholder="Enter your business address"
+                      <LocationAutocomplete
                         value={address}
-                        onChange={(e) => updateLocationAddress(index, e.target.value)}
-                        className="flex-1"
+                        onChange={(val, loc) => updateLocationAddress(index, val, !!loc)}
+                        brandId={workspace.brand_id}
+                        confirmed={confirmedAddresses[index]}
+                        placeholder="Enter your business address"
                       />
                       {locationAddresses.length > 1 && (
                         <Button
