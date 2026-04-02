@@ -206,6 +206,8 @@ function LumiAssistantUI({
       handleCloseChat();
     } else if (action.type === 'bug_report') {
       setBugReportOpen(true);
+    } else if (action.type === 'contact_support') {
+      setHelpTicketOpen(true);
     }
   };
 

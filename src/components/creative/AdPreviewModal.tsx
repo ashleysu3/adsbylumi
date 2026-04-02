@@ -454,6 +454,20 @@ export function AdPreviewModal({
                           Learn More
                           <ExternalLink className="h-4 w-4" />
                         </button>
+                        <div className="mt-2 flex items-start gap-1.5 text-[10px] text-muted-foreground">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button type="button" className="shrink-0 mt-0.5">
+                                <Info className="h-3 w-3" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[260px] text-xs space-y-1.5 p-3">
+                              <p><span className="font-semibold">Button color:</span> This will match Meta's native CTA styling in your live ad — the color shown here is just our preview color.</p>
+                              <p><span className="font-semibold">Why this CTA:</span> Pre-selected as part of your campaign strategy to drive the best results for your goal.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <span>CTA color & style will match Meta's native design in your live ad</span>
+                        </div>
                       </div>
                     )}
                     
