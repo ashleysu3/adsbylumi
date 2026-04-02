@@ -293,6 +293,12 @@ const Sales = () => {
         </div>
       </section>
 
+      {/* ═══════ TESTIMONIALS ═══════ */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/5 to-primary/10 pointer-events-none" />
+        <TestimonialCarousel />
+      </div>
+
       {/* ═══════ SECTION 5 — WHY LUMI ≠ CHATGPT ═══════ */}
       <section className="py-16 sm:py-24 bg-muted/30">
         <div className="container mx-auto px-4">
