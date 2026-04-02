@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, createContext, useContext, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, ArrowRight, MessageCircle, Send, Loader2, Sparkle, History, CheckCircle, XCircle, Minimize2, Maximize2, Bug } from "lucide-react";
+import { X, Sparkles, ArrowRight, MessageCircle, Send, Loader2, Sparkle, History, CheckCircle, XCircle, Minimize2, Maximize2, Bug, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -158,6 +158,7 @@ function LumiAssistantUI({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);
+  const [helpTicketOpen, setHelpTicketOpen] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -205,6 +206,8 @@ function LumiAssistantUI({
       handleCloseChat();
     } else if (action.type === 'bug_report') {
       setBugReportOpen(true);
+    } else if (action.type === 'contact_support') {
+      setHelpTicketOpen(true);
     }
   };
 
@@ -457,16 +460,17 @@ function LumiAssistantUI({
                                   key={actionIdx}
                                   size="sm"
                                   onClick={() => handleActionClick(action)}
-                                  className={cn(
+                                   className={cn(
                                     "justify-start gap-2 h-auto py-1.5 px-3 text-xs",
                                     action.type === 'navigate' 
                                       ? "bg-gradient-lumi text-white hover:opacity-90" 
                                       : ""
                                   )}
-                                  variant={action.type === 'bug_report' ? 'outline' : 'default'}
+                                  variant={action.type === 'bug_report' || action.type === 'contact_support' ? 'outline' : 'default'}
                                 >
                                   {action.type === 'navigate' && <ArrowRight className="h-3 w-3" />}
                                   {action.type === 'bug_report' && <Bug className="h-3 w-3" />}
+                                  {action.type === 'contact_support' && <Headphones className="h-3 w-3" />}
                                   {action.label}
                                 </Button>
                               ))}
@@ -603,6 +607,14 @@ function LumiAssistantUI({
           open={bugReportOpen} 
           onOpenChange={setBugReportOpen}
           context={context}
+          recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
+          userEmail={userEmail}
+        />
+        {/* Help Ticket Modal */}
+        <BugReportModal 
+          open={helpTicketOpen} 
+          onOpenChange={setHelpTicketOpen}
+          context={`help_request:${context}`}
           recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
           userEmail={userEmail}
         />
@@ -884,10 +896,11 @@ function LumiAssistantUI({
                                         ? "bg-gradient-lumi text-white hover:opacity-90" 
                                         : ""
                                     )}
-                                    variant={action.type === 'bug_report' ? 'outline' : 'default'}
+                                    variant={action.type === 'bug_report' || action.type === 'contact_support' ? 'outline' : 'default'}
                                   >
                                     {action.type === 'navigate' && <ArrowRight className="h-3 w-3" />}
                                     {action.type === 'bug_report' && <Bug className="h-3 w-3" />}
+                                    {action.type === 'contact_support' && <Headphones className="h-3 w-3" />}
                                     {action.label}
                                   </Button>
                                 ))}
@@ -1062,6 +1075,14 @@ function LumiAssistantUI({
         open={bugReportOpen} 
         onOpenChange={setBugReportOpen}
         context={context}
+        recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
+        userEmail={userEmail}
+      />
+      {/* Help Ticket Modal */}
+      <BugReportModal 
+        open={helpTicketOpen} 
+        onOpenChange={setHelpTicketOpen}
+        context={`help_request:${context}`}
         recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
         userEmail={userEmail}
       />

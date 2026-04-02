@@ -25,6 +25,7 @@ import {
   Calendar,
   Plus,
   X,
+  Globe,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
@@ -85,7 +86,10 @@ export function CampaignBuilderForm({
     answers.additionalPosts || []
   );
 
-  // Location targeting state
+  // Location targeting state — always visible, default to USA
+  const [locationMode, setLocationMode] = useState<'country' | 'specific'>(
+    answers.locationTargeting?.addresses?.length > 0 ? 'specific' : 'country'
+  );
   const [showSmartLocation, setShowSmartLocation] = useState(
     !!answers.locationTargeting && !usesLocationTargeting
   );
@@ -97,6 +101,9 @@ export function CampaignBuilderForm({
   );
   const [locationRadius, setLocationRadius] = useState(
     answers.locationTargeting?.radius || defaultRadius
+  );
+  const [selectedCountries, setSelectedCountries] = useState<string[]>(
+    answers.locationTargeting?.countries || ["United States"]
   );
 
   // Smart location detection for non-local strategies
@@ -130,20 +137,22 @@ export function CampaignBuilderForm({
       
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
-      // Location targeting — from template OR smart detection
-      ...((usesLocationTargeting || showSmartLocation) && {
+      // Location targeting
+      ...(usesLocationTargeting || locationMode === 'specific' ? {
         locationTargeting: {
           addresses: locationAddresses.filter(a => a.trim()),
           radius: locationRadius,
         },
-      }),
-      // Clear location targeting if smart location was toggled off
-      ...(!usesLocationTargeting && !showSmartLocation && { locationTargeting: undefined }),
+      } : locationMode === 'country' ? {
+        locationTargeting: {
+          countries: selectedCountries,
+        },
+      } : {}),
       // End date — only include if user explicitly set one
       ...(hasEndDate && endDate ? { endDate } : {}),
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation, locationMode, selectedCountries]);
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
@@ -244,173 +253,153 @@ export function CampaignBuilderForm({
         </CardContent>
       </Card>
 
-      {/* Location Targeting — only for templates that need it */}
-      {usesLocationTargeting && (
-        <Card>
-          <CardContent className="p-4 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <MapPin className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Location Targeting</p>
-                <p className="text-xs text-muted-foreground">
-                  {templateStrategy?.location_type === "places"
-                    ? "Target specific locations like events, venues, or high-traffic areas"
-                    : "Target customers near your business location"}
-                </p>
-              </div>
+      {/* Location Targeting — Universal */}
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <MapPin className="h-5 w-5 text-primary" />
             </div>
-
-            {/* Address inputs */}
-            <div className="space-y-2">
-              {locationAddresses.map((address, index) => (
-                <div key={index} className="flex gap-2">
-                  <LocationAutocomplete
-                    value={address}
-                    onChange={(val, loc) => updateLocationAddress(index, val, !!loc)}
-                    brandId={workspace.brand_id}
-                    confirmed={confirmedAddresses[index]}
-                    placeholder={
-                      templateStrategy?.location_type === "places"
-                        ? "e.g., Convention Center, 123 Main St, City, State"
-                        : "Enter your business address"
-                    }
-                  />
-                  {locationAddresses.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeLocationAddress(index)}
-                      className="shrink-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={addLocationAddress}
-                className="w-full gap-1 text-xs"
-              >
-                <Plus className="h-3 w-3" />
-                Add another location
-              </Button>
+            <div>
+              <p className="font-semibold text-sm">Where should your ad be shown?</p>
+              <p className="text-xs text-muted-foreground">
+                Choose countries or narrow down to specific locations
+              </p>
             </div>
+          </div>
 
-            {/* Radius slider */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Targeting radius</span>
-                <span className="text-sm font-bold text-primary">{locationRadius} miles</span>
-              </div>
-              <Slider
-                value={[locationRadius]}
-                onValueChange={([v]) => setLocationRadius(v)}
-                min={1}
-                max={50}
-                step={1}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>1 mi</span>
-                <span>50 mi</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Smart Location Prompt — for businesses that appear local but didn't pick a local strategy */}
-      {!usesLocationTargeting && locationDetection.isLocal && (
-        <Card className={showSmartLocation ? "border-primary/30" : ""}>
-          <CardContent className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <MapPin className="h-5 w-5 text-primary" />
-                </div>
+          {/* Smart location nudge */}
+          {!usesLocationTargeting && locationDetection.isLocal && locationMode === 'country' && (
+            <div className="p-3 rounded-lg border border-primary/20 bg-primary/5">
+              <div className="flex items-start gap-2">
+                <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-semibold text-sm">Does your business serve a specific area?</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    For example, {locationDetection.example}.
+                  <p className="text-xs font-medium">Lumi noticed your business may serve a specific area</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    For example, {locationDetection.example}.{" "}
+                    <button
+                      type="button"
+                      className="text-primary font-medium underline underline-offset-2"
+                      onClick={() => setLocationMode('specific')}
+                    >
+                      Narrow your targeting →
+                    </button>
                   </p>
                 </div>
               </div>
-              <Switch
-                checked={showSmartLocation}
-                onCheckedChange={(checked) => {
-                  setShowSmartLocation(checked);
-                  if (!checked) {
-                    setLocationAddresses([""]);
-                    setLocationRadius(defaultRadius);
-                  }
-                }}
+            </div>
+          )}
+
+          {/* Mode Toggle */}
+          <div className="flex gap-2">
+            <Button
+              variant={locationMode === 'country' ? 'default' : 'outline'}
+              size="sm"
+              className="flex-1 text-xs gap-1.5"
+              onClick={() => setLocationMode('country')}
+            >
+              <Globe className="h-3.5 w-3.5" />
+              By Country
+            </Button>
+            <Button
+              variant={locationMode === 'specific' ? 'default' : 'outline'}
+              size="sm"
+              className="flex-1 text-xs gap-1.5"
+              onClick={() => setLocationMode('specific')}
+            >
+              <MapPin className="h-3.5 w-3.5" />
+              Specific Location
+            </Button>
+          </div>
+
+          {locationMode === 'country' && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                {selectedCountries.map((country, idx) => (
+                  <Badge key={idx} variant="secondary" className="gap-1 pr-1">
+                    {country}
+                    {selectedCountries.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCountries(selectedCountries.filter((_, i) => i !== idx))}
+                        className="hover:bg-muted rounded-full p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </Badge>
+                ))}
+              </div>
+              <CountryAdder
+                selectedCountries={selectedCountries}
+                onAdd={(country) => setSelectedCountries([...selectedCountries, country])}
               />
             </div>
+          )}
 
-            {showSmartLocation && (
-              <div className="space-y-4 pt-1">
-                {/* Address inputs */}
-                <div className="space-y-2">
-                  {locationAddresses.map((address, index) => (
-                    <div key={index} className="flex gap-2">
-                      <LocationAutocomplete
-                        value={address}
-                        onChange={(val, loc) => updateLocationAddress(index, val, !!loc)}
-                        brandId={workspace.brand_id}
-                        confirmed={confirmedAddresses[index]}
-                        placeholder="Enter your business address"
-                      />
-                      {locationAddresses.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeLocationAddress(index)}
-                          className="shrink-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={addLocationAddress}
-                    className="w-full gap-1 text-xs"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Add another location
-                  </Button>
+          {locationMode === 'specific' && (
+            <div className="space-y-4">
+              {/* Address inputs */}
+              <div className="space-y-2">
+                {locationAddresses.map((address, index) => (
+                  <div key={index} className="flex gap-2">
+                    <LocationAutocomplete
+                      value={address}
+                      onChange={(val, loc) => updateLocationAddress(index, val, !!loc)}
+                      brandId={workspace.brand_id}
+                      confirmed={confirmedAddresses[index]}
+                      placeholder={
+                        usesLocationTargeting && templateStrategy?.location_type === "places"
+                          ? "e.g., Convention Center, 123 Main St, City, State"
+                          : "Enter an address, city, or state"
+                      }
+                    />
+                    {locationAddresses.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeLocationAddress(index)}
+                        className="shrink-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={addLocationAddress}
+                  className="w-full gap-1 text-xs"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add another location
+                </Button>
+              </div>
+
+              {/* Radius slider */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Targeting radius</span>
+                  <span className="text-sm font-bold text-primary">{locationRadius} miles</span>
                 </div>
-
-                {/* Radius slider */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Targeting radius</span>
-                    <span className="text-sm font-bold text-primary">{locationRadius} miles</span>
-                  </div>
-                  <Slider
-                    value={[locationRadius]}
-                    onValueChange={([v]) => setLocationRadius(v)}
-                    min={1}
-                    max={50}
-                    step={1}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>1 mi</span>
-                    <span>50 mi</span>
-                  </div>
+                <Slider
+                  value={[locationRadius]}
+                  onValueChange={([v]) => setLocationRadius(v)}
+                  min={1}
+                  max={50}
+                  step={1}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>1 mi</span>
+                  <span>50 mi</span>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Ad Schedule */}
       <Card>
@@ -685,6 +674,63 @@ function LumiSettingRow({
           Lumi
         </Badge>
       </div>
+    </div>
+  );
+}
+
+const COMMON_COUNTRIES = [
+  "United States", "Canada", "United Kingdom", "Australia", "Germany",
+  "France", "Spain", "Italy", "Netherlands", "Brazil", "Mexico", "India",
+  "Japan", "South Korea", "New Zealand", "Ireland", "Sweden", "Norway",
+  "Denmark", "Switzerland", "Belgium", "Austria", "Portugal", "Singapore",
+];
+
+function CountryAdder({
+  selectedCountries,
+  onAdd,
+}: {
+  selectedCountries: string[];
+  onAdd: (country: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const filteredCountries = COMMON_COUNTRIES.filter(
+    (c) =>
+      !selectedCountries.includes(c) &&
+      c.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="relative">
+      <Input
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        placeholder="Add another country..."
+        className="text-sm"
+      />
+      {isOpen && search.length > 0 && filteredCountries.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-lg overflow-hidden max-h-40 overflow-y-auto">
+          {filteredCountries.slice(0, 6).map((country) => (
+            <button
+              key={country}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors"
+              onClick={() => {
+                onAdd(country);
+                setSearch("");
+                setIsOpen(false);
+              }}
+            >
+              {country}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

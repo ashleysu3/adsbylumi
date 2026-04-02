@@ -849,8 +849,8 @@ export default function Create() {
                   selected={false}
                   onSelect={() => setSelectedGoal("book_calls")}
                   icon={<MessageCircle className="h-5 w-5" />}
-                  title="Get people to book a call with me"
-                  description="Fill your calendar with discovery calls or consultations" />
+                  title="Get people to contact me"
+                  description="Drive inquiries through forms, calls, or applications" />
                 
                     <StepOption
                   selected={false}

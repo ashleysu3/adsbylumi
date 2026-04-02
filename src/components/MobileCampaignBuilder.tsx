@@ -22,6 +22,7 @@ import {
   MapPin,
   Plus,
   X,
+  Globe,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
@@ -81,7 +82,10 @@ export function MobileCampaignBuilder({
     answers.additionalPosts || []
   );
 
-  // Smart location state
+  // Location state — universal
+  const [locationMode, setLocationMode] = useState<'country' | 'specific'>(
+    answers.locationTargeting?.addresses?.length > 0 ? 'specific' : 'country'
+  );
   const [showSmartLocation, setShowSmartLocation] = useState(
     !!answers.locationTargeting && !usesLocationTargeting
   );
@@ -90,6 +94,9 @@ export function MobileCampaignBuilder({
   );
   const [locationRadius, setLocationRadius] = useState(
     answers.locationTargeting?.radius || 15
+  );
+  const [selectedCountries, setSelectedCountries] = useState<string[]>(
+    answers.locationTargeting?.countries || ["United States"]
   );
 
   const { activeBrand } = useBrand();
@@ -122,17 +129,20 @@ export function MobileCampaignBuilder({
       
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
-      // Smart location targeting
-      ...(showSmartLocation && {
+      // Location targeting
+      ...(usesLocationTargeting || locationMode === 'specific' ? {
         locationTargeting: {
           addresses: locationAddresses.filter(a => a.trim()),
           radius: locationRadius,
         },
-      }),
-      ...(!showSmartLocation && !usesLocationTargeting && { locationTargeting: undefined }),
+      } : locationMode === 'country' ? {
+        locationTargeting: {
+          countries: selectedCountries,
+        },
+      } : {}),
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts, showSmartLocation, locationAddresses, locationRadius]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationMode, locationAddresses, locationRadius, selectedCountries]);
 
   const handleNext = () => { if (step < 2) setStep(step + 1); };
   const handleBack = () => { if (step > 1) setStep(step - 1); };
@@ -244,87 +254,50 @@ export function MobileCampaignBuilder({
             </div>
           )}
 
-          {/* Smart Location Prompt */}
-          {!usesLocationTargeting && locationDetection.isLocal && (
-            <div className={`p-4 rounded-xl border bg-card space-y-4 ${showSmartLocation ? "border-primary/30" : ""}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <MapPin className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">Does your business serve a specific area?</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      For example, {locationDetection.example}.
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={showSmartLocation}
-                  onCheckedChange={(checked) => {
-                    setShowSmartLocation(checked);
-                    if (!checked) {
-                      setLocationAddresses([""]);
-                      setLocationRadius(15);
-                    }
-                  }}
-                />
+          {/* Location Targeting — Universal */}
+          <div className="p-4 rounded-xl border bg-card space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <MapPin className="h-5 w-5 text-primary" />
               </div>
-              {showSmartLocation && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    {locationAddresses.map((address, index) => (
-                      <div key={index} className="flex gap-2">
-                        <LocationAutocomplete
-                          value={address}
-                          onChange={(val, loc) => updateLocationAddress(index, val, !!loc)}
-                          brandId={workspace.brand_id}
-                          placeholder="Enter your business address"
-                        />
-                        {locationAddresses.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setLocationAddresses(locationAddresses.filter((_, i) => i !== index))}
-                            className="shrink-0"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setLocationAddresses([...locationAddresses, ""])}
-                      className="w-full gap-1 text-xs"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Add another location
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Targeting radius</span>
-                      <span className="text-sm font-bold text-primary">{locationRadius} miles</span>
-                    </div>
-                    <Slider
-                      value={[locationRadius]}
-                      onValueChange={([v]) => setLocationRadius(v)}
-                      min={1}
-                      max={50}
-                      step={1}
-                      className="w-full"
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>1 mi</span>
-                      <span>50 mi</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <div>
+                <p className="font-semibold text-sm">Where should your ad be shown?</p>
+                <p className="text-xs text-muted-foreground">Default: United States</p>
+              </div>
             </div>
-          )}
+            <div className="flex gap-2">
+              <Button variant={locationMode === 'country' ? 'default' : 'outline'} size="sm" className="flex-1 text-xs gap-1.5" onClick={() => setLocationMode('country')}>
+                <Globe className="h-3.5 w-3.5" /> By Country
+              </Button>
+              <Button variant={locationMode === 'specific' ? 'default' : 'outline'} size="sm" className="flex-1 text-xs gap-1.5" onClick={() => setLocationMode('specific')}>
+                <MapPin className="h-3.5 w-3.5" /> Specific Location
+              </Button>
+            </div>
+            {locationMode === 'country' && (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedCountries.map((c, i) => (
+                  <Badge key={i} variant="secondary" className="gap-1 pr-1">{c}
+                    {selectedCountries.length > 1 && <button type="button" onClick={() => setSelectedCountries(selectedCountries.filter((_, idx) => idx !== i))} className="hover:bg-muted rounded-full p-0.5"><X className="h-3 w-3" /></button>}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {locationMode === 'specific' && (
+              <div className="space-y-3">
+                {locationAddresses.map((address, index) => (
+                  <div key={index} className="flex gap-2">
+                    <LocationAutocomplete value={address} onChange={(val, loc) => updateLocationAddress(index, val, !!loc)} brandId={workspace.brand_id} placeholder="Enter an address, city, or state" />
+                    {locationAddresses.length > 1 && <Button variant="ghost" size="icon" onClick={() => setLocationAddresses(locationAddresses.filter((_, i) => i !== index))} className="shrink-0"><X className="h-4 w-4" /></Button>}
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" onClick={() => setLocationAddresses([...locationAddresses, ""])} className="w-full gap-1 text-xs"><Plus className="h-3 w-3" /> Add another location</Button>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between"><span className="text-sm font-medium">Targeting radius</span><span className="text-sm font-bold text-primary">{locationRadius} miles</span></div>
+                  <Slider value={[locationRadius]} onValueChange={([v]) => setLocationRadius(v)} min={1} max={50} step={1} className="w-full" />
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Best Practices */}
           <div className="p-4 rounded-xl border bg-green-50/50 border-green-200 dark:bg-green-950/10 dark:border-green-900/30">

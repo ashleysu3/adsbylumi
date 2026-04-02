@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Image, Video, Smartphone, Monitor, MoreHorizontal, ThumbsUp, MessageCircle, Share2, ExternalLink } from "lucide-react";
+import { Image, Video, Smartphone, Monitor, MoreHorizontal, ThumbsUp, MessageCircle, Share2, ExternalLink, Info } from "lucide-react";
 import { normalizeWebsiteUrl } from "@/lib/normalizeWebsiteUrl";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AdPreviewProps {
   concept: {
@@ -191,6 +192,20 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl, isDmC
                     {cta}
                     <ExternalLink className="h-3 w-3" />
                   </button>
+                  <div className="mt-2 flex items-start gap-1.5 text-[10px] text-muted-foreground">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="shrink-0 mt-0.5">
+                          <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[260px] text-xs space-y-1.5 p-3">
+                        <p><span className="font-semibold">Button color:</span> This will match Meta's native CTA styling in your live ad — the color shown here is just our preview color and can't be customized.</p>
+                        <p><span className="font-semibold">Why "{cta}":</span> This CTA was pre-selected as part of your campaign strategy. Lumi chose it based on your campaign goal to drive the best results.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <span>CTA button color & style will match Meta's native design in your live ad</span>
+                  </div>
                 </div>
               )}
               

@@ -1125,12 +1125,12 @@ export default function CreativeStudio() {
       const currentIndex = visibleAngles.findIndex(a => a.id === activeAngleId);
       const isLastAngle = currentIndex >= visibleAngles.length - 1;
       if (isLastAngle) {
-        return { label: "Continue to Ad Copy", icon: ArrowRight, action: () => { setShouldAutoGenerateCopy(true); setActiveTab("copy"); }, disabled: false };
+      return { label: "View Ad Copy", icon: ArrowRight, action: () => { setShouldAutoGenerateCopy(true); setActiveTab("copy"); }, disabled: false };
       }
       return { label: "Next Concept", icon: ArrowRight, action: () => setActiveAngleId(visibleAngles[currentIndex + 1].id), disabled: false };
     }
     if (activeTab === "copy") {
-      return { label: "Continue to Build", icon: ArrowRight, action: () => setActiveTab("build"), disabled: false };
+      return { label: "Preview & Build", icon: ArrowRight, action: () => setActiveTab("build"), disabled: false };
     }
     // No top-right action for build tab — Build Campaign lives at bottom of Creation tab
     if (activeTab === "build") {
