@@ -14,11 +14,12 @@ import { useBrand } from '@/contexts/BrandContext';
 import { 
   Link2, Link2Off, CheckCircle, XCircle, 
   AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
-  ArrowLeft, Zap, Key, RefreshCw
+  ArrowLeft, Zap, Key, RefreshCw, Sparkles
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { PixelVerificationCard } from '@/components/PixelVerificationCard';
 import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
+import { MetaSetupDiagnostic, type DiagnosticResult } from '@/components/MetaSetupDiagnostic';
 
 export default function MetaSettings() {
   const navigate = useNavigate();
@@ -31,6 +32,9 @@ export default function MetaSettings() {
   const [refreshing, setRefreshing] = useState(false);
   const [autoTesting, setAutoTesting] = useState(false);
   const [connectionHealth, setConnectionHealth] = useState<'checking' | 'healthy' | 'warning' | 'error' | null>(null);
+  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
+  const [diagnosticRecheckCount, setDiagnosticRecheckCount] = useState(0);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -63,6 +67,36 @@ export default function MetaSettings() {
       runAutoTest();
     }
   }, [brand?.id, brand?.meta_account_id, hasValidToken]);
+
+  // Run diagnostic when connected
+  useEffect(() => {
+    if (brand?.id && brand?.meta_account_id && hasValidToken && !diagnosticResult) {
+      runDiagnostic();
+    }
+  }, [brand?.id, brand?.meta_account_id, hasValidToken]);
+
+  const runDiagnostic = async () => {
+    if (!brand?.id) return;
+    setDiagnosticLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('diagnose-meta-setup', {
+        body: { brandId: brand.id }
+      });
+      if (error) throw error;
+      if (data?.success) {
+        setDiagnosticResult(data);
+      }
+    } catch (err) {
+      console.error('Diagnostic failed:', err);
+    } finally {
+      setDiagnosticLoading(false);
+    }
+  };
+
+  const handleDiagnosticRecheck = async () => {
+    setDiagnosticRecheckCount(prev => prev + 1);
+    await runDiagnostic();
+  };
 
   const runAutoTest = async () => {
     if (!brand?.id || autoTesting) return;
@@ -758,6 +792,22 @@ export default function MetaSettings() {
             )}
           </CardContent>
         </Card>
+
+        {/* Setup Diagnostic — show when connected and diagnostic has results */}
+        {isConnected && diagnosticResult && (
+          <MetaSetupDiagnostic
+            result={diagnosticResult}
+            brandId={brand?.id || ''}
+            onRecheck={handleDiagnosticRecheck}
+            rechecking={diagnosticLoading}
+            recheckCount={diagnosticRecheckCount}
+            onAskLumi={() => {
+              // Open Lumi with meta-setup context
+              const event = new CustomEvent('open-lumi', { detail: { context: 'meta-setup', message: 'I need help with my Meta setup' } });
+              window.dispatchEvent(event);
+            }}
+          />
+        )}
 
         {/* Meta Readiness Checklist — only show when NOT fully connected */}
         {brand?.id && !isConnected && (

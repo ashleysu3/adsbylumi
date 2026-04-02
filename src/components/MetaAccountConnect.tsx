@@ -3,11 +3,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Link2, Loader2, ExternalLink, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Link2, Loader2, ExternalLink, CheckCircle2, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { MetaSetupDiagnostic, type DiagnosticResult } from "@/components/MetaSetupDiagnostic";
 
 interface MetaAccountConnectProps {
   brandId: string;
@@ -69,7 +70,30 @@ export function MetaAccountConnect({
   const [selectedInstagram, setSelectedInstagram] = useState<string>("");
   const [oauthLoading, setOauthLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [step, setStep] = useState<'connect' | 'select-account' | 'select-page' | 'select-instagram'>('connect');
+
+  const runPostOAuthDiagnostic = async (accts: AdAccount[], pgs: FacebookPage[], igs: InstagramAccount[]) => {
+    try {
+      setDiagnosticLoading(true);
+      const { data, error } = await supabase.functions.invoke('diagnose-meta-setup', {
+        body: {
+          brandId,
+          accounts: accts,
+          pages: pgs,
+          instagramAccounts: igs,
+        }
+      });
+      if (!error && data?.success) {
+        setDiagnosticResult(data);
+      }
+    } catch {
+      // Non-fatal
+    } finally {
+      setDiagnosticLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (currentAccountId) {
@@ -232,27 +256,36 @@ export function MetaAccountConnect({
                 `Found ${accountCount} ad account${accountCount !== 1 ? 's' : ''}, ${pageCount} Page${pageCount !== 1 ? 's' : ''}, and ${igCount} Instagram account${igCount !== 1 ? 's' : ''}`
               );
 
+              // Run diagnostic in background
+              runPostOAuthDiagnostic(returnedAccounts, returnedPages, returnedInstagram);
+
               // On reconnection, auto-confirm previous selections if they still exist
-              // in the returned data — no need to make the user re-pick everything
               if (tokenExpired && currentAccountId && currentPageId) {
                 const prevAccountStillExists = returnedAccounts.some((a: AdAccount) => a.id === currentAccountId);
                 const prevPageStillExists = returnedPages.some((p: FacebookPage) => p.id === currentPageId);
                 const prevIgStillExists = !currentInstagramId || returnedInstagram.some((ig: InstagramAccount) => ig.id === currentInstagramId);
 
                 if (prevAccountStillExists && prevPageStillExists && prevIgStillExists) {
-                  // Previous selections still valid — save directly without making user re-click
                   setSelectedAccount(currentAccountId);
                   setSelectedPage(currentPageId);
                   if (currentInstagramId) setSelectedInstagram(currentInstagramId);
                   toast.info('Reconnected — your previous ad account, Page, and Instagram selections are still valid.');
-                  // Trigger save automatically
-                  setStep('select-account'); // briefly set step so handleSaveConnection can run
-                  // Use setTimeout to let state settle, then auto-save
+                  setStep('select-account');
                   setTimeout(() => {
                     autoSaveReconnection(currentAccountId, currentPageId, currentInstagramId || undefined, returnedPages, returnedInstagram);
                   }, 100);
                   return;
                 }
+              }
+
+              // Auto-select if only one option for each
+              if (accountCount === 1 && pageCount === 1) {
+                setSelectedAccount(returnedAccounts[0].id);
+                setSelectedPage(returnedPages[0].id);
+                if (igCount === 1) {
+                  setSelectedInstagram(returnedInstagram[0].id);
+                }
+                toast.info(`We found just one of everything — confirming your setup.`);
               }
 
               setStep('select-account');
@@ -523,6 +556,7 @@ export function MetaAccountConnect({
     setSelectedInstagram("");
     setStep('connect');
     setOauthLoading(false);
+    setDiagnosticResult(null);
   };
 
   const isConnected = currentAccountId && currentPageId;
@@ -593,6 +627,15 @@ export function MetaAccountConnect({
                 <p><span className="text-muted-foreground">Page:</span> {currentPageName || currentPageId}</p>
               </div>
             </div>
+          )}
+          {/* Post-OAuth Diagnostic */}
+          {diagnosticResult && step !== 'connect' && (
+            <MetaSetupDiagnostic
+              result={diagnosticResult}
+              brandId={brandId}
+              rechecking={diagnosticLoading}
+              onRecheck={() => runPostOAuthDiagnostic(accounts, pages, instagramAccounts)}
+            />
           )}
 
           {step === 'connect' && (
