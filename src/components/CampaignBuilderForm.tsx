@@ -25,6 +25,7 @@ import {
   Calendar,
   Plus,
   X,
+  Globe,
 } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { ExistingPostPicker, type SelectedPost } from "@/components/ExistingPostPicker";
