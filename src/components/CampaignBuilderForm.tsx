@@ -136,20 +136,22 @@ export function CampaignBuilderForm({
       
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
-      // Location targeting — from template OR smart detection
-      ...((usesLocationTargeting || showSmartLocation) && {
+      // Location targeting
+      ...(usesLocationTargeting || locationMode === 'specific' ? {
         locationTargeting: {
           addresses: locationAddresses.filter(a => a.trim()),
           radius: locationRadius,
         },
-      }),
-      // Clear location targeting if smart location was toggled off
-      ...(!usesLocationTargeting && !showSmartLocation && { locationTargeting: undefined }),
+      } : locationMode === 'country' ? {
+        locationTargeting: {
+          countries: selectedCountries,
+        },
+      } : {}),
       // End date — only include if user explicitly set one
       ...(hasEndDate && endDate ? { endDate } : {}),
     };
     onAnswerUpdate(newAnswers);
-  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation]);
+  }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation, locationMode, selectedCountries]);
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
