@@ -108,6 +108,10 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
               <Gift className="mr-3 h-4 w-4" />
               Refer & Earn
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setBugReportOpen(true)} className="min-h-[44px]">
+              <LadybugIcon className="mr-3 h-4 w-4" />
+              Report a Bug
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut} className="min-h-[44px] text-destructive">
               <LogOut className="mr-3 h-4 w-4" />
@@ -118,5 +122,12 @@ export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: Mobi
         </div>
       </div>
     </header>
+    <BugReportModal
+      open={bugReportOpen}
+      onOpenChange={setBugReportOpen}
+      context={location.pathname}
+      userEmail={user?.email || ""}
+    />
+    </>
   );
 }
