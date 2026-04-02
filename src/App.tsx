@@ -98,7 +98,7 @@ const App = () => {
                 <LumiAssistantProvider>
                   <GlobalAnnouncementBanner />
                   <ImpersonationBanner />
-                  <FloatingBugButton />
+                  
                 <Routes>
                   <Route path="/" element={<Sales />} />
                   <Route path="/waitlist" element={<Waitlist />} />
