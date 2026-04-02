@@ -148,9 +148,12 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
       resolvedCopy?.description
     );
 
+    const resolvedVerticalAsset = getVerticalAssetForItem(item);
+
     return {
       ...item,
       linkedAsset: resolvedAsset || item?.linkedAsset,
+      verticalAsset: resolvedVerticalAsset || null,
       finalCopy: resolvedCopy || item?.finalCopy,
       final_copy: resolvedCopy || item?.final_copy,
       _hasAsset: hasAsset,
