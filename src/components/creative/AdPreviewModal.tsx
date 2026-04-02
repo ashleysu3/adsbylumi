@@ -36,6 +36,11 @@ interface AdPreviewModalProps {
     file_type: string;
     file_name: string;
   } | null;
+  verticalAsset?: {
+    file_url: string;
+    file_type: string;
+    file_name: string;
+  } | null;
   angleCopy?: AngleCopyData;
   selectedCopy?: Record<string, any>;
   brandName?: string;
