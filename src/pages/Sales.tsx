@@ -481,8 +481,8 @@ const Sales = () => {
         </div>
       </section>
 
-      {/* ═══════ TESTIMONIALS ═══════ */}
-      <TestimonialCarousel />
+
+
 
       {/* ═══════ SECTION 7 — FINAL CTA ═══════ */}
       <section className="py-16 sm:py-24 bg-gradient-to-br from-primary via-primary to-accent text-primary-foreground rounded-t-[40px]">
