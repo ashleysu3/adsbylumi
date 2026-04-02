@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { LocationAutocomplete } from "@/components/LocationAutocomplete";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { detectLocationBusiness } from "@/lib/detect-location-business";
 import {
