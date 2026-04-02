@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { Shield, LogOut, Library, Settings, Building2, BookOpen, Home, Link2, Gift, Package } from "lucide-react";
+import { LadybugIcon } from "@/components/LadybugIcon";
+import { BugReportModal } from "@/components/BugReportModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandSelector } from "@/components/BrandSelector";
