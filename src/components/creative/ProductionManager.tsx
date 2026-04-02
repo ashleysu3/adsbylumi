@@ -1137,7 +1137,7 @@ export function ProductionManager({
           verticalAsset={(() => {
             const va = getVerticalAssetForItem(adPreviewItem);
             if (!va) return null;
-            return { file_url: va.url || va.file_url, file_type: va.type || va.file_type || 'image', file_name: va.fileName || va.file_name || '' };
+            return { file_url: va.file_url, file_type: va.file_type || 'image', file_name: va.file_name || '' };
           })()}
           angleCopy={getCopyForItem(adPreviewItem)}
           selectedCopy={selectedCopy}
