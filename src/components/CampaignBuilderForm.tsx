@@ -92,6 +92,9 @@ export function CampaignBuilderForm({
   const [locationAddresses, setLocationAddresses] = useState<string[]>(
     answers.locationTargeting?.addresses || [""]
   );
+  const [confirmedAddresses, setConfirmedAddresses] = useState<boolean[]>(
+    (answers.locationTargeting?.addresses || [""]).map((a: string) => !!a.trim())
+  );
   const [locationRadius, setLocationRadius] = useState(
     answers.locationTargeting?.radius || defaultRadius
   );
