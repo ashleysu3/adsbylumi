@@ -3,11 +3,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Link2, Loader2, ExternalLink, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Link2, Loader2, ExternalLink, CheckCircle2, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { MetaSetupDiagnostic, type DiagnosticResult } from "@/components/MetaSetupDiagnostic";
 
 interface MetaAccountConnectProps {
   brandId: string;
