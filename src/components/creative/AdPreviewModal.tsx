@@ -292,14 +292,16 @@ export function AdPreviewModal({
     placement === "vertical" && mediaAspect !== null && mediaAspect > 0.7; // square-ish or wider in a vertical container
 
   const renderMedia = (placement: "feed" | "vertical" = "feed", className?: string) => {
-    if (assetUrl) {
-      const showBlurBg = needsMetaPadding(placement);
+    const { url: mediaUrl, isVid: mediaIsVideo } = getAssetForPlacement(placement);
+    const hasVerticalOverride = placement === "vertical" && !!verticalAssetUrl;
 
-      const useContain = showBlurBg || (placement === "vertical" && isVerticalAsset);
+    if (mediaUrl) {
+      const showBlurBg = !hasVerticalOverride && needsMetaPadding(placement);
+      const useContain = showBlurBg || (placement === "vertical" && !hasVerticalOverride && isVerticalAsset);
       
-      const mediaElement = isVideo ? (
+      const mediaElement = mediaIsVideo ? (
         <video 
-          src={assetUrl} 
+          src={mediaUrl} 
           className={cn(
             "w-full h-full",
             useContain ? "object-contain relative z-10" : "object-cover",
@@ -312,7 +314,7 @@ export function AdPreviewModal({
         />
       ) : (
         <img 
-          src={assetUrl} 
+          src={mediaUrl} 
           alt="Ad creative"
           className={cn(
             "w-full h-full",
@@ -327,16 +329,16 @@ export function AdPreviewModal({
         return (
           <div className="relative w-full h-full overflow-hidden">
             {/* Blurred background layer */}
-            {isVideo ? (
+            {mediaIsVideo ? (
               <video
-                src={assetUrl}
+                src={mediaUrl}
                 className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
                 muted
                 playsInline
               />
             ) : (
               <img
-                src={assetUrl}
+                src={mediaUrl}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
               />
