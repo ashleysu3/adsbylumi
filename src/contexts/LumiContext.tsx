@@ -6,7 +6,7 @@ export interface FollowUp {
 }
 
 export interface NavigationAction {
-  type: 'navigate' | 'bug_report';
+  type: 'navigate' | 'bug_report' | 'contact_support';
   label: string;
   route?: string;
   description?: string;
