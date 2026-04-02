@@ -90,8 +90,9 @@ Deno.serve(async (req) => {
 
     // Choose system prompt based on context
     const isAngleFeedback = context?.context === 'angle-feedback';
+    const isMetaSetup = context?.context === 'meta-setup' || context?.context === 'meta-setup-concierge';
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    let contextPrompt = isAngleFeedback ? ANGLE_FEEDBACK_PROMPT : LUMI_NAVIGATOR_PROMPT;
+    let contextPrompt = isMetaSetup ? META_SETUP_CONCIERGE_PROMPT : isAngleFeedback ? ANGLE_FEEDBACK_PROMPT : LUMI_NAVIGATOR_PROMPT;
     contextPrompt += `\n\nToday's date is ${currentDate}. Ensure any content suggestions are seasonally appropriate.`;
     
     if (context) {
