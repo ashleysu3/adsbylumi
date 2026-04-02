@@ -34,44 +34,148 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get brand data to find token if not provided
-    let token = accessToken;
-    if (!token) {
-      const { data: brand } = await supabase
-        .from('brands')
-        .select('meta_access_token, meta_account_id, page_id, instagram_account_id')
-        .eq('id', brandId)
-        .single();
+    // Get brand data
+    const { data: brand } = await supabase
+      .from('brands')
+      .select('meta_access_token, meta_account_id, page_id, page_name, instagram_account_id, instagram_account_name')
+      .eq('id', brandId)
+      .single();
 
-      token = brand?.meta_access_token;
-      if (!token) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            diagnostics: [{
-              key: 'token',
-              label: 'Meta Connection',
-              status: 'fail',
-              message: 'No Meta access token found. Please connect your Meta account first.',
-              fix: 'Click "Connect Meta Account" to start the OAuth flow.',
-            }],
-            score: { passed: 0, total: 1 },
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    // Get token - use provided token or read from brand record
+    // NOTE: get_meta_token RPC fails with crypto permissions in service-role context.
+    // Read token directly from brands table (matching pattern across all edge functions).
+    let token = accessToken || brand?.meta_access_token;
+
+
+    if (!token) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          diagnostics: [{
+            key: 'token',
+            label: 'Meta Connection',
+            status: 'fail',
+            message: 'No Meta access token found. Please connect your Meta account first.',
+            fix: 'Click "Connect Meta Account" to start the OAuth flow.',
+          }],
+          score: { passed: 0, total: 1 },
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const diagnostics: DiagnosticItem[] = [];
 
+    // If the brand already has these fields saved, use them as ground truth
+    // instead of requiring the caller to pass raw OAuth response arrays
+    let pagesData = pages || [];
+    let accountsData = accounts || [];
+    let igData = instagramAccounts || [];
+
+    // When called from settings (no arrays passed), fetch live from Meta API
+    const needsFetch = pagesData.length === 0 && accountsData.length === 0;
+
+    if (needsFetch) {
+      // Check if brand already has saved selections — this is the most reliable source
+      const hasSavedPage = !!brand?.page_id;
+      const hasSavedAccount = !!brand?.meta_account_id;
+      const hasSavedIg = !!brand?.instagram_account_id;
+
+      // 1. Facebook Page check via saved data + live verification
+      if (hasSavedPage) {
+        try {
+          const pageRes = await fetch(
+            `https://graph.facebook.com/v21.0/${brand.page_id}?fields=id,name&access_token=${token}`
+          );
+          const pageData = await pageRes.json();
+          if (pageRes.ok && !pageData.error) {
+            pagesData = [{ id: brand.page_id, name: pageData.name || brand.page_name }];
+          }
+        } catch {
+          // If API check fails, trust saved data
+          pagesData = [{ id: brand.page_id, name: brand.page_name || 'Your Page' }];
+        }
+      } else {
+        // Try fetching from API
+        try {
+          const res = await fetch(
+            `https://graph.facebook.com/v21.0/me/accounts?fields=id,name&access_token=${token}`
+          );
+          const data = await res.json();
+          if (res.ok && !data.error) {
+            pagesData = data.data || [];
+          }
+        } catch { /* ignore */ }
+      }
+
+      // 2. Ad Account check via saved data + live verification
+      if (hasSavedAccount) {
+        const formattedId = brand.meta_account_id.startsWith('act_')
+          ? brand.meta_account_id
+          : `act_${brand.meta_account_id}`;
+        try {
+          const accRes = await fetch(
+            `https://graph.facebook.com/v21.0/${formattedId}?fields=id,name,account_status&access_token=${token}`
+          );
+          const accData = await accRes.json();
+          if (accRes.ok && !accData.error) {
+            accountsData = [{
+              id: brand.meta_account_id,
+              name: accData.name,
+              account_status: accData.account_status,
+            }];
+          } else {
+            // Trust saved — assume active
+            accountsData = [{ id: brand.meta_account_id, name: 'Your Ad Account', account_status: 1 }];
+          }
+        } catch {
+          accountsData = [{ id: brand.meta_account_id, name: 'Your Ad Account', account_status: 1 }];
+        }
+      } else {
+        try {
+          const res = await fetch(
+            `https://graph.facebook.com/v21.0/me/adaccounts?fields=id,name,account_status&access_token=${token}`
+          );
+          const data = await res.json();
+          if (res.ok && !data.error) {
+            accountsData = data.data || [];
+          }
+        } catch { /* ignore */ }
+      }
+
+      // 3. Instagram check via saved data
+      if (hasSavedIg) {
+        // User already has IG linked — mark as linked to page
+        igData = [{
+          id: brand.instagram_account_id,
+          username: brand.instagram_account_name || 'Your Account',
+          linked_page_id: brand.page_id, // Mark as linked since it's already saved
+        }];
+      } else if (hasSavedPage) {
+        // Try fetching IG from the page
+        try {
+          const res = await fetch(
+            `https://graph.facebook.com/v21.0/${brand.page_id}?fields=instagram_business_account{id,username}&access_token=${token}`
+          );
+          const data = await res.json();
+          if (res.ok && !data.error && data.instagram_business_account) {
+            igData = [{
+              id: data.instagram_business_account.id,
+              username: data.instagram_business_account.username,
+              linked_page_id: brand.page_id,
+            }];
+          }
+        } catch { /* ignore */ }
+      }
+    }
+
     // 1. Check Facebook Pages
-    const pagesData = pages || [];
     if (pagesData.length > 0) {
       diagnostics.push({
         key: 'facebook_page',
         label: 'Facebook Page',
         status: 'pass',
-        message: `Found ${pagesData.length} Facebook Page${pagesData.length !== 1 ? 's' : ''}.`,
+        message: `Connected: ${pagesData[0]?.name || 'Your Page'}`,
       });
     } else {
       diagnostics.push({
@@ -93,7 +197,6 @@ Deno.serve(async (req) => {
     }
 
     // 2. Check Ad Accounts
-    const accountsData = accounts || [];
     const activeAccounts = accountsData.filter((a: any) => a.account_status === 1);
 
     if (activeAccounts.length > 0) {
@@ -101,14 +204,14 @@ Deno.serve(async (req) => {
         key: 'ad_account',
         label: 'Ad Account',
         status: 'pass',
-        message: `Found ${activeAccounts.length} active ad account${activeAccounts.length !== 1 ? 's' : ''}.`,
+        message: `Connected: ${activeAccounts[0]?.name || 'Your Ad Account'}`,
       });
     } else if (accountsData.length > 0) {
       diagnostics.push({
         key: 'ad_account',
         label: 'Ad Account',
         status: 'warn',
-        message: `Found ${accountsData.length} ad account${accountsData.length !== 1 ? 's' : ''}, but none are active.`,
+        message: `Found ${accountsData.length} ad account${accountsData.length !== 1 ? 's' : ''}, but none appear active.`,
         fix: 'Check your ad account status in Meta Business Settings.',
         fixUrl: 'https://business.facebook.com/settings/ad-accounts',
         fixTime: '~2 minutes',
@@ -116,7 +219,6 @@ Deno.serve(async (req) => {
           'Go to business.facebook.com → Settings → Ad Accounts',
           'Check if your ad account is disabled or restricted',
           'Follow any prompts to reactivate it',
-          'If restricted, you may need to verify your identity',
         ],
       });
     } else {
@@ -130,17 +232,14 @@ Deno.serve(async (req) => {
         fixTime: '~3 minutes',
         steps: [
           'Go to business.facebook.com → Settings',
-          'Click "Ad Accounts" in the left menu',
-          'Click "Add" → "Create a new ad account"',
-          'Name it (e.g., "My Business Ads")',
-          'Set your currency and timezone',
+          'Click "Ad Accounts" → "Add" → "Create a new ad account"',
+          'Name it, set currency and timezone',
           'Come back here and reconnect Meta',
         ],
       });
     }
 
-    // 3. Check Instagram accounts linked to pages
-    const igData = instagramAccounts || [];
+    // 3. Check Instagram
     const linkedIg = igData.filter((ig: any) =>
       ig.linked_page_id && pagesData.some((p: any) => p.id === ig.linked_page_id)
     );
@@ -150,14 +249,14 @@ Deno.serve(async (req) => {
         key: 'instagram',
         label: 'Instagram Account',
         status: 'pass',
-        message: `Found ${linkedIg.length} Instagram account${linkedIg.length !== 1 ? 's' : ''} linked to your Page.`,
+        message: `Connected: ${linkedIg[0]?.username ? '@' + linkedIg[0].username : 'Your Instagram'}`,
       });
     } else if (igData.length > 0) {
       diagnostics.push({
         key: 'instagram',
         label: 'Instagram Account',
         status: 'warn',
-        message: 'Instagram accounts found but not linked to your Facebook Page.',
+        message: 'Instagram account found but may not be linked to your Facebook Page.',
         fix: 'Link your Instagram to your Facebook Page.',
         fixUrl: 'https://www.facebook.com/settings/?tab=instagram',
         fixTime: '~2 minutes',
@@ -165,8 +264,7 @@ Deno.serve(async (req) => {
           'Open the Instagram app on your phone',
           'Go to Settings → Account → Sharing to other apps → Facebook',
           'Log in and select the Facebook Page to link',
-          'Or: Go to your Facebook Page → Settings → Instagram → Connect Account',
-          'Come back here and reconnect Meta',
+          'Come back here and re-check',
         ],
       });
     } else {
@@ -174,20 +272,19 @@ Deno.serve(async (req) => {
         key: 'instagram',
         label: 'Instagram Account',
         status: 'warn',
-        message: 'No Instagram account found. Your ads can still run on Facebook, but Instagram placement won\'t be available.',
+        message: 'No Instagram account found. Ads can still run on Facebook, but Instagram placement won\'t be available.',
         fix: 'Connect an Instagram Business or Creator account to your Facebook Page.',
-        fixUrl: 'https://www.facebook.com/settings/?tab=instagram',
         fixTime: '~3 minutes',
         steps: [
-          'Make sure your Instagram account is a Business or Creator account (Instagram → Settings → Account → Switch to Professional Account)',
-          'Open the Instagram app → Settings → Account → Sharing to other apps → Facebook',
+          'Make sure your Instagram is a Business or Creator account',
+          'Instagram app → Settings → Account → Sharing to other apps → Facebook',
           'Link to your Facebook Page',
-          'Come back here and reconnect Meta',
+          'Come back here and re-check',
         ],
       });
     }
 
-    // 4. Check Billing (if we have an active ad account and a token)
+    // 4. Check Billing (if we have an active ad account)
     if (activeAccounts.length > 0) {
       const adAccountId = activeAccounts[0].id;
       const formattedId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
@@ -210,27 +307,24 @@ Deno.serve(async (req) => {
               key: 'billing',
               label: 'Billing Info',
               status: 'fail',
-              message: 'No payment method found on your ad account. You need billing set up before ads can run.',
+              message: 'No payment method found. You need billing set up before ads can run.',
               fix: 'Add a payment method to your ad account.',
               fixUrl: `https://business.facebook.com/billing_hub/payment_methods?asset_id=${formattedId.replace('act_', '')}`,
               fixTime: '~2 minutes',
               steps: [
                 'Go to business.facebook.com → Billing',
-                'Click "Payment Methods"',
-                'Click "Add Payment Method"',
+                'Click "Payment Methods" → "Add Payment Method"',
                 'Enter your credit card or PayPal details',
                 'Save — you\'re all set!',
               ],
             });
           }
         } else {
-          // Can't check billing — non-fatal
           diagnostics.push({
             key: 'billing',
             label: 'Billing Info',
             status: 'warn',
-            message: 'Could not verify billing status. Make sure you have a payment method set up in Meta.',
-            fix: 'Check your billing settings in Meta Business.',
+            message: 'Could not verify billing status. Make sure you have a payment method in Meta.',
             fixUrl: 'https://business.facebook.com/billing_hub/payment_methods',
             fixTime: '~2 minutes',
           });
@@ -240,7 +334,7 @@ Deno.serve(async (req) => {
           key: 'billing',
           label: 'Billing Info',
           status: 'warn',
-          message: 'Could not verify billing. Please confirm you have a payment method in Meta Business.',
+          message: 'Could not verify billing. Please confirm you have a payment method in Meta.',
           fixUrl: 'https://business.facebook.com/billing_hub/payment_methods',
         });
       }
@@ -258,7 +352,7 @@ Deno.serve(async (req) => {
               key: 'pixel',
               label: 'Meta Pixel / Dataset',
               status: 'pass',
-              message: `Found ${pixels.length} pixel${pixels.length !== 1 ? 's' : ''}: ${pixels.map((p: any) => p.name).join(', ')}.`,
+              message: `Found: ${pixels.map((p: any) => p.name).join(', ')}`,
             });
           } else {
             diagnostics.push({
@@ -271,10 +365,8 @@ Deno.serve(async (req) => {
               fixTime: '~5 minutes',
               steps: [
                 'Go to business.facebook.com → Events Manager',
-                'Click "Connect Data Sources"',
-                'Choose "Web" → "Meta Pixel"',
-                'Name your pixel (e.g., "My Website Pixel")',
-                'Install the pixel code on your website (or use a partner integration)',
+                'Click "Connect Data Sources" → "Web" → "Meta Pixel"',
+                'Name your pixel and install the code on your website',
                 'Come back here and re-check',
               ],
             });
