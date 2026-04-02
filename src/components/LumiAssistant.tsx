@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, createContext, useContext, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, ArrowRight, MessageCircle, Send, Loader2, Sparkle, History, CheckCircle, XCircle, Minimize2, Maximize2, Bug } from "lucide-react";
+import { X, Sparkles, ArrowRight, MessageCircle, Send, Loader2, Sparkle, History, CheckCircle, XCircle, Minimize2, Maximize2, Bug, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
