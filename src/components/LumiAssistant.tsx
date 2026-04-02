@@ -1084,6 +1084,9 @@ function LumiAssistantUI({
         recentMessages={messages.map(m => ({ role: m.role, content: m.content }))}
         userEmail={userEmail}
       />
+    </>
+  );
+}
 
 // Context for managing recommendations across the app
 interface LumiAssistantContextType {
