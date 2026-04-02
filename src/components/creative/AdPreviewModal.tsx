@@ -10,8 +10,9 @@ import {
   Image, Video, Smartphone, Monitor, MoreHorizontal, 
   ThumbsUp, MessageCircle, Share2, ExternalLink, 
   Heart, Bookmark, Send, ChevronLeft, ChevronRight,
-  Link2, Pencil, Check, Globe
+  Link2, Pencil, Check, Globe, Info
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { ProductionItem } from "./ProductionChecklistPanel";
 
