@@ -15,6 +15,10 @@ interface AdPreviewProps {
       url?: string;
       type?: string;
     };
+    verticalAsset?: {
+      url?: string;
+      type?: string;
+    };
     finalCopy?: {
       headline?: string;
       primaryText?: string;
