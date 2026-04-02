@@ -41,37 +41,11 @@ Deno.serve(async (req) => {
       .eq('id', brandId)
       .single();
 
-    // Get token - try vault first, then fallback to column
-    let token = accessToken;
-    if (!token) {
-      // Try getting token from vault via the brand_vault_secrets reference
-      const { data: vaultRef } = await supabase
-        .from('brand_vault_secrets')
-        .select('vault_secret_id')
-        .eq('brand_id', brandId)
-        .eq('secret_name', 'meta_access_token')
-        .maybeSingle();
+    // Get token - use provided token or read from brand record
+    // NOTE: get_meta_token RPC fails with crypto permissions in service-role context.
+    // Read token directly from brands table (matching pattern across all edge functions).
+    let token = accessToken || brand?.meta_access_token;
 
-      if (vaultRef?.vault_secret_id) {
-        const { data: vaultSecret } = await supabase
-          .rpc('get_meta_token_service', { p_brand_id: brandId })
-          .maybeSingle();
-        // If RPC doesn't exist, try direct vault query
-        if (!vaultSecret) {
-          const { data: decrypted } = await supabase
-            .from('vault.decrypted_secrets' as any)
-            .select('decrypted_secret')
-            .eq('id', vaultRef.vault_secret_id)
-            .single();
-          token = decrypted?.decrypted_secret;
-        }
-      }
-
-      // Fallback to column
-      if (!token) {
-        token = brand?.meta_access_token;
-      }
-    }
 
     if (!token) {
       return new Response(
