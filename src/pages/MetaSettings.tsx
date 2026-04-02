@@ -32,6 +32,9 @@ export default function MetaSettings() {
   const [refreshing, setRefreshing] = useState(false);
   const [autoTesting, setAutoTesting] = useState(false);
   const [connectionHealth, setConnectionHealth] = useState<'checking' | 'healthy' | 'warning' | 'error' | null>(null);
+  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
+  const [diagnosticRecheckCount, setDiagnosticRecheckCount] = useState(0);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
