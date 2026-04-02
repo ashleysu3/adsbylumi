@@ -256,27 +256,36 @@ export function MetaAccountConnect({
                 `Found ${accountCount} ad account${accountCount !== 1 ? 's' : ''}, ${pageCount} Page${pageCount !== 1 ? 's' : ''}, and ${igCount} Instagram account${igCount !== 1 ? 's' : ''}`
               );
 
+              // Run diagnostic in background
+              runPostOAuthDiagnostic(returnedAccounts, returnedPages, returnedInstagram);
+
               // On reconnection, auto-confirm previous selections if they still exist
-              // in the returned data — no need to make the user re-pick everything
               if (tokenExpired && currentAccountId && currentPageId) {
                 const prevAccountStillExists = returnedAccounts.some((a: AdAccount) => a.id === currentAccountId);
                 const prevPageStillExists = returnedPages.some((p: FacebookPage) => p.id === currentPageId);
                 const prevIgStillExists = !currentInstagramId || returnedInstagram.some((ig: InstagramAccount) => ig.id === currentInstagramId);
 
                 if (prevAccountStillExists && prevPageStillExists && prevIgStillExists) {
-                  // Previous selections still valid — save directly without making user re-click
                   setSelectedAccount(currentAccountId);
                   setSelectedPage(currentPageId);
                   if (currentInstagramId) setSelectedInstagram(currentInstagramId);
                   toast.info('Reconnected — your previous ad account, Page, and Instagram selections are still valid.');
-                  // Trigger save automatically
-                  setStep('select-account'); // briefly set step so handleSaveConnection can run
-                  // Use setTimeout to let state settle, then auto-save
+                  setStep('select-account');
                   setTimeout(() => {
                     autoSaveReconnection(currentAccountId, currentPageId, currentInstagramId || undefined, returnedPages, returnedInstagram);
                   }, 100);
                   return;
                 }
+              }
+
+              // Auto-select if only one option for each
+              if (accountCount === 1 && pageCount === 1) {
+                setSelectedAccount(returnedAccounts[0].id);
+                setSelectedPage(returnedPages[0].id);
+                if (igCount === 1) {
+                  setSelectedInstagram(returnedInstagram[0].id);
+                }
+                toast.info(`We found just one of everything — confirming your setup.`);
               }
 
               setStep('select-account');
