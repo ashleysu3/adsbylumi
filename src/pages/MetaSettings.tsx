@@ -14,11 +14,12 @@ import { useBrand } from '@/contexts/BrandContext';
 import { 
   Link2, Link2Off, CheckCircle, XCircle, 
   AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
-  ArrowLeft, Zap, Key, RefreshCw
+  ArrowLeft, Zap, Key, RefreshCw, Sparkles
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { PixelVerificationCard } from '@/components/PixelVerificationCard';
 import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
+import { MetaSetupDiagnostic, type DiagnosticResult } from '@/components/MetaSetupDiagnostic';
 
 export default function MetaSettings() {
   const navigate = useNavigate();
