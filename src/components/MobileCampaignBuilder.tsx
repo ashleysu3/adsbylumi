@@ -3,6 +3,7 @@ import { MobileStepWizard, StepSlider } from "@/components/MobileStepWizard";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { LocationAutocomplete } from "@/components/LocationAutocomplete";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
