@@ -1,75 +1,78 @@
 
 
-# One-Week Free Trial with Email Reminders
+# Five Changes: CTA Explainer, Studio Button Labels, Universal Location, Lumi Escalation, Goal Wording
 
-## Summary
-Add a 7-day free trial with payment info collected upfront via Stripe. Users auto-convert to paid after 7 days unless they cancel. Includes trial-specific UI and a reminder email drip.
+## 1. Add CTA explainer tooltip in Ad Preview
 
-## Changes
+**File:** `src/components/AdPreview.tsx`
 
-### 1. Add `trial_period_days: 7` to both checkout functions
-**Files:** `supabase/functions/create-checkout/index.ts`, `supabase/functions/create-guest-checkout/index.ts`
+Next to the CTA button in the feed preview, add a small info icon with a tooltip (or a subtle note below the CTA) that explains two things:
+- **Color**: "This button will match Meta's native CTA styling in your live ad — the color shown here is just our preview color and can't be customized."
+- **Why this CTA**: "Your CTA was pre-selected as part of your campaign strategy. 'Learn More' drives clicks to your landing page, which is ideal for [objective]. Lumi chose this based on your campaign goal."
 
-- `create-checkout`: Add `subscription_data: { trial_period_days: 7 }` to `sessionOptions`
-- `create-guest-checkout`: Add `trial_period_days: 7` as default for ALL checkouts (not just partner trials). Partner trials keep 14 days as override. The `subscription_data` block moves outside the `if (isPartnerTrial)` check with 7-day default, overridden to 14 when partner code is valid.
+Pull the `cta` value and the workspace objective/template to show a dynamic reason. Add a `GlossaryTooltip`-style popover or a collapsible info card below the CTA button area.
 
-No changes needed to `check-subscription` — it already detects `trialing` and returns `is_trial: true`.
+Also add similar explainer in `src/components/creative/AdPreviewModal.tsx`.
 
-### 2. Update Pricing + Sales page messaging
-**Files:** `src/pages/Pricing.tsx`, `src/pages/Sales.tsx`
+## 2. Soften Creative Studio "Continue" button labels
 
-- Change CTA "Get Started" to "Start 7-Day Free Trial"
-- Add subtext: "7-day free trial · Cancel anytime · No charge until day 8"
-- Update the comparison card Lumi price area to mention the trial
+**File:** `src/pages/CreativeStudio.tsx`
 
-### 3. Trial countdown banner on Dashboard
-**File:** `src/pages/Dashboard.tsx`
+Replace the heavy "Continue to X" wording with lighter, friendlier labels:
+- `"Continue to Ad Copy"` → `"See Ad Copy"` or `"View Ad Copy"`
+- `"Continue to Build"` → `"Preview & Build"`
+- `"Next Concept"` stays as-is (already light)
 
-When `useSubscription().isTrial` is true, render a banner at the top showing:
-- Days remaining (derived from `subscriptionEnd`)
-- Milestone progress: brand set up, offer added, Meta connected, first ad published (query from existing data)
-- "Subscribe now" CTA linking to Stripe customer portal
+This affects the `getTopRightAction()` function (~lines 1122-1134) and the inline buttons (~lines 1487-1550).
 
-### 4. Trial reminder email edge function
-**New file:** `supabase/functions/send-trial-reminders/index.ts`
+## 3. Add universal location targeting to all campaigns
 
-Cron-triggered daily function that:
-1. Queries Stripe for all customers with `status: 'trialing'` subscriptions
-2. Calculates days since trial start
-3. Checks milestone completion per user (brand, offer, Meta connection, campaign) via Supabase
-4. Sends targeted Resend emails on days 0, 3, 5, 7 with milestone-aware content
-5. Logs via existing `log-email.ts`
+**File:** `src/components/CampaignBuilderForm.tsx`
 
-Email schedule:
-| Day | Subject | Content |
-|-----|---------|---------|
-| 0 | "Welcome to your free trial!" | First steps checklist |
-| 3 | "3 days in — here's your next step" | Nudge incomplete milestones |
-| 5 | "2 days left — let's get your ads live" | Push to connect Meta + publish |
-| 7 | "Your trial ends today" | Subscribe or lose access |
+Currently, location targeting only shows for template-based local strategies OR when smart detection fires. Change this to **always** show a "Where should your ad be shown?" section in the budget card area for all campaigns:
 
-### 5. Skip trial users in onboarding drip
-**File:** `supabase/functions/send-onboarding-drip/index.ts`
+- Default country: "United States" (pre-selected)
+- Allow adding additional countries from a simple list/autocomplete
+- OR toggle to narrow down with address/city/state using existing `LocationAutocomplete`
+- Move this above the Ad Schedule card so it sits right after budget
+- Keep the existing smart-detection prompt as a secondary nudge if applicable
 
-Before processing each user, check if they have an active Stripe trial. If so, skip them (trial reminders handle their communication instead).
+Also update `MobileCampaignBuilder.tsx` with the same universal location section.
 
-### 6. Schedule the cron job
-SQL insert via Supabase to run `send-trial-reminders` daily at 9am UTC using `pg_cron` + `pg_net`.
+## 4. Lumi escalation: "Did that help?" + help desk ticket
+
+**Files:** `supabase/functions/lumi-chat/index.ts`, `src/components/LumiAssistant.tsx`
+
+### Edge function changes:
+In the system prompt, add a rule: after 3+ back-and-forth messages on the same topic without resolution (or if the user expresses continued confusion), the AI should include a `contact_support` action type alongside its response, asking "Did that help, or would you like to speak to a person?"
+
+Add `'contact_support'` to the `type` enum in the tool schema (alongside `navigate` and `bug_report`).
+
+### Frontend changes:
+In `LumiAssistant.tsx`, handle the `contact_support` action type by opening a new **Help Ticket Modal** — reuse the `BugReportModal` component but with adjusted labels:
+- Title: "Contact Support"
+- Description placeholder: "Describe what you need help with..."
+- Category: "help_request" instead of "bug"
+- Still sends through the same `send-bug-report` edge function (or `manage-bug-report`) with a `type: 'help_request'` field so it routes through the same admin system
+
+## 5. Change "book a call" goal wording
+
+**File:** `src/pages/Create.tsx` (~line 852)
+
+Change:
+- Title: `"Get people to book a call with me"` → `"Get people to contact me"`
+- Description: `"Fill your calendar with discovery calls or consultations"` → `"Drive inquiries through forms, calls, or applications"`
 
 ## Files Summary
-| File | Action |
-|------|--------|
-| `supabase/functions/create-checkout/index.ts` | Add trial_period_days |
-| `supabase/functions/create-guest-checkout/index.ts` | Add trial_period_days default |
-| `src/pages/Pricing.tsx` | Trial CTA + messaging |
-| `src/pages/Sales.tsx` | Trial CTA + messaging |
-| `src/pages/Dashboard.tsx` | Trial countdown banner |
-| `supabase/functions/send-trial-reminders/index.ts` | New — trial email drip |
-| `supabase/functions/send-onboarding-drip/index.ts` | Skip trialing users |
 
-## Technical Notes
-- No database schema changes needed
-- Stripe handles billing lifecycle natively — trial → active on day 8, or trial → cancelled
-- `SubscriptionContext` already exposes `isTrial` and `subscriptionEnd`
-- Existing `handle-cancellation` flow covers trial expiration (user doesn't convert)
+| File | Change |
+|------|--------|
+| `src/components/AdPreview.tsx` | CTA explainer tooltip |
+| `src/components/creative/AdPreviewModal.tsx` | CTA explainer tooltip |
+| `src/pages/CreativeStudio.tsx` | Soften continue button labels |
+| `src/components/CampaignBuilderForm.tsx` | Universal location targeting section |
+| `src/components/MobileCampaignBuilder.tsx` | Universal location targeting section |
+| `supabase/functions/lumi-chat/index.ts` | Add escalation logic + contact_support action |
+| `src/components/LumiAssistant.tsx` | Handle contact_support action, open help ticket modal |
+| `src/pages/Create.tsx` | Update "book a call" goal text |
 
