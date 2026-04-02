@@ -68,6 +68,12 @@ const contextStarters: Record<string, { label: string; message: string }[]> = {
     { label: "Email reports", message: "How do I set up weekly email reports?" },
     { label: "Need help", message: "What can I do on this page?" },
   ],
+  'meta-setup': [
+    { label: "Help me connect", message: "I need help connecting my Meta account to Lumi." },
+    { label: "No Facebook Page", message: "I don't have a Facebook Page. What do I do?" },
+    { label: "Instagram not showing", message: "My Instagram account isn't showing up when I connect." },
+    { label: "Where's billing?", message: "Where do I add billing/payment info for my Meta ad account?" },
+  ],
 };
 
 // Dynamic starters based on user state
