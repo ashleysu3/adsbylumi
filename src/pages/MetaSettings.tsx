@@ -68,6 +68,36 @@ export default function MetaSettings() {
     }
   }, [brand?.id, brand?.meta_account_id, hasValidToken]);
 
+  // Run diagnostic when connected
+  useEffect(() => {
+    if (brand?.id && brand?.meta_account_id && hasValidToken && !diagnosticResult) {
+      runDiagnostic();
+    }
+  }, [brand?.id, brand?.meta_account_id, hasValidToken]);
+
+  const runDiagnostic = async () => {
+    if (!brand?.id) return;
+    setDiagnosticLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('diagnose-meta-setup', {
+        body: { brandId: brand.id }
+      });
+      if (error) throw error;
+      if (data?.success) {
+        setDiagnosticResult(data);
+      }
+    } catch (err) {
+      console.error('Diagnostic failed:', err);
+    } finally {
+      setDiagnosticLoading(false);
+    }
+  };
+
+  const handleDiagnosticRecheck = async () => {
+    setDiagnosticRecheckCount(prev => prev + 1);
+    await runDiagnostic();
+  };
+
   const runAutoTest = async () => {
     if (!brand?.id || autoTesting) return;
 
