@@ -101,7 +101,7 @@ export function MobileCampaignBuilder({
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
-  const updateLocationAddress = (index: number, value: string) => {
+  const updateLocationAddress = (index: number, value: string, isConfirmed = false) => {
     const updated = [...locationAddresses];
     updated[index] = value;
     setLocationAddresses(updated);
