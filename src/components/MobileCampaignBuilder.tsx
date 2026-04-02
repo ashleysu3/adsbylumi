@@ -82,7 +82,10 @@ export function MobileCampaignBuilder({
     answers.additionalPosts || []
   );
 
-  // Smart location state
+  // Location state — universal
+  const [locationMode, setLocationMode] = useState<'country' | 'specific'>(
+    answers.locationTargeting?.addresses?.length > 0 ? 'specific' : 'country'
+  );
   const [showSmartLocation, setShowSmartLocation] = useState(
     !!answers.locationTargeting && !usesLocationTargeting
   );
@@ -91,6 +94,9 @@ export function MobileCampaignBuilder({
   );
   const [locationRadius, setLocationRadius] = useState(
     answers.locationTargeting?.radius || 15
+  );
+  const [selectedCountries, setSelectedCountries] = useState<string[]>(
+    answers.locationTargeting?.countries || ["United States"]
   );
 
   const { activeBrand } = useBrand();
@@ -123,14 +129,17 @@ export function MobileCampaignBuilder({
       
       ...(isSocialGrowth && { socialGrowth: true, selectedPosts }),
       additionalPosts: includeExistingPosts ? additionalPosts : [],
-      // Smart location targeting
-      ...(showSmartLocation && {
+      // Location targeting
+      ...(usesLocationTargeting || locationMode === 'specific' ? {
         locationTargeting: {
           addresses: locationAddresses.filter(a => a.trim()),
           radius: locationRadius,
         },
-      }),
-      ...(!showSmartLocation && !usesLocationTargeting && { locationTargeting: undefined }),
+      } : locationMode === 'country' ? {
+        locationTargeting: {
+          countries: selectedCountries,
+        },
+      } : {}),
     };
     onAnswerUpdate(newAnswers);
   }, [budget, launchActive, additionalPosts, includeExistingPosts, showSmartLocation, locationAddresses, locationRadius]);
