@@ -20,6 +20,7 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ user, profile, isAdmin, onShowWalkthrough }: MobileHeaderProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [bugReportOpen, setBugReportOpen] = useState(false);
 
   const handleSignOut = async () => {
