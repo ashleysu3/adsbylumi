@@ -369,6 +369,15 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Report a Bug"
+                  onClick={() => setBugReportOpen(true)}
+                  className="transition-all duration-200"
+                >
+                  <LadybugIcon className="h-4 w-4" />
+                  {!collapsed && <span>Report a Bug</span>}
+                </SidebarMenuButton>
               {isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild tooltip="Admin">
