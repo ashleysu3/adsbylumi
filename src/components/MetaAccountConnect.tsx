@@ -628,6 +628,15 @@ export function MetaAccountConnect({
               </div>
             </div>
           )}
+          {/* Post-OAuth Diagnostic */}
+          {diagnosticResult && step !== 'connect' && (
+            <MetaSetupDiagnostic
+              result={diagnosticResult}
+              brandId={brandId}
+              rechecking={diagnosticLoading}
+              onRecheck={() => runPostOAuthDiagnostic(accounts, pages, instagramAccounts)}
+            />
+          )}
 
           {step === 'connect' && (
             <Card className="p-6 border-2 border-dashed">
