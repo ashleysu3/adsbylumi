@@ -60,6 +60,13 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   const [bugReportOpen, setBugReportOpen] = useReactState(false);
   const [userEmail, setUserEmail] = useReactState("");
 
+  // Fetch user email for bug reports
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setUserEmail(user.email);
+    });
+  }, []);
+
   // Lightweight check for campaign count
   useEffect(() => {
     if (!brandId) return;
