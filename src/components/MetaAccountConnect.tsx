@@ -70,7 +70,30 @@ export function MetaAccountConnect({
   const [selectedInstagram, setSelectedInstagram] = useState<string>("");
   const [oauthLoading, setOauthLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [step, setStep] = useState<'connect' | 'select-account' | 'select-page' | 'select-instagram'>('connect');
+
+  const runPostOAuthDiagnostic = async (accts: AdAccount[], pgs: FacebookPage[], igs: InstagramAccount[]) => {
+    try {
+      setDiagnosticLoading(true);
+      const { data, error } = await supabase.functions.invoke('diagnose-meta-setup', {
+        body: {
+          brandId,
+          accounts: accts,
+          pages: pgs,
+          instagramAccounts: igs,
+        }
+      });
+      if (!error && data?.success) {
+        setDiagnosticResult(data);
+      }
+    } catch {
+      // Non-fatal
+    } finally {
+      setDiagnosticLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (currentAccountId) {
