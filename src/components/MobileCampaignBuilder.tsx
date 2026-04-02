@@ -3,6 +3,7 @@ import { MobileStepWizard, StepSlider } from "@/components/MobileStepWizard";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { LocationAutocomplete } from "@/components/LocationAutocomplete";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -100,7 +101,7 @@ export function MobileCampaignBuilder({
 
   const objectiveLabel = OBJECTIVE_LABELS[defaultObjective] || defaultObjective;
 
-  const updateLocationAddress = (index: number, value: string) => {
+  const updateLocationAddress = (index: number, value: string, isConfirmed = false) => {
     const updated = [...locationAddresses];
     updated[index] = value;
     setLocationAddresses(updated);
@@ -274,11 +275,11 @@ export function MobileCampaignBuilder({
                   <div className="space-y-2">
                     {locationAddresses.map((address, index) => (
                       <div key={index} className="flex gap-2">
-                        <Input
-                          placeholder="Enter your business address"
+                        <LocationAutocomplete
                           value={address}
-                          onChange={(e) => updateLocationAddress(index, e.target.value)}
-                          className="flex-1"
+                          onChange={(val, loc) => updateLocationAddress(index, val, !!loc)}
+                          brandId={workspace.brand_id}
+                          placeholder="Enter your business address"
                         />
                         {locationAddresses.length > 1 && (
                           <Button

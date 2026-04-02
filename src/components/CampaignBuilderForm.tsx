@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { LocationAutocomplete } from "@/components/LocationAutocomplete";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { detectLocationBusiness } from "@/lib/detect-location-business";
 import {
@@ -91,6 +92,9 @@ export function CampaignBuilderForm({
   const [locationAddresses, setLocationAddresses] = useState<string[]>(
     answers.locationTargeting?.addresses || [""]
   );
+  const [confirmedAddresses, setConfirmedAddresses] = useState<boolean[]>(
+    (answers.locationTargeting?.addresses || [""]).map((a: string) => !!a.trim())
+  );
   const [locationRadius, setLocationRadius] = useState(
     answers.locationTargeting?.radius || defaultRadius
   );
@@ -145,16 +149,21 @@ export function CampaignBuilderForm({
 
   const addLocationAddress = () => {
     setLocationAddresses([...locationAddresses, ""]);
+    setConfirmedAddresses([...confirmedAddresses, false]);
   };
 
   const removeLocationAddress = (index: number) => {
     setLocationAddresses(locationAddresses.filter((_, i) => i !== index));
+    setConfirmedAddresses(confirmedAddresses.filter((_, i) => i !== index));
   };
 
-  const updateLocationAddress = (index: number, value: string) => {
+  const updateLocationAddress = (index: number, value: string, isConfirmed = false) => {
     const updated = [...locationAddresses];
     updated[index] = value;
     setLocationAddresses(updated);
+    const updatedConfirmed = [...confirmedAddresses];
+    updatedConfirmed[index] = isConfirmed;
+    setConfirmedAddresses(updatedConfirmed);
   };
 
   return (
@@ -257,15 +266,16 @@ export function CampaignBuilderForm({
             <div className="space-y-2">
               {locationAddresses.map((address, index) => (
                 <div key={index} className="flex gap-2">
-                  <Input
+                  <LocationAutocomplete
+                    value={address}
+                    onChange={(val, loc) => updateLocationAddress(index, val, !!loc)}
+                    brandId={workspace.brand_id}
+                    confirmed={confirmedAddresses[index]}
                     placeholder={
                       templateStrategy?.location_type === "places"
                         ? "e.g., Convention Center, 123 Main St, City, State"
                         : "Enter your business address"
                     }
-                    value={address}
-                    onChange={(e) => updateLocationAddress(index, e.target.value)}
-                    className="flex-1"
                   />
                   {locationAddresses.length > 1 && (
                     <Button
@@ -347,11 +357,12 @@ export function CampaignBuilderForm({
                 <div className="space-y-2">
                   {locationAddresses.map((address, index) => (
                     <div key={index} className="flex gap-2">
-                      <Input
-                        placeholder="Enter your business address"
+                      <LocationAutocomplete
                         value={address}
-                        onChange={(e) => updateLocationAddress(index, e.target.value)}
-                        className="flex-1"
+                        onChange={(val, loc) => updateLocationAddress(index, val, !!loc)}
+                        brandId={workspace.brand_id}
+                        confirmed={confirmedAddresses[index]}
+                        placeholder="Enter your business address"
                       />
                       {locationAddresses.length > 1 && (
                         <Button
