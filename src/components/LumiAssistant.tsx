@@ -1185,6 +1185,15 @@ export function LumiAssistantProvider({ children }: { children: ReactNode }) {
     setChatOpen(true);
   };
 
+  // Listen for external "open-lumi" events (e.g. from MetaSettings "Ask Lumi" button)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      setChatOpen(true);
+    };
+    window.addEventListener('open-lumi', handler);
+    return () => window.removeEventListener('open-lumi', handler);
+  }, []);
+
   return (
     <LumiAssistantContext.Provider value={{ 
       recommendation, 
