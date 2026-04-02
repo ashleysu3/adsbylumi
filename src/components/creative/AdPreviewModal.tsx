@@ -36,6 +36,11 @@ interface AdPreviewModalProps {
     file_type: string;
     file_name: string;
   } | null;
+  verticalAsset?: {
+    file_url: string;
+    file_type: string;
+    file_name: string;
+  } | null;
   angleCopy?: AngleCopyData;
   selectedCopy?: Record<string, any>;
   brandName?: string;
@@ -50,6 +55,7 @@ export function AdPreviewModal({
   onOpenChange,
   item,
   asset,
+  verticalAsset,
   angleCopy,
   selectedCopy,
   brandName = "Your Brand",
@@ -104,6 +110,18 @@ export function AdPreviewModal({
   const isVideo =
     inferredFileType.startsWith("video") ||
     /\.(mp4|mov|webm|m4v)$/i.test(assetUrl || "");
+
+  // Resolve vertical (9:16) asset for Stories/Reels
+  const verticalAssetUrl = verticalAsset?.file_url || null;
+  const verticalFileType = verticalAsset?.file_type || "";
+  const isVerticalVideo = verticalFileType.startsWith("video") || /\.(mp4|mov|webm|m4v)$/i.test(verticalAssetUrl || "");
+  // Use vertical asset for vertical placements when available
+  const getAssetForPlacement = (placement: "feed" | "vertical") => {
+    if (placement === "vertical" && verticalAssetUrl) {
+      return { url: verticalAssetUrl, isVid: isVerticalVideo };
+    }
+    return { url: assetUrl, isVid: isVideo };
+  };
 
   const pickFirstNonEmpty = (...sets: CopyVariation[][]): CopyVariation[] => {
     for (const set of sets) {
@@ -274,14 +292,16 @@ export function AdPreviewModal({
     placement === "vertical" && mediaAspect !== null && mediaAspect > 0.7; // square-ish or wider in a vertical container
 
   const renderMedia = (placement: "feed" | "vertical" = "feed", className?: string) => {
-    if (assetUrl) {
-      const showBlurBg = needsMetaPadding(placement);
+    const { url: mediaUrl, isVid: mediaIsVideo } = getAssetForPlacement(placement);
+    const hasVerticalOverride = placement === "vertical" && !!verticalAssetUrl;
 
-      const useContain = showBlurBg || (placement === "vertical" && isVerticalAsset);
+    if (mediaUrl) {
+      const showBlurBg = !hasVerticalOverride && needsMetaPadding(placement);
+      const useContain = showBlurBg || (placement === "vertical" && !hasVerticalOverride && isVerticalAsset);
       
-      const mediaElement = isVideo ? (
+      const mediaElement = mediaIsVideo ? (
         <video 
-          src={assetUrl} 
+          src={mediaUrl} 
           className={cn(
             "w-full h-full",
             useContain ? "object-contain relative z-10" : "object-cover",
@@ -294,7 +314,7 @@ export function AdPreviewModal({
         />
       ) : (
         <img 
-          src={assetUrl} 
+          src={mediaUrl} 
           alt="Ad creative"
           className={cn(
             "w-full h-full",
@@ -309,16 +329,16 @@ export function AdPreviewModal({
         return (
           <div className="relative w-full h-full overflow-hidden">
             {/* Blurred background layer */}
-            {isVideo ? (
+            {mediaIsVideo ? (
               <video
-                src={assetUrl}
+                src={mediaUrl}
                 className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
                 muted
                 playsInline
               />
             ) : (
               <img
-                src={assetUrl}
+                src={mediaUrl}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
               />

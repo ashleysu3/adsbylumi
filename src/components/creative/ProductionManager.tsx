@@ -1134,6 +1134,11 @@ export function ProductionManager({
           onOpenChange={(open) => !open && setAdPreviewItem(null)}
           item={adPreviewItem}
           asset={getPreviewAssetForItem(adPreviewItem)}
+          verticalAsset={(() => {
+            const va = getVerticalAssetForItem(adPreviewItem);
+            if (!va) return null;
+            return { file_url: va.file_url, file_type: va.file_type || 'image', file_name: va.file_name || '' };
+          })()}
           angleCopy={getCopyForItem(adPreviewItem)}
           selectedCopy={selectedCopy}
           brandName={workspace?.brands?.name}

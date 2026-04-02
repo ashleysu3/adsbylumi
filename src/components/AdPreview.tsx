@@ -15,6 +15,10 @@ interface AdPreviewProps {
       url?: string;
       type?: string;
     };
+    verticalAsset?: {
+      url?: string;
+      type?: string;
+    };
     finalCopy?: {
       headline?: string;
       primaryText?: string;
@@ -55,6 +59,14 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl, isDmC
   const assetUrl = concept.linkedAsset?.url || conceptData.uploaded_asset_url || conceptData.asset_url || null;
   const assetType = concept.linkedAsset?.type || conceptData.linkedAsset?.file_type || 'image';
   const isVideo = assetType.includes('video') || /\.(mp4|mov|webm|m4v)$/i.test(assetUrl || '');
+
+  // Resolve vertical (9:16) asset for Stories/Reels
+  const verticalAssetUrl = concept.verticalAsset?.url || conceptData.verticalAsset?.url || conceptData.vertical_asset_url || null;
+  const verticalAssetType = concept.verticalAsset?.type || conceptData.verticalAsset?.type || assetType;
+  const isVerticalVideo = verticalAssetType.includes('video') || /\.(mp4|mov|webm|m4v)$/i.test(verticalAssetUrl || '');
+  // For stories: use vertical asset if available, otherwise fall back to main asset
+  const storiesAssetUrl = verticalAssetUrl || assetUrl;
+  const storiesIsVideo = verticalAssetUrl ? isVerticalVideo : isVideo;
   
   // Whether the asset needs Meta-style padding in vertical containers (square or wider in 9:16)
   const needsMetaPadding = mediaAspect !== null && mediaAspect > 0.7;
@@ -208,30 +220,30 @@ export function AdPreview({ concept, brandName = "Your Brand", websiteUrl, isDmC
               <div className="w-[220px] bg-black rounded-2xl overflow-hidden shadow-lg relative">
                 {/* Stories Frame */}
                 <AspectRatio ratio={9/16}>
-                  {assetUrl ? (
+                  {storiesAssetUrl ? (
                     <div className="relative w-full h-full overflow-hidden">
-                      {/* Blurred background for non-vertical assets */}
-                      {needsMetaPadding && (
-                        isVideo ? (
-                          <video src={assetUrl} className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" muted playsInline />
+                      {/* Blurred background for non-vertical assets (only when no dedicated vertical asset) */}
+                      {!verticalAssetUrl && needsMetaPadding && (
+                        storiesIsVideo ? (
+                          <video src={storiesAssetUrl} className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" muted playsInline />
                         ) : (
-                          <img src={assetUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" />
+                          <img src={storiesAssetUrl} alt="" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60" />
                         )
                       )}
-                      {needsMetaPadding && <div className="absolute inset-0 bg-black/30 z-[5]" />}
-                      {isVideo ? (
+                      {!verticalAssetUrl && needsMetaPadding && <div className="absolute inset-0 bg-black/30 z-[5]" />}
+                      {storiesIsVideo ? (
                         <video 
-                          src={assetUrl} 
-                          className={`w-full h-full ${needsMetaPadding ? 'object-contain relative z-10' : 'object-cover'}`}
+                          src={storiesAssetUrl} 
+                          className={`w-full h-full ${!verticalAssetUrl && needsMetaPadding ? 'object-contain relative z-10' : 'object-cover'}`}
                           muted
                           playsInline
                           onLoadedMetadata={handleVideoLoad}
                         />
                       ) : (
                         <img 
-                          src={assetUrl} 
+                          src={storiesAssetUrl} 
                           alt="Ad creative"
-                          className={`w-full h-full ${needsMetaPadding ? 'object-contain relative z-10' : 'object-cover'}`}
+                          className={`w-full h-full ${!verticalAssetUrl && needsMetaPadding ? 'object-contain relative z-10' : 'object-cover'}`}
                           onLoad={handleImageLoad}
                         />
                       )}
