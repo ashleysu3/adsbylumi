@@ -55,6 +55,7 @@ export function AdPreviewModal({
   onOpenChange,
   item,
   asset,
+  verticalAsset,
   angleCopy,
   selectedCopy,
   brandName = "Your Brand",
