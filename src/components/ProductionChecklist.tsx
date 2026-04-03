@@ -99,6 +99,7 @@ export function ProductionChecklist({ workspace, onUpdate, brand }: ProductionCh
       });
       setClipAssignments(assignments);
     }
+  };
 
   const toggleExpanded = (conceptId: string) => {
     const newExpanded = new Set(expandedConcepts);
