@@ -300,6 +300,12 @@ REQUIREMENTS:
       psychology_trigger: parsed.psychology_trigger || "curiosity",
       pain_point_addressed: parsed.pain_point_addressed || "general",
       why_this_works: parsed.why_this_works || "",
+      // B-roll specific fields
+      ...(isBroll && {
+        broll_shots: parsed.broll_shots || [],
+        text_overlays: parsed.text_overlays || [],
+        mood: parsed.mood || "Relatable",
+      }),
       // Talking head specific fields
       ...(isTalkingHead && {
         verbal_hook: parsed.verbal_hook || parsed.hook || "",

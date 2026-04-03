@@ -437,6 +437,11 @@ Each cell MUST include:
 - pain_point_addressed: Which specific pain point from the list above this targets (or "general" if broad)
 - why_this_works: One sentence explaining the psychology (for the user's education)
 
+ADDITIONAL FIELDS FOR broll FORMAT ONLY:
+- broll_shots: Array of 3-5 one-sentence everyday shot ideas (generic, lofi, phone-filmed)
+- text_overlays: Array of objects with "text", "timing", and "type" (hook/insight/transition/cta) — this is what sells
+- mood: One of "Calm", "Productive", "Relatable", "Warm", "Authentic", "Energetic"
+
 ADDITIONAL FIELDS FOR talking_head FORMAT ONLY:
 - verbal_hook: The opening spoken line (pattern interrupt, confession, or controversial take)
 - written_hook: The text overlay that appears first (creates curiosity gap, differs from verbal)
