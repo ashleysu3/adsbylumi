@@ -819,6 +819,33 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* B-Roll Library */}
+        <BRollLibrary
+          brandId={brand.id}
+          clips={brollClips}
+          onUpdate={(clips) => setBrollClips(clips)}
+        />
+
+        {/* Overlay Style Picker */}
+        <OverlayStylePicker
+          style={overlayStyle}
+          onChange={setOverlayStyle}
+          onSave={async () => {
+            setSaving(true);
+            try {
+              const { error } = await supabase
+                .from("brands")
+                .update({ overlay_style: overlayStyle as any })
+                .eq("id", brand.id);
+              if (error) throw error;
+              toast.success("Overlay style saved");
+            } catch {
+              toast.error("Failed to save overlay style");
+            }
+            setSaving(false);
+          }}
+          saving={saving}
+        />
 
         {/* Meta Best Practices for Copy */}
         <Card>
