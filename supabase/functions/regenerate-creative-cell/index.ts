@@ -63,11 +63,12 @@ serve(async (req) => {
 
     const formatLabels: Record<string, string> = {
       talking_head: "Talking Head Video (vulnerable, real, unpolished)",
-      broll: "B-Roll / Lo-Fi Video (cinematic micro-moments)",
+      broll: "B-Roll with text overlay (lofi, everyday, phone-filmed — the copy does the selling)",
       graphic: "Static Graphic / Image (bold, unexpected, thumb-stopping)"
     };
 
     const isTalkingHead = cell.format === "talking_head";
+    const isBroll = cell.format === "broll";
     
     const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts.
 
@@ -105,6 +106,27 @@ Guidance: "Show testimonials and results."
 Hook: "My 3rd discovery call this week. Same objection. 'I need to think about it.' Again."
 Guidance: "POV shot of you hanging up phone, slump in chair. B-roll of empty calendar. Text overlay: 'Sound familiar?' at 2 seconds."
 
+${isBroll ? `
+=== B-ROLL FORMAT — LOFI EVERYDAY FOOTAGE ===
+B-roll is NOT cinematic or produced. It is dead-simple background footage filmed on a phone in under 30 seconds. The TEXT OVERLAYS do the selling — the footage is just warmth and movement behind the words.
+
+WHAT TO SUGGEST (generic everyday actions ONLY):
+- Typing on a laptop, walking somewhere, pouring coffee, fixing hair in a mirror
+- Scrolling on phone, sitting at a desk, walking a dog, driving (phone mounted)
+- Writing in a notebook, picking up bag/keys, cooking, watering plants
+- Standing at a window, putting on shoes, getting ready, making coffee
+
+WHAT NOT TO SUGGEST:
+- NO industry-specific or product-specific scenes
+- NO cinematic or stylized shots, NO props they'd need to buy
+- NO specific facial expressions or acting, NO elaborate staging
+- The footage should work for ANY ad copy layered on top
+
+For broll format, you MUST create:
+1. **broll_shots**: Array of 3-5 one-sentence everyday shot ideas
+2. **text_overlays**: Array of timed text overlay objects with "text", "timing", "type" (hook/insight/transition/cta) — THIS is what sells
+3. **mood**: One of "Calm", "Productive", "Relatable", "Warm", "Authentic", "Energetic"
+` : ''}
 ${isTalkingHead ? `
 === TALKING HEAD - DESIGNED FOR NON-ACTORS ===
 Your users are coaches, course creators, and service providers - NOT actors or professional content creators.
@@ -160,7 +182,14 @@ Output ONLY valid JSON with this exact structure:
   "guidance": "Detailed production guidance with camera angles, timing, overlays",
   "psychology_trigger": "The psychological lever being pulled",
   "pain_point_addressed": "Which specific pain point this targets",
-  "why_this_works": "One sentence explanation for user education"${isTalkingHead ? `,
+  "why_this_works": "One sentence explanation for user education"${isBroll ? `,
+  "broll_shots": ["Shot 1 - simple everyday action", "Shot 2", "Shot 3"],
+  "text_overlays": [
+    { "text": "Hook text", "timing": "0-3s", "type": "hook" },
+    { "text": "Insight text", "timing": "8-12s", "type": "insight" },
+    { "text": "CTA text", "timing": "15-18s", "type": "cta" }
+  ],
+  "mood": "Calm | Productive | Relatable | Warm | Authentic | Energetic"` : ''}${isTalkingHead ? `,
   "verbal_hook": "Opening spoken line - pattern interrupt or confession",
   "written_hook": "Text overlay that creates curiosity gap",
   "visual_hook": "What viewers see in first 1-3 seconds - SIMPLE and EVERYDAY",
@@ -271,6 +300,12 @@ REQUIREMENTS:
       psychology_trigger: parsed.psychology_trigger || "curiosity",
       pain_point_addressed: parsed.pain_point_addressed || "general",
       why_this_works: parsed.why_this_works || "",
+      // B-roll specific fields
+      ...(isBroll && {
+        broll_shots: parsed.broll_shots || [],
+        text_overlays: parsed.text_overlays || [],
+        mood: parsed.mood || "Relatable",
+      }),
       // Talking head specific fields
       ...(isTalkingHead && {
         verbal_hook: parsed.verbal_hook || parsed.hook || "",
