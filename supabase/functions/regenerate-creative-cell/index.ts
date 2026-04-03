@@ -106,6 +106,27 @@ Guidance: "Show testimonials and results."
 Hook: "My 3rd discovery call this week. Same objection. 'I need to think about it.' Again."
 Guidance: "POV shot of you hanging up phone, slump in chair. B-roll of empty calendar. Text overlay: 'Sound familiar?' at 2 seconds."
 
+${isBroll ? `
+=== B-ROLL FORMAT — LOFI EVERYDAY FOOTAGE ===
+B-roll is NOT cinematic or produced. It is dead-simple background footage filmed on a phone in under 30 seconds. The TEXT OVERLAYS do the selling — the footage is just warmth and movement behind the words.
+
+WHAT TO SUGGEST (generic everyday actions ONLY):
+- Typing on a laptop, walking somewhere, pouring coffee, fixing hair in a mirror
+- Scrolling on phone, sitting at a desk, walking a dog, driving (phone mounted)
+- Writing in a notebook, picking up bag/keys, cooking, watering plants
+- Standing at a window, putting on shoes, getting ready, making coffee
+
+WHAT NOT TO SUGGEST:
+- NO industry-specific or product-specific scenes
+- NO cinematic or stylized shots, NO props they'd need to buy
+- NO specific facial expressions or acting, NO elaborate staging
+- The footage should work for ANY ad copy layered on top
+
+For broll format, you MUST create:
+1. **broll_shots**: Array of 3-5 one-sentence everyday shot ideas
+2. **text_overlays**: Array of timed text overlay objects with "text", "timing", "type" (hook/insight/transition/cta) — THIS is what sells
+3. **mood**: One of "Calm", "Productive", "Relatable", "Warm", "Authentic", "Energetic"
+` : ''}
 ${isTalkingHead ? `
 === TALKING HEAD - DESIGNED FOR NON-ACTORS ===
 Your users are coaches, course creators, and service providers - NOT actors or professional content creators.
