@@ -40,6 +40,7 @@ interface OverlayStylePickerProps {
   onChange: (style: OverlayStyle) => void;
   onSave: () => void;
   saving?: boolean;
+  brandId: string;
 }
 
 function hexToRgba(hex: string, opacity: number): string {
