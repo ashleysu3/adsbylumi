@@ -1301,13 +1301,20 @@ export default function CreativeStudio() {
               <BYOCreativeUploader
                 workspaceId={workspace.id}
                 brandId={brandId}
-                onComplete={async (items, copyChoice) => {
+                angleCopy={angleCopy}
+                angles={availableAngles.map(a => ({ id: a.id, name: a.name }))}
+                onComplete={async (items, copyChoice, pickedCopy) => {
                   setShowBYOUploader(false);
-                  // Reload workspace to pick up new data
                   await loadWorkspace(workspace.id);
                   if (copyChoice === "lumi") {
                     setShouldAutoGenerateCopy(true);
                     setManualCopyEntry(false);
+                    setActiveTab("copy");
+                  } else if (copyChoice === "picked" && pickedCopy) {
+                    // Merge picked copy into local state
+                    setAngleCopy(prev => ({ ...prev, byo_uploads: pickedCopy }));
+                    setManualCopyEntry(false);
+                    setShouldAutoGenerateCopy(false);
                     setActiveTab("copy");
                   } else {
                     setManualCopyEntry(true);
