@@ -50,8 +50,9 @@ function hexToRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
-export function OverlayStylePicker({ style, onChange, onSave, saving }: OverlayStylePickerProps) {
+export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }: OverlayStylePickerProps) {
   const update = (partial: Partial<OverlayStyle>) => onChange({ ...style, ...partial });
+  const [uploadingCta, setUploadingCta] = useState(false);
 
   useEffect(() => {
     const linkId = "overlay-google-fonts";
