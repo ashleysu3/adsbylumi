@@ -27,11 +27,15 @@ interface ProductionChecklistProps {
   brand?: any;
 }
 
-export function ProductionChecklist({ workspace, onUpdate }: ProductionChecklistProps) {
+export function ProductionChecklist({ workspace, onUpdate, brand }: ProductionChecklistProps) {
   const navigate = useNavigate();
   const [productionItems, setProductionItems] = useState<any[]>([]);
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
   const [readyForProduction, setReadyForProduction] = useState<Set<string>>(new Set());
+  const [clipAssignments, setClipAssignments] = useState<Record<string, string>>({});
+
+  const brollClips: BRollClip[] = (brand as any)?.broll_library || [];
+  const overlayStyle: OverlayStyle = (brand as any)?.overlay_style || DEFAULT_OVERLAY_STYLE;
 
   useEffect(() => {
     initializeProductionItems();
