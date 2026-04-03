@@ -75,6 +75,7 @@ interface CreativeChecklistCardProps {
   onToggleSelect?: () => void;
   angleCopy?: AngleCopyData;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
+  onOverlaysChange?: (overlays: TextOverlay[]) => void;
   brand?: any;
 }
 
