@@ -517,62 +517,188 @@ export function CreativeChecklistCard({
                     </div>
                   )}
 
-                  {/* B-Roll Video Preview from Library */}
+                  {/* B-Roll Source Toggle + Preview */}
                   {(() => {
                     const brollClips: any[] = (brand as any)?.broll_library || [];
                     const oStyle: OverlayStyle = (brand as any)?.overlay_style || DEFAULT_OVERLAY_STYLE;
-                    if (brollClips.length === 0) return null;
-
-                    const clipId = selectedBrollClipId || brollClips[0]?.id;
-                    const clip = brollClips.find((c: any) => c.id === clipId);
                     const tOverlays: TextOverlay[] = (item.text_overlays || []).map((o: any) =>
                       typeof o === "string" ? { text: o } : o
                     );
 
-                    if (!clip) return null;
+                    const handleBrollFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.type.startsWith("video/")) {
+                        toast.error("Please upload a video file");
+                        return;
+                      }
+                      if (file.size > 250 * 1024 * 1024) {
+                        toast.error("File must be under 250MB");
+                        return;
+                      }
+                      setUploadingBroll(true);
+                      try {
+                        const { supabase } = await import("@/integrations/supabase/client");
+                        const brandId = (brand as any)?.id;
+                        const path = `${brandId}/broll-custom/${Date.now()}_${file.name}`;
+                        const { error: uploadError } = await supabase.storage
+                          .from("creative-assets")
+                          .upload(path, file);
+                        if (uploadError) throw uploadError;
+                        const { data: urlData } = supabase.storage
+                          .from("creative-assets")
+                          .getPublicUrl(path);
+                        setCustomBrollUrl(urlData.publicUrl);
+                        setCustomBrollName(file.name);
+                        toast.success("Video uploaded!");
+                      } catch (err: any) {
+                        toast.error(err?.message || "Upload failed");
+                      } finally {
+                        setUploadingBroll(false);
+                      }
+                    };
 
                     return (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <h5 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
                             <Film className="h-3.5 w-3.5" />
-                            B-Roll Preview
+                            B-Roll Creative
                           </h5>
-                          <Select
-                            value={clipId}
-                            onValueChange={setSelectedBrollClipId}
+                        </div>
+
+                        {/* Source toggle */}
+                        <div className="flex gap-1.5">
+                          <Button
+                            variant={brollSource === "lumi" ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-[11px] flex-1"
+                            onClick={() => setBrollSource("lumi")}
                           >
-                            <SelectTrigger className="w-[140px] h-7 text-[11px]">
-                              <SelectValue placeholder="Swap clip" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {brollClips.map((c: any) => (
-                                <SelectItem key={c.id} value={c.id} className="text-xs">
-                                  {c.file_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            Use Lumi Creative
+                          </Button>
+                          <Button
+                            variant={brollSource === "upload" ? "default" : "outline"}
+                            size="sm"
+                            className="h-7 text-[11px] flex-1"
+                            onClick={() => setBrollSource("upload")}
+                          >
+                            <Upload className="h-3 w-3 mr-1" />
+                            Upload My Own
+                          </Button>
                         </div>
-                        <div className="mx-auto w-[180px]">
-                          {tOverlays.length > 0 ? (
-                            <VideoTextPreview
-                              videoUrl={clip.file_url}
-                              overlays={tOverlays}
-                              style={oStyle}
-                              compact
-                            />
-                          ) : (
-                            <video
-                              src={clip.file_url}
-                              className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
-                              controls
-                              muted
-                              playsInline
-                              preload="metadata"
-                            />
-                          )}
-                        </div>
+
+                        {brollSource === "lumi" ? (
+                          <>
+                            {brollClips.length > 0 ? (
+                              <>
+                                <div className="flex justify-end">
+                                  <Select
+                                    value={selectedBrollClipId || brollClips[0]?.id}
+                                    onValueChange={setSelectedBrollClipId}
+                                  >
+                                    <SelectTrigger className="w-[140px] h-7 text-[11px]">
+                                      <SelectValue placeholder="Swap clip" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {brollClips.map((c: any) => (
+                                        <SelectItem key={c.id} value={c.id} className="text-xs">
+                                          {c.file_name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                {(() => {
+                                  const clipId = selectedBrollClipId || brollClips[0]?.id;
+                                  const clip = brollClips.find((c: any) => c.id === clipId);
+                                  if (!clip) return null;
+                                  return (
+                                    <div className="mx-auto w-[180px]">
+                                      {tOverlays.length > 0 ? (
+                                        <VideoTextPreview
+                                          videoUrl={clip.file_url}
+                                          overlays={tOverlays}
+                                          style={oStyle}
+                                          compact
+                                        />
+                                      ) : (
+                                        <video
+                                          src={clip.file_url}
+                                          className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
+                                          controls muted playsInline preload="metadata"
+                                        />
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </>
+                            ) : (
+                              <Alert>
+                                <Info className="h-4 w-4" />
+                                <AlertDescription className="text-xs">
+                                  Upload b-roll clips in My Brand to see Lumi-matched previews here.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {customBrollUrl ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                                    {customBrollName}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-[10px]"
+                                    onClick={() => { setCustomBrollUrl(null); setCustomBrollName(null); }}
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-1" />
+                                    Remove
+                                  </Button>
+                                </div>
+                                <div className="mx-auto w-[180px]">
+                                  {tOverlays.length > 0 ? (
+                                    <VideoTextPreview
+                                      videoUrl={customBrollUrl}
+                                      overlays={tOverlays}
+                                      style={oStyle}
+                                      compact
+                                    />
+                                  ) : (
+                                    <video
+                                      src={customBrollUrl}
+                                      className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
+                                      controls muted playsInline preload="metadata"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+                                {uploadingBroll ? (
+                                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                ) : (
+                                  <>
+                                    <Upload className="h-5 w-5 text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground">Upload 9:16 video (max 250MB)</span>
+                                  </>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="video/*"
+                                  className="hidden"
+                                  onChange={handleBrollFileUpload}
+                                  disabled={uploadingBroll}
+                                />
+                              </label>
+                            )}
+                          </>
+                        )}
                       </div>
                     );
                   })()}
