@@ -350,7 +350,7 @@ export function ProductionChecklist({ workspace, onUpdate, brand }: ProductionCh
                               Upload b-roll clips in <span className="font-medium">My Brand</span> to see previews here
                             </p>
                           </div>
-                        ))}
+                        )}
                       </div>
                     )}
 
