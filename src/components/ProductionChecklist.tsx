@@ -84,7 +84,21 @@ export function ProductionChecklist({ workspace, onUpdate, brand }: ProductionCh
       items.filter((item) => item.status === "ready").map((item) => item.id)
     );
     setReadyForProduction(ready);
-  };
+
+    // Auto-assign b-roll clips (round-robin)
+    if (brollClips.length > 0) {
+      const brollItems = items.filter((i) => i.format === "broll");
+      const assignments: Record<string, string> = {};
+      brollItems.forEach((item, idx) => {
+        const existing = item.assigned_clip_id;
+        if (existing && brollClips.find((c) => c.id === existing)) {
+          assignments[item.id] = existing;
+        } else {
+          assignments[item.id] = brollClips[idx % brollClips.length].id;
+        }
+      });
+      setClipAssignments(assignments);
+    }
 
   const toggleExpanded = (conceptId: string) => {
     const newExpanded = new Set(expandedConcepts);
