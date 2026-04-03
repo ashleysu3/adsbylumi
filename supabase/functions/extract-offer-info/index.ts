@@ -4,45 +4,106 @@ import { getCorsHeaders } from '../_shared/cors.ts';
 function isValidPublicUrl(urlString: string): { valid: boolean; error?: string } {
   try {
     const url = new URL(urlString);
-    
-    // Only allow HTTPS (and HTTP for dev)
     if (!['http:', 'https:'].includes(url.protocol)) {
       return { valid: false, error: 'Only HTTP/HTTPS URLs are allowed' };
     }
-    
     const hostname = url.hostname.toLowerCase();
-    
-    // Block private IP ranges, localhost, and cloud metadata endpoints
     const blockedPatterns = [
-      /^127\./, // Loopback
-      /^10\./, // Private Class A
-      /^172\.(1[6-9]|2[0-9]|3[0-1])\./, // Private Class B
-      /^192\.168\./, // Private Class C
-      /^169\.254\./, // Link-local (AWS metadata)
-      /^0\./, // Invalid
-      /^localhost$/i,
-      /\.local$/i,
-      /^metadata/i, // Cloud metadata
-      /\.internal$/i,
+      /^127\./, /^10\./, /^172\.(1[6-9]|2[0-9]|3[0-1])\./, /^192\.168\./,
+      /^169\.254\./, /^0\./, /^localhost$/i, /\.local$/i, /^metadata/i, /\.internal$/i,
     ];
-    
     if (blockedPatterns.some(pattern => pattern.test(hostname))) {
       return { valid: false, error: 'Private or internal URLs are not allowed' };
     }
-    
-    // Block direct IP addresses (require DNS names)
     if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
       return { valid: false, error: 'Direct IP addresses are not allowed' };
     }
-    
-    // Block IPv6 addresses
     if (hostname.includes(':')) {
       return { valid: false, error: 'IPv6 addresses are not allowed' };
     }
-    
     return { valid: true };
   } catch (e) {
     return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
+// Fetch page content using Firecrawl for reliable scraping
+async function fetchWithFirecrawl(url: string): Promise<{ content: string; success: boolean }> {
+  const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!apiKey) {
+    console.log('FIRECRAWL_API_KEY not configured, falling back to basic fetch');
+    return { content: '', success: false };
+  }
+
+  try {
+    console.log('Scraping with Firecrawl:', url);
+    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url,
+        formats: ['markdown'],
+        onlyMainContent: true,
+        waitFor: 3000,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      console.error('Firecrawl error:', data?.error || response.status);
+      return { content: '', success: false };
+    }
+
+    const markdown = data.data?.markdown || data.markdown || '';
+    console.log(`Firecrawl extracted ${markdown.length} characters`);
+    return { content: markdown.substring(0, 50000), success: markdown.length > 100 };
+  } catch (err: any) {
+    console.error('Firecrawl fetch failed:', err.message);
+    return { content: '', success: false };
+  }
+}
+
+// Basic fetch fallback
+async function fetchBasic(url: string): Promise<{ content: string; success: boolean }> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    clearTimeout(timeout);
+
+    const html = await response.text();
+    const content = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, ' ')
+      .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, ' ')
+      .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, ' ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .substring(0, 25000);
+
+    const success = content.length > 200;
+    console.log(`Basic fetch extracted ${content.length} characters`);
+    return { content, success };
+  } catch (err: any) {
+    console.error('Basic fetch failed:', err.message);
+    return { content: '', success: false };
   }
 }
 
@@ -57,7 +118,6 @@ Deno.serve(async (req) => {
   try {
     const { offerUrl, offerName, pastedContent } = await req.json();
     
-    // Input validation - require either URL or pasted content
     if (!offerUrl && !pastedContent) {
       return new Response(
         JSON.stringify({ error: 'Offer URL or pasted content is required' }),
@@ -65,7 +125,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (typeof offerUrl !== 'string' || offerUrl.length > 500) {
+    if (offerUrl && (typeof offerUrl !== 'string' || offerUrl.length > 500)) {
       return new Response(
         JSON.stringify({ error: 'Invalid URL format or URL too long' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -79,7 +139,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // If user pasted content directly, skip URL fetching entirely
     let offerContent = '';
     let fetchSuccess = false;
 
@@ -88,7 +147,6 @@ Deno.serve(async (req) => {
       offerContent = pastedContent.trim().substring(0, 50000);
       fetchSuccess = true;
     } else if (offerUrl) {
-      // SSRF protection - validate URL
       const urlValidation = isValidPublicUrl(offerUrl);
       if (!urlValidation.valid) {
         return new Response(
@@ -99,49 +157,16 @@ Deno.serve(async (req) => {
 
       console.log('Extracting offer info from:', offerUrl);
 
-      // Fetch offer page content with timeout and size limits
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
-
-        const offerResponse = await fetch(offerUrl, {
-          signal: controller.signal,
-          redirect: 'follow',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (YourAdAssistant/1.0)'
-          }
-        });
-        
-        clearTimeout(timeout);
-
-        const contentLength = offerResponse.headers.get('content-length');
-        if (contentLength && parseInt(contentLength) > 2000000) {
-          console.log('Content too large, limiting extraction');
-        }
-
-        const html = await offerResponse.text();
-        
-        offerContent = html
-          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-          .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, ' ')
-          .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, ' ')
-          .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, ' ')
-          .replace(/<[^>]*>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/\s+/g, ' ')
-          .trim()
-          .substring(0, 25000);
-        
-        fetchSuccess = offerContent.length > 200;
-        console.log(`Extracted ${offerContent.length} characters from page`);
-      } catch (error: any) {
-        console.error('Error fetching offer page:', error.message);
-        offerContent = '';
+      // Try Firecrawl first, fall back to basic fetch
+      const firecrawlResult = await fetchWithFirecrawl(offerUrl);
+      if (firecrawlResult.success) {
+        offerContent = firecrawlResult.content;
+        fetchSuccess = true;
+      } else {
+        console.log('Firecrawl unavailable or failed, trying basic fetch...');
+        const basicResult = await fetchBasic(offerUrl);
+        offerContent = basicResult.content;
+        fetchSuccess = basicResult.success;
       }
     }
 
@@ -282,25 +307,21 @@ ${!fetchSuccess ? 'Since the page content could not be fetched, set needs_clarif
       if (first !== -1 && last !== -1) {
         raw = raw.slice(first, last + 1);
       }
-      // Clean common LLM JSON issues
       raw = raw
-        .replace(/,\s*([}\]])/g, '$1')          // trailing commas
-        .replace(/[\x00-\x1F\x7F]/g, ' ')       // control chars
-        .replace(/"\s*\n\s*"/g, '", "');         // missing commas between strings
+        .replace(/,\s*([}\]])/g, '$1')
+        .replace(/[\x00-\x1F\x7F]/g, ' ')
+        .replace(/"\s*\n\s*"/g, '", "');
 
       try {
         return JSON.parse(raw);
       } catch (e) {
-        // Brace-balancing fallback for truncated JSON
         let open = 0, close = 0;
         for (const ch of raw) { if (ch === '{') open++; if (ch === '}') close++; }
         let repaired = raw;
         if (open > close) repaired += '}'.repeat(open - close);
-        // Also balance arrays
         let ao = 0, ac = 0;
         for (const ch of repaired) { if (ch === '[') ao++; if (ch === ']') ac++; }
         if (ao > ac) repaired = repaired.replace(/,?\s*$/, '') + ']'.repeat(ao - ac);
-        // Re-clean trailing commas after repair
         repaired = repaired.replace(/,\s*([}\]])/g, '$1');
         return JSON.parse(repaired);
       }
@@ -308,7 +329,6 @@ ${!fetchSuccess ? 'Since the page content could not be fetched, set needs_clarif
 
     const offerInfo = extractJson(rawContent);
 
-    // Add metadata about extraction
     offerInfo.extraction_success = fetchSuccess;
     offerInfo.extracted_length = offerContent.length;
 
