@@ -45,6 +45,7 @@ interface ProductionManagerProps {
   onArchivePrevious?: () => Promise<void>;
   onClearAll?: () => Promise<void>;
   onUrlChange?: (url: string) => void;
+  brand?: any;
 }
 
 export function ProductionManager({
@@ -63,6 +64,7 @@ export function ProductionManager({
   onArchivePrevious,
   onClearAll,
   onUrlChange,
+  brand,
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [uploadingVerticalItemId, setUploadingVerticalItemId] = useState<string | null>(null);
@@ -900,6 +902,7 @@ export function ProductionManager({
                           onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
                           angleCopy={getCopyForItem(item)}
                           onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
+                          brand={brand}
                         />
                       );
                     })}
@@ -938,6 +941,7 @@ export function ProductionManager({
                               onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
                               angleCopy={getCopyForItem(item)}
                               onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
+                              brand={brand}
                             />
                           );
                         })}
@@ -994,6 +998,7 @@ export function ProductionManager({
                                   onRefineScript={onRefineScript}
                                   angleCopy={getCopyForItem(item)}
                                   onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
+                                  brand={brand}
                                 />
                               ))}
                             </div>
