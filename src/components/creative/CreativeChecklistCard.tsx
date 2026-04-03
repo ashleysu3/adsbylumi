@@ -112,6 +112,8 @@ export function CreativeChecklistCard({
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
   const [editingCopyField, setEditingCopyField] = useState<string | null>(null);
+  const [editingOverlayIdx, setEditingOverlayIdx] = useState<number | null>(null);
+  const [editOverlayText, setEditOverlayText] = useState("");
   const [editCopyValue, setEditCopyValue] = useState("");
   const Icon = formatIcons[item.format as keyof typeof formatIcons] || Image;
   const formatLabel = formatLabels[item.format as keyof typeof formatLabels] || item.format;
