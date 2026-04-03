@@ -513,6 +513,64 @@ export function CreativeChecklistCard({
                     </div>
                   )}
 
+                  {/* B-Roll Video Preview from Library */}
+                  {(() => {
+                    const brollClips: any[] = (brand as any)?.broll_library || [];
+                    const oStyle: OverlayStyle = (brand as any)?.overlay_style || DEFAULT_OVERLAY_STYLE;
+                    if (brollClips.length === 0) return null;
+
+                    const clipId = selectedBrollClipId || brollClips[0]?.id;
+                    const clip = brollClips.find((c: any) => c.id === clipId);
+                    const tOverlays: TextOverlay[] = (item.text_overlays || []).map((o: any) =>
+                      typeof o === "string" ? { text: o } : o
+                    );
+
+                    if (!clip) return null;
+
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                            <Film className="h-3.5 w-3.5" />
+                            B-Roll Preview
+                          </h5>
+                          <Select
+                            value={clipId}
+                            onValueChange={setSelectedBrollClipId}
+                          >
+                            <SelectTrigger className="w-[140px] h-7 text-[11px]">
+                              <SelectValue placeholder="Swap clip" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {brollClips.map((c: any) => (
+                                <SelectItem key={c.id} value={c.id} className="text-xs">
+                                  {c.file_name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {tOverlays.length > 0 ? (
+                          <VideoTextPreview
+                            videoUrl={clip.file_url}
+                            overlays={tOverlays}
+                            style={oStyle}
+                            compact
+                          />
+                        ) : (
+                          <video
+                            src={clip.file_url}
+                            className="w-full aspect-[9/16] max-h-[280px] object-cover rounded-lg"
+                            controls
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Why This Works - Psychology for B-Roll */}
                   {(item.psychology_trigger || item.why_this_works) && (
                     <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
