@@ -550,23 +550,25 @@ export function CreativeChecklistCard({
                             </SelectContent>
                           </Select>
                         </div>
-                        {tOverlays.length > 0 ? (
-                          <VideoTextPreview
-                            videoUrl={clip.file_url}
-                            overlays={tOverlays}
-                            style={oStyle}
-                            compact
-                          />
-                        ) : (
-                          <video
-                            src={clip.file_url}
-                            className="w-full aspect-[9/16] max-h-[280px] object-cover rounded-lg"
-                            controls
-                            muted
-                            playsInline
-                            preload="metadata"
-                          />
-                        )}
+                        <div className="mx-auto w-[180px]">
+                          {tOverlays.length > 0 ? (
+                            <VideoTextPreview
+                              videoUrl={clip.file_url}
+                              overlays={tOverlays}
+                              style={oStyle}
+                              compact
+                            />
+                          ) : (
+                            <video
+                              src={clip.file_url}
+                              className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
+                              controls
+                              muted
+                              playsInline
+                              preload="metadata"
+                            />
+                          )}
+                        </div>
                       </div>
                     );
                   })()}
