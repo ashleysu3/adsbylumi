@@ -1,56 +1,41 @@
 
 
-# Fix B-Roll Creative Direction — Make It Lofi, Not Produced
+# Copy Picker for BYO Uploads — Cherry-Pick from Existing Angle Copy
 
 ## Problem
-The b-roll column in the creative grid generates over-produced, cinematic directions because:
-1. The column description says "cinematic micro-moments" (line 222)
-2. There are **zero** dedicated b-roll format instructions — talking_head has 100+ lines of format guidance, but b-roll has nothing
-3. The `regenerate-creative-cell` function also labels b-roll as "cinematic micro-moments" (line 66)
-4. Without explicit rules, the AI defaults to stylized, produced suggestions
+When uploading your own creative, the only copy options are "Lumi writes copy" or "I'll add my own." But often there's already great copy generated across other angles that you'd love to reuse. There's no way to browse and cherry-pick from it.
 
 ## Solution
-Add a dedicated **B-Roll Format Section** to the creative grid prompt (same level of detail as talking_head gets) that enforces lofi, everyday, phone-filmed aesthetics. Update the column description and all related prompts.
+Add a third option on the copy choice screen: **"Pick from existing copy"** — opens a browsable list of all copy already generated across every angle, letting you check off your favorites to pair with uploaded creative.
+
+## How It Works
+
+1. **Copy choice screen** gets a third card: "Pick from my existing copy" with a library icon
+2. Clicking it opens a new `pick_copy` step showing all angle copy organized by type (Headlines → Descriptions → Primary Copy)
+3. Each variation is a selectable card showing the text, which angle it came from, and character count
+4. User checks their favorites, clicks "Use Selected Copy" → those get attached to the BYO angle as its `angle_copy`
 
 ## Changes
 
-### 1. `supabase/functions/generate-creative-grid/index.ts`
+### 1. `src/components/creative/BYOCreativeUploader.tsx`
+- Add `angleCopy` prop (the existing `Record<string, AngleCopy>` from CreativeStudio state)
+- Add `angles` prop (for angle name labels)
+- Add new step `"pick_copy"` to the Step type
+- Add third button on copy_choice screen: "Pick from my existing copy" (only shown when angleCopy has content)
+- Build the pick_copy step UI:
+  - Three sections: Headlines, Descriptions, Primary Copy
+  - Each card shows: text, source angle name badge, char count, checkbox
+  - "Use Selected" button at bottom assembles a new AngleCopy object for the `byo_uploads` angle
+  - Calls `onComplete` with a new `"picked"` copy choice that includes the selected copy
 
-**Line 222** — Change column description from "cinematic micro-moments" to "lofi everyday footage with text overlaid on top":
-```
-"broll" - B-roll with text overlay (lofi, everyday, phone-filmed — the copy does the selling)
-```
+### 2. `src/pages/CreativeStudio.tsx`
+- Pass `angleCopy` and `availableAngles` to `BYOCreativeUploader`
+- Handle the new `"picked"` copy choice in `onComplete` — merge the selected copy into the workspace's `angle_copy` under the `byo_uploads` key
 
-**After the talking_head section (~line 320)** — Add a new `=== B-ROLL FORMAT ===` block with:
-- **Philosophy**: B-roll is background footage that text/copy gets layered on. The viewer reads the copy, not watches the footage. It should feel like a friend filmed it on their phone.
-- **What to suggest**: Only generic everyday actions — pouring coffee, typing on laptop, walking somewhere, fixing hair, petting the dog, driving, getting ready, putting on shoes, cooking, scrolling phone, sitting at a desk
-- **What NOT to suggest**: No industry-specific scenes, no cinematic shots, no props they'd need to buy, no specific facial expressions or acting, no elaborate staging
-- **Required output fields for broll cells**:
-  - `broll_shots`: Array of 3-5 one-sentence everyday shot ideas
-  - `text_overlays`: Array of text overlay lines timed to the shots (this is what sells — the footage is just warmth)
-  - `mood`: One of Calm, Productive, Relatable, Warm, Authentic, Energetic
-- **Examples**: "Film yourself pouring coffee into a mug, phone propped on counter" / "Walk down a sidewalk, natural pace, phone at chest height" / "Type on your laptop with natural light from a window"
-
-### 2. `supabase/functions/regenerate-creative-cell/index.ts`
-
-**Line 66** — Change format label from "cinematic micro-moments" to match the new lofi description.
-
-**After line 149** (end of talking_head block) — Add a parallel `isBroll` block with the same lofi rules and required output fields, so regenerated b-roll cells also follow the new philosophy.
-
-### 3. `supabase/functions/expand-creative/index.ts`
-
-Update the b-roll references in the expand prompt (~line 238, 272) to specify lofi everyday footage directions rather than "visual guidelines" style cinematic suggestions.
-
-## Files Summary
+## Files
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-creative-grid/index.ts` | New B-Roll format section + update column label |
-| `supabase/functions/regenerate-creative-cell/index.ts` | Update format label + add broll-specific prompt block |
-| `supabase/functions/expand-creative/index.ts` | Update broll instruction references |
-
-## Technical Notes
-- No database or UI changes needed — this is purely prompt engineering across 3 edge functions
-- The B-Roll Tab in Creative Toolkit already has the right philosophy (lofi, everyday, generic) — we're aligning the creative grid generation to match
-- The new b-roll output fields (`broll_shots`, `text_overlays`, `mood`) will be consumed by the existing `ProductionWorkflow.tsx` which already renders `broll_instructions`
+| `src/components/creative/BYOCreativeUploader.tsx` | Add angleCopy/angles props, pick_copy step with browsable copy picker |
+| `src/pages/CreativeStudio.tsx` | Pass angleCopy + angles props, handle picked copy in onComplete |
 
