@@ -1649,7 +1649,7 @@ export default function CreativeStudio() {
         {workspace && (
           <Button 
             variant="lumi"
-            onClick={() => setShowBYOUploader(true)}
+            onClick={() => { setShowBYOUploader(true); setActiveTab("angles"); }}
             className="w-full gap-2 shadow-lg"
             size="lg"
           >
