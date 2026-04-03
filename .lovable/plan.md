@@ -1,131 +1,56 @@
 
 
-# Meta Setup Assistance System — Full Build
+# Fix B-Roll Creative Direction — Make It Lofi, Not Produced
 
-## Priority Order
-1 → Pre-Connection Diagnostic Scanner
-4 → Lumi Setup Concierge Mode
-2 → Interactive Fix-It Guides
-3 → Auto-Linking Enhancements (already partially done)
-5 → Call Booking Fallback
+## Problem
+The b-roll column in the creative grid generates over-produced, cinematic directions because:
+1. The column description says "cinematic micro-moments" (line 222)
+2. There are **zero** dedicated b-roll format instructions — talking_head has 100+ lines of format guidance, but b-roll has nothing
+3. The `regenerate-creative-cell` function also labels b-roll as "cinematic micro-moments" (line 66)
+4. Without explicit rules, the AI defaults to stylized, produced suggestions
 
----
+## Solution
+Add a dedicated **B-Roll Format Section** to the creative grid prompt (same level of detail as talking_head gets) that enforces lofi, everyday, phone-filmed aesthetics. Update the column description and all related prompts.
 
-## Phase 1: Pre-Connection Diagnostic Scanner
+## Changes
 
-**New Edge Function:** `supabase/functions/diagnose-meta-setup/index.ts`
+### 1. `supabase/functions/generate-creative-grid/index.ts`
 
-After OAuth completes and assets are fetched, run a diagnostic scan that audits:
-- **Facebook Page exists?** — Check if any pages were returned
-- **Instagram linked to Page?** — Check if IG accounts have a `linked_page_id` matching a discovered page
-- **Ad Account active?** — Check `account_status === 1`
-- **Ad Account linked to Page?** — Query `/{ad_account_id}/assigned_pages` to verify
-- **Billing set up?** — Query `/{ad_account_id}?fields=funding_source_details` to check for payment method
-- **Pixel exists?** — Query `/{ad_account_id}/adspixels` to check for at least one pixel
-
-Returns a structured health report with `status` (pass/warn/fail) and plain-English `fix` instructions per item.
-
-**New Component:** `src/components/MetaSetupDiagnostic.tsx`
-
-A card that renders the diagnostic results as a visual checklist with:
-- Green check / amber warning / red X per item
-- Plain-English description of what's wrong and how to fix it
-- Expandable "How to fix" section per item with step-by-step instructions
-- Overall "health score" (e.g., 5/6 ready)
-
-**Integration Points:**
-- `MetaAccountConnect.tsx` — After OAuth callback returns assets, auto-invoke the diagnostic function and store results in state. Show the diagnostic card above the account/page selection step.
-- `MetaSettings.tsx` — Show diagnostic card when connected but health isn't perfect (replaces/augments the existing `MetaReadinessChecklist`).
-- `meta-oauth-callback/index.ts` — Add billing + pixel checks to the existing asset discovery flow so the diagnostic data comes back with the initial OAuth response (no second round-trip needed).
-
----
-
-## Phase 2: Lumi Setup Concierge Mode
-
-**File:** `supabase/functions/lumi-chat/index.ts`
-
-Add a new context mode `meta-setup-concierge` with a dedicated system prompt:
-
+**Line 222** — Change column description from "cinematic micro-moments" to "lofi everyday footage with text overlaid on top":
 ```
-You are Lumi in Setup Concierge mode. The user is trying to connect their Meta Business account.
-Here is their current setup status: {diagnostic_results}
-
-Guide them step-by-step through fixing each issue. Be specific — mention exact menu paths in Meta Business Suite.
-For example: "Go to business.facebook.com → Settings → Pages → Add → select your Page"
-
-Common issues and fixes:
-- No Facebook Page: Create one at facebook.com/pages/create
-- Instagram not linked: Instagram app → Settings → Account → Linked Accounts → Facebook
-- No ad account: business.facebook.com → Settings → Ad Accounts → Add
-- No billing: business.facebook.com → Billing → Payment Methods → Add
-- No pixel: business.facebook.com → Events Manager → Connect Data Sources → Web → Meta Pixel
+"broll" - B-roll with text overlay (lofi, everyday, phone-filmed — the copy does the selling)
 ```
 
-**File:** `src/components/LumiAssistant.tsx`
+**After the talking_head section (~line 320)** — Add a new `=== B-ROLL FORMAT ===` block with:
+- **Philosophy**: B-roll is background footage that text/copy gets layered on. The viewer reads the copy, not watches the footage. It should feel like a friend filmed it on their phone.
+- **What to suggest**: Only generic everyday actions — pouring coffee, typing on laptop, walking somewhere, fixing hair, petting the dog, driving, getting ready, putting on shoes, cooking, scrolling phone, sitting at a desk
+- **What NOT to suggest**: No industry-specific scenes, no cinematic shots, no props they'd need to buy, no specific facial expressions or acting, no elaborate staging
+- **Required output fields for broll cells**:
+  - `broll_shots`: Array of 3-5 one-sentence everyday shot ideas
+  - `text_overlays`: Array of text overlay lines timed to the shots (this is what sells — the footage is just warmth)
+  - `mood`: One of Calm, Productive, Relatable, Warm, Authentic, Energetic
+- **Examples**: "Film yourself pouring coffee into a mug, phone propped on counter" / "Walk down a sidewalk, natural pace, phone at chest height" / "Type on your laptop with natural light from a window"
 
-- Add `meta-setup` to `contextStarters` with setup-specific quick actions:
-  - "Help me connect" / "I don't have a Facebook Page" / "My Instagram isn't showing" / "Where do I add billing?"
-- When on `/meta-settings`, auto-inject diagnostic results into the Lumi context so the AI knows exactly what's missing
+### 2. `supabase/functions/regenerate-creative-cell/index.ts`
 
-**File:** `src/pages/MetaSettings.tsx`
+**Line 66** — Change format label from "cinematic micro-moments" to match the new lofi description.
 
-- Add a prominent "Need help? Ask Lumi" button near the diagnostic card that opens Lumi with the setup concierge context pre-loaded
+**After line 149** (end of talking_head block) — Add a parallel `isBroll` block with the same lofi rules and required output fields, so regenerated b-roll cells also follow the new philosophy.
 
----
+### 3. `supabase/functions/expand-creative/index.ts`
 
-## Phase 3: Interactive Fix-It Guides
-
-**File:** `src/components/MetaSetupDiagnostic.tsx` (extend)
-
-For each failed diagnostic item, add an expandable guide section with:
-- Step-by-step numbered instructions with exact Meta Business Suite menu paths
-- External links that open the exact Meta settings page (e.g., `https://business.facebook.com/settings/pages`)
-- Estimated time to complete (e.g., "~2 minutes")
-- A "Done — Re-check" button that re-runs just that specific diagnostic
-
-Top 3 fix-it guides:
-1. **Instagram not linked to Page**: Settings → Instagram Accounts → Connect → Log in → Select Page
-2. **No billing/payment method**: Business Settings → Billing → Payment Methods → Add Card
-3. **No Facebook Page**: facebook.com/pages/create → Fill details → Connect to Business Manager
-
----
-
-## Phase 4: Auto-Linking Enhancements
-
-**File:** `supabase/functions/meta-oauth-callback/index.ts`
-
-The auto-connect IG → ad account logic already exists (lines 316-340). Enhance it:
-- When only 1 ad account + 1 page + 1 IG account are found, auto-select all three and save to the brand record immediately (skip the selection UI entirely)
-- Log auto-selections so user sees "We automatically selected your only ad account, Page, and Instagram" in a success toast
-- After auto-selection, still show the diagnostic card so they can verify everything looks right
-
-**File:** `src/components/MetaAccountConnect.tsx`
-
-- Detect single-option scenarios and show a confirmation card instead of radio buttons: "We found one ad account (Act 12345), one Page (My Brand), and one Instagram (@mybrand). Does this look right?"
-- Single "Confirm & Continue" button
-
----
-
-## Phase 5: Call Booking Fallback
-
-**File:** `src/components/MetaSetupDiagnostic.tsx` (extend)
-
-- After 2+ failed re-checks OR if diagnostic shows 3+ failing items, show a "Need hands-on help?" card with:
-  - Brief message: "Some setups need a quick walkthrough. Book a free 15-minute setup call with our team."
-  - Button that either opens a Calendly/booking link or submits a help ticket through the existing bug report system with category `setup_help`
-  - The ticket auto-includes the diagnostic results so support knows exactly what's wrong
-
----
+Update the b-roll references in the expand prompt (~line 238, 272) to specify lofi everyday footage directions rather than "visual guidelines" style cinematic suggestions.
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| `supabase/functions/meta-oauth-callback/index.ts` | Add billing + pixel diagnostic checks to response; auto-select single-option scenarios |
-| `supabase/functions/diagnose-meta-setup/index.ts` | **New** — standalone diagnostic function for re-checks |
-| `src/components/MetaSetupDiagnostic.tsx` | **New** — diagnostic card with health report, fix-it guides, re-check, and booking fallback |
-| `src/components/MetaAccountConnect.tsx` | Show diagnostic after OAuth; single-option confirmation flow |
-| `src/pages/MetaSettings.tsx` | Integrate diagnostic card; "Ask Lumi" button |
-| `supabase/functions/lumi-chat/index.ts` | Add setup concierge system prompt + context handling |
-| `src/components/LumiAssistant.tsx` | Add meta-setup context starters; inject diagnostic data |
+| `supabase/functions/generate-creative-grid/index.ts` | New B-Roll format section + update column label |
+| `supabase/functions/regenerate-creative-cell/index.ts` | Update format label + add broll-specific prompt block |
+| `supabase/functions/expand-creative/index.ts` | Update broll instruction references |
+
+## Technical Notes
+- No database or UI changes needed — this is purely prompt engineering across 3 edge functions
+- The B-Roll Tab in Creative Toolkit already has the right philosophy (lofi, everyday, generic) — we're aligning the creative grid generation to match
+- The new b-roll output fields (`broll_shots`, `text_overlays`, `mood`) will be consumed by the existing `ProductionWorkflow.tsx` which already renders `broll_instructions`
 
