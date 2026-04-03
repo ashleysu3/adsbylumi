@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { 
   Activity, CheckCircle2, XCircle, AlertTriangle, 
   Loader2, Search, Copy, ExternalLink, Zap,
-  Globe, ShoppingBag, Code2, BookOpen
+  Globe, ShoppingBag, Code2, BookOpen, ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
