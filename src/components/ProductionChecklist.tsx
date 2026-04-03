@@ -389,7 +389,7 @@ export function ProductionChecklist({ workspace, onUpdate, brand }: ProductionCh
             })}
           </CardContent>
         </Card>
-                        )}
+      ))}
       {/* Send to Production Button */}
       <Card>
         <CardContent className="py-6">
