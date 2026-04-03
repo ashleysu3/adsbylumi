@@ -628,6 +628,9 @@ export function PixelVerificationCard({
             </div>
           </div>
         )}
+
+        {/* Embedded Form Tracking */}
+        <EmbeddedFormTrackingSection copyCode={copyCode} />
       </CardContent>
     </Card>
   );
