@@ -1220,7 +1220,7 @@ export default function CreativeStudio() {
                 <Button 
                   variant="lumi"
                   size="sm"
-                  onClick={() => setShowBYOUploader(true)}
+                  onClick={() => { setShowBYOUploader(true); setActiveTab("angles"); }}
                   className="gap-2 hidden sm:flex"
                 >
                   <Upload className="h-4 w-4" />
