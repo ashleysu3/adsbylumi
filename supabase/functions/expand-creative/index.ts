@@ -250,7 +250,7 @@ CRITICAL OUTPUT REQUIREMENTS:
 - Each concept must include: title, format, stage, angle, psychology_trigger, why_it_works, content_type, kb_references
 - content_type: story | transformation | identity | emotional | authority | educational | objection
 - kb_references: array of KB names that informed this concept
-- Include format-specific fields: script, broll_instructions, carousel_structure, static_layout, overlay_text
+- Include format-specific fields: script, broll_instructions (lofi everyday shots only — NOT cinematic), broll_shots (array of simple shot ideas), carousel_structure, static_layout, overlay_text
 - Include hooks array with 2-3 hook variations
 - Keep ${stage.toUpperCase()} stage appropriate
 
