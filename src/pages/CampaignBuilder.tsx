@@ -130,6 +130,44 @@ export default function CampaignBuilder() {
   const handlePublish = async (launchStatus: 'active' | 'paused' = 'paused') => {
     setPublishing(true);
     try {
+      // Pre-flight: ensure a destination URL is resolvable
+      const resolvedUrl = answers?.finalUrl || workspace?.offer_url;
+      if (!resolvedUrl) {
+        // Check linked offer
+        if (workspace?.offer_id) {
+          const { data: offer } = await supabase
+            .from('offers')
+            .select('url')
+            .eq('id', workspace.offer_id)
+            .single();
+          if (!offer?.url) {
+            // Check brand website
+            const { data: brand } = await supabase
+              .from('brands')
+              .select('website_url')
+              .eq('id', workspace.brand_id)
+              .single();
+            if (!brand?.website_url) {
+              toast.error("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
+              setPublishing(false);
+              return;
+            }
+          }
+        } else {
+          // No offer linked — check brand website
+          const { data: brand } = await supabase
+            .from('brands')
+            .select('website_url')
+            .eq('id', workspace.brand_id)
+            .single();
+          if (!brand?.website_url) {
+            toast.error("No destination URL found. Please add a URL to your offer or enter a website URL in your brand settings.");
+            setPublishing(false);
+            return;
+          }
+        }
+      }
+
       // Enforce 10 live campaign limit
       const { count, error: countError } = await supabase
         .from('campaign_workspaces')
