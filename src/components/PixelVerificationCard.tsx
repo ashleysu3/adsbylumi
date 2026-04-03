@@ -128,7 +128,104 @@ const eventDescriptions: Record<string, string> = {
   CompleteRegistration: 'Tracks account registrations'
 };
 
-export function PixelVerificationCard({ 
+const FLODESK_SNIPPET = `document.addEventListener('flodesk:form:success', function() {
+  fbq('track', 'Lead');
+});`;
+
+const embeddedFormPlatforms = [
+  { name: 'Squarespace', path: 'Settings → Advanced → Code Injection → Footer' },
+  { name: 'Showit', path: 'Site Settings → Custom Code → Body (End)' },
+  { name: 'WordPress', path: 'Use a plugin like "Insert Headers and Footers" or add to your theme\'s footer' },
+  { name: 'Webflow', path: 'Project Settings → Custom Code → Footer Code' },
+];
+
+function EmbeddedFormTrackingSection({ copyCode }: { copyCode: (code: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="pt-4 border-t space-y-3">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between gap-2 group text-left"
+      >
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-primary/10">
+            <Code2 className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold">Using an embedded form? (No thank-you page)</h4>
+            <p className="text-xs text-muted-foreground">Track leads from Flodesk forms embedded on your site</p>
+          </div>
+        </div>
+        <ChevronDown className={cn(
+          "h-4 w-4 text-muted-foreground transition-transform shrink-0",
+          expanded && "rotate-180"
+        )} />
+      </button>
+
+      {expanded && (
+        <div className="ml-9 space-y-4 animate-in slide-in-from-top-2 duration-200">
+          {/* Explanation */}
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-2">
+            <p className="text-sm font-medium text-foreground">
+              Tracking leads from an embedded Flodesk form
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              If your opt-in form is embedded directly on your website and shows a thank-you message on the same page (no redirect), you'll need to add a small snippet of code to your site so Meta can still track the Lead event.
+            </p>
+          </div>
+
+          {/* Code Snippet */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-foreground">
+              Add this code to your website's custom code section (before the closing <code className="px-1 py-0.5 bg-muted rounded text-[10px] font-mono">&lt;/body&gt;</code> tag):
+            </p>
+            <div className="relative group/code">
+              <pre className="p-4 bg-muted/50 rounded-xl text-xs font-mono overflow-x-auto border border-border">
+                <code className="text-foreground">{FLODESK_SNIPPET}</code>
+              </pre>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="absolute top-2 right-2 h-7 gap-1.5 text-xs opacity-80 hover:opacity-100 transition-opacity"
+                onClick={() => copyCode(FLODESK_SNIPPET)}
+              >
+                <Copy className="h-3 w-3" />
+                Copy
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground italic">
+              This listens for Flodesk's built-in form success event and fires a Lead event to Meta the moment your form submits — no thank-you page needed.
+            </p>
+          </div>
+
+          {/* Platform Guides */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-foreground">How to add it:</p>
+            <div className="space-y-1.5">
+              {embeddedFormPlatforms.map(({ name, path }) => (
+                <div key={name} className="flex items-start gap-2 text-xs">
+                  <span className="font-medium text-foreground shrink-0 min-w-[90px]">{name}:</span>
+                  <span className="text-muted-foreground">{path}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pixel Reminder */}
+          <Alert className="border-primary/20 bg-primary/5">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-xs">
+              Your Meta pixel must already be installed on the same page for this to work.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
   brandId, 
   isMetaConnected, 
   initialPixelData,
