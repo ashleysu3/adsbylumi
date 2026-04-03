@@ -225,8 +225,8 @@ function EmbeddedFormTrackingSection({ copyCode }: { copyCode: (code: string) =>
   );
 }
 
-
-  brandId, 
+export function PixelVerificationCard({
+  brandId,
   isMetaConnected, 
   initialPixelData,
   onPixelVerified 
