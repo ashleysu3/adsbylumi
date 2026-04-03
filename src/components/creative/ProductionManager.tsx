@@ -45,6 +45,7 @@ interface ProductionManagerProps {
   onArchivePrevious?: () => Promise<void>;
   onClearAll?: () => Promise<void>;
   onUrlChange?: (url: string) => void;
+  brand?: any;
 }
 
 export function ProductionManager({
