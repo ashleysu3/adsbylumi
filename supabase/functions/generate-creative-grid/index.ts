@@ -290,6 +290,7 @@ VISUAL HOOKS (what they see) - KEEP THESE SIMPLE:
 - NO elaborate staging: Don't suggest burning paper, empty wallets, or anything that requires props they don't have
 
 Example talking_head output:
+
 {
   "format": "talking_head",
   "hook": "—anyway, that's when I knew something had to change.",
