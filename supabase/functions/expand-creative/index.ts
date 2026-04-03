@@ -235,7 +235,7 @@ ${JSON.stringify(concept, null, 2)}
 Enhance with:
 - Complete script/copy using Copy Formula KB frameworks
 - Detailed filming/design instructions from Format Rules KB
-- Specific b-roll/overlay suggestions from Visual Guidelines KB
+- For b-roll: suggest ONLY lofi everyday shots (pouring coffee, typing, walking, etc.) with text overlays that do the selling
 - Psychology explanation referencing Buyer Psychology KB
 - Hook optimization using Hook Library KB
 - Any relevant trend adaptations from Trends KB`;
