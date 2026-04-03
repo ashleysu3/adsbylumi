@@ -837,7 +837,7 @@ Deno.serve(async (req) => {
             link_description: copy.description || '',
             call_to_action: {
               type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_'),
-              value: { link: answers?.finalUrl || workspace.offer_url || '' }
+              value: { link: destinationUrl }
             }
           };
           
