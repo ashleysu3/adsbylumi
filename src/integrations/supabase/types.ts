@@ -390,6 +390,7 @@ export type Database = {
           audience_psychology: Json | null
           brand_emojis: string[] | null
           brand_voice: string | null
+          broll_library: Json | null
           bullet_emoji: string | null
           copy_perspective: string
           created_at: string | null
@@ -415,6 +416,7 @@ export type Database = {
           never_use_words: string[] | null
           next_report_due: string | null
           notification_preferences: Json | null
+          overlay_style: Json | null
           page_id: string | null
           page_name: string | null
           psychology_content_hash: string | null
@@ -433,6 +435,7 @@ export type Database = {
           audience_psychology?: Json | null
           brand_emojis?: string[] | null
           brand_voice?: string | null
+          broll_library?: Json | null
           bullet_emoji?: string | null
           copy_perspective?: string
           created_at?: string | null
@@ -458,6 +461,7 @@ export type Database = {
           never_use_words?: string[] | null
           next_report_due?: string | null
           notification_preferences?: Json | null
+          overlay_style?: Json | null
           page_id?: string | null
           page_name?: string | null
           psychology_content_hash?: string | null
@@ -476,6 +480,7 @@ export type Database = {
           audience_psychology?: Json | null
           brand_emojis?: string[] | null
           brand_voice?: string | null
+          broll_library?: Json | null
           bullet_emoji?: string | null
           copy_perspective?: string
           created_at?: string | null
@@ -501,6 +506,7 @@ export type Database = {
           never_use_words?: string[] | null
           next_report_due?: string | null
           notification_preferences?: Json | null
+          overlay_style?: Json | null
           page_id?: string | null
           page_name?: string | null
           psychology_content_hash?: string | null
