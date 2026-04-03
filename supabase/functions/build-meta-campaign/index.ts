@@ -223,7 +223,8 @@ Deno.serve(async (req) => {
       .from('campaign_workspaces')
       .select(`
         *,
-        brands!inner(id, name, user_id, meta_account_id, meta_access_token, page_id, page_name)
+        brands!inner(id, name, user_id, meta_account_id, meta_access_token, page_id, page_name, website_url),
+        offers(url)
       `)
       .eq('id', workspaceId)
       .single();
