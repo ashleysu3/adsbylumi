@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,16 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Type } from "lucide-react";
 import type { OverlayStyle } from "./VideoTextPreview";
+
+const GOOGLE_FONT_FAMILIES = [
+  "Playfair+Display",
+  "Montserrat",
+  "Bebas+Neue",
+  "Poppins",
+  "Oswald",
+  "Lora",
+  "Raleway",
+];
 
 const FONT_OPTIONS = [
   { value: "Inter", label: "Inter" },
