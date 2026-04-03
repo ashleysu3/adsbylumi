@@ -55,9 +55,9 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
   };
 
   const processFiles = (incoming: File[]) => {
-    const maxSize = 100 * 1024 * 1024; // 100MB
+    const maxSize = 250 * 1024 * 1024; // 250MB
     const valid = incoming.filter(f => {
-      if (f.size > maxSize) { toast.error(`${f.name} exceeds 100MB limit`); return false; }
+      if (f.size > maxSize) { toast.error(`${f.name} exceeds 250MB limit`); return false; }
       return true;
     });
 
