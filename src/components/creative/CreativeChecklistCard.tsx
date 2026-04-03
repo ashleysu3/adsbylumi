@@ -75,6 +75,7 @@ interface CreativeChecklistCardProps {
   onToggleSelect?: () => void;
   angleCopy?: AngleCopyData;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
+  onOverlaysChange?: (overlays: TextOverlay[]) => void;
   brand?: any;
 }
 
@@ -97,6 +98,7 @@ export function CreativeChecklistCard({
   onToggleSelect,
   angleCopy,
   onCopyChange,
+  onOverlaysChange,
   brand,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -110,6 +112,8 @@ export function CreativeChecklistCard({
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
   const [editingCopyField, setEditingCopyField] = useState<string | null>(null);
+  const [editingOverlayIdx, setEditingOverlayIdx] = useState<number | null>(null);
+  const [editOverlayText, setEditOverlayText] = useState("");
   const [editCopyValue, setEditCopyValue] = useState("");
   const Icon = formatIcons[item.format as keyof typeof formatIcons] || Image;
   const formatLabel = formatLabels[item.format as keyof typeof formatLabels] || item.format;
@@ -481,7 +485,7 @@ export function CreativeChecklistCard({
                     </div>
                   )}
 
-                  {/* Text Overlays for B-Roll */}
+                  {/* Text Overlays for B-Roll — Editable */}
                   {item.text_overlays && item.text_overlays.length > 0 && (
                     <div className="space-y-2">
                       <h5 className="text-xs font-semibold text-muted-foreground uppercase">📝 Text Overlays</h5>
@@ -498,19 +502,86 @@ export function CreativeChecklistCard({
                               !overlay.type && "bg-muted/50"
                             )}
                           >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                {overlay.type && (
-                                  <Badge variant="outline" className="text-[10px] uppercase">
-                                    {overlay.type}
-                                  </Badge>
-                                )}
-                                <span>"{overlay.text}"</span>
+                            {editingOverlayIdx === idx ? (
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  {overlay.type && (
+                                    <Badge variant="outline" className="text-[10px] uppercase shrink-0">
+                                      {overlay.type}
+                                    </Badge>
+                                  )}
+                                  <span className="text-xs text-muted-foreground shrink-0">
+                                    ⏱️ {overlay.timing}
+                                  </span>
+                                </div>
+                                <Input
+                                  value={editOverlayText}
+                                  onChange={(e) => setEditOverlayText(e.target.value)}
+                                  className="h-8 text-sm"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      const updated = [...(item.text_overlays || [])];
+                                      updated[idx] = { ...updated[idx], text: editOverlayText };
+                                      onOverlaysChange?.(updated);
+                                      setEditingOverlayIdx(null);
+                                    } else if (e.key === "Escape") {
+                                      setEditingOverlayIdx(null);
+                                    }
+                                  }}
+                                />
+                                <div className="flex gap-1 justify-end">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-[10px]"
+                                    onClick={() => setEditingOverlayIdx(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-6 text-[10px]"
+                                    onClick={() => {
+                                      const updated = [...(item.text_overlays || [])];
+                                      updated[idx] = { ...updated[idx], text: editOverlayText };
+                                      onOverlaysChange?.(updated);
+                                      setEditingOverlayIdx(null);
+                                    }}
+                                  >
+                                    <Check className="h-3 w-3 mr-0.5" />
+                                    Save
+                                  </Button>
+                                </div>
                               </div>
-                              <span className="text-xs text-muted-foreground shrink-0">
-                                ⏱️ {overlay.timing}
-                              </span>
-                            </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {overlay.type && (
+                                    <Badge variant="outline" className="text-[10px] uppercase shrink-0">
+                                      {overlay.type}
+                                    </Badge>
+                                  )}
+                                  <span className="truncate">"{overlay.text}"</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className="text-xs text-muted-foreground">
+                                    ⏱️ {overlay.timing}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => {
+                                      setEditingOverlayIdx(idx);
+                                      setEditOverlayText(overlay.text);
+                                    }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

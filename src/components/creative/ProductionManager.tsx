@@ -625,6 +625,14 @@ export function ProductionManager({
       });
     }
   };
+
+  // Handle text overlay changes from checklist cards
+  const handleOverlaysChange = (item: ProductionItem, updatedOverlays: any[]) => {
+    const updatedItems = productionItems.map((pi) =>
+      pi.id === item.id ? { ...pi, text_overlays: updatedOverlays } : pi
+    );
+    onUpdateWorkspace({ production_items: updatedItems });
+  };
   
   if (productionItems.length === 0) {
     return (
@@ -902,6 +910,7 @@ export function ProductionManager({
                           onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
                           angleCopy={getCopyForItem(item)}
                           onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
+                          onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
                           brand={brand}
                         />
                       );
@@ -941,6 +950,7 @@ export function ProductionManager({
                               onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
                               angleCopy={getCopyForItem(item)}
                               onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
+                              onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
                               brand={brand}
                             />
                           );
@@ -998,6 +1008,7 @@ export function ProductionManager({
                                   onRefineScript={onRefineScript}
                                   angleCopy={getCopyForItem(item)}
                                   onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
+                                  onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
                                   brand={brand}
                                 />
                               ))}
