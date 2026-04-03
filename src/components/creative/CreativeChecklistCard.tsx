@@ -98,6 +98,7 @@ export function CreativeChecklistCard({
   onToggleSelect,
   angleCopy,
   onCopyChange,
+  onOverlaysChange,
   brand,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
