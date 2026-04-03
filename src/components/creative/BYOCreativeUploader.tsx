@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Video, Image, X, Sparkles, PenLine, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Upload, Video, Image, X, Sparkles, PenLine, ArrowRight, Loader2, CheckCircle2, Library } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,11 +18,18 @@ interface UploadedFile {
   storageUrl?: string;
 }
 
+interface AngleInfo {
+  id: string;
+  name: string;
+}
+
 interface BYOCreativeUploaderProps {
   workspaceId: string;
   brandId: string;
-  onComplete: (items: any[], copyChoice: "lumi" | "manual") => void;
+  onComplete: (items: any[], copyChoice: "lumi" | "manual" | "picked", pickedCopy?: any) => void;
   onCancel: () => void;
+  angleCopy?: Record<string, any>;
+  angles?: AngleInfo[];
 }
 
 const formatOptions = [
@@ -30,14 +38,151 @@ const formatOptions = [
   { value: "graphic", label: "Graphic / Static", icon: Image },
 ];
 
-type Step = "upload" | "copy_choice" | "uploading";
+type Step = "upload" | "copy_choice" | "pick_copy" | "uploading";
 
-export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel }: BYOCreativeUploaderProps) {
+// --- Copy Picker Sub-component ---
+function CopyPickerStep({
+  angleCopy,
+  angles,
+  onConfirm,
+  onBack,
+}: {
+  angleCopy: Record<string, any>;
+  angles: AngleInfo[];
+  onConfirm: (picked: { headlines: string[]; descriptions: string[]; primary_copy: string[] }) => void;
+  onBack: () => void;
+}) {
+  const [selectedHeadlines, setSelectedHeadlines] = useState<Set<string>>(new Set());
+  const [selectedDescriptions, setSelectedDescriptions] = useState<Set<string>>(new Set());
+  const [selectedPrimary, setSelectedPrimary] = useState<Set<string>>(new Set());
+
+  const angleNameMap = new Map(angles.map(a => [a.id, a.name]));
+
+  // Collect all copy items across angles
+  const allHeadlines: { text: string; angleId: string; key: string }[] = [];
+  const allDescriptions: { text: string; angleId: string; key: string }[] = [];
+  const allPrimary: { text: string; angleId: string; key: string }[] = [];
+
+  Object.entries(angleCopy).forEach(([angleId, copy]: [string, any]) => {
+    if (!copy) return;
+    (copy.headlines || []).forEach((h: string, i: number) => {
+      if (h?.trim()) allHeadlines.push({ text: h, angleId, key: `${angleId}_h_${i}` });
+    });
+    (copy.descriptions || []).forEach((d: string, i: number) => {
+      if (d?.trim()) allDescriptions.push({ text: d, angleId, key: `${angleId}_d_${i}` });
+    });
+    (copy.primary_copy || []).forEach((p: string, i: number) => {
+      if (p?.trim()) allPrimary.push({ text: p, angleId, key: `${angleId}_p_${i}` });
+    });
+  });
+
+  const totalSelected = selectedHeadlines.size + selectedDescriptions.size + selectedPrimary.size;
+
+  const toggle = (set: Set<string>, setFn: React.Dispatch<React.SetStateAction<Set<string>>>, key: string) => {
+    setFn(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const handleConfirm = () => {
+    if (totalSelected === 0) { toast.error("Select at least one piece of copy"); return; }
+    const headlines = allHeadlines.filter(h => selectedHeadlines.has(h.key)).map(h => h.text);
+    const descriptions = allDescriptions.filter(d => selectedDescriptions.has(d.key)).map(d => d.text);
+    const primary_copy = allPrimary.filter(p => selectedPrimary.has(p.key)).map(p => p.text);
+    onConfirm({ headlines, descriptions, primary_copy });
+  };
+
+  const renderSection = (
+    title: string,
+    items: { text: string; angleId: string; key: string }[],
+    selected: Set<string>,
+    setSelected: React.Dispatch<React.SetStateAction<Set<string>>>
+  ) => {
+    if (items.length === 0) return null;
+    return (
+      <div className="space-y-3">
+        <h4 className="font-semibold text-sm">{title} <span className="text-muted-foreground font-normal">({items.length})</span></h4>
+        <div className="space-y-2">
+          {items.map(item => (
+            <label
+              key={item.key}
+              className={cn(
+                "flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors",
+                selected.has(item.key)
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border hover:border-muted-foreground/30"
+              )}
+            >
+              <Checkbox
+                checked={selected.has(item.key)}
+                onCheckedChange={() => toggle(selected, setSelected, item.key)}
+                className="mt-0.5"
+              />
+              <div className="flex-1 min-w-0 space-y-1">
+                <p className="text-sm leading-relaxed">{item.text}</p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    {angleNameMap.get(item.angleId) || "Unknown"}
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground">{item.text.length} chars</span>
+                </div>
+              </div>
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <Card className="rounded-2xl">
+      <CardContent className="py-8 space-y-6">
+        <div className="text-center space-y-2">
+          <Library className="h-10 w-10 mx-auto text-primary mb-2" />
+          <h3 className="text-xl font-display font-bold">Pick your favorite copy</h3>
+          <p className="text-muted-foreground text-sm max-w-md mx-auto">
+            Browse all the copy Lumi has generated across your angles and select the ones you want to use with your uploaded creative.
+          </p>
+        </div>
+
+        <div className="max-h-[50vh] overflow-y-auto space-y-6 pr-1">
+          {renderSection("Headlines", allHeadlines, selectedHeadlines, setSelectedHeadlines)}
+          {renderSection("Descriptions", allDescriptions, selectedDescriptions, setSelectedDescriptions)}
+          {renderSection("Primary Copy", allPrimary, selectedPrimary, setSelectedPrimary)}
+        </div>
+
+        {allHeadlines.length === 0 && allDescriptions.length === 0 && allPrimary.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground py-8">No copy has been generated yet. Go back and choose another option.</p>
+        )}
+
+        <div className="flex items-center justify-between pt-2">
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground">
+            ← Back
+          </Button>
+          <Button onClick={handleConfirm} disabled={totalSelected === 0} className="gap-2">
+            Use {totalSelected} selected
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Main Component ---
+export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel, angleCopy = {}, angles = [] }: BYOCreativeUploaderProps) {
   const [step, setStep] = useState<Step>("upload");
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if there's existing copy to pick from
+  const hasExistingCopy = Object.values(angleCopy).some((copy: any) =>
+    copy && ((copy.headlines?.length > 0) || (copy.descriptions?.length > 0) || (copy.primary_copy?.length > 0))
+  );
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
@@ -55,7 +200,7 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
   };
 
   const processFiles = (incoming: File[]) => {
-    const maxSize = 250 * 1024 * 1024; // 250MB
+    const maxSize = 250 * 1024 * 1024;
     const valid = incoming.filter(f => {
       if (f.size > maxSize) { toast.error(`${f.name} exceeds 250MB limit`); return false; }
       return true;
@@ -89,12 +234,11 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
     setStep("copy_choice");
   };
 
-  const handleCopyChoice = async (choice: "lumi" | "manual") => {
+  const doUploadAndComplete = async (copyChoice: "lumi" | "manual" | "picked", pickedCopy?: any) => {
     setStep("uploading");
     setIsUploading(true);
 
     try {
-      // Upload files to Supabase storage
       const uploadedFiles: UploadedFile[] = [];
       for (const f of files) {
         const ext = f.file.name.split('.').pop() || 'bin';
@@ -114,11 +258,7 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
           .from('creative-assets')
           .getPublicUrl(path);
 
-        uploadedFiles.push({
-          ...f,
-          storagePath: path,
-          storageUrl: urlData.publicUrl,
-        });
+        uploadedFiles.push({ ...f, storagePath: path, storageUrl: urlData.publicUrl });
       }
 
       if (uploadedFiles.length === 0) {
@@ -128,7 +268,6 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
         return;
       }
 
-      // Create production items from uploaded files
       const productionItems = uploadedFiles.map(f => ({
         id: `prod_${f.id}`,
         format: f.format,
@@ -136,24 +275,12 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
         guidance: "User-uploaded creative asset",
         angleName: "My Creative",
         completed: false,
-        linkedAsset: {
-          storagePath: f.storagePath,
-          url: f.storageUrl,
-          name: f.file.name,
-          type: f.file.type,
-        },
+        linkedAsset: { storagePath: f.storagePath, url: f.storageUrl, name: f.file.name, type: f.file.type },
         status: "approved",
       }));
 
-      // Create a default angle for user uploads
-      const byoAngle = {
-        id: "byo_uploads",
-        name: "My Creative",
-        description: "Your own uploaded creative assets.",
-        isDefault: true,
-      };
+      const byoAngle = { id: "byo_uploads", name: "My Creative", description: "Your own uploaded creative assets.", isDefault: true };
 
-      // Save to workspace
       const { data: wsData } = await supabase
         .from("campaign_workspaces")
         .select("creative_json, production_items, user_uploaded_assets")
@@ -164,13 +291,11 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
       const existingProduction = (wsData?.production_items || []) as any[];
       const existingAssets = (wsData?.user_uploaded_assets || []) as any[];
 
-      // Add BYO angle if not present
-      const angles = existingCreative.angles || [];
-      if (!angles.some((a: any) => a.id === "byo_uploads")) {
-        angles.push(byoAngle);
+      const angles_list = existingCreative.angles || [];
+      if (!angles_list.some((a: any) => a.id === "byo_uploads")) {
+        angles_list.push(byoAngle);
       }
 
-      // Build user_uploaded_assets entries for the build pipeline
       const newAssets = uploadedFiles.map(f => ({
         id: f.id,
         linked_concept_id: `prod_${f.id}`,
@@ -182,12 +307,19 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
         created_at: new Date().toISOString(),
       }));
 
+      // If picked copy, merge into angle_copy
+      const updatedAngleCopy = existingCreative.angle_copy || {};
+      if (copyChoice === "picked" && pickedCopy) {
+        updatedAngleCopy["byo_uploads"] = pickedCopy;
+      }
+
       await supabase.from("campaign_workspaces").update({
         creative_json: {
           ...existingCreative,
-          angles,
+          angles: angles_list,
           selectedAngleIds: [...new Set([...(existingCreative.selectedAngleIds || []), "byo_uploads"])],
           byoUploadMode: true,
+          angle_copy: updatedAngleCopy,
         },
         production_items: [...existingProduction, ...productionItems],
         user_uploaded_assets: [...existingAssets, ...newAssets],
@@ -195,7 +327,7 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
       }).eq("id", workspaceId);
 
       toast.success(`${uploadedFiles.length} creative${uploadedFiles.length > 1 ? 's' : ''} uploaded!`);
-      onComplete(productionItems, choice);
+      onComplete(productionItems, copyChoice, pickedCopy);
     } catch (error: any) {
       console.error("BYO upload error:", error);
       toast.error("Something went wrong during upload");
@@ -217,6 +349,17 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
     );
   }
 
+  if (step === "pick_copy") {
+    return (
+      <CopyPickerStep
+        angleCopy={angleCopy}
+        angles={angles}
+        onConfirm={(picked) => doUploadAndComplete("picked", picked)}
+        onBack={() => setStep("copy_choice")}
+      />
+    );
+  }
+
   if (step === "copy_choice") {
     return (
       <Card className="rounded-2xl">
@@ -229,10 +372,10 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
             </p>
           </div>
           
-          <div className="grid gap-4 sm:grid-cols-2 max-w-lg mx-auto">
+          <div className={cn("grid gap-4 max-w-2xl mx-auto", hasExistingCopy ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
             <button
-              onClick={() => handleCopyChoice("lumi")}
-              className="group p-6 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-primary/5 transition-all text-left space-y-3"
+              onClick={() => doUploadAndComplete("lumi")}
+              className="group p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left space-y-3"
             >
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <Sparkles className="h-5 w-5 text-primary" />
@@ -242,10 +385,25 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
                 AI-generated headlines, descriptions & primary text based on your brand & offer.
               </p>
             </button>
+
+            {hasExistingCopy && (
+              <button
+                onClick={() => setStep("pick_copy")}
+                className="group p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left space-y-3"
+              >
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Library className="h-5 w-5 text-primary" />
+                </div>
+                <h4 className="font-semibold">Pick from existing copy</h4>
+                <p className="text-xs text-muted-foreground">
+                  Browse copy already generated across your angles and cherry-pick your favorites.
+                </p>
+              </button>
+            )}
             
             <button
-              onClick={() => handleCopyChoice("manual")}
-              className="group p-6 rounded-xl border-2 border-muted hover:border-primary/50 hover:bg-primary/5 transition-all text-left space-y-3"
+              onClick={() => doUploadAndComplete("manual")}
+              className="group p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left space-y-3"
             >
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <PenLine className="h-5 w-5 text-primary" />
@@ -284,7 +442,7 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
           <Upload className="h-10 w-10 text-muted-foreground mb-4" />
           <p className="font-medium">Drop your ads here or click to browse</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Videos and images • Max 50MB per file
+            Videos and images • Max 250MB per file
           </p>
           <input
             ref={fileInputRef}
@@ -297,7 +455,6 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
         </CardContent>
       </Card>
 
-      {/* Format Guidance */}
       <Card className="rounded-xl border-muted bg-muted/30">
         <CardContent className="py-4 space-y-2">
           <div className="flex items-start gap-2">
