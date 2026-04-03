@@ -265,6 +265,18 @@ Deno.serve(async (req) => {
       throw new Error('Facebook Page not selected. Please select a Facebook Page in your brand settings to create ads.');
     }
 
+    // Resolve destination URL with deep fallback chain
+    const destinationUrl = answers?.finalUrl
+      || workspace.offer_url
+      || workspace.offers?.url
+      || brand.website_url
+      || '';
+
+    if (!destinationUrl) {
+      throw new Error('No destination URL found. Please add a URL to your offer or enter a landing page URL in your brand settings.');
+    }
+
+    console.log('Resolved destination URL:', destinationUrl);
     console.log('Building campaign for workspace:', workspaceId);
     console.log('Meta Account ID:', metaAccountId);
     console.log('Facebook Page ID:', pageId);
