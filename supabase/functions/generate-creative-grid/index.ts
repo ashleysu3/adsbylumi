@@ -321,6 +321,70 @@ Example talking_head output:
   "guidance": "Record in your car or at your desk. Natural lighting. You're just telling a friend about a realization you had. No performance needed."
 }
 
+=== B-ROLL FORMAT — LOFI EVERYDAY FOOTAGE ===
+B-roll in this system is NOT cinematic or produced. It is dead-simple background footage filmed on a phone in under 30 seconds. The TEXT OVERLAYS do the selling — the footage is just warmth and movement behind the words.
+
+PHILOSOPHY:
+- B-roll plays BEHIND text overlays. The viewer reads the copy, not watches the footage.
+- It should feel like a friend filmed it on their phone — lofi, casual, unstaged.
+- It exists to create visual movement and warmth while the ad copy does the selling.
+
+WHAT TO SUGGEST (generic everyday actions ONLY):
+- Typing on a laptop
+- Walking somewhere (sidewalk, hallway, park)
+- Pouring or stirring coffee/tea
+- Fixing hair in a mirror
+- Scrolling on phone
+- Sitting at a desk working
+- Walking a dog
+- Driving (phone mounted, not handheld)
+- Writing in a notebook/journal
+- Picking up bag or keys and heading out
+- Cooking or prepping food
+- Watering plants
+- Standing at a window looking out
+- Putting on shoes or a jacket
+- Getting ready in the morning
+- Making the bed
+- On a run or stretching
+
+WHAT NOT TO SUGGEST:
+- NO industry-specific or product-specific scenes
+- NO cinematic, stylized, or "produced" shots
+- NO props they'd need to buy or set up
+- NO specific facial expressions or acting
+- NO brand-specific or offer-specific visuals
+- NO elaborate staging or locations
+- The footage should work for ANY ad copy layered on top
+
+REQUIRED OUTPUT FIELDS FOR broll FORMAT CELLS:
+- broll_shots: Array of 3-5 one-sentence everyday shot ideas (e.g., "Film yourself pouring coffee into a mug, phone propped on counter")
+- text_overlays: Array of timed text overlay objects — THIS is what sells. Each has "text", "timing", "type" (hook/insight/transition/cta)
+- mood: One of "Calm", "Productive", "Relatable", "Warm", "Authentic", "Energetic"
+
+EXAMPLE broll OUTPUT:
+{
+  "format": "broll",
+  "hook": "I used to rehearse my pitch 47 times before a webinar... then bomb anyway.",
+  "guidance": "Film 3-4 simple clips on your phone: pouring coffee, typing on laptop, walking down a hallway. Layer the ad copy as text overlays on top. The footage is just warmth — the words do the selling.",
+  "broll_shots": [
+    "Film yourself pouring coffee into a mug, phone propped on counter",
+    "Type on your laptop with natural light from a window",
+    "Walk down a sidewalk at a natural pace, phone at chest height",
+    "Sit at your desk and flip through a notebook"
+  ],
+  "text_overlays": [
+    { "text": "I used to rehearse 47 times...", "timing": "0-3s", "type": "hook" },
+    { "text": "Then bomb anyway.", "timing": "3-5s", "type": "hook" },
+    { "text": "Until I found a simpler way →", "timing": "8-12s", "type": "transition" },
+    { "text": "Link in bio", "timing": "15-18s", "type": "cta" }
+  ],
+  "mood": "Relatable",
+  "psychology_trigger": "identification",
+  "pain_point_addressed": "performance anxiety",
+  "why_this_works": "The everyday footage feels approachable while the text overlay creates an emotional connection through shared experience."
+}
+
 === PSYCHOLOGY INTEGRATION REQUIREMENTS — THIS IS THE MOST IMPORTANT SECTION ===
 
 You have access to rich, specific psychological data about this exact audience and offer.
