@@ -15,6 +15,7 @@ export interface OverlayStyle {
   bgOpacity: number;
   position: "top" | "center" | "bottom";
   textShadow: boolean;
+  ctaOverlayUrl?: string;
 }
 
 export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
