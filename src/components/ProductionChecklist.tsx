@@ -288,6 +288,72 @@ export function ProductionChecklist({ workspace, onUpdate, brand }: ProductionCh
                       </div>
                     )}
 
+                    {/* B-Roll Video Preview */}
+                    {item.format === "broll" && (
+                      <div className="space-y-3 border-t pt-3">
+                        {brollClips.length > 0 ? (() => {
+                          const assignedClipId = clipAssignments[item.id];
+                          const assignedClip = brollClips.find((c) => c.id === assignedClipId);
+                          const textOverlays: TextOverlay[] = (item.text_overlays || item.concept?.text_overlays || []).map((o: any) =>
+                            typeof o === "string" ? { text: o } : o
+                          );
+
+                          return (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium flex items-center gap-2">
+                                  <Film className="h-4 w-4" />
+                                  B-Roll Preview
+                                </p>
+                                <Select
+                                  value={assignedClipId || ""}
+                                  onValueChange={(v) => setClipAssignments((prev) => ({ ...prev, [item.id]: v }))}
+                                >
+                                  <SelectTrigger className="w-[180px] h-8 text-xs">
+                                    <SelectValue placeholder="Swap clip" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {brollClips.map((clip) => (
+                                      <SelectItem key={clip.id} value={clip.id}>
+                                        {clip.file_name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              {assignedClip && textOverlays.length > 0 && (
+                                <VideoTextPreview
+                                  videoUrl={assignedClip.file_url}
+                                  overlays={textOverlays}
+                                  style={overlayStyle}
+                                  compact
+                                />
+                              )}
+                              {assignedClip && textOverlays.length === 0 && (
+                                <div className="rounded-lg overflow-hidden">
+                                  <video
+                                    src={assignedClip.file_url}
+                                    className="w-full aspect-[9/16] max-h-[300px] object-cover rounded-lg"
+                                    controls
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })() : (
+                          <div className="p-4 bg-muted/30 rounded-lg text-center">
+                            <Film className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">
+                              Upload b-roll clips in <span className="font-medium">My Brand</span> to see previews here
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Production Notes */}
                     <div className="space-y-2">
                       <Label htmlFor={`notes-${item.id}`} className="text-sm font-medium">
