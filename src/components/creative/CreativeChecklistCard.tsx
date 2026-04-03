@@ -102,6 +102,10 @@ export function CreativeChecklistCard({
   const [isOpen, setIsOpen] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
   const [selectedBrollClipId, setSelectedBrollClipId] = useState<string | null>(null);
+  const [brollSource, setBrollSource] = useState<"lumi" | "upload">("lumi");
+  const [customBrollUrl, setCustomBrollUrl] = useState<string | null>(null);
+  const [customBrollName, setCustomBrollName] = useState<string | null>(null);
+  const [uploadingBroll, setUploadingBroll] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
