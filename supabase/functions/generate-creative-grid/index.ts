@@ -219,7 +219,7 @@ ROWS (Audience Moment):
 
 COLUMNS (Format Diversity):
 - Column 1: "talking_head" - Person speaking to camera (vulnerable, real, unpolished)
-- Column 2: "broll" - B-roll footage or lofi video (cinematic micro-moments)
+- Column 2: "broll" - B-roll with text overlay (lofi, everyday, phone-filmed — the copy does the selling, not the footage)
 - Column 3: "graphic" - Static image or graphic (bold, unexpected, thumb-stopping)
 
 === TALKING HEAD FORMAT - DESIGNED FOR NON-ACTORS ===
