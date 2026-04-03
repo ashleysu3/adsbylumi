@@ -97,9 +97,11 @@ export function CreativeChecklistCard({
   onToggleSelect,
   angleCopy,
   onCopyChange,
+  brand,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showRationale, setShowRationale] = useState(false);
+  const [selectedBrollClipId, setSelectedBrollClipId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
