@@ -4,15 +4,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronUp, Heart } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronDown, ChevronUp, Heart, Film } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { VideoTextPreview, DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
+import type { OverlayStyle, TextOverlay } from "@/components/VideoTextPreview";
+
+interface BRollClip {
+  id: string;
+  file_name: string;
+  file_url: string;
+  storage_path: string;
+  tags?: string[];
+}
 
 interface ProductionChecklistProps {
   workspace: any;
   onUpdate: (updates: any) => void;
+  brand?: any;
 }
 
 export function ProductionChecklist({ workspace, onUpdate }: ProductionChecklistProps) {
