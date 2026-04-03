@@ -182,7 +182,14 @@ Output ONLY valid JSON with this exact structure:
   "guidance": "Detailed production guidance with camera angles, timing, overlays",
   "psychology_trigger": "The psychological lever being pulled",
   "pain_point_addressed": "Which specific pain point this targets",
-  "why_this_works": "One sentence explanation for user education"${isTalkingHead ? `,
+  "why_this_works": "One sentence explanation for user education"${isBroll ? `,
+  "broll_shots": ["Shot 1 - simple everyday action", "Shot 2", "Shot 3"],
+  "text_overlays": [
+    { "text": "Hook text", "timing": "0-3s", "type": "hook" },
+    { "text": "Insight text", "timing": "8-12s", "type": "insight" },
+    { "text": "CTA text", "timing": "15-18s", "type": "cta" }
+  ],
+  "mood": "Calm | Productive | Relatable | Warm | Authentic | Energetic"` : ''}${isTalkingHead ? `,
   "verbal_hook": "Opening spoken line - pattern interrupt or confession",
   "written_hook": "Text overlay that creates curiosity gap",
   "visual_hook": "What viewers see in first 1-3 seconds - SIMPLE and EVERYDAY",
