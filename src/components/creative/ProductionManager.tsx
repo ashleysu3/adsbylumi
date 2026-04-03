@@ -910,6 +910,7 @@ export function ProductionManager({
                           onToggleSelect={bulkSelectMode ? () => toggleSelectItem(item.id) : undefined}
                           angleCopy={getCopyForItem(item)}
                           onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
+                          onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
                           brand={brand}
                         />
                       );
