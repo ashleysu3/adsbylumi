@@ -62,6 +62,8 @@ export default function Dashboard() {
   });
   const [newEmoji, setNewEmoji] = useState('');
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
+  const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>(DEFAULT_OVERLAY_STYLE);
+  const [brollClips, setBrollClips] = useState<any[]>([]);
   const [hasPublishedAd, setHasPublishedAd] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportModalText, setReportModalText] = useState<string | undefined>(undefined);
