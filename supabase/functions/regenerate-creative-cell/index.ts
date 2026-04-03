@@ -68,6 +68,7 @@ serve(async (req) => {
     };
 
     const isTalkingHead = cell.format === "talking_head";
+    const isBroll = cell.format === "broll";
     
     const systemPrompt = `You are an elite Meta Ads creative strategist who creates scroll-stopping, psychology-driven ad concepts.
 
