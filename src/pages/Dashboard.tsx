@@ -830,6 +830,7 @@ export default function Dashboard() {
         <OverlayStylePicker
           style={overlayStyle}
           onChange={setOverlayStyle}
+          brandId={brand.id}
           onSave={async () => {
             setSaving(true);
             try {

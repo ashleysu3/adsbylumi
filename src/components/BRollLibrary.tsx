@@ -153,7 +153,7 @@ export function BRollLibrary({ brandId, clips, onUpdate }: BRollLibraryProps) {
               <div key={clip.id} className="relative group rounded-lg overflow-hidden border bg-muted/30">
                 <video
                   src={clip.file_url}
-                  className="w-full aspect-[9/16] object-cover"
+                  className="w-full aspect-[9/16] object-contain bg-black"
                   muted
                   preload="metadata"
                   playsInline

@@ -15,6 +15,7 @@ export interface OverlayStyle {
   bgOpacity: number;
   position: "top" | "center" | "bottom";
   textShadow: boolean;
+  ctaOverlayUrl?: string;
 }
 
 export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
@@ -25,6 +26,7 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
   bgOpacity: 0.6,
   position: "bottom",
   textShadow: true,
+  ctaOverlayUrl: undefined,
 };
 
 interface VideoTextPreviewProps {
@@ -81,18 +83,55 @@ export function VideoTextPreview({ videoUrl, overlays, style = DEFAULT_OVERLAY_S
 
   const fontSize = compact ? Math.max(12, style.fontSize * 0.5) : style.fontSize * 0.6;
 
+  // Determine if CTA overlay image should show — visible during CTA-type overlays or last 3 seconds
+  const [duration, setDuration] = useState(0);
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const handleMeta = () => setDuration(video.duration || 0);
+    video.addEventListener("loadedmetadata", handleMeta);
+    return () => video.removeEventListener("loadedmetadata", handleMeta);
+  }, []);
+
+  const showCtaImage = (() => {
+    if (!style.ctaOverlayUrl) return false;
+    // Show during any CTA-type overlay
+    const ctaOverlay = overlays.find((o) => o.type === "cta");
+    if (ctaOverlay) {
+      const timing = parseTimingString(ctaOverlay.timing);
+      if (timing) return currentTime >= timing.start && currentTime < timing.end;
+      return !isPlaying; // show when paused if no timing
+    }
+    // Fallback: show in last 3 seconds
+    if (duration > 0 && currentTime >= duration - 3) return true;
+    if (!isPlaying) return true; // show when paused as preview
+    return false;
+  })();
+
   return (
     <div className={cn("relative rounded-lg overflow-hidden bg-black aspect-[9/16] max-h-[400px]", className)}>
       <video
         ref={videoRef}
         src={videoUrl}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-contain"
         controls
         muted
         loop
         playsInline
         preload="metadata"
       />
+
+      {/* CTA mockup PNG overlay */}
+      {showCtaImage && style.ctaOverlayUrl && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          <img
+            src={style.ctaOverlayUrl}
+            alt="CTA overlay"
+            className="max-w-[80%] max-h-[40%] object-contain drop-shadow-lg transition-opacity duration-500"
+            style={{ opacity: showCtaImage ? 1 : 0 }}
+          />
+        </div>
+      )}
 
       {/* Text overlays */}
       <div className={cn("absolute left-0 right-0 px-3 pointer-events-none z-10", positionClass)}>
