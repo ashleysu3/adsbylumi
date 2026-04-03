@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 // File validation schema
 const fileValidationSchema = z.object({
   name: z.string().max(255, "Filename too long"),
-  size: z.number().max(50 * 1024 * 1024, "File must be less than 50MB"),
+  size: z.number().max(100 * 1024 * 1024, "File must be less than 100MB"),
   type: z.string().refine(
     (type) => [
       'video/mp4', 'video/quicktime', 'video/x-msvideo',
