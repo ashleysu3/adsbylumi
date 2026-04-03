@@ -854,7 +854,7 @@ Deno.serve(async (req) => {
             page_id: pageId,
             link_data: {
               image_hash: assetId,
-              link: answers?.finalUrl || workspace.offer_url || '',
+              link: destinationUrl,
               message: copy.primaryText || '',
               name: copy.headline || '',
               description: copy.description || '',
