@@ -52,6 +52,16 @@ function hexToRgba(hex: string, opacity: number): string {
 export function OverlayStylePicker({ style, onChange, onSave, saving }: OverlayStylePickerProps) {
   const update = (partial: Partial<OverlayStyle>) => onChange({ ...style, ...partial });
 
+  useEffect(() => {
+    const linkId = "overlay-google-fonts";
+    if (document.getElementById(linkId)) return;
+    const link = document.createElement("link");
+    link.id = linkId;
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?${GOOGLE_FONT_FAMILIES.map(f => `family=${f}:wght@400;700`).join("&")}&display=swap`;
+    document.head.appendChild(link);
+  }, []);
+
   return (
     <Card>
       <CardHeader>
