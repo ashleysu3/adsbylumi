@@ -256,6 +256,8 @@ export default function Dashboard() {
           brand_emojis: brandData.brand_emojis ?? DEFAULT_EMOJIS,
           bullet_emoji: brandData.bullet_emoji ?? '✅',
         });
+        setBrollClips((brandData as any).broll_library || []);
+        setOverlayStyle((brandData as any).overlay_style || DEFAULT_OVERLAY_STYLE);
       }
 
       const { data: subData } = await supabase
