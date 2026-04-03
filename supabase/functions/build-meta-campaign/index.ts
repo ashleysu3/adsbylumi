@@ -223,7 +223,8 @@ Deno.serve(async (req) => {
       .from('campaign_workspaces')
       .select(`
         *,
-        brands!inner(id, name, user_id, meta_account_id, meta_access_token, page_id, page_name)
+        brands!inner(id, name, user_id, meta_account_id, meta_access_token, page_id, page_name, website_url),
+        offers(url)
       `)
       .eq('id', workspaceId)
       .single();
@@ -264,6 +265,18 @@ Deno.serve(async (req) => {
       throw new Error('Facebook Page not selected. Please select a Facebook Page in your brand settings to create ads.');
     }
 
+    // Resolve destination URL with deep fallback chain
+    const destinationUrl = answers?.finalUrl
+      || workspace.offer_url
+      || workspace.offers?.url
+      || brand.website_url
+      || '';
+
+    if (!destinationUrl) {
+      throw new Error('No destination URL found. Please add a URL to your offer or enter a landing page URL in your brand settings.');
+    }
+
+    console.log('Resolved destination URL:', destinationUrl);
     console.log('Building campaign for workspace:', workspaceId);
     console.log('Meta Account ID:', metaAccountId);
     console.log('Facebook Page ID:', pageId);
@@ -824,7 +837,7 @@ Deno.serve(async (req) => {
             link_description: copy.description || '',
             call_to_action: {
               type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_'),
-              value: { link: answers?.finalUrl || workspace.offer_url || '' }
+              value: { link: destinationUrl }
             }
           };
           
@@ -841,7 +854,7 @@ Deno.serve(async (req) => {
             page_id: pageId,
             link_data: {
               image_hash: assetId,
-              link: answers?.finalUrl || workspace.offer_url || '',
+              link: destinationUrl,
               message: copy.primaryText || '',
               name: copy.headline || '',
               description: copy.description || '',
