@@ -64,6 +64,7 @@ export function ProductionManager({
   onArchivePrevious,
   onClearAll,
   onUrlChange,
+  brand,
 }: ProductionManagerProps) {
   const [uploadingItemId, setUploadingItemId] = useState<string | null>(null);
   const [uploadingVerticalItemId, setUploadingVerticalItemId] = useState<string | null>(null);
