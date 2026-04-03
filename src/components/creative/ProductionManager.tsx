@@ -1008,6 +1008,7 @@ export function ProductionManager({
                                   onRefineScript={onRefineScript}
                                   angleCopy={getCopyForItem(item)}
                                   onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
+                                  onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
                                   brand={brand}
                                 />
                               ))}
