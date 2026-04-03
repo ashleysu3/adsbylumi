@@ -156,6 +156,73 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
           <Switch checked={style.textShadow} onCheckedChange={(v) => update({ textShadow: v })} />
         </div>
 
+        {/* CTA Mockup Overlay */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5">
+            <ImageIcon className="h-4 w-4" />
+            CTA Mockup Overlay (PNG)
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Upload a transparent PNG (e.g. product mockup) that appears at the end of each b-roll video with the CTA
+          </p>
+          {style.ctaOverlayUrl ? (
+            <div className="relative inline-block">
+              <img
+                src={style.ctaOverlayUrl}
+                alt="CTA overlay"
+                className="h-20 object-contain rounded border bg-muted/30 p-1"
+              />
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute -top-2 -right-2 h-6 w-6"
+                onClick={() => update({ ctaOverlayUrl: undefined })}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <label className="flex items-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors">
+              {uploadingCta ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Upload className="h-5 w-5 text-muted-foreground" />
+              )}
+              <span className="text-sm text-muted-foreground">
+                {uploadingCta ? "Uploading..." : "Upload transparent PNG"}
+              </span>
+              <input
+                type="file"
+                accept="image/png"
+                className="hidden"
+                disabled={uploadingCta}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (!file.type.includes("png")) {
+                    toast.error("Please upload a PNG file");
+                    return;
+                  }
+                  setUploadingCta(true);
+                  const path = `${brandId}/cta-overlay-${Date.now()}.png`;
+                  const { error } = await supabase.storage
+                    .from("broll-library")
+                    .upload(path, file, { contentType: "image/png" });
+                  if (error) {
+                    toast.error("Upload failed: " + error.message);
+                  } else {
+                    const { data } = supabase.storage.from("broll-library").getPublicUrl(path);
+                    update({ ctaOverlayUrl: data.publicUrl });
+                    toast.success("CTA overlay uploaded");
+                  }
+                  setUploadingCta(false);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          )}
+        </div>
+
         {/* Live Preview Strip */}
         <div
           className="rounded-lg p-6 text-center"
