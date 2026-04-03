@@ -625,6 +625,14 @@ export function ProductionManager({
       });
     }
   };
+
+  // Handle text overlay changes from checklist cards
+  const handleOverlaysChange = (item: ProductionItem, updatedOverlays: any[]) => {
+    const updatedItems = productionItems.map((pi) =>
+      pi.id === item.id ? { ...pi, text_overlays: updatedOverlays } : pi
+    );
+    onUpdateWorkspace({ production_items: updatedItems });
+  };
   
   if (productionItems.length === 0) {
     return (
