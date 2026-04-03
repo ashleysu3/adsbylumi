@@ -26,6 +26,7 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
   bgOpacity: 0.6,
   position: "bottom",
   textShadow: true,
+  ctaOverlayUrl: undefined,
 };
 
 interface VideoTextPreviewProps {
