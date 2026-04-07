@@ -239,40 +239,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Send summary to Slack
-    try {
-      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-      const SLACK_API_KEY = Deno.env.get('SLACK_API_KEY');
-
-      if (LOVABLE_API_KEY && SLACK_API_KEY) {
-        const fatigueResults = results.filter(r => r.status === 'fatigue_detected' || r.status === 'auto_rotated');
-        if (fatigueResults.length > 0) {
-          const lines = fatigueResults.map(r => {
-            if (r.status === 'auto_rotated') {
-              return `• ✅ *${r.workspace}* (${r.brand}): Auto-rotated ${r.rotatedCount} of ${r.fatiguedCount} fatigued ads`;
-            }
-            return `• ⚠️ *${r.workspace}* (${r.brand}): ${r.fatiguedCount} fatigued, ${r.benchAvailable} bench available`;
-          });
-
-          await fetch('https://connector-gateway.lovable.dev/slack/api/chat.postMessage', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-              'X-Connection-Api-Key': SLACK_API_KEY,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              channel: 'lumi-alerts',
-              text: `🎨 Creative Fatigue Check\n${lines.join('\n')}`,
-              username: 'Lumi',
-              icon_emoji: ':sparkles:',
-            }),
-          });
-        }
-      }
-    } catch (slackErr) {
-      console.error('Slack notification failed:', slackErr);
-    }
+    // Slack notification disabled — only bug reports and new users go to Slack
 
     return new Response(JSON.stringify({ success: true, results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
