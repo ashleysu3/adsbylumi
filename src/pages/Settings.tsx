@@ -152,7 +152,7 @@ export default function Settings() {
   const [savingCopyStyle, setSavingCopyStyle] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   
-  const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status } = useSubscription();
+  const { isLoading: subLoading, isSubscribed, tier, isAnnual, subscriptionEnd, cancelAtPeriodEnd, refreshSubscription, isCodeBased, isTrial, status, discount, amountPaid, billingInterval } = useSubscription();
 
   useEffect(() => {
     fetchData();
