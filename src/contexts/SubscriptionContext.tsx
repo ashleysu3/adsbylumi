@@ -126,6 +126,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         isCodeBased: data.is_code_based || false,
         isTrial: data.is_trial || false,
         status: data.status || null,
+        discount: data.discount || null,
+        amountPaid: data.amount_paid ?? null,
+        billingInterval: data.billing_interval || null,
       });
     } catch (err) {
       console.error('Error in checkSubscription:', err);
@@ -152,6 +155,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           isCodeBased: false,
           isTrial: false,
           status: null,
+          discount: null,
+          amountPaid: null,
+          billingInterval: null,
         });
       }
     });
