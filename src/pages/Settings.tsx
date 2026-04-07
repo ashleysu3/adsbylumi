@@ -950,7 +950,7 @@ export default function Settings() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                    <CardContent className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-3">
                       {/* Billing Amount */}
                       <div>
@@ -958,8 +958,13 @@ export default function Settings() {
                           {isCodeBased ? 'Your Cost' : 'Current Price'}
                         </p>
                         <p className="text-2xl font-bold">
-                          {isCodeBased ? (
+                          {isCodeBased && amountPaid == null ? (
                             <>$0<span className="text-sm font-normal text-muted-foreground">/month</span></>
+                          ) : amountPaid != null ? (
+                            <>
+                              ${amountPaid}
+                              <span className="text-sm font-normal text-muted-foreground">/{billingInterval === 'year' ? 'year' : 'month'}</span>
+                            </>
                           ) : (
                             <>
                               ${isAnnual ? currentTier.annualPrice : currentTier.monthlyPrice}
@@ -967,10 +972,27 @@ export default function Settings() {
                             </>
                           )}
                         </p>
-                        {isCodeBased && (
+                        {isCodeBased && amountPaid == null && (
                           <p className="text-xs text-muted-foreground mt-1">
                             Complimentary via invite code
                           </p>
+                        )}
+                        {discount && (
+                          <div className="mt-2">
+                            <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/30">
+                              {discount.coupon_name}
+                              {discount.percent_off ? ` (${discount.percent_off}% off)` : ''}
+                              {discount.amount_off ? ` ($${discount.amount_off} off)` : ''}
+                            </Badge>
+                            {discount.duration === 'forever' && (
+                              <p className="text-xs text-muted-foreground mt-1">Applied forever</p>
+                            )}
+                            {discount.duration === 'repeating' && discount.duration_in_months && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Applied for {discount.duration_in_months} month{discount.duration_in_months > 1 ? 's' : ''}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
 
