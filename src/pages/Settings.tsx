@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { 
   User, Bell, CreditCard, LogOut, Loader2, ExternalLink, Crown,
   Sliders, Mail, AlertTriangle, TrendingDown, Eye, BookOpen, RotateCcw,
-  Smile, X, Link2, CheckCircle2, XCircle
+  Smile, X, Link2, CheckCircle2, XCircle, Lock, Users, Copy, Trash2, UserPlus
 } from 'lucide-react';
 import { CancelSubscriptionModal } from '@/components/CancelSubscriptionModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,6 +25,8 @@ import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 import EmojiQuickPicker from '@/components/EmojiQuickPicker';
 import { CancellationPolicyBanner } from '@/components/CancellationPolicyBanner';
 import { FlodeskIntegrationCard } from '@/components/FlodeskIntegrationCard';
+import { PasswordChangeForm } from '@/components/PasswordChangeForm';
+import { TeamMembersSection } from '@/components/TeamMembersSection';
 import { KitIntegrationCard } from '@/components/KitIntegrationCard';
 
 interface NotificationPrefs {
@@ -405,33 +407,31 @@ export default function Settings() {
               </CardContent>
             </Card>
 
-            {/* Coming Soon: Password & Team */}
-            <Card className="border-dashed border-muted-foreground/30">
+            {/* Password Change */}
+            <Card variant="glow">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-muted-foreground">
-                  <AlertTriangle className="h-5 w-5" />
-                  Coming Soon
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-5 w-5" />
+                  Change Password
                 </CardTitle>
-                <CardDescription>These features are on our roadmap</CardDescription>
+                <CardDescription>Update your account password</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div>
-                    <p className="font-medium text-sm">Change Password</p>
-                    <p className="text-xs text-muted-foreground">Use "Forgot Password" on the login page for now</p>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div>
-                    <p className="font-medium text-sm">Team Members</p>
-                    <p className="text-xs text-muted-foreground">Invite teammates and manage seats</p>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Want these features sooner? Let us know via the 🐞 bug report button — we track feature requests there too!
-                </p>
+              <CardContent>
+                <PasswordChangeForm />
+              </CardContent>
+            </Card>
+
+            {/* Team Members */}
+            <Card variant="glow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Team Members
+                </CardTitle>
+                <CardDescription>Invite teammates to collaborate on your brand</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TeamMembersSection brandId={brand?.id} />
               </CardContent>
             </Card>
 
