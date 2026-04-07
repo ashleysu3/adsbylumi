@@ -352,6 +352,53 @@ export type Database = {
           },
         ]
       }
+      brand_team_members: {
+        Row: {
+          brand_id: string
+          created_at: string
+          email: string | null
+          id: string
+          invite_status: string
+          invite_token: string | null
+          invited_by: string
+          role: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          invite_status?: string
+          invite_token?: string | null
+          invited_by: string
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          invite_status?: string
+          invite_token?: string | null
+          invited_by?: string
+          role?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_team_members_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_vault_secrets: {
         Row: {
           brand_id: string
@@ -2147,6 +2194,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_team_invite: { Args: { p_token: string }; Returns: Json }
       claim_invite_code: { Args: { code_input: string }; Returns: boolean }
       delete_meta_token: { Args: { p_brand_id: string }; Returns: boolean }
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
