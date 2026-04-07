@@ -16,6 +16,7 @@ export default function Auth() {
   const searchParams = new URLSearchParams(window.location.search);
   const startWithSignup = searchParams.get('signup') === 'true';
   const returnToParam = searchParams.get('returnTo');
+  const inviteToken = searchParams.get('invite');
   const safeReturnTo =
     returnToParam && returnToParam.startsWith('/') && !returnToParam.startsWith('//')
       ? returnToParam
@@ -41,12 +42,31 @@ export default function Auth() {
 
   // Redirect already-authenticated users away from auth page
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+        if (inviteToken) {
+          await acceptInvite(inviteToken);
+        }
         navigate(safeReturnTo || "/start", { replace: true });
       }
     });
-  }, [navigate, safeReturnTo]);
+  }, [navigate, safeReturnTo, inviteToken]);
+
+  const acceptInvite = async (token: string) => {
+    try {
+      const { data, error } = await supabase.rpc('accept_team_invite', { p_token: token });
+      if (error) throw error;
+      const result = data as any;
+      if (result?.success) {
+        toast.success(`You've joined ${result.brand_name} as ${result.role}!`);
+      } else {
+        toast.error(result?.error || 'Invalid invite link');
+      }
+    } catch (error: any) {
+      console.error('Error accepting invite:', error);
+      toast.error('Failed to accept invite');
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
