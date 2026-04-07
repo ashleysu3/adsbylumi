@@ -138,6 +138,8 @@ export default function AdPerformance() {
 
   // Import modal state
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [goalSetupModalOpen, setGoalSetupModalOpen] = useState(false);
+  const [campaignsNeedingGoals, setCampaignsNeedingGoals] = useState<any[]>([]);
 
   // Account metrics state
   const [accountMetrics, setAccountMetrics] = useState<AccountMetrics | null>(null);
@@ -496,8 +498,8 @@ export default function AdPerformance() {
         .from('campaign_workspaces')
         .select(`
           id, name, meta_campaign_ids, meta_campaign_status, template_id, final_answers,
-          offer_id, offer_name, brand_id, campaign_builder_answers, tracking_verified,
-          campaign_templates!campaign_workspaces_template_id_fkey (id, name, objective)
+          offer_id, offer_name, offer_price, brand_id, campaign_builder_answers, tracking_verified,
+          campaign_templates!campaign_workspaces_template_id_fkey (id, name, objective, slug)
         `)
         .eq('brand_id', activeBrand.id)
         .not('meta_campaign_ids', 'is', null)
