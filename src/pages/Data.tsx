@@ -26,6 +26,7 @@ import { ImportCampaignsModal } from '@/components/insights/ImportCampaignsModal
 import { useBrand } from '@/contexts/BrandContext';
 import { CampaignDetailDrawer } from '@/components/CampaignDetailDrawer';
 import { ActionHistoryTimeline } from '@/components/insights/ActionHistoryTimeline';
+import { GoalSetupModal } from '@/components/insights/GoalSetupModal';
 import lumiLogo from '@/assets/lumi-logo.png';
 
 interface PerformanceAnalysis {
@@ -138,6 +139,8 @@ export default function AdPerformance() {
 
   // Import modal state
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [goalSetupModalOpen, setGoalSetupModalOpen] = useState(false);
+  const [campaignsNeedingGoals, setCampaignsNeedingGoals] = useState<any[]>([]);
 
   // Account metrics state
   const [accountMetrics, setAccountMetrics] = useState<AccountMetrics | null>(null);
@@ -496,8 +499,8 @@ export default function AdPerformance() {
         .from('campaign_workspaces')
         .select(`
           id, name, meta_campaign_ids, meta_campaign_status, template_id, final_answers,
-          offer_id, offer_name, brand_id, campaign_builder_answers, tracking_verified,
-          campaign_templates!campaign_workspaces_template_id_fkey (id, name, objective)
+          offer_id, offer_name, offer_price, brand_id, campaign_builder_answers, tracking_verified,
+          campaign_templates!campaign_workspaces_template_id_fkey (id, name, objective, slug)
         `)
         .eq('brand_id', activeBrand.id)
         .not('meta_campaign_ids', 'is', null)
@@ -551,6 +554,36 @@ export default function AdPerformance() {
       });
 
       setCampaigns(campaignData);
+
+      // Check for live campaigns without goals → show forced goal setup
+      const liveCampaigns = campaignData.filter(c => {
+        const s = (c.status || '').toLowerCase();
+        return s === 'active' || s === 'live';
+      });
+      if (liveCampaigns.length > 0) {
+        const liveIds = liveCampaigns.map(c => c.id);
+        const { data: existingGoals } = await supabase
+          .from('campaign_goals')
+          .select('workspace_id')
+          .in('workspace_id', liveIds);
+        const idsWithGoals = new Set((existingGoals || []).map((g: any) => g.workspace_id));
+        const needGoals = liveCampaigns.filter(c => !idsWithGoals.has(c.id));
+        if (needGoals.length > 0) {
+          // Map to include offer price and template slug for suggestions
+          const forGoals = needGoals.map(c => {
+            const ws = publishedWorkspaces.find((w: any) => w.id === c.id);
+            return {
+              id: c.id,
+              name: c.name,
+              brandId: c.brandId,
+              offerPrice: (ws as any)?.offer_price || null,
+              templateSlug: (ws as any)?.campaign_templates?.slug || null,
+            };
+          });
+          setCampaignsNeedingGoals(forGoals);
+          setGoalSetupModalOpen(true);
+        }
+      }
 
       if (metaConnected && campaignData.length > 0) {
         await Promise.all([fetchAllMetrics(campaignData), fetchAccountOverview(activeBrand.id)]);
@@ -1543,6 +1576,17 @@ export default function AdPerformance() {
           onOpenChange={setDrawerOpen}
           campaignId={drawerCampaignId}
           onUpdate={loadOptimizationReport}
+        />
+
+        {/* Forced goal setup modal for live campaigns without goals */}
+        <GoalSetupModal
+          open={goalSetupModalOpen}
+          onOpenChange={setGoalSetupModalOpen}
+          campaigns={campaignsNeedingGoals}
+          onGoalsSaved={() => {
+            setCampaignsNeedingGoals([]);
+            fetchCampaigns();
+          }}
         />
       </div>
     </DashboardLayout>
