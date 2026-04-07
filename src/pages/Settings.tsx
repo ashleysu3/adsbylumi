@@ -25,6 +25,8 @@ import { SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
 import EmojiQuickPicker from '@/components/EmojiQuickPicker';
 import { CancellationPolicyBanner } from '@/components/CancellationPolicyBanner';
 import { FlodeskIntegrationCard } from '@/components/FlodeskIntegrationCard';
+import { PasswordChangeForm } from '@/components/PasswordChangeForm';
+import { TeamMembersSection } from '@/components/TeamMembersSection';
 import { KitIntegrationCard } from '@/components/KitIntegrationCard';
 
 interface NotificationPrefs {
