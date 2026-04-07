@@ -177,37 +177,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 4. Send Slack notification
-    try {
-      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-      const SLACK_API_KEY = Deno.env.get('SLACK_API_KEY');
-
-      if (LOVABLE_API_KEY && SLACK_API_KEY) {
-        // Get workspace name
-        const { data: ws } = await supabaseAdmin
-          .from('campaign_workspaces')
-          .select('name')
-          .eq('id', workspaceId)
-          .single();
-
-        await fetch('https://connector-gateway.lovable.dev/slack/api/chat.postMessage', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'X-Connection-Api-Key': SLACK_API_KEY,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            channel: 'lumi-alerts',
-            text: `🔄 Creative rotation in "${ws?.name || workspaceId}": ${reason || 'Manual swap'}`,
-            username: 'Lumi',
-            icon_emoji: ':sparkles:',
-          }),
-        });
-      }
-    } catch (slackErr) {
-      console.error('Slack notification failed:', slackErr);
-    }
+    // Slack notification disabled — only bug reports and new users go to Slack
 
     return new Response(JSON.stringify({ success: true, actions }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
