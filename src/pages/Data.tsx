@@ -26,6 +26,7 @@ import { ImportCampaignsModal } from '@/components/insights/ImportCampaignsModal
 import { useBrand } from '@/contexts/BrandContext';
 import { CampaignDetailDrawer } from '@/components/CampaignDetailDrawer';
 import { ActionHistoryTimeline } from '@/components/insights/ActionHistoryTimeline';
+import { GoalSetupModal } from '@/components/insights/GoalSetupModal';
 import lumiLogo from '@/assets/lumi-logo.png';
 
 interface PerformanceAnalysis {
@@ -1575,6 +1576,17 @@ export default function AdPerformance() {
           onOpenChange={setDrawerOpen}
           campaignId={drawerCampaignId}
           onUpdate={loadOptimizationReport}
+        />
+
+        {/* Forced goal setup modal for live campaigns without goals */}
+        <GoalSetupModal
+          open={goalSetupModalOpen}
+          onOpenChange={setGoalSetupModalOpen}
+          campaigns={campaignsNeedingGoals}
+          onGoalsSaved={() => {
+            setCampaignsNeedingGoals([]);
+            fetchCampaigns();
+          }}
         />
       </div>
     </DashboardLayout>
