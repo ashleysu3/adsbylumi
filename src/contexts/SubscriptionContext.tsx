@@ -8,6 +8,14 @@ interface TierLimits {
   adSpendCap: number;
 }
 
+interface DiscountInfo {
+  coupon_name: string;
+  percent_off: number | null;
+  amount_off: number | null;
+  duration: string;
+  duration_in_months: number | null;
+}
+
 interface SubscriptionState {
   isLoading: boolean;
   isSubscribed: boolean;
@@ -20,6 +28,9 @@ interface SubscriptionState {
   isCodeBased: boolean;
   isTrial: boolean;
   status: string | null;
+  discount: DiscountInfo | null;
+  amountPaid: number | null;
+  billingInterval: string | null;
 }
 
 interface SubscriptionContextType extends SubscriptionState {
@@ -56,6 +67,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     isCodeBased: false,
     isTrial: false,
     status: null,
+    discount: null,
+    amountPaid: null,
+    billingInterval: null,
   });
 
   const checkSubscription = useCallback(async () => {
@@ -112,6 +126,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         isCodeBased: data.is_code_based || false,
         isTrial: data.is_trial || false,
         status: data.status || null,
+        discount: data.discount || null,
+        amountPaid: data.amount_paid ?? null,
+        billingInterval: data.billing_interval || null,
       });
     } catch (err) {
       console.error('Error in checkSubscription:', err);
@@ -138,6 +155,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           isCodeBased: false,
           isTrial: false,
           status: null,
+          discount: null,
+          amountPaid: null,
+          billingInterval: null,
         });
       }
     });
