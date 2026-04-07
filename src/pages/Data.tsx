@@ -554,6 +554,36 @@ export default function AdPerformance() {
 
       setCampaigns(campaignData);
 
+      // Check for live campaigns without goals → show forced goal setup
+      const liveCampaigns = campaignData.filter(c => {
+        const s = (c.status || '').toLowerCase();
+        return s === 'active' || s === 'live';
+      });
+      if (liveCampaigns.length > 0) {
+        const liveIds = liveCampaigns.map(c => c.id);
+        const { data: existingGoals } = await supabase
+          .from('campaign_goals')
+          .select('workspace_id')
+          .in('workspace_id', liveIds);
+        const idsWithGoals = new Set((existingGoals || []).map((g: any) => g.workspace_id));
+        const needGoals = liveCampaigns.filter(c => !idsWithGoals.has(c.id));
+        if (needGoals.length > 0) {
+          // Map to include offer price and template slug for suggestions
+          const forGoals = needGoals.map(c => {
+            const ws = publishedWorkspaces.find((w: any) => w.id === c.id);
+            return {
+              id: c.id,
+              name: c.name,
+              brandId: c.brandId,
+              offerPrice: (ws as any)?.offer_price || null,
+              templateSlug: (ws as any)?.campaign_templates?.slug || null,
+            };
+          });
+          setCampaignsNeedingGoals(forGoals);
+          setGoalSetupModalOpen(true);
+        }
+      }
+
       if (metaConnected && campaignData.length > 0) {
         await Promise.all([fetchAllMetrics(campaignData), fetchAccountOverview(activeBrand.id)]);
       } else if (metaConnected) {
