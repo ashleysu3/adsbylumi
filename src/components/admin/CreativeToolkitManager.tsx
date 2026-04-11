@@ -67,13 +67,34 @@ const defaultConfig: ToolkitConfig = {
   shot_lists: [],
 };
 
-export default function CreativeToolkitManager() {
-  const [config, setConfig] = useState<ToolkitConfig>(defaultConfig);
-  const [loading, setLoading] = useState(true);
+interface CreativeToolkitManagerProps {
+  externalConfig?: ToolkitConfig;
+  onConfigChange?: (config: ToolkitConfig) => void;
+  hideSaveBar?: boolean;
+  hideLiveToggle?: boolean;
+}
+
+export default function CreativeToolkitManager({
+  externalConfig,
+  onConfigChange,
+  hideSaveBar = false,
+  hideLiveToggle = false,
+}: CreativeToolkitManagerProps = {}) {
+  const isControlled = !!externalConfig && !!onConfigChange;
+  const [internalConfig, setInternalConfig] = useState<ToolkitConfig>(defaultConfig);
+  const [loading, setLoading] = useState(!isControlled);
   const [saving, setSaving] = useState(false);
 
+  const config = isControlled ? externalConfig : internalConfig;
+  const setConfig = isControlled
+    ? (val: ToolkitConfig | ((prev: ToolkitConfig) => ToolkitConfig)) => {
+        const next = typeof val === "function" ? val(externalConfig) : val;
+        onConfigChange!(next);
+      }
+    : setInternalConfig;
+
   useEffect(() => {
-    fetchConfig();
+    if (!isControlled) fetchConfig();
   }, []);
 
   const fetchConfig = async () => {
@@ -86,7 +107,7 @@ export default function CreativeToolkitManager() {
 
       if (error && error.code !== "PGRST116") throw error;
       if (data?.value) {
-        setConfig({ ...defaultConfig, ...(data.value as unknown as ToolkitConfig) });
+        setInternalConfig({ ...defaultConfig, ...(data.value as unknown as ToolkitConfig) });
       }
     } catch (e: any) {
       console.error("Failed to fetch toolkit config:", e);
@@ -131,24 +152,26 @@ export default function CreativeToolkitManager() {
   return (
     <div className="space-y-6">
       {/* Live toggle bar */}
-      <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className={`h-2.5 w-2.5 rounded-full ${config.live ? "bg-green-500" : "bg-muted-foreground/40"}`} />
-          <span className="text-sm font-medium">
-            {config.live ? "Toolkit is live for all users" : "Toolkit shows Coming Soon overlay"}
-          </span>
+      {!hideLiveToggle && (
+        <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className={`h-2.5 w-2.5 rounded-full ${config.live ? "bg-green-500" : "bg-muted-foreground/40"}`} />
+            <span className="text-sm font-medium">
+              {config.live ? "Toolkit is live for all users" : "Toolkit shows Coming Soon overlay"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="toolkit-live" className="text-sm">
+              {config.live ? "Live" : "Coming Soon"}
+            </Label>
+            <Switch
+              id="toolkit-live"
+              checked={config.live}
+              onCheckedChange={(checked) => setConfig({ ...config, live: checked })}
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="toolkit-live" className="text-sm">
-            {config.live ? "Live" : "Coming Soon"}
-          </Label>
-          <Switch
-            id="toolkit-live"
-            checked={config.live}
-            onCheckedChange={(checked) => setConfig({ ...config, live: checked })}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Content tabs */}
       <Tabs defaultValue="templates" className="w-full">
@@ -226,12 +249,14 @@ export default function CreativeToolkitManager() {
       </Tabs>
 
       {/* Save bar */}
-      <div className="flex justify-end pt-4 border-t">
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
-          <Save className="h-4 w-4" />
-          {saving ? "Saving..." : "Save Toolkit Settings"}
-        </Button>
-      </div>
+      {!hideSaveBar && (
+        <div className="flex justify-end pt-4 border-t">
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
+            <Save className="h-4 w-4" />
+            {saving ? "Saving..." : "Save Toolkit Settings"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
