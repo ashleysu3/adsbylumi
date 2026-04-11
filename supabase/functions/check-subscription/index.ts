@@ -70,9 +70,36 @@ Deno.serve(async (req) => {
         hasStripeId: !!localSub.stripe_subscription_id 
       });
 
-      // Check if subscription is cancelled - user should lose access
+      // Check if subscription is cancelled - but allow access if still within paid/trial period
       if (localSub.status === 'cancelled' || localSub.status === 'canceled') {
-        logStep("Subscription is cancelled, denying access");
+        const now = new Date();
+        const periodEnd = localSub.current_period_end ? new Date(localSub.current_period_end) : null;
+        const trialEnd = localSub.trial_end ? new Date(localSub.trial_end) : null;
+        const effectiveEnd = trialEnd && trialEnd > (periodEnd || new Date(0)) ? trialEnd : periodEnd;
+
+        if (effectiveEnd && effectiveEnd > now) {
+          logStep("Subscription cancelled but still within access period", {
+            effectiveEnd: effectiveEnd.toISOString(),
+          });
+          return new Response(JSON.stringify({
+            subscribed: true,
+            product_id: null,
+            price_id: null,
+            tier: localSub.tier,
+            status: 'cancelled',
+            subscription_end: effectiveEnd.toISOString(),
+            cancel_at_period_end: false,
+            is_code_based: !localSub.stripe_subscription_id,
+            is_trial: !!trialEnd && trialEnd > now,
+            discount: null,
+            amount_paid: null,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+
+        logStep("Subscription is cancelled and access period has ended");
         return new Response(JSON.stringify({
           subscribed: false,
           product_id: null,
