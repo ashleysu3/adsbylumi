@@ -509,7 +509,22 @@ function TemplateEditForm({ data, onChange }: { data: ToolkitTemplate; onChange:
     <div className="space-y-3">
       <Field label="Name"><Input value={data.name} onChange={e => onChange({ ...data, name: e.target.value })} /></Field>
       <Field label="Category"><Input value={data.category} onChange={e => onChange({ ...data, category: e.target.value })} placeholder="e.g. Story & Reel Overlays" /></Field>
-      <Field label="Formats (comma-separated)"><Input value={data.formats.join(", ")} onChange={e => onChange({ ...data, formats: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })} placeholder="9:16, 4:5, 1:1" /></Field>
+      <Field label="Formats">
+        <div className="flex gap-4">
+          {["9:16", "1:1"].map(fmt => (
+            <label key={fmt} className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={data.formats.includes(fmt)}
+                onCheckedChange={(val) => {
+                  const next = val ? [...data.formats, fmt] : data.formats.filter(f => f !== fmt);
+                  if (next.length > 0) onChange({ ...data, formats: next });
+                }}
+              />
+              <span className="text-sm">{fmt}</span>
+            </label>
+          ))}
+        </div>
+      </Field>
       <Field label="Description"><Textarea value={data.description} onChange={e => onChange({ ...data, description: e.target.value })} rows={2} /></Field>
       <Field label="Canva URL"><Input value={data.canvaUrl} onChange={e => onChange({ ...data, canvaUrl: e.target.value })} placeholder="https://..." /></Field>
     </div>
