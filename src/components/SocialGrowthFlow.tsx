@@ -68,6 +68,53 @@ export function SocialGrowthFlow({
   const [error, setError] = useState<string | null>(null);
   const [pasteUrl, setPasteUrl] = useState("");
   const [resolvingUrl, setResolvingUrl] = useState(false);
+  const [fallbackMode, setFallbackMode] = useState(false);
+
+  // Auto-load posts when entering post_selection step
+  useEffect(() => {
+    if (step === "post_selection" && instagramAccountId && posts.length === 0 && !fallbackMode) {
+      loadPostsFromApi();
+    }
+  }, [step, instagramAccountId]);
+
+  const loadPostsFromApi = async () => {
+    if (!instagramAccountId) return;
+    setIsLoading(true);
+    try {
+      const { data, error: fetchError } = await supabase.functions.invoke("analyze-instagram-posts", {
+        body: { brandId, instagramAccountId, simple: true },
+      });
+      if (fetchError) throw fetchError;
+
+      if (data?.fallbackMode === "url_paste") {
+        setFallbackMode(true);
+        return;
+      }
+      if (data?.error) {
+        console.warn("Post fetch error:", data.error);
+        setFallbackMode(true);
+        return;
+      }
+
+      const fetched: InstagramPost[] = (data?.posts || []).map((p: any) => ({
+        id: p.id,
+        caption: p.caption || "",
+        media_type: p.media_type || "IMAGE",
+        media_url: p.media_url || "",
+        thumbnail_url: p.thumbnail_url || p.media_url || "",
+        permalink: p.permalink || "",
+        timestamp: p.timestamp || "",
+        like_count: p.like_count,
+        comments_count: p.comments_count,
+      }));
+      setPosts(fetched);
+    } catch (e: any) {
+      console.error("Failed to load IG posts:", e);
+      setFallbackMode(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Skip scraping — go straight to post selection with URL paste UX
   const handleObjectiveSelect = (selected: "traffic" | "video_views" | "engagement") => {
@@ -242,9 +289,11 @@ export function SocialGrowthFlow({
         <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
           <img src={lumiLogo} alt="Lumi" className="h-10 w-10 rounded-full" />
           <div>
-            <h3 className="font-semibold">{headerText || "Add the posts you want to promote ✨"}</h3>
+            <h3 className="font-semibold">{headerText || "Pick the posts you want to promote ✨"}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {headerSubtext || "Paste Instagram post URLs below — we'll preview them and add them to your campaign. You can add up to 6."}
+              {headerSubtext || (posts.length > 0
+                ? "Tap on the posts you'd like to turn into ads. You can also paste a URL if you don't see your post below."
+                : "Paste Instagram post URLs below — we'll preview them and add them to your campaign. You can add up to 6.")}
             </p>
           </div>
         </div>

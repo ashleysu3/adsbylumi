@@ -16,11 +16,13 @@ export interface SelectedPost {
   permalink: string;
 }
 
-interface ScrapedPost {
-  shortcode: string;
+interface ApiFetchedPost {
+  id: string;
+  caption?: string;
+  media_type: "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
+  media_url?: string;
+  thumbnail_url?: string;
   permalink: string;
-  thumbnail_url: string;
-  media_type: string;
 }
 
 interface ExistingPostPickerProps {
@@ -41,37 +43,45 @@ export function ExistingPostPicker({
   const [inputUrl, setInputUrl] = useState("");
   const [resolving, setResolving] = useState(false);
 
-  // Scraping state
-  const [scrapedPosts, setScrapedPosts] = useState<ScrapedPost[]>([]);
-  const [scraping, setScraping] = useState(false);
-  const [scrapeError, setScrapeError] = useState<string | null>(null);
-  const [hasFetched, setHasFetched] = useState(false);
+  // API-loaded posts
+  const [apiPosts, setApiPosts] = useState<ApiFetchedPost[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fallbackMode, setFallbackMode] = useState(false);
 
-  // Don't auto-scrape — Firecrawl doesn't support Instagram.
-  // URL paste with oEmbed thumbnails is the primary UX.
+  // Auto-load posts from API on mount
+  useEffect(() => {
+    if (!brandId || !instagramAccountId) return;
+    loadPosts();
+  }, [brandId, instagramAccountId]);
 
-  const scrapeProfile = async (username: string) => {
-    setScraping(true);
-    setScrapeError(null);
-    setHasFetched(true);
-
+  const loadPosts = async () => {
+    setLoading(true);
+    setFallbackMode(false);
     try {
-      const { data, error } = await supabase.functions.invoke("scrape-instagram-profile", {
-        body: { username },
+      const { data, error } = await supabase.functions.invoke("analyze-instagram-posts", {
+        body: { brandId, instagramAccountId, simple: true },
       });
 
       if (error) throw error;
-      if (data?.error && (!data?.posts || data.posts.length === 0)) {
-        setScrapeError(data.error);
+
+      if (data?.fallbackMode === "url_paste" || (!data?.posts?.length && !data?.error)) {
+        setFallbackMode(true);
+        setApiPosts([]);
         return;
       }
 
-      setScrapedPosts(data?.posts || []);
+      if (data?.error) {
+        console.warn("API returned error:", data.error);
+        setFallbackMode(true);
+        return;
+      }
+
+      setApiPosts(data?.posts || []);
     } catch (e: any) {
-      console.error("Scrape error:", e);
-      setScrapeError("Could not load posts. Use the URL paste below instead.");
+      console.error("Failed to load posts:", e);
+      setFallbackMode(true);
     } finally {
-      setScraping(false);
+      setLoading(false);
     }
   };
 
@@ -80,17 +90,17 @@ export function ExistingPostPicker({
     return selectedPosts.some((p) => p.permalink.replace(/\/$/, "") === clean);
   };
 
-  const toggleScrapedPost = (post: ScrapedPost) => {
+  const toggleApiPost = (post: ApiFetchedPost) => {
     const clean = post.permalink.replace(/\/$/, "");
     if (isPostSelected(post.permalink)) {
       onSelectionChange(selectedPosts.filter((p) => p.permalink.replace(/\/$/, "") !== clean));
     } else {
       const newPost: SelectedPost = {
-        id: post.shortcode,
-        caption: "",
-        media_type: post.media_type === "VIDEO" ? "VIDEO" : "IMAGE",
-        media_url: post.thumbnail_url || "",
-        thumbnail_url: post.thumbnail_url || "",
+        id: post.id,
+        caption: post.caption || "",
+        media_type: post.media_type,
+        media_url: post.media_url || post.thumbnail_url || "",
+        thumbnail_url: post.thumbnail_url || post.media_url || "",
         permalink: post.permalink,
       };
       onSelectionChange([...selectedPosts, newPost]);
@@ -154,15 +164,16 @@ export function ExistingPostPicker({
 
   return (
     <div className="space-y-4">
-      {/* Scraped posts grid */}
-      {scraping && (
+      {/* Loading state */}
+      {loading && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading your Instagram posts...
         </div>
       )}
 
-      {!scraping && scrapedPosts.length > 0 && (
+      {/* API-loaded posts grid */}
+      {!loading && apiPosts.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground font-medium">
@@ -173,20 +184,21 @@ export function ExistingPostPicker({
               variant="ghost"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => instagramAccountName && scrapeProfile(instagramAccountName)}
+              onClick={loadPosts}
             >
               <RefreshCw className="h-3 w-3 mr-1" />
               Refresh
             </Button>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {scrapedPosts.map((post) => {
+            {apiPosts.map((post) => {
               const selected = isPostSelected(post.permalink);
+              const thumb = post.thumbnail_url || post.media_url;
               return (
                 <button
-                  key={post.shortcode}
+                  key={post.id}
                   type="button"
-                  onClick={() => toggleScrapedPost(post)}
+                  onClick={() => toggleApiPost(post)}
                   className={cn(
                     "relative aspect-square rounded-lg overflow-hidden border-2 transition-all group",
                     selected
@@ -194,18 +206,20 @@ export function ExistingPostPicker({
                       : "border-border hover:border-primary/50"
                   )}
                 >
-                  <img
-                    src={post.thumbnail_url}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                      const next = (e.target as HTMLImageElement).nextElementSibling;
-                      if (next) next.classList.remove("hidden");
-                    }}
-                  />
-                  <div className="hidden w-full h-full bg-muted flex items-center justify-center absolute inset-0">
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                        const next = (e.target as HTMLImageElement).nextElementSibling;
+                        if (next) next.classList.remove("hidden");
+                      }}
+                    />
+                  ) : null}
+                  <div className={cn("w-full h-full bg-muted flex items-center justify-center absolute inset-0", thumb ? "hidden" : "")}>
                     <Instagram className="h-6 w-6 text-muted-foreground" />
                   </div>
 
@@ -229,15 +243,9 @@ export function ExistingPostPicker({
         </div>
       )}
 
-      {!scraping && scrapeError && (
-        <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 text-center">
-          {scrapeError}
-        </div>
-      )}
-
       {/* URL paste fallback */}
       <div className="space-y-2">
-        {scrapedPosts.length > 0 && (
+        {apiPosts.length > 0 && (
           <p className="text-xs text-muted-foreground font-medium">
             Don't see your post? Paste the URL
           </p>
@@ -263,10 +271,12 @@ export function ExistingPostPicker({
             {resolving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
           </Button>
         </div>
-        {scrapedPosts.length === 0 && (
+        {apiPosts.length === 0 && !loading && (
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <Instagram className="h-3 w-3" />
-            Open Instagram → tap ··· on a post → Copy Link → paste here
+            {fallbackMode
+              ? "Paste an Instagram post or reel URL to add it to your campaign"
+              : "Open Instagram → tap ··· on a post → Copy Link → paste here"}
           </p>
         )}
       </div>

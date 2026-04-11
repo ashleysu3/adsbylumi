@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     oauthUrl.searchParams.set('state', brandId);
     oauthUrl.searchParams.set(
       'scope',
-      'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list'
+      'ads_management,ads_read,business_management,pages_read_engagement,pages_show_list,instagram_basic'
     );
     // Force Meta to re-request previously declined scopes on reconnect.
     oauthUrl.searchParams.set('auth_type', 'rerequest');
