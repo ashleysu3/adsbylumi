@@ -30,7 +30,7 @@ import MetaOAuthCallback from "./pages/MetaOAuthCallback";
 import AdminKnowledge from "./pages/admin/Knowledge";
 import AdminAnalytics from "./pages/admin/Analytics";
 import AdminTemplates from "./pages/admin/Templates";
-import AdminInviteCodes from "./pages/admin/InviteCodes";
+import AdminCreativeToolkit from "./pages/admin/CreativeToolkit";
 import AdminSubscriptions from "./pages/admin/Subscriptions";
 import AdminBugReports from "./pages/admin/BugReports";
 import AdminUsers from "./pages/admin/Users";
@@ -142,7 +142,7 @@ const App = () => {
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/templates" element={<AdminTemplates />} />
-                  <Route path="/admin/invite-codes" element={<AdminInviteCodes />} />
+                  <Route path="/admin/creative-toolkit" element={<AdminCreativeToolkit />} />
                   <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
                   <Route path="/admin/bug-reports" element={<AdminBugReports />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
