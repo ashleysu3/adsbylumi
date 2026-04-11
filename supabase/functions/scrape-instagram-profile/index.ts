@@ -54,11 +54,14 @@ Deno.serve(async (req) => {
     const scrapeData = await scrapeRes.json();
 
     if (!scrapeRes.ok || !scrapeData.success) {
-      console.error('[scrape-instagram-profile] Firecrawl error:', scrapeData);
+      console.warn('[scrape-instagram-profile] Firecrawl cannot scrape Instagram:', scrapeData.error || 'unknown');
+      // Return empty posts gracefully — frontend will show URL paste fallback
       return new Response(
         JSON.stringify({
-          error: 'Could not load Instagram profile. The account may be private.',
+          username: cleanUsername,
           posts: [],
+          source: 'firecrawl',
+          fallback: true,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
