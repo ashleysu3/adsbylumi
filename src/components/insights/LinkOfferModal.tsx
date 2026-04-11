@@ -115,7 +115,7 @@ export function LinkOfferModal({
       };
 
       // Update the workspace with the linked offer
-      const { error: updateError } = await supabase
+      const { data: updateData, error: updateError } = await supabase
         .from('campaign_workspaces')
         .update({
           offer_id: selectedOffer.id,
@@ -125,9 +125,12 @@ export function LinkOfferModal({
           offer_url: selectedOffer.url,
           strategy_json: minimalStrategy,
         })
-        .eq('id', workspaceId);
+        .eq('id', workspaceId)
+        .select('id')
+        .single();
 
       if (updateError) throw updateError;
+      if (!updateData) throw new Error('Update failed — workspace not found or access denied');
 
       toast.success(`Linked "${selectedOffer.name}" to this campaign`);
       onSuccess(selectedOffer);
@@ -221,7 +224,7 @@ export function LinkOfferModal({
         linked_at: new Date().toISOString(),
       };
 
-      const { error: updateError } = await supabase
+      const { data: updateData2, error: updateError } = await supabase
         .from("campaign_workspaces")
         .update({
           offer_id: newOffer.id,
@@ -231,9 +234,12 @@ export function LinkOfferModal({
           offer_url: newOffer.url,
           strategy_json: minimalStrategy,
         })
-        .eq("id", workspaceId);
+        .eq("id", workspaceId)
+        .select('id')
+        .single();
 
       if (updateError) throw updateError;
+      if (!updateData2) throw new Error('Update failed — workspace not found or access denied');
 
       toast.success(`Created & linked "${newOffer.name}" ✨`);
       onSuccess(newOffer);
