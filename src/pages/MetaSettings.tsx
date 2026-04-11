@@ -660,7 +660,7 @@ export default function MetaSettings() {
                                 <li>Your token may have expired. Try reconnecting your Meta account.</li>
                               )}
                               {testResult.details?.permissionsValid === false && (
-                                <li>Meta did not return all required Instagram scopes. There is no separate toggle in Lumi, so if reconnecting does not help, check the Meta app’s Instagram permissions.</li>
+                                <li>Some access may be missing. Try disconnecting and reconnecting your Meta account to refresh it.</li>
                               )}
                               {testResult.details?.hasInstagramMediaAccess === false && (
                                 <li>Instagram post browsing isn't available yet. Disconnect and reconnect to update your access.</li>
