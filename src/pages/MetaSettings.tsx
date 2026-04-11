@@ -634,9 +634,8 @@ export default function MetaSettings() {
                               <Alert className="mt-2 border-amber-500/30 bg-amber-500/5">
                                 <AlertTriangle className="h-4 w-4 text-amber-500" />
                                 <AlertDescription className="text-xs space-y-2">
-                                  <p><span className="font-medium">Instagram post access is blocked by Meta.</span> Lumi is requesting the connection, but Meta is still denying post reads for this Instagram account.</p>
-                                  <p>There is no separate access toggle inside Lumi. First, go to <a href="https://www.facebook.com/settings/?tab=business_tools" target="_blank" rel="noopener noreferrer" className="text-primary underline">Facebook → Settings → Business Integrations</a>, remove our app, reconnect here, and confirm the Instagram profile is a Business or Creator account linked to the selected Facebook Page and ad account.</p>
-                                  <p>If reconnecting still gives the same result, the missing access is likely in the Meta app configuration rather than this user flow.</p>
+                                  <p><span className="font-medium">Instagram post browsing isn't available yet for this connection.</span></p>
+                                  <p>Try disconnecting and reconnecting your Meta account — this will automatically update your access. Make sure the Instagram profile is a Business or Creator account linked to your selected Facebook Page.</p>
                                   {testResult.details.instagramMediaError && (
                                     <p><span className="font-medium">Meta returned:</span> {testResult.details.instagramMediaError}</p>
                                   )}
