@@ -49,18 +49,24 @@ const TEMPLATE_PACKS: TemplatePack[] = [
   { name: "Course Mockup & Launch Graphics", category: "Course & Program Launch", formats: ["4:5", "1:1"], description: "Device mockups and launch countdown graphics for courses.", canvaUrl: "#" },
 ];
 
-export function TemplatesTab() {
+interface TemplatesTabProps {
+  templates?: TemplatePack[];
+}
+
+export function TemplatesTab({ templates }: TemplatesTabProps) {
+  const packs = templates && templates.length > 0 ? templates : TEMPLATE_PACKS;
+  const categories = ["All", ...Array.from(new Set(packs.map(p => p.category)))];
   const [activeCategory, setActiveCategory] = useState("All");
 
   const filtered = activeCategory === "All"
-    ? TEMPLATE_PACKS
-    : TEMPLATE_PACKS.filter((p) => p.category === activeCategory);
+    ? packs
+    : packs.filter((p) => p.category === activeCategory);
 
   return (
     <div className="space-y-6">
       {/* Filter pills */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-        {CATEGORIES.map((cat) => (
+        {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}

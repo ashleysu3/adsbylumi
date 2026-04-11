@@ -74,8 +74,8 @@ const PRODUCTION_TOOLS = [
   },
 ];
 
-function ResourceCard({ item }: { item: typeof MUSIC_SOURCES[0] & { badge2?: string } }) {
-  const Icon = item.icon;
+function ResourceCard({ item }: { item: { icon?: any; name: string; badge: string; badgeColor?: string; description: string; url: string; buttonLabel: string; note?: string; badge2?: string } }) {
+  const Icon = item.icon || Music;
   return (
     <Card>
       <CardContent className="p-5 space-y-3">
@@ -109,7 +109,26 @@ function ResourceCard({ item }: { item: typeof MUSIC_SOURCES[0] & { badge2?: str
   );
 }
 
-export function MusicToolsTab() {
+interface ResourceItem {
+  name: string;
+  badge: string;
+  badgeColor?: string;
+  description: string;
+  url: string;
+  buttonLabel: string;
+  note?: string;
+  badge2?: string;
+  icon?: any;
+}
+
+interface MusicToolsTabProps {
+  musicSources?: ResourceItem[];
+  productionTools?: ResourceItem[];
+}
+
+export function MusicToolsTab({ musicSources, productionTools }: MusicToolsTabProps) {
+  const music = musicSources && musicSources.length > 0 ? musicSources : MUSIC_SOURCES;
+  const tools = productionTools && productionTools.length > 0 ? productionTools : PRODUCTION_TOOLS;
   return (
     <div className="space-y-10">
       {/* Section 1: Music */}
@@ -121,7 +140,7 @@ export function MusicToolsTab() {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {MUSIC_SOURCES.map((src) => (
+          {music.map((src) => (
             <ResourceCard key={src.name} item={src} />
           ))}
         </div>
@@ -136,7 +155,7 @@ export function MusicToolsTab() {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {PRODUCTION_TOOLS.map((tool) => (
+          {tools.map((tool) => (
             <ResourceCard key={tool.name} item={tool as any} />
           ))}
         </div>
