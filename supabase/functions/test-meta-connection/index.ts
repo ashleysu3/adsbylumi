@@ -130,9 +130,8 @@ Deno.serve(async (req) => {
       ?.filter((p: any) => p.status === 'granted')
       ?.map((p: any) => p.permission) || [];
 
-    const requiredPermissions = ['ads_management', 'ads_read', 'business_management', 'pages_read_user_content', 'instagram_basic'];
+    const requiredPermissions = ['ads_management', 'ads_read', 'business_management'];
     const missingPermissions = requiredPermissions.filter(p => !grantedPermissions.includes(p));
-    const hasGrantedInstagramScopes = grantedPermissions.includes('pages_read_user_content') && grantedPermissions.includes('instagram_basic');
 
     // Test 3: Validate ad account access
     console.log('Testing ad account access...');
