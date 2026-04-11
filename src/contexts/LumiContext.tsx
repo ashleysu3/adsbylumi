@@ -34,12 +34,14 @@ export function LumiProvider({ children }: { children: ReactNode }) {
   const [brandId, setBrandIdState] = useState<string | null>(null);
 
   const setBrandId = useCallback((id: string | null) => {
-    // Clear messages when brand changes
-    if (id !== brandId) {
-      setMessages([]);
-      setBrandIdState(id);
-    }
-  }, [brandId]);
+    setBrandIdState(prev => {
+      if (id !== prev) {
+        setMessages([]);
+        return id;
+      }
+      return prev;
+    });
+  }, []);
 
   const addMessage = useCallback((message: Message) => {
     setMessages(prev => [...prev, message]);
