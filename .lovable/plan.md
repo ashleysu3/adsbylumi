@@ -1,44 +1,45 @@
 
 
-# Fix: "Website URL Required" Error on Campaign Publish
+# Instagram Post Selection via URL Paste with Thumbnail Preview
 
-## Root Cause
+## Why a visual grid picker isn't possible
+Browsing `/{ig-user-id}/media` requires `instagram_basic`, which Meta denied. No alternative Marketing API endpoint exposes the media list with just `ads_management`. This is a hard platform limitation.
 
-When Lumi publishes a campaign to Meta, it builds each ad with a destination link resolved from this chain:
+## Solution: Paste-and-Preview UX
+Users paste Instagram post URLs; the app instantly resolves thumbnails and metadata via the oEmbed API (uses an app-level token, zero user permissions needed). Multiple URLs can be pasted. The resolved `instagram_media_id` feeds directly into ad creation via the existing `source_instagram_media_id` flow.
 
-```
-answers.finalUrl → workspace.offer_url → '' (empty string)
-```
+## Changes
 
-The `finalUrl` question is skipped by default in most campaign templates, so it falls through to `workspace.offer_url`. If that column is null or empty on the workspace record, the link becomes an empty string, and Meta rejects the ad with "Required Field Is Missing: The website URL field is required."
+### 1. New edge function: `resolve-instagram-post`
+- Accepts `{ url }` body
+- Calls `GET https://graph.facebook.com/v21.0/instagram_oembed?url={url}&access_token={app_id}|{app_secret}` using `META_APP_ID` and `META_APP_SECRET` (already configured as secrets)
+- Returns `{ thumbnail_url, author_name, html }` for instant preview
+- Also extracts the media shortcode from the URL to resolve the `instagram_media_id` for ad creation (via `GET /ig_hashtag_search` or by parsing the oEmbed response)
 
-This can happen when:
-- The offer was created/updated but the workspace's `offer_url` column wasn't synced
-- A "Social Growth" or system-generated campaign has no offer URL
-- The user added the offer after the workspace was created
+### 2. Rewrite `ExistingPostPicker` component
+- Replace the grid-of-thumbnails UI with a URL paste input
+- User pastes an Instagram URL → calls `resolve-instagram-post` → shows thumbnail card with caption preview and remove button
+- Support multiple URLs (paste one at a time or comma-separated)
+- Keep the same `SelectedPost` interface and `onSelectionChange` callback so the campaign builder needs no changes
+- Show a helper tip: "Open Instagram → tap ··· on a post → Copy Link → paste here"
 
-Even though the offer itself has a URL and the user sees it populated in the UI, the workspace record may not have it.
+### 3. Remove denied permissions from OAuth scope
+- Update `meta-oauth-init` to drop `instagram_basic`, `instagram_manage_insights`, `pages_read_user_content`
+- New scope: `ads_management,ads_read,business_management,pages_read_engagement,pages_show_list`
 
-## Fix (2 changes)
+### 4. Clean up permission check/warning code
+- Remove `InstagramPermissionFixModal` component and its usage
+- Remove `instagram_basic` and `pages_read_user_content` from the required permissions check in `test-meta-connection`
+- Update `analyze-instagram-posts` to return empty gracefully instead of erroring when media access fails
 
-### 1. Add fallback chain in `build-meta-campaign` edge function
-
-Before building ads, resolve the destination URL with a deeper fallback chain that checks:
-1. `answers.finalUrl` (explicit user input)
-2. `workspace.offer_url` (workspace-level)
-3. Linked offer's URL (query `offers` table by `workspace.offer_id`)
-4. Brand's `website_url`
-
-If all are empty, throw a clear error *before* attempting Meta API calls: "No destination URL found. Please add a URL to your offer or enter a landing page URL."
-
-### 2. Add validation guard in `CampaignBuilder.tsx` (client-side)
-
-Before calling publish, check that a destination URL is resolvable. If not, show a toast directing the user to add one — preventing the confusing Meta API error.
-
-## Files
-
-| File | Change |
+### Files
+| File | Action |
 |------|--------|
-| `supabase/functions/build-meta-campaign/index.ts` | Resolve destination URL early with offer + brand fallbacks; fail with clear message if empty |
-| `src/pages/CampaignBuilder.tsx` | Pre-publish validation for destination URL |
+| `supabase/functions/resolve-instagram-post/index.ts` | Create — oEmbed resolver |
+| `src/components/ExistingPostPicker.tsx` | Rewrite — URL paste with thumbnail preview |
+| `supabase/functions/meta-oauth-init/index.ts` | Edit — remove denied scopes |
+| `supabase/functions/test-meta-connection/index.ts` | Edit — remove IG permission checks |
+| `src/components/InstagramPermissionFixModal.tsx` | Delete |
+| `supabase/functions/analyze-instagram-posts/index.ts` | Edit — graceful degradation |
+| Files importing `InstagramPermissionFixModal` | Edit — remove references |
 
