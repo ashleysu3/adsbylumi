@@ -6,6 +6,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
+import { Card } from "@/components/ui/card";
 
 interface AdminTab {
   path: string;
@@ -15,12 +16,14 @@ interface AdminTab {
 
 interface AdminGroup {
   label: string;
+  icon: React.ElementType;
   tabs: AdminTab[];
 }
 
 const adminGroups: AdminGroup[] = [
   {
     label: "Users & Access",
+    icon: Users,
     tabs: [
       { path: "/admin/users", label: "Users", icon: Users },
       { path: "/admin/team", label: "Team", icon: Shield },
@@ -29,6 +32,7 @@ const adminGroups: AdminGroup[] = [
   },
   {
     label: "Billing",
+    icon: DollarSign,
     tabs: [
       { path: "/admin/stripe", label: "Stripe", icon: DollarSign },
       { path: "/admin/cancellations", label: "Cancellations", icon: XCircle },
@@ -37,6 +41,7 @@ const adminGroups: AdminGroup[] = [
   },
   {
     label: "Content",
+    icon: BookOpen,
     tabs: [
       { path: "/admin/knowledge", label: "Knowledge", icon: BookOpen },
       { path: "/admin/templates", label: "Templates", icon: LayoutTemplate },
@@ -45,6 +50,7 @@ const adminGroups: AdminGroup[] = [
   },
   {
     label: "Support",
+    icon: Bug,
     tabs: [
       { path: "/admin/bug-reports", label: "Bug Reports", icon: Bug },
       { path: "/admin/reviews", label: "Reviews", icon: Star },
@@ -54,6 +60,7 @@ const adminGroups: AdminGroup[] = [
   },
   {
     label: "System",
+    icon: Settings,
     tabs: [
       { path: "/admin/meta-debug", label: "Meta Debug", icon: Monitor },
       { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
@@ -66,59 +73,80 @@ export default function AdminTabs() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Find which group the current path belongs to
   const activeGroupIndex = adminGroups.findIndex(g =>
     g.tabs.some(t => location.pathname === t.path)
   );
 
-  const [openGroup, setOpenGroup] = useState<number>(activeGroupIndex >= 0 ? activeGroupIndex : 0);
+  const [openGroup, setOpenGroup] = useState<number>(activeGroupIndex >= 0 ? activeGroupIndex : -1);
 
   return (
-    <div className="mb-6 space-y-1">
-      {adminGroups.map((group, gi) => {
-        const isOpen = openGroup === gi;
-        const hasActive = group.tabs.some(t => location.pathname === t.path);
+    <div className="mb-6 space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {adminGroups.map((group, gi) => {
+          const isOpen = openGroup === gi;
+          const hasActive = group.tabs.some(t => location.pathname === t.path);
+          const activeTab = group.tabs.find(t => location.pathname === t.path);
+          const GroupIcon = group.icon;
 
-        return (
-          <div key={group.label}>
-            <button
+          return (
+            <Card
+              key={group.label}
               onClick={() => setOpenGroup(isOpen ? -1 : gi)}
               className={cn(
-                "w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider rounded-md transition-colors",
+                "cursor-pointer select-none px-4 py-3 transition-all hover:shadow-md",
                 hasActive
-                  ? "text-primary bg-primary/5"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "border-primary/40 bg-primary/5 shadow-sm"
+                  : "hover:border-border/80"
               )}
             >
-              {group.label}
-              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
-            </button>
-
-            {isOpen && (
-              <div className="flex flex-wrap gap-1 px-1 py-1.5">
-                {group.tabs.map((tab) => {
-                  const isActive = location.pathname === tab.path;
-                  return (
-                    <button
-                      key={tab.path}
-                      onClick={() => navigate(tab.path)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                        isActive
-                          ? "bg-background text-foreground shadow-sm border border-border"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                      )}
-                    >
-                      <tab.icon className="h-3.5 w-3.5" />
-                      {tab.label}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <GroupIcon className={cn("h-4 w-4 shrink-0", hasActive ? "text-primary" : "text-muted-foreground")} />
+                  <div className="min-w-0">
+                    <p className={cn("text-sm font-semibold truncate", hasActive ? "text-foreground" : "text-muted-foreground")}>
+                      {group.label}
+                    </p>
+                    {activeTab && (
+                      <p className="text-[11px] text-primary truncate">{activeTab.label}</p>
+                    )}
+                  </div>
+                </div>
+                <ChevronDown className={cn(
+                  "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
+                  isOpen && "rotate-180"
+                )} />
               </div>
-            )}
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Expanded dropdown for the open group */}
+      {openGroup >= 0 && (
+        <Card className="px-2 py-2">
+          <div className="flex flex-wrap gap-1">
+            {adminGroups[openGroup].tabs.map((tab) => {
+              const isActive = location.pathname === tab.path;
+              const TabIcon = tab.icon;
+              return (
+                <button
+                  key={tab.path}
+                  onClick={() => navigate(tab.path)}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <TabIcon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
-        );
-      })}
+        </Card>
+      )}
     </div>
   );
 }
