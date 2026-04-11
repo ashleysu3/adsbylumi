@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Instagram, Play, Users, CheckCircle2, AlertCircle, ArrowRight, Image, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Instagram, Play, Users, CheckCircle2, AlertCircle, ArrowRight, Image, AlertTriangle, Link, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -65,34 +66,44 @@ export function SocialGrowthFlow({
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pasteUrl, setPasteUrl] = useState("");
+  const [resolvingUrl, setResolvingUrl] = useState(false);
 
   const fetchPosts = async (selected: "traffic" | "video_views" | "engagement") => {
-    if (!instagramAccountId) return;
+    if (!instagramAccountName && !instagramAccountId) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const { data, error: fetchError } = await supabase.functions.invoke('analyze-instagram-posts', {
+      // Use Firecrawl scraper instead of analyze-instagram-posts (no instagram_basic needed)
+      const { data, error: fetchError } = await supabase.functions.invoke('scrape-instagram-profile', {
         body: {
-          brandId,
-          instagramAccountId,
-          objective: selected,
-          simple: true,
+          username: instagramAccountName || instagramAccountId,
         }
       });
 
       if (fetchError) throw fetchError;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error && (!data?.posts || data.posts.length === 0)) {
+        throw new Error(data.error);
+      }
 
-      const fetchedPosts = data.posts || [];
-      setPosts(fetchedPosts);
+      const scrapedPosts = (data?.posts || []).map((p: any) => ({
+        id: p.shortcode,
+        caption: '',
+        media_type: p.media_type === 'VIDEO' ? 'VIDEO' : 'IMAGE',
+        media_url: p.thumbnail_url || '',
+        thumbnail_url: p.thumbnail_url || '',
+        permalink: p.permalink,
+        timestamp: '',
+      }));
+      setPosts(scrapedPosts);
       setStep("post_selection");
     } catch (err: any) {
       const message = formatInvokeError(err);
       console.error("Error fetching Instagram posts:", err);
       setError(message);
-      setStep("post_selection"); // Show error card so user sees reconnect option
+      setStep("post_selection");
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -117,6 +128,48 @@ export function SocialGrowthFlow({
         ? prev.filter(id => id !== postId)
         : [...prev, postId].slice(0, 6)
     );
+  };
+
+  const addPostFromUrl = async () => {
+    const url = pasteUrl.trim();
+    if (!url) return;
+
+    if (!/instagram\.com\/(p|reel|tv)\/[\w-]/i.test(url)) {
+      toast.error("Please paste a valid Instagram post or reel URL");
+      return;
+    }
+
+    if (posts.some((p) => p.permalink.replace(/\/$/, "") === url.split("?")[0].replace(/\/$/, ""))) {
+      toast.error("This post is already added");
+      return;
+    }
+
+    setResolvingUrl(true);
+    try {
+      const { data, error: resolveError } = await supabase.functions.invoke("resolve-instagram-post", {
+        body: { url },
+      });
+      if (resolveError) throw resolveError;
+      if (data?.error) { toast.error(data.error); return; }
+
+      const newPost: InstagramPost = {
+        id: data.shortcode || url,
+        caption: "",
+        media_type: data.media_type === "VIDEO" ? "VIDEO" : "IMAGE",
+        media_url: data.thumbnail_url || "",
+        thumbnail_url: data.thumbnail_url || "",
+        permalink: data.permalink || url,
+        timestamp: "",
+      };
+
+      setPosts(prev => [...prev, newPost]);
+      setSelectedPosts(prev => [...prev, newPost.id].slice(0, 6));
+      setPasteUrl("");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not resolve this post");
+    } finally {
+      setResolvingUrl(false);
+    }
   };
 
   const handleComplete = () => {
@@ -241,23 +294,20 @@ export function SocialGrowthFlow({
             <CardContent className="p-6 space-y-4">
               <div className="text-center space-y-3">
                 <AlertCircle className="h-8 w-8 text-amber-500 mx-auto" />
-                <p className="font-semibold text-lg">We're on it! 🛠️</p>
+                <p className="font-semibold text-lg">Let's add your posts manually</p>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  This is a known issue — we're actively working with Meta to restore Instagram post access. We anticipate it being fixed within the next <strong>24–48 hours</strong>.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  You don't need to do anything on your end. We'll have this sorted soon!
+                  We couldn't load your posts automatically, but no worries — just paste the Instagram URL for each post you want to promote.
                 </p>
               </div>
             </CardContent>
           </Card>
         ) : posts.length === 0 ? (
-          <Card className="border-amber-500/30 bg-amber-500/5">
+          <Card className="border-muted bg-muted/30">
             <CardContent className="p-6 text-center space-y-2">
-              <AlertCircle className="h-8 w-8 text-amber-500 mx-auto" />
-              <p className="font-medium">No posts found</p>
+              <Instagram className="h-8 w-8 text-muted-foreground mx-auto" />
+              <p className="font-medium">Paste your post URLs below</p>
               <p className="text-sm text-muted-foreground">
-                We couldn't find any posts on your Instagram account. Post some content first, then come back to promote it!
+                Open Instagram, tap ··· on a post, copy the link, and paste it here.
               </p>
             </CardContent>
           </Card>
@@ -273,6 +323,38 @@ export function SocialGrowthFlow({
             ))}
           </div>
         )}
+
+        {/* URL paste input — always available */}
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground font-medium">
+            {posts.length > 0 ? "Don't see your post? Paste the URL" : "Paste an Instagram post URL"}
+          </p>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={pasteUrl}
+                onChange={(e) => setPasteUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addPostFromUrl(); } }}
+                placeholder="https://www.instagram.com/p/..."
+                className="pl-9"
+                disabled={resolvingUrl}
+              />
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={addPostFromUrl}
+              disabled={resolvingUrl || !pasteUrl.trim()}
+            >
+              {resolvingUrl ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Instagram className="h-3 w-3" />
+            Open Instagram → tap ··· on a post → Copy Link → paste here
+          </p>
+        </div>
 
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
           <span className="text-sm text-muted-foreground">

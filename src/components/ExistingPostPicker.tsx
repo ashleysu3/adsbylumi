@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Instagram, X, Link, Loader2 } from "lucide-react";
+import { Instagram, X, Link, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export interface SelectedPost {
   id: string;
@@ -15,9 +16,17 @@ export interface SelectedPost {
   permalink: string;
 }
 
+interface ScrapedPost {
+  shortcode: string;
+  permalink: string;
+  thumbnail_url: string;
+  media_type: string;
+}
+
 interface ExistingPostPickerProps {
   brandId: string;
   instagramAccountId: string;
+  instagramAccountName?: string;
   selectedPosts: SelectedPost[];
   onSelectionChange: (posts: SelectedPost[]) => void;
 }
@@ -25,11 +34,72 @@ interface ExistingPostPickerProps {
 export function ExistingPostPicker({
   brandId,
   instagramAccountId,
+  instagramAccountName,
   selectedPosts,
   onSelectionChange,
 }: ExistingPostPickerProps) {
   const [inputUrl, setInputUrl] = useState("");
   const [resolving, setResolving] = useState(false);
+
+  // Scraping state
+  const [scrapedPosts, setScrapedPosts] = useState<ScrapedPost[]>([]);
+  const [scraping, setScraping] = useState(false);
+  const [scrapeError, setScrapeError] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
+
+  // Auto-scrape on mount if we have a username
+  useEffect(() => {
+    if (instagramAccountName && !hasFetched) {
+      scrapeProfile(instagramAccountName);
+    }
+  }, [instagramAccountName]);
+
+  const scrapeProfile = async (username: string) => {
+    setScraping(true);
+    setScrapeError(null);
+    setHasFetched(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("scrape-instagram-profile", {
+        body: { username },
+      });
+
+      if (error) throw error;
+      if (data?.error && (!data?.posts || data.posts.length === 0)) {
+        setScrapeError(data.error);
+        return;
+      }
+
+      setScrapedPosts(data?.posts || []);
+    } catch (e: any) {
+      console.error("Scrape error:", e);
+      setScrapeError("Could not load posts. Use the URL paste below instead.");
+    } finally {
+      setScraping(false);
+    }
+  };
+
+  const isPostSelected = (permalink: string) => {
+    const clean = permalink.replace(/\/$/, "");
+    return selectedPosts.some((p) => p.permalink.replace(/\/$/, "") === clean);
+  };
+
+  const toggleScrapedPost = (post: ScrapedPost) => {
+    const clean = post.permalink.replace(/\/$/, "");
+    if (isPostSelected(post.permalink)) {
+      onSelectionChange(selectedPosts.filter((p) => p.permalink.replace(/\/$/, "") !== clean));
+    } else {
+      const newPost: SelectedPost = {
+        id: post.shortcode,
+        caption: "",
+        media_type: post.media_type === "VIDEO" ? "VIDEO" : "IMAGE",
+        media_url: post.thumbnail_url || "",
+        thumbnail_url: post.thumbnail_url || "",
+        permalink: post.permalink,
+      };
+      onSelectionChange([...selectedPosts, newPost]);
+    }
+  };
 
   const resolvePost = async () => {
     const url = inputUrl.trim();
@@ -48,10 +118,9 @@ export function ExistingPostPicker({
 
     setResolving(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "resolve-instagram-post",
-        { body: { url } }
-      );
+      const { data, error } = await supabase.functions.invoke("resolve-instagram-post", {
+        body: { url },
+      });
 
       if (error) throw error;
       if (data?.error) {
@@ -89,60 +158,153 @@ export function ExistingPostPicker({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={inputUrl}
-            onChange={(e) => setInputUrl(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Paste Instagram post URL..."
-            className="pl-9"
-            disabled={resolving}
-          />
+    <div className="space-y-4">
+      {/* Scraped posts grid */}
+      {scraping && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading your Instagram posts...
         </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={resolvePost}
-          disabled={resolving || !inputUrl.trim()}
-        >
-          {resolving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
-        </Button>
+      )}
+
+      {!scraping && scrapedPosts.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground font-medium">
+              Your recent posts — tap to select
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => instagramAccountName && scrapeProfile(instagramAccountName)}
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Refresh
+            </Button>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {scrapedPosts.map((post) => {
+              const selected = isPostSelected(post.permalink);
+              return (
+                <button
+                  key={post.shortcode}
+                  type="button"
+                  onClick={() => toggleScrapedPost(post)}
+                  className={cn(
+                    "relative aspect-square rounded-lg overflow-hidden border-2 transition-all group",
+                    selected
+                      ? "border-primary ring-2 ring-primary/30"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <img
+                    src={post.thumbnail_url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                      const next = (e.target as HTMLImageElement).nextElementSibling;
+                      if (next) next.classList.remove("hidden");
+                    }}
+                  />
+                  <div className="hidden w-full h-full bg-muted flex items-center justify-center absolute inset-0">
+                    <Instagram className="h-6 w-6 text-muted-foreground" />
+                  </div>
+
+                  {selected && (
+                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                      <div className="bg-primary text-primary-foreground rounded-full p-1.5">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                    </div>
+                  )}
+
+                  {post.media_type === "VIDEO" && !selected && (
+                    <Badge className="absolute bottom-1 left-1 text-[9px] px-1 py-0 bg-background/70 text-foreground backdrop-blur-sm">
+                      Reel
+                    </Badge>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!scraping && scrapeError && (
+        <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 text-center">
+          {scrapeError}
+        </div>
+      )}
+
+      {/* URL paste fallback */}
+      <div className="space-y-2">
+        {scrapedPosts.length > 0 && (
+          <p className="text-xs text-muted-foreground font-medium">
+            Don't see your post? Paste the URL
+          </p>
+        )}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={inputUrl}
+              onChange={(e) => setInputUrl(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Paste Instagram post URL..."
+              className="pl-9"
+              disabled={resolving}
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={resolvePost}
+            disabled={resolving || !inputUrl.trim()}
+          >
+            {resolving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+          </Button>
+        </div>
+        {scrapedPosts.length === 0 && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Instagram className="h-3 w-3" />
+            Open Instagram → tap ··· on a post → Copy Link → paste here
+          </p>
+        )}
       </div>
 
-      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-        <Instagram className="h-3 w-3" />
-        Open Instagram → tap ··· on a post → Copy Link → paste here
-      </p>
-
+      {/* Selected posts summary */}
       {selectedPosts.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
             {selectedPosts.length} post{selectedPosts.length !== 1 ? "s" : ""} selected
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
             {selectedPosts.map((post) => (
               <div
                 key={post.permalink}
-                className="relative aspect-square rounded-lg overflow-hidden border-2 border-primary ring-2 ring-primary/30 group"
+                className="relative aspect-square rounded-lg overflow-hidden border-2 border-primary ring-1 ring-primary/30 group"
               >
                 {post.thumbnail_url ? (
                   <img
                     src={post.thumbnail_url}
-                    alt="Instagram post"
+                    alt="Selected post"
                     className="w-full h-full object-cover"
                     loading="lazy"
                     onError={(e) => {
-                      // If thumbnail fails, show fallback
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                      (e.target as HTMLImageElement).style.display = "none";
+                      const next = (e.target as HTMLImageElement).nextElementSibling;
+                      if (next) next.classList.remove("hidden");
                     }}
                   />
                 ) : null}
-                <div className={`w-full h-full bg-muted flex items-center justify-center ${post.thumbnail_url ? 'hidden absolute inset-0' : ''}`}>
-                  <Instagram className="h-6 w-6 text-muted-foreground" />
+                <div
+                  className={`w-full h-full bg-muted flex items-center justify-center ${post.thumbnail_url ? "hidden absolute inset-0" : ""}`}
+                >
+                  <Instagram className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <button
                   type="button"
@@ -151,11 +313,6 @@ export function ExistingPostPicker({
                 >
                   <X className="h-3 w-3" />
                 </button>
-                {post.media_type === "VIDEO" && (
-                  <Badge className="absolute bottom-1 left-1 text-[9px] px-1 py-0 bg-background/70 text-foreground backdrop-blur-sm">
-                    Reel
-                  </Badge>
-                )}
               </div>
             ))}
           </div>
