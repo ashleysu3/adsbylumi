@@ -1,67 +1,57 @@
 
 
-# Admin-Managed Creative Toolkit with Live/Coming Soon Toggle
+# Admin Dashboard Cleanup & Navigation Overhaul
 
-## Overview
-Add a new "Creative Toolkit" section to the Admin Settings page that lets you:
-1. Toggle the toolkit between **Live** and **Coming Soon** (the blurred overlay)
-2. Manage template packs, B-roll sources, music sources, production tools, and marketplace packs — all from the admin dashboard, stored in the database
+## Problem
+The admin dashboard has 16 flat tabs that wrap awkwardly, the Creative Toolkit editor is buried inside Settings, Invite Codes is no longer needed, and finding things is unintuitive.
 
-## How it works
+## Plan
 
-### 1. Database: `site_settings` row for toolkit config
-Use the existing `site_settings` table (same pattern as the announcement banner). Store a key called `creative_toolkit_config` with a JSON value:
+### 1. Replace flat tab bar with grouped sidebar-style navigation
+**File: `src/components/AdminTabs.tsx`**
 
-```json
-{
-  "live": false,
-  "templates": [ { "name": "...", "category": "...", "formats": [...], "description": "...", "canvaUrl": "..." } ],
-  "broll_sources": [ { "name": "...", "badge": "...", "description": "...", "url": "...", "buttonLabel": "..." } ],
-  "music_sources": [ ... ],
-  "production_tools": [ ... ],
-  "marketplace_packs": [ ... ],
-  "shot_lists": [ { "title": "...", "shots": ["..."] } ]
-}
-```
+Replace the single row of 16 wrapping tab triggers with a categorized layout using collapsible groups:
 
-### 2. Admin Settings page — new "Creative Toolkit" card
-**File:** `src/pages/admin/Settings.tsx`
+| Group | Tabs |
+|-------|------|
+| **Users & Access** | Users, Team, Subscriptions |
+| **Billing** | Stripe, Cancellations, Disputes |
+| **Content** | Knowledge, Templates, Creative Toolkit (new — promoted from Settings) |
+| **Support** | Bug Reports, Reviews, Email Logs |
+| **System** | Meta Debug, Analytics, Settings |
 
-Add a second card below the Announcement Banner card with:
-- **Live toggle** (Switch) — controls `live` boolean
-- **Tabs** for each content section: Templates, B-Roll Sources, Music & Tools, Marketplace, Shot Lists
-- Each tab shows an editable list of items with Add/Edit/Delete buttons
-- Simple inline form for each item type (name, description, URL, category, formats, price, etc.)
-- Save button that upserts to `site_settings` with key `creative_toolkit_config`
+Remove **Invite Codes** entirely from the tab list.
 
-### 3. Creative Toolkit page reads from database
-**File:** `src/pages/CreativeToolkit.tsx`
+### 2. Remove Invite Codes page
+- **`src/App.tsx`**: Remove the route for `/admin/invite-codes` and its import
+- **`src/pages/admin/InviteCodes.tsx`**: Delete the file
 
-- On mount, fetch `site_settings` where `key = 'creative_toolkit_config'`
-- If `live` is `false`, show the Coming Soon overlay (current behavior)
-- If `live` is `true`, hide the overlay and render content from the database data
+### 3. Promote Creative Toolkit to its own admin tab/page
+- **`src/pages/admin/CreativeToolkit.tsx`** (new): Create a dedicated admin page that renders `<CreativeToolkitManager />` inside `DashboardLayout` + `AdminTabs`, instead of it being a card buried at the bottom of Settings
+- **`src/pages/admin/Settings.tsx`**: Remove the `<CreativeToolkitManager />` import and rendering — Settings goes back to just the Announcement Banner
+- **`src/App.tsx`**: Add route `/admin/creative-toolkit` pointing to the new page
 
-### 4. Update tab components to accept data as props
-**Files:** `src/components/creative-toolkit/TemplatesTab.tsx`, `BRollTab.tsx`, `MusicToolsTab.tsx`, `MarketplaceTab.tsx`
+### 4. Improve Creative Toolkit editability
+**File: `src/components/admin/CreativeToolkitManager.tsx`**
 
-- Add optional props for the data arrays (templates, sources, tools, etc.)
-- If props are provided, use them; otherwise fall back to the hardcoded defaults (keeps backward compatibility during transition)
+- Make it a full-page layout instead of a card (remove wrapping `<Card>`)
+- Add inline "Duplicate" button on each item for faster content creation
+- Add drag-to-reorder visual hint (already has `GripVertical` imported but unused)
+- Show item count badges on each tab
+- Add a "Reset to Defaults" option per section
 
-### 5. Admin tab navigation
-**File:** `src/components/AdminTabs.tsx`
+### Technical Details
+- The grouped navigation will use a vertical sidebar-within-content pattern (a left column of grouped links + right content area), or alternatively accordion-grouped horizontal tabs — whichever fits the existing `DashboardLayout` better. I'll use the accordion approach to keep it consistent with the current horizontal layout but with clear group headers.
+- No database changes needed.
+- No new dependencies.
 
-No change needed — the Creative Toolkit config lives inside the existing Settings tab, not a new tab.
-
-## Files to modify
-
-| File | Change |
+### Files to modify
+| File | Action |
 |------|--------|
-| `src/pages/admin/Settings.tsx` | Add Creative Toolkit management card with live toggle + content editors |
-| `src/pages/CreativeToolkit.tsx` | Fetch config from DB; conditionally show/hide Coming Soon overlay |
-| `src/components/creative-toolkit/TemplatesTab.tsx` | Accept optional `templates` prop |
-| `src/components/creative-toolkit/BRollTab.tsx` | Accept optional `brollSources`, `shotLists` props |
-| `src/components/creative-toolkit/MusicToolsTab.tsx` | Accept optional `musicSources`, `productionTools` props |
-| `src/components/creative-toolkit/MarketplaceTab.tsx` | Accept optional `packs` prop |
-
-No database migration needed — `site_settings` table already exists and accepts arbitrary JSON values.
+| `src/components/AdminTabs.tsx` | Reorganize into grouped categories, remove Invite Codes |
+| `src/App.tsx` | Remove invite-codes route, add creative-toolkit route |
+| `src/pages/admin/InviteCodes.tsx` | Delete |
+| `src/pages/admin/CreativeToolkit.tsx` | Create (new admin page) |
+| `src/pages/admin/Settings.tsx` | Remove CreativeToolkitManager rendering |
+| `src/components/admin/CreativeToolkitManager.tsx` | Full-page layout, duplicate button, usability improvements |
 
