@@ -69,58 +69,18 @@ export function SocialGrowthFlow({
   const [pasteUrl, setPasteUrl] = useState("");
   const [resolvingUrl, setResolvingUrl] = useState(false);
 
-  const fetchPosts = async (selected: "traffic" | "video_views" | "engagement") => {
-    if (!instagramAccountName && !instagramAccountId) return;
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Use Firecrawl scraper instead of analyze-instagram-posts (no instagram_basic needed)
-      const { data, error: fetchError } = await supabase.functions.invoke('scrape-instagram-profile', {
-        body: {
-          username: instagramAccountName || instagramAccountId,
-        }
-      });
-
-      if (fetchError) throw fetchError;
-      if (data?.error && (!data?.posts || data.posts.length === 0)) {
-        throw new Error(data.error);
-      }
-
-      const scrapedPosts = (data?.posts || []).map((p: any) => ({
-        id: p.shortcode,
-        caption: '',
-        media_type: p.media_type === 'VIDEO' ? 'VIDEO' : 'IMAGE',
-        media_url: p.thumbnail_url || '',
-        thumbnail_url: p.thumbnail_url || '',
-        permalink: p.permalink,
-        timestamp: '',
-      }));
-      setPosts(scrapedPosts);
-      setStep("post_selection");
-    } catch (err: any) {
-      const message = formatInvokeError(err);
-      console.error("Error fetching Instagram posts:", err);
-      setError(message);
-      setStep("post_selection");
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleObjectiveSelect = async (selected: "traffic" | "video_views" | "engagement") => {
+  // Skip scraping — go straight to post selection with URL paste UX
+  const handleObjectiveSelect = (selected: "traffic" | "video_views" | "engagement") => {
     setObjective(selected);
-    await fetchPosts(selected);
+    setStep("post_selection");
   };
 
-  // Auto-fetch posts when fixedObjective is set
+  // Auto-advance when fixedObjective is set
   useEffect(() => {
-    if (fixedObjective && instagramAccountId && posts.length === 0 && !isLoading && !error) {
-      fetchPosts(fixedObjective);
+    if (fixedObjective && step !== "post_selection") {
+      setStep("post_selection");
     }
-  }, [fixedObjective, instagramAccountId]);
+  }, [fixedObjective]);
 
   const togglePostSelection = (postId: string) => {
     setSelectedPosts(prev =>
