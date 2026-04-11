@@ -663,7 +663,7 @@ export default function MetaSettings() {
                                 <li>Meta did not return all required Instagram scopes. There is no separate toggle in Lumi, so if reconnecting does not help, check the Meta app’s Instagram permissions.</li>
                               )}
                               {testResult.details?.hasInstagramMediaAccess === false && (
-                                <li>Instagram media reads are still being denied. Confirm the selected Instagram account is Business/Creator and linked to the selected Facebook Page and ad account.</li>
+                                <li>Instagram post browsing isn't available yet. Disconnect and reconnect to update your access.</li>
                               )}
                               {!testResult.details?.tokenValid && (
                                 <li>Check if you've changed your Meta password recently.</li>
