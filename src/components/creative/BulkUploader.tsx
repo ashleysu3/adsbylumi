@@ -13,7 +13,7 @@ export interface UploadedAsset {
   id: string;
   file: File;
   formats: ("9:16" | "1:1")[];
-  angleId: string;
+  angleIds: string[];
   preview?: string;
 }
 
@@ -69,7 +69,7 @@ export function BulkUploader({
         id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         file,
         formats: ["9:16"] as ("9:16" | "1:1")[],
-        angleId: angles[0]?.id || "",
+        angleIds: angles[0]?.id ? [angles[0].id] : [],
         preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
       };
     });
@@ -199,24 +199,31 @@ export function BulkUploader({
                     })}
                   </div>
 
-                  {/* Angle selector */}
-                  <Select
-                    value={asset.angleId}
-                    onValueChange={(value) =>
-                      updateAsset(asset.id, { angleId: value })
-                    }
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Select angle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {angles.map((angle) => (
-                        <SelectItem key={angle.id} value={angle.id}>
-                          {angle.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* Angle/category checkboxes */}
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {angles.map((angle) => {
+                      const checked = asset.angleIds.includes(angle.id);
+                      return (
+                        <div key={angle.id} className="flex items-center gap-1.5">
+                          <Checkbox
+                            id={`${asset.id}-angle-${angle.id}`}
+                            checked={checked}
+                            onCheckedChange={(val) => {
+                              const next = val
+                                ? [...asset.angleIds, angle.id]
+                                : asset.angleIds.filter((a) => a !== angle.id);
+                              if (next.length > 0) {
+                                updateAsset(asset.id, { angleIds: next });
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`${asset.id}-angle-${angle.id}`} className="text-sm cursor-pointer whitespace-nowrap">
+                            {angle.name}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
 
                   {/* Remove */}
                   <Button
