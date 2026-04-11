@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getTierFromProductId, getTierFromPriceId, isAnnualPrice, TierKey, SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 interface TierLimits {
   brands: number;
@@ -55,6 +56,7 @@ function normalizeTierKey(tier: unknown): TierKey | null {
 }
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
+  const { impersonatedUser, isImpersonating } = useImpersonation();
   const [state, setState] = useState<SubscriptionState>({
     isLoading: true,
     isSubscribed: false,
@@ -80,6 +82,70 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         return;
       }
 
+      // When impersonating, query subscription table directly for the target user
+      if (isImpersonating && impersonatedUser) {
+        const { data: subData } = await supabase
+          .from('subscriptions' as any)
+          .select('*')
+          .eq('user_id', impersonatedUser.id)
+          .maybeSingle();
+
+        if (subData) {
+          const tier = normalizeTierKey((subData as any).tier);
+          setState({
+            isLoading: false,
+            isSubscribed: (subData as any).status === 'active' || (subData as any).status === 'trialing',
+            tier,
+            isAnnual: false,
+            subscriptionEnd: (subData as any).current_period_end || null,
+            cancelAtPeriodEnd: (subData as any).cancel_at_period_end || false,
+            productId: null,
+            priceId: null,
+            isCodeBased: true,
+            isTrial: (subData as any).status === 'trialing',
+            status: (subData as any).status || null,
+            discount: null,
+            amountPaid: null,
+            billingInterval: null,
+          });
+        } else {
+          // Check if impersonated user has a Stripe subscription via edge function with actAsUserId
+          let data: any = null;
+          const res = await supabase.functions.invoke('check-subscription', {
+            body: { actAsUserId: impersonatedUser.id }
+          });
+          if (!res.error) data = res.data;
+
+          if (data) {
+            let tier =
+              normalizeTierKey(data.tier) ??
+              getTierFromProductId(data.product_id) ??
+              getTierFromPriceId(data.price_id);
+
+            setState({
+              isLoading: false,
+              isSubscribed: data.subscribed,
+              tier: tier as TierKey | null,
+              isAnnual: isAnnualPrice(data.price_id),
+              subscriptionEnd: data.subscription_end,
+              cancelAtPeriodEnd: data.cancel_at_period_end,
+              productId: data.product_id,
+              priceId: data.price_id,
+              isCodeBased: data.is_code_based || false,
+              isTrial: data.is_trial || false,
+              status: data.status || null,
+              discount: data.discount || null,
+              amountPaid: data.amount_paid ?? null,
+              billingInterval: data.billing_interval || null,
+            });
+          } else {
+            setState(prev => ({ ...prev, isLoading: false, isSubscribed: false, tier: null }));
+          }
+        }
+        return;
+      }
+
+      // Normal (non-impersonation) flow
       // Check if user is an agency user — auto-grant agency tier
       const { data: profileData } = await supabase
         .from('profiles')
@@ -134,7 +200,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       console.error('Error in checkSubscription:', err);
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, []);
+  }, [isImpersonating, impersonatedUser]);
 
   useEffect(() => {
     checkSubscription();

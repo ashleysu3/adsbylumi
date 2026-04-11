@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { MetaAccountConnect } from '@/components/MetaAccountConnect';
 import { useLumi } from '@/contexts/LumiContext';
 import { useBrand } from '@/contexts/BrandContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { 
   Link2, Link2Off, CheckCircle, XCircle, 
   AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
