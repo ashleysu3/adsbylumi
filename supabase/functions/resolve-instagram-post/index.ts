@@ -18,7 +18,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate it looks like an Instagram URL
     const igUrlPattern = /instagram\.com\/(p|reel|tv)\/([\w-]+)/i;
     const match = url.match(igUrlPattern);
     if (!match) {
@@ -28,65 +27,85 @@ Deno.serve(async (req) => {
       );
     }
 
-    const type = match[1]; // p, reel, or tv
+    const type = match[1];
     const shortcode = match[2];
     const permalink = `https://www.instagram.com/${type}/${shortcode}/`;
 
-    // Try to get a real thumbnail via Instagram oEmbed APIs
     let thumbnail_url: string | null = null;
     let author_name: string | null = null;
     let title: string | null = null;
 
-    // Method 1: Public Instagram oEmbed endpoint (no API key needed)
-    try {
-      const publicOembedUrl = `https://api.instagram.com/oembed/?url=${encodeURIComponent(permalink)}&omitscript=true`;
-      const publicRes = await fetch(publicOembedUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-      });
-      if (publicRes.ok) {
-        const publicData = await publicRes.json();
-        thumbnail_url = publicData.thumbnail_url || null;
-        author_name = publicData.author_name || null;
-        title = publicData.title || null;
-        console.log('[resolve-instagram-post] Public oEmbed success:', { author_name, has_thumbnail: !!thumbnail_url });
-      } else {
-        console.warn('[resolve-instagram-post] Public oEmbed returned', publicRes.status);
-      }
-    } catch (e) {
-      console.warn('[resolve-instagram-post] Public oEmbed error:', e);
-    }
+    // Use Firecrawl to scrape the post page and extract og:image + meta tags
+    const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (firecrawlApiKey) {
+      try {
+        const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${firecrawlApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            url: permalink,
+            formats: ['html'],
+            onlyMainContent: false,
+            waitFor: 2000,
+          }),
+        });
 
-    // Method 2: Graph API oEmbed (requires Meta oEmbed Read feature)
-    if (!thumbnail_url) {
-      const appId = Deno.env.get('META_APP_ID');
-      const appSecret = Deno.env.get('META_APP_SECRET');
+        const scrapeData = await scrapeRes.json();
 
-      if (appId && appSecret) {
-        try {
-          const oembedUrl = `https://graph.facebook.com/v21.0/instagram_oembed?url=${encodeURIComponent(permalink)}&access_token=${appId}|${appSecret}`;
-          const oembedRes = await fetch(oembedUrl);
-          const oembedData = await oembedRes.json();
-
-          if (oembedRes.ok && !oembedData.error) {
-            thumbnail_url = oembedData.thumbnail_url || null;
-            author_name = author_name || oembedData.author_name || null;
-            title = title || oembedData.title || null;
-            console.log('[resolve-instagram-post] Graph oEmbed success');
-          } else {
-            console.warn('[resolve-instagram-post] Graph oEmbed failed:', oembedData.error?.message || 'unknown');
+        if (scrapeRes.ok && scrapeData.success) {
+          const html = scrapeData.data?.html || scrapeData.html || '';
+          
+          // Extract og:image
+          const ogImageMatch = html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i)
+            || html.match(/content="([^"]+)"\s+(?:property|name)="og:image"/i);
+          if (ogImageMatch) {
+            thumbnail_url = ogImageMatch[1];
           }
-        } catch (oembedErr) {
-          console.warn('[resolve-instagram-post] Graph oEmbed error:', oembedErr);
+
+          // Extract og:title for caption
+          const ogTitleMatch = html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i)
+            || html.match(/content="([^"]+)"\s+(?:property|name)="og:title"/i);
+          if (ogTitleMatch) {
+            title = ogTitleMatch[1];
+          }
+
+          // Extract og:description as fallback caption
+          if (!title) {
+            const ogDescMatch = html.match(/<meta\s+(?:property|name)="og:description"\s+content="([^"]+)"/i)
+              || html.match(/content="([^"]+)"\s+(?:property|name)="og:description"/i);
+            if (ogDescMatch) {
+              title = ogDescMatch[1];
+            }
+          }
+
+          // Extract author from page title or meta
+          const authorMatch = html.match(/<meta\s+(?:property|name)="og:title"\s+content="[^"]*@(\w+)[^"]*"/i);
+          if (authorMatch) {
+            author_name = authorMatch[1];
+          }
+
+          console.log('[resolve-instagram-post] Firecrawl scraped:', {
+            has_thumbnail: !!thumbnail_url,
+            has_title: !!title,
+            author_name,
+          });
+        } else {
+          console.warn('[resolve-instagram-post] Firecrawl failed:', scrapeData.error || 'unknown');
         }
+      } catch (e) {
+        console.warn('[resolve-instagram-post] Firecrawl error:', e);
       }
     }
 
-    // Fallback thumbnail URL if oEmbed didn't work
+    // Fallback thumbnail
     if (!thumbnail_url) {
       thumbnail_url = `https://www.instagram.com/${type}/${shortcode}/media/?size=m`;
     }
 
-    console.log('[resolve-instagram-post] Resolved:', { type, shortcode, permalink, has_oembed_thumb: !!thumbnail_url });
+    console.log('[resolve-instagram-post] Resolved:', { type, shortcode, has_thumb: !!thumbnail_url });
 
     return new Response(
       JSON.stringify({
