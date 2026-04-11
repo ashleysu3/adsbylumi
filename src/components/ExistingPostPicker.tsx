@@ -35,14 +35,13 @@ export function ExistingPostPicker({
     const url = inputUrl.trim();
     if (!url) return;
 
-    // Basic validation
     if (!/instagram\.com\/(p|reel|tv)\/[\w-]/i.test(url)) {
       toast.error("Please paste a valid Instagram post or reel URL");
       return;
     }
 
-    // Check for duplicates
-    if (selectedPosts.some((p) => p.permalink === url.split("?")[0])) {
+    const cleanUrl = url.split("?")[0].replace(/\/$/, "");
+    if (selectedPosts.some((p) => p.permalink.replace(/\/$/, "") === cleanUrl)) {
       toast.error("This post is already added");
       return;
     }
@@ -61,18 +60,18 @@ export function ExistingPostPicker({
       }
 
       const newPost: SelectedPost = {
-        id: data.media_id || data.shortcode || url,
-        caption: `@${data.author_name || "instagram"}`,
-        media_type: "IMAGE", // oEmbed doesn't expose type, default to IMAGE
+        id: data.shortcode || url,
+        caption: "",
+        media_type: data.media_type || "IMAGE",
         media_url: data.thumbnail_url || "",
         thumbnail_url: data.thumbnail_url || "",
-        permalink: data.permalink || url.split("?")[0],
+        permalink: data.permalink || cleanUrl,
       };
 
       onSelectionChange([...selectedPosts, newPost]);
       setInputUrl("");
     } catch (e: any) {
-      toast.error(e?.message || "Could not resolve this post. Make sure it's public.");
+      toast.error(e?.message || "Could not resolve this post.");
     } finally {
       setResolving(false);
     }
@@ -91,7 +90,6 @@ export function ExistingPostPicker({
 
   return (
     <div className="space-y-3">
-      {/* URL Input */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -114,13 +112,11 @@ export function ExistingPostPicker({
         </Button>
       </div>
 
-      {/* Helper tip */}
       <p className="text-xs text-muted-foreground flex items-center gap-1.5">
         <Instagram className="h-3 w-3" />
         Open Instagram → tap ··· on a post → Copy Link → paste here
       </p>
 
-      {/* Selected posts */}
       {selectedPosts.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
@@ -135,16 +131,19 @@ export function ExistingPostPicker({
                 {post.thumbnail_url ? (
                   <img
                     src={post.thumbnail_url}
-                    alt={post.caption?.slice(0, 40) || "Instagram post"}
+                    alt="Instagram post"
                     className="w-full h-full object-cover"
                     loading="lazy"
+                    onError={(e) => {
+                      // If thumbnail fails, show fallback
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                    }}
                   />
-                ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center">
-                    <Instagram className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                )}
-                {/* Remove button */}
+                ) : null}
+                <div className={`w-full h-full bg-muted flex items-center justify-center ${post.thumbnail_url ? 'hidden absolute inset-0' : ''}`}>
+                  <Instagram className="h-6 w-6 text-muted-foreground" />
+                </div>
                 <button
                   type="button"
                   onClick={() => removePost(post.permalink)}
@@ -152,10 +151,11 @@ export function ExistingPostPicker({
                 >
                   <X className="h-3 w-3" />
                 </button>
-                {/* Author badge */}
-                <Badge className="absolute bottom-1 left-1 text-[9px] px-1 py-0 bg-background/70 text-foreground backdrop-blur-sm max-w-[calc(100%-8px)] truncate">
-                  {post.caption}
-                </Badge>
+                {post.media_type === "VIDEO" && (
+                  <Badge className="absolute bottom-1 left-1 text-[9px] px-1 py-0 bg-background/70 text-foreground backdrop-blur-sm">
+                    Reel
+                  </Badge>
+                )}
               </div>
             ))}
           </div>
