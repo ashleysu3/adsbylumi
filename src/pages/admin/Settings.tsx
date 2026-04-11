@@ -9,7 +9,8 @@ import type { Json } from "@/integrations/supabase/types";
  import { Label } from "@/components/ui/label";
  import { Switch } from "@/components/ui/switch";
  import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
- import { Megaphone, Save, Eye } from "lucide-react";
+import { Megaphone, Save, Eye } from "lucide-react";
+import CreativeToolkitManager from "@/components/admin/CreativeToolkitManager";
  import { toast } from "sonner";
  import { cn } from "@/lib/utils";
  
@@ -374,8 +375,11 @@ import type { Json } from "@/integrations/supabase/types";
                </Button>
              </div>
            </CardContent>
-         </Card>
-       </div>
-     </DashboardLayout>
-   );
- }
+          </Card>
+
+          {/* Creative Toolkit Section */}
+          <CreativeToolkitManager />
+        </div>
+      </DashboardLayout>
+    );
+  }
