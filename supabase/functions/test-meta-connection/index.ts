@@ -13,13 +13,11 @@ interface TestResult {
     adAccountId?: string;
     instagramAccountId?: string;
     instagramAccountName?: string;
-    instagramMediaError?: string;
     pageName?: string;
     tokenValid?: boolean;
     permissionsValid?: boolean;
     permissions?: string[];
     missingPermissions?: string[];
-    hasInstagramMediaAccess?: boolean;
   };
   error?: string;
 }

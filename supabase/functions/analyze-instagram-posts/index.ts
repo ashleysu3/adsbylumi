@@ -113,14 +113,16 @@ Deno.serve(async (req) => {
 
     if (!postsResponse.ok) {
       console.error('Error fetching posts after recovery attempt:', postsData);
-      const metaError = postsData?.error?.message || 'Failed to fetch Instagram posts';
       const code = postsData?.error?.code;
+      // Graceful degradation: return empty posts instead of error when permissions are missing
       if (code === 10) {
+        console.warn('Instagram media access denied (Code 10) — returning empty posts for URL-based fallback');
         return new Response(
-          JSON.stringify({ error: 'Meta is still blocking Instagram post access for this account. There is no separate access toggle inside Lumi. Try removing Lumi from Facebook → Settings → Business Integrations, reconnecting in Meta Settings, and confirming this Instagram profile is a Business or Creator account linked to the selected Facebook Page and ad account. If the same error persists, the missing access is likely in the Meta app configuration rather than this user flow.', code: 'PERMISSIONS_ERROR' }),
+          JSON.stringify({ posts: [], fallbackMode: 'url_paste', message: 'Instagram post browsing is not available. Use the URL paste option to add posts.' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+      const metaError = postsData?.error?.message || 'Failed to fetch Instagram posts';
       return new Response(
         JSON.stringify({ error: `Could not load posts: ${metaError}`, code: 'API_ERROR' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
