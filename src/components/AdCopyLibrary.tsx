@@ -81,7 +81,24 @@ export function AdCopyLibrary({ workspace, brand, onUpdate }: AdCopyLibraryProps
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check for 400 validation errors with structured response
+        if (error.context?.status === 400 || error.message?.includes('Brand setup incomplete')) {
+          const errorBody = typeof error.context?.body === 'string' 
+            ? JSON.parse(error.context.body) 
+            : error.context?.body;
+          const msg = errorBody?.error || error.message || 'Brand setup incomplete.';
+          toast.error(msg, {
+            action: {
+              label: "Go to Brand Setup",
+              onClick: () => window.location.href = "/onboarding",
+            },
+            duration: 8000,
+          });
+          return;
+        }
+        throw error;
+      }
 
       // Merge new copy with existing creative, keeping scripts/visuals
       const updatedCreative = {
@@ -102,9 +119,21 @@ export function AdCopyLibrary({ workspace, brand, onUpdate }: AdCopyLibraryProps
 
       onUpdate({ creative_json: updatedCreative });
       toast.success("Copy variations regenerated!");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating copy:', error);
-      toast.error("Failed to generate copy. Please try again.");
+      // Handle edge function non-2xx responses
+      const msg = error?.message || '';
+      if (msg.includes('Brand setup incomplete') || msg.includes('missingFields')) {
+        toast.error("Your brand profile is incomplete. Please finish setup before generating creatives.", {
+          action: {
+            label: "Go to Brand Setup",
+            onClick: () => window.location.href = "/onboarding",
+          },
+          duration: 8000,
+        });
+      } else {
+        toast.error("Failed to generate copy. Please try again.");
+      }
     } finally {
       setIsGenerating(false);
     }

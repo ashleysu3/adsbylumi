@@ -107,10 +107,19 @@ serve(async (req) => {
     }
 
     // Validate required data
-    if (!strategyData) {
-      console.error('Missing strategyData in request');
+    const missingFields: string[] = [];
+    if (!strategyData) missingFields.push('strategyData');
+    if (!productPsychology || (typeof productPsychology === 'object' && Object.keys(productPsychology).length === 0)) missingFields.push('productPsychology');
+    if (!audiencePsychology || (typeof audiencePsychology === 'object' && Object.keys(audiencePsychology).length === 0)) missingFields.push('audiencePsychology');
+    if (!brandName) missingFields.push('brandName');
+
+    if (missingFields.length > 0) {
+      console.error('[GENERATE-CREATIVE] Missing required fields:', missingFields);
       return new Response(
-        JSON.stringify({ error: 'Strategy data is required. Please complete your campaign strategy first.' }),
+        JSON.stringify({
+          error: 'Brand setup incomplete. Please finish your brand profile before generating creatives.',
+          missingFields,
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
