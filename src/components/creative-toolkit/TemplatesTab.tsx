@@ -59,8 +59,8 @@ export function TemplatesTab({ templates }: TemplatesTabProps) {
   const [activeCategory, setActiveCategory] = useState("All");
 
   const filtered = activeCategory === "All"
-    ? TEMPLATE_PACKS
-    : TEMPLATE_PACKS.filter((p) => p.category === activeCategory);
+    ? packs
+    : packs.filter((p) => p.category === activeCategory);
 
   return (
     <div className="space-y-6">
