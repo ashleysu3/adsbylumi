@@ -240,7 +240,7 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {STOCK_SOURCES.map((src) => (
+          {stockSources.map((src) => (
             <Card key={src.name}>
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-center gap-3">
@@ -275,7 +275,7 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
           </p>
         </div>
         <Accordion type="multiple" className="space-y-2">
-          {SHOT_LISTS.map((list) => (
+          {shotListData.map((list) => (
             <AccordionItem key={list.title} value={list.title} className="border rounded-lg px-4">
               <AccordionTrigger className="text-foreground font-display font-semibold text-sm">
                 {list.title}
