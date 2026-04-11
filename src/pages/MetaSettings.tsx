@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { MetaAccountConnect } from '@/components/MetaAccountConnect';
 import { useLumi } from '@/contexts/LumiContext';
 import { useBrand } from '@/contexts/BrandContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { 
   Link2, Link2Off, CheckCircle, XCircle, 
   AlertTriangle, Calendar, Shield, ExternalLink, Loader2,
@@ -25,6 +26,7 @@ export default function MetaSettings() {
   const navigate = useNavigate();
   const { setBrandId: setLumiBrandId } = useLumi();
   const { activeBrand, loading: brandContextLoading } = useBrand();
+  const { getEffectiveUserId } = useImpersonation();
   const [loading, setLoading] = useState(true);
   const [brand, setBrand] = useState<any>(null);
   const [hasValidToken, setHasValidToken] = useState(false);
@@ -141,8 +143,8 @@ export default function MetaSettings() {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const effectiveUserId = await getEffectiveUserId();
+      if (!effectiveUserId) {
         navigate('/auth');
         return;
       }
@@ -155,7 +157,7 @@ export default function MetaSettings() {
         .from('brands')
         .select(brandSelect)
         .eq('id', brandIdToFetch)
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .maybeSingle();
 
       if (error) throw error;
