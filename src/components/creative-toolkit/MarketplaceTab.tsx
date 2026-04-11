@@ -38,11 +38,16 @@ const CONTRIBUTOR_PACKS: ContributorPack[] = [
   { name: "Earthy Lifestyle Collection", contributor: { name: "Designer Name", avatar: null, url: "#" }, price: "$47", priceNum: 47, category: "B-Roll Overlays", formats: ["9:16", "4:5"], description: "Warm, earthy tones for wellness and lifestyle brands.", externalUrl: "#" },
 ];
 
-export function MarketplaceTab() {
+interface MarketplaceTabProps {
+  packs?: ContributorPack[];
+}
+
+export function MarketplaceTab({ packs: packsProp }: MarketplaceTabProps) {
+  const allPacks = packsProp && packsProp.length > 0 ? packsProp : CONTRIBUTOR_PACKS;
   const [activeCategory, setActiveCategory] = useState("All");
   const [priceFilter, setPriceFilter] = useState("All");
 
-  const filtered = CONTRIBUTOR_PACKS.filter((p) => {
+  const filtered = allPacks.filter((p) => {
     if (activeCategory !== "All" && p.category !== activeCategory) return false;
     if (priceFilter === "Under $20" && p.priceNum >= 20) return false;
     if (priceFilter === "$20–$50" && (p.priceNum < 20 || p.priceNum > 50)) return false;
