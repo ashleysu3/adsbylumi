@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Upload, Video, Image, X, Plus, CheckCircle2 } from "lucide-react";
@@ -10,7 +12,7 @@ import { CreativeAngle } from "./AngleSelector";
 export interface UploadedAsset {
   id: string;
   file: File;
-  format: "talking_head" | "broll" | "graphic";
+  formats: ("9:16" | "1:1")[];
   angleId: string;
   preview?: string;
 }
@@ -23,9 +25,8 @@ interface BulkUploaderProps {
 }
 
 const formatOptions = [
-  { value: "talking_head", label: "Talking Head", icon: Video },
-  { value: "broll", label: "B-Roll / Lofi Video", icon: Video },
-  { value: "graphic", label: "Graphic / Static", icon: Image },
+  { value: "9:16" as const, label: "9:16 Vertical" },
+  { value: "1:1" as const, label: "1:1 Square" },
 ];
 
 export function BulkUploader({
@@ -64,13 +65,10 @@ export function BulkUploader({
 
   const processFiles = (files: File[]) => {
     const newAssets: UploadedAsset[] = files.map((file) => {
-      const isVideo = file.type.startsWith("video/");
-      const format = isVideo ? "broll" : "graphic";
-      
       return {
         id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         file,
-        format: format as "talking_head" | "broll" | "graphic",
+        formats: ["9:16"] as ("9:16" | "1:1")[],
         angleId: angles[0]?.id || "",
         preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
       };
@@ -175,24 +173,31 @@ export function BulkUploader({
                     </p>
                   </div>
 
-                  {/* Format selector */}
-                  <Select
-                    value={asset.format}
-                    onValueChange={(value) =>
-                      updateAsset(asset.id, { format: value as any })
-                    }
-                  >
-                    <SelectTrigger className="w-[160px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formatOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* Format checkboxes */}
+                  <div className="flex items-center gap-4">
+                    {formatOptions.map((opt) => {
+                      const checked = asset.formats.includes(opt.value);
+                      return (
+                        <div key={opt.value} className="flex items-center gap-1.5">
+                          <Checkbox
+                            id={`${asset.id}-${opt.value}`}
+                            checked={checked}
+                            onCheckedChange={(val) => {
+                              const next = val
+                                ? [...asset.formats, opt.value]
+                                : asset.formats.filter((f) => f !== opt.value);
+                              if (next.length > 0) {
+                                updateAsset(asset.id, { formats: next as ("9:16" | "1:1")[] });
+                              }
+                            }}
+                          />
+                          <Label htmlFor={`${asset.id}-${opt.value}`} className="text-sm cursor-pointer whitespace-nowrap">
+                            {opt.label}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
 
                   {/* Angle selector */}
                   <Select
