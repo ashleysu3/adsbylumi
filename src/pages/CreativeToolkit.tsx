@@ -61,7 +61,10 @@ export default function CreativeToolkit() {
             <TemplatesTab templates={config?.templates} />
           </TabsContent>
           <TabsContent value="broll">
-            <BRollTab />
+            <BRollTab
+              brollSources={config?.broll_sources}
+              shotLists={config?.shot_lists}
+            />
           </TabsContent>
           <TabsContent value="music-tools">
             <MusicToolsTab
