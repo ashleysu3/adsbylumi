@@ -65,6 +65,7 @@ export default function Start() {
   const [trendInsights, setTrendInsights] = useState<any[] | null>(null);
   const [trendLoading, setTrendLoading] = useState(false);
   const [trendFetched, setTrendFetched] = useState(false);
+  const [trendError, setTrendError] = useState<string | null>(null);
   const [userState, setUserState] = useState<UserState>({
     hasOffers: false,
     hasCampaigns: false,
@@ -81,9 +82,15 @@ export default function Start() {
   useEffect(() => {
     if (brandLoading) return;
     if (!activeBrand) {
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (!user) navigate("/auth");
-      });
+      const checkAuth = async () => {
+        try {
+          const { data: { user }, error } = await supabase.auth.getUser();
+          if (error || !user) navigate("/auth");
+        } catch {
+          navigate("/auth");
+        }
+      };
+      checkAuth();
       return;
     }
     setBrand(activeBrand);
@@ -95,13 +102,22 @@ export default function Start() {
     if (loading || trendFetched || !activeBrand?.id || !userState.hasOffers) return;
     setTrendLoading(true);
     setTrendFetched(true);
+    setTrendError(null);
     supabase.functions.invoke('generate-trend-insights', { body: { brandId: activeBrand.id } })
       .then(({ data, error }) => {
-        if (!error && data?.insights && Array.isArray(data.insights) && data.insights.length > 0) {
+        if (error) {
+          console.error("Trend insights error:", error);
+          setTrendError("Couldn't load insights right now");
+          return;
+        }
+        if (data?.insights && Array.isArray(data.insights) && data.insights.length > 0) {
           setTrendInsights(data.insights.slice(0, 3));
         }
       })
-      .catch(() => {})
+      .catch((e) => {
+        console.error("Trend insights fetch failed:", e);
+        setTrendError("Couldn't load insights right now");
+      })
       .finally(() => setTrendLoading(false));
   }, [loading, trendFetched, activeBrand?.id, userState.hasOffers]);
 
@@ -482,7 +498,41 @@ export default function Start() {
           </motion.section>
         )}
 
-        {trendInsights && trendInsights.length > 0 && (
+        {/* Trend Insights: loading skeleton */}
+        {trendLoading && (
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.28 }}
+            className="space-y-3"
+          >
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              What's Working Right Now
+            </h2>
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="border">
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <Skeleton className="h-8 w-8 rounded-lg flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </motion.section>
+        )}
+
+        {/* Trend Insights: error state */}
+        {!trendLoading && trendError && (
+          <div className="text-xs text-muted-foreground italic">{trendError}</div>
+        )}
+
+        {/* Trend Insights: results */}
+        {!trendLoading && trendInsights && trendInsights.length > 0 && (
           <motion.section
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
