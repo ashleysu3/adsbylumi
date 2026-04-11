@@ -133,7 +133,7 @@ export default function Auth() {
         }
       }
     } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+      toast.error(mapAuthError(error));
     } finally {
       setLoading(false);
     }
@@ -153,7 +153,7 @@ export default function Auth() {
       if (error) throw error;
       toast.success("Password reset email sent! Check your inbox.");
     } catch (error: any) {
-      toast.error(error.message || "Failed to send reset email");
+      toast.error(mapAuthError(error));
     } finally {
       setResetLoading(false);
     }
