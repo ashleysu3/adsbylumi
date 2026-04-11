@@ -550,7 +550,7 @@ ${approveHtml}
 
 <!-- CTA -->
 <tr><td style="padding:10px 40px 35px;text-align:center;">
-  <a href="https://adsbylumi.com/data" style="display:inline-block;background:linear-gradient(135deg,#F97316,#EC4899 50%,#A78BFA);color:#fff;text-decoration:none;padding:16px 36px;border-radius:12px;font-size:16px;font-weight:700;box-shadow:0 6px 20px rgba(236,72,153,.3);letter-spacing:.3px;">View Full Report →</a>
+  <a href="https://adsbylumi.com/ad-performance" style="display:inline-block;background:linear-gradient(135deg,#F97316,#EC4899 50%,#A78BFA);color:#fff;text-decoration:none;padding:16px 36px;border-radius:12px;font-size:16px;font-weight:700;box-shadow:0 6px 20px rgba(236,72,153,.3);letter-spacing:.3px;">View Full Report →</a>
 </td></tr>
 
 <!-- Closer -->

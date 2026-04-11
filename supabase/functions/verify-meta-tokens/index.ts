@@ -279,7 +279,7 @@ async function createAlert(
         severity,
         title,
         message,
-        action_url: '/dashboard',
+        action_url: '/meta-settings',
         action_label: 'Reconnect Meta',
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
       });
@@ -320,7 +320,7 @@ async function sendAlertEmail(
     const resend = new Resend(resendApiKey);
     const userName = profile.full_name || 'there';
     const brandName = brand.name || 'your brand';
-    const appUrl = Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app') || '';
+    const appUrl = 'https://adsbylumi.com';
 
     let subject: string;
     let urgencyText: string;
@@ -371,7 +371,7 @@ async function sendAlertEmail(
             </ul>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${appUrl}/dashboard" 
+              <a href="${appUrl}/meta-settings" 
                  style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; display: inline-block;">
                 Reconnect Now
               </a>

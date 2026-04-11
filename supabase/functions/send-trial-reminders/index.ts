@@ -249,7 +249,7 @@ function getTrialEmail(
             { label: 'Publish your first campaign', done: milestones.adPublished },
           ],
           ctaText: milestones.adPublished ? 'View Your Dashboard →' : getNextActionCta(milestones),
-          ctaUrl: milestones.adPublished ? 'https://adsbylumi.com/data' : getNextActionUrl(milestones),
+          ctaUrl: milestones.adPublished ? 'https://adsbylumi.com/ad-performance' : getNextActionUrl(milestones),
           urgencyNote: '⏰ Your trial ends in 2 days',
         }),
       };
@@ -271,7 +271,7 @@ function getTrialEmail(
             { label: 'Publish your first campaign', done: milestones.adPublished },
           ],
           ctaText: milestones.adPublished ? 'View Results →' : 'Finish Setup →',
-          ctaUrl: milestones.adPublished ? 'https://adsbylumi.com/data' : 'https://adsbylumi.com/dashboard',
+          ctaUrl: milestones.adPublished ? 'https://adsbylumi.com/ad-performance' : 'https://adsbylumi.com/dashboard',
           urgencyNote: null,
         }),
       };

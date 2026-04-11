@@ -263,7 +263,7 @@ async function sendTokenExpirationEmail(
             <p><strong>Why this happened:</strong> ${errorMessage}</p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${Deno.env.get('SUPABASE_URL')?.replace('.supabase.co', '.lovable.app')}/dashboard" 
+              <a href="https://adsbylumi.com/meta-settings" 
                  style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; display: inline-block;">
                 Reconnect Meta Account
               </a>

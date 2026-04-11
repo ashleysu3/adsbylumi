@@ -111,7 +111,7 @@ p{margin:0;font-size:15px;color:#4a5568;line-height:1.7}
 <div class="icon">${emoji}</div>
 <h1>${title}</h1>
 <p>${message}</p>
-<a href="https://adsbylumi.com/data" class="btn">Go to Dashboard →</a>
+<a href="https://adsbylumi.com/ad-performance" class="btn">Go to Dashboard →</a>
 </div></body></html>`, {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
     status: 200,
@@ -134,7 +134,7 @@ function buildConfirmationEmail(userName: string, actionDescription: string, app
 <p style="margin:0;color:#166534;font-size:14px;font-weight:600">${actionDescription}</p>
 </div>
 <p style="margin:12px 0;color:#4a5568;font-size:14px;line-height:1.7">${applied ? 'This change has been applied to your campaigns.' : 'This change has been queued and will be applied shortly.'}</p>
-<p style="margin:20px 0 0;text-align:center"><a href="https://adsbylumi.com/data" style="display:inline-block;background:linear-gradient(135deg,#F97316,#EC4899);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:14px">View Dashboard →</a></p>
+<p style="margin:20px 0 0;text-align:center"><a href="https://adsbylumi.com/ad-performance" style="display:inline-block;background:linear-gradient(135deg,#F97316,#EC4899);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:14px">View Dashboard →</a></p>
 </td></tr>
 <tr><td style="background:#FAF9F6;padding:20px 40px;text-align:center;border-top:1px solid #F5F3EE">
 <p style="margin:0;color:#a0aec0;font-size:11px">Lumi by Ads by Lumi · Meta Ads, Simplified</p>

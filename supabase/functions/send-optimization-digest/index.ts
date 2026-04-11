@@ -241,12 +241,12 @@ function buildDigestEmail(
         <table style="width:100%;border-collapse:collapse;">${campaignRows}</table>
       </div>
       <div style="text-align:center;margin-top:32px;">
-        <a href="https://adsbylumi.com/performance" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#F97316,#EC4899);color:#fff;text-decoration:none;border-radius:8px;font-weight:700;">View Full Dashboard</a>
+        <a href="https://adsbylumi.com/ad-performance" style="display:inline-block;padding:12px 32px;background:linear-gradient(135deg,#F97316,#EC4899);color:#fff;text-decoration:none;border-radius:8px;font-weight:700;">View Full Dashboard</a>
         <br><br>
         <a href="${shareUrl}" style="color:#666;font-size:14px;">Share report with client →</a>
       </div>
       <div style="text-align:center;margin-top:32px;color:#999;font-size:12px;">
-        Sent by LUMI · <a href="https://adsbylumi.com/performance" style="color:#999;">Manage digest settings</a>
+        Sent by LUMI · <a href="https://adsbylumi.com/ad-performance" style="color:#999;">Manage digest settings</a>
       </div>
     </div>
   </body></html>`;
