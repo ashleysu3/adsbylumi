@@ -1,29 +1,43 @@
 
 
-# Fix: Silent Permission Upgrade on Reconnect + Clear Messaging
+# Fix Impersonation: Subscription, Trial Banner, and Meta Connection
 
-## The Problem
-`instagram_basic` is now in the OAuth scope, so new connections automatically include it. But existing users connected *before* this change — their tokens don't have `instagram_basic`. When the post picker fails to load posts, the fallback messaging is confusing because it implies users need to do something special when reconnecting, but Meta's OAuth is all-or-nothing (no permission toggles).
+## Problems Found
 
-## Solution
-Two changes:
+1. **Wrong trial/subscription banner**: `SubscriptionContext` always checks the logged-in admin's subscription (via JWT), not the impersonated user's. So when viewing as Erinn, you see YOUR subscription status — likely showing a trial banner that doesn't apply to her.
 
-### 1. Auto-detect missing permission and show a single clear banner
-When the post picker gets a fallback/error from `analyze-instagram-posts`, instead of a generic fallback, show a specific one-time banner:
+2. **Meta connection shows "not connected"**: `MetaSettings.tsx` line 158 queries brands with `.eq('user_id', user.id)` — using the admin's real auth ID, not Erinn's. The brand belongs to Erinn, so the query returns nothing, making it look disconnected.
 
-> **"We've added new features! Reconnect your Meta account to enable post browsing."**
-> [Reconnect Now] button that takes them to Meta Settings
+3. **Dashboard shows green Meta badge but settings says disconnected**: The Dashboard uses `BrandContext` (which DOES respect impersonation via `getEffectiveUserId`), so the brand loads correctly there. But MetaSettings does its own query filtered by `auth.uid()`, which is the admin — mismatch.
 
-No mention of "permissions" or "instagram_basic" — just a simple upgrade prompt. Once they reconnect (which automatically includes the new scope), posts load normally.
+## Changes
 
-### 2. Clean up confusing permission-related messaging
-Update the troubleshooting text in `MetaSettings.tsx` and `MetaAccountConnect.tsx` to remove references to "Instagram scopes" and "permission toggles" that users can't control. Replace with actionable language like "Try disconnecting and reconnecting."
+### 1. SubscriptionContext — respect impersonation
+**File:** `src/contexts/SubscriptionContext.tsx`
+- Import and use `useImpersonation` to get `getEffectiveUserId` and `isImpersonating`
+- When impersonating, query the `subscriptions` table directly for the impersonated user's ID instead of calling `check-subscription` (which only checks the JWT holder)
+- This ensures the trial banner, subscription status, and gate all reflect the impersonated user's actual state
+
+### 2. MetaSettings — use effective user ID for brand query
+**File:** `src/pages/MetaSettings.tsx`
+- Import `useImpersonation` and call `getEffectiveUserId()`
+- Change line 158 from `.eq('user_id', user.id)` to `.eq('user_id', effectiveUserId)`
+- This ensures the Meta connection status loads correctly when impersonating
+
+### 3. Dashboard subscription query — use effective user ID
+**File:** `src/pages/Dashboard.tsx`
+- Line 263-267 queries `subscriptions` table with `effectiveUserId` — verify this is already correct (it appears to be)
+- The trial banner at line 489 uses `isTrial` from SubscriptionContext — once #1 is fixed, this will be correct
+
+## Technical Detail
+- `SubscriptionContext` currently sits outside the `ImpersonationProvider` or doesn't use it. We need to wire it in so it re-checks when impersonation starts/stops.
+- The `check-subscription` edge function validates against the JWT, so we can't use it for impersonated users. Instead, we query the `subscriptions` table directly client-side with the effective user ID when impersonating.
+- MetaSettings needs a one-line fix to swap `user.id` for the effective user ID.
 
 ## Files
 
 | File | Change |
 |------|--------|
-| `src/components/ExistingPostPicker.tsx` | Replace generic fallback with clear "reconnect to unlock" banner with a direct link to Meta Settings |
-| `src/pages/MetaSettings.tsx` | Simplify troubleshooting tips — remove "Instagram scopes" language, keep it action-oriented |
-| `src/components/MetaAccountConnect.tsx` | Remove confusing permission-specific messaging |
+| `src/contexts/SubscriptionContext.tsx` | Use impersonation context; query impersonated user's subscription directly |
+| `src/pages/MetaSettings.tsx` | Use `getEffectiveUserId()` instead of `user.id` for brand query |
 
