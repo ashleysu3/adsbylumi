@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wrench, Save, Plus, Trash2, GripVertical } from "lucide-react";
+import { Save, Plus, Trash2, Copy, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -126,95 +126,113 @@ export default function CreativeToolkitManager() {
     }
   };
 
-  if (loading) return <Card><CardContent className="p-6"><div className="animate-pulse">Loading toolkit config...</div></CardContent></Card>;
+  if (loading) return <div className="animate-pulse py-8 text-center text-muted-foreground">Loading toolkit config...</div>;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Wrench className="h-5 w-5" /> Creative Toolkit
-            </CardTitle>
-            <CardDescription>Manage the Creative Toolkit page content and visibility</CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="toolkit-live" className="text-sm font-medium">
-              {config.live ? "Live" : "Coming Soon"}
-            </Label>
-            <Switch
-              id="toolkit-live"
-              checked={config.live}
-              onCheckedChange={(checked) => setConfig({ ...config, live: checked })}
-            />
-          </div>
+    <div className="space-y-6">
+      {/* Live toggle bar */}
+      <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className={`h-2.5 w-2.5 rounded-full ${config.live ? "bg-green-500" : "bg-muted-foreground/40"}`} />
+          <span className="text-sm font-medium">
+            {config.live ? "Toolkit is live for all users" : "Toolkit shows Coming Soon overlay"}
+          </span>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <Tabs defaultValue="templates" className="w-full">
-          <TabsList className="w-full overflow-x-auto">
-            <TabsTrigger value="templates">Templates ({config.templates.length})</TabsTrigger>
-            <TabsTrigger value="broll">B-Roll ({config.broll_sources.length})</TabsTrigger>
-            <TabsTrigger value="music">Music ({config.music_sources.length})</TabsTrigger>
-            <TabsTrigger value="tools">Tools ({config.production_tools.length})</TabsTrigger>
-            <TabsTrigger value="marketplace">Marketplace ({config.marketplace_packs.length})</TabsTrigger>
-            <TabsTrigger value="shots">Shot Lists ({config.shot_lists.length})</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="templates">
-            <TemplateEditor
-              items={config.templates}
-              onChange={(templates) => setConfig({ ...config, templates })}
-            />
-          </TabsContent>
-
-          <TabsContent value="broll">
-            <ResourceEditor
-              items={config.broll_sources}
-              onChange={(broll_sources) => setConfig({ ...config, broll_sources })}
-              label="B-Roll Source"
-            />
-          </TabsContent>
-
-          <TabsContent value="music">
-            <ResourceEditor
-              items={config.music_sources}
-              onChange={(music_sources) => setConfig({ ...config, music_sources })}
-              label="Music Source"
-            />
-          </TabsContent>
-
-          <TabsContent value="tools">
-            <ResourceEditor
-              items={config.production_tools}
-              onChange={(production_tools) => setConfig({ ...config, production_tools })}
-              label="Production Tool"
-            />
-          </TabsContent>
-
-          <TabsContent value="marketplace">
-            <MarketplaceEditor
-              items={config.marketplace_packs}
-              onChange={(marketplace_packs) => setConfig({ ...config, marketplace_packs })}
-            />
-          </TabsContent>
-
-          <TabsContent value="shots">
-            <ShotListEditor
-              items={config.shot_lists}
-              onChange={(shot_lists) => setConfig({ ...config, shot_lists })}
-            />
-          </TabsContent>
-        </Tabs>
-
-        <div className="flex justify-end pt-4 border-t">
-          <Button onClick={handleSave} disabled={saving} className="gap-2">
-            <Save className="h-4 w-4" />
-            {saving ? "Saving..." : "Save Toolkit Settings"}
-          </Button>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="toolkit-live" className="text-sm">
+            {config.live ? "Live" : "Coming Soon"}
+          </Label>
+          <Switch
+            id="toolkit-live"
+            checked={config.live}
+            onCheckedChange={(checked) => setConfig({ ...config, live: checked })}
+          />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Content tabs */}
+      <Tabs defaultValue="templates" className="w-full">
+        <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="templates" className="gap-1.5">
+            Templates
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{config.templates.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="broll" className="gap-1.5">
+            B-Roll
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{config.broll_sources.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="music" className="gap-1.5">
+            Music
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{config.music_sources.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="tools" className="gap-1.5">
+            Tools
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{config.production_tools.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="marketplace" className="gap-1.5">
+            Marketplace
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{config.marketplace_packs.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="shots" className="gap-1.5">
+            Shot Lists
+            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{config.shot_lists.length}</Badge>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="templates">
+          <TemplateEditor
+            items={config.templates}
+            onChange={(templates) => setConfig({ ...config, templates })}
+          />
+        </TabsContent>
+
+        <TabsContent value="broll">
+          <ResourceEditor
+            items={config.broll_sources}
+            onChange={(broll_sources) => setConfig({ ...config, broll_sources })}
+            label="B-Roll Source"
+          />
+        </TabsContent>
+
+        <TabsContent value="music">
+          <ResourceEditor
+            items={config.music_sources}
+            onChange={(music_sources) => setConfig({ ...config, music_sources })}
+            label="Music Source"
+          />
+        </TabsContent>
+
+        <TabsContent value="tools">
+          <ResourceEditor
+            items={config.production_tools}
+            onChange={(production_tools) => setConfig({ ...config, production_tools })}
+            label="Production Tool"
+          />
+        </TabsContent>
+
+        <TabsContent value="marketplace">
+          <MarketplaceEditor
+            items={config.marketplace_packs}
+            onChange={(marketplace_packs) => setConfig({ ...config, marketplace_packs })}
+          />
+        </TabsContent>
+
+        <TabsContent value="shots">
+          <ShotListEditor
+            items={config.shot_lists}
+            onChange={(shot_lists) => setConfig({ ...config, shot_lists })}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Save bar */}
+      <div className="flex justify-end pt-4 border-t">
+        <Button onClick={handleSave} disabled={saving} className="gap-2">
+          <Save className="h-4 w-4" />
+          {saving ? "Saving..." : "Save Toolkit Settings"}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -222,6 +240,10 @@ export default function CreativeToolkitManager() {
 function TemplateEditor({ items, onChange }: { items: ToolkitTemplate[]; onChange: (v: ToolkitTemplate[]) => void }) {
   const addItem = () => onChange([...items, { name: "", category: "", formats: [], description: "", canvaUrl: "" }]);
   const removeItem = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+  const duplicateItem = (i: number) => {
+    const copy = { ...items[i], name: `${items[i].name} (copy)` };
+    onChange([...items.slice(0, i + 1), copy, ...items.slice(i + 1)]);
+  };
   const updateItem = (i: number, field: keyof ToolkitTemplate, value: any) => {
     const updated = [...items];
     (updated[i] as any)[field] = value;
@@ -230,7 +252,12 @@ function TemplateEditor({ items, onChange }: { items: ToolkitTemplate[]; onChang
 
   return (
     <div className="space-y-3 pt-4">
-      <p className="text-xs text-muted-foreground">Leave empty to use built-in defaults. Add items here to override.</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">Leave empty to use built-in defaults. Add items here to override.</p>
+        <Button variant="ghost" size="sm" className="text-xs gap-1 text-muted-foreground" onClick={() => onChange([])}>
+          <RotateCcw className="h-3 w-3" /> Reset
+        </Button>
+      </div>
       <Accordion type="multiple" className="space-y-2">
         {items.map((item, i) => (
           <AccordionItem key={i} value={String(i)} className="border rounded-lg px-3">
@@ -262,9 +289,14 @@ function TemplateEditor({ items, onChange }: { items: ToolkitTemplate[]; onChang
                 <Label className="text-xs">Description</Label>
                 <Input value={item.description} onChange={(e) => updateItem(i, "description", e.target.value)} placeholder="Short description" />
               </div>
-              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(i)}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => duplicateItem(i)} className="gap-1">
+                  <Copy className="h-3.5 w-3.5" /> Duplicate
+                </Button>
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(i)}>
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                </Button>
+              </div>
             </AccordionContent>
           </AccordionItem>
         ))}
@@ -280,6 +312,10 @@ function TemplateEditor({ items, onChange }: { items: ToolkitTemplate[]; onChang
 function ResourceEditor({ items, onChange, label }: { items: ToolkitResource[]; onChange: (v: ToolkitResource[]) => void; label: string }) {
   const addItem = () => onChange([...items, { name: "", badge: "", badgeColor: "", description: "", url: "", buttonLabel: "" }]);
   const removeItem = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+  const duplicateItem = (i: number) => {
+    const copy = { ...items[i], name: `${items[i].name} (copy)` };
+    onChange([...items.slice(0, i + 1), copy, ...items.slice(i + 1)]);
+  };
   const updateItem = (i: number, field: keyof ToolkitResource, value: string) => {
     const updated = [...items];
     (updated[i] as any)[field] = value;
@@ -288,7 +324,12 @@ function ResourceEditor({ items, onChange, label }: { items: ToolkitResource[]; 
 
   return (
     <div className="space-y-3 pt-4">
-      <p className="text-xs text-muted-foreground">Leave empty to use built-in defaults.</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">Leave empty to use built-in defaults.</p>
+        <Button variant="ghost" size="sm" className="text-xs gap-1 text-muted-foreground" onClick={() => onChange([])}>
+          <RotateCcw className="h-3 w-3" /> Reset
+        </Button>
+      </div>
       <Accordion type="multiple" className="space-y-2">
         {items.map((item, i) => (
           <AccordionItem key={i} value={String(i)} className="border rounded-lg px-3">
@@ -320,9 +361,14 @@ function ResourceEditor({ items, onChange, label }: { items: ToolkitResource[]; 
                   <Input value={item.buttonLabel} onChange={(e) => updateItem(i, "buttonLabel", e.target.value)} placeholder="Browse →" />
                 </div>
               </div>
-              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(i)}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => duplicateItem(i)} className="gap-1">
+                  <Copy className="h-3.5 w-3.5" /> Duplicate
+                </Button>
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(i)}>
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                </Button>
+              </div>
             </AccordionContent>
           </AccordionItem>
         ))}
@@ -341,6 +387,10 @@ function MarketplaceEditor({ items, onChange }: { items: ToolkitMarketplacePack[
     price: "", priceNum: 0, category: "", formats: [], description: "", externalUrl: ""
   }]);
   const removeItem = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+  const duplicateItem = (i: number) => {
+    const copy = { ...items[i], name: `${items[i].name} (copy)`, contributor: { ...items[i].contributor } };
+    onChange([...items.slice(0, i + 1), copy, ...items.slice(i + 1)]);
+  };
   const updateItem = (i: number, updates: Partial<ToolkitMarketplacePack>) => {
     const updated = [...items];
     updated[i] = { ...updated[i], ...updates };
@@ -349,7 +399,12 @@ function MarketplaceEditor({ items, onChange }: { items: ToolkitMarketplacePack[
 
   return (
     <div className="space-y-3 pt-4">
-      <p className="text-xs text-muted-foreground">Leave empty to use built-in defaults.</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">Leave empty to use built-in defaults.</p>
+        <Button variant="ghost" size="sm" className="text-xs gap-1 text-muted-foreground" onClick={() => onChange([])}>
+          <RotateCcw className="h-3 w-3" /> Reset
+        </Button>
+      </div>
       <Accordion type="multiple" className="space-y-2">
         {items.map((item, i) => (
           <AccordionItem key={i} value={String(i)} className="border rounded-lg px-3">
@@ -395,9 +450,14 @@ function MarketplaceEditor({ items, onChange }: { items: ToolkitMarketplacePack[
                 <Label className="text-xs">Description</Label>
                 <Input value={item.description} onChange={(e) => updateItem(i, { description: e.target.value })} />
               </div>
-              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(i)}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => duplicateItem(i)} className="gap-1">
+                  <Copy className="h-3.5 w-3.5" /> Duplicate
+                </Button>
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(i)}>
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+                </Button>
+              </div>
             </AccordionContent>
           </AccordionItem>
         ))}
@@ -413,6 +473,10 @@ function MarketplaceEditor({ items, onChange }: { items: ToolkitMarketplacePack[
 function ShotListEditor({ items, onChange }: { items: ToolkitShotList[]; onChange: (v: ToolkitShotList[]) => void }) {
   const addItem = () => onChange([...items, { title: "", shots: [""] }]);
   const removeItem = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+  const duplicateItem = (i: number) => {
+    const copy = { ...items[i], title: `${items[i].title} (copy)`, shots: [...items[i].shots] };
+    onChange([...items.slice(0, i + 1), copy, ...items.slice(i + 1)]);
+  };
   const updateTitle = (i: number, title: string) => {
     const updated = [...items];
     updated[i] = { ...updated[i], title };
@@ -438,7 +502,12 @@ function ShotListEditor({ items, onChange }: { items: ToolkitShotList[]; onChang
 
   return (
     <div className="space-y-3 pt-4">
-      <p className="text-xs text-muted-foreground">Leave empty to use built-in defaults.</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">Leave empty to use built-in defaults.</p>
+        <Button variant="ghost" size="sm" className="text-xs gap-1 text-muted-foreground" onClick={() => onChange([])}>
+          <RotateCcw className="h-3 w-3" /> Reset
+        </Button>
+      </div>
       <Accordion type="multiple" className="space-y-2">
         {items.map((item, i) => (
           <AccordionItem key={i} value={String(i)} className="border rounded-lg px-3">
@@ -464,9 +533,14 @@ function ShotListEditor({ items, onChange }: { items: ToolkitShotList[]; onChang
                   <Plus className="h-3 w-3" /> Add Shot
                 </Button>
               </div>
-              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(i)}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove List
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => duplicateItem(i)} className="gap-1">
+                  <Copy className="h-3.5 w-3.5" /> Duplicate
+                </Button>
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => removeItem(i)}>
+                  <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove List
+                </Button>
+              </div>
             </AccordionContent>
           </AccordionItem>
         ))}
