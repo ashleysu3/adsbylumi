@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { SparkleIcon } from "@/components/SparkleIcon";
+import { mapAuthError } from "@/lib/mapAuthError";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 const REMEMBERED_EMAIL_KEY = "lumi_remembered_email";
@@ -132,7 +133,7 @@ export default function Auth() {
         }
       }
     } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+      toast.error(mapAuthError(error));
     } finally {
       setLoading(false);
     }
@@ -152,7 +153,7 @@ export default function Auth() {
       if (error) throw error;
       toast.success("Password reset email sent! Check your inbox.");
     } catch (error: any) {
-      toast.error(error.message || "Failed to send reset email");
+      toast.error(mapAuthError(error));
     } finally {
       setResetLoading(false);
     }
