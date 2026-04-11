@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
             is_trial: !!trialEnd && trialEnd > now,
             discount: null,
             amount_paid: null,
+            billing_interval: null,
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
@@ -112,6 +113,7 @@ Deno.serve(async (req) => {
           is_trial: false,
           discount: null,
           amount_paid: null,
+          billing_interval: null,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -186,6 +188,8 @@ Deno.serve(async (req) => {
             subscribed: true,
             product_id: productId,
             price_id: priceId,
+            tier: null,
+            status: subscription.status,
             subscription_end: subscriptionEnd,
             cancel_at_period_end: cancelAtPeriodEnd,
             is_trial: isTrial,
@@ -217,6 +221,7 @@ Deno.serve(async (req) => {
         is_trial: localSub.status === 'trial',
         discount: null,
         amount_paid: null,
+        billing_interval: null,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -228,12 +233,15 @@ Deno.serve(async (req) => {
       subscribed: false,
       product_id: null,
       price_id: null,
+      tier: null,
+      status: null,
       subscription_end: null,
       cancel_at_period_end: false,
       is_code_based: false,
       is_trial: false,
       discount: null,
       amount_paid: null,
+      billing_interval: null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
