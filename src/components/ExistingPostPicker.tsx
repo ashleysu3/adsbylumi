@@ -47,12 +47,8 @@ export function ExistingPostPicker({
   const [scrapeError, setScrapeError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
 
-  // Auto-scrape on mount if we have a username
-  useEffect(() => {
-    if (instagramAccountName && !hasFetched) {
-      scrapeProfile(instagramAccountName);
-    }
-  }, [instagramAccountName]);
+  // Don't auto-scrape — Firecrawl doesn't support Instagram.
+  // URL paste with oEmbed thumbnails is the primary UX.
 
   const scrapeProfile = async (username: string) => {
     setScraping(true);
@@ -130,13 +126,12 @@ export function ExistingPostPicker({
 
       const newPost: SelectedPost = {
         id: data.shortcode || url,
-        caption: "",
-        media_type: data.media_type || "IMAGE",
+        caption: data.caption || "",
+        media_type: data.media_type === "VIDEO" ? "VIDEO" : "IMAGE",
         media_url: data.thumbnail_url || "",
         thumbnail_url: data.thumbnail_url || "",
         permalink: data.permalink || cleanUrl,
       };
-
       onSelectionChange([...selectedPosts, newPost]);
       setInputUrl("");
     } catch (e: any) {

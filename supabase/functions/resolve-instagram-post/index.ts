@@ -32,11 +32,39 @@ Deno.serve(async (req) => {
     const shortcode = match[2];
     const permalink = `https://www.instagram.com/${type}/${shortcode}/`;
 
-    // Build a public embed thumbnail URL (works without API access)
-    // Instagram's /media endpoint returns the image for public posts
-    const thumbnail_url = `https://www.instagram.com/${type}/${shortcode}/media/?size=m`;
+    // Try to get a real thumbnail via Instagram oEmbed API (app-level token, no user perms needed)
+    let thumbnail_url: string | null = null;
+    let author_name: string | null = null;
+    let title: string | null = null;
 
-    console.log('[resolve-instagram-post] Resolved:', { type, shortcode, permalink });
+    const appId = Deno.env.get('META_APP_ID');
+    const appSecret = Deno.env.get('META_APP_SECRET');
+
+    if (appId && appSecret) {
+      try {
+        const oembedUrl = `https://graph.facebook.com/v21.0/instagram_oembed?url=${encodeURIComponent(permalink)}&access_token=${appId}|${appSecret}`;
+        const oembedRes = await fetch(oembedUrl);
+        const oembedData = await oembedRes.json();
+
+        if (oembedRes.ok && !oembedData.error) {
+          thumbnail_url = oembedData.thumbnail_url || null;
+          author_name = oembedData.author_name || null;
+          title = oembedData.title || null;
+          console.log('[resolve-instagram-post] oEmbed success:', { author_name, has_thumbnail: !!thumbnail_url });
+        } else {
+          console.warn('[resolve-instagram-post] oEmbed failed:', oembedData.error?.message || 'unknown');
+        }
+      } catch (oembedErr) {
+        console.warn('[resolve-instagram-post] oEmbed request error:', oembedErr);
+      }
+    }
+
+    // Fallback thumbnail URL if oEmbed didn't work
+    if (!thumbnail_url) {
+      thumbnail_url = `https://www.instagram.com/${type}/${shortcode}/media/?size=m`;
+    }
+
+    console.log('[resolve-instagram-post] Resolved:', { type, shortcode, permalink, has_oembed_thumb: !!thumbnail_url });
 
     return new Response(
       JSON.stringify({
@@ -44,6 +72,8 @@ Deno.serve(async (req) => {
         permalink,
         thumbnail_url,
         media_type: type === 'reel' ? 'VIDEO' : 'IMAGE',
+        author_name,
+        caption: title || '',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     );

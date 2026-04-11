@@ -69,58 +69,18 @@ export function SocialGrowthFlow({
   const [pasteUrl, setPasteUrl] = useState("");
   const [resolvingUrl, setResolvingUrl] = useState(false);
 
-  const fetchPosts = async (selected: "traffic" | "video_views" | "engagement") => {
-    if (!instagramAccountName && !instagramAccountId) return;
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Use Firecrawl scraper instead of analyze-instagram-posts (no instagram_basic needed)
-      const { data, error: fetchError } = await supabase.functions.invoke('scrape-instagram-profile', {
-        body: {
-          username: instagramAccountName || instagramAccountId,
-        }
-      });
-
-      if (fetchError) throw fetchError;
-      if (data?.error && (!data?.posts || data.posts.length === 0)) {
-        throw new Error(data.error);
-      }
-
-      const scrapedPosts = (data?.posts || []).map((p: any) => ({
-        id: p.shortcode,
-        caption: '',
-        media_type: p.media_type === 'VIDEO' ? 'VIDEO' : 'IMAGE',
-        media_url: p.thumbnail_url || '',
-        thumbnail_url: p.thumbnail_url || '',
-        permalink: p.permalink,
-        timestamp: '',
-      }));
-      setPosts(scrapedPosts);
-      setStep("post_selection");
-    } catch (err: any) {
-      const message = formatInvokeError(err);
-      console.error("Error fetching Instagram posts:", err);
-      setError(message);
-      setStep("post_selection");
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleObjectiveSelect = async (selected: "traffic" | "video_views" | "engagement") => {
+  // Skip scraping — go straight to post selection with URL paste UX
+  const handleObjectiveSelect = (selected: "traffic" | "video_views" | "engagement") => {
     setObjective(selected);
-    await fetchPosts(selected);
+    setStep("post_selection");
   };
 
-  // Auto-fetch posts when fixedObjective is set
+  // Auto-advance when fixedObjective is set
   useEffect(() => {
-    if (fixedObjective && instagramAccountId && posts.length === 0 && !isLoading && !error) {
-      fetchPosts(fixedObjective);
+    if (fixedObjective && step !== "post_selection") {
+      setStep("post_selection");
     }
-  }, [fixedObjective, instagramAccountId]);
+  }, [fixedObjective]);
 
   const togglePostSelection = (postId: string) => {
     setSelectedPosts(prev =>
@@ -154,7 +114,7 @@ export function SocialGrowthFlow({
 
       const newPost: InstagramPost = {
         id: data.shortcode || url,
-        caption: "",
+        caption: data.caption || "",
         media_type: data.media_type === "VIDEO" ? "VIDEO" : "IMAGE",
         media_url: data.thumbnail_url || "",
         thumbnail_url: data.thumbnail_url || "",
@@ -282,36 +242,15 @@ export function SocialGrowthFlow({
         <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
           <img src={lumiLogo} alt="Lumi" className="h-10 w-10 rounded-full" />
           <div>
-            <h3 className="font-semibold">{headerText || "Pick the posts you want to promote ✨"}</h3>
+            <h3 className="font-semibold">{headerText || "Add the posts you want to promote ✨"}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {headerSubtext || "Select up to 6 posts to use in your campaign. Choose your best-performing or most representative content."}
+              {headerSubtext || "Paste Instagram post URLs below — we'll preview them and add them to your campaign. You can add up to 6."}
             </p>
           </div>
         </div>
 
-        {error ? (
-          <Card className="border-amber-500/30 bg-amber-500/5">
-            <CardContent className="p-6 space-y-4">
-              <div className="text-center space-y-3">
-                <AlertCircle className="h-8 w-8 text-amber-500 mx-auto" />
-                <p className="font-semibold text-lg">Let's add your posts manually</p>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  We couldn't load your posts automatically, but no worries — just paste the Instagram URL for each post you want to promote.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : posts.length === 0 ? (
-          <Card className="border-muted bg-muted/30">
-            <CardContent className="p-6 text-center space-y-2">
-              <Instagram className="h-8 w-8 text-muted-foreground mx-auto" />
-              <p className="font-medium">Paste your post URLs below</p>
-              <p className="text-sm text-muted-foreground">
-                Open Instagram, tap ··· on a post, copy the link, and paste it here.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
+        {/* Show selected posts as a grid */}
+        {posts.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
             {posts.map(post => (
               <PostCard
@@ -324,10 +263,10 @@ export function SocialGrowthFlow({
           </div>
         )}
 
-        {/* URL paste input — always available */}
+        {/* URL paste input — primary UX */}
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground font-medium">
-            {posts.length > 0 ? "Don't see your post? Paste the URL" : "Paste an Instagram post URL"}
+            {posts.length > 0 ? "Add another post" : "Paste an Instagram post URL"}
           </p>
           <div className="flex gap-2">
             <div className="relative flex-1">
