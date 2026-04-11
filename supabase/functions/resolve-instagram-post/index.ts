@@ -18,7 +18,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate it looks like an Instagram URL
     const igUrlPattern = /instagram\.com\/(p|reel|tv)\/([\w-]+)/i;
     const match = url.match(igUrlPattern);
     if (!match) {
@@ -28,43 +27,62 @@ Deno.serve(async (req) => {
       );
     }
 
-    const type = match[1]; // p, reel, or tv
+    const type = match[1];
     const shortcode = match[2];
     const permalink = `https://www.instagram.com/${type}/${shortcode}/`;
 
-    // Try to get a real thumbnail via Instagram oEmbed API (app-level token, no user perms needed)
     let thumbnail_url: string | null = null;
     let author_name: string | null = null;
     let title: string | null = null;
 
-    const appId = Deno.env.get('META_APP_ID');
-    const appSecret = Deno.env.get('META_APP_SECRET');
+    // Fetch the Instagram post page directly — IG serves og:image in SSR HTML
+    try {
+      const pageRes = await fetch(permalink, {
+        headers: {
+          'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+          'Accept': 'text/html',
+        },
+        redirect: 'follow',
+      });
 
-    if (appId && appSecret) {
-      try {
-        const oembedUrl = `https://graph.facebook.com/v21.0/instagram_oembed?url=${encodeURIComponent(permalink)}&access_token=${appId}|${appSecret}`;
-        const oembedRes = await fetch(oembedUrl);
-        const oembedData = await oembedRes.json();
+      if (pageRes.ok) {
+        const html = await pageRes.text();
 
-        if (oembedRes.ok && !oembedData.error) {
-          thumbnail_url = oembedData.thumbnail_url || null;
-          author_name = oembedData.author_name || null;
-          title = oembedData.title || null;
-          console.log('[resolve-instagram-post] oEmbed success:', { author_name, has_thumbnail: !!thumbnail_url });
-        } else {
-          console.warn('[resolve-instagram-post] oEmbed failed:', oembedData.error?.message || 'unknown');
+        // Extract og:image — Instagram always includes this in SSR
+        const ogImageMatch = html.match(/property="og:image"\s+content="([^"]+)"/i)
+          || html.match(/content="([^"]+)"\s+property="og:image"/i);
+        if (ogImageMatch) {
+          thumbnail_url = ogImageMatch[1].replace(/&amp;/g, '&');
+          console.log('[resolve-instagram-post] Got og:image thumbnail');
         }
-      } catch (oembedErr) {
-        console.warn('[resolve-instagram-post] oEmbed request error:', oembedErr);
+
+        // Extract og:description for caption preview
+        const ogDescMatch = html.match(/property="og:description"\s+content="([^"]+)"/i)
+          || html.match(/content="([^"]+)"\s+property="og:description"/i);
+        if (ogDescMatch) {
+          // Instagram og:description format: "N Likes, N Comments - @username on Instagram: "caption""
+          const descText = ogDescMatch[1].replace(/&amp;/g, '&').replace(/&#039;/g, "'").replace(/&quot;/g, '"');
+          title = descText;
+
+          // Try to extract username
+          const userMatch = descText.match(/@(\w+)\s+on\s+Instagram/i);
+          if (userMatch) {
+            author_name = userMatch[1];
+          }
+        }
+      } else {
+        console.warn('[resolve-instagram-post] Page fetch returned', pageRes.status);
       }
+    } catch (fetchErr) {
+      console.warn('[resolve-instagram-post] Page fetch error:', fetchErr);
     }
 
-    // Fallback thumbnail URL if oEmbed didn't work
+    // Fallback thumbnail
     if (!thumbnail_url) {
       thumbnail_url = `https://www.instagram.com/${type}/${shortcode}/media/?size=m`;
     }
 
-    console.log('[resolve-instagram-post] Resolved:', { type, shortcode, permalink, has_oembed_thumb: !!thumbnail_url });
+    console.log('[resolve-instagram-post] Resolved:', { type, shortcode, has_real_thumb: thumbnail_url.includes('cdninstagram') || thumbnail_url.includes('fbcdn') });
 
     return new Response(
       JSON.stringify({
