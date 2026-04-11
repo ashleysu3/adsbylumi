@@ -82,24 +82,39 @@ export function BrandProvider({ children }: { children: ReactNode }) {
     }
   }, [getEffectiveUserId, setBrandId]);
 
-  // Listen for auth state changes to re-fetch brands when user logs in
+  // Single initialization path: get session once, then listen for changes
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        setAuthReady(true);
-        fetchBrands();
-      } else if (event === 'SIGNED_OUT') {
-        setBrands([]);
-        setActiveBrandState(null);
+    let mounted = true;
+
+    // 1. Get current session and do initial fetch
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      if (session) {
+        fetchBrands().finally(() => {
+          if (mounted) setAuthReady(true);
+        });
+      } else {
         setLoading(false);
         setAuthReady(true);
       }
     });
 
-    // Also try initial fetch
-    fetchBrands().then(() => setAuthReady(true));
+    // 2. Listen for future auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (!mounted) return;
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        fetchBrands();
+      } else if (event === 'SIGNED_OUT') {
+        setBrands([]);
+        setActiveBrandState(null);
+        setLoading(false);
+      }
+    });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchBrands]);
 
   const setActiveBrand = useCallback((brand: Brand) => {
