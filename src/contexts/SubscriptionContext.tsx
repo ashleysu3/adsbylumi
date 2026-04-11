@@ -231,9 +231,16 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     // Refresh subscription status every minute
     const interval = setInterval(checkSubscription, 60000);
 
+    // Refresh when window regains focus (e.g. returning from Stripe checkout tab)
+    const handleFocus = () => {
+      checkSubscription();
+    };
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       subscription.unsubscribe();
       clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [checkSubscription]);
 
