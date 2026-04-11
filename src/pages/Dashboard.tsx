@@ -72,7 +72,6 @@ export default function Dashboard() {
   const hasCheckedBrand = useRef(false);
   const hasShownRecommendation = useRef(false);
 
-   const { refreshSubscription } = useSubscription();
 
    // Handle checkout success — immediately refresh subscription state
    useEffect(() => {
