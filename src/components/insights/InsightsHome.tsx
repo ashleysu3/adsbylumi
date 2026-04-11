@@ -120,6 +120,7 @@ interface InsightsHomeProps {
   brandId?: string;
   dateRangeStart?: string;
   dateRangeEnd?: string;
+  goalsVersion?: number;
 }
 
 function getPrimaryKPIValue(metrics: CampaignMetrics | null, primaryKey: string): number | null {
@@ -184,7 +185,8 @@ export function InsightsHome({
   accountMetricsLoading,
   brandId,
   dateRangeStart,
-  dateRangeEnd
+  dateRangeEnd,
+  goalsVersion
 }: InsightsHomeProps) {
   const navigate = useNavigate();
   const { isAgencyUser, activeBrand } = useBrand();
@@ -219,7 +221,7 @@ export function InsightsHome({
       }
     };
     if (campaigns.length > 0) fetchGoals();
-  }, [campaigns]);
+  }, [campaigns, goalsVersion]);
 
   const [linkOfferModal, setLinkOfferModal] = useState<{
     open: boolean;
