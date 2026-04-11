@@ -554,7 +554,22 @@ function MarketplaceEditForm({ data, onChange }: { data: ToolkitMarketplacePack;
         <Field label="Category"><Input value={data.category} onChange={e => onChange({ ...data, category: e.target.value })} /></Field>
         <Field label="Price"><Input value={data.price} onChange={e => onChange({ ...data, price: e.target.value, priceNum: parseFloat(e.target.value.replace(/[^0-9.]/g, "")) || 0 })} placeholder="$27" /></Field>
       </div>
-      <Field label="Formats (comma-separated)"><Input value={data.formats.join(", ")} onChange={e => onChange({ ...data, formats: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })} /></Field>
+      <Field label="Formats">
+        <div className="flex gap-4">
+          {["9:16", "1:1"].map(fmt => (
+            <label key={fmt} className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={data.formats.includes(fmt)}
+                onCheckedChange={(val) => {
+                  const next = val ? [...data.formats, fmt] : data.formats.filter(f => f !== fmt);
+                  if (next.length > 0) onChange({ ...data, formats: next });
+                }}
+              />
+              <span className="text-sm">{fmt}</span>
+            </label>
+          ))}
+        </div>
+      </Field>
       <Field label="Description"><Textarea value={data.description} onChange={e => onChange({ ...data, description: e.target.value })} rows={2} /></Field>
       <Field label="External URL"><Input value={data.externalUrl} onChange={e => onChange({ ...data, externalUrl: e.target.value })} /></Field>
       <div className="grid grid-cols-2 gap-3">
