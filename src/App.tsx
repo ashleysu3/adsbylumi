@@ -88,9 +88,9 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <ImpersonationProvider>
         <SubscriptionProvider>
           <LumiProvider>
-            <ImpersonationProvider>
               <BrandProvider>
               <SplashScreen isVisible={showSplash} />
               <Toaster />
@@ -166,11 +166,11 @@ const App = () => {
               </LumiAssistantProvider>
             </BrowserRouter>
           </BrandProvider>
-        </ImpersonationProvider>
-      </LumiProvider>
-    </SubscriptionProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+        </LumiProvider>
+      </SubscriptionProvider>
+      </ImpersonationProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 
