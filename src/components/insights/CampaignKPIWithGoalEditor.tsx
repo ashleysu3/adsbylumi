@@ -44,7 +44,7 @@ export function CampaignKPIWithGoalEditor({
     if (goals?.id) {
       await supabase.from('campaign_goals').update({ primary_kpi_threshold: goal }).eq('id', goals.id);
     } else {
-      await supabase.from('campaign_goals').insert(goalData);
+      await supabase.from('campaign_goals').upsert(goalData, { onConflict: 'workspace_id' });
     }
 
     const { data: refreshed } = await supabase
