@@ -114,7 +114,7 @@ export function SocialGrowthFlow({
 
       const newPost: InstagramPost = {
         id: data.shortcode || url,
-        caption: "",
+        caption: data.caption || "",
         media_type: data.media_type === "VIDEO" ? "VIDEO" : "IMAGE",
         media_url: data.thumbnail_url || "",
         thumbnail_url: data.thumbnail_url || "",
