@@ -249,23 +249,20 @@ export function SocialGrowthFlow({
             <CardContent className="p-6 space-y-4">
               <div className="text-center space-y-3">
                 <AlertCircle className="h-8 w-8 text-amber-500 mx-auto" />
-                <p className="font-semibold text-lg">We're on it! 🛠️</p>
+                <p className="font-semibold text-lg">Let's add your posts manually</p>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  This is a known issue — we're actively working with Meta to restore Instagram post access. We anticipate it being fixed within the next <strong>24–48 hours</strong>.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  You don't need to do anything on your end. We'll have this sorted soon!
+                  We couldn't load your posts automatically, but no worries — just paste the Instagram URL for each post you want to promote.
                 </p>
               </div>
             </CardContent>
           </Card>
         ) : posts.length === 0 ? (
-          <Card className="border-amber-500/30 bg-amber-500/5">
+          <Card className="border-muted bg-muted/30">
             <CardContent className="p-6 text-center space-y-2">
-              <AlertCircle className="h-8 w-8 text-amber-500 mx-auto" />
-              <p className="font-medium">No posts found</p>
+              <Instagram className="h-8 w-8 text-muted-foreground mx-auto" />
+              <p className="font-medium">Paste your post URLs below</p>
               <p className="text-sm text-muted-foreground">
-                We couldn't find any posts on your Instagram account. Post some content first, then come back to promote it!
+                Open Instagram, tap ··· on a post, copy the link, and paste it here.
               </p>
             </CardContent>
           </Card>
