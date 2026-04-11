@@ -118,7 +118,14 @@ const SHOT_LISTS: { title: string; shots: string[] }[] = [
   },
 ];
 
-export function BRollTab() {
+interface BRollTabProps {
+  brollSources?: { name: string; badge: string; badgeColor?: string; description: string; url: string; buttonLabel: string }[];
+  shotLists?: { title: string; shots: string[] }[];
+}
+
+export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
+  const stockSources = brollSources && brollSources.length > 0 ? brollSources : STOCK_SOURCES;
+  const shotListData = shotLists && shotLists.length > 0 ? shotLists : SHOT_LISTS;
   const { activeBrand } = useBrand();
   const navigate = useNavigate();
   const [ideas, setIdeas] = useState<BRollIdea[]>([]);
