@@ -203,7 +203,7 @@ function convertReportToBlocks(markdown: string, brandName?: string, dateRange?:
   blocks.push({ type: 'divider' });
   blocks.push({
     type: 'context',
-    elements: [{ type: 'mrkdwn', text: '💜 Sent by LUMI · <https://adsbylumi.com/data|View Full Dashboard>' }],
+    elements: [{ type: 'mrkdwn', text: '💜 Sent by LUMI · <https://adsbylumi.com/ad-performance|View Full Dashboard>' }],
   });
 
   // Slack has a 50-block limit
