@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Instagram, Play, Users, CheckCircle2, AlertCircle, ArrowRight, Image, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Instagram, Play, Users, CheckCircle2, AlertCircle, ArrowRight, Image, AlertTriangle, Link, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import lumiLogo from "@/assets/lumi-logo.png";
@@ -65,6 +66,8 @@ export function SocialGrowthFlow({
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pasteUrl, setPasteUrl] = useState("");
+  const [resolvingUrl, setResolvingUrl] = useState(false);
 
   const fetchPosts = async (selected: "traffic" | "video_views" | "engagement") => {
     if (!instagramAccountName && !instagramAccountId) return;
