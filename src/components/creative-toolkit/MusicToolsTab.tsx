@@ -74,8 +74,8 @@ const PRODUCTION_TOOLS = [
   },
 ];
 
-function ResourceCard({ item }: { item: typeof MUSIC_SOURCES[0] & { badge2?: string } }) {
-  const Icon = item.icon;
+function ResourceCard({ item }: { item: { icon?: any; name: string; badge: string; badgeColor?: string; description: string; url: string; buttonLabel: string; note?: string; badge2?: string } }) {
+  const Icon = item.icon || Music;
   return (
     <Card>
       <CardContent className="p-5 space-y-3">
@@ -109,9 +109,21 @@ function ResourceCard({ item }: { item: typeof MUSIC_SOURCES[0] & { badge2?: str
   );
 }
 
+interface ResourceItem {
+  name: string;
+  badge: string;
+  badgeColor?: string;
+  description: string;
+  url: string;
+  buttonLabel: string;
+  note?: string;
+  badge2?: string;
+  icon?: any;
+}
+
 interface MusicToolsTabProps {
-  musicSources?: typeof MUSIC_SOURCES;
-  productionTools?: typeof PRODUCTION_TOOLS;
+  musicSources?: ResourceItem[];
+  productionTools?: ResourceItem[];
 }
 
 export function MusicToolsTab({ musicSources, productionTools }: MusicToolsTabProps) {
