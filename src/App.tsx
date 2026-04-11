@@ -66,6 +66,7 @@ import AdsManager from "./pages/AdsManager";
 import AdsManagerClient from "./pages/AdsManagerClient";
 import SubmitReview from "./pages/SubmitReview";
 import AdminReviews from "./pages/admin/Reviews";
+import AdminMetaDebug from "./pages/admin/MetaDebug";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -158,6 +159,7 @@ const App = () => {
                   <Route path="/ads-manager/client/:id" element={<AdsManagerClient />} />
                   <Route path="/review" element={<SubmitReview />} />
                   <Route path="/admin/reviews" element={<AdminReviews />} />
+                  <Route path="/admin/meta-debug" element={<AdminMetaDebug />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

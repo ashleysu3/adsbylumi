@@ -828,6 +828,9 @@ export default function AdminUsers() {
                                 <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Impersonate" onClick={(e) => { e.stopPropagation(); startImpersonation({ id: user.id, email: user.email, fullName: user.full_name }); navigate("/dashboard"); toast.success(`Now viewing as ${user.email}`); }}>
                                   <Eye className="w-4 h-4" />
                                 </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Meta Debug" onClick={(e) => { e.stopPropagation(); navigate(`/admin/meta-debug?email=${encodeURIComponent(user.email)}`); }}>
+                                  <Activity className="w-4 h-4" />
+                                </Button>
                                 {!user.archived ? (
                                   <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Archive" onClick={(e) => { e.stopPropagation(); handleArchiveUser(user.id, user.email); }}>
                                     <Archive className="w-4 h-4" />
