@@ -19,27 +19,47 @@ export default function AdsManagerClient() {
   const [goals, setGoals] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchData = async () => {
     if (!brandId) return;
     setLoading(true);
-    Promise.all([
-      supabase.from('brands').select('*').eq('id', brandId).single(),
-      supabase.from('agency_clients').select('*').eq('brand_id', brandId).single(),
-      supabase.from('campaign_workspaces').select('id, name, progress_status, meta_campaign_status, offer_name').eq('brand_id', brandId).eq('archived', false),
-      supabase.from('campaign_goals').select('*').eq('brand_id', brandId),
-      supabase.from('review_logs').select('*').eq('brand_id', brandId).order('review_date', { ascending: false }).limit(10),
-    ]).then(([brandRes, clientRes, campRes, goalsRes, reviewsRes]) => {
+    setError(null);
+    try {
+      const [brandRes, clientRes, campRes, goalsRes, reviewsRes] = await Promise.all([
+        supabase.from('brands').select('*').eq('id', brandId).single(),
+        supabase.from('agency_clients').select('*').eq('brand_id', brandId).maybeSingle(),
+        supabase.from('campaign_workspaces').select('id, name, progress_status, meta_campaign_status, offer_name').eq('brand_id', brandId).eq('archived', false),
+        supabase.from('campaign_goals').select('*').eq('brand_id', brandId),
+        supabase.from('review_logs').select('*').eq('brand_id', brandId).order('review_date', { ascending: false }).limit(10),
+      ]);
+
+      if (brandRes.error) throw new Error(`Failed to load brand: ${brandRes.error.message}`);
+
       setBrand(brandRes.data);
-      setClient(clientRes.data);
+      setClient(clientRes.data ?? null);
       setCampaigns(campRes.data || []);
       setGoals(goalsRes.data || []);
       setReviews((reviewsRes.data as any[]) || []);
+    } catch (e: any) {
+      console.error("AdsManagerClient fetch error:", e);
+      setError(e.message || "Failed to load client data. Please try again.");
+    } finally {
       setLoading(false);
-    });
-  }, [brandId]);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, [brandId]);
 
   if (loading) return <DashboardLayout><div className="p-8 text-center text-muted-foreground">Loading...</div></DashboardLayout>;
+  if (error) return (
+    <DashboardLayout>
+      <div className="p-8 text-center space-y-3">
+        <p className="text-muted-foreground">{error}</p>
+        <Button variant="outline" onClick={fetchData}>Try again</Button>
+      </div>
+    </DashboardLayout>
+  );
   if (!brand) return <DashboardLayout><div className="p-8 text-center text-muted-foreground">Brand not found.</div></DashboardLayout>;
 
   return (
