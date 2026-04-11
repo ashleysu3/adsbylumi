@@ -67,32 +67,40 @@ export function SocialGrowthFlow({
   const [error, setError] = useState<string | null>(null);
 
   const fetchPosts = async (selected: "traffic" | "video_views" | "engagement") => {
-    if (!instagramAccountId) return;
+    if (!instagramAccountName && !instagramAccountId) return;
     
     setIsLoading(true);
     setError(null);
     
     try {
-      const { data, error: fetchError } = await supabase.functions.invoke('analyze-instagram-posts', {
+      // Use Firecrawl scraper instead of analyze-instagram-posts (no instagram_basic needed)
+      const { data, error: fetchError } = await supabase.functions.invoke('scrape-instagram-profile', {
         body: {
-          brandId,
-          instagramAccountId,
-          objective: selected,
-          simple: true,
+          username: instagramAccountName || instagramAccountId,
         }
       });
 
       if (fetchError) throw fetchError;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error && (!data?.posts || data.posts.length === 0)) {
+        throw new Error(data.error);
+      }
 
-      const fetchedPosts = data.posts || [];
-      setPosts(fetchedPosts);
+      const scrapedPosts = (data?.posts || []).map((p: any) => ({
+        id: p.shortcode,
+        caption: '',
+        media_type: p.media_type === 'VIDEO' ? 'VIDEO' : 'IMAGE',
+        media_url: p.thumbnail_url || '',
+        thumbnail_url: p.thumbnail_url || '',
+        permalink: p.permalink,
+        timestamp: '',
+      }));
+      setPosts(scrapedPosts);
       setStep("post_selection");
     } catch (err: any) {
       const message = formatInvokeError(err);
       console.error("Error fetching Instagram posts:", err);
       setError(message);
-      setStep("post_selection"); // Show error card so user sees reconnect option
+      setStep("post_selection");
       toast.error(message);
     } finally {
       setIsLoading(false);
