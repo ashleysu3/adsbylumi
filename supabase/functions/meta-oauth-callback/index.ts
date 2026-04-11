@@ -368,62 +368,10 @@ Deno.serve(async (req) => {
     }
     console.log('Final Instagram accounts count:', instagramAccounts.length);
 
-    // Check critical permissions via /me/permissions
+    // Permission checks for instagram_basic/pages_read_user_content removed —
+    // those permissions are no longer requested. Post selection uses URL paste + Firecrawl scraping.
     let permissionWarning: string | null = null;
-    try {
-      const permsUrl = `https://graph.facebook.com/v21.0/me/permissions?access_token=${finalToken}`;
-      const permsRes = await fetch(permsUrl);
-      const permsData = await permsRes.json();
-      if (permsRes.ok && permsData.data) {
-        const grantedPerms = new Set(
-          permsData.data
-            .filter((p: any) => p.status === 'granted')
-            .map((p: any) => p.permission)
-        );
-        const missing: string[] = [];
-        if (!grantedPerms.has('instagram_basic')) missing.push('instagram_basic');
-        if (!grantedPerms.has('pages_read_user_content')) missing.push('pages_read_user_content');
-        if (missing.length > 0) {
-          permissionWarning = `Meta did not grant Instagram post access for this connection (missing: ${missing.join(', ')}). There is no separate access toggle inside Lumi. If reconnecting still returns the same result, the Instagram permission likely still needs to be enabled on the Meta app and the Instagram account must be linked to the selected Facebook Page/ad account.`;
-          console.warn('Missing critical permissions:', missing);
-        } else {
-          console.log('All critical permissions granted');
-        }
-      }
-    } catch (permErr) {
-      console.warn('Permission check skipped (non-fatal):', permErr);
-    }
-
-    // Verify Instagram media access for each discovered IG account
-    const igPermissionWarnings: string[] = [];
-    const readableInstagramIds = new Set<string>();
-    for (const igAccount of instagramAccounts) {
-      try {
-        const testUrl = `https://graph.facebook.com/v21.0/${igAccount.id}/media?fields=id&limit=1&access_token=${finalToken}`;
-        const testRes = await fetch(testUrl);
-        const testData = await testRes.json();
-        if (!testRes.ok || testData.error) {
-          console.warn(`Instagram media access failed for ${igAccount.id}:`, testData.error?.message);
-          igPermissionWarnings.push(`Cannot read posts for @${igAccount.username || igAccount.id}: ${testData.error?.message || 'Permission denied'}`);
-        } else {
-          readableInstagramIds.add(igAccount.id);
-          console.log(`Instagram media access verified for ${igAccount.id}`);
-        }
-      } catch (testErr) {
-        console.warn(`Instagram media test error for ${igAccount.id}:`, testErr);
-      }
-    }
-
-    // Filter Instagram accounts to only those with verified media access
-    if (igPermissionWarnings.length > 0 && readableInstagramIds.size > 0) {
-      instagramAccounts = instagramAccounts.filter((ig: any) => readableInstagramIds.has(ig.id));
-      console.log('Filtered Instagram accounts to readable set:', instagramAccounts.length);
-    } else if (igPermissionWarnings.length > 0 && readableInstagramIds.size === 0) {
-      console.warn('No Instagram accounts have readable media access');
-      if (!permissionWarning) {
-        permissionWarning = 'We found Instagram accounts, but Meta is still blocking post access for all of them. There is no extra access picker inside Lumi. Confirm the Instagram profile is Business/Creator, linked to the selected Facebook Page and ad account, and if reconnecting still fails, check the Meta app configuration for Instagram access.';
-      }
-    }
+    console.log('Skipping instagram_basic permission checks (not requested)');
 
     // Store the access token securely in Supabase Vault
     const { data: vaultResult, error: vaultError } = await supabase
