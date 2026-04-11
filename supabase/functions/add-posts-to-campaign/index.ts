@@ -5,6 +5,46 @@ import { getCorsHeaders } from '../_shared/cors.ts';
  * Add existing Instagram/Facebook posts as new ads to an existing campaign's ad set.
  * This is used for social growth campaigns where users pick existing posts to promote.
  */
+
+function translateMetaCreativeError(error: any): string {
+  const msg = (error.message || '').toLowerCase();
+  const userMsg = (error.error_user_msg || '').toLowerCase();
+  const code = error.code;
+  const subcode = error.error_subcode;
+
+  // Copyrighted music
+  if (msg.includes('music') || msg.includes('copyright') || userMsg.includes('music') || subcode === 1487851) {
+    return 'This post has licensed music that Meta won\'t allow in ads. Try a different post without copyrighted audio.';
+  }
+
+  // Invalid/unsupported media type
+  if (msg.includes('invalid media') || msg.includes('media type') || subcode === 1487390) {
+    return 'This post type can\'t be promoted as an ad. Try a photo or Reel instead.';
+  }
+
+  // Post not found or deleted
+  if (code === 100 || msg.includes('does not exist') || msg.includes('not found')) {
+    return 'We couldn\'t find this post. It may have been deleted or is from a private account.';
+  }
+
+  // Permission denied
+  if (code === 10 || code === 200 || msg.includes('permission')) {
+    return 'Meta didn\'t allow access to this post. Make sure it\'s on a Business or Creator account connected to your Page.';
+  }
+
+  // Story or expired content
+  if (msg.includes('story') || msg.includes('expired')) {
+    return 'Stories and expired content can\'t be used as ads. Try a regular post or Reel.';
+  }
+
+  // Generic fallback with user-facing message if available
+  if (error.error_user_msg) {
+    return error.error_user_msg;
+  }
+
+  return 'Meta couldn\'t use this post as an ad. Try a different one.';
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -201,9 +241,8 @@ Deno.serve(async (req) => {
 
         if (creativeData.error) {
           console.error(`Creative creation failed for post ${postId}:`, creativeData.error);
-          const metaMessage = creativeData.error.error_user_msg || creativeData.error.message || 'Creative creation failed';
-          const subcode = creativeData.error.error_subcode ? ` (code ${creativeData.error.error_subcode})` : '';
-          failedAds.push({ postId, error: `${metaMessage}${subcode}` });
+          const friendlyError = translateMetaCreativeError(creativeData.error);
+          failedAds.push({ postId, error: friendlyError });
           continue;
         }
 
