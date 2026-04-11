@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { SparkleIcon } from "@/components/SparkleIcon";
+import { mapAuthError } from "@/lib/mapAuthError";
 import lumiLogo from "@/assets/lumi-logo.png";
 
 const REMEMBERED_EMAIL_KEY = "lumi_remembered_email";
