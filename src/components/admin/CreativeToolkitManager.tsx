@@ -249,12 +249,14 @@ export default function CreativeToolkitManager({
       </Tabs>
 
       {/* Save bar */}
-      <div className="flex justify-end pt-4 border-t">
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
-          <Save className="h-4 w-4" />
-          {saving ? "Saving..." : "Save Toolkit Settings"}
-        </Button>
-      </div>
+      {!hideSaveBar && (
+        <div className="flex justify-end pt-4 border-t">
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
+            <Save className="h-4 w-4" />
+            {saving ? "Saving..." : "Save Toolkit Settings"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
