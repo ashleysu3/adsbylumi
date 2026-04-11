@@ -1025,6 +1025,7 @@ export default function AdPerformance() {
             brandId={brandId || undefined}
             dateRangeStart={format(getDateRange(globalDateRange, customDateRange).from, 'yyyy-MM-dd')}
             dateRangeEnd={format(getDateRange(globalDateRange, customDateRange).to, 'yyyy-MM-dd')}
+            goalsVersion={goalsVersion}
           />
         ) : selectedCampaign ? (
           <CampaignInsightDetail
@@ -1586,6 +1587,7 @@ export default function AdPerformance() {
           campaigns={campaignsNeedingGoals}
           onGoalsSaved={() => {
             setCampaignsNeedingGoals([]);
+            setGoalsVersion(v => v + 1);
             fetchCampaigns();
           }}
         />
