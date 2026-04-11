@@ -324,6 +324,38 @@ export function SocialGrowthFlow({
           </div>
         )}
 
+        {/* URL paste input — always available */}
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground font-medium">
+            {posts.length > 0 ? "Don't see your post? Paste the URL" : "Paste an Instagram post URL"}
+          </p>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={pasteUrl}
+                onChange={(e) => setPasteUrl(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addPostFromUrl(); } }}
+                placeholder="https://www.instagram.com/p/..."
+                className="pl-9"
+                disabled={resolvingUrl}
+              />
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={addPostFromUrl}
+              disabled={resolvingUrl || !pasteUrl.trim()}
+            >
+              {resolvingUrl ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Instagram className="h-3 w-3" />
+            Open Instagram → tap ··· on a post → Copy Link → paste here
+          </p>
+        </div>
+
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
           <span className="text-sm text-muted-foreground">
             {selectedPosts.length}/6 posts selected
