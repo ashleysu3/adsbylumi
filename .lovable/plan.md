@@ -1,43 +1,67 @@
 
 
-# Fix Impersonation: Subscription, Trial Banner, and Meta Connection
+# Admin-Managed Creative Toolkit with Live/Coming Soon Toggle
 
-## Problems Found
+## Overview
+Add a new "Creative Toolkit" section to the Admin Settings page that lets you:
+1. Toggle the toolkit between **Live** and **Coming Soon** (the blurred overlay)
+2. Manage template packs, B-roll sources, music sources, production tools, and marketplace packs — all from the admin dashboard, stored in the database
 
-1. **Wrong trial/subscription banner**: `SubscriptionContext` always checks the logged-in admin's subscription (via JWT), not the impersonated user's. So when viewing as Erinn, you see YOUR subscription status — likely showing a trial banner that doesn't apply to her.
+## How it works
 
-2. **Meta connection shows "not connected"**: `MetaSettings.tsx` line 158 queries brands with `.eq('user_id', user.id)` — using the admin's real auth ID, not Erinn's. The brand belongs to Erinn, so the query returns nothing, making it look disconnected.
+### 1. Database: `site_settings` row for toolkit config
+Use the existing `site_settings` table (same pattern as the announcement banner). Store a key called `creative_toolkit_config` with a JSON value:
 
-3. **Dashboard shows green Meta badge but settings says disconnected**: The Dashboard uses `BrandContext` (which DOES respect impersonation via `getEffectiveUserId`), so the brand loads correctly there. But MetaSettings does its own query filtered by `auth.uid()`, which is the admin — mismatch.
+```json
+{
+  "live": false,
+  "templates": [ { "name": "...", "category": "...", "formats": [...], "description": "...", "canvaUrl": "..." } ],
+  "broll_sources": [ { "name": "...", "badge": "...", "description": "...", "url": "...", "buttonLabel": "..." } ],
+  "music_sources": [ ... ],
+  "production_tools": [ ... ],
+  "marketplace_packs": [ ... ],
+  "shot_lists": [ { "title": "...", "shots": ["..."] } ]
+}
+```
 
-## Changes
+### 2. Admin Settings page — new "Creative Toolkit" card
+**File:** `src/pages/admin/Settings.tsx`
 
-### 1. SubscriptionContext — respect impersonation
-**File:** `src/contexts/SubscriptionContext.tsx`
-- Import and use `useImpersonation` to get `getEffectiveUserId` and `isImpersonating`
-- When impersonating, query the `subscriptions` table directly for the impersonated user's ID instead of calling `check-subscription` (which only checks the JWT holder)
-- This ensures the trial banner, subscription status, and gate all reflect the impersonated user's actual state
+Add a second card below the Announcement Banner card with:
+- **Live toggle** (Switch) — controls `live` boolean
+- **Tabs** for each content section: Templates, B-Roll Sources, Music & Tools, Marketplace, Shot Lists
+- Each tab shows an editable list of items with Add/Edit/Delete buttons
+- Simple inline form for each item type (name, description, URL, category, formats, price, etc.)
+- Save button that upserts to `site_settings` with key `creative_toolkit_config`
 
-### 2. MetaSettings — use effective user ID for brand query
-**File:** `src/pages/MetaSettings.tsx`
-- Import `useImpersonation` and call `getEffectiveUserId()`
-- Change line 158 from `.eq('user_id', user.id)` to `.eq('user_id', effectiveUserId)`
-- This ensures the Meta connection status loads correctly when impersonating
+### 3. Creative Toolkit page reads from database
+**File:** `src/pages/CreativeToolkit.tsx`
 
-### 3. Dashboard subscription query — use effective user ID
-**File:** `src/pages/Dashboard.tsx`
-- Line 263-267 queries `subscriptions` table with `effectiveUserId` — verify this is already correct (it appears to be)
-- The trial banner at line 489 uses `isTrial` from SubscriptionContext — once #1 is fixed, this will be correct
+- On mount, fetch `site_settings` where `key = 'creative_toolkit_config'`
+- If `live` is `false`, show the Coming Soon overlay (current behavior)
+- If `live` is `true`, hide the overlay and render content from the database data
 
-## Technical Detail
-- `SubscriptionContext` currently sits outside the `ImpersonationProvider` or doesn't use it. We need to wire it in so it re-checks when impersonation starts/stops.
-- The `check-subscription` edge function validates against the JWT, so we can't use it for impersonated users. Instead, we query the `subscriptions` table directly client-side with the effective user ID when impersonating.
-- MetaSettings needs a one-line fix to swap `user.id` for the effective user ID.
+### 4. Update tab components to accept data as props
+**Files:** `src/components/creative-toolkit/TemplatesTab.tsx`, `BRollTab.tsx`, `MusicToolsTab.tsx`, `MarketplaceTab.tsx`
 
-## Files
+- Add optional props for the data arrays (templates, sources, tools, etc.)
+- If props are provided, use them; otherwise fall back to the hardcoded defaults (keeps backward compatibility during transition)
+
+### 5. Admin tab navigation
+**File:** `src/components/AdminTabs.tsx`
+
+No change needed — the Creative Toolkit config lives inside the existing Settings tab, not a new tab.
+
+## Files to modify
 
 | File | Change |
 |------|--------|
-| `src/contexts/SubscriptionContext.tsx` | Use impersonation context; query impersonated user's subscription directly |
-| `src/pages/MetaSettings.tsx` | Use `getEffectiveUserId()` instead of `user.id` for brand query |
+| `src/pages/admin/Settings.tsx` | Add Creative Toolkit management card with live toggle + content editors |
+| `src/pages/CreativeToolkit.tsx` | Fetch config from DB; conditionally show/hide Coming Soon overlay |
+| `src/components/creative-toolkit/TemplatesTab.tsx` | Accept optional `templates` prop |
+| `src/components/creative-toolkit/BRollTab.tsx` | Accept optional `brollSources`, `shotLists` props |
+| `src/components/creative-toolkit/MusicToolsTab.tsx` | Accept optional `musicSources`, `productionTools` props |
+| `src/components/creative-toolkit/MarketplaceTab.tsx` | Accept optional `packs` prop |
+
+No database migration needed — `site_settings` table already exists and accepts arbitrary JSON values.
 
