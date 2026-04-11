@@ -141,6 +141,7 @@ export default function AdPerformance() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [goalSetupModalOpen, setGoalSetupModalOpen] = useState(false);
   const [campaignsNeedingGoals, setCampaignsNeedingGoals] = useState<any[]>([]);
+  const [goalsVersion, setGoalsVersion] = useState(0);
 
   // Account metrics state
   const [accountMetrics, setAccountMetrics] = useState<AccountMetrics | null>(null);
