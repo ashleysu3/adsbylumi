@@ -242,36 +242,15 @@ export function SocialGrowthFlow({
         <div className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
           <img src={lumiLogo} alt="Lumi" className="h-10 w-10 rounded-full" />
           <div>
-            <h3 className="font-semibold">{headerText || "Pick the posts you want to promote ✨"}</h3>
+            <h3 className="font-semibold">{headerText || "Add the posts you want to promote ✨"}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              {headerSubtext || "Select up to 6 posts to use in your campaign. Choose your best-performing or most representative content."}
+              {headerSubtext || "Paste Instagram post URLs below — we'll preview them and add them to your campaign. You can add up to 6."}
             </p>
           </div>
         </div>
 
-        {error ? (
-          <Card className="border-amber-500/30 bg-amber-500/5">
-            <CardContent className="p-6 space-y-4">
-              <div className="text-center space-y-3">
-                <AlertCircle className="h-8 w-8 text-amber-500 mx-auto" />
-                <p className="font-semibold text-lg">Let's add your posts manually</p>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  We couldn't load your posts automatically, but no worries — just paste the Instagram URL for each post you want to promote.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : posts.length === 0 ? (
-          <Card className="border-muted bg-muted/30">
-            <CardContent className="p-6 text-center space-y-2">
-              <Instagram className="h-8 w-8 text-muted-foreground mx-auto" />
-              <p className="font-medium">Paste your post URLs below</p>
-              <p className="text-sm text-muted-foreground">
-                Open Instagram, tap ··· on a post, copy the link, and paste it here.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
+        {/* Show selected posts as a grid */}
+        {posts.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
             {posts.map(post => (
               <PostCard
@@ -284,10 +263,10 @@ export function SocialGrowthFlow({
           </div>
         )}
 
-        {/* URL paste input — always available */}
+        {/* URL paste input — primary UX */}
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground font-medium">
-            {posts.length > 0 ? "Don't see your post? Paste the URL" : "Paste an Instagram post URL"}
+            {posts.length > 0 ? "Add another post" : "Paste an Instagram post URL"}
           </p>
           <div className="flex gap-2">
             <div className="relative flex-1">
