@@ -13,13 +13,11 @@ interface TestResult {
     adAccountId?: string;
     instagramAccountId?: string;
     instagramAccountName?: string;
-    instagramMediaError?: string;
     pageName?: string;
     tokenValid?: boolean;
     permissionsValid?: boolean;
     permissions?: string[];
     missingPermissions?: string[];
-    hasInstagramMediaAccess?: boolean;
   };
   error?: string;
 }
@@ -130,9 +128,8 @@ Deno.serve(async (req) => {
       ?.filter((p: any) => p.status === 'granted')
       ?.map((p: any) => p.permission) || [];
 
-    const requiredPermissions = ['ads_management', 'ads_read', 'business_management', 'pages_read_user_content', 'instagram_basic'];
+    const requiredPermissions = ['ads_management', 'ads_read', 'business_management'];
     const missingPermissions = requiredPermissions.filter(p => !grantedPermissions.includes(p));
-    const hasGrantedInstagramScopes = grantedPermissions.includes('pages_read_user_content') && grantedPermissions.includes('instagram_basic');
 
     // Test 3: Validate ad account access
     console.log('Testing ad account access...');
@@ -165,28 +162,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Test 4: Validate actual Instagram media access on the selected Instagram account.
-    // This is more reliable than /me/permissions alone for determining whether Lumi can load posts.
-    let hasInstagramMediaAccess: boolean | undefined = hasGrantedInstagramScopes ? undefined : false;
-    let instagramMediaError: string | undefined;
-
-    if (brand.instagram_account_id) {
-      console.log('Testing Instagram media access...');
-      const mediaResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${brand.instagram_account_id}/media?fields=id&limit=1&access_token=${token}`
-      );
-      const mediaData = await mediaResponse.json();
-
-      if (!mediaResponse.ok || mediaData.error) {
-        hasInstagramMediaAccess = false;
-        instagramMediaError = mediaData?.error?.message || 'Instagram media access denied';
-        console.warn('Instagram media access failed:', mediaData?.error || mediaData);
-      } else {
-        hasInstagramMediaAccess = true;
-      }
-    }
-
-    const permissionsValid = missingPermissions.length === 0 && hasInstagramMediaAccess !== false;
+    const permissionsValid = missingPermissions.length === 0;
 
     // All tests passed
     console.log('All connection tests passed');
@@ -202,17 +178,11 @@ Deno.serve(async (req) => {
         adAccountName: accountData.name,
         instagramAccountId: brand.instagram_account_id || undefined,
         instagramAccountName: brand.instagram_account_name || undefined,
-        instagramMediaError,
         pageName: brand.page_name || undefined,
-        hasInstagramMediaAccess,
       }
     };
 
-    if (hasInstagramMediaAccess === false) {
-      result.message = missingPermissions.length > 0
-        ? `Ad account access works, but Instagram post access is still blocked by Meta (${missingPermissions.join(', ')}).`
-        : 'Ad account access works, but Instagram post access is still blocked by Meta.';
-    } else if (missingPermissions.length > 0) {
+    if (missingPermissions.length > 0) {
       result.message = `Connection works but some permissions are missing: ${missingPermissions.join(', ')}. Please disconnect and reconnect your Meta account to grant updated permissions.`;
     }
 
