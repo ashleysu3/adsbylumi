@@ -35,69 +35,46 @@ Deno.serve(async (req) => {
     let author_name: string | null = null;
     let title: string | null = null;
 
-    // Use Firecrawl to scrape the post page and extract og:image + meta tags
-    const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
-    if (firecrawlApiKey) {
-      try {
-        const scrapeRes = await fetch('https://api.firecrawl.dev/v1/scrape', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${firecrawlApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            url: permalink,
-            formats: ['html'],
-            onlyMainContent: false,
-            waitFor: 2000,
-          }),
-        });
+    // Fetch the Instagram post page directly — IG serves og:image in SSR HTML
+    try {
+      const pageRes = await fetch(permalink, {
+        headers: {
+          'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+          'Accept': 'text/html',
+        },
+        redirect: 'follow',
+      });
 
-        const scrapeData = await scrapeRes.json();
+      if (pageRes.ok) {
+        const html = await pageRes.text();
 
-        if (scrapeRes.ok && scrapeData.success) {
-          const html = scrapeData.data?.html || scrapeData.html || '';
-          
-          // Extract og:image
-          const ogImageMatch = html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i)
-            || html.match(/content="([^"]+)"\s+(?:property|name)="og:image"/i);
-          if (ogImageMatch) {
-            thumbnail_url = ogImageMatch[1];
-          }
-
-          // Extract og:title for caption
-          const ogTitleMatch = html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i)
-            || html.match(/content="([^"]+)"\s+(?:property|name)="og:title"/i);
-          if (ogTitleMatch) {
-            title = ogTitleMatch[1];
-          }
-
-          // Extract og:description as fallback caption
-          if (!title) {
-            const ogDescMatch = html.match(/<meta\s+(?:property|name)="og:description"\s+content="([^"]+)"/i)
-              || html.match(/content="([^"]+)"\s+(?:property|name)="og:description"/i);
-            if (ogDescMatch) {
-              title = ogDescMatch[1];
-            }
-          }
-
-          // Extract author from page title or meta
-          const authorMatch = html.match(/<meta\s+(?:property|name)="og:title"\s+content="[^"]*@(\w+)[^"]*"/i);
-          if (authorMatch) {
-            author_name = authorMatch[1];
-          }
-
-          console.log('[resolve-instagram-post] Firecrawl scraped:', {
-            has_thumbnail: !!thumbnail_url,
-            has_title: !!title,
-            author_name,
-          });
-        } else {
-          console.warn('[resolve-instagram-post] Firecrawl failed:', scrapeData.error || 'unknown');
+        // Extract og:image — Instagram always includes this in SSR
+        const ogImageMatch = html.match(/property="og:image"\s+content="([^"]+)"/i)
+          || html.match(/content="([^"]+)"\s+property="og:image"/i);
+        if (ogImageMatch) {
+          thumbnail_url = ogImageMatch[1].replace(/&amp;/g, '&');
+          console.log('[resolve-instagram-post] Got og:image thumbnail');
         }
-      } catch (e) {
-        console.warn('[resolve-instagram-post] Firecrawl error:', e);
+
+        // Extract og:description for caption preview
+        const ogDescMatch = html.match(/property="og:description"\s+content="([^"]+)"/i)
+          || html.match(/content="([^"]+)"\s+property="og:description"/i);
+        if (ogDescMatch) {
+          // Instagram og:description format: "N Likes, N Comments - @username on Instagram: "caption""
+          const descText = ogDescMatch[1].replace(/&amp;/g, '&').replace(/&#039;/g, "'").replace(/&quot;/g, '"');
+          title = descText;
+
+          // Try to extract username
+          const userMatch = descText.match(/@(\w+)\s+on\s+Instagram/i);
+          if (userMatch) {
+            author_name = userMatch[1];
+          }
+        }
+      } else {
+        console.warn('[resolve-instagram-post] Page fetch returned', pageRes.status);
       }
+    } catch (fetchErr) {
+      console.warn('[resolve-instagram-post] Page fetch error:', fetchErr);
     }
 
     // Fallback thumbnail
@@ -105,7 +82,7 @@ Deno.serve(async (req) => {
       thumbnail_url = `https://www.instagram.com/${type}/${shortcode}/media/?size=m`;
     }
 
-    console.log('[resolve-instagram-post] Resolved:', { type, shortcode, has_thumb: !!thumbnail_url });
+    console.log('[resolve-instagram-post] Resolved:', { type, shortcode, has_real_thumb: thumbnail_url.includes('cdninstagram') || thumbnail_url.includes('fbcdn') });
 
     return new Response(
       JSON.stringify({
