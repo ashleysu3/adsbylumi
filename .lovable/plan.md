@@ -1,43 +1,29 @@
 
 
-# Re-enable Instagram Post Grid via API + Keep URL Paste as Fallback
+# Fix: Silent Permission Upgrade on Reconnect + Clear Messaging
 
-## What's happening now
-The `analyze-instagram-posts` edge function already has working code to fetch posts via `/{ig-user-id}/media` using `instagram_basic`. But the UI was changed to skip calling it and only show a URL paste input. Since you have Basic Access to `instagram_basic`, we just need to add it back to the OAuth scope and re-wire the UI to call the existing function.
+## The Problem
+`instagram_basic` is now in the OAuth scope, so new connections automatically include it. But existing users connected *before* this change — their tokens don't have `instagram_basic`. When the post picker fails to load posts, the fallback messaging is confusing because it implies users need to do something special when reconnecting, but Meta's OAuth is all-or-nothing (no permission toggles).
 
-## Changes
+## Solution
+Two changes:
 
-### 1. Add `instagram_basic` back to OAuth scope
-**File:** `supabase/functions/meta-oauth-init/index.ts`
-- Add `instagram_basic` to the scope string (line 95)
-- New scope: `ads_management,ads_read,business_management,pages_read_engagement,pages_show_list,instagram_basic`
+### 1. Auto-detect missing permission and show a single clear banner
+When the post picker gets a fallback/error from `analyze-instagram-posts`, instead of a generic fallback, show a specific one-time banner:
 
-### 2. Re-wire SocialGrowthFlow to auto-load posts
-**File:** `src/components/SocialGrowthFlow.tsx`
-- When entering the `post_selection` step, call `analyze-instagram-posts` with `simple: true` to fetch the visual grid
-- Display the grid of posts above the URL paste input
-- If the API returns `fallbackMode: 'url_paste'` or errors, gracefully show only the URL paste input (no error wall)
-- Keep URL paste as a secondary "Don't see your post?" option below the grid
+> **"We've added new features! Reconnect your Meta account to enable post browsing."**
+> [Reconnect Now] button that takes them to Meta Settings
 
-### 3. Re-wire ExistingPostPicker to auto-load posts
-**File:** `src/components/ExistingPostPicker.tsx`
-- On mount, call `analyze-instagram-posts` with `simple: true` using the brand's `instagramAccountId`
-- Display returned posts as a tappable grid (already has the grid UI code from the scraper version)
-- Keep URL paste below as fallback
+No mention of "permissions" or "instagram_basic" — just a simple upgrade prompt. Once they reconnect (which automatically includes the new scope), posts load normally.
 
-### 4. Users must re-authorize
-Since `instagram_basic` wasn't in the OAuth scope before, existing users will need to reconnect their Meta account to grant the new permission. The `auth_type: 'rerequest'` flag is already set, so this will happen automatically on next reconnect.
-
-## Technical notes
-- `analyze-instagram-posts` with `simple: true` returns raw posts without AI analysis — fast and lightweight
-- The function already handles Code 10 errors gracefully, returning `fallbackMode: 'url_paste'`
-- No new edge functions needed — everything already exists
-- The scrape-instagram-profile function stays as-is (unused but harmless)
+### 2. Clean up confusing permission-related messaging
+Update the troubleshooting text in `MetaSettings.tsx` and `MetaAccountConnect.tsx` to remove references to "Instagram scopes" and "permission toggles" that users can't control. Replace with actionable language like "Try disconnecting and reconnecting."
 
 ## Files
-| File | Action |
+
+| File | Change |
 |------|--------|
-| `supabase/functions/meta-oauth-init/index.ts` | Edit — add `instagram_basic` to scope |
-| `src/components/SocialGrowthFlow.tsx` | Edit — call `analyze-instagram-posts` on post_selection step |
-| `src/components/ExistingPostPicker.tsx` | Edit — auto-load posts on mount via API |
+| `src/components/ExistingPostPicker.tsx` | Replace generic fallback with clear "reconnect to unlock" banner with a direct link to Meta Settings |
+| `src/pages/MetaSettings.tsx` | Simplify troubleshooting tips — remove "Instagram scopes" language, keep it action-oriented |
+| `src/components/MetaAccountConnect.tsx` | Remove confusing permission-specific messaging |
 
