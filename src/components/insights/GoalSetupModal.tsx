@@ -133,8 +133,14 @@ export function GoalSetupModal({ open, onOpenChange, campaigns, onGoalsSaved }: 
         frequency_threshold: 4,
       };
 
-      const { error } = await supabase.from('campaign_goals').insert(goalData);
-      if (error) throw error;
+      // Use upsert to handle cases where a goal already exists for this workspace
+      const { error } = await supabase
+        .from('campaign_goals')
+        .upsert(goalData, { onConflict: 'workspace_id' });
+      if (error) {
+        console.error('Goal save error details:', JSON.stringify(error));
+        throw error;
+      }
 
       setCompletedIds(prev => new Set([...prev, currentCampaign.id]));
 
