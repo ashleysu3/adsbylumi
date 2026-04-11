@@ -130,6 +130,48 @@ export function SocialGrowthFlow({
     );
   };
 
+  const addPostFromUrl = async () => {
+    const url = pasteUrl.trim();
+    if (!url) return;
+
+    if (!/instagram\.com\/(p|reel|tv)\/[\w-]/i.test(url)) {
+      toast.error("Please paste a valid Instagram post or reel URL");
+      return;
+    }
+
+    if (posts.some((p) => p.permalink.replace(/\/$/, "") === url.split("?")[0].replace(/\/$/, ""))) {
+      toast.error("This post is already added");
+      return;
+    }
+
+    setResolvingUrl(true);
+    try {
+      const { data, error: resolveError } = await supabase.functions.invoke("resolve-instagram-post", {
+        body: { url },
+      });
+      if (resolveError) throw resolveError;
+      if (data?.error) { toast.error(data.error); return; }
+
+      const newPost: InstagramPost = {
+        id: data.shortcode || url,
+        caption: "",
+        media_type: data.media_type === "VIDEO" ? "VIDEO" : "IMAGE",
+        media_url: data.thumbnail_url || "",
+        thumbnail_url: data.thumbnail_url || "",
+        permalink: data.permalink || url,
+        timestamp: "",
+      };
+
+      setPosts(prev => [...prev, newPost]);
+      setSelectedPosts(prev => [...prev, newPost.id].slice(0, 6));
+      setPasteUrl("");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not resolve this post");
+    } finally {
+      setResolvingUrl(false);
+    }
+  };
+
   const handleComplete = () => {
     if (!objective) return;
     const selectedPostsData = posts.filter(p => selectedPosts.includes(p.id));
