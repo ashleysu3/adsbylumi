@@ -47,7 +47,7 @@ export default function Dashboard() {
   const { setRecommendation } = useLumiRecommend();
   const { getEffectiveUserId, isImpersonating } = useImpersonation();
   const { activeBrand: contextBrand, loading: brandContextLoading } = useBrand();
-  const { isTrial, subscriptionEnd } = useSubscription();
+  const { isTrial, subscriptionEnd, refreshSubscription } = useSubscription();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [brand, setBrand] = useState<any>(null);
@@ -72,17 +72,19 @@ export default function Dashboard() {
   const hasCheckedBrand = useRef(false);
   const hasShownRecommendation = useRef(false);
 
-  // Handle checkout success
-  useEffect(() => {
-    const checkoutStatus = searchParams.get("checkout");
-    if (checkoutStatus === "success" && !hasHandledCheckout.current) {
-      hasHandledCheckout.current = true;
-      toast.success("Welcome to Lumi! Your subscription is now active.", {
-        duration: 5000,
-      });
-      setSearchParams({});
-    }
-  }, [searchParams, setSearchParams]);
+
+   // Handle checkout success — immediately refresh subscription state
+   useEffect(() => {
+     const checkoutStatus = searchParams.get("checkout");
+     if (checkoutStatus === "success" && !hasHandledCheckout.current) {
+       hasHandledCheckout.current = true;
+       refreshSubscription();
+       toast.success("Welcome to Lumi! Your subscription is now active.", {
+         duration: 5000,
+       });
+       setSearchParams({});
+     }
+   }, [searchParams, setSearchParams, refreshSubscription]);
 
   // Checklist is no longer dismissible — it hides itself when all steps are complete
 
