@@ -109,28 +109,14 @@ export function CancelSubscriptionModal({
           console.error("handle-cancellation error:", e);
         }
       } else {
-        // Stripe-based: cancel via stripe-admin
-        const { data, error } = await supabase.functions.invoke("customer-portal");
-        // Instead of opening portal, cancel directly via stripe-admin with the user's email
-        const { data: cancelData, error: cancelError } = await supabase.functions.invoke("stripe-admin", {
-          headers: {
-            "x-admin-secret": "self-serve-cancel",
-          },
-          body: {
-            action: "cancel_subscription",
-            email: profile?.email || user.email,
-            params: { at_period_end: true },
-          },
+        // Stripe-based: cancel via dedicated cancel-subscription function
+        const { data: cancelData, error: cancelError } = await supabase.functions.invoke("cancel-subscription", {
+          body: { at_period_end: true },
         });
 
-        // If stripe-admin fails due to auth (expected — it requires admin secret), fall back to customer-portal
-        if (cancelError || cancelData?.error) {
-          // Open customer portal for cancellation as fallback
-          const { data: portalData } = await supabase.functions.invoke("customer-portal");
-          if (portalData?.url) {
-            window.open(portalData.url, "_blank");
-            toast.info("Please complete your cancellation in the billing portal.");
-          }
+        if (cancelError || !cancelData?.success) {
+          const errMsg = cancelData?.error || cancelError?.message || "Failed to cancel subscription";
+          throw new Error(errMsg);
         }
 
         // Also pause ads + send email
