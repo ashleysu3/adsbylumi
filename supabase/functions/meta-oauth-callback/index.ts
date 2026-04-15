@@ -438,7 +438,7 @@ Deno.serve(async (req) => {
         accounts: activeAccounts,
         pages: pages,
         instagramAccounts: instagramAccounts,
-        ...(igPermissionWarnings.length > 0 ? { igPermissionWarnings } : {}),
+        
         ...(permissionWarning ? { permissionWarning } : {})
       }),
       { 
