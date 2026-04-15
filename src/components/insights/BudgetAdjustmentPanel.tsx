@@ -303,7 +303,7 @@ export function BudgetAdjustmentPanel({
         </div>
 
         <p className="text-xs text-center text-muted-foreground">
-          Changes apply to your Meta campaign
+          Budget will be updated directly on your Meta campaign
         </p>
       </CardContent>
     </Card>
