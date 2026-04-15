@@ -131,25 +131,37 @@ export function BudgetAdjustmentPanel({
   const handleSaveBudget = async () => {
     setUpdating(true);
     try {
-      // Update workspace with new budget
-      const { error } = await supabase
+      // Call edge function to update budget on Meta
+      const { data, error } = await supabase.functions.invoke("update-meta-budget", {
+        body: { workspaceId, newBudget },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to update budget on Meta");
+
+      // Also update local workspace record
+      const { data: existing } = await supabase
+        .from("campaign_workspaces")
+        .select("campaign_builder_answers")
+        .eq("id", workspaceId)
+        .single();
+
+      const existingAnswers = (existing?.campaign_builder_answers as Record<string, any>) || {};
+
+      await supabase
         .from("campaign_workspaces")
         .update({
-          campaign_builder_answers: {
-            budget: newBudget,
-          },
+          campaign_builder_answers: { ...existingAnswers, budget: newBudget },
           updated_at: new Date().toISOString(),
         })
         .eq("id", workspaceId);
 
-      if (error) throw error;
-
-      toast.success(`Budget updated to $${newBudget}/day`);
+      toast.success(data.message || `Budget updated to $${newBudget}/day on Meta`);
       onBudgetUpdate?.(newBudget);
       setShowPanel(false);
     } catch (error: any) {
       console.error("Error updating budget:", error);
-      toast.error("Failed to update budget");
+      toast.error(error.message || "Failed to update budget on Meta. Try changing it directly in Meta Ads Manager.");
     } finally {
       setUpdating(false);
     }
@@ -291,7 +303,7 @@ export function BudgetAdjustmentPanel({
         </div>
 
         <p className="text-xs text-center text-muted-foreground">
-          Changes apply to your Meta campaign
+          Budget will be updated directly on your Meta campaign
         </p>
       </CardContent>
     </Card>
