@@ -116,6 +116,11 @@ export default function Onboarding() {
           body: { websiteUrl: normalizedUrl },
         });
         if (error) throw error;
+        if (data?.error) {
+          // Soft fail in auto-extract: don't toast, just let the user fill in manually
+          console.warn("Auto-extract returned error:", data.error);
+          return;
+        }
         setValueProposition(data.value_proposition || "");
         setTargetAudience(data.target_audience || "");
         setIndustry(data.industry || "");
@@ -156,11 +161,16 @@ export default function Onboarding() {
           body: { websiteUrl: normalizedWebsiteUrl },
         });
         if (error) throw error;
-        setValueProposition(data.value_proposition);
-        setTargetAudience(data.target_audience);
-        setIndustry(data.industry);
-        setHasExtracted(true);
-        toast.success("Brand info extracted successfully");
+        if (data?.error) {
+          toast.error(data.error);
+          setHasExtracted(true);
+        } else {
+          setValueProposition(data.value_proposition);
+          setTargetAudience(data.target_audience);
+          setIndustry(data.industry);
+          setHasExtracted(true);
+          toast.success("Brand info extracted successfully");
+        }
       } catch (error: any) {
         console.error("Error extracting brand info:", error);
         toast.error(`Could not auto-extract info: ${formatInvokeError(error)}. Please fill in manually on the next step.`);
