@@ -67,9 +67,31 @@ Deno.serve(async (req) => {
       );
     }
 
-    const websiteUrl = /^https?:\/\//i.test(websiteUrlInput)
-      ? websiteUrlInput
-      : `https://${websiteUrlInput}`;
+    // Normalize URL: collapse stray slashes after scheme, add https:// if missing
+    const cleaned = websiteUrlInput.replace(/[\u200B-\u200D\uFEFF\s]/g, '');
+    let websiteUrl: string;
+    const schemeMatch = cleaned.match(/^(https?:)\/*(.*)$/i);
+    if (schemeMatch) {
+      websiteUrl = `${schemeMatch[1].toLowerCase()}//${schemeMatch[2].replace(/^\/+/, '')}`;
+    } else {
+      websiteUrl = `https://${cleaned.replace(/^\/+/, '')}`;
+    }
+
+    // Validate hostname is present
+    try {
+      const parsed = new URL(websiteUrl);
+      if (!parsed.hostname || !parsed.hostname.includes('.')) {
+        return new Response(
+          JSON.stringify({ error: 'Please enter a valid website URL (e.g. yourbrand.com)' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid URL format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (websiteUrl.length > 500) {
       console.log('extract-brand-info: url too long');
@@ -101,6 +123,8 @@ Deno.serve(async (req) => {
     let websiteContent = '';
     let pageTitle = '';
     let metaDescription = '';
+    let fetchFailed = false;
+    let fetchErrorMessage = '';
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
@@ -113,82 +137,99 @@ Deno.serve(async (req) => {
           'Accept': 'text/html,application/xhtml+xml',
         }
       });
-      
+
       clearTimeout(timeout);
 
-      // Check content length before reading
-      const contentLength = websiteResponse.headers.get('content-length');
-      if (contentLength && parseInt(contentLength) > 3000000) {
-        console.log('Content too large, skipping fetch');
-        websiteContent = 'Unable to fetch website content - page too large';
+      if (!websiteResponse.ok) {
+        fetchFailed = true;
+        fetchErrorMessage = `Website returned ${websiteResponse.status}. Please double-check the URL.`;
       } else {
-        const html = await websiteResponse.text();
-        
-        // Extract page title
-        const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-        pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
-        
-        // Extract meta description
-        const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
-                              html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
-        metaDescription = metaDescMatch ? metaDescMatch[1].trim() : '';
-        
-        // Extract og:description as fallback
-        if (!metaDescription) {
-          const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
-          metaDescription = ogDescMatch ? ogDescMatch[1].trim() : '';
-        }
-        
-        // Extract headings (h1, h2, h3) for key messaging
-        const headings: string[] = [];
-        const headingMatches = html.matchAll(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi);
-        for (const match of headingMatches) {
-          const headingText = match[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-          if (headingText && headingText.length > 3 && headingText.length < 200) {
-            headings.push(headingText);
+        // Check content length before reading
+        const contentLength = websiteResponse.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) > 3000000) {
+          console.log('Content too large, skipping fetch');
+          websiteContent = 'Unable to fetch website content - page too large';
+        } else {
+          const html = await websiteResponse.text();
+
+          // Extract page title
+          const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+          pageTitle = titleMatch ? titleMatch[1].replace(/\s+/g, ' ').trim() : '';
+
+          // Extract meta description
+          const metaDescMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i) ||
+                                html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i);
+          metaDescription = metaDescMatch ? metaDescMatch[1].trim() : '';
+
+          // Extract og:description as fallback
+          if (!metaDescription) {
+            const ogDescMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i);
+            metaDescription = ogDescMatch ? ogDescMatch[1].trim() : '';
           }
-          if (headings.length >= 15) break;
+
+          // Extract headings (h1, h2, h3) for key messaging
+          const headings: string[] = [];
+          const headingMatches = html.matchAll(/<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/gi);
+          for (const match of headingMatches) {
+            const headingText = match[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+            if (headingText && headingText.length > 3 && headingText.length < 200) {
+              headings.push(headingText);
+            }
+            if (headings.length >= 15) break;
+          }
+
+          // Extract main content areas (article, main, sections)
+          let mainContent = '';
+          const mainMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i) ||
+                            html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
+          if (mainMatch) {
+            mainContent = mainMatch[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+          }
+
+          // Extract body content as fallback, removing scripts/styles
+          let bodyContent = html
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+            .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+            .replace(/<header[\s\S]*?<\/header>/gi, '')
+            .replace(/<!--[\s\S]*?-->/g, '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          // Build structured content for AI
+          const contentParts: string[] = [];
+
+          if (pageTitle) contentParts.push(`PAGE TITLE: ${pageTitle}`);
+          if (metaDescription) contentParts.push(`META DESCRIPTION: ${metaDescription}`);
+          if (headings.length > 0) contentParts.push(`KEY HEADINGS:\n${headings.map(h => `- ${h}`).join('\n')}`);
+          if (mainContent) contentParts.push(`MAIN CONTENT:\n${mainContent.substring(0, 3000)}`);
+          if (!mainContent && bodyContent) contentParts.push(`PAGE CONTENT:\n${bodyContent.substring(0, 3000)}`);
+
+          websiteContent = contentParts.join('\n\n');
+          console.log('Extracted content length:', websiteContent.length);
         }
-        
-        // Extract main content areas (article, main, sections)
-        let mainContent = '';
-        const mainMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i) ||
-                          html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-        if (mainMatch) {
-          mainContent = mainMatch[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-        }
-        
-        // Extract body content as fallback, removing scripts/styles
-        let bodyContent = html
-          .replace(/<script[\s\S]*?<\/script>/gi, '')
-          .replace(/<style[\s\S]*?<\/style>/gi, '')
-          .replace(/<nav[\s\S]*?<\/nav>/gi, '')
-          .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-          .replace(/<header[\s\S]*?<\/header>/gi, '')
-          .replace(/<!--[\s\S]*?-->/g, '')
-          .replace(/<[^>]*>/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        
-        // Build structured content for AI
-        const contentParts: string[] = [];
-        
-        if (pageTitle) contentParts.push(`PAGE TITLE: ${pageTitle}`);
-        if (metaDescription) contentParts.push(`META DESCRIPTION: ${metaDescription}`);
-        if (headings.length > 0) contentParts.push(`KEY HEADINGS:\n${headings.map(h => `- ${h}`).join('\n')}`);
-        if (mainContent) contentParts.push(`MAIN CONTENT:\n${mainContent.substring(0, 3000)}`);
-        if (!mainContent && bodyContent) contentParts.push(`PAGE CONTENT:\n${bodyContent.substring(0, 3000)}`);
-        
-        websiteContent = contentParts.join('\n\n');
-        console.log('Extracted content length:', websiteContent.length);
       }
     } catch (error: any) {
       console.error('Error fetching website:', error.message);
+      fetchFailed = true;
       if (error.name === 'AbortError') {
-        websiteContent = 'Unable to fetch website content - request timeout';
+        fetchErrorMessage = "We couldn't reach your website (timed out). Please double-check the URL.";
+      } else if (error.message?.includes('dns error') || error.message?.includes('Name or service not known')) {
+        fetchErrorMessage = "We couldn't find that website. Please double-check the URL.";
       } else {
-        websiteContent = 'Unable to fetch website content';
+        fetchErrorMessage = "We couldn't reach your website. Please double-check the URL or try again.";
       }
+    }
+
+    // If the fetch outright failed, surface a real error so the user knows
+    // — instead of letting the AI invent generic content.
+    if (fetchFailed || !websiteContent || websiteContent.length < 50) {
+      return new Response(
+        JSON.stringify({ error: fetchErrorMessage || "We couldn't read enough content from that page to analyze your brand." }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const systemPrompt = `You are a brand strategist analyzing websites to extract key business information.
