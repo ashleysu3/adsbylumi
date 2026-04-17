@@ -67,6 +67,7 @@ import AdsManagerClient from "./pages/AdsManagerClient";
 import SubmitReview from "./pages/SubmitReview";
 import AdminReviews from "./pages/admin/Reviews";
 import AdminMetaDebug from "./pages/admin/MetaDebug";
+import FreeTrial from "./pages/FreeTrial";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -105,6 +106,8 @@ const App = () => {
                   <Route path="/waitlist" element={<Waitlist />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/freetrial" element={<FreeTrial />} />
+                  <Route path="/free-trial" element={<Navigate to="/freetrial" replace />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/start" element={<Start />} />
                   <Route path="/create" element={<Create />} />
