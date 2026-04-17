@@ -67,6 +67,7 @@ import AdsManagerClient from "./pages/AdsManagerClient";
 import SubmitReview from "./pages/SubmitReview";
 import AdminReviews from "./pages/admin/Reviews";
 import AdminMetaDebug from "./pages/admin/MetaDebug";
+import FreeTrial from "./pages/FreeTrial";
 
 function CreativeRedirect() {
   const location = useLocation();
