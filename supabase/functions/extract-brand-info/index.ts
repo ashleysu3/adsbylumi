@@ -67,9 +67,31 @@ Deno.serve(async (req) => {
       );
     }
 
-    const websiteUrl = /^https?:\/\//i.test(websiteUrlInput)
-      ? websiteUrlInput
-      : `https://${websiteUrlInput}`;
+    // Normalize URL: collapse stray slashes after scheme, add https:// if missing
+    const cleaned = websiteUrlInput.replace(/[\u200B-\u200D\uFEFF\s]/g, '');
+    let websiteUrl: string;
+    const schemeMatch = cleaned.match(/^(https?:)\/*(.*)$/i);
+    if (schemeMatch) {
+      websiteUrl = `${schemeMatch[1].toLowerCase()}//${schemeMatch[2].replace(/^\/+/, '')}`;
+    } else {
+      websiteUrl = `https://${cleaned.replace(/^\/+/, '')}`;
+    }
+
+    // Validate hostname is present
+    try {
+      const parsed = new URL(websiteUrl);
+      if (!parsed.hostname || !parsed.hostname.includes('.')) {
+        return new Response(
+          JSON.stringify({ error: 'Please enter a valid website URL (e.g. yourbrand.com)' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid URL format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (websiteUrl.length > 500) {
       console.log('extract-brand-info: url too long');
