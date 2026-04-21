@@ -138,7 +138,7 @@ export default function Welcome() {
             transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
             className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-lumi-purple-1/20 mb-6"
           >
-            <SparkleIcon size="lg" state="success" />
+            <SparkleIcon size="lg" state="idle" />
           </motion.div>
 
           <h1 className="text-4xl sm:text-5xl font-serif font-medium tracking-tight text-foreground mb-4">
