@@ -1,85 +1,90 @@
 
 
-## Build a "Welcome to Lumi" confirmation page for Meta ad tracking
+## Post-launch celebration + KPI walkthrough flow
 
-Create a dedicated celebration page at a fixed, trackable URL that users land on **once** immediately after their first successful Lumi signup. This gives you a clean conversion event you can fire a Meta pixel custom conversion against.
+After a user publishes their first campaign, replace the current static success screen with a two-part celebratory experience:
 
-### The trackable URL
+1. **Celebration success screen** (refreshed `CampaignSuccess.tsx`)
+2. **Guided KPI & Goal-Setting Walkthrough modal** that auto-opens on top, educates the user, and saves a goal to the database
 
-`/welcome` — clean, semantic, easy to set up as a Meta custom conversion (URL contains "welcome").
-
-### User flow (after this change)
+### User flow
 
 ```text
-Sales/FreeTrial page
-   → Stripe Checkout (7-day trial)
-   → /auth?signup=true&paid=true   (account creation form)
-   → Account created successfully
-   → /welcome   ← NEW celebration page (conversion fires here)
-   → "Let's set up your brand" CTA
-   → /onboarding  (existing brand wizard)
+Click "Publish to Meta"
+  → publishing spinner
+  → 🎉 Celebration success screen (confetti + Lumi sparkle moment)
+  → After ~1.2s, a multi-step walkthrough modal slides in automatically
+     (only on FIRST campaign launch — gated by a per-user flag)
+  → Step 1: "Meet your KPIs" (educates on what CTR / CPC / CPL / ROAS / CPM mean,
+            tailored to the campaign's objective using lumi-kpi-config)
+  → Step 2: "Here's your benchmark" (shows healthy/attention/critical ranges
+            from the existing benchmark data)
+  → Step 3: "Set your success goal" (pre-fills from GoalSetupModal's
+            suggestGoals() logic — user can adjust threshold, then Save)
+  → Step 4: "How Lumi watches this for you" (explains the diagnostic system,
+            green/yellow/red status, fatigue alerts, weekly reports)
+  → Step 5: "⏳ Give it at least 3 days" (firm guidance: do not pause, edit,
+            or judge performance before 72 hours / 1,000 impressions —
+            quotes the existing learning-phase rule)
+  → "Got it — take me to my dashboard" → /data?campaign={id}
 ```
 
-Users who already have an account and just log in will **never** see `/welcome` — it's strictly a first-signup destination, which keeps the Meta conversion clean.
+### What the celebration screen looks like
 
-### What the /welcome page looks like
+- Larger, animated headline using `font-display` and the `bg-gradient-lumi` text treatment (matches the Welcome page styling)
+- `framer-motion` confetti burst + floating Sparkles on mount (one-shot)
+- Big "🚀 Your campaign is LIVE" headline with the campaign name underneath
+- Keep the existing pause/active toggle, campaign details card, and "View in Ads Manager" link
+- Replace the bland "Next Steps" list with a single warm CTA: **"Let's set your success goal →"** that opens the walkthrough manually if the user dismissed it
+- Keep "Back to Dashboard" as a secondary action
 
-A warm, editorial, Vogue-meets-marketing-bestie celebration screen:
+### What the walkthrough modal looks like
 
-- Animated confetti / sparkle moment on load (using existing `framer-motion` already in the project)
-- Big headline: **"You're in. Welcome to Lumi."**
-- Subhead: a warm 1–2 line congratulations referencing their 7-day trial
-- 3 quick "what happens next" tiles:
-  1. Tell us about your brand (2 min)
-  2. Connect your Meta account
-  3. Launch your first campaign with Lumi's help
-- A single primary CTA button: **"Let's set up your brand →"** linking to `/onboarding`
-- Small secondary link: "Skip for now" → `/dashboard`
-- Footer reassurance: "Your trial started today. You won't be charged until [date+7]."
-- Lumi avatar / SparkleIcon to keep brand tone consistent
+A new component `src/components/PostLaunchWalkthrough.tsx`:
 
-The page uses the existing design tokens, `LadybugIcon` / `SparkleIcon`, and `framer-motion` animations already used on `FreeTrial.tsx` for visual consistency.
+- Built on existing `Dialog` + step indicator pattern (matches `MetaCampaignBuilder` style)
+- 5 steps with progress dots at the top
+- Each step uses `LumiSpark` / `SparkleIcon` for warm Lumi-led tone
+- Step 3 reuses the existing `suggestGoals()` logic and KPI options from `GoalSetupModal.tsx` — extracted into a shared helper so we have one source of truth for benchmarks/suggestions
+- Step 5 visually emphasizes the **3-day minimum** with a "Don't touch it!" callout card and a checklist (no pausing, no budget changes, no creative swaps for 72 hrs)
+- "Skip for now" link in the footer at every step (still saves any partial goal entered)
 
-### Meta tracking implementation
+### "First launch only" gating
 
-The `/welcome` page will fire two tracking signals so you can use whichever you prefer in Ads Manager:
+The walkthrough auto-opens **only** on a user's first-ever live campaign so it doesn't become noise. After that it's manually accessible from the success screen CTA.
 
-1. **URL-based custom conversion** — set up in Meta Ads Manager: "URL contains `/welcome`". This is the simplest method, no code changes needed in Meta's dashboard beyond creating the conversion rule.
-2. **Pixel `CompleteRegistration` standard event** — fired via `window.fbq('track', 'CompleteRegistration')` on page mount, only if `fbq` is present on the window. This gives you a named standard event in addition to the URL match.
-
-Both fire exactly once per page mount, and only on this page, so you get a clean count of new signups.
+- Add a column `first_campaign_launched_at timestamptz` to the `profiles` table (nullable). On successful publish, if it's null, set it to `now()` and trigger the walkthrough. If it already has a value, skip auto-open but show the manual CTA.
+- Migration is the only DB change needed; goal saving uses the existing `campaign_goals` upsert.
 
 ### Technical changes
 
-1. **New file: `src/pages/Welcome.tsx`**
-   - Reads `?source=signup` (or similar) param to optionally personalize copy
-   - Fires `fbq('track', 'CompleteRegistration')` on mount inside a `useEffect`, guarded by `typeof window.fbq === 'function'`
-   - Sets `document.title` to "Welcome to Lumi" and a canonical `<link>` for SEO hygiene
-   - Sessionstorage flag `lumi_welcomed=true` set on mount so accidental refresh/back-button doesn't re-fire the conversion in the same session
-   - Uses `framer-motion` for the staggered reveal animation
+1. **DB migration** — add `profiles.first_campaign_launched_at timestamptz null`.
+2. **New file** `src/components/PostLaunchWalkthrough.tsx` — 5-step Dialog component. Receives `workspace`, `campaignId`, `objective`, `offerPrice`, `templateSlug`, and `onClose`. Saves goal to `campaign_goals` via the same upsert pattern used in `GoalSetupModal`.
+3. **New file** `src/lib/goal-suggestions.ts` — extract `suggestGoals()` and `KPI_OPTIONS` from `GoalSetupModal.tsx` so both modal and walkthrough share the same logic. Update `GoalSetupModal.tsx` to import from it.
+4. **Edit** `src/components/CampaignSuccess.tsx`:
+   - Add `framer-motion` celebration animation + confetti burst on mount
+   - Apply `font-display` + gradient text to headline (match Welcome page)
+   - Add new prop `onOpenWalkthrough: () => void` and a primary CTA button that calls it
+   - On mount, check `profiles.first_campaign_launched_at`; if null, mark it now and call `onOpenWalkthrough()` after a 1.2s delay
+5. **Edit** `src/pages/CampaignBuilder.tsx`:
+   - Add `walkthroughOpen` state
+   - Render `<PostLaunchWalkthrough>` alongside `<CampaignSuccess>` in both desktop + mobile branches
+   - Pass campaign objective (resolved from `workspace.campaign_templates` / `final_answers.optimizationEvent`) and offer price/template slug into the walkthrough
+6. **No edge function changes.** Goal save uses the existing `campaign_goals` table + RLS policies that already work for `GoalSetupModal`.
 
-2. **Edit `src/pages/Auth.tsx`** (signup branch only — lines ~128–133):
-   - Replace `navigate("/onboarding")` with `navigate("/welcome")` for the **signup-with-session** case
-   - Login flow is untouched
-   - Email-confirmation case (no session) is untouched — those users hit `/welcome` after they confirm via the existing `emailRedirectTo` flow, which we'll update to `${window.location.origin}/welcome`
+### Reused infrastructure
 
-3. **Edit `src/App.tsx`**:
-   - Import `Welcome` from `./pages/Welcome`
-   - Register `<Route path="/welcome" element={<Welcome />} />` above the catch-all
-
-4. **No edge function or database changes** — this is a pure front-end addition. No Stripe webhook changes; the trial is already created at checkout.
-
-### How you set it up in Meta after this ships
-
-1. Go to Events Manager → Custom Conversions → Create
-2. Rule: **URL contains `/welcome`**
-3. Category: **Complete Registration**
-4. Optionally also use the standard `CompleteRegistration` pixel event we fire
-5. Use this conversion as the optimization goal on your Lumi acquisition campaigns
+- `lumi-kpi-config.ts` — for KPI labels, friendly names, and benchmark ranges shown in step 2
+- `campaign_goals` table + existing upsert pattern from `GoalSetupModal`
+- `framer-motion` (already in the project, used on Welcome and FreeTrial pages)
+- Existing learning-phase rule from project knowledge: "Avoid decisions before 3 days or 1000 impressions" — quoted verbatim in step 5
 
 ### Files touched
 
-- `src/pages/Welcome.tsx` (new)
-- `src/pages/Auth.tsx` (edit signup redirect + emailRedirectTo)
-- `src/App.tsx` (add route)
+- `supabase/migrations/<timestamp>_add_first_campaign_launched_at.sql` (new)
+- `src/lib/goal-suggestions.ts` (new)
+- `src/components/PostLaunchWalkthrough.tsx` (new)
+- `src/components/CampaignSuccess.tsx` (edit — celebration + auto-trigger)
+- `src/components/insights/GoalSetupModal.tsx` (edit — import from shared helper)
+- `src/pages/CampaignBuilder.tsx` (edit — wire walkthrough state)
 
