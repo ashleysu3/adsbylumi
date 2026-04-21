@@ -659,6 +659,17 @@ Deno.serve(async (req) => {
       };
     }
 
+    // Build tracking_specs — ensures "Track website events" is ON for every ad
+    // when a pixel is connected. This is independent of optimization goal so we
+    // always capture conversion data, even on Traffic / Engagement / Awareness campaigns.
+    let trackingSpecs: Array<Record<string, any>> | null = null;
+    if (pixelId) {
+      trackingSpecs = [
+        { 'action.type': ['offsite_conversion'], fb_pixel: [pixelId] },
+        { 'action.type': ['link_click'], fb_pixel: [pixelId] },
+      ];
+    }
+
     // Build targeting — use location targeting if provided, otherwise default to US broad
     let targeting: any = {
       geo_locations: { countries: ['US'] },
@@ -1016,19 +1027,24 @@ Deno.serve(async (req) => {
         console.log(`Creative created for ${adName}:`, creativeId);
 
         // Create the ad
+        const adParams: Record<string, string> = {
+          adset_id: primaryAdSetId,
+          name: adName,
+          creative: JSON.stringify({ creative_id: creativeId }),
+          status: launchStatus,
+          multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
+          access_token: metaAccessToken,
+        };
+        if (trackingSpecs) {
+          adParams.tracking_specs = JSON.stringify(trackingSpecs);
+        }
+
         const adResponse = await fetch(
           `https://graph.facebook.com/v21.0/act_${accountId}/ads`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              adset_id: primaryAdSetId,
-              name: adName,
-              creative: JSON.stringify({ creative_id: creativeId }),
-              status: launchStatus,
-              multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
-              access_token: metaAccessToken
-            })
+            body: new URLSearchParams(adParams),
           }
         );
 
@@ -1095,19 +1111,24 @@ Deno.serve(async (req) => {
             }
 
             // Create ad in the primary ad set
+            const igAdParams: Record<string, string> = {
+              adset_id: primaryAdSetId,
+              name: `IG Post - ${post.caption?.slice(0, 30) || post.id}`,
+              creative: JSON.stringify({ creative_id: creativeData.id }),
+              status: launchStatus,
+              multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
+              access_token: metaAccessToken,
+            };
+            if (trackingSpecs) {
+              igAdParams.tracking_specs = JSON.stringify(trackingSpecs);
+            }
+
             const adResponse = await fetch(
               `https://graph.facebook.com/v21.0/act_${accountId}/ads`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                  adset_id: primaryAdSetId,
-                  name: `IG Post - ${post.caption?.slice(0, 30) || post.id}`,
-                  creative: JSON.stringify({ creative_id: creativeData.id }),
-                  status: launchStatus,
-                  multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
-                  access_token: metaAccessToken,
-                }),
+                body: new URLSearchParams(igAdParams),
               }
             );
             const adData = await adResponse.json();
