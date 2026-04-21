@@ -250,6 +250,7 @@ Deno.serve(async (req) => {
 
     const metaAccountId = brand.meta_account_id;
     const pageId = brand.page_id;
+    const igAccountId = brand.instagram_account_id || null;
     
     if (!metaAccountId) {
       throw new Error('Meta account not connected. Please connect your Meta ad account first.');
