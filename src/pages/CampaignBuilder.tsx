@@ -425,9 +425,4 @@ export default function CampaignBuilder() {
     </DashboardLayout>
   );
 }
-        </div>
-      </div>
-    </DashboardLayout>
-  );
-}
 
