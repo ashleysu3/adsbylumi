@@ -1061,15 +1061,7 @@ Deno.serve(async (req) => {
     if (additionalPosts.length > 0 && pageId) {
       console.log(`Creating ${additionalPosts.length} ads from existing Instagram posts...`);
 
-      // Get Instagram account ID from brand
-      const { data: brandFull } = await supabase
-        .from('brands')
-        .select('instagram_account_id')
-        .eq('id', brand.id)
-        .single();
-
-      const igAccountId = brandFull?.instagram_account_id;
-
+      // Instagram account ID is already loaded from brand at the top of the function
       if (igAccountId) {
         for (const post of additionalPosts) {
           try {
