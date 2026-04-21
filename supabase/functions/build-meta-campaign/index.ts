@@ -224,7 +224,8 @@ Deno.serve(async (req) => {
       .select(`
         *,
         brands!inner(id, name, user_id, meta_account_id, meta_access_token, page_id, page_name, website_url),
-        offers(url)
+        offers(url),
+        campaign_templates(slug, name, objective, optimization_event)
       `)
       .eq('id', workspaceId)
       .single();
@@ -352,43 +353,81 @@ Deno.serve(async (req) => {
     const productName = workspace.offer_name || 'Campaign';
     const startDate = answers?.startDate || new Date().toISOString().split('T')[0];
     
-    // Normalize optimization event — accept various casings/aliases and derive from objective if missing
-    const rawOptEvent = String(answers?.optimizationEvent || '').toUpperCase().trim();
-    const rawObjective = String(answers?.objective || workspace?.strategy_json?.objective || '').toUpperCase().trim();
+    // Resolve objective and optimization event with fallback chain:
+    // 1) explicit answers values, 2) template values, 3) strategy_json values
+    const template = (workspace as any)?.campaign_templates || null;
+    const rawOptEventInput = String(
+      answers?.optimizationEvent
+        || answers?.optimization_event
+        || template?.optimization_event
+        || workspace?.strategy_json?.optimization_event
+        || ''
+    ).toUpperCase().trim();
+    const rawObjectiveInput = String(
+      answers?.objective
+        || template?.objective
+        || workspace?.strategy_json?.objective
+        || ''
+    ).toUpperCase().trim();
 
-    let normalizedOptEvent = rawOptEvent;
+    // Normalize known aliases -> canonical Meta-ish event keys
+    function normalizeEvent(input: string): string {
+      const v = input.replace(/[^A-Z0-9]/g, ''); // strip spaces, dashes, underscores
+      if (!v) return '';
+      if (v.includes('PURCHASE') || v.includes('SALE') || v === 'CONVERSIONS' || v === 'CONVERSION') return 'PURCHASE';
+      if (v.includes('LEAD')) return 'LEAD';
+      if (v.includes('LANDINGPAGE') || v === 'LPV') return 'LANDING_PAGE_VIEWS';
+      if (v.includes('LINKCLICK') || v === 'CLICKS') return 'LINK_CLICKS';
+      if (v.includes('THRUPLAY') || v.includes('VIDEOVIEW') || v.includes('2SCONTINUOUS')) return 'THRUPLAY';
+      if (v.includes('PROFILEVISIT') || v.includes('PROFILEVIEW')) return 'PROFILE_VISITS';
+      if (v.includes('CONVERSATION') || v.includes('MESSAGING') || v.includes('MESSAGE')) return 'CONVERSATIONS';
+      if (v.includes('ENGAGEMENT') || v.includes('POSTENGAGEMENT')) return 'POST_ENGAGEMENT';
+      if (v.includes('REACH')) return 'REACH';
+      if (v.includes('IMPRESSION')) return 'IMPRESSIONS';
+      if (v.includes('AWARENESS')) return 'REACH';
+      if (v.includes('TRAFFIC')) return 'LINK_CLICKS';
+      return input.replace(/[\s-]/g, '_');
+    }
+
+    let normalizedOptEvent = normalizeEvent(rawOptEventInput);
+    const normalizedObjective = normalizeEvent(rawObjectiveInput);
+
+    // If no explicit optimization event, derive from objective
+    if (!normalizedOptEvent && normalizedObjective) {
+      normalizedOptEvent = normalizedObjective;
+    }
+
+    // Final safety net — default to LINK_CLICKS only if nothing else resolved
     if (!normalizedOptEvent) {
-      // Derive from selected objective when optimization event wasn't explicitly chosen
-      if (rawObjective.includes('SALE') || rawObjective.includes('PURCHASE') || rawObjective.includes('CONVERSION')) {
-        normalizedOptEvent = 'PURCHASE';
-      } else if (rawObjective.includes('LEAD')) {
-        normalizedOptEvent = 'LEAD';
-      } else if (rawObjective.includes('TRAFFIC') || rawObjective.includes('LINK')) {
-        normalizedOptEvent = 'LINK_CLICKS';
-      } else if (rawObjective.includes('LANDING')) {
-        normalizedOptEvent = 'LANDING_PAGE_VIEWS';
-      }
+      normalizedOptEvent = 'LINK_CLICKS';
     }
 
     console.log('Objective resolution:', {
       raw_objective: answers?.objective,
       raw_optimization_event: answers?.optimizationEvent,
+      template_objective: template?.objective,
+      template_optimization_event: template?.optimization_event,
+      normalized_objective: normalizedObjective,
       normalized_optimization_event: normalizedOptEvent,
     });
 
-    const objectiveMap: { [key: string]: string } = {
-      'LEAD_GENERATION': 'Leads',
+    const objectiveDisplayMap: { [key: string]: string } = {
       'LEAD': 'Leads',
-      'CONVERSIONS': 'Conversions',
-      'PURCHASE': 'Conversions',
+      'PURCHASE': 'Sales',
       'LINK_CLICKS': 'Traffic',
       'LANDING_PAGE_VIEWS': 'Landing Page Views',
+      'THRUPLAY': 'Video Views',
+      'PROFILE_VISITS': 'Profile Visits',
+      'CONVERSATIONS': 'Engagement',
+      'POST_ENGAGEMENT': 'Engagement',
+      'REACH': 'Awareness',
+      'IMPRESSIONS': 'Awareness',
     };
-    const objectiveName = objectiveMap[normalizedOptEvent] || 'Traffic';
+    const objectiveName = objectiveDisplayMap[normalizedOptEvent] || 'Traffic';
 
     const campaignBaseName = `LUMI // ${objectiveName} - ${productName} - ${startDate}`;
 
-    // Determine Meta API objective
+    // Determine Meta API objective + optimization_goal
     // Note: LEAD_GENERATION optimization_goal is for Facebook Instant Forms only.
     // For offsite lead conversions, use OFFSITE_CONVERSIONS with LEAD event.
     let metaObjective = 'OUTCOME_TRAFFIC';
@@ -396,13 +435,12 @@ Deno.serve(async (req) => {
     let needsPixel = false;
     let conversionEvent = 'PURCHASE';
 
-    if (normalizedOptEvent === 'PURCHASE' || normalizedOptEvent === 'CONVERSIONS') {
+    if (normalizedOptEvent === 'PURCHASE') {
       metaObjective = 'OUTCOME_SALES';
       optimizationGoal = 'OFFSITE_CONVERSIONS';
       needsPixel = true;
       conversionEvent = 'PURCHASE';
-    } else if (normalizedOptEvent === 'LEAD' || normalizedOptEvent === 'LEAD_GENERATION') {
-      // For offsite leads (landing page forms), use OUTCOME_LEADS with OFFSITE_CONVERSIONS
+    } else if (normalizedOptEvent === 'LEAD') {
       metaObjective = 'OUTCOME_LEADS';
       optimizationGoal = 'OFFSITE_CONVERSIONS';
       needsPixel = true;
@@ -410,7 +448,31 @@ Deno.serve(async (req) => {
     } else if (normalizedOptEvent === 'LANDING_PAGE_VIEWS') {
       metaObjective = 'OUTCOME_TRAFFIC';
       optimizationGoal = 'LANDING_PAGE_VIEWS';
+    } else if (normalizedOptEvent === 'LINK_CLICKS') {
+      metaObjective = 'OUTCOME_TRAFFIC';
+      optimizationGoal = 'LINK_CLICKS';
+    } else if (normalizedOptEvent === 'THRUPLAY') {
+      metaObjective = 'OUTCOME_AWARENESS';
+      optimizationGoal = 'THRUPLAY';
+    } else if (normalizedOptEvent === 'PROFILE_VISITS') {
+      // Profile visits = Traffic objective with profile destination (handled by Meta)
+      metaObjective = 'OUTCOME_TRAFFIC';
+      optimizationGoal = 'LINK_CLICKS';
+    } else if (normalizedOptEvent === 'CONVERSATIONS') {
+      metaObjective = 'OUTCOME_ENGAGEMENT';
+      optimizationGoal = 'CONVERSATIONS';
+    } else if (normalizedOptEvent === 'POST_ENGAGEMENT') {
+      metaObjective = 'OUTCOME_ENGAGEMENT';
+      optimizationGoal = 'POST_ENGAGEMENT';
+    } else if (normalizedOptEvent === 'REACH') {
+      metaObjective = 'OUTCOME_AWARENESS';
+      optimizationGoal = 'REACH';
+    } else if (normalizedOptEvent === 'IMPRESSIONS') {
+      metaObjective = 'OUTCOME_AWARENESS';
+      optimizationGoal = 'IMPRESSIONS';
     }
+
+    console.log('Final Meta config:', { metaObjective, optimizationGoal, needsPixel, conversionEvent });
 
 
     // Fetch pixel if needed for conversion optimization
