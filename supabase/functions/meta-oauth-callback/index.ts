@@ -309,61 +309,40 @@ Deno.serve(async (req) => {
     }
     console.log('Total Instagram accounts after ad-account merge:', instagramAccounts.length);
 
-    // Auto-connect discovered IG accounts to ad accounts as assets.
-    // This is the step users otherwise have to do manually in Business Manager
-    // (Business Manager → Instagram → Connect Assets → Ad Account).
-    const autoConnectedIgs: string[] = [];
-    for (const adAccount of activeAccounts) {
-      for (const ig of instagramAccounts) {
-        try {
-          const connectUrl = `https://graph.facebook.com/v21.0/${adAccount.id}/instagram_accounts`;
-          const connectRes = await fetch(connectUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              instagram_account: ig.id,
-              access_token: finalToken,
-            }),
-          });
-          const connectData = await connectRes.json();
-          if (connectRes.ok && !connectData.error) {
-            autoConnectedIgs.push(`${ig.id} → ${adAccount.id}`);
+    // Keep OAuth callback fast: asset-linking every IG to every ad account can create hundreds
+    // of Meta API calls for agency users and cause the browser-side callback timeout.
+    const possibleAssetLinks = activeAccounts.length * instagramAccounts.length;
+    if (possibleAssetLinks > 20) {
+      console.log('Skipping blocking IG asset auto-connect during OAuth callback:', {
+        activeAccounts: activeAccounts.length,
+        instagramAccounts: instagramAccounts.length,
+        possibleAssetLinks,
+      });
+    } else {
+      const autoConnectedIgs: string[] = [];
+      for (const adAccount of activeAccounts) {
+        for (const ig of instagramAccounts) {
+          try {
+            const connectUrl = `https://graph.facebook.com/v21.0/${adAccount.id}/instagram_accounts`;
+            const connectRes = await fetch(connectUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                instagram_account: ig.id,
+                access_token: finalToken,
+              }),
+            });
+            const connectData = await connectRes.json();
+            if (connectRes.ok && !connectData.error) {
+              autoConnectedIgs.push(`${ig.id} → ${adAccount.id}`);
+            }
+          } catch {
+            // Non-fatal — continue
           }
-          // Silently ignore errors (already connected, insufficient perms, etc.)
-        } catch {
-          // Non-fatal — continue
         }
       }
-    }
-    if (autoConnectedIgs.length > 0) {
-      console.log('Auto-connected IG accounts to ad accounts:', autoConnectedIgs);
-    }
-
-    // Re-fetch ad-account IG list to pick up any newly connected accounts
-    const postConnectIgIds = new Set(instagramAccounts.map((ig: any) => ig.id));
-    for (const adAccount of activeAccounts) {
-      try {
-        const igUrl = `https://graph.facebook.com/v21.0/${adAccount.id}/instagram_accounts?fields=id,username,name,profile_picture_url&access_token=${finalToken}`;
-        const igRes = await fetch(igUrl);
-        const igData = await igRes.json();
-        if (igRes.ok && igData.data) {
-          for (const ig of igData.data) {
-            if (!postConnectIgIds.has(ig.id)) {
-              instagramAccounts.push({
-                id: ig.id,
-                name: ig.name || ig.username,
-                username: ig.username,
-                profile_picture_url: ig.profile_picture_url,
-                linked_page_id: null,
-                linked_page_name: `Via ad account ${adAccount.name || adAccount.id}`,
-                source: 'auto_connected',
-              });
-              postConnectIgIds.add(ig.id);
-            }
-          }
-        }
-      } catch {
-        // Non-fatal
+      if (autoConnectedIgs.length > 0) {
+        console.log('Auto-connected IG accounts to ad accounts:', autoConnectedIgs);
       }
     }
     console.log('Final Instagram accounts count:', instagramAccounts.length);
