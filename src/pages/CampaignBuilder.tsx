@@ -6,6 +6,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { CampaignBuilderForm } from "@/components/CampaignBuilderForm";
 import { MobileCampaignBuilder } from "@/components/MobileCampaignBuilder";
 import { CampaignSuccess } from "@/components/CampaignSuccess";
+import { PostLaunchWalkthrough } from "@/components/PostLaunchWalkthrough";
 import { QACheckScreen } from "@/components/QACheckScreen";
 import { Button } from "@/components/ui/button";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
@@ -45,6 +46,18 @@ export default function CampaignBuilder() {
   const [publishing, setPublishing] = useState(false);
   const [campaignIds, setCampaignIds] = useState<any>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+
+  // Resolve campaign objective + template metadata for the walkthrough
+  const objective: string | null =
+    answers?.optimizationEvent ||
+    workspace?.final_answers?.optimizationEvent ||
+    workspace?.campaign_templates?.objective ||
+    workspace?.campaign_templates?.name ||
+    null;
+  const templateName: string | null = workspace?.campaign_templates?.name || null;
+  const templateSlug: string | null = workspace?.campaign_templates?.slug || null;
+  const offerPrice: string | null = workspace?.offer_price || null;
 
   useEffect(() => {
     if (workspaceId && !workspace) {
