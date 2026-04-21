@@ -299,7 +299,26 @@ export default function CampaignBuilder() {
             </div>
           )}
           {stage === 'success' && (
-            <CampaignSuccess workspace={workspace} campaignIds={campaignIds} onBackToDashboard={() => navigate('/dashboard')} />
+            <>
+              <CampaignSuccess
+                workspace={workspace}
+                campaignIds={campaignIds}
+                onBackToDashboard={() => navigate('/dashboard')}
+                onOpenWalkthrough={() => setWalkthroughOpen(true)}
+              />
+              <PostLaunchWalkthrough
+                open={walkthroughOpen}
+                onOpenChange={setWalkthroughOpen}
+                workspaceId={workspace.id}
+                brandId={workspace.brand_id}
+                campaignName={workspace.offer_name || workspace.name}
+                objective={objective}
+                templateName={templateName}
+                offerPrice={offerPrice}
+                templateSlug={templateSlug}
+                onComplete={() => navigate(`/data?campaign=${workspace.id}`)}
+              />
+            </>
           )}
         </div>
       </DashboardLayout>
@@ -380,8 +399,32 @@ export default function CampaignBuilder() {
             </div>
           )}
           {stage === 'success' && (
-            <CampaignSuccess workspace={workspace} campaignIds={campaignIds} onBackToDashboard={() => navigate('/dashboard')} />
+            <>
+              <CampaignSuccess
+                workspace={workspace}
+                campaignIds={campaignIds}
+                onBackToDashboard={() => navigate('/dashboard')}
+                onOpenWalkthrough={() => setWalkthroughOpen(true)}
+              />
+              <PostLaunchWalkthrough
+                open={walkthroughOpen}
+                onOpenChange={setWalkthroughOpen}
+                workspaceId={workspace.id}
+                brandId={workspace.brand_id}
+                campaignName={workspace.offer_name || workspace.name}
+                objective={objective}
+                templateName={templateName}
+                offerPrice={offerPrice}
+                templateSlug={templateSlug}
+                onComplete={() => navigate(`/data?campaign=${workspace.id}`)}
+              />
+            </>
           )}
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
         </div>
       </div>
     </DashboardLayout>
