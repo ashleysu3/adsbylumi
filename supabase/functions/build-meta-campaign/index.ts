@@ -352,6 +352,30 @@ Deno.serve(async (req) => {
     const productName = workspace.offer_name || 'Campaign';
     const startDate = answers?.startDate || new Date().toISOString().split('T')[0];
     
+    // Normalize optimization event — accept various casings/aliases and derive from objective if missing
+    const rawOptEvent = String(answers?.optimizationEvent || '').toUpperCase().trim();
+    const rawObjective = String(answers?.objective || workspace?.strategy_json?.objective || '').toUpperCase().trim();
+
+    let normalizedOptEvent = rawOptEvent;
+    if (!normalizedOptEvent) {
+      // Derive from selected objective when optimization event wasn't explicitly chosen
+      if (rawObjective.includes('SALE') || rawObjective.includes('PURCHASE') || rawObjective.includes('CONVERSION')) {
+        normalizedOptEvent = 'PURCHASE';
+      } else if (rawObjective.includes('LEAD')) {
+        normalizedOptEvent = 'LEAD';
+      } else if (rawObjective.includes('TRAFFIC') || rawObjective.includes('LINK')) {
+        normalizedOptEvent = 'LINK_CLICKS';
+      } else if (rawObjective.includes('LANDING')) {
+        normalizedOptEvent = 'LANDING_PAGE_VIEWS';
+      }
+    }
+
+    console.log('Objective resolution:', {
+      raw_objective: answers?.objective,
+      raw_optimization_event: answers?.optimizationEvent,
+      normalized_optimization_event: normalizedOptEvent,
+    });
+
     const objectiveMap: { [key: string]: string } = {
       'LEAD_GENERATION': 'Leads',
       'LEAD': 'Leads',
@@ -360,8 +384,8 @@ Deno.serve(async (req) => {
       'LINK_CLICKS': 'Traffic',
       'LANDING_PAGE_VIEWS': 'Landing Page Views',
     };
-    const objectiveName = objectiveMap[answers?.optimizationEvent] || 'Traffic';
-    
+    const objectiveName = objectiveMap[normalizedOptEvent] || 'Traffic';
+
     const campaignBaseName = `LUMI // ${objectiveName} - ${productName} - ${startDate}`;
 
     // Determine Meta API objective
@@ -371,22 +395,23 @@ Deno.serve(async (req) => {
     let optimizationGoal = 'LINK_CLICKS';
     let needsPixel = false;
     let conversionEvent = 'PURCHASE';
-    
-    if (answers?.optimizationEvent === 'PURCHASE' || answers?.optimizationEvent === 'CONVERSIONS') {
+
+    if (normalizedOptEvent === 'PURCHASE' || normalizedOptEvent === 'CONVERSIONS') {
       metaObjective = 'OUTCOME_SALES';
       optimizationGoal = 'OFFSITE_CONVERSIONS';
       needsPixel = true;
       conversionEvent = 'PURCHASE';
-    } else if (answers?.optimizationEvent === 'LEAD' || answers?.optimizationEvent === 'LEAD_GENERATION') {
+    } else if (normalizedOptEvent === 'LEAD' || normalizedOptEvent === 'LEAD_GENERATION') {
       // For offsite leads (landing page forms), use OUTCOME_LEADS with OFFSITE_CONVERSIONS
       metaObjective = 'OUTCOME_LEADS';
       optimizationGoal = 'OFFSITE_CONVERSIONS';
       needsPixel = true;
       conversionEvent = 'LEAD';
-    } else if (answers?.optimizationEvent === 'LANDING_PAGE_VIEWS') {
+    } else if (normalizedOptEvent === 'LANDING_PAGE_VIEWS') {
       metaObjective = 'OUTCOME_TRAFFIC';
       optimizationGoal = 'LANDING_PAGE_VIEWS';
     }
+
 
     // Fetch pixel if needed for conversion optimization
     let pixelId: string | null = null;
