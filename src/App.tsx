@@ -68,6 +68,7 @@ import SubmitReview from "./pages/SubmitReview";
 import AdminReviews from "./pages/admin/Reviews";
 import AdminMetaDebug from "./pages/admin/MetaDebug";
 import FreeTrial from "./pages/FreeTrial";
+import Welcome from "./pages/Welcome";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -108,6 +109,7 @@ const App = () => {
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/freetrial" element={<FreeTrial />} />
                   <Route path="/free-trial" element={<Navigate to="/freetrial" replace />} />
+                  <Route path="/welcome" element={<Welcome />} />
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/start" element={<Start />} />
                   <Route path="/create" element={<Create />} />
