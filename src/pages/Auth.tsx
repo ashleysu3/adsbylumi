@@ -98,7 +98,7 @@ export default function Auth() {
             data: {
               full_name: fullName,
             },
-            emailRedirectTo: `${window.location.origin}/onboarding`,
+            emailRedirectTo: `${window.location.origin}/welcome`,
           },
         });
         if (error) throw error;
@@ -126,8 +126,8 @@ export default function Auth() {
         }
 
         if (data.user && data.session) {
-          toast.success("Account created! Let's set up your brand.");
-          navigate("/onboarding");
+          toast.success("Account created! Welcome to Lumi.");
+          navigate("/welcome");
         } else if (data.user && !data.session) {
           toast.success("Account created! Please check your email to confirm.");
         }
