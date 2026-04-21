@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
       .from('campaign_workspaces')
       .select(`
         *,
-        brands!inner(id, name, user_id, meta_account_id, meta_access_token, page_id, page_name, website_url),
+        brands!inner(id, name, user_id, meta_account_id, meta_access_token, page_id, page_name, website_url, instagram_account_id, instagram_account_name),
         offers(url),
         campaign_templates(slug, name, objective, optimization_event)
       `)
@@ -250,6 +250,7 @@ Deno.serve(async (req) => {
 
     const metaAccountId = brand.meta_account_id;
     const pageId = brand.page_id;
+    const igAccountId = brand.instagram_account_id || null;
     
     if (!metaAccountId) {
       throw new Error('Meta account not connected. Please connect your Meta ad account first.');
@@ -936,6 +937,9 @@ Deno.serve(async (req) => {
             page_id: pageId,
             video_data: videoData
           };
+          if (igAccountId) {
+            objectStorySpec.instagram_user_id = igAccountId;
+          }
         } else {
           objectStorySpec = {
             page_id: pageId,
@@ -950,12 +954,40 @@ Deno.serve(async (req) => {
               }
             }
           };
+          if (igAccountId) {
+            objectStorySpec.instagram_user_id = igAccountId;
+          }
         }
+
+        // Force-disable Advantage+ creative enhancements including multi-advertiser ads.
+        // Meta requires explicit OPT_OUT on every standard enhancement to prevent the
+        // "multi-advertiser ads" checkbox from auto-enabling at the ad level.
+        const degreesOfFreedomSpec = {
+          creative_features_spec: {
+            standard_enhancements: { enroll_status: 'OPT_OUT' },
+            image_brightness_and_contrast: { enroll_status: 'OPT_OUT' },
+            image_uncrop: { enroll_status: 'OPT_OUT' },
+            image_touchups: { enroll_status: 'OPT_OUT' },
+            inline_comment: { enroll_status: 'OPT_OUT' },
+            text_optimizations: { enroll_status: 'OPT_OUT' },
+            description_automation: { enroll_status: 'OPT_OUT' },
+            add_text_overlay: { enroll_status: 'OPT_OUT' },
+            video_auto_crop: { enroll_status: 'OPT_OUT' },
+            image_templates: { enroll_status: 'OPT_OUT' },
+            advantage_plus_creative: { enroll_status: 'OPT_OUT' },
+            product_extensions: { enroll_status: 'OPT_OUT' },
+            site_extensions: { enroll_status: 'OPT_OUT' },
+            music: { enroll_status: 'OPT_OUT' },
+            '3d_animation': { enroll_status: 'OPT_OUT' },
+            translate_text: { enroll_status: 'OPT_OUT' },
+          }
+        };
 
         // Create ad creative
         const creativeParams: Record<string, string> = {
           name: `Creative - ${adName}`,
           object_story_spec: JSON.stringify(objectStorySpec),
+          degrees_of_freedom_spec: JSON.stringify(degreesOfFreedomSpec),
           access_token: metaAccessToken
         };
 
@@ -1029,15 +1061,7 @@ Deno.serve(async (req) => {
     if (additionalPosts.length > 0 && pageId) {
       console.log(`Creating ${additionalPosts.length} ads from existing Instagram posts...`);
 
-      // Get Instagram account ID from brand
-      const { data: brandFull } = await supabase
-        .from('brands')
-        .select('instagram_account_id')
-        .eq('id', brand.id)
-        .single();
-
-      const igAccountId = brandFull?.instagram_account_id;
-
+      // Instagram account ID is already loaded from brand at the top of the function
       if (igAccountId) {
         for (const post of additionalPosts) {
           try {
