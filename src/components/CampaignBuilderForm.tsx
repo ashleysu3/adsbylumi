@@ -69,6 +69,7 @@ export function CampaignBuilderForm({
   const selectedPosts = isSocialGrowth ? ((workspace?.creative_json as any)?.selectedPosts || []) : [];
 
   const defaultObjective = template?.objective || strategyJson?.objective || "leads";
+  const defaultOptimizationEvent = template?.optimization_event || strategyJson?.optimization_event || "";
   const defaultAudience = template?.audience_type || "broad";
   const defaultCreativeType = isSocialGrowth ? "existing_posts" : (strategyJson?.creativeType || "video");
 
@@ -126,6 +127,7 @@ export function CampaignBuilderForm({
     const newAnswers = {
       ...answers,
       objective: defaultObjective,
+      optimizationEvent: defaultOptimizationEvent,
       budget,
       creativeType: defaultCreativeType,
       audience: defaultAudience,
