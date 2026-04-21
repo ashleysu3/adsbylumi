@@ -1758,6 +1758,7 @@ export type Database = {
           beta_feedback_email_sent: boolean
           created_at: string | null
           email: string
+          first_campaign_launched_at: string | null
           full_name: string | null
           id: string
           is_agency_user: boolean | null
@@ -1772,6 +1773,7 @@ export type Database = {
           beta_feedback_email_sent?: boolean
           created_at?: string | null
           email: string
+          first_campaign_launched_at?: string | null
           full_name?: string | null
           id: string
           is_agency_user?: boolean | null
@@ -1786,6 +1788,7 @@ export type Database = {
           beta_feedback_email_sent?: boolean
           created_at?: string | null
           email?: string
+          first_campaign_launched_at?: string | null
           full_name?: string | null
           id?: string
           is_agency_user?: boolean | null
