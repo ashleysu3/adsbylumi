@@ -937,6 +937,9 @@ Deno.serve(async (req) => {
             page_id: pageId,
             video_data: videoData
           };
+          if (igAccountId) {
+            objectStorySpec.instagram_user_id = igAccountId;
+          }
         } else {
           objectStorySpec = {
             page_id: pageId,
@@ -951,12 +954,40 @@ Deno.serve(async (req) => {
               }
             }
           };
+          if (igAccountId) {
+            objectStorySpec.instagram_user_id = igAccountId;
+          }
         }
+
+        // Force-disable Advantage+ creative enhancements including multi-advertiser ads.
+        // Meta requires explicit OPT_OUT on every standard enhancement to prevent the
+        // "multi-advertiser ads" checkbox from auto-enabling at the ad level.
+        const degreesOfFreedomSpec = {
+          creative_features_spec: {
+            standard_enhancements: { enroll_status: 'OPT_OUT' },
+            image_brightness_and_contrast: { enroll_status: 'OPT_OUT' },
+            image_uncrop: { enroll_status: 'OPT_OUT' },
+            image_touchups: { enroll_status: 'OPT_OUT' },
+            inline_comment: { enroll_status: 'OPT_OUT' },
+            text_optimizations: { enroll_status: 'OPT_OUT' },
+            description_automation: { enroll_status: 'OPT_OUT' },
+            add_text_overlay: { enroll_status: 'OPT_OUT' },
+            video_auto_crop: { enroll_status: 'OPT_OUT' },
+            image_templates: { enroll_status: 'OPT_OUT' },
+            advantage_plus_creative: { enroll_status: 'OPT_OUT' },
+            product_extensions: { enroll_status: 'OPT_OUT' },
+            site_extensions: { enroll_status: 'OPT_OUT' },
+            music: { enroll_status: 'OPT_OUT' },
+            '3d_animation': { enroll_status: 'OPT_OUT' },
+            translate_text: { enroll_status: 'OPT_OUT' },
+          }
+        };
 
         // Create ad creative
         const creativeParams: Record<string, string> = {
           name: `Creative - ${adName}`,
           object_story_spec: JSON.stringify(objectStorySpec),
+          degrees_of_freedom_spec: JSON.stringify(degreesOfFreedomSpec),
           access_token: metaAccessToken
         };
 
