@@ -3,18 +3,67 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { CheckCircle, ExternalLink, Copy, ArrowRight, Loader2, Play, Pause } from "lucide-react";
+import { CheckCircle, ExternalLink, Copy, ArrowRight, Loader2, Play, Pause, Sparkles, Target } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 
 interface CampaignSuccessProps {
   workspace: any;
   campaignIds: any;
   onBackToDashboard: () => void;
+  onOpenWalkthrough?: () => void;
 }
 
-export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: CampaignSuccessProps) {
+// Confetti burst — pure CSS/motion, one-shot on mount
+function ConfettiBurst() {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: 28 }).map((_, i) => ({
+        id: i,
+        x: (Math.random() - 0.5) * 600,
+        y: -(Math.random() * 300 + 120),
+        rotate: Math.random() * 540 - 270,
+        delay: Math.random() * 0.15,
+        color: [
+          "hsl(var(--primary))",
+          "hsl(var(--accent))",
+          "#F4C9D9",
+          "#F7E5A4",
+          "#A6D8C8",
+        ][i % 5],
+        size: Math.random() * 6 + 6,
+      })),
+    [],
+  );
+
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-12 flex justify-center" aria-hidden="true">
+      <div className="relative">
+        {pieces.map((p) => (
+          <motion.span
+            key={p.id}
+            initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
+            animate={{ x: p.x, y: p.y, opacity: 0, rotate: p.rotate }}
+            transition={{ duration: 1.6, delay: p.delay, ease: "easeOut" }}
+            style={{
+              position: "absolute",
+              width: p.size,
+              height: p.size * 0.4,
+              background: p.color,
+              borderRadius: 2,
+              left: 0,
+              top: 0,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard, onOpenWalkthrough }: CampaignSuccessProps) {
   // Handle both naming conventions from build-meta-campaign
   const campaignId = campaignIds?.campaignId || campaignIds?.campaign_id;
   const adSetIds = campaignIds?.adSetIds || campaignIds?.ad_set_ids || [];
@@ -23,6 +72,43 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
 
   const [isActive, setIsActive] = useState(initialLaunchStatus === 'active');
   const [toggling, setToggling] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(true);
+
+  // Auto-trigger walkthrough on first-ever campaign launch
+  useEffect(() => {
+    if (!onOpenWalkthrough) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_campaign_launched_at')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (!profile?.first_campaign_launched_at) {
+          await supabase
+            .from('profiles')
+            .update({ first_campaign_launched_at: new Date().toISOString() })
+            .eq('id', user.id);
+          setTimeout(() => {
+            if (!cancelled) onOpenWalkthrough();
+          }, 1200);
+        }
+      } catch (err) {
+        console.warn('first-launch check failed', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [onOpenWalkthrough]);
+
+  // Stop rendering confetti DOM after animation completes
+  useEffect(() => {
+    const t = setTimeout(() => setShowConfetti(false), 2200);
+    return () => clearTimeout(t);
+  }, []);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -33,7 +119,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
 
   const handleToggleCampaign = async () => {
     if (!campaignId) return;
-    
+
     setToggling(true);
     try {
       const { data, error } = await supabase.functions.invoke('check-campaign-status', {
@@ -61,26 +147,83 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
 
   return (
     <div className="space-y-6">
-      {/* Success Header */}
-      <div className="text-center py-8">
-        <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
-          isLive ? 'bg-green-500/10' : 'bg-amber-500/10'
-        }`}>
+      {/* Celebration Header */}
+      <div className="relative text-center py-10">
+        {showConfetti && <ConfettiBurst />}
+
+        <motion.div
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 14 }}
+          className={`relative inline-flex items-center justify-center w-24 h-24 rounded-full mb-5 ${
+            isLive
+              ? 'bg-gradient-to-br from-green-400/20 to-primary/20'
+              : 'bg-gradient-to-br from-primary/20 to-accent/20'
+          }`}
+        >
           {isLive ? (
-            <Play className="h-10 w-10 text-green-500" />
+            <Play className="h-12 w-12 text-green-500" />
           ) : (
-            <CheckCircle className="h-10 w-10 text-amber-500" />
+            <Sparkles className="h-12 w-12 text-primary" />
           )}
-        </div>
-        <h1 className="text-3xl font-bold mb-2">
-          {isLive ? '🚀 Campaign is Live!' : '🎉 Campaign Published!'}
-        </h1>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          {isLive 
-            ? "Your ads are now in Meta's review queue and will start delivering once approved (usually 15-30 minutes)."
-            : "Your campaign is paused and ready to activate. Turn it on when you're ready to start delivering ads."
-          }
-        </p>
+          <motion.span
+            className="absolute -top-1 -right-1"
+            initial={{ scale: 0, rotate: -30 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ delay: 0.3, type: "spring" }}
+          >
+            <Sparkles className="h-5 w-5 text-amber-400" />
+          </motion.span>
+        </motion.div>
+
+        <motion.h1
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.15, duration: 0.4 }}
+          className="text-4xl md:text-5xl font-display font-bold mb-3 bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent"
+        >
+          {isLive ? "🚀 Your campaign is LIVE" : "🎉 Your campaign is Published"}
+        </motion.h1>
+
+        <motion.p
+          initial={{ y: 12, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          className="text-base font-medium text-foreground/80 mb-1"
+        >
+          {workspace?.offer_name || workspace?.name || "Your Campaign"}
+        </motion.p>
+
+        <motion.p
+          initial={{ y: 12, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4, duration: 0.4 }}
+          className="text-sm text-muted-foreground max-w-md mx-auto"
+        >
+          {isLive
+            ? "Your ads are in Meta's review queue and will start delivering once approved (usually 15–30 minutes)."
+            : "Your campaign is paused and ready to activate. Flip the switch when you're ready."}
+        </motion.p>
+
+        {/* Primary CTA — open the KPI walkthrough */}
+        {onOpenWalkthrough && (
+          <motion.div
+            initial={{ y: 12, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.55, duration: 0.4 }}
+            className="mt-6"
+          >
+            <Button
+              size="lg"
+              onClick={onOpenWalkthrough}
+              className="rounded-xl gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 shadow-lg"
+            >
+              <Target className="h-4 w-4" />
+              Let's set your success goal
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </motion.div>
+        )}
       </div>
 
       {/* Post-publish recap */}
@@ -123,10 +266,9 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
                   Campaign Status: {isLive ? 'Active' : 'Paused'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {isLive 
+                  {isLive
                     ? 'Your ads are delivering or pending Meta approval'
-                    : 'Turn on to start delivering ads'
-                  }
+                    : 'Turn on to start delivering ads'}
                 </p>
               </div>
             </div>
@@ -198,93 +340,25 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
         </CardContent>
       </Card>
 
-      {/* Next Steps */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Next Steps</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            {!isLive && (
-              <div className="flex gap-3">
-                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-                  1
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Activate Your Campaign</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Use the toggle above to turn your campaign on when you're ready.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-                {isLive ? '1' : '2'}
-              </div>
-              <div>
-                <p className="font-medium text-sm">Wait for Meta's Approval</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Meta will review your ads (usually takes 15-30 minutes). You'll receive a notification.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-                {isLive ? '2' : '3'}
-              </div>
-              <div>
-                <p className="font-medium text-sm">Let It Learn (3-5 Days)</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Don't make changes during the learning phase. Let Meta's algorithm optimize delivery.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-                {isLive ? '3' : '4'}
-              </div>
-              <div>
-                <p className="font-medium text-sm">Monitor & Optimize</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Check performance daily. Look for fatigue signals (frequency &gt; 4) after 7-10 days.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Actions */}
       <div className="flex items-center justify-between pt-4">
         <Button
           variant="outline"
           onClick={() => {
-            // Access meta_account_id from the brand - check both nested 'brands' and direct brand_meta_account_id
             const rawAccountId = workspace?.brands?.meta_account_id || workspace?.brand_meta_account_id;
-            // Strip "act_" prefix if present - Meta URLs need just the numeric ID
             const metaAccountId = rawAccountId?.replace(/^act_/, '');
-            
-            console.log('Opening Ads Manager:', { rawAccountId, metaAccountId, campaignId, workspace });
-            
+
             if (metaAccountId && campaignId) {
-              // Link directly to the campaign in Ads Manager
               window.open(
                 `https://business.facebook.com/adsmanager/manage/campaigns?act=${metaAccountId}&selected_campaign_ids=${campaignId}`,
                 '_blank'
               );
             } else if (metaAccountId) {
-              // At least link to the correct ad account
               window.open(
                 `https://business.facebook.com/adsmanager/manage/campaigns?act=${metaAccountId}`,
                 '_blank'
               );
             } else {
-              // Fallback to general Ads Manager
-              console.warn('No meta_account_id found in workspace:', workspace);
               window.open(metaAdsManagerUrl, '_blank');
             }
           }}
@@ -292,7 +366,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard }: C
           <ExternalLink className="h-4 w-4 mr-2" />
           View in Ads Manager
         </Button>
-        <Button onClick={onBackToDashboard} size="lg">
+        <Button onClick={onBackToDashboard} size="lg" variant="secondary">
           Back to Dashboard
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
