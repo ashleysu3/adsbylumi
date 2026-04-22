@@ -189,8 +189,12 @@ p, li, span, blockquote {
   }
   
   /* Lumi Typography */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Asfallt Sans', 'Red Hat Display', system-ui, sans-serif;
+  }
+
   .font-display {
-    font-family: 'Red Hat Display', system-ui, sans-serif;
+    font-family: 'Asfallt Sans', 'Red Hat Display', system-ui, sans-serif;
     font-weight: 700;
     letter-spacing: -0.02em;
   }
@@ -200,8 +204,8 @@ p, li, span, blockquote {
   }
   
   .font-heading {
-    font-family: 'Red Hat Display', system-ui, sans-serif;
-    font-weight: 600;
+    font-family: 'Asfallt Sans', 'Red Hat Display', system-ui, sans-serif;
+    font-weight: 700;
   }
 
   /* Reduced motion support */
