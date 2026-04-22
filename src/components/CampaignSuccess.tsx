@@ -74,25 +74,46 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard, onO
   const [toggling, setToggling] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
 
-  // Auto-trigger walkthrough on first-ever campaign launch
+  // Auto-trigger walkthrough on first-ever campaign launch — runs at most once per mount,
+  // and only if the user has never had `first_campaign_launched_at` set before.
+  const autoOpenAttemptedRef = useRef(false);
   useEffect(() => {
     if (!onOpenWalkthrough) return;
+    if (autoOpenAttemptedRef.current) return;
+    autoOpenAttemptedRef.current = true;
+
     let cancelled = false;
     (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user || cancelled) return;
+
+        // Session-level guard: if we already auto-opened in this browser session, skip.
+        const sessionKey = `lumi_walkthrough_autoopened_${user.id}`;
+        if (sessionStorage.getItem(sessionKey)) return;
+
         const { data: profile } = await supabase
           .from('profiles')
           .select('first_campaign_launched_at')
           .eq('id', user.id)
           .maybeSingle();
         if (cancelled) return;
-        if (!profile?.first_campaign_launched_at) {
-          await supabase
+
+        // Only fire if the profile has NEVER recorded a first launch.
+        if (profile && !profile.first_campaign_launched_at) {
+          // Stamp the profile FIRST so subsequent loads can never re-trigger.
+          const { error: stampError } = await supabase
             .from('profiles')
             .update({ first_campaign_launched_at: new Date().toISOString() })
-            .eq('id', user.id);
+            .eq('id', user.id)
+            .is('first_campaign_launched_at', null);
+
+          if (stampError) {
+            console.warn('first-launch stamp failed', stampError);
+            return;
+          }
+
+          sessionStorage.setItem(sessionKey, '1');
           setTimeout(() => {
             if (!cancelled) onOpenWalkthrough();
           }, 1200);
@@ -102,7 +123,8 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard, onO
       }
     })();
     return () => { cancelled = true; };
-  }, [onOpenWalkthrough]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Stop rendering confetti DOM after animation completes
   useEffect(() => {
