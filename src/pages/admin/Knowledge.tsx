@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
@@ -48,6 +49,8 @@ const categories = [
 ];
 
 export default function Knowledge() {
+  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
   const [documents, setDocuments] = useState<KnowledgeDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -69,8 +72,35 @@ export default function Knowledge() {
   const [formSourceUrl, setFormSourceUrl] = useState("");
 
   useEffect(() => {
-    fetchDocuments();
-  }, []);
+    // Server-backed admin guard: redirect non-admins away from this page
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!roleRow) {
+        navigate("/");
+        return;
+      }
+      setAuthChecked(true);
+      fetchDocuments();
+    })();
+  }, [navigate]);
+
+  if (!authChecked) {
+    return (
+      <DashboardLayout>
+        <div className="p-8 text-sm text-muted-foreground">Checking permissions…</div>
+      </DashboardLayout>
+    );
+  }
 
   const fetchDocuments = async () => {
     try {

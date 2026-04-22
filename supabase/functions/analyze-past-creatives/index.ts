@@ -25,6 +25,25 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Require authentication and verify ownership of the requested brand
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: authErr } = await supabaseAuth.auth.getUser();
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { brandId, campaignObjective } = await req.json();
     if (!brandId) throw new Error("brandId is required");
 
@@ -34,9 +53,16 @@ Deno.serve(async (req) => {
 
     const { data: brand, error: brandError } = await supabase
       .from("brands")
-      .select("meta_account_id, meta_access_token, name")
+      .select("meta_account_id, meta_access_token, name, user_id")
       .eq("id", brandId)
       .single();
+
+    // Enforce brand ownership
+    if (brand && (brand as any).user_id !== user.id) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (brandError || !brand) {
       return new Response(JSON.stringify({ hasData: false, summary: "No brand data available." }), {
