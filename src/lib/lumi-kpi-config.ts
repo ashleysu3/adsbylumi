@@ -364,3 +364,157 @@ export function getObjectiveMetrics(
 
   return result;
 }
+// ===========================================================================
+// APPEND THE FOLLOWING TO THE END OF src/lib/lumi-kpi-config.ts
+//
+// These are pure additions — no existing exports change. They centralize the
+// goal-aware status logic that multiple surfaces need (InsightsHome status
+// dot + action-rec pill; CampaignInsightDetail status, budget verdict, and
+// What's Not Working line).
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// Goal-aware status helpers
+//
+// CampaignKPISummary.tsx had local copies of `getMetricValue` and `getGoalStatus`.
+// We also need both from InsightsHome.tsx (for the status-badge calculation)
+// and from CampaignInsightDetail.tsx (for the budget-verdict + "what's not
+// working" logic). Exporting shared versions here instead of duplicating.
+// ---------------------------------------------------------------------------
+
+/** Resolve a KPI value from a raw metrics object, computing derived KPIs
+ *  (CTR, ROAS, cost-per-thruplay) when the direct field isn't present. */
+export function resolveMetricValue(
+  metrics: Record<string, number | null | undefined> | null | undefined,
+  key: string,
+): number | null {
+  if (!metrics) return null;
+  // Direct match wins.
+  if (key in metrics && metrics[key] != null) return metrics[key] as number;
+
+  // Computed ROAS fallback.
+  if (key === 'roas') {
+    const revenue = (metrics as any).revenue || (metrics as any).purchaseValue || (metrics as any).purchase_roas_value || 0;
+    const spend = metrics.spend || 0;
+    if (revenue > 0 && spend > 0) return revenue / spend;
+    return null;
+  }
+
+  // Computed CTR (as a percentage — consistent with the rest of LUMI's display).
+  if (key === 'ctr') {
+    const impressions = metrics.impressions || 0;
+    const clicks = metrics.clicks || (metrics as any).linkClicks || 0;
+    return impressions > 0 ? (clicks / impressions) * 100 : null;
+  }
+
+  // Computed costPerThruPlay.
+  if (key === 'costPerThruPlay' && metrics.spend && (metrics as any).videoThruPlays) {
+    const thruplays = (metrics as any).videoThruPlays;
+    return thruplays > 0 ? metrics.spend / thruplays : null;
+  }
+
+  return null;
+}
+
+/** Status vs. a user-set goal threshold. Direction flips for ROAS-like KPIs
+ *  where higher is better. Mirrors the logic in CampaignKPISummary.tsx so
+ *  every surface that evaluates goals ends up with the same verdict. */
+export function getGoalStatus(
+  value: number | null | undefined,
+  threshold: number,
+  goalType: string,
+  kpiKey: string,
+): 'healthy' | 'attention' | 'critical' | 'no-data' {
+  if (value === null || value === undefined || isNaN(value)) return 'no-data';
+  // 0 on a cost-per-result KPI means no conversions yet, not "perfect".
+  if (value === 0 && ['cpl', 'cpp', 'roas', 'costPerThruPlay'].includes(kpiKey)) return 'no-data';
+
+  const higherIsBetter = goalType === 'greater_than';
+  if (higherIsBetter) {
+    if (value >= threshold) return 'healthy';
+    if (value >= threshold * 0.7) return 'attention';
+    return 'critical';
+  }
+  if (value <= threshold) return 'healthy';
+  if (value <= threshold * 1.3) return 'attention';
+  return 'critical';
+}
+
+/** The one function every surface should call when it needs a status.
+ *
+ *  Goal-first: if the campaign has a user-set goal (after our silent heal,
+ *  that should match the objective-aware kpiConfig), use the goal.
+ *  Benchmark-fallback: for campaigns without a goal row, fall back to the
+ *  objective's benchmark range.
+ *
+ *  This is what fixes the "Masterclass CPL is 2x goal but we labeled it
+ *  Healthy / suggested Increase spend" bug — previously every surface but
+ *  the KPI tile itself was benchmark-only. */
+export function getGoalAwareStatus(
+  metrics: Record<string, number | null | undefined> | null | undefined,
+  kpiConfig: LumiKPIConfig,
+  goals?: {
+    primary_kpi?: string | null;
+    primary_kpi_threshold?: number | null;
+    primary_kpi_goal_type?: string | null;
+  } | null,
+): 'healthy' | 'attention' | 'critical' | 'no-data' {
+  if (!metrics) return 'no-data';
+
+  // Goal-first path.
+  if (goals?.primary_kpi && goals.primary_kpi_threshold != null) {
+    const v = resolveMetricValue(metrics, goals.primary_kpi);
+    return getGoalStatus(
+      v,
+      goals.primary_kpi_threshold,
+      goals.primary_kpi_goal_type || 'less_than',
+      goals.primary_kpi,
+    );
+  }
+
+  // Benchmark fallback — behaves exactly like getLumiKPIStatus used to.
+  const v = resolveMetricValue(metrics, kpiConfig.primary);
+  return getLumiKPIStatus(v, kpiConfig.benchmark, kpiConfig.primary);
+}
+
+/** Human-readable "you missed your goal by X" string, for surfaces like the
+ *  "What's Not Working" list. Returns null when the goal is being met or
+ *  when we don't have enough data to evaluate. */
+export function describeGoalMiss(
+  metrics: Record<string, number | null | undefined> | null | undefined,
+  goals?: {
+    primary_kpi?: string | null;
+    primary_kpi_label?: string | null;
+    primary_kpi_threshold?: number | null;
+    primary_kpi_goal_type?: string | null;
+  } | null,
+): string | null {
+  if (!goals?.primary_kpi || goals.primary_kpi_threshold == null) return null;
+  const v = resolveMetricValue(metrics || null, goals.primary_kpi);
+  if (v === null || v === undefined || isNaN(v)) return null;
+
+  const threshold = goals.primary_kpi_threshold;
+  const label = goals.primary_kpi_label || goals.primary_kpi.toUpperCase();
+  const goalType = goals.primary_kpi_goal_type || 'less_than';
+  const valueStr = formatLumiKPIValue(v, goals.primary_kpi);
+  const goalStr = (() => {
+    const currencyKPIs = ['cpc', 'cpm', 'cpl', 'cpp', 'costPerThruPlay'];
+    if (currencyKPIs.includes(goals.primary_kpi!)) return `$${threshold.toFixed(2)}`;
+    if (goals.primary_kpi === 'roas') return `${threshold.toFixed(1)}x`;
+    return String(threshold);
+  })();
+
+  if (goalType === 'greater_than') {
+    if (v >= threshold) return null; // goal met
+    const pct = Math.round(((threshold - v) / threshold) * 100);
+    return `${label} is ${valueStr} vs your goal of ${goalStr} — ${pct}% under target`;
+  }
+  // less_than (cost-based KPIs)
+  if (v <= threshold) return null; // goal met
+  const overMultiplier = v / threshold;
+  if (overMultiplier >= 1.5) {
+    return `${label} is ${valueStr} vs your goal of ${goalStr} — ${overMultiplier.toFixed(1)}x over target`;
+  }
+  const pct = Math.round(((v - threshold) / threshold) * 100);
+  return `${label} is ${valueStr} vs your goal of ${goalStr} — ${pct}% over target`;
+}
