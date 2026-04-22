@@ -78,36 +78,37 @@ interface Brand {
  ];
  
 export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate }: ContentAssetsEditorProps) {
-   const [assets, setAssets] = useState<ContentAsset[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [saving, setSaving] = useState<string | null>(null);
-   const [expandedTypes, setExpandedTypes] = useState<string[]>(['testimonials']);
-   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<Record<string, boolean>>({});
+  const [assets, setAssets] = useState<ContentAsset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [expandedTypes, setExpandedTypes] = useState<string[]>(['testimonials']);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<Record<string, boolean>>({});
   const [showPsychologyPrompt, setShowPsychologyPrompt] = useState(false);
- 
-   // Fetch existing assets
-   useEffect(() => {
-     const fetchAssets = async () => {
-       try {
-         const { data, error } = await supabase
-           .from('brand_content_assets')
-           .select('*')
-           .eq('brand_id', brandId);
- 
-         if (error) throw error;
- 
-         // Type assertion for the data
-         const typedData = (data || []) as ContentAsset[];
-         setAssets(typedData);
-       } catch (error) {
-         console.error('Error fetching content assets:', error);
-       } finally {
-         setLoading(false);
-       }
-     };
- 
-     fetchAssets();
-   }, [brandId]);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addModalDefaultType, setAddModalDefaultType] = useState<string | undefined>();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchAssets = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('brand_content_assets')
+        .select('*')
+        .eq('brand_id', brandId);
+
+      if (error) throw error;
+      const typedData = (data || []) as ContentAsset[];
+      setAssets(typedData);
+    } catch (error) {
+      console.error('Error fetching content assets:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [brandId]);
+
+  // Fetch existing assets
+  useEffect(() => {
+    fetchAssets();
+  }, [fetchAssets]);
  
   // Check if psychology needs updating when assets change
   const checkPsychologyUpdate = useCallback(() => {
