@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
     // Fetch existing workspaces for this brand to check for duplicates
     const { data: existingWorkspaces, error: fetchError } = await supabase
       .from('campaign_workspaces')
-      .select('id, meta_campaign_ids')
+      .select('id, meta_campaign_ids, objective')
       .eq('brand_id', brandId);
 
     if (fetchError) {
@@ -180,12 +180,21 @@ Deno.serve(async (req) => {
       throw fetchError;
     }
 
-    // Create a set of existing campaign IDs for quick lookup
-    const existingCampaignIds = new Set(
-      (existingWorkspaces || [])
-        .map((w) => (w.meta_campaign_ids as any)?.campaignId)
-        .filter(Boolean)
-    );
+    // Build a map of Meta campaign ID → existing workspace row so we can
+    // both skip duplicates AND backfill `objective` on older rows that were
+    // imported before the column existed. (One-time heal; subsequent syncs
+    // are cheap no-ops.)
+    const existingByCampaignId = new Map<string, { id: string; objective: string | null }>();
+    for (const w of existingWorkspaces || []) {
+      const campaignId = (w.meta_campaign_ids as any)?.campaignId;
+      if (campaignId) {
+        existingByCampaignId.set(campaignId, {
+          id: w.id,
+          objective: (w as any).objective ?? null,
+        });
+      }
+    }
+    const existingCampaignIds = new Set(existingByCampaignId.keys());
 
     console.log(`Found ${existingCampaignIds.size} existing campaign workspaces`);
 
@@ -252,6 +261,21 @@ Deno.serve(async (req) => {
     for (const campaign of campaignsToSync) {
       // Check if campaign already exists
       if (existingCampaignIds.has(campaign.id)) {
+        // Duplicate — but opportunistically backfill `objective` for rows
+        // that were imported before we started storing it. Only write when
+        // we'd actually change something; no-op otherwise.
+        const existing = existingByCampaignId.get(campaign.id);
+        if (existing && !existing.objective && campaign.objective) {
+          const { error: backfillError } = await supabase
+            .from('campaign_workspaces')
+            .update({ objective: campaign.objective })
+            .eq('id', existing.id);
+          if (backfillError) {
+            console.error(`Objective backfill failed for ${campaign.id}:`, backfillError);
+          } else {
+            console.log(`Backfilled objective=${campaign.objective} for existing workspace ${existing.id}`);
+          }
+        }
         console.log(`Skipping duplicate campaign: ${campaign.name} (${campaign.id})`);
         skipped++;
         continue;
@@ -328,6 +352,7 @@ Deno.serve(async (req) => {
           name: campaign.name,
           meta_campaign_ids: { campaignId: campaign.id },
           meta_campaign_status: metaStatus,
+          objective: campaign.objective ?? null,
           progress_status: 'imported',
           published_at: new Date().toISOString(),
           performance_history: initialPerformanceHistory,

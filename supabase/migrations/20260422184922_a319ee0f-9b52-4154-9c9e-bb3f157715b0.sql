@@ -1,0 +1,1 @@
+ALTER TABLE public.campaign_workspaces ADD COLUMN IF NOT EXISTS objective text;

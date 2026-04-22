@@ -11,20 +11,24 @@ import {
   Calendar,
   Package,
   Loader2,
-  
+
   AlertTriangle,
   RefreshCw,
   Plus,
   Wand2,
   ArrowRight,
   FileText,
-  TrendingUp } from
+  TrendingUp,
+  TrendingDown,
+  Pause,
+  Play } from
 'lucide-react';
 import { ClientReportModal } from './ClientReportModal';
 import {
   getLumiKPIConfig,
   getLumiKPIStatus,
-  getLumiStatusDot } from
+  getLumiStatusDot,
+  type LumiKPIConfig } from
 '@/lib/lumi-kpi-config';
 import { CampaignGoalRow } from './CampaignGoalRow';
 import { CampaignKPISummary } from './CampaignKPISummary';
@@ -41,18 +45,66 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { SocialGrowthFlow } from '@/components/SocialGrowthFlow';
+import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
 
+// Types intentionally left unfiltered on the home card — every structured rec
+// type is now actionable from here (pause, swap, budget, navigate). This
+// constant is kept for reference; no longer used as an exclusion list.
 const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_ad', 'resume_ad', 'swap_creative']);
 
-function getActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode; type: 'navigate' | 'add_posts' } {
-  const title = (rec.title || '').toLowerCase();
-  if (title.includes('resonat') || title.includes('ctr') || title.includes('click')) {
-    return { label: 'Add New Posts', url: '', icon: <Plus className="h-3.5 w-3.5" />, type: 'add_posts' };
+// Map icon keys returned by describeRecAction() to actual lucide React elements.
+// Keeping the hook string-typed avoids a React import on the hook side.
+function iconFor(key: string): React.ReactNode {
+  switch (key) {
+    case 'Pause': return <Pause className="h-3.5 w-3.5" />;
+    case 'Play': return <Play className="h-3.5 w-3.5" />;
+    case 'TrendingUp': return <TrendingUp className="h-3.5 w-3.5" />;
+    case 'TrendingDown': return <TrendingDown className="h-3.5 w-3.5" />;
+    case 'RefreshCw': return <RefreshCw className="h-3.5 w-3.5" />;
+    case 'Plus': return <Plus className="h-3.5 w-3.5" />;
+    case 'Eye': return <Eye className="h-3.5 w-3.5" />;
+    case 'Wand2':
+    default: return <Wand2 className="h-3.5 w-3.5" />;
   }
-  if (title.includes('fatigue') || title.includes('cost per purchase') || title.includes('refresh') || title.includes('cpp') || title.includes('below benchmark')) {
-    return { label: 'Refresh Creative', url: `/creative-studio?workspace=${campaignId}&refreshCreative=true`, icon: <RefreshCw className="h-3.5 w-3.5" />, type: 'navigate' };
+}
+
+// Silent goal-heal helpers. When the saved primary_kpi on a campaign_goals
+// row disagrees with the kpiConfig (i.e. objective-aware) expected KPI, we
+// quietly correct it. This cleans up legacy rows from before the KPI config
+// became objective-aware — e.g. Traffic campaigns stuck with primary_kpi='cpl'.
+function goalTypeFor(primaryKpi: string): 'greater_than' | 'less_than' {
+  return primaryKpi === 'roas' ? 'greater_than' : 'less_than';
+}
+
+// Pick a sensible threshold for the NEW KPI. If the user's old threshold
+// happens to land inside the new benchmark range, preserve it — they may
+// have set it intentionally. Otherwise, default to the benchmark max
+// (for cost-based KPIs, that's "you're healthy if you're under this") or
+// the benchmark min (for ROAS, "you're healthy if you're above this").
+function healedThreshold(
+  oldThreshold: number | null | undefined,
+  newConfig: LumiKPIConfig,
+): number {
+  const { min, max } = newConfig.benchmark;
+  if (typeof oldThreshold === 'number' && oldThreshold >= min && oldThreshold <= max) {
+    return oldThreshold;
   }
-  return { label: 'Try New Angles', url: `/creative-studio?workspace=${campaignId}`, icon: <Wand2 className="h-3.5 w-3.5" />, type: 'navigate' };
+  return newConfig.primary === 'roas' ? min : max;
+}
+
+// Thin wrapper around describeRecAction that also resolves the icon to a
+// rendered React node. Keeps the JSX below clean.
+function getActionButton(
+  rec: RecType,
+  campaignId: string,
+): { label: string; url: string; icon: React.ReactNode; kind: 'execute' | 'budget' | 'navigate' | 'add_posts' } {
+  const desc = describeRecAction(rec, campaignId);
+  return {
+    label: desc.label,
+    url: desc.url || '',
+    icon: iconFor(desc.iconKey),
+    kind: desc.kind,
+  };
 }
 
 interface CampaignMetrics {
@@ -194,6 +246,13 @@ export function InsightsHome({
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
+  // Shared rec-action machinery — same implementation used on the campaign
+  // detail view via LumiRecommendations. After a rec fires, refetch the list
+  // so completed items drop off and any new suggestions take their place.
+  const { executeRecommendation, executing: recExecuting, completed: recCompleted } =
+    useRecommendationActions({
+      onExecuted: () => { fetchRecommendations(); },
+    });
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [goalsMap, setGoalsMap] = useState<Record<string, any>>({});
@@ -205,7 +264,8 @@ export function InsightsHome({
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
 
-  // Fetch campaign goals for all campaigns
+  // Fetch campaign goals for all campaigns (and silently auto-heal any whose
+  // primary_kpi disagrees with the objective-aware kpiConfig).
   useEffect(() => {
     const fetchGoals = async () => {
       const wsIds = campaigns.map(c => c.id).filter(Boolean);
@@ -214,11 +274,58 @@ export function InsightsHome({
         .from('campaign_goals')
         .select('*')
         .in('workspace_id', wsIds);
-      if (data) {
-        const map: Record<string, any> = {};
-        data.forEach((g: any) => { if (g.workspace_id) map[g.workspace_id] = g; });
-        setGoalsMap(map);
-      }
+      if (!data) return;
+
+      const campaignsById = new Map(campaigns.map(c => [c.id, c]));
+      const healedMap: Record<string, any> = {};
+
+      // Run heals in parallel — each is a small targeted UPDATE keyed on
+      // goal id, so they don't conflict with each other.
+      await Promise.all(
+        data.map(async (g: any) => {
+          if (!g.workspace_id) return;
+          const campaign = campaignsById.get(g.workspace_id);
+          if (!campaign) {
+            healedMap[g.workspace_id] = g;
+            return;
+          }
+          const expected = getLumiKPIConfig(
+            campaign.objective,
+            campaign.templateName,
+            campaign.name,
+          );
+          // If the saved primary KPI already matches what kpiConfig says it
+          // should be, nothing to do.
+          if (g.primary_kpi === expected.primary) {
+            healedMap[g.workspace_id] = g;
+            return;
+          }
+
+          const patch = {
+            primary_kpi: expected.primary,
+            primary_kpi_label: expected.primaryLabel,
+            primary_kpi_goal_type: goalTypeFor(expected.primary),
+            primary_kpi_threshold: healedThreshold(g.primary_kpi_threshold, expected),
+          };
+
+          const { data: updated, error } = await supabase
+            .from('campaign_goals')
+            .update(patch)
+            .eq('id', g.id)
+            .select()
+            .single();
+
+          if (error || !updated) {
+            // Heal failed — fall back to the original row so UI still works.
+            console.warn('Silent goal-heal failed for', g.id, error);
+            healedMap[g.workspace_id] = g;
+          } else {
+            healedMap[g.workspace_id] = updated;
+          }
+        }),
+      );
+
+      setGoalsMap(healedMap);
     };
     if (campaigns.length > 0) fetchGoals();
   }, [campaigns, goalsVersion]);
@@ -815,14 +922,46 @@ export function InsightsHome({
 
                         {/* Row 5: User-action recommendations inline */}
                         {(() => {
+                          // Show every structured rec for this campaign — including
+                          // the previously-filtered pause_ad / swap_creative / budget
+                          // types. Drops any the user has already executed in-session.
                           const userRecs = recommendations.filter(
-                            r => r.campaignId === campaign.id && !AUTOMATABLE_TYPES.has(r.type)
+                            r => r.campaignId === campaign.id && !recCompleted.has(r.id)
                           );
                           if (userRecs.length === 0) return null;
+
                           return (
                             <div className="space-y-1.5 pl-5">
                               {userRecs.slice(0, 2).map((rec: any) => {
                                 const action = getActionButton(rec, campaign.id);
+                                const isBusy = recExecuting[rec.id];
+
+                                // The button. Same visual for every action kind;
+                                // the onClick dispatches based on kind.
+                                const button = (
+                                  <Button
+                                    size="sm"
+                                    variant="lumi"
+                                    disabled={isBusy}
+                                    className="rounded-xl text-xs shrink-0 gap-1 h-7 px-2.5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (action.kind === 'add_posts') {
+                                        openPostPicker(campaign.id);
+                                      } else if (action.kind === 'navigate') {
+                                        navigate(action.url);
+                                      } else if (action.kind === 'execute') {
+                                        executeRecommendation(rec);
+                                      }
+                                      // kind === 'budget' is handled by the
+                                      // enclosing Popover; no onClick work here.
+                                    }}
+                                  >
+                                    {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : action.icon}
+                                    {action.label}
+                                  </Button>
+                                );
+
                                 return (
                                   <div
                                     key={rec.id}
@@ -832,22 +971,33 @@ export function InsightsHome({
                                       <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0" />
                                       <span className="text-xs font-medium truncate">{rec.title}</span>
                                     </div>
-                                    <Button
-                                      size="sm"
-                                      variant="lumi"
-                                      className="rounded-xl text-xs shrink-0 gap-1 h-7 px-2.5"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (action.type === 'add_posts') {
-                                          openPostPicker(campaign.id);
-                                        } else {
-                                          navigate(action.url);
-                                        }
-                                      }}
-                                    >
-                                      {action.icon}
-                                      {action.label}
-                                    </Button>
+                                    {action.kind === 'budget' ? (
+                                      <Popover>
+                                        <PopoverTrigger asChild>{button}</PopoverTrigger>
+                                        <PopoverContent className="w-80 p-0" align="end">
+                                          <BudgetAdjustmentPanel
+                                            workspaceId={campaign.id}
+                                            workspaceName={campaign.name}
+                                            currentBudget={
+                                              rec.actionPayload?.currentBudget ||
+                                              campaign.dailyBudget ||
+                                              25
+                                            }
+                                            metrics={{
+                                              roas: campaign.metrics?.roas,
+                                              cpl: campaign.metrics?.cpl,
+                                              cpp: campaign.metrics?.cpp,
+                                              ctr: undefined,
+                                              frequency: undefined,
+                                              spend: campaign.metrics?.spend,
+                                            }}
+                                            inline
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                    ) : (
+                                      button
+                                    )}
                                   </div>
                                 );
                               })}
