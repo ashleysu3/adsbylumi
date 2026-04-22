@@ -569,6 +569,44 @@ export type Database = {
         }
         Relationships: []
       }
+      broll_libraries: {
+        Row: {
+          brand_id: string
+          clips: Json
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          clips?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          clips?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broll_libraries_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bug_reports: {
         Row: {
           assigned_to: string | null
@@ -779,6 +817,7 @@ export type Database = {
           archived_at: string | null
           auto_rotate_enabled: boolean | null
           brand_id: string
+          broll_library_id: string | null
           campaign_builder_answers: Json | null
           chat_history: Json | null
           created_at: string | null
@@ -820,6 +859,7 @@ export type Database = {
           archived_at?: string | null
           auto_rotate_enabled?: boolean | null
           brand_id: string
+          broll_library_id?: string | null
           campaign_builder_answers?: Json | null
           chat_history?: Json | null
           created_at?: string | null
@@ -861,6 +901,7 @@ export type Database = {
           archived_at?: string | null
           auto_rotate_enabled?: boolean | null
           brand_id?: string
+          broll_library_id?: string | null
           campaign_builder_answers?: Json | null
           chat_history?: Json | null
           created_at?: string | null
@@ -903,6 +944,13 @@ export type Database = {
             columns: ["brand_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_workspaces_broll_library_id_fkey"
+            columns: ["broll_library_id"]
+            isOneToOne: false
+            referencedRelation: "broll_libraries"
             referencedColumns: ["id"]
           },
           {
