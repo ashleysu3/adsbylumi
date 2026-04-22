@@ -239,7 +239,7 @@ export function PostLaunchWalkthrough({
               <ChevronRight className="h-4 w-4" />
             </Button>
           )}
-          {step === 3 && (
+          {step === 3 && !goalSaved && (
             <Button
               onClick={handleSaveGoal}
               disabled={saving || !kpi || !threshold}
@@ -247,6 +247,12 @@ export function PostLaunchWalkthrough({
             >
               <Target className="h-4 w-4" />
               {saving ? "Saving…" : "Save my goal"}
+            </Button>
+          )}
+          {step === 3 && goalSaved && (
+            <Button onClick={handleNext} className="gap-1.5 rounded-xl">
+              Continue
+              <ChevronRight className="h-4 w-4" />
             </Button>
           )}
           {step === 4 && (
