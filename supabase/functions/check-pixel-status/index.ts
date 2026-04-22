@@ -114,25 +114,33 @@ Deno.serve(async (req) => {
         events[event] = { active: false, count_7d: 0 };
       }
 
-      // Process the stats data - Meta returns nested format:
-      // { data: [{ event: "PageView", data: [{ value: 100, timestamp: "..." }] }] }
+      // Process the stats data - Meta returns hourly buckets with nested event entries:
+      // { data: [{ start_time, aggregation: "event", data: [{ value: "Lead", count: 10 }, ...] }, ...] }
+      // The inner `value` is the event NAME and `count` is the occurrence count for that bucket.
+      // We aggregate counts across all buckets per event name.
+      const eventTotals: Record<string, number> = {};
       if (statsData.data && Array.isArray(statsData.data)) {
-        for (const stat of statsData.data) {
-          const eventName = stat.event;
-          if (eventName && targetEvents.includes(eventName)) {
-            // Sum up values from nested data array if present
-            let count = 0;
-            if (stat.data && Array.isArray(stat.data)) {
-              count = stat.data.reduce((sum: number, d: any) => sum + (d.value || d.count || 0), 0);
-            } else {
-              count = stat.count || stat.value || 0;
+        for (const bucket of statsData.data) {
+          // New format: bucket has nested data array with { value: eventName, count }
+          if (bucket.data && Array.isArray(bucket.data)) {
+            for (const entry of bucket.data) {
+              const eventName = typeof entry.value === 'string' ? entry.value : entry.event;
+              const count = typeof entry.count === 'number' ? entry.count : (typeof entry.value === 'number' ? entry.value : 0);
+              if (eventName && typeof eventName === 'string') {
+                eventTotals[eventName] = (eventTotals[eventName] || 0) + count;
+              }
             }
-            events[eventName] = {
-              active: count > 0,
-              count_7d: count
-            };
+          } else if (bucket.event) {
+            // Legacy/flat format fallback
+            const count = bucket.count || bucket.value || 0;
+            eventTotals[bucket.event] = (eventTotals[bucket.event] || 0) + count;
           }
         }
+      }
+
+      for (const event of targetEvents) {
+        const total = eventTotals[event] || 0;
+        events[event] = { active: total > 0, count_7d: total };
       }
 
       pixels.push({
