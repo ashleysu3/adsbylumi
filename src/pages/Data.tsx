@@ -627,6 +627,9 @@ export default function AdPerformance() {
       }
 
       setAccountMetrics(data.metrics);
+      // Successful Meta call → token is healthy. Clear any stale "expired" flag
+      // so the UI recovers after a reconnect/refresh without a full page reload.
+      setMetaTokenExpired(false);
     } catch (err: any) {
       console.error('Error fetching account overview:', err);
     } finally {
@@ -744,6 +747,13 @@ export default function AdPerformance() {
 
       setCampaigns(updatedCampaigns);
       autoVerifyTracking(updatedCampaigns);
+
+      // If at least one campaign successfully returned metrics, the token is healthy.
+      // Clear any stale "expired" flag so the UI recovers after a reconnect/refresh.
+      const anyMetricsLoaded = updatedCampaigns.some((c) => c.metrics);
+      if (anyMetricsLoaded) {
+        setMetaTokenExpired(false);
+      }
     } catch (error: any) {
       console.error('Error fetching metrics:', error);
       const errorMsg = error?.message || error?.toString() || '';
