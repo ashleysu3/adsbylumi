@@ -120,8 +120,11 @@ export function PostLaunchWalkthrough({
           { onConflict: "workspace_id" },
         );
       if (error) throw error;
+      const direction = kpiOption?.goalType === "greater_than" ? "above" : "under";
+      const summary = `${kpiOption?.label || kpi} ${direction} ${getThresholdPrefix(kpi)}${threshold}${getThresholdSuffix(kpi)}`;
+      setSavedSummary(summary);
+      setGoalSaved(true);
       toast.success("Goal locked in. Lumi is on it.");
-      handleNext();
     } catch (err: any) {
       console.error("Error saving goal in walkthrough:", err);
       toast.error(err.message || "Couldn't save your goal");
