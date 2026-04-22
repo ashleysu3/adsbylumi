@@ -832,6 +832,7 @@ export type Database = {
           meta_errors: Json | null
           meta_insights_last_sync: string | null
           name: string
+          objective: string | null
           offer_description: string | null
           offer_id: string | null
           offer_name: string | null
@@ -874,6 +875,7 @@ export type Database = {
           meta_errors?: Json | null
           meta_insights_last_sync?: string | null
           name: string
+          objective?: string | null
           offer_description?: string | null
           offer_id?: string | null
           offer_name?: string | null
@@ -916,6 +918,7 @@ export type Database = {
           meta_errors?: Json | null
           meta_insights_last_sync?: string | null
           name?: string
+          objective?: string | null
           offer_description?: string | null
           offer_id?: string | null
           offer_name?: string | null
