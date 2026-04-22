@@ -23,6 +23,10 @@ export interface Recommendation {
   priority: number;
   userAction?: boolean;
   actionUrl?: string;
+  // When true, the rec is advisory only — no actionable button should be
+  // rendered. Used by the frontend to wrap LLM-generated `next_steps` text
+  // that doesn't map to a concrete API action.
+  isInfoOnly?: boolean;
   // optional decorators added by consumers
   campaignName?: string;
   campaignId?: string;

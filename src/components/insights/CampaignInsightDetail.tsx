@@ -30,13 +30,18 @@ import {
   Wand2,
   Loader2
 } from 'lucide-react';
-import { 
-  getLumiKPIConfig, 
-  formatLumiKPIValue, 
+import {
+  getLumiKPIConfig,
+  formatLumiKPIValue,
   getLumiKPIStatus,
+  getGoalAwareStatus,
+  describeGoalMiss,
   getLumiStatusColor,
   getLumiStatusLabel,
 } from '@/lib/lumi-kpi-config';
+import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
+import { Eye, Pause, Play } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AdBreakdown } from './AdBreakdown';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
 import { LinkOfferModal } from './LinkOfferModal';
@@ -95,15 +100,36 @@ function FatigueAdRow({ adName, workspaceId }: { adName: string; workspaceId: st
   );
 }
 
-function getUserActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode; type: 'navigate' | 'add_posts' } {
-  const title = (rec.title || '').toLowerCase();
-  if (title.includes('resonat') || title.includes('ctr') || title.includes('click')) {
-    return { label: 'Add New Posts', url: '', icon: <Plus className="h-3.5 w-3.5" />, type: 'add_posts' };
+// Resolve a lucide icon for the label key describeRecAction returns.
+function iconForKey(key: string): React.ReactNode {
+  switch (key) {
+    case 'Pause': return <Pause className="h-3.5 w-3.5" />;
+    case 'Play': return <Play className="h-3.5 w-3.5" />;
+    case 'TrendingUp': return <TrendingUp className="h-3.5 w-3.5" />;
+    case 'TrendingDown': return <TrendingDown className="h-3.5 w-3.5" />;
+    case 'RefreshCw': return <RefreshCw className="h-3.5 w-3.5" />;
+    case 'Plus': return <Plus className="h-3.5 w-3.5" />;
+    case 'Eye': return <Eye className="h-3.5 w-3.5" />;
+    case 'Wand2':
+    default: return <Wand2 className="h-3.5 w-3.5" />;
   }
-  if (title.includes('fatigue') || title.includes('cost per purchase') || title.includes('refresh') || title.includes('cpp') || title.includes('below benchmark')) {
-    return { label: 'Refresh Creative', url: `/creative-studio?workspace=${campaignId}&refreshCreative=true`, icon: <RefreshCw className="h-3.5 w-3.5" />, type: 'navigate' };
-  }
-  return { label: 'Try New Angles', url: `/creative-studio?workspace=${campaignId}`, icon: <Wand2 className="h-3.5 w-3.5" />, type: 'navigate' };
+}
+
+// Thin wrapper that delegates to the shared describeRecAction and resolves
+// the icon to a rendered React node. Replaces the legacy string-matching
+// getUserActionButton so the detail view uses the same action vocabulary as
+// the home card.
+function getUserActionButton(
+  rec: RecType,
+  campaignId: string,
+): { label: string; url: string; icon: React.ReactNode; kind: 'execute' | 'budget' | 'navigate' | 'add_posts' } {
+  const desc = describeRecAction(rec, campaignId);
+  return {
+    label: desc.label,
+    url: desc.url || '',
+    icon: iconForKey(desc.iconKey),
+    kind: desc.kind,
+  };
 }
 
 interface CampaignMetrics {
@@ -235,10 +261,19 @@ export function CampaignInsightDetail({
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [workspaceData, setWorkspaceData] = useState<any>(null);
+  // Campaign goals for this workspace — drives goal-aware status, budget
+  // verdict, and the "What's Not Working" goal-miss line. Without this, the
+  // page reads everything from kpiConfig benchmarks and happily calls a
+  // 2x-over-goal campaign "healthy".
+  const [goals, setGoals] = useState<any>(null);
   // Post picker state
   const [postPickerOpen, setPostPickerOpen] = useState(false);
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
+  // Shared recommendation actions (pause/swap/budget). Replaces the bespoke
+  // onClick logic that used to sit on the Creative Actions buttons.
+  const { executeRecommendation, executing: recExecuting, completed: recCompleted } =
+    useRecommendationActions({ onExecuted: () => { fetchRecommendations(); } });
 
   useEffect(() => {
     if (campaign.id) {
@@ -249,6 +284,18 @@ export function CampaignInsightDetail({
         .single()
         .then(({ data }) => { if (data) setWorkspaceData(data); });
     }
+  }, [campaign.id]);
+
+  // Load campaign goals alongside the workspace. Kept as its own effect so
+  // a re-render triggered elsewhere doesn't re-fetch workspace unnecessarily.
+  useEffect(() => {
+    if (!campaign.id) return;
+    supabase
+      .from('campaign_goals')
+      .select('*')
+      .eq('workspace_id', campaign.id)
+      .maybeSingle()
+      .then(({ data }) => setGoals(data || null));
   }, [campaign.id]);
 
   const openPostPicker = async () => {
@@ -346,7 +393,12 @@ export function CampaignInsightDetail({
 
   const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
   const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
-  const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
+  // Goal-aware status: reads campaign_goals first, benchmark as fallback.
+  // Drives the big CPL tile color, the budget verdict, AND flows into the
+  // "What's Not Working" section below. Previously all three used the
+  // benchmark-only getLumiKPIStatus, which is why a $24 CPL sat inside
+  // the $5–$35 Lead benchmark and looked "healthy" despite a $12 user goal.
+  const status = getGoalAwareStatus(campaign.metrics, kpiConfig, goals);
   const statusColorClass = getLumiStatusColor(status);
   const statusLabel = getLumiStatusLabel(status);
   const frequency = campaign.metrics?.frequency as number | undefined;
@@ -381,7 +433,7 @@ export function CampaignInsightDetail({
   // Only show KPI alerts relevant to this campaign's objective
   const relevantKPIKeys = new Set([kpiConfig.primary, 'ctr', 'frequency']);
   // Also include secondary keys from campaign-kpi-config if available
-  const needsAttention = analysis?.kpi_evaluation
+  const rawNeedsAttention = analysis?.kpi_evaluation
     ? Object.entries(analysis.kpi_evaluation)
         .filter(([key, kpi]) => {
           if (kpi.status === 'tracking_only' || kpi.status === 'not_applicable') return false;
@@ -389,8 +441,15 @@ export function CampaignInsightDetail({
           return kpi.status === 'needs attention' || kpi.status === 'critical' || kpi.status === 'needs_attention';
         })
         .map(([key, kpi]) => kpi.reason)
-        .slice(0, 2)
     : [];
+
+  // Supplement with a goal-miss line when the primary KPI is missing the
+  // user's goal. The analyze-performance edge function evaluates against
+  // benchmarks, so it misses the case where a $24 CPL is inside the $5–$35
+  // Lead benchmark but nowhere near the user's $12 goal. This adds that
+  // signal on the frontend without needing an edge-function change.
+  const goalMissLine = describeGoalMiss(campaign.metrics, goals);
+  const needsAttention = (goalMissLine ? [goalMissLine, ...rawNeedsAttention] : rawNeedsAttention).slice(0, 3);
 
   const nextSteps = (analysis?.next_steps || []).slice(0, 2);
 
@@ -569,7 +628,13 @@ export function CampaignInsightDetail({
 
           {/* User-action recommendations inline */}
           {(() => {
-            const userRecs = recommendations.filter((r: any) => !AUTOMATABLE_TYPES.has(r.type));
+            // Automatable recs (pause/swap/budget) are rendered by the
+            // LumiRecommendations card below with their own Approve flow, so
+            // we keep them out of Creative Actions to avoid duplication.
+            // Drop completed + info-only recs for cleanliness.
+            const userRecs = recommendations.filter(
+              (r: any) => !AUTOMATABLE_TYPES.has(r.type) && !recCompleted.has(r.id),
+            );
             if (userRecs.length === 0) return null;
             return (
               <Card className="rounded-2xl border-[hsl(var(--lumi-orange-1)/0.2)]">
@@ -579,7 +644,39 @@ export function CampaignInsightDetail({
                     Creative Actions
                   </h3>
                   {userRecs.slice(0, 3).map((rec: any) => {
+                    // Info-only advisory recs: show text, no button.
+                    if (rec.isInfoOnly) {
+                      return (
+                        <div
+                          key={rec.id}
+                          className="flex items-start gap-2 p-2.5 rounded-xl bg-[hsl(var(--lumi-orange-1)/0.06)] border border-[hsl(var(--lumi-orange-1)/0.15)]"
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0 mt-0.5" />
+                          <span className="text-sm font-medium">{rec.title}</span>
+                        </div>
+                      );
+                    }
                     const action = getUserActionButton(rec, campaign.id);
+                    const isBusy = recExecuting[rec.id];
+
+                    const button = (
+                      <Button
+                        size="sm"
+                        variant="lumi"
+                        disabled={isBusy}
+                        className="rounded-xl text-xs shrink-0 gap-1"
+                        onClick={() => {
+                          if (action.kind === 'add_posts') openPostPicker();
+                          else if (action.kind === 'navigate') navigate(action.url);
+                          else if (action.kind === 'execute') executeRecommendation(rec);
+                          // kind === 'budget' is handled by the wrapping Popover
+                        }}
+                      >
+                        {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : action.icon}
+                        {action.label}
+                      </Button>
+                    );
+
                     return (
                       <div
                         key={rec.id}
@@ -589,15 +686,33 @@ export function CampaignInsightDetail({
                           <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0" />
                           <span className="text-sm font-medium truncate">{rec.title}</span>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="lumi"
-                          className="rounded-xl text-xs shrink-0 gap-1"
-                          onClick={() => action.type === 'add_posts' ? openPostPicker() : navigate(action.url)}
-                        >
-                          {action.icon}
-                          {action.label}
-                        </Button>
+                        {action.kind === 'budget' ? (
+                          <Popover>
+                            <PopoverTrigger asChild>{button}</PopoverTrigger>
+                            <PopoverContent className="w-80 p-0" align="end">
+                              <BudgetAdjustmentPanel
+                                workspaceId={campaign.id}
+                                workspaceName={campaign.name}
+                                currentBudget={
+                                  rec.actionPayload?.currentBudget ||
+                                  (campaign as any).dailyBudget ||
+                                  25
+                                }
+                                metrics={{
+                                  roas: campaign.metrics?.roas,
+                                  cpl: campaign.metrics?.cpl,
+                                  cpp: campaign.metrics?.cpp,
+                                  ctr: undefined,
+                                  frequency: undefined,
+                                  spend: campaign.metrics?.spend,
+                                }}
+                                inline
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          button
+                        )}
                       </div>
                     );
                   })}
