@@ -1560,7 +1560,7 @@ export default function CreativeStudio() {
                   angles={availableAngles}
                   selectedAngleIds={selectedAngleIds.length > 0 ? selectedAngleIds : [...new Set(productionItems.map(p => availableAngles.find(a => a.name === p.angleName)?.id).filter(Boolean))] as string[]}
                   angleCopy={angleCopy}
-                  brandInfo={workspace?.brands}
+                  brandInfo={effectiveBrand(workspace?.brands, useBrandStyleDefaults)}
                   offerData={{
                     name: workspace?.offer_name,
                     description: workspace?.offer_description,
