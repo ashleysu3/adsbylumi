@@ -185,10 +185,56 @@ export function BRollLibrary({
         />
       </label>
 
-      {/* Clips Grid */}
+      {/* Search & Filter */}
       {clips.length > 0 && (
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search clips by name or tag..."
+              className="pl-8 pr-8 h-9"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              <Badge
+                variant={activeTag === null ? "default" : "outline"}
+                className="cursor-pointer text-xs"
+                onClick={() => setActiveTag(null)}
+              >
+                All
+              </Badge>
+              {allTags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant={activeTag === tag ? "default" : "outline"}
+                  className="cursor-pointer text-xs"
+                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Clips Grid */}
+      {filteredClips.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {clips.map((clip) => (
+          {filteredClips.map((clip) => (
             <div
               key={clip.id}
               className="relative group rounded-lg overflow-hidden border bg-muted/30"
@@ -210,6 +256,18 @@ export function BRollLibrary({
               />
               <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
                 <p className="text-xs text-white truncate">{clip.file_name}</p>
+                {clip.tags && clip.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {clip.tags.slice(0, 3).map((t) => (
+                      <span
+                        key={t}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-white/20 text-white"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <Button
                 variant="destructive"
@@ -226,6 +284,14 @@ export function BRollLibrary({
               </Button>
             </div>
           ))}
+        </div>
+      )}
+
+      {clips.length > 0 && filteredClips.length === 0 && (
+        <div className="text-center py-6">
+          <p className="text-sm text-muted-foreground">
+            No clips match your search.
+          </p>
         </div>
       )}
 
