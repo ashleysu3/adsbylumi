@@ -124,7 +124,9 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
   }, [assets, brand?.audience_psychology, brand?.psychology_content_hash]);
 
    const getAssetForType = (type: string): ContentAsset => {
-     const existing = assets.find(a => a.asset_type === type);
+     const ofType = assets.filter(a => a.asset_type === type);
+     // Prefer the "primary" entry (no label) for the inline editor
+     const existing = ofType.find(a => !a.label) || ofType[0];
      return existing || {
        brand_id: brandId,
        asset_type: type,
@@ -132,12 +134,22 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
        offer_ids: [],
      };
    };
- 
+
+   const getExtraAssetsForType = (type: string): ContentAsset[] => {
+     const primary = getAssetForType(type);
+     return assets.filter(a => a.asset_type === type && a.id && a.id !== primary.id);
+   };
+
    const updateAssetContent = (type: string, content: string) => {
      setAssets(prev => {
-       const existing = prev.find(a => a.asset_type === type);
-       if (existing) {
-         return prev.map(a => a.asset_type === type ? { ...a, content } : a);
+       const primaryId = (prev.find(a => a.asset_type === type && !a.label) || prev.find(a => a.asset_type === type))?.id;
+       const existingIdx = prev.findIndex(a => a.asset_type === type && a.id === primaryId);
+       if (existingIdx >= 0) {
+         return prev.map((a, i) => i === existingIdx ? { ...a, content } : a);
+       }
+       const inMemory = prev.find(a => a.asset_type === type && !a.id);
+       if (inMemory) {
+         return prev.map(a => (a === inMemory ? { ...a, content } : a));
        }
        return [...prev, { brand_id: brandId, asset_type: type, content, offer_ids: [] }];
      });
