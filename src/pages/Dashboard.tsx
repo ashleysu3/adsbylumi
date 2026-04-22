@@ -441,12 +441,29 @@ export default function Dashboard() {
       .then(({ count }) => setHasPublishedAd((count || 0) > 0));
   }, [brand?.id]);
 
-  // Calculate trial days remaining
-  const trialDaysLeft = (() => {
-    if (!isTrial || !subscriptionEnd) return 0;
+  // Calculate trial days remaining and whether the trial banner should show.
+  // Guards against stale `isTrial` flags by requiring a valid future end date.
+  const { trialDaysLeft, showTrialBanner } = (() => {
+    if (!isTrial) return { trialDaysLeft: 0, showTrialBanner: false };
+    if (!subscriptionEnd) {
+      console.warn('[trial-banner] isTrial=true but subscriptionEnd is missing — hiding banner');
+      return { trialDaysLeft: 0, showTrialBanner: false };
+    }
     const end = new Date(subscriptionEnd);
+    if (Number.isNaN(end.getTime())) {
+      console.warn('[trial-banner] invalid subscriptionEnd — hiding banner', { subscriptionEnd });
+      return { trialDaysLeft: 0, showTrialBanner: false };
+    }
     const now = new Date();
-    return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    const msLeft = end.getTime() - now.getTime();
+    if (msLeft <= 0) {
+      // Trial period has already ended — don't claim it ends today.
+      return { trialDaysLeft: 0, showTrialBanner: false };
+    }
+    return {
+      trialDaysLeft: Math.max(1, Math.ceil(msLeft / (1000 * 60 * 60 * 24))),
+      showTrialBanner: true,
+    };
   })();
 
   const trialMilestones = [
@@ -487,8 +504,8 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-8">
-        {/* Trial Banner */}
-        {isTrial && (
+        {/* Trial Banner — only show when user is genuinely in an active trial with a future end date */}
+        {showTrialBanner && (
           <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-accent/5 to-secondary/5">
             <CardContent className="p-4 md:p-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -498,9 +515,9 @@ export default function Dashboard() {
                   </div>
                   <div>
                     <p className="font-semibold text-foreground">
-                      {trialDaysLeft > 0 
-                        ? `${trialDaysLeft} day${trialDaysLeft !== 1 ? 's' : ''} left in your free trial`
-                        : 'Your free trial ends today'}
+                      {trialDaysLeft === 1
+                        ? 'Last day of your free trial'
+                        : `${trialDaysLeft} days left in your free trial`}
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {trialMilestones.filter(m => m.done).length}/{trialMilestones.length} setup steps complete
