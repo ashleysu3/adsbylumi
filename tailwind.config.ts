@@ -96,8 +96,8 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Red Hat Display', 'system-ui', 'sans-serif'],
-        heading: ['Red Hat Display', 'system-ui', 'sans-serif'],
+        display: ['Asfallt Sans', 'Red Hat Display', 'system-ui', 'sans-serif'],
+        heading: ['Asfallt Sans', 'Red Hat Display', 'system-ui', 'sans-serif'],
         body: ['Inter', 'system-ui', 'sans-serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },

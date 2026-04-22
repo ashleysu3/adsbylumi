@@ -20,6 +20,15 @@ p, li, span, blockquote {
 @import url('https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* Custom heading font — Asfallt Sans */
+@font-face {
+  font-family: 'Asfallt Sans';
+  src: url('/src/assets/fonts/asfallt-sans-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     /* Lumi Brand Colors - Logo Gradient */
