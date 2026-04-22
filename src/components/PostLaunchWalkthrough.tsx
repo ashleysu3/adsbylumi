@@ -62,6 +62,8 @@ export function PostLaunchWalkthrough({
 }: PostLaunchWalkthroughProps) {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [goalSaved, setGoalSaved] = useState(false);
+  const [savedSummary, setSavedSummary] = useState<string | null>(null);
 
   const suggestion: GoalSuggestion = useMemo(
     () => suggestGoals(offerPrice, templateSlug),
@@ -82,6 +84,8 @@ export function PostLaunchWalkthrough({
       setStep(1);
       setKpi(suggestion.primary.kpi);
       setThreshold(String(suggestion.primary.threshold));
+      setGoalSaved(false);
+      setSavedSummary(null);
     }
   }, [open, suggestion.primary.kpi, suggestion.primary.threshold]);
 
@@ -116,8 +120,11 @@ export function PostLaunchWalkthrough({
           { onConflict: "workspace_id" },
         );
       if (error) throw error;
+      const direction = kpiOption?.goalType === "greater_than" ? "above" : "under";
+      const summary = `${kpiOption?.label || kpi} ${direction} ${getThresholdPrefix(kpi)}${threshold}${getThresholdSuffix(kpi)}`;
+      setSavedSummary(summary);
+      setGoalSaved(true);
       toast.success("Goal locked in. Lumi is on it.");
-      handleNext();
     } catch (err: any) {
       console.error("Error saving goal in walkthrough:", err);
       toast.error(err.message || "Couldn't save your goal");
@@ -194,9 +201,17 @@ export function PostLaunchWalkthrough({
                 <StepGoal
                   suggestion={suggestion}
                   kpi={kpi}
-                  setKpi={setKpi}
+                  setKpi={(v) => {
+                    setKpi(v);
+                    if (goalSaved) setGoalSaved(false);
+                  }}
                   threshold={threshold}
-                  setThreshold={setThreshold}
+                  setThreshold={(v) => {
+                    setThreshold(v);
+                    if (goalSaved) setGoalSaved(false);
+                  }}
+                  goalSaved={goalSaved}
+                  savedSummary={savedSummary}
                 />
               )}
               {step === 4 && <StepMonitoring />}
@@ -224,7 +239,7 @@ export function PostLaunchWalkthrough({
               <ChevronRight className="h-4 w-4" />
             </Button>
           )}
-          {step === 3 && (
+          {step === 3 && !goalSaved && (
             <Button
               onClick={handleSaveGoal}
               disabled={saving || !kpi || !threshold}
@@ -232,6 +247,12 @@ export function PostLaunchWalkthrough({
             >
               <Target className="h-4 w-4" />
               {saving ? "Saving…" : "Save my goal"}
+            </Button>
+          )}
+          {step === 3 && goalSaved && (
+            <Button onClick={handleNext} className="gap-1.5 rounded-xl">
+              Continue
+              <ChevronRight className="h-4 w-4" />
             </Button>
           )}
           {step === 4 && (
@@ -485,12 +506,16 @@ function StepGoal({
   setKpi,
   threshold,
   setThreshold,
+  goalSaved,
+  savedSummary,
 }: {
   suggestion: GoalSuggestion;
   kpi: string;
   setKpi: (v: string) => void;
   threshold: string;
   setThreshold: (v: string) => void;
+  goalSaved: boolean;
+  savedSummary: string | null;
 }) {
   const kpiOpt = KPI_OPTIONS.find((o) => o.value === kpi);
   const prefix = getThresholdPrefix(kpi);
@@ -589,6 +614,31 @@ function StepGoal({
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {goalSaved && savedSummary && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25 }}
+            role="status"
+            aria-live="polite"
+            className="flex items-start gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2"
+          >
+            <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center shrink-0 mt-0.5">
+              <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="text-xs leading-tight">
+              <p className="font-medium text-foreground">Goal saved ✓</p>
+              <p className="text-muted-foreground">
+                Lumi is now tracking{" "}
+                <span className="font-medium text-foreground">{savedSummary}</span>. Edit anything above to update.
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
