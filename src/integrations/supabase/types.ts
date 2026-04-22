@@ -1520,6 +1520,50 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_connection_checks: {
+        Row: {
+          brand_id: string
+          check_type: string
+          checks_performed: Json
+          created_at: string
+          details: Json
+          id: string
+          outcome: string
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          brand_id: string
+          check_type: string
+          checks_performed?: Json
+          created_at?: string
+          details?: Json
+          id?: string
+          outcome: string
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          brand_id?: string
+          check_type?: string
+          checks_performed?: Json
+          created_at?: string
+          details?: Json
+          id?: string
+          outcome?: string
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_connection_checks_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
           ai_generated_description: boolean | null
