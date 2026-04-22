@@ -397,7 +397,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard, onO
           <ExternalLink className="h-4 w-4 mr-2" />
           View in Ads Manager
         </Button>
-        <Button onClick={onBackToDashboard} size="lg" variant="secondary">
+        <Button onClick={() => onBackToDashboard(campaignId)} size="lg" variant="secondary">
           Back to Dashboard
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
