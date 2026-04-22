@@ -33,13 +33,43 @@ export function ProductionChecklist({ workspace, onUpdate, brand }: ProductionCh
   const [expandedConcepts, setExpandedConcepts] = useState<Set<string>>(new Set());
   const [readyForProduction, setReadyForProduction] = useState<Set<string>>(new Set());
   const [clipAssignments, setClipAssignments] = useState<Record<string, string>>({});
+  const [extraLibraryClips, setExtraLibraryClips] = useState<BRollClip[]>([]);
 
-  const brollClips: BRollClip[] = (brand as any)?.broll_library || [];
+  const brandClips: BRollClip[] = (brand as any)?.broll_library || [];
+  const brollClips: BRollClip[] = (() => {
+    const seen = new Set<string>();
+    return [...extraLibraryClips, ...brandClips].filter((c) => {
+      if (!c?.id) return true;
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+  })();
   const overlayStyle: OverlayStyle = (brand as any)?.overlay_style || DEFAULT_OVERLAY_STYLE;
 
   useEffect(() => {
     initializeProductionItems();
   }, [workspace]);
+
+  // Load clips from the workspace's selected named library, if any
+  useEffect(() => {
+    const libId = (workspace as any)?.broll_library_id;
+    if (!libId) {
+      setExtraLibraryClips([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("broll_libraries")
+        .select("clips")
+        .eq("id", libId)
+        .maybeSingle();
+      if (cancelled || error || !data) return;
+      setExtraLibraryClips(Array.isArray(data.clips) ? (data.clips as any) : []);
+    })();
+    return () => { cancelled = true; };
+  }, [(workspace as any)?.broll_library_id]);
 
   const initializeProductionItems = async () => {
     if (!workspace?.loved_concepts || !workspace?.creative_json) return;
