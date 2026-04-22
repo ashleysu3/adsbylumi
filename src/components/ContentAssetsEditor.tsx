@@ -350,18 +350,18 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
                        <p className="text-xs text-muted-foreground">{assetType.description}</p>
                      </div>
                    </div>
-                   <div className="flex items-center gap-2">
-                     {hasContent && (
-                       <Badge variant="outline" className="text-xs border-green-500 text-green-600">
-                         <Check className="h-3 w-3 mr-1" />
-                         Saved
-                       </Badge>
-                     )}
-                     <ChevronDown className={cn(
-                       'h-4 w-4 text-muted-foreground transition-transform',
-                       isExpanded && 'rotate-180'
-                     )} />
-                   </div>
+                    <div className="flex items-center gap-2">
+                      {totalForType > 0 && (
+                        <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                          <Check className="h-3 w-3 mr-1" />
+                          {totalForType} saved
+                        </Badge>
+                      )}
+                      <ChevronDown className={cn(
+                        'h-4 w-4 text-muted-foreground transition-transform',
+                        isExpanded && 'rotate-180'
+                      )} />
+                    </div>
                  </div>
                </CollapsibleTrigger>
  
