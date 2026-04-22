@@ -39,6 +39,9 @@ export default function MetaSettings() {
   const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [diagnosticRecheckCount, setDiagnosticRecheckCount] = useState(0);
+  // Bumped after each connection check so the log panel re-fetches
+  const [logRefreshKey, setLogRefreshKey] = useState(0);
+  const bumpLog = () => setLogRefreshKey((k) => k + 1);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -90,8 +93,45 @@ export default function MetaSettings() {
       if (data?.success) {
         setDiagnosticResult(data);
       }
+
+      // Log the diagnostic outcome
+      const userId = await getEffectiveUserId();
+      if (userId) {
+        const checks: MetaCheckItem[] = Array.isArray(data?.checks)
+          ? data.checks.map((c: any) => ({
+              label: c.label || c.name || 'Check',
+              status: c.passed === true ? 'pass' : c.passed === false ? 'fail' : (c.status || 'skip'),
+              note: c.message || c.detail,
+            }))
+          : [];
+        const failed = checks.filter((c) => c.status === 'fail').length;
+        const warned = checks.filter((c) => c.status === 'warn').length;
+        const outcome = !data?.success || failed > 0 ? 'error' : warned > 0 ? 'warning' : 'success';
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'diagnostic',
+          outcome,
+          summary: data?.summary || (failed > 0 ? `${failed} check(s) failed` : warned > 0 ? `${warned} warning(s)` : 'Diagnostic passed'),
+          checksPerformed: checks,
+          details: data || {},
+        });
+        bumpLog();
+      }
     } catch (err) {
       console.error('Diagnostic failed:', err);
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'diagnostic',
+          outcome: 'error',
+          summary: 'Diagnostic could not run',
+          details: { error: (err as Error)?.message },
+        });
+        bumpLog();
+      }
     } finally {
       setDiagnosticLoading(false);
     }
