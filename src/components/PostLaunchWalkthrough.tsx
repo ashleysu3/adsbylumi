@@ -306,9 +306,115 @@ function StepIntro({ kpiConfig }: { kpiConfig: LumiKPIConfig }) {
 // ──────────────────────────────────────────────────────────
 // Step 2 — Benchmark for this campaign
 // ──────────────────────────────────────────────────────────
+
+interface BenchmarkCopy {
+  introLead: string;
+  rangeCaption: string;
+  healthyLabel: string;
+  healthyDetail: string;
+  watchLabel: string;
+  watchDetail: string;
+  criticalLabel: string;
+  criticalDetail: string;
+  footer: string;
+}
+
+function getBenchmarkCopy(kpiConfig: LumiKPIConfig): BenchmarkCopy {
+  const friendly = kpiConfig.friendlyName.toLowerCase();
+  const range = formatBenchmarkRange(kpiConfig.benchmark);
+
+  switch (kpiConfig.primary) {
+    case "roas":
+      return {
+        introLead: `For ${friendly} campaigns, Lumi tracks Return on Ad Spend — every $1 in, multiplied.`,
+        rangeCaption: `Healthy ${friendly} campaigns earn back ${range} for every dollar spent.`,
+        healthyLabel: "Profitable",
+        healthyDetail: `${kpiConfig.benchmark.min.toFixed(1)}x or higher — keep scaling.`,
+        watchLabel: "Breakeven zone",
+        watchDetail: "Returns softening — refresh creative or offer.",
+        criticalLabel: "Losing money",
+        criticalDetail: "Spend is outpacing revenue.",
+        footer: "Lumi watches every dollar in vs every dollar out — no spreadsheets required.",
+      };
+    case "cpl":
+      return {
+        introLead: `For ${friendly}, Lumi watches Cost Per Lead — what you pay for each new contact.`,
+        rangeCaption: `A healthy lead for this kind of offer lands between ${range}.`,
+        healthyLabel: "Efficient",
+        healthyDetail: `Leads at or under ${kpiConfig.benchmark.unit}${kpiConfig.benchmark.max.toFixed(0)}.`,
+        watchLabel: "Pricier than ideal",
+        watchDetail: "Costs creeping up — try fresh hooks.",
+        criticalLabel: "Too expensive",
+        criticalDetail: "Lead cost is well above benchmark.",
+        footer: "Lumi calculates your CPL daily and alerts you the moment it drifts.",
+      };
+    case "cpp":
+      return {
+        introLead: `For ${friendly}, Lumi tracks Cost Per Purchase — what you pay for each sale.`,
+        rangeCaption: `Healthy purchases at this price point come in between ${range}.`,
+        healthyLabel: "Profitable sales",
+        healthyDetail: `Purchases under ${kpiConfig.benchmark.unit}${kpiConfig.benchmark.max.toFixed(0)}.`,
+        watchLabel: "Margin shrinking",
+        watchDetail: "CPP climbing — check fatigue & landing page.",
+        criticalLabel: "Underwater",
+        criticalDetail: "Sales costing more than they're worth.",
+        footer: "Lumi grades every purchase against your price point automatically.",
+      };
+    case "cpc":
+      return {
+        introLead: `For ${friendly}, Lumi watches Cost Per Click — what you pay for each tap.`,
+        rangeCaption: `Healthy clicks for traffic campaigns land between ${range}.`,
+        healthyLabel: "Strong creative",
+        healthyDetail: `Clicks under ${kpiConfig.benchmark.unit}${kpiConfig.benchmark.max.toFixed(2)}.`,
+        watchLabel: "Hooks softening",
+        watchDetail: "Your scroll-stopper may be losing steam.",
+        criticalLabel: "Not landing",
+        criticalDetail: "Time to refresh hooks or visuals.",
+        footer: "Lumi tracks click costs daily so you know the moment a creative tires out.",
+      };
+    case "costPerThruPlay":
+      return {
+        introLead: `For ${friendly}, Lumi tracks Cost Per ThruPlay — what you pay for someone to actually watch.`,
+        rangeCaption: `Healthy view costs land between ${range} per ThruPlay.`,
+        healthyLabel: "Eyes engaged",
+        healthyDetail: `ThruPlays under ${kpiConfig.benchmark.unit}${kpiConfig.benchmark.max.toFixed(2)}.`,
+        watchLabel: "Hook weakening",
+        watchDetail: "Tighten the first 3 seconds.",
+        criticalLabel: "Scroll-by",
+        criticalDetail: "Video isn't holding attention.",
+        footer: "Lumi monitors view costs every day so your hook stays sharp.",
+      };
+    case "cpm":
+      return {
+        introLead: `For ${friendly}, Lumi tracks CPM — what you pay to be seen 1,000 times.`,
+        rangeCaption: `Healthy CPMs for this objective land between ${range}.`,
+        healthyLabel: "Efficient reach",
+        healthyDetail: `CPM under ${kpiConfig.benchmark.unit}${kpiConfig.benchmark.max.toFixed(2)}.`,
+        watchLabel: "Reach narrowing",
+        watchDetail: "Audience may be saturating.",
+        criticalLabel: "Pricey impressions",
+        criticalDetail: "Paying a premium to be seen.",
+        footer: "Lumi tracks reach efficiency so your message stays in front of the right eyes.",
+      };
+    default:
+      return {
+        introLead: `Industry-tested ranges for ${friendly} campaigns.`,
+        rangeCaption: "Stay inside the healthy range and Lumi keeps quiet.",
+        healthyLabel: "Healthy",
+        healthyDetail: "In range",
+        watchLabel: "Watch",
+        watchDetail: "Slightly off",
+        criticalLabel: "Critical",
+        criticalDetail: "Action needed",
+        footer: "Lumi grades you against this range automatically. No spreadsheets. No guessing.",
+      };
+  }
+}
+
 function StepBenchmark({ kpiConfig }: { kpiConfig: LumiKPIConfig }) {
   const range = formatBenchmarkRange(kpiConfig.benchmark);
   const isUpward = kpiConfig.primary === "roas";
+  const copy = getBenchmarkCopy(kpiConfig);
 
   return (
     <>
@@ -317,48 +423,55 @@ function StepBenchmark({ kpiConfig }: { kpiConfig: LumiKPIConfig }) {
           <Target className="h-4 w-4 text-primary" />
         </div>
         <div>
-          <h2 className="text-xl font-display font-semibold leading-tight">Here's your benchmark</h2>
-          <p className="text-xs text-muted-foreground">
-            Industry-tested ranges for {kpiConfig.friendlyName.toLowerCase()} campaigns.
-          </p>
+          <h2 className="text-xl font-display font-semibold leading-tight">
+            Your benchmark for {kpiConfig.primaryLabel}
+          </h2>
+          <p className="text-xs text-muted-foreground">{copy.introLead}</p>
         </div>
       </div>
 
       <Card>
         <CardContent className="p-4 space-y-3">
           <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Healthy range</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Healthy {kpiConfig.primaryLabel} range
+            </p>
             <p className="text-2xl font-semibold font-display">{range}</p>
             <p className="text-xs text-muted-foreground">
-              {isUpward
-                ? "Higher is better — every dollar spent earns you more back."
-                : "Lower is better — you're paying less for each result."}
+              {copy.rangeCaption}{" "}
+              <span className="italic">
+                ({isUpward ? "higher is better" : "lower is better"})
+              </span>
             </p>
           </div>
 
           <div className="grid grid-cols-3 gap-2 pt-2">
             <div className="rounded-lg border bg-green-500/5 border-green-500/20 p-2 text-center">
               <div className="w-2 h-2 rounded-full bg-green-500 mx-auto mb-1" />
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Healthy</p>
-              <p className="text-xs font-medium">In range</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {copy.healthyLabel}
+              </p>
+              <p className="text-xs font-medium leading-tight">{copy.healthyDetail}</p>
             </div>
             <div className="rounded-lg border bg-amber-500/5 border-amber-500/20 p-2 text-center">
               <div className="w-2 h-2 rounded-full bg-amber-500 mx-auto mb-1" />
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Watch</p>
-              <p className="text-xs font-medium">Slightly off</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {copy.watchLabel}
+              </p>
+              <p className="text-xs font-medium leading-tight">{copy.watchDetail}</p>
             </div>
             <div className="rounded-lg border bg-red-500/5 border-red-500/20 p-2 text-center">
               <div className="w-2 h-2 rounded-full bg-red-500 mx-auto mb-1" />
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Critical</p>
-              <p className="text-xs font-medium">Action needed</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {copy.criticalLabel}
+              </p>
+              <p className="text-xs font-medium leading-tight">{copy.criticalDetail}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Lumi grades you against this range automatically. No spreadsheets. No guessing.
-      </p>
+      <p className="text-xs text-muted-foreground">{copy.footer}</p>
     </>
   );
 }
