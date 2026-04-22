@@ -610,7 +610,8 @@ export default function Create() {
       case 1:
         if (!selectedGoal) return "What's your goal?";
         if (selectedGoal === "grow_social") return "Choose your creative";
-        if (selectedGoal === "local") return "Choose your location strategy";
+        if (selectedGoal === "local") return "Choose your local strategy";
+        if (selectedGoal === "event_location") return "Event & location targeting";
         return "Choose your offer";
       case 2:return "Recommended strategy";
       default:return "";
@@ -623,6 +624,7 @@ export default function Create() {
         if (!selectedGoal) return "Tell LUMI what you're trying to accomplish";
         if (selectedGoal === "grow_social") return "Select the posts you'd like to promote";
         if (selectedGoal === "local") return "LUMI will match the right approach";
+        if (selectedGoal === "event_location") return "Get in front of people at conferences, trade shows, or specific venues";
         return "What are we promoting?";
       case 2:return isLocalStrategy ?
         "Lumi matched this location-based strategy for you" :
@@ -871,8 +873,15 @@ export default function Create() {
                   selected={false}
                   onSelect={() => setSelectedGoal("local")}
                   icon={<MapPin className="h-5 w-5" />}
-                  title="Reach people near my location"
-                  description="Local business, event targeting, or regional campaigns" />
+                  title="Promote a local business or event"
+                  description="Reach nearby or regional customers for your storefront, service area, or location" />
+                
+                    <StepOption
+                  selected={false}
+                  onSelect={() => setSelectedGoal("event_location")}
+                  icon={<MapPin className="h-5 w-5" />}
+                  title="Event & location targeting"
+                  description="Get in front of people at conferences, trade shows, or high-traffic venues" />
                 
                   </div>
               }
@@ -1226,25 +1235,9 @@ export default function Create() {
                   </div>
               }
 
-                {/* Local goal */}
+                {/* Local goal — nearby + regional only */}
                 {selectedGoal === "local" &&
               <div className="space-y-3">
-                    <StepOption
-                  selected={selectedOfferId === EVENT_LOCATION_OFFER_ID}
-                  onSelect={() => {
-                    setSelectedOfferId(EVENT_LOCATION_OFFER_ID);
-                    setShowSocialGrowthFlow(false);
-                    const matched = templates.find((t) => t.slug === "event-location");
-                    if (matched) {
-                      setSelectedTemplateId(matched.id);
-                      setRecommendedTemplate(matched);
-                    }
-                    setCurrentStep(2);
-                  }}
-                  icon={<MapPin className="h-5 w-5" />}
-                  title="Event & Location Targeting"
-                  description="Get in front of people at conferences, trade shows, or high-traffic locations" />
-                
                     <StepOption
                   selected={selectedOfferId === LOCAL_NEARBY_OFFER_ID}
                   onSelect={() => {
@@ -1279,6 +1272,21 @@ export default function Create() {
                 
                   </div>
               }
+
+                {/* Event & location targeting — auto-advance to recommendation */}
+                {selectedGoal === "event_location" && (() => {
+                  if (selectedOfferId !== EVENT_LOCATION_OFFER_ID) {
+                    setSelectedOfferId(EVENT_LOCATION_OFFER_ID);
+                    setShowSocialGrowthFlow(false);
+                    const matched = templates.find((t) => t.slug === "event-location");
+                    if (matched) {
+                      setSelectedTemplateId(matched.id);
+                      setRecommendedTemplate(matched);
+                    }
+                    setCurrentStep(2);
+                  }
+                  return null;
+                })()}
               </motion.div>
             }
 
