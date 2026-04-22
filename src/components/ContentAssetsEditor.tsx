@@ -7,10 +7,11 @@
  import { Badge } from '@/components/ui/badge';
  import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
- import { ChevronDown, FileText, MessageSquare, ClipboardList, HelpCircle, Sparkles, Loader2, Check, BookOpen } from 'lucide-react';
- import { toast } from 'sonner';
- import { cn } from '@/lib/utils';
+import { ChevronDown, FileText, MessageSquare, ClipboardList, HelpCircle, Sparkles, Loader2, Check, BookOpen, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { PsychologyUpdatePrompt } from './PsychologyUpdatePrompt';
+import { AddReferenceContentModal } from './AddReferenceContentModal';
  
  interface ContentAsset {
    id?: string;
