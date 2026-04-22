@@ -441,12 +441,29 @@ export default function Dashboard() {
       .then(({ count }) => setHasPublishedAd((count || 0) > 0));
   }, [brand?.id]);
 
-  // Calculate trial days remaining
-  const trialDaysLeft = (() => {
-    if (!isTrial || !subscriptionEnd) return 0;
+  // Calculate trial days remaining and whether the trial banner should show.
+  // Guards against stale `isTrial` flags by requiring a valid future end date.
+  const { trialDaysLeft, showTrialBanner } = (() => {
+    if (!isTrial) return { trialDaysLeft: 0, showTrialBanner: false };
+    if (!subscriptionEnd) {
+      console.warn('[trial-banner] isTrial=true but subscriptionEnd is missing — hiding banner');
+      return { trialDaysLeft: 0, showTrialBanner: false };
+    }
     const end = new Date(subscriptionEnd);
+    if (Number.isNaN(end.getTime())) {
+      console.warn('[trial-banner] invalid subscriptionEnd — hiding banner', { subscriptionEnd });
+      return { trialDaysLeft: 0, showTrialBanner: false };
+    }
     const now = new Date();
-    return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    const msLeft = end.getTime() - now.getTime();
+    if (msLeft <= 0) {
+      // Trial period has already ended — don't claim it ends today.
+      return { trialDaysLeft: 0, showTrialBanner: false };
+    }
+    return {
+      trialDaysLeft: Math.max(1, Math.ceil(msLeft / (1000 * 60 * 60 * 24))),
+      showTrialBanner: true,
+    };
   })();
 
   const trialMilestones = [
