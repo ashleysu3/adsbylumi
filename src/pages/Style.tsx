@@ -13,6 +13,7 @@ import { PageShimmer } from "@/components/GradientShimmer";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { BRollLibrary } from "@/components/BRollLibrary";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
+import { StylePreviewPanel } from "@/components/StylePreviewPanel";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
 import { DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import { Building2, Smile, X, Loader2, Palette } from "lucide-react";
@@ -190,6 +191,8 @@ export default function Style() {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
+          <div className="space-y-6 md:space-y-8 min-w-0">
         {/* Copy Voice */}
         <Card variant="glow">
           <CardHeader>
@@ -400,6 +403,19 @@ export default function Style() {
           }}
           saving={saving}
         />
+          </div>
+
+          <div className="lg:block">
+            <StylePreviewPanel
+              brandName={brand?.name}
+              copyPerspective={brand?.copy_perspective === "We" ? "We" : "I"}
+              useEmojis={emojiSettings.use_emojis}
+              brandEmojis={emojiSettings.brand_emojis}
+              bulletEmoji={emojiSettings.bullet_emoji}
+              overlayStyle={overlayStyle}
+            />
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );
