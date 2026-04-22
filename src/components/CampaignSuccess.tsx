@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface CampaignSuccessProps {
   workspace: any;
   campaignIds: any;
-  onBackToDashboard: () => void;
+  onBackToDashboard: (campaignId?: string) => void;
   onOpenWalkthrough?: () => void;
 }
 
