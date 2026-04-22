@@ -457,6 +457,8 @@ export default function MetaSettings() {
         body: { brandId: brand.id }
       });
 
+      const userId = await getEffectiveUserId();
+
       if (error) {
         setConnectionHealth('error');
         setTestResult({
@@ -465,6 +467,17 @@ export default function MetaSettings() {
           error: error.message || 'Could not complete connection test',
           isAutoTest: false
         });
+        if (userId) {
+          await logMetaConnectionCheck({
+            brandId: brand.id,
+            userId,
+            checkType: 'manual_test',
+            outcome: 'error',
+            summary: error.message || 'Test invocation failed',
+            details: { error: error.message },
+          });
+          bumpLog();
+        }
         return;
       }
 
@@ -482,6 +495,20 @@ export default function MetaSettings() {
       }
 
       setTestResult({ ...data, isAutoTest: false });
+
+      if (userId) {
+        const { checks, outcome, summary } = buildTestChecks(data);
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'manual_test',
+          outcome,
+          summary,
+          checksPerformed: checks,
+          details: data?.details || {},
+        });
+        bumpLog();
+      }
     } catch (error: any) {
       console.error('Test connection error:', error);
       setConnectionHealth('error');
@@ -491,6 +518,18 @@ export default function MetaSettings() {
         error: error.message || 'An unexpected error occurred',
         isAutoTest: false
       });
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'manual_test',
+          outcome: 'error',
+          summary: 'Manual test threw an exception',
+          details: { error: error?.message },
+        });
+        bumpLog();
+      }
     } finally {
       setTesting(false);
     }
@@ -1045,6 +1084,11 @@ export default function MetaSettings() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Connection check log — visible whenever there's a brand to log against */}
+        {brand?.id && (
+          <MetaConnectionCheckLog brandId={brand.id} refreshKey={logRefreshKey} />
+        )}
 
         {/* Pixel Verification Card — only show when connected (readiness checklist covers it otherwise) */}
         {isConnected && (
