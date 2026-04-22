@@ -418,31 +418,87 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
                      </div>
                    )}
  
-                   <div className="flex justify-end">
-                     <Button
-                       size="sm"
-                       onClick={() => saveAsset(assetType.type)}
-                       disabled={saving === assetType.type || !hasUnsavedChanges[assetType.type]}
-                       variant={hasUnsavedChanges[assetType.type] ? 'lumi' : 'outline'}
-                     >
-                       {saving === assetType.type ? (
-                         <>
-                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                           Saving...
-                         </>
-                       ) : hasUnsavedChanges[assetType.type] ? (
-                         'Save'
-                       ) : (
-                         'Saved'
-                       )}
-                     </Button>
-                   </div>
-                 </div>
-               </CollapsibleContent>
-             </Collapsible>
-           );
-         })}
-       </CardContent>
-     </Card>
+                    <div className="flex items-center justify-between gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openAddModal(assetType.type)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add another
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => saveAsset(assetType.type)}
+                        disabled={saving === assetType.type || !hasUnsavedChanges[assetType.type]}
+                        variant={hasUnsavedChanges[assetType.type] ? 'lumi' : 'outline'}
+                      >
+                        {saving === assetType.type ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Saving...
+                          </>
+                        ) : hasUnsavedChanges[assetType.type] ? (
+                          'Save'
+                        ) : (
+                          'Saved'
+                        )}
+                      </Button>
+                    </div>
+
+                    {extras.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Additional items ({extras.length})
+                        </p>
+                        {extras.map((extra) => (
+                          <div
+                            key={extra.id}
+                            className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-muted/30"
+                          >
+                            <div className="min-w-0 flex-1">
+                              {extra.label && (
+                                <p className="text-sm font-medium truncate">{extra.label}</p>
+                              )}
+                              <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">
+                                {extra.content}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => extra.id && deleteAsset(extra.id)}
+                              disabled={deletingId === extra.id}
+                              aria-label="Remove item"
+                            >
+                              {deletingId === extra.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+        </CardContent>
+
+        <AddReferenceContentModal
+          open={addModalOpen}
+          onOpenChange={setAddModalOpen}
+          brandId={brandId}
+          assetTypes={ASSET_TYPES.map((t) => ({ type: t.type, label: t.label }))}
+          defaultType={addModalDefaultType}
+          onAdded={() => {
+            fetchAssets();
+            setTimeout(checkPsychologyUpdate, 500);
+          }}
+        />
+      </Card>
    );
  }
