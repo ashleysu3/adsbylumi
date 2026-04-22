@@ -84,6 +84,8 @@ export function PostLaunchWalkthrough({
       setStep(1);
       setKpi(suggestion.primary.kpi);
       setThreshold(String(suggestion.primary.threshold));
+      setGoalSaved(false);
+      setSavedSummary(null);
     }
   }, [open, suggestion.primary.kpi, suggestion.primary.threshold]);
 
