@@ -1646,7 +1646,7 @@ export default function CreativeStudio() {
               }}
               onSaveToLibrary={saveItemToLibrary}
               brandId={brandId}
-              brand={workspace?.brands}
+              brand={effectiveBrand(workspace?.brands, useBrandStyleDefaults)}
               angleCopy={angleCopy}
               onRefineScript={refineScript}
               currentRound={(workspace?.creative_json as Record<string, any>)?.currentRound}
