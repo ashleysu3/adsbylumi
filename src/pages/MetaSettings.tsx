@@ -21,6 +21,8 @@ import { format, differenceInDays } from 'date-fns';
 import { PixelVerificationCard } from '@/components/PixelVerificationCard';
 import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
 import { MetaSetupDiagnostic, type DiagnosticResult } from '@/components/MetaSetupDiagnostic';
+import { MetaConnectionCheckLog } from '@/components/MetaConnectionCheckLog';
+import { logMetaConnectionCheck, type MetaCheckItem } from '@/lib/log-meta-check';
 
 export default function MetaSettings() {
   const navigate = useNavigate();
