@@ -2198,6 +2198,7 @@ export type Database = {
     }
     Functions: {
       accept_team_invite: { Args: { p_token: string }; Returns: Json }
+      claim_first_campaign_launch: { Args: never; Returns: boolean }
       claim_invite_code: { Args: { code_input: string }; Returns: boolean }
       delete_meta_token: { Args: { p_brand_id: string }; Returns: boolean }
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
