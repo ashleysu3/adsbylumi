@@ -321,11 +321,13 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
           />
         )}
         
-         {ASSET_TYPES.map((assetType) => {
-           const asset = getAssetForType(assetType.type);
-           const isExpanded = expandedTypes.includes(assetType.type);
-           const hasContent = asset.content?.trim();
-           const Icon = assetType.icon;
+          {ASSET_TYPES.map((assetType) => {
+            const asset = getAssetForType(assetType.type);
+            const extras = getExtraAssetsForType(assetType.type);
+            const isExpanded = expandedTypes.includes(assetType.type);
+            const hasContent = asset.content?.trim();
+            const totalForType = (hasContent ? 1 : 0) + extras.length;
+            const Icon = assetType.icon;
  
            return (
              <Collapsible
