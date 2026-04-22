@@ -74,52 +74,80 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard, onO
   const [toggling, setToggling] = useState(false);
   const [showConfetti, setShowConfetti] = useState(true);
 
+  // Capture latest onOpenWalkthrough in a ref so the effect always uses the freshest
+  // callback without re-running and never misses the open due to a stale closure.
+  const openWalkthroughRef = useRef(onOpenWalkthrough);
+  useEffect(() => {
+    openWalkthroughRef.current = onOpenWalkthrough;
+  }, [onOpenWalkthrough]);
+
   // Auto-trigger walkthrough on first-ever campaign launch — runs at most once per mount,
-  // and only if the user has never had `first_campaign_launched_at` set before.
+  // gated by an in-memory ref, sessionStorage, and an atomic Postgres claim.
   const autoOpenAttemptedRef = useRef(false);
   useEffect(() => {
-    if (!onOpenWalkthrough) return;
-    if (autoOpenAttemptedRef.current) return;
+    const log = (event: string, detail: Record<string, unknown> = {}) => {
+      console.info('[walkthrough-auto-open]', event, detail);
+    };
+
+    if (autoOpenAttemptedRef.current) {
+      log('skip:ref-already-attempted');
+      return;
+    }
     autoOpenAttemptedRef.current = true;
+    log('start');
 
     let cancelled = false;
     (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
+        if (!user) {
+          log('skip:no-user');
+          return;
+        }
+        if (cancelled) {
+          log('skip:cancelled-after-auth');
+          return;
+        }
 
-        // Session-level guard: if we already auto-opened in this browser session, skip.
         const sessionKey = `lumi_walkthrough_autoopened_${user.id}`;
-        if (sessionStorage.getItem(sessionKey)) return;
+        if (sessionStorage.getItem(sessionKey)) {
+          log('skip:session-storage-set', { sessionKey });
+          return;
+        }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('first_campaign_launched_at')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (cancelled) return;
+        // Atomic claim — returns true ONLY the first time it succeeds for this user.
+        const { data: claimed, error: claimError } = await supabase.rpc(
+          'claim_first_campaign_launch',
+        );
 
-        // Only fire if the profile has NEVER recorded a first launch.
-        if (profile && !profile.first_campaign_launched_at) {
-          // Stamp the profile FIRST so subsequent loads can never re-trigger.
-          const { error: stampError } = await supabase
-            .from('profiles')
-            .update({ first_campaign_launched_at: new Date().toISOString() })
-            .eq('id', user.id)
-            .is('first_campaign_launched_at', null);
+        if (claimError) {
+          log('error:rpc-claim-failed', { message: claimError.message });
+          return;
+        }
 
-          if (stampError) {
-            console.warn('first-launch stamp failed', stampError);
+        if (!claimed) {
+          log('skip:profile-already-stamped', { claimed });
+          return;
+        }
+
+        sessionStorage.setItem(sessionKey, '1');
+        log('success:claim-acquired-scheduling-open');
+
+        setTimeout(() => {
+          if (cancelled) {
+            log('skip:cancelled-before-open');
             return;
           }
-
-          sessionStorage.setItem(sessionKey, '1');
-          setTimeout(() => {
-            if (!cancelled) onOpenWalkthrough();
-          }, 1200);
-        }
-      } catch (err) {
-        console.warn('first-launch check failed', err);
+          const cb = openWalkthroughRef.current;
+          if (!cb) {
+            log('skip:no-callback-at-open-time');
+            return;
+          }
+          log('open:invoking-callback');
+          cb();
+        }, 1200);
+      } catch (err: any) {
+        log('error:exception', { message: err?.message ?? String(err) });
       }
     })();
     return () => { cancelled = true; };
