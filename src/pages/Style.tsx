@@ -191,6 +191,8 @@ export default function Style() {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
+          <div className="space-y-6 md:space-y-8 min-w-0">
         {/* Copy Voice */}
         <Card variant="glow">
           <CardHeader>
