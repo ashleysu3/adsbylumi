@@ -62,6 +62,8 @@ export function PostLaunchWalkthrough({
 }: PostLaunchWalkthroughProps) {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [goalSaved, setGoalSaved] = useState(false);
+  const [savedSummary, setSavedSummary] = useState<string | null>(null);
 
   const suggestion: GoalSuggestion = useMemo(
     () => suggestGoals(offerPrice, templateSlug),
