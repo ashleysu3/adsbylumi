@@ -72,6 +72,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
     price_point: "",
     target_outcome: "",
     page_goal: "" as PageGoal | "",
+    use_brand_style_defaults: true,
   });
 
   const extractDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -288,7 +289,8 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
           ai_generated_description: !!extractedData,
           ai_generated_price: !!extractedData?.price_point,
           messaging_guidelines: messagingGuidelines,
-        })
+          use_brand_style_defaults: formData.use_brand_style_defaults,
+        } as any)
         .select()
         .single();
 
@@ -322,7 +324,7 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
 
       onSuccess();
       onOpenChange(false);
-      setFormData({ name: "", url: "", description: "", price_point: "", target_outcome: "", page_goal: "" });
+      setFormData({ name: "", url: "", description: "", price_point: "", target_outcome: "", page_goal: "", use_brand_style_defaults: true });
       setExtractedData(null);
       setExtractionFailed(false);
       setPastedContent("");
@@ -705,6 +707,31 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
                 />
               </div>
             </div>
+          </div>
+
+          {/* Apply brand Style defaults */}
+          <div className="rounded-lg border bg-muted/30 p-3 flex items-start justify-between gap-3">
+            <div className="space-y-0.5 min-w-0">
+              <Label htmlFor="use-brand-style" className="text-sm font-medium cursor-pointer">
+                Apply brand Style defaults to this offer
+              </Label>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                When on, ad scripts and creative plans for this offer will use your brand's copy voice,
+                emoji preferences, bullet style, text overlay style, and b-roll. Turn off if this offer
+                should sound different from the rest of your brand.
+              </p>
+            </div>
+            <input
+              id="use-brand-style"
+              type="checkbox"
+              role="switch"
+              aria-checked={formData.use_brand_style_defaults}
+              checked={formData.use_brand_style_defaults}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, use_brand_style_defaults: e.target.checked }))
+              }
+              className="mt-1 h-4 w-4 accent-primary cursor-pointer shrink-0"
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
