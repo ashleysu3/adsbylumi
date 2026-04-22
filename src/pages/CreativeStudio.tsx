@@ -326,25 +326,13 @@ export default function CreativeStudio() {
         setUseBrandStyleDefaults(true);
       }
       const c = data?.creative_json as Record<string, any> | null;
-      // Inject default angle if angles exist but it's missing
-      const DEFAULT_ANGLE = {
-        id: "direct_from_page",
-        name: "Straight from Your Page",
-        description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
-        isDefault: true
-      };
-      const MAX_GENERATED_ANGLES = 10;
-      let loadedAngles = c?.angles || [];
-      if (loadedAngles.length > 0 && !loadedAngles.some((a: any) => a.id === "direct_from_page")) {
-        loadedAngles = [DEFAULT_ANGLE, ...loadedAngles];
-      }
-      // Normalize: keep default + max 10 generated angles to fill 4x3 grid (+ Add Your Own card)
-      const defaultAngles = loadedAngles.filter((a: any) => a.isDefault || a.id === "direct_from_page");
-      const generatedAngles = loadedAngles.filter((a: any) => !a.isDefault && a.id !== "direct_from_page");
-      if (generatedAngles.length > MAX_GENERATED_ANGLES) {
-        const removedIds = new Set(generatedAngles.slice(MAX_GENERATED_ANGLES).map((a: any) => a.id));
-        loadedAngles = [...defaultAngles, ...generatedAngles.slice(0, MAX_GENERATED_ANGLES)];
-        console.log(`[CreativeStudio] Trimmed ${removedIds.size} overflow angles for 4x3 grid`);
+      const MAX_GENERATED_ANGLES = 11;
+      // Strip any legacy "direct_from_page" angle from previously saved data
+      let loadedAngles = (c?.angles || []).filter((a: any) => a.id !== "direct_from_page");
+      if (loadedAngles.length > MAX_GENERATED_ANGLES) {
+        const removedIds = new Set(loadedAngles.slice(MAX_GENERATED_ANGLES).map((a: any) => a.id));
+        loadedAngles = loadedAngles.slice(0, MAX_GENERATED_ANGLES);
+        console.log(`[CreativeStudio] Trimmed ${removedIds.size} overflow angles`);
       }
       const loadedAngleIds = new Set(loadedAngles.map((a: any) => a.id));
       
@@ -405,11 +393,7 @@ export default function CreativeStudio() {
       
       // Validate selectedAngleIds - only keep IDs that exist in available angles
       const storedSelectedIds = c?.selectedAngleIds || [];
-      let validSelectedIds = storedSelectedIds.filter((id: string) => loadedAngleIds.has(id));
-      // Ensure default angle is always selected if angles exist
-      if (loadedAngles.length > 0 && !validSelectedIds.includes("direct_from_page")) {
-        validSelectedIds = ["direct_from_page", ...validSelectedIds];
-      }
+      let validSelectedIds = storedSelectedIds.filter((id: string) => loadedAngleIds.has(id) && id !== "direct_from_page");
       
       // Also ensure angles that have copy are selected (prevents orphan by deselection)
       const anglesWithCopy = Object.keys(reconciledAngleCopy).filter(id => {
@@ -724,9 +708,7 @@ export default function CreativeStudio() {
         const curCreative = (workspace.creative_json || {}) as Record<string, any>;
         if (curCreative.angles?.length) {
           previouslyUsedAngles.push(
-            ...curCreative.angles
-              .filter((a: any) => a.id !== 'direct_from_page')
-              .map((a: any) => a.name)
+            ...curCreative.angles.map((a: any) => a.name)
           );
         }
         // Also check archived rounds
@@ -751,9 +733,7 @@ export default function CreativeStudio() {
             const sibCreative = (sib.creative_json || {}) as Record<string, any>;
             if (sibCreative.angles?.length) {
               previouslyUsedAngles.push(
-                ...sibCreative.angles
-                  .filter((a: any) => a.id !== 'direct_from_page')
-                  .map((a: any) => a.name)
+                ...sibCreative.angles.map((a: any) => a.name)
               );
             }
           }
@@ -783,16 +763,8 @@ export default function CreativeStudio() {
       });
       if (error) throw error;
       
-      // Prepend the default "Straight from Your Page" angle
-      const DEFAULT_ANGLE = {
-        id: "direct_from_page",
-        name: "Straight from Your Page",
-        description: "Uses copy directly from your sales page — your offer name, description, and call-to-action as-is.",
-        isDefault: true
-      };
-      const MAX_GENERATED_ANGLES = 10;
-      const rawAngles = (data.angles || []).filter((a: any) => a.id !== "direct_from_page").slice(0, MAX_GENERATED_ANGLES);
-      const allAngles = [DEFAULT_ANGLE, ...rawAngles];
+      const MAX_GENERATED_ANGLES = 11;
+      const allAngles = (data.angles || []).filter((a: any) => a.id !== "direct_from_page").slice(0, MAX_GENERATED_ANGLES);
       
       // ===== Preserve existing angle_copy by remapping old angle names → new angle IDs =====
       const oldAngles = (workspace.creative_json as Record<string, any>)?.angles || [];
@@ -835,12 +807,12 @@ export default function CreativeStudio() {
       }
       
       setAvailableAngles(allAngles);
-      setSelectedAngleIds(["direct_from_page"]);
+      setSelectedAngleIds([]);
       setGridData([]);
       setActiveAngleId("");
        await saveCreativeState({ 
          angles: allAngles, 
-         selectedAngleIds: ["direct_from_page"], 
+         selectedAngleIds: [], 
          gridData: [],
          preGenerationContext: context || null,
          currentRound: newRound,
@@ -961,14 +933,13 @@ export default function CreativeStudio() {
 
   // Regenerate a single angle
   const regenerateSingleAngle = async (angleId: string) => {
-    if (angleId === "direct_from_page") return;
     const existingAngle = availableAngles.find(a => a.id === angleId);
     if (!existingAngle || !workspace) return;
 
     setRegeneratingAngleId(angleId);
     try {
       const otherAngleNames = availableAngles
-        .filter(a => a.id !== angleId && a.id !== "direct_from_page")
+        .filter(a => a.id !== angleId)
         .map(a => a.name);
 
       const { data, error } = await supabase.functions.invoke('generate-creative-angles', {
@@ -1770,7 +1741,7 @@ export default function CreativeStudio() {
               selectedAngleIds={selectedAngleIds}
               gridData={gridData.length > 0 ? gridData : productionItems.map(pi => ({
                 id: pi.id,
-                angleId: availableAngles.find(a => a.name === pi.angleName)?.id || "direct_from_page",
+                angleId: availableAngles.find(a => a.name === pi.angleName)?.id || availableAngles[0]?.id || "",
                 format: pi.format,
                 hook: pi.hook || "",
                 guidance: pi.guidance || "",
