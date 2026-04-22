@@ -279,6 +279,9 @@ export default function AdvancedBuild() {
   const generateSharedCopy = async () => {
     setSharedCopy(prev => ({ ...prev, generating: true }));
 
+    // Per-offer override: skip brand Style defaults when this offer opts out.
+    const applyStyle = (offer as any)?.use_brand_style_defaults !== false;
+
     try {
       const { data, error } = await supabase.functions.invoke("generate-advanced-copy", {
         body: {
@@ -290,10 +293,10 @@ export default function AdvancedBuild() {
           offerPrice: offer?.price_point || workspace?.offer_price,
           productPsychology: offer?.product_psychology,
           audiencePsychology: offer?.offer_audience_psychology || brand?.audience_psychology,
-          brandEmojis: brand?.brand_emojis,
-          bulletEmoji: brand?.bullet_emoji,
-          useEmojis: brand?.use_emojis,
-          copyPerspective: brand?.copy_perspective,
+          brandEmojis: applyStyle ? brand?.brand_emojis : undefined,
+          bulletEmoji: applyStyle ? brand?.bullet_emoji : undefined,
+          useEmojis: applyStyle ? brand?.use_emojis : false,
+          copyPerspective: applyStyle ? brand?.copy_perspective : undefined,
           neverUseWords: brand?.never_use_words,
           messagingGuidelines: offer?.messaging_guidelines,
         },

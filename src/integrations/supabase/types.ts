@@ -1542,6 +1542,7 @@ export type Database = {
           recommended_template_id: string | null
           target_outcome: string | null
           url: string | null
+          use_brand_style_defaults: boolean
         }
         Insert: {
           ai_generated_description?: boolean | null
@@ -1564,6 +1565,7 @@ export type Database = {
           recommended_template_id?: string | null
           target_outcome?: string | null
           url?: string | null
+          use_brand_style_defaults?: boolean
         }
         Update: {
           ai_generated_description?: boolean | null
@@ -1586,6 +1588,7 @@ export type Database = {
           recommended_template_id?: string | null
           target_outcome?: string | null
           url?: string | null
+          use_brand_style_defaults?: boolean
         }
         Relationships: [
           {

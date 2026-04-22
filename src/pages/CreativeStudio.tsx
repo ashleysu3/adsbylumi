@@ -141,6 +141,28 @@ const creativeGenerationCopy = [
 const formatIcons = { talking_head: Video, broll: Film, graphic: Image };
 const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic" };
 
+// Brand "Style" fields that are stripped from generation payloads when an offer
+// has `use_brand_style_defaults = false`. Keeps copy/voice/audience psychology
+// intact, only removes presentation defaults.
+const BRAND_STYLE_FIELDS = [
+  "copy_perspective",
+  "use_emojis",
+  "brand_emojis",
+  "bullet_emoji",
+  "overlay_style",
+  "broll_library",
+] as const;
+
+function effectiveBrand<T extends Record<string, any> | null | undefined>(
+  brand: T,
+  applyDefaults: boolean
+): T {
+  if (!brand || applyDefaults) return brand;
+  const next: any = { ...brand };
+  for (const key of BRAND_STYLE_FIELDS) delete next[key];
+  return next;
+}
+
 
 export default function CreativeStudio() {
   const navigate = useNavigate();
@@ -193,6 +215,9 @@ export default function CreativeStudio() {
   const [showBrief, setShowBrief] = useState(false);
   const [offerPsychology, setOfferPsychology] = useState<any>(null);
   const [offerAudiencePsychology, setOfferAudiencePsychology] = useState<any>(null);
+  // Per-offer Style override: when false, generation ignores brand Style defaults
+  // (copy_perspective, emoji settings, bullet emoji, overlay style, b-roll library).
+  const [useBrandStyleDefaults, setUseBrandStyleDefaults] = useState<boolean>(true);
 
   const urlWorkspaceId = searchParams.get("workspace");
   const isRefreshCreativeMode = searchParams.get("refreshCreative") === "true";
@@ -285,18 +310,20 @@ export default function CreativeStudio() {
       
       setWorkspace(data);
       
-      // Fetch offer psychology if workspace has an offer_id
+      // Fetch offer psychology + style-override flag if workspace has an offer_id
       if (data?.offer_id) {
         const { data: offerData } = await supabase
           .from('offers')
-          .select('product_psychology, offer_audience_psychology')
+          .select('product_psychology, offer_audience_psychology, use_brand_style_defaults')
           .eq('id', data.offer_id)
           .single();
         setOfferPsychology(offerData?.product_psychology || null);
         setOfferAudiencePsychology(offerData?.offer_audience_psychology || null);
+        setUseBrandStyleDefaults((offerData as any)?.use_brand_style_defaults !== false);
       } else {
         setOfferPsychology(null);
         setOfferAudiencePsychology(null);
+        setUseBrandStyleDefaults(true);
       }
       const c = data?.creative_json as Record<string, any> | null;
       // Inject default angle if angles exist but it's missing
@@ -1533,7 +1560,7 @@ export default function CreativeStudio() {
                   angles={availableAngles}
                   selectedAngleIds={selectedAngleIds.length > 0 ? selectedAngleIds : [...new Set(productionItems.map(p => availableAngles.find(a => a.name === p.angleName)?.id).filter(Boolean))] as string[]}
                   angleCopy={angleCopy}
-                  brandInfo={workspace?.brands}
+                  brandInfo={effectiveBrand(workspace?.brands, useBrandStyleDefaults)}
                   offerData={{
                     name: workspace?.offer_name,
                     description: workspace?.offer_description,
@@ -1619,7 +1646,7 @@ export default function CreativeStudio() {
               }}
               onSaveToLibrary={saveItemToLibrary}
               brandId={brandId}
-              brand={workspace?.brands}
+              brand={effectiveBrand(workspace?.brands, useBrandStyleDefaults)}
               angleCopy={angleCopy}
               onRefineScript={refineScript}
               currentRound={(workspace?.creative_json as Record<string, any>)?.currentRound}

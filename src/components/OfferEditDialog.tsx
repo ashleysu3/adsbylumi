@@ -18,6 +18,7 @@ interface OfferEditDialogProps {
     description?: string | null;
     price_point?: string | null;
     target_outcome?: string;
+    use_brand_style_defaults?: boolean | null;
   } | null;
   onSuccess: () => void;
 }
@@ -30,6 +31,7 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
     description: "",
     price_point: "",
     target_outcome: "",
+    use_brand_style_defaults: true,
   });
 
   useEffect(() => {
@@ -40,6 +42,7 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
         description: offer.description || "",
         price_point: offer.price_point || "",
         target_outcome: offer.target_outcome || "",
+        use_brand_style_defaults: offer.use_brand_style_defaults !== false,
       });
     }
   }, [offer, open]);
@@ -58,7 +61,8 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
           description: formData.description || null,
           price_point: formData.price_point || null,
           target_outcome: formData.target_outcome || null,
-        })
+          use_brand_style_defaults: formData.use_brand_style_defaults,
+        } as any)
         .eq("id", offer.id);
 
       if (error) throw error;
@@ -186,6 +190,31 @@ export function OfferEditDialog({ open, onOpenChange, offer, onSuccess }: OfferE
                 />
               </div>
             </div>
+          </div>
+
+          {/* Apply brand Style defaults */}
+          <div className="rounded-lg border bg-muted/30 p-3 flex items-start justify-between gap-3">
+            <div className="space-y-0.5 min-w-0">
+              <Label htmlFor="edit-use-brand-style" className="text-sm font-medium cursor-pointer">
+                Apply brand Style defaults to this offer
+              </Label>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                When on, ad scripts and creative plans for this offer use your brand's copy voice,
+                emoji preferences, bullet style, text overlay style, and b-roll. Turn off if this offer
+                should sound different from the rest of your brand.
+              </p>
+            </div>
+            <input
+              id="edit-use-brand-style"
+              type="checkbox"
+              role="switch"
+              aria-checked={formData.use_brand_style_defaults}
+              checked={formData.use_brand_style_defaults}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, use_brand_style_defaults: e.target.checked }))
+              }
+              className="mt-1 h-4 w-4 accent-primary cursor-pointer shrink-0"
+            />
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
