@@ -170,6 +170,26 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Require authentication to prevent unauthenticated AI credit abuse
+    // and cross-workspace data enumeration
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: authErr } = await supabaseAuth.auth.getUser();
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { workspaceId, message, chatHistory, answers } = await req.json();
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -189,6 +209,13 @@ Deno.serve(async (req) => {
       .single();
 
     if (workspaceError) throw workspaceError;
+
+    // Verify the authenticated user owns the brand for this workspace
+    if (!workspace?.brands || (workspace.brands as any).user_id !== user.id) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Get template defaults if available
     const template = workspace.campaign_templates;
