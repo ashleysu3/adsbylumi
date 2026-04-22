@@ -224,6 +224,7 @@ export function BRollLibrariesManager({
                 brandId={brandId}
                 clips={brandClips}
                 onUpdate={onBrandClipsChange}
+                libraryKey={`brand:${brandId}`}
                 embedded
               />
             </AccordionContent>
