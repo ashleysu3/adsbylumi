@@ -290,19 +290,23 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
    return (
      <Card variant="glow">
        <CardHeader>
-         <div className="flex items-center justify-between">
+         <div className="flex items-center justify-between flex-wrap gap-2">
            <div className="flex items-center gap-2">
              <Sparkles className="h-5 w-5 text-primary" />
              <CardTitle>Your Content Library</CardTitle>
+             {getSavedCount() > 0 && (
+               <Badge variant="secondary">
+                 {getSavedCount()} saved
+               </Badge>
+             )}
            </div>
-           {getSavedCount() > 0 && (
-             <Badge variant="secondary">
-               {getSavedCount()} asset{getSavedCount() !== 1 ? 's' : ''} saved
-             </Badge>
-           )}
+           <Button size="sm" variant="lumi" onClick={() => openAddModal()}>
+             <Plus className="h-4 w-4 mr-1" />
+             Add reference content
+           </Button>
          </div>
          <CardDescription>
-           Paste existing content to supercharge your AI-generated ads. The more context Lumi has, the more authentic and specific your copy will be.
+           Paste existing content or upload files to supercharge your AI-generated ads. The more context Lumi has, the more authentic and specific your copy will be.
          </CardDescription>
        </CardHeader>
        <CardContent className="space-y-4">
