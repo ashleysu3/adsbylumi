@@ -7,10 +7,11 @@
  import { Badge } from '@/components/ui/badge';
  import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
- import { ChevronDown, FileText, MessageSquare, ClipboardList, HelpCircle, Sparkles, Loader2, Check, BookOpen } from 'lucide-react';
- import { toast } from 'sonner';
- import { cn } from '@/lib/utils';
+import { ChevronDown, FileText, MessageSquare, ClipboardList, HelpCircle, Sparkles, Loader2, Check, BookOpen, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { PsychologyUpdatePrompt } from './PsychologyUpdatePrompt';
+import { AddReferenceContentModal } from './AddReferenceContentModal';
  
  interface ContentAsset {
    id?: string;
@@ -77,36 +78,37 @@ interface Brand {
  ];
  
 export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate }: ContentAssetsEditorProps) {
-   const [assets, setAssets] = useState<ContentAsset[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [saving, setSaving] = useState<string | null>(null);
-   const [expandedTypes, setExpandedTypes] = useState<string[]>(['testimonials']);
-   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<Record<string, boolean>>({});
+  const [assets, setAssets] = useState<ContentAsset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [expandedTypes, setExpandedTypes] = useState<string[]>(['testimonials']);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<Record<string, boolean>>({});
   const [showPsychologyPrompt, setShowPsychologyPrompt] = useState(false);
- 
-   // Fetch existing assets
-   useEffect(() => {
-     const fetchAssets = async () => {
-       try {
-         const { data, error } = await supabase
-           .from('brand_content_assets')
-           .select('*')
-           .eq('brand_id', brandId);
- 
-         if (error) throw error;
- 
-         // Type assertion for the data
-         const typedData = (data || []) as ContentAsset[];
-         setAssets(typedData);
-       } catch (error) {
-         console.error('Error fetching content assets:', error);
-       } finally {
-         setLoading(false);
-       }
-     };
- 
-     fetchAssets();
-   }, [brandId]);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addModalDefaultType, setAddModalDefaultType] = useState<string | undefined>();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchAssets = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('brand_content_assets')
+        .select('*')
+        .eq('brand_id', brandId);
+
+      if (error) throw error;
+      const typedData = (data || []) as ContentAsset[];
+      setAssets(typedData);
+    } catch (error) {
+      console.error('Error fetching content assets:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [brandId]);
+
+  // Fetch existing assets
+  useEffect(() => {
+    fetchAssets();
+  }, [fetchAssets]);
  
   // Check if psychology needs updating when assets change
   const checkPsychologyUpdate = useCallback(() => {
@@ -122,7 +124,9 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
   }, [assets, brand?.audience_psychology, brand?.psychology_content_hash]);
 
    const getAssetForType = (type: string): ContentAsset => {
-     const existing = assets.find(a => a.asset_type === type);
+     const ofType = assets.filter(a => a.asset_type === type);
+     // Prefer the "primary" entry (no label) for the inline editor
+     const existing = ofType.find(a => !a.label) || ofType[0];
      return existing || {
        brand_id: brandId,
        asset_type: type,
@@ -130,12 +134,22 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
        offer_ids: [],
      };
    };
- 
+
+   const getExtraAssetsForType = (type: string): ContentAsset[] => {
+     const primary = getAssetForType(type);
+     return assets.filter(a => a.asset_type === type && a.id && a.id !== primary.id);
+   };
+
    const updateAssetContent = (type: string, content: string) => {
      setAssets(prev => {
-       const existing = prev.find(a => a.asset_type === type);
-       if (existing) {
-         return prev.map(a => a.asset_type === type ? { ...a, content } : a);
+       const primaryId = (prev.find(a => a.asset_type === type && !a.label) || prev.find(a => a.asset_type === type))?.id;
+       const existingIdx = prev.findIndex(a => a.asset_type === type && a.id === primaryId);
+       if (existingIdx >= 0) {
+         return prev.map((a, i) => i === existingIdx ? { ...a, content } : a);
+       }
+       const inMemory = prev.find(a => a.asset_type === type && !a.id);
+       if (inMemory) {
+         return prev.map(a => (a === inMemory ? { ...a, content } : a));
        }
        return [...prev, { brand_id: brandId, asset_type: type, content, offer_ids: [] }];
      });
@@ -237,6 +251,29 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
          : [...prev, type]
      );
    };
+
+   const deleteAsset = async (assetId: string) => {
+     setDeletingId(assetId);
+     try {
+       const { error } = await supabase
+         .from('brand_content_assets')
+         .delete()
+         .eq('id', assetId);
+       if (error) throw error;
+       setAssets(prev => prev.filter(a => a.id !== assetId));
+       toast.success('Reference content removed');
+     } catch (err) {
+       console.error('Error deleting asset:', err);
+       toast.error('Failed to remove content');
+     } finally {
+       setDeletingId(null);
+     }
+   };
+
+   const openAddModal = (type?: string) => {
+     setAddModalDefaultType(type);
+     setAddModalOpen(true);
+   };
  
    const getSavedCount = () => assets.filter(a => a.content?.trim()).length;
  
@@ -253,19 +290,23 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
    return (
      <Card variant="glow">
        <CardHeader>
-         <div className="flex items-center justify-between">
+         <div className="flex items-center justify-between flex-wrap gap-2">
            <div className="flex items-center gap-2">
              <Sparkles className="h-5 w-5 text-primary" />
              <CardTitle>Your Content Library</CardTitle>
+             {getSavedCount() > 0 && (
+               <Badge variant="secondary">
+                 {getSavedCount()} saved
+               </Badge>
+             )}
            </div>
-           {getSavedCount() > 0 && (
-             <Badge variant="secondary">
-               {getSavedCount()} asset{getSavedCount() !== 1 ? 's' : ''} saved
-             </Badge>
-           )}
+           <Button size="sm" variant="lumi" onClick={() => openAddModal()}>
+             <Plus className="h-4 w-4 mr-1" />
+             Add reference content
+           </Button>
          </div>
          <CardDescription>
-           Paste existing content to supercharge your AI-generated ads. The more context Lumi has, the more authentic and specific your copy will be.
+           Paste existing content or upload files to supercharge your AI-generated ads. The more context Lumi has, the more authentic and specific your copy will be.
          </CardDescription>
        </CardHeader>
        <CardContent className="space-y-4">
@@ -280,11 +321,13 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
           />
         )}
         
-         {ASSET_TYPES.map((assetType) => {
-           const asset = getAssetForType(assetType.type);
-           const isExpanded = expandedTypes.includes(assetType.type);
-           const hasContent = asset.content?.trim();
-           const Icon = assetType.icon;
+          {ASSET_TYPES.map((assetType) => {
+            const asset = getAssetForType(assetType.type);
+            const extras = getExtraAssetsForType(assetType.type);
+            const isExpanded = expandedTypes.includes(assetType.type);
+            const hasContent = asset.content?.trim();
+            const totalForType = (hasContent ? 1 : 0) + extras.length;
+            const Icon = assetType.icon;
  
            return (
              <Collapsible
@@ -307,18 +350,18 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
                        <p className="text-xs text-muted-foreground">{assetType.description}</p>
                      </div>
                    </div>
-                   <div className="flex items-center gap-2">
-                     {hasContent && (
-                       <Badge variant="outline" className="text-xs border-green-500 text-green-600">
-                         <Check className="h-3 w-3 mr-1" />
-                         Saved
-                       </Badge>
-                     )}
-                     <ChevronDown className={cn(
-                       'h-4 w-4 text-muted-foreground transition-transform',
-                       isExpanded && 'rotate-180'
-                     )} />
-                   </div>
+                    <div className="flex items-center gap-2">
+                      {totalForType > 0 && (
+                        <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                          <Check className="h-3 w-3 mr-1" />
+                          {totalForType} saved
+                        </Badge>
+                      )}
+                      <ChevronDown className={cn(
+                        'h-4 w-4 text-muted-foreground transition-transform',
+                        isExpanded && 'rotate-180'
+                      )} />
+                    </div>
                  </div>
                </CollapsibleTrigger>
  
@@ -375,31 +418,87 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
                      </div>
                    )}
  
-                   <div className="flex justify-end">
-                     <Button
-                       size="sm"
-                       onClick={() => saveAsset(assetType.type)}
-                       disabled={saving === assetType.type || !hasUnsavedChanges[assetType.type]}
-                       variant={hasUnsavedChanges[assetType.type] ? 'lumi' : 'outline'}
-                     >
-                       {saving === assetType.type ? (
-                         <>
-                           <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                           Saving...
-                         </>
-                       ) : hasUnsavedChanges[assetType.type] ? (
-                         'Save'
-                       ) : (
-                         'Saved'
-                       )}
-                     </Button>
-                   </div>
-                 </div>
-               </CollapsibleContent>
-             </Collapsible>
-           );
-         })}
-       </CardContent>
-     </Card>
+                    <div className="flex items-center justify-between gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openAddModal(assetType.type)}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add another
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => saveAsset(assetType.type)}
+                        disabled={saving === assetType.type || !hasUnsavedChanges[assetType.type]}
+                        variant={hasUnsavedChanges[assetType.type] ? 'lumi' : 'outline'}
+                      >
+                        {saving === assetType.type ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Saving...
+                          </>
+                        ) : hasUnsavedChanges[assetType.type] ? (
+                          'Save'
+                        ) : (
+                          'Saved'
+                        )}
+                      </Button>
+                    </div>
+
+                    {extras.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Additional items ({extras.length})
+                        </p>
+                        {extras.map((extra) => (
+                          <div
+                            key={extra.id}
+                            className="flex items-start justify-between gap-3 p-3 rounded-lg border bg-muted/30"
+                          >
+                            <div className="min-w-0 flex-1">
+                              {extra.label && (
+                                <p className="text-sm font-medium truncate">{extra.label}</p>
+                              )}
+                              <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">
+                                {extra.content}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => extra.id && deleteAsset(extra.id)}
+                              disabled={deletingId === extra.id}
+                              aria-label="Remove item"
+                            >
+                              {deletingId === extra.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+        </CardContent>
+
+        <AddReferenceContentModal
+          open={addModalOpen}
+          onOpenChange={setAddModalOpen}
+          brandId={brandId}
+          assetTypes={ASSET_TYPES.map((t) => ({ type: t.type, label: t.label }))}
+          defaultType={addModalDefaultType}
+          onAdded={() => {
+            fetchAssets();
+            setTimeout(checkPsychologyUpdate, 500);
+          }}
+        />
+      </Card>
    );
  }
