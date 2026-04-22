@@ -12,6 +12,7 @@ import {
   Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
   Share2
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,78 @@ export function ProductionManager({
   const [showTopOnly, setShowTopOnly] = useState(false);
   const [movingToLibrary, setMovingToLibrary] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [namedLibraries, setNamedLibraries] = useState<Array<{ id: string; name: string; clips: any[] }>>([]);
+  const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(
+    (workspace as any)?.broll_library_id || null
+  );
+
+  // Load named b-roll libraries for this brand
+  useEffect(() => {
+    const bId = brandId || (brand as any)?.id;
+    if (!bId) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("broll_libraries")
+        .select("id, name, clips")
+        .eq("brand_id", bId)
+        .order("created_at", { ascending: true });
+      if (cancelled || error) return;
+      setNamedLibraries(
+        (data || []).map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          clips: Array.isArray(r.clips) ? r.clips : [],
+        }))
+      );
+    })();
+    return () => { cancelled = true; };
+  }, [brandId, brand]);
+
+  // Sync local state if workspace prop changes
+  useEffect(() => {
+    setSelectedLibraryId((workspace as any)?.broll_library_id || null);
+  }, [(workspace as any)?.broll_library_id]);
+
+  const handleSelectLibrary = async (value: string) => {
+    const newVal = value === "__brand__" ? null : value;
+    setSelectedLibraryId(newVal);
+    const wsId = (workspace as any)?.id;
+    if (!wsId) return;
+    const { error } = await supabase
+      .from("campaign_workspaces")
+      .update({ broll_library_id: newVal })
+      .eq("id", wsId);
+    if (error) {
+      toast.error("Failed to save library selection");
+      return;
+    }
+    onUpdateWorkspace?.({ broll_library_id: newVal });
+    const libName = newVal
+      ? namedLibraries.find((l) => l.id === newVal)?.name
+      : "Brand-wide library";
+    toast.success(`B-roll source: ${libName || "Brand-wide library"}`);
+  };
+
+  // Build merged b-roll clip list: brand-wide + selected named library
+  const mergedBrand = (() => {
+    if (!brand) return brand;
+    const brandClips: any[] = Array.isArray((brand as any).broll_library)
+      ? (brand as any).broll_library
+      : [];
+    const extra = selectedLibraryId
+      ? namedLibraries.find((l) => l.id === selectedLibraryId)?.clips || []
+      : [];
+    // Dedupe by id, keep extras first so library-specific clips appear first
+    const seen = new Set<string>();
+    const merged = [...extra, ...brandClips].filter((c: any) => {
+      if (!c?.id) return true;
+      if (seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    });
+    return { ...brand, broll_library: merged };
+  })();
   const [previousOpen, setPreviousOpen] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [clearing, setClearing] = useState(false);
