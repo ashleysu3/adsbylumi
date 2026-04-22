@@ -246,6 +246,13 @@ export function InsightsHome({
   const [togglingCampaign, setTogglingCampaign] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
+  // Shared rec-action machinery — same implementation used on the campaign
+  // detail view via LumiRecommendations. After a rec fires, refetch the list
+  // so completed items drop off and any new suggestions take their place.
+  const { executeRecommendation, executing: recExecuting, completed: recCompleted } =
+    useRecommendationActions({
+      onExecuted: () => { fetchRecommendations(); },
+    });
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [goalsMap, setGoalsMap] = useState<Record<string, any>>({});
@@ -257,7 +264,8 @@ export function InsightsHome({
   const [postPickerBrand, setPostPickerBrand] = useState<any>(null);
   const [addingPosts, setAddingPosts] = useState(false);
 
-  // Fetch campaign goals for all campaigns
+  // Fetch campaign goals for all campaigns (and silently auto-heal any whose
+  // primary_kpi disagrees with the objective-aware kpiConfig).
   useEffect(() => {
     const fetchGoals = async () => {
       const wsIds = campaigns.map(c => c.id).filter(Boolean);
@@ -266,11 +274,58 @@ export function InsightsHome({
         .from('campaign_goals')
         .select('*')
         .in('workspace_id', wsIds);
-      if (data) {
-        const map: Record<string, any> = {};
-        data.forEach((g: any) => { if (g.workspace_id) map[g.workspace_id] = g; });
-        setGoalsMap(map);
-      }
+      if (!data) return;
+
+      const campaignsById = new Map(campaigns.map(c => [c.id, c]));
+      const healedMap: Record<string, any> = {};
+
+      // Run heals in parallel — each is a small targeted UPDATE keyed on
+      // goal id, so they don't conflict with each other.
+      await Promise.all(
+        data.map(async (g: any) => {
+          if (!g.workspace_id) return;
+          const campaign = campaignsById.get(g.workspace_id);
+          if (!campaign) {
+            healedMap[g.workspace_id] = g;
+            return;
+          }
+          const expected = getLumiKPIConfig(
+            campaign.objective,
+            campaign.templateName,
+            campaign.name,
+          );
+          // If the saved primary KPI already matches what kpiConfig says it
+          // should be, nothing to do.
+          if (g.primary_kpi === expected.primary) {
+            healedMap[g.workspace_id] = g;
+            return;
+          }
+
+          const patch = {
+            primary_kpi: expected.primary,
+            primary_kpi_label: expected.primaryLabel,
+            primary_kpi_goal_type: goalTypeFor(expected.primary),
+            primary_kpi_threshold: healedThreshold(g.primary_kpi_threshold, expected),
+          };
+
+          const { data: updated, error } = await supabase
+            .from('campaign_goals')
+            .update(patch)
+            .eq('id', g.id)
+            .select()
+            .single();
+
+          if (error || !updated) {
+            // Heal failed — fall back to the original row so UI still works.
+            console.warn('Silent goal-heal failed for', g.id, error);
+            healedMap[g.workspace_id] = g;
+          } else {
+            healedMap[g.workspace_id] = updated;
+          }
+        }),
+      );
+
+      setGoalsMap(healedMap);
     };
     if (campaigns.length > 0) fetchGoals();
   }, [campaigns, goalsVersion]);
