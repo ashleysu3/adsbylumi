@@ -326,10 +326,35 @@ export default function MetaSettings() {
       setTestResult(null);
       setConnectionHealth(null);
       toast.success('Meta account disconnected');
+
+      const userId = await getEffectiveUserId();
+      if (userId) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'disconnect',
+          outcome: 'success',
+          summary: 'User disconnected Meta account',
+        });
+        bumpLog();
+      }
+
       fetchBrand();
     } catch (error) {
       console.error('Error disconnecting Meta:', error);
       toast.error('Failed to disconnect Meta account');
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'disconnect',
+          outcome: 'error',
+          summary: 'Disconnect failed',
+          details: { error: (error as Error)?.message },
+        });
+        bumpLog();
+      }
     }
   };
 
@@ -341,21 +366,58 @@ export default function MetaSettings() {
         body: { brandId: brand.id }
       });
       if (error) throw error;
+      const userId = await getEffectiveUserId();
       if (data.success) {
         toast.success("Meta token refreshed successfully", {
           description: `Valid until ${new Date(data.newExpiresAt).toLocaleDateString()}`
         });
+        if (userId) {
+          await logMetaConnectionCheck({
+            brandId: brand.id,
+            userId,
+            checkType: 'refresh',
+            outcome: 'success',
+            summary: `Token refreshed (valid until ${new Date(data.newExpiresAt).toLocaleDateString()})`,
+            checksPerformed: [{ label: 'Token refresh', status: 'pass' }],
+            details: { newExpiresAt: data.newExpiresAt },
+          });
+          bumpLog();
+        }
         fetchBrand();
       } else {
         toast.error("Could not refresh token", {
           description: data.error || "Please reconnect your Meta account"
         });
+        if (userId) {
+          await logMetaConnectionCheck({
+            brandId: brand.id,
+            userId,
+            checkType: 'refresh',
+            outcome: 'error',
+            summary: data.error || 'Token refresh failed',
+            checksPerformed: [{ label: 'Token refresh', status: 'fail', note: data.error }],
+            details: data || {},
+          });
+          bumpLog();
+        }
       }
     } catch (error: any) {
       console.error('Manual refresh error:', error);
       toast.error("Failed to refresh token", {
         description: "Please try reconnecting your Meta account"
       });
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'refresh',
+          outcome: 'error',
+          summary: 'Token refresh threw an exception',
+          details: { error: error?.message },
+        });
+        bumpLog();
+      }
     } finally {
       setRefreshing(false);
     }
