@@ -352,6 +352,20 @@ export default function Create() {
     }
   }, [selectedOfferId, offers, templates]);
 
+  // Auto-advance the "Event & location targeting" goal — it's a single-option flow
+  useEffect(() => {
+    if (selectedGoal === "event_location" && currentStep === 1 && templates.length > 0) {
+      setSelectedOfferId(EVENT_LOCATION_OFFER_ID);
+      setShowSocialGrowthFlow(false);
+      const matched = templates.find((t) => t.slug === "event-location");
+      if (matched) {
+        setSelectedTemplateId(matched.id);
+        setRecommendedTemplate(matched);
+      }
+      setCurrentStep(2);
+    }
+  }, [selectedGoal, currentStep, templates]);
+
   const handleNext = async () => {
     if (currentStep === 2) {
       // After strategy, generate angles and go directly to Creative Studio
@@ -1273,20 +1287,7 @@ export default function Create() {
                   </div>
               }
 
-                {/* Event & location targeting — auto-advance to recommendation */}
-                {selectedGoal === "event_location" && (() => {
-                  if (selectedOfferId !== EVENT_LOCATION_OFFER_ID) {
-                    setSelectedOfferId(EVENT_LOCATION_OFFER_ID);
-                    setShowSocialGrowthFlow(false);
-                    const matched = templates.find((t) => t.slug === "event-location");
-                    if (matched) {
-                      setSelectedTemplateId(matched.id);
-                      setRecommendedTemplate(matched);
-                    }
-                    setCurrentStep(2);
-                  }
-                  return null;
-                })()}
+                {/* Event & location targeting auto-advances via useEffect — no UI needed here */}
               </motion.div>
             }
 
