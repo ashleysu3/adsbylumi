@@ -21,6 +21,8 @@ import { format, differenceInDays } from 'date-fns';
 import { PixelVerificationCard } from '@/components/PixelVerificationCard';
 import { MetaReadinessChecklist } from '@/components/MetaReadinessChecklist';
 import { MetaSetupDiagnostic, type DiagnosticResult } from '@/components/MetaSetupDiagnostic';
+import { MetaConnectionCheckLog } from '@/components/MetaConnectionCheckLog';
+import { logMetaConnectionCheck, type MetaCheckItem } from '@/lib/log-meta-check';
 
 export default function MetaSettings() {
   const navigate = useNavigate();
@@ -37,6 +39,9 @@ export default function MetaSettings() {
   const [diagnosticResult, setDiagnosticResult] = useState<DiagnosticResult | null>(null);
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [diagnosticRecheckCount, setDiagnosticRecheckCount] = useState(0);
+  // Bumped after each connection check so the log panel re-fetches
+  const [logRefreshKey, setLogRefreshKey] = useState(0);
+  const bumpLog = () => setLogRefreshKey((k) => k + 1);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -88,8 +93,45 @@ export default function MetaSettings() {
       if (data?.success) {
         setDiagnosticResult(data);
       }
+
+      // Log the diagnostic outcome
+      const userId = await getEffectiveUserId();
+      if (userId) {
+        const checks: MetaCheckItem[] = Array.isArray(data?.checks)
+          ? data.checks.map((c: any) => ({
+              label: c.label || c.name || 'Check',
+              status: c.passed === true ? 'pass' : c.passed === false ? 'fail' : (c.status || 'skip'),
+              note: c.message || c.detail,
+            }))
+          : [];
+        const failed = checks.filter((c) => c.status === 'fail').length;
+        const warned = checks.filter((c) => c.status === 'warn').length;
+        const outcome = !data?.success || failed > 0 ? 'error' : warned > 0 ? 'warning' : 'success';
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'diagnostic',
+          outcome,
+          summary: data?.summary || (failed > 0 ? `${failed} check(s) failed` : warned > 0 ? `${warned} warning(s)` : 'Diagnostic passed'),
+          checksPerformed: checks,
+          details: data || {},
+        });
+        bumpLog();
+      }
     } catch (err) {
       console.error('Diagnostic failed:', err);
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'diagnostic',
+          outcome: 'error',
+          summary: 'Diagnostic could not run',
+          details: { error: (err as Error)?.message },
+        });
+        bumpLog();
+      }
     } finally {
       setDiagnosticLoading(false);
     }
@@ -98,6 +140,38 @@ export default function MetaSettings() {
   const handleDiagnosticRecheck = async () => {
     setDiagnosticRecheckCount(prev => prev + 1);
     await runDiagnostic();
+  };
+
+  // Convert a test-meta-connection response into a structured set of
+  // checks + outcome for the connection log.
+  const buildTestChecks = (data: any): { checks: MetaCheckItem[]; outcome: 'success' | 'warning' | 'error'; summary: string } => {
+    const d = data?.details || {};
+    const checks: MetaCheckItem[] = [];
+    if ('tokenValid' in d) checks.push({ label: 'Access token', status: d.tokenValid ? 'pass' : 'fail', note: d.tokenValid ? undefined : 'Token rejected by Meta' });
+    if ('permissionsValid' in d) {
+      const missing = Array.isArray(d.missingPermissions) ? d.missingPermissions : [];
+      checks.push({
+        label: 'Permissions',
+        status: d.permissionsValid ? 'pass' : (missing.length > 0 ? 'warn' : 'fail'),
+        note: missing.length > 0 ? `Missing: ${missing.join(', ')}` : undefined,
+      });
+    }
+    if ('hasInstagramMediaAccess' in d) {
+      checks.push({
+        label: 'Instagram media access',
+        status: d.hasInstagramMediaAccess ? 'pass' : 'warn',
+        note: d.instagramMediaError || (d.hasInstagramMediaAccess ? undefined : 'No IG media access'),
+      });
+    }
+    if (d.adAccountId) {
+      checks.push({ label: 'Ad account reachable', status: 'pass', note: d.adAccountName ? `${d.adAccountName} (${d.adAccountId})` : d.adAccountId });
+    }
+    let outcome: 'success' | 'warning' | 'error';
+    if (!data?.success) outcome = 'error';
+    else if (d.permissionsValid === false || d.hasInstagramMediaAccess === false) outcome = 'warning';
+    else outcome = 'success';
+    const summary = data?.message || (outcome === 'success' ? 'All checks passed' : outcome === 'warning' ? 'Connected with limited access' : (data?.error || 'Connection test failed'));
+    return { checks, outcome, summary };
   };
 
   const runAutoTest = async () => {
@@ -113,6 +187,18 @@ export default function MetaSettings() {
 
       if (error) {
         setConnectionHealth('error');
+        const userId = await getEffectiveUserId();
+        if (userId) {
+          await logMetaConnectionCheck({
+            brandId: brand.id,
+            userId,
+            checkType: 'auto_test',
+            outcome: 'error',
+            summary: 'Auto test could not run',
+            details: { error: error.message },
+          });
+          bumpLog();
+        }
         return;
       }
 
@@ -128,8 +214,35 @@ export default function MetaSettings() {
 
       // Store result but don't show the full panel unless manually tested
       setTestResult({ ...data, isAutoTest: true });
-    } catch {
+
+      const userId = await getEffectiveUserId();
+      if (userId) {
+        const { checks, outcome, summary } = buildTestChecks(data);
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'auto_test',
+          outcome,
+          summary,
+          checksPerformed: checks,
+          details: data?.details || {},
+        });
+        bumpLog();
+      }
+    } catch (err) {
       setConnectionHealth('error');
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'auto_test',
+          outcome: 'error',
+          summary: 'Auto test threw an exception',
+          details: { error: (err as Error)?.message },
+        });
+        bumpLog();
+      }
     } finally {
       setAutoTesting(false);
     }
@@ -213,10 +326,35 @@ export default function MetaSettings() {
       setTestResult(null);
       setConnectionHealth(null);
       toast.success('Meta account disconnected');
+
+      const userId = await getEffectiveUserId();
+      if (userId) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'disconnect',
+          outcome: 'success',
+          summary: 'User disconnected Meta account',
+        });
+        bumpLog();
+      }
+
       fetchBrand();
     } catch (error) {
       console.error('Error disconnecting Meta:', error);
       toast.error('Failed to disconnect Meta account');
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'disconnect',
+          outcome: 'error',
+          summary: 'Disconnect failed',
+          details: { error: (error as Error)?.message },
+        });
+        bumpLog();
+      }
     }
   };
 
@@ -228,21 +366,58 @@ export default function MetaSettings() {
         body: { brandId: brand.id }
       });
       if (error) throw error;
+      const userId = await getEffectiveUserId();
       if (data.success) {
         toast.success("Meta token refreshed successfully", {
           description: `Valid until ${new Date(data.newExpiresAt).toLocaleDateString()}`
         });
+        if (userId) {
+          await logMetaConnectionCheck({
+            brandId: brand.id,
+            userId,
+            checkType: 'refresh',
+            outcome: 'success',
+            summary: `Token refreshed (valid until ${new Date(data.newExpiresAt).toLocaleDateString()})`,
+            checksPerformed: [{ label: 'Token refresh', status: 'pass' }],
+            details: { newExpiresAt: data.newExpiresAt },
+          });
+          bumpLog();
+        }
         fetchBrand();
       } else {
         toast.error("Could not refresh token", {
           description: data.error || "Please reconnect your Meta account"
         });
+        if (userId) {
+          await logMetaConnectionCheck({
+            brandId: brand.id,
+            userId,
+            checkType: 'refresh',
+            outcome: 'error',
+            summary: data.error || 'Token refresh failed',
+            checksPerformed: [{ label: 'Token refresh', status: 'fail', note: data.error }],
+            details: data || {},
+          });
+          bumpLog();
+        }
       }
     } catch (error: any) {
       console.error('Manual refresh error:', error);
       toast.error("Failed to refresh token", {
         description: "Please try reconnecting your Meta account"
       });
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'refresh',
+          outcome: 'error',
+          summary: 'Token refresh threw an exception',
+          details: { error: error?.message },
+        });
+        bumpLog();
+      }
     } finally {
       setRefreshing(false);
     }
@@ -282,6 +457,8 @@ export default function MetaSettings() {
         body: { brandId: brand.id }
       });
 
+      const userId = await getEffectiveUserId();
+
       if (error) {
         setConnectionHealth('error');
         setTestResult({
@@ -290,6 +467,17 @@ export default function MetaSettings() {
           error: error.message || 'Could not complete connection test',
           isAutoTest: false
         });
+        if (userId) {
+          await logMetaConnectionCheck({
+            brandId: brand.id,
+            userId,
+            checkType: 'manual_test',
+            outcome: 'error',
+            summary: error.message || 'Test invocation failed',
+            details: { error: error.message },
+          });
+          bumpLog();
+        }
         return;
       }
 
@@ -307,6 +495,20 @@ export default function MetaSettings() {
       }
 
       setTestResult({ ...data, isAutoTest: false });
+
+      if (userId) {
+        const { checks, outcome, summary } = buildTestChecks(data);
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'manual_test',
+          outcome,
+          summary,
+          checksPerformed: checks,
+          details: data?.details || {},
+        });
+        bumpLog();
+      }
     } catch (error: any) {
       console.error('Test connection error:', error);
       setConnectionHealth('error');
@@ -316,6 +518,18 @@ export default function MetaSettings() {
         error: error.message || 'An unexpected error occurred',
         isAutoTest: false
       });
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'manual_test',
+          outcome: 'error',
+          summary: 'Manual test threw an exception',
+          details: { error: error?.message },
+        });
+        bumpLog();
+      }
     } finally {
       setTesting(false);
     }
@@ -870,6 +1084,11 @@ export default function MetaSettings() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Connection check log — visible whenever there's a brand to log against */}
+        {brand?.id && (
+          <MetaConnectionCheckLog brandId={brand.id} refreshKey={logRefreshKey} />
+        )}
 
         {/* Pixel Verification Card — only show when connected (readiness checklist covers it otherwise) */}
         {isConnected && (
