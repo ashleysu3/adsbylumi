@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface CampaignSuccessProps {
   workspace: any;
   campaignIds: any;
-  onBackToDashboard: () => void;
+  onBackToDashboard: (campaignId?: string) => void;
   onOpenWalkthrough?: () => void;
 }
 
@@ -227,14 +227,14 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard, onO
             : "Your campaign is paused and ready to activate. Flip the switch when you're ready."}
         </motion.p>
 
-        {/* Primary CTA — open the KPI walkthrough */}
-        {onOpenWalkthrough && (
-          <motion.div
-            initial={{ y: 12, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.55, duration: 0.4 }}
-            className="mt-6"
-          >
+        {/* Primary CTAs */}
+        <motion.div
+          initial={{ y: 12, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.55, duration: 0.4 }}
+          className="mt-6 flex flex-wrap items-center justify-center gap-3"
+        >
+          {onOpenWalkthrough && (
             <Button
               size="lg"
               onClick={onOpenWalkthrough}
@@ -244,8 +244,17 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard, onO
               Let's set your success goal
               <ArrowRight className="h-4 w-4" />
             </Button>
-          </motion.div>
-        )}
+          )}
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => onBackToDashboard(campaignId)}
+            className="rounded-xl gap-2"
+          >
+            View campaign in dashboard
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </motion.div>
       </div>
 
       {/* Post-publish recap */}
@@ -388,7 +397,7 @@ export function CampaignSuccess({ workspace, campaignIds, onBackToDashboard, onO
           <ExternalLink className="h-4 w-4 mr-2" />
           View in Ads Manager
         </Button>
-        <Button onClick={onBackToDashboard} size="lg" variant="secondary">
+        <Button onClick={() => onBackToDashboard(campaignId)} size="lg" variant="secondary">
           Back to Dashboard
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
