@@ -141,6 +141,28 @@ const creativeGenerationCopy = [
 const formatIcons = { talking_head: Video, broll: Film, graphic: Image };
 const formatLabels = { talking_head: "Talking Head", broll: "B-Roll", graphic: "Graphic" };
 
+// Brand "Style" fields that are stripped from generation payloads when an offer
+// has `use_brand_style_defaults = false`. Keeps copy/voice/audience psychology
+// intact, only removes presentation defaults.
+const BRAND_STYLE_FIELDS = [
+  "copy_perspective",
+  "use_emojis",
+  "brand_emojis",
+  "bullet_emoji",
+  "overlay_style",
+  "broll_library",
+] as const;
+
+function effectiveBrand<T extends Record<string, any> | null | undefined>(
+  brand: T,
+  applyDefaults: boolean
+): T {
+  if (!brand || applyDefaults) return brand;
+  const next: any = { ...brand };
+  for (const key of BRAND_STYLE_FIELDS) delete next[key];
+  return next;
+}
+
 
 export default function CreativeStudio() {
   const navigate = useNavigate();
