@@ -13,6 +13,7 @@ import { PageShimmer } from "@/components/GradientShimmer";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { BRollLibrary } from "@/components/BRollLibrary";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
+import { StylePreviewPanel } from "@/components/StylePreviewPanel";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
 import { DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import { Building2, Smile, X, Loader2, Palette } from "lucide-react";
