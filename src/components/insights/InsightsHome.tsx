@@ -922,14 +922,46 @@ export function InsightsHome({
 
                         {/* Row 5: User-action recommendations inline */}
                         {(() => {
+                          // Show every structured rec for this campaign — including
+                          // the previously-filtered pause_ad / swap_creative / budget
+                          // types. Drops any the user has already executed in-session.
                           const userRecs = recommendations.filter(
-                            r => r.campaignId === campaign.id && !AUTOMATABLE_TYPES.has(r.type)
+                            r => r.campaignId === campaign.id && !recCompleted.has(r.id)
                           );
                           if (userRecs.length === 0) return null;
+
                           return (
                             <div className="space-y-1.5 pl-5">
                               {userRecs.slice(0, 2).map((rec: any) => {
                                 const action = getActionButton(rec, campaign.id);
+                                const isBusy = recExecuting[rec.id];
+
+                                // The button. Same visual for every action kind;
+                                // the onClick dispatches based on kind.
+                                const button = (
+                                  <Button
+                                    size="sm"
+                                    variant="lumi"
+                                    disabled={isBusy}
+                                    className="rounded-xl text-xs shrink-0 gap-1 h-7 px-2.5"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (action.kind === 'add_posts') {
+                                        openPostPicker(campaign.id);
+                                      } else if (action.kind === 'navigate') {
+                                        navigate(action.url);
+                                      } else if (action.kind === 'execute') {
+                                        executeRecommendation(rec);
+                                      }
+                                      // kind === 'budget' is handled by the
+                                      // enclosing Popover; no onClick work here.
+                                    }}
+                                  >
+                                    {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : action.icon}
+                                    {action.label}
+                                  </Button>
+                                );
+
                                 return (
                                   <div
                                     key={rec.id}
@@ -939,22 +971,33 @@ export function InsightsHome({
                                       <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0" />
                                       <span className="text-xs font-medium truncate">{rec.title}</span>
                                     </div>
-                                    <Button
-                                      size="sm"
-                                      variant="lumi"
-                                      className="rounded-xl text-xs shrink-0 gap-1 h-7 px-2.5"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (action.type === 'add_posts') {
-                                          openPostPicker(campaign.id);
-                                        } else {
-                                          navigate(action.url);
-                                        }
-                                      }}
-                                    >
-                                      {action.icon}
-                                      {action.label}
-                                    </Button>
+                                    {action.kind === 'budget' ? (
+                                      <Popover>
+                                        <PopoverTrigger asChild>{button}</PopoverTrigger>
+                                        <PopoverContent className="w-80 p-0" align="end">
+                                          <BudgetAdjustmentPanel
+                                            workspaceId={campaign.id}
+                                            workspaceName={campaign.name}
+                                            currentBudget={
+                                              rec.actionPayload?.currentBudget ||
+                                              campaign.dailyBudget ||
+                                              25
+                                            }
+                                            metrics={{
+                                              roas: campaign.metrics?.roas,
+                                              cpl: campaign.metrics?.cpl,
+                                              cpp: campaign.metrics?.cpp,
+                                              ctr: undefined,
+                                              frequency: undefined,
+                                              spend: campaign.metrics?.spend,
+                                            }}
+                                            inline
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                    ) : (
+                                      button
+                                    )}
                                   </div>
                                 );
                               })}
