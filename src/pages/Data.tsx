@@ -990,7 +990,21 @@ export default function AdPerformance() {
 
         {/* Meta Token Expired */}
         {metaTokenExpired &&
-          <MetaConnectionAlert type="expired" onDismiss={() => setMetaTokenExpired(false)} />
+          <MetaConnectionAlert
+            type="expired"
+            onDismiss={() => {
+              // Clear stale flag and re-attempt a sync — covers the case where
+              // the user (or admin) reconnected/refreshed Meta in another tab/page.
+              setMetaTokenExpired(false);
+              setTokenExpirationChecked(false);
+              if (activeBrand?.id) {
+                fetchAccountOverview(activeBrand.id);
+                if (campaigns.length > 0) {
+                  fetchAllMetrics();
+                }
+              }
+            }}
+          />
         }
 
         {/* ─── Campaign Health Summary (from optimization report) ─── */}
