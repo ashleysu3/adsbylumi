@@ -1550,6 +1550,38 @@ export default function CreativeStudio() {
                   perspectiveRole={(workspace?.creative_json as Record<string, any>)?.preGenerationContext?.perspectiveRole || 'seller'}
                 />
                 
+                {/* Meta Best Practices for Copy */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Meta Best Practices for Copy</CardTitle>
+                    <CardDescription>How Lumi formats your primary copy based on Meta's recommendations</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-sm">✓ What Lumi Does</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• Uses line breaks for readability</li>
+                          <li>• Adds strategic emoji placement</li>
+                          <li>• Creates scannable bullet lists</li>
+                          <li>• Varies copy lengths (short/medium/long)</li>
+                          <li>• Puts the hook first, CTA last</li>
+                        </ul>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-sm">✗ What Lumi Avoids</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• Emoji overload (max 2-3 per section)</li>
+                          <li>• Wall-of-text paragraphs</li>
+                          <li>• ALL CAPS abuse</li>
+                          <li>• Clickbait or misleading claims</li>
+                          <li>• Generic, non-specific language</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <div className="flex justify-end">
                   <Button onClick={() => setActiveTab("build")} className="gap-2">
                     Continue to Build
