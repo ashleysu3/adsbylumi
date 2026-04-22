@@ -303,7 +303,7 @@ export default function CampaignBuilder() {
               <CampaignSuccess
                 workspace={workspace}
                 campaignIds={campaignIds}
-                onBackToDashboard={() => navigate('/dashboard')}
+                onBackToDashboard={(cid) => navigate(cid ? `/data?campaign=${workspace.id}` : '/dashboard')}
                 onOpenWalkthrough={() => setWalkthroughOpen(true)}
               />
               <PostLaunchWalkthrough
