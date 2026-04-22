@@ -251,6 +251,29 @@ export function ContentAssetsEditor({ brandId, offers = [], brand, onBrandUpdate
          : [...prev, type]
      );
    };
+
+   const deleteAsset = async (assetId: string) => {
+     setDeletingId(assetId);
+     try {
+       const { error } = await supabase
+         .from('brand_content_assets')
+         .delete()
+         .eq('id', assetId);
+       if (error) throw error;
+       setAssets(prev => prev.filter(a => a.id !== assetId));
+       toast.success('Reference content removed');
+     } catch (err) {
+       console.error('Error deleting asset:', err);
+       toast.error('Failed to remove content');
+     } finally {
+       setDeletingId(null);
+     }
+   };
+
+   const openAddModal = (type?: string) => {
+     setAddModalDefaultType(type);
+     setAddModalOpen(true);
+   };
  
    const getSavedCount = () => assets.filter(a => a.content?.trim()).length;
  
