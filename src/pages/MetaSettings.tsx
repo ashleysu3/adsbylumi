@@ -506,27 +506,17 @@ export default function MetaSettings() {
                     onUpdate={fetchBrand}
                   />
                   <Button 
-                    onClick={handleTestConnection} 
-                    disabled={testing}
+                    onClick={() => handleTestConnection()} 
+                    disabled={testing || refreshing}
                     variant="outline"
                     className="gap-2"
                   >
-                    {testing ? (
+                    {testing || refreshing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Zap className="h-4 w-4" />
                     )}
-                    {testing ? "Testing..." : "Test Connection"}
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="default"
-                    className="gap-2"
-                    onClick={handleManualRefresh}
-                    disabled={refreshing}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                    {refreshing ? 'Refreshing...' : 'Refresh Token'}
+                    {refreshing ? "Refreshing..." : testing ? "Testing..." : "Test & Refresh Connection"}
                   </Button>
                   <Button 
                     variant="ghost" 
