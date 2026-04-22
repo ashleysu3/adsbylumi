@@ -142,6 +142,38 @@ export default function MetaSettings() {
     await runDiagnostic();
   };
 
+  // Convert a test-meta-connection response into a structured set of
+  // checks + outcome for the connection log.
+  const buildTestChecks = (data: any): { checks: MetaCheckItem[]; outcome: 'success' | 'warning' | 'error'; summary: string } => {
+    const d = data?.details || {};
+    const checks: MetaCheckItem[] = [];
+    if ('tokenValid' in d) checks.push({ label: 'Access token', status: d.tokenValid ? 'pass' : 'fail', note: d.tokenValid ? undefined : 'Token rejected by Meta' });
+    if ('permissionsValid' in d) {
+      const missing = Array.isArray(d.missingPermissions) ? d.missingPermissions : [];
+      checks.push({
+        label: 'Permissions',
+        status: d.permissionsValid ? 'pass' : (missing.length > 0 ? 'warn' : 'fail'),
+        note: missing.length > 0 ? `Missing: ${missing.join(', ')}` : undefined,
+      });
+    }
+    if ('hasInstagramMediaAccess' in d) {
+      checks.push({
+        label: 'Instagram media access',
+        status: d.hasInstagramMediaAccess ? 'pass' : 'warn',
+        note: d.instagramMediaError || (d.hasInstagramMediaAccess ? undefined : 'No IG media access'),
+      });
+    }
+    if (d.adAccountId) {
+      checks.push({ label: 'Ad account reachable', status: 'pass', note: d.adAccountName ? `${d.adAccountName} (${d.adAccountId})` : d.adAccountId });
+    }
+    let outcome: 'success' | 'warning' | 'error';
+    if (!data?.success) outcome = 'error';
+    else if (d.permissionsValid === false || d.hasInstagramMediaAccess === false) outcome = 'warning';
+    else outcome = 'success';
+    const summary = data?.message || (outcome === 'success' ? 'All checks passed' : outcome === 'warning' ? 'Connected with limited access' : (data?.error || 'Connection test failed'));
+    return { checks, outcome, summary };
+  };
+
   const runAutoTest = async () => {
     if (!brand?.id || autoTesting) return;
 
@@ -155,6 +187,18 @@ export default function MetaSettings() {
 
       if (error) {
         setConnectionHealth('error');
+        const userId = await getEffectiveUserId();
+        if (userId) {
+          await logMetaConnectionCheck({
+            brandId: brand.id,
+            userId,
+            checkType: 'auto_test',
+            outcome: 'error',
+            summary: 'Auto test could not run',
+            details: { error: error.message },
+          });
+          bumpLog();
+        }
         return;
       }
 
@@ -170,8 +214,35 @@ export default function MetaSettings() {
 
       // Store result but don't show the full panel unless manually tested
       setTestResult({ ...data, isAutoTest: true });
-    } catch {
+
+      const userId = await getEffectiveUserId();
+      if (userId) {
+        const { checks, outcome, summary } = buildTestChecks(data);
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'auto_test',
+          outcome,
+          summary,
+          checksPerformed: checks,
+          details: data?.details || {},
+        });
+        bumpLog();
+      }
+    } catch (err) {
       setConnectionHealth('error');
+      const userId = await getEffectiveUserId();
+      if (userId && brand?.id) {
+        await logMetaConnectionCheck({
+          brandId: brand.id,
+          userId,
+          checkType: 'auto_test',
+          outcome: 'error',
+          summary: 'Auto test threw an exception',
+          details: { error: (err as Error)?.message },
+        });
+        bumpLog();
+      }
     } finally {
       setAutoTesting(false);
     }
