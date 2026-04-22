@@ -500,6 +500,7 @@ export default function AdPerformance() {
         .from('campaign_workspaces')
         .select(`
           id, name, meta_campaign_ids, meta_campaign_status, template_id, final_answers,
+          objective,
           offer_id, offer_name, offer_price, brand_id, campaign_builder_answers, tracking_verified,
           campaign_templates!campaign_workspaces_template_id_fkey (id, name, objective, slug)
         `)
@@ -540,7 +541,9 @@ export default function AdPerformance() {
           id: w.id,
           name: w.name,
           templateName: (w.campaign_templates as any)?.name || null,
-          objective: (w.campaign_templates as any)?.objective || null,
+          // Prefer the objective synced from Meta on this workspace; fall back
+          // to the linked template's objective for campaigns built in LUMI.
+          objective: (w as any).objective || (w.campaign_templates as any)?.objective || null,
           metrics: null,
           userGoal: loadedGoals[w.id] || null,
           status: normalizedStatus,

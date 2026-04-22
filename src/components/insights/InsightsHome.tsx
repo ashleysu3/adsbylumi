@@ -11,20 +11,24 @@ import {
   Calendar,
   Package,
   Loader2,
-  
+
   AlertTriangle,
   RefreshCw,
   Plus,
   Wand2,
   ArrowRight,
   FileText,
-  TrendingUp } from
+  TrendingUp,
+  TrendingDown,
+  Pause,
+  Play } from
 'lucide-react';
 import { ClientReportModal } from './ClientReportModal';
 import {
   getLumiKPIConfig,
   getLumiKPIStatus,
-  getLumiStatusDot } from
+  getLumiStatusDot,
+  type LumiKPIConfig } from
 '@/lib/lumi-kpi-config';
 import { CampaignGoalRow } from './CampaignGoalRow';
 import { CampaignKPISummary } from './CampaignKPISummary';
@@ -41,18 +45,66 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { SocialGrowthFlow } from '@/components/SocialGrowthFlow';
+import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
 
+// Types intentionally left unfiltered on the home card — every structured rec
+// type is now actionable from here (pause, swap, budget, navigate). This
+// constant is kept for reference; no longer used as an exclusion list.
 const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_ad', 'resume_ad', 'swap_creative']);
 
-function getActionButton(rec: any, campaignId: string): { label: string; url: string; icon: React.ReactNode; type: 'navigate' | 'add_posts' } {
-  const title = (rec.title || '').toLowerCase();
-  if (title.includes('resonat') || title.includes('ctr') || title.includes('click')) {
-    return { label: 'Add New Posts', url: '', icon: <Plus className="h-3.5 w-3.5" />, type: 'add_posts' };
+// Map icon keys returned by describeRecAction() to actual lucide React elements.
+// Keeping the hook string-typed avoids a React import on the hook side.
+function iconFor(key: string): React.ReactNode {
+  switch (key) {
+    case 'Pause': return <Pause className="h-3.5 w-3.5" />;
+    case 'Play': return <Play className="h-3.5 w-3.5" />;
+    case 'TrendingUp': return <TrendingUp className="h-3.5 w-3.5" />;
+    case 'TrendingDown': return <TrendingDown className="h-3.5 w-3.5" />;
+    case 'RefreshCw': return <RefreshCw className="h-3.5 w-3.5" />;
+    case 'Plus': return <Plus className="h-3.5 w-3.5" />;
+    case 'Eye': return <Eye className="h-3.5 w-3.5" />;
+    case 'Wand2':
+    default: return <Wand2 className="h-3.5 w-3.5" />;
   }
-  if (title.includes('fatigue') || title.includes('cost per purchase') || title.includes('refresh') || title.includes('cpp') || title.includes('below benchmark')) {
-    return { label: 'Refresh Creative', url: `/creative-studio?workspace=${campaignId}&refreshCreative=true`, icon: <RefreshCw className="h-3.5 w-3.5" />, type: 'navigate' };
+}
+
+// Silent goal-heal helpers. When the saved primary_kpi on a campaign_goals
+// row disagrees with the kpiConfig (i.e. objective-aware) expected KPI, we
+// quietly correct it. This cleans up legacy rows from before the KPI config
+// became objective-aware — e.g. Traffic campaigns stuck with primary_kpi='cpl'.
+function goalTypeFor(primaryKpi: string): 'greater_than' | 'less_than' {
+  return primaryKpi === 'roas' ? 'greater_than' : 'less_than';
+}
+
+// Pick a sensible threshold for the NEW KPI. If the user's old threshold
+// happens to land inside the new benchmark range, preserve it — they may
+// have set it intentionally. Otherwise, default to the benchmark max
+// (for cost-based KPIs, that's "you're healthy if you're under this") or
+// the benchmark min (for ROAS, "you're healthy if you're above this").
+function healedThreshold(
+  oldThreshold: number | null | undefined,
+  newConfig: LumiKPIConfig,
+): number {
+  const { min, max } = newConfig.benchmark;
+  if (typeof oldThreshold === 'number' && oldThreshold >= min && oldThreshold <= max) {
+    return oldThreshold;
   }
-  return { label: 'Try New Angles', url: `/creative-studio?workspace=${campaignId}`, icon: <Wand2 className="h-3.5 w-3.5" />, type: 'navigate' };
+  return newConfig.primary === 'roas' ? min : max;
+}
+
+// Thin wrapper around describeRecAction that also resolves the icon to a
+// rendered React node. Keeps the JSX below clean.
+function getActionButton(
+  rec: RecType,
+  campaignId: string,
+): { label: string; url: string; icon: React.ReactNode; kind: 'execute' | 'budget' | 'navigate' | 'add_posts' } {
+  const desc = describeRecAction(rec, campaignId);
+  return {
+    label: desc.label,
+    url: desc.url || '',
+    icon: iconFor(desc.iconKey),
+    kind: desc.kind,
+  };
 }
 
 interface CampaignMetrics {
