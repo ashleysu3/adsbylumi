@@ -248,7 +248,7 @@ export default function MetaSettings() {
     }
   };
 
-  const handleTestConnection = async () => {
+  const handleTestConnection = async (opts?: { skipRefresh?: boolean }) => {
     if (!brand?.id) {
       toast.error('No brand found');
       return;
@@ -258,6 +258,25 @@ export default function MetaSettings() {
       setTesting(true);
       setTestResult(null);
       setConnectionHealth('checking');
+
+      // First, attempt a silent token refresh so "Test" also keeps the token fresh.
+      // Failures here are non-fatal — the test below will surface real auth issues.
+      if (!opts?.skipRefresh) {
+        try {
+          setRefreshing(true);
+          const { data: refreshData } = await supabase.functions.invoke('refresh-meta-token', {
+            body: { brandId: brand.id }
+          });
+          if (refreshData?.success) {
+            // Pull updated expiry into local brand state
+            fetchBrand();
+          }
+        } catch (refreshErr) {
+          console.warn('Silent token refresh failed (continuing to test):', refreshErr);
+        } finally {
+          setRefreshing(false);
+        }
+      }
 
       const { data, error } = await supabase.functions.invoke('test-meta-connection', {
         body: { brandId: brand.id }
