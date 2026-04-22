@@ -224,6 +224,7 @@ export function BRollLibrariesManager({
                 brandId={brandId}
                 clips={brandClips}
                 onUpdate={onBrandClipsChange}
+                libraryKey={`brand:${brandId}`}
                 embedded
               />
             </AccordionContent>
@@ -310,6 +311,7 @@ export function BRollLibrariesManager({
                     brandId={brandId}
                     clips={lib.clips}
                     storagePrefix={`${brandId}/lib-${lib.id}`}
+                    libraryKey={`lib:${lib.id}`}
                     persist={persistLibraryClips(lib.id)}
                     onUpdate={(clips) =>
                       setLibraries((prev) =>
