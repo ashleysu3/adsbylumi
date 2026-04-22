@@ -201,9 +201,17 @@ export function PostLaunchWalkthrough({
                 <StepGoal
                   suggestion={suggestion}
                   kpi={kpi}
-                  setKpi={setKpi}
+                  setKpi={(v) => {
+                    setKpi(v);
+                    if (goalSaved) setGoalSaved(false);
+                  }}
                   threshold={threshold}
-                  setThreshold={setThreshold}
+                  setThreshold={(v) => {
+                    setThreshold(v);
+                    if (goalSaved) setGoalSaved(false);
+                  }}
+                  goalSaved={goalSaved}
+                  savedSummary={savedSummary}
                 />
               )}
               {step === 4 && <StepMonitoring />}
