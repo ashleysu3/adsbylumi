@@ -905,6 +905,36 @@ export function ProductionManager({
                   </Badge>
                 </div>
               </div>
+              {/* B-Roll Library Picker */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Film className="h-3.5 w-3.5" />
+                  <span>B-roll source for this campaign:</span>
+                </div>
+                <Select
+                  value={selectedLibraryId ?? "__brand__"}
+                  onValueChange={handleSelectLibrary}
+                >
+                  <SelectTrigger className="h-8 w-auto min-w-[220px] text-xs">
+                    <SelectValue placeholder="Brand-wide library" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__brand__">
+                      Brand-wide library only
+                    </SelectItem>
+                    {namedLibraries.map((lib) => (
+                      <SelectItem key={lib.id} value={lib.id}>
+                        {lib.name} ({lib.clips.length})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedLibraryId && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    + brand-wide as fallback
+                  </Badge>
+                )}
+              </div>
               {overallStrategy && (
                 <p className="text-sm text-muted-foreground mt-2 bg-muted/50 p-2 rounded-md">
                   <span className="font-medium">Lumi's Strategy:</span> {overallStrategy}
