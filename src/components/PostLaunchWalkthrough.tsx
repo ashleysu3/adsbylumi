@@ -506,12 +506,16 @@ function StepGoal({
   setKpi,
   threshold,
   setThreshold,
+  goalSaved,
+  savedSummary,
 }: {
   suggestion: GoalSuggestion;
   kpi: string;
   setKpi: (v: string) => void;
   threshold: string;
   setThreshold: (v: string) => void;
+  goalSaved: boolean;
+  savedSummary: string | null;
 }) {
   const kpiOpt = KPI_OPTIONS.find((o) => o.value === kpi);
   const prefix = getThresholdPrefix(kpi);
@@ -610,6 +614,31 @@ function StepGoal({
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {goalSaved && savedSummary && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25 }}
+            role="status"
+            aria-live="polite"
+            className="flex items-start gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2"
+          >
+            <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center shrink-0 mt-0.5">
+              <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="text-xs leading-tight">
+              <p className="font-medium text-foreground">Goal saved ✓</p>
+              <p className="text-muted-foreground">
+                Lumi is now tracking{" "}
+                <span className="font-medium text-foreground">{savedSummary}</span>. Edit anything above to update.
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
