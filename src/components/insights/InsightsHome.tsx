@@ -27,6 +27,7 @@ import { ClientReportModal } from './ClientReportModal';
 import {
   getLumiKPIConfig,
   getLumiKPIStatus,
+  getGoalAwareStatus,
   getLumiStatusDot,
   type LumiKPIConfig } from
 '@/lib/lumi-kpi-config';
@@ -529,10 +530,19 @@ export function InsightsHome({
             });
             uniqueSteps.slice(0, slotsLeft).forEach((step: string, i: number) => {
               globalDedup.add(normalizeDesc(step));
+              // Trim internal slugs / markdown bold so the title reads cleanly.
+              const cleaned = step
+                .replace(/\*\*/g, '')
+                .replace(/'[a-z][a-z0-9_]+'/g, '')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+              const displayTitle = cleaned.length > 90 ? cleaned.slice(0, 87) + '...' : cleaned;
               allRecs.push({
                 id: `ai-step-${campaign.id}-${i}`,
                 type: 'keep_running',
-                title: `Recommended action`,
+                // Use the actual recommendation as the title so users see what
+                // Lumi is suggesting, not a generic "Recommended action" label.
+                title: displayTitle || 'Recommended action',
                 description: step,
                 impact: 'Based on your latest performance analysis',
                 confidence: 'medium',
@@ -540,7 +550,11 @@ export function InsightsHome({
                 actionPayload: {},
                 priority: 60 + i,
                 userAction: true,
-                actionUrl: `/data`,
+                // No useful navigation target for free-form AI steps — the
+                // render code will skip rendering a button when this flag is
+                // set, leaving just the advisory text.
+                actionUrl: '',
+                isInfoOnly: true,
                 campaignName: campaign.name,
                 campaignId: campaign.id,
               });
@@ -765,7 +779,13 @@ export function InsightsHome({
           {filteredCampaigns.map((campaign) => {
           const kpiConfig = getLumiKPIConfig(campaign.objective, campaign.templateName, campaign.name);
           const primaryValue = getPrimaryKPIValue(campaign.metrics, kpiConfig.primary);
-          const status = getLumiKPIStatus(primaryValue, kpiConfig.benchmark, kpiConfig.primary);
+          // Goal-aware status: reads `campaign_goals` first (which is what the
+          // KPI tile below already does), falls back to kpiConfig benchmark.
+          // Previously these three values were all benchmark-only, causing the
+          // status dot and "Increase budget" action-rec pill to disagree with
+          // the tile on campaigns whose user goal is tighter than the generic
+          // benchmark range.
+          const status = getGoalAwareStatus(campaign.metrics, kpiConfig, goalsMap[campaign.id] || null);
           const statusDot = status === 'no-data' ? 'bg-amber-500' : getLumiStatusDot(status);
           const actionRec = getActionRecommendation(status, campaign.metrics);
           const isActive = campaign.status === 'active' || campaign.status === 'live';
@@ -777,7 +797,7 @@ export function InsightsHome({
               key={campaign.id}
               variant="glow"
               className="rounded-2xl transition-all duration-300 hover:scale-[1.005]">
-              
+
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-col gap-3">
                     {/* Row 1: Name + status dot + Live/Paused label + toggle */}
@@ -935,6 +955,20 @@ export function InsightsHome({
                               {userRecs.slice(0, 2).map((rec: any) => {
                                 const action = getActionButton(rec, campaign.id);
                                 const isBusy = recExecuting[rec.id];
+                                // Info-only recs (e.g. free-form advisory steps
+                                // from analyze-performance) don't have a concrete
+                                // action — render just the text, no button.
+                                if (rec.isInfoOnly) {
+                                  return (
+                                    <div
+                                      key={rec.id}
+                                      className="flex items-start gap-2 p-2 rounded-xl bg-[hsl(var(--lumi-orange-1)/0.06)] border border-[hsl(var(--lumi-orange-1)/0.15)]"
+                                    >
+                                      <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0 mt-0.5" />
+                                      <span className="text-xs font-medium">{rec.title}</span>
+                                    </div>
+                                  );
+                                }
 
                                 // The button. Same visual for every action kind;
                                 // the onClick dispatches based on kind.
