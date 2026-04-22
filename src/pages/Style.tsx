@@ -403,6 +403,19 @@ export default function Style() {
           }}
           saving={saving}
         />
+          </div>
+
+          <div className="lg:block">
+            <StylePreviewPanel
+              brandName={brand?.name}
+              copyPerspective={brand?.copy_perspective === "We" ? "We" : "I"}
+              useEmojis={emojiSettings.use_emojis}
+              brandEmojis={emojiSettings.brand_emojis}
+              bulletEmoji={emojiSettings.bullet_emoji}
+              overlayStyle={overlayStyle}
+            />
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );
