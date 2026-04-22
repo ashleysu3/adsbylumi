@@ -248,7 +248,7 @@ export default function MetaSettings() {
     }
   };
 
-  const handleTestConnection = async () => {
+  const handleTestConnection = async (opts?: { skipRefresh?: boolean }) => {
     if (!brand?.id) {
       toast.error('No brand found');
       return;
@@ -258,6 +258,25 @@ export default function MetaSettings() {
       setTesting(true);
       setTestResult(null);
       setConnectionHealth('checking');
+
+      // First, attempt a silent token refresh so "Test" also keeps the token fresh.
+      // Failures here are non-fatal — the test below will surface real auth issues.
+      if (!opts?.skipRefresh) {
+        try {
+          setRefreshing(true);
+          const { data: refreshData } = await supabase.functions.invoke('refresh-meta-token', {
+            body: { brandId: brand.id }
+          });
+          if (refreshData?.success) {
+            // Pull updated expiry into local brand state
+            fetchBrand();
+          }
+        } catch (refreshErr) {
+          console.warn('Silent token refresh failed (continuing to test):', refreshErr);
+        } finally {
+          setRefreshing(false);
+        }
+      }
 
       const { data, error } = await supabase.functions.invoke('test-meta-connection', {
         body: { brandId: brand.id }
@@ -487,27 +506,17 @@ export default function MetaSettings() {
                     onUpdate={fetchBrand}
                   />
                   <Button 
-                    onClick={handleTestConnection} 
-                    disabled={testing}
+                    onClick={() => handleTestConnection()} 
+                    disabled={testing || refreshing}
                     variant="outline"
                     className="gap-2"
                   >
-                    {testing ? (
+                    {testing || refreshing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Zap className="h-4 w-4" />
                     )}
-                    {testing ? "Testing..." : "Test Connection"}
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="default"
-                    className="gap-2"
-                    onClick={handleManualRefresh}
-                    disabled={refreshing}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                    {refreshing ? 'Refreshing...' : 'Refresh Token'}
+                    {refreshing ? "Refreshing..." : testing ? "Testing..." : "Test & Refresh Connection"}
                   </Button>
                   <Button 
                     variant="ghost" 
@@ -689,17 +698,17 @@ export default function MetaSettings() {
 
                 <div className="flex flex-wrap gap-3 pt-2">
                   <Button 
-                    onClick={handleTestConnection} 
-                    disabled={testing}
+                    onClick={() => handleTestConnection()} 
+                    disabled={testing || refreshing}
                     variant="outline"
                     className="gap-2"
                   >
-                    {testing ? (
+                    {testing || refreshing ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Zap className="h-4 w-4" />
                     )}
-                    {testing ? "Testing..." : "Test Connection"}
+                    {refreshing ? "Refreshing..." : testing ? "Testing..." : "Test & Refresh Connection"}
                   </Button>
                   <MetaAccountConnect
                     brandId={brand.id}
@@ -711,16 +720,6 @@ export default function MetaSettings() {
                     tokenExpired={isExpired || isExpiringSoon}
                     onUpdate={fetchBrand}
                   />
-                  <Button 
-                    variant="ghost" 
-                    size="default"
-                    className="gap-2"
-                    onClick={handleManualRefresh}
-                    disabled={refreshing}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                    {refreshing ? 'Refreshing...' : 'Refresh Token'}
-                  </Button>
                   <Button 
                     variant="ghost" 
                     onClick={handleDisconnectMeta}
