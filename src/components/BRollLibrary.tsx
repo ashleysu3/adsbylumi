@@ -42,6 +42,25 @@ export function BRollLibrary({
 }: BRollLibraryProps) {
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    clips.forEach((c) => (c.tags || []).forEach((t) => t && set.add(t)));
+    return Array.from(set).sort();
+  }, [clips]);
+
+  const filteredClips = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return clips.filter((c) => {
+      if (activeTag && !(c.tags || []).includes(activeTag)) return false;
+      if (!q) return true;
+      const inName = c.file_name.toLowerCase().includes(q);
+      const inTags = (c.tags || []).some((t) => t.toLowerCase().includes(q));
+      return inName || inTags;
+    });
+  }, [clips, search, activeTag]);
 
   const persistClips = useCallback(
     async (next: BRollClip[]) => {
