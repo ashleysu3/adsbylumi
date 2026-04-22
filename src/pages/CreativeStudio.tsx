@@ -193,6 +193,9 @@ export default function CreativeStudio() {
   const [showBrief, setShowBrief] = useState(false);
   const [offerPsychology, setOfferPsychology] = useState<any>(null);
   const [offerAudiencePsychology, setOfferAudiencePsychology] = useState<any>(null);
+  // Per-offer Style override: when false, generation ignores brand Style defaults
+  // (copy_perspective, emoji settings, bullet emoji, overlay style, b-roll library).
+  const [useBrandStyleDefaults, setUseBrandStyleDefaults] = useState<boolean>(true);
 
   const urlWorkspaceId = searchParams.get("workspace");
   const isRefreshCreativeMode = searchParams.get("refreshCreative") === "true";
@@ -285,18 +288,20 @@ export default function CreativeStudio() {
       
       setWorkspace(data);
       
-      // Fetch offer psychology if workspace has an offer_id
+      // Fetch offer psychology + style-override flag if workspace has an offer_id
       if (data?.offer_id) {
         const { data: offerData } = await supabase
           .from('offers')
-          .select('product_psychology, offer_audience_psychology')
+          .select('product_psychology, offer_audience_psychology, use_brand_style_defaults')
           .eq('id', data.offer_id)
           .single();
         setOfferPsychology(offerData?.product_psychology || null);
         setOfferAudiencePsychology(offerData?.offer_audience_psychology || null);
+        setUseBrandStyleDefaults((offerData as any)?.use_brand_style_defaults !== false);
       } else {
         setOfferPsychology(null);
         setOfferAudiencePsychology(null);
+        setUseBrandStyleDefaults(true);
       }
       const c = data?.creative_json as Record<string, any> | null;
       // Inject default angle if angles exist but it's missing
