@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
           recommendations.push({
             id: `conversion-problem-${workspaceId}`,
             type: 'keep_running',
-            title: `${primaryKpi.toUpperCase()} is ${formatKpiValue(primaryKpi, primaryValue)} — clicks aren't converting`,
+            title: `${primaryKpi.toUpperCase()} is ${formatKpiValue(primaryKpi, primaryValue)} — test new audiences or pause weakest ads`,
             description: `Your goal is ${formatThreshold(primaryKpi, primaryThreshold!)} but you're at ${formatKpiValue(primaryKpi, primaryValue)}. CTR is ${ctr.toFixed(2)}% — people are clicking but not taking action. Try testing new audiences, adjusting your targeting, or pausing your weakest-performing ads to let Meta re-optimize delivery.`,
             impact: 'Better targeting and ad optimization can bring your cost per result to goal',
             confidence: 'high',

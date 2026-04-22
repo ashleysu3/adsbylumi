@@ -536,13 +536,12 @@ export function InsightsHome({
                 .replace(/'[a-z][a-z0-9_]+'/g, '')
                 .replace(/\s{2,}/g, ' ')
                 .trim();
-              const displayTitle = cleaned.length > 90 ? cleaned.slice(0, 87) + '...' : cleaned;
               allRecs.push({
                 id: `ai-step-${campaign.id}-${i}`,
                 type: 'keep_running',
                 // Use the actual recommendation as the title so users see what
                 // Lumi is suggesting, not a generic "Recommended action" label.
-                title: displayTitle || 'Recommended action',
+                title: cleaned || 'Recommended action',
                 description: step,
                 impact: 'Based on your latest performance analysis',
                 confidence: 'medium',
@@ -550,11 +549,9 @@ export function InsightsHome({
                 actionPayload: {},
                 priority: 60 + i,
                 userAction: true,
-                // No useful navigation target for free-form AI steps — the
-                // render code will skip rendering a button when this flag is
-                // set, leaving just the advisory text.
-                actionUrl: '',
-                isInfoOnly: true,
+                // Route to the campaign detail view so users can act on the
+                // AI-generated next step. Every rec must have a button.
+                actionUrl: `/data?campaign=${campaign.id}`,
                 campaignName: campaign.name,
                 campaignId: campaign.id,
               });
@@ -957,19 +954,6 @@ export function InsightsHome({
                                 const isBusy = recExecuting[rec.id];
                                 // Info-only recs (e.g. free-form advisory steps
                                 // from analyze-performance) don't have a concrete
-                                // action — render just the text, no button.
-                                if (rec.isInfoOnly) {
-                                  return (
-                                    <div
-                                      key={rec.id}
-                                      className="flex items-start gap-2 p-2 rounded-xl bg-[hsl(var(--lumi-orange-1)/0.06)] border border-[hsl(var(--lumi-orange-1)/0.15)]"
-                                    >
-                                      <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0 mt-0.5" />
-                                      <span className="text-xs font-medium">{rec.title}</span>
-                                    </div>
-                                  );
-                                }
-
                                 // The button. Same visual for every action kind;
                                 // the onClick dispatches based on kind.
                                 const button = (
@@ -999,11 +983,11 @@ export function InsightsHome({
                                 return (
                                   <div
                                     key={rec.id}
-                                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[hsl(var(--lumi-orange-1)/0.06)] border border-[hsl(var(--lumi-orange-1)/0.15)]"
+                                    className="flex items-start justify-between gap-2 p-2 rounded-xl bg-[hsl(var(--lumi-orange-1)/0.06)] border border-[hsl(var(--lumi-orange-1)/0.15)]"
                                   >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0" />
-                                      <span className="text-xs font-medium truncate">{rec.title}</span>
+                                    <div className="flex items-start gap-2 min-w-0 flex-1">
+                                      <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--lumi-orange-1))] shrink-0 mt-0.5" />
+                                      <span className="text-xs font-medium break-words whitespace-normal">{rec.title}</span>
                                     </div>
                                     {action.kind === 'budget' ? (
                                       <Popover>
