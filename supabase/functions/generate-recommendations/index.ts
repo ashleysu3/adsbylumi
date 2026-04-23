@@ -843,8 +843,102 @@ Deno.serve(async (req) => {
       return a.priority - b.priority;
     });
 
+    // ============================================================
+    // CARD DISPLAY (#7 Phase 2)
+    //
+    // Mirrors what the Ad Performance card shows in-app — primary KPI tile
+    // with goal-aware status, secondary KPI tile if goals set one, plus CTR
+    // and Frequency supporting tiles. The email template uses this to build
+    // a report that matches the in-app view so users don't need to log in
+    // just to see the same KPIs. Agreed scope with Ashley 2026-04-23.
+    // ============================================================
+    const tileStatus = (
+      value: number | null,
+      threshold: number | null,
+      goalType: string,
+      kpi: string,
+    ): 'healthy' | 'attention' | 'critical' | 'no-data' => {
+      if (value === null || value === undefined || isNaN(value)) return 'no-data';
+      if (value === 0 && ['cpl', 'cpp', 'roas', 'costPerThruPlay'].includes(kpi)) return 'no-data';
+      if (threshold === null || threshold === undefined) return 'no-data';
+      const higherIsBetter = goalType === 'greater_than';
+      if (higherIsBetter) {
+        if (value >= threshold) return 'healthy';
+        if (value >= threshold * 0.7) return 'attention';
+        return 'critical';
+      }
+      if (value <= threshold) return 'healthy';
+      if (value <= threshold * 1.3) return 'attention';
+      return 'critical';
+    };
+
+    const cardDisplay = {
+      primary: {
+        key: primaryKpi,
+        label: goals?.primary_kpi_label || primaryKpi.toUpperCase(),
+        valueDisplay: formatKpiValue(primaryKpi, primaryValue),
+        goalDisplay: primaryThreshold !== null ? formatThreshold(primaryKpi, primaryThreshold) : null,
+        status: tileStatus(primaryValue, primaryThreshold, primaryGoalType, primaryKpi),
+      },
+      secondary: (secondaryKpi && secondaryThreshold !== null)
+        ? {
+            key: secondaryKpi,
+            label: goals?.secondary_kpi_label || secondaryKpi.toUpperCase(),
+            valueDisplay: secondaryValue !== null ? formatKpiValue(secondaryKpi, secondaryValue) : '—',
+            goalDisplay: formatThreshold(secondaryKpi, secondaryThreshold),
+            status: tileStatus(secondaryValue, secondaryThreshold, secondaryGoalType, secondaryKpi),
+          }
+        : null,
+      ctr: {
+        valueDisplay: ctr > 0 ? `${ctr.toFixed(2)}%` : '—',
+        benchmarkDisplay: '1.0%+',
+        status: (ctr === 0
+          ? 'no-data'
+          : ctr >= 1.0
+            ? 'healthy'
+            : ctr >= 0.7
+              ? 'attention'
+              : 'critical') as 'healthy' | 'attention' | 'critical' | 'no-data',
+      },
+      frequency: {
+        valueDisplay: frequency > 0 ? frequency.toFixed(1) : '—',
+        goalDisplay: `< ${frequencyThreshold}`,
+        status: (frequency === 0
+          ? 'no-data'
+          : frequency <= frequencyThreshold
+            ? 'healthy'
+            : frequency <= frequencyThreshold * 1.25
+              ? 'attention'
+              : 'critical') as 'healthy' | 'attention' | 'critical' | 'no-data',
+      },
+      // Overall status drives the action-rec badge color in the email.
+      overallStatus: (() => {
+        if (primaryThreshold === null) {
+          if (!hasAnyResults && spend < 1) return 'no-data' as const;
+          return 'healthy' as const;
+        }
+        if (primaryMet === true && !frequencyHigh) return 'healthy' as const;
+        if (primaryMet === true && frequencyHigh) return 'attention' as const;
+        if (primaryClose === true) return 'attention' as const;
+        return 'critical' as const;
+      })(),
+      // Mirrors InsightsHome.getActionRecommendation() copy so users see
+      // the same verdict word in both surfaces.
+      actionRec: (() => {
+        if (primaryThreshold === null) {
+          if (spend > 50 || reach >= 1000) return 'Try new angles';
+          return 'Wait for more data';
+        }
+        if (primaryMet === true && !frequencyHigh) return 'Increase budget';
+        if (primaryMet === true && frequencyHigh) return 'Refresh creative before scaling';
+        if (primaryClose === true) return 'Keep spend the same';
+        return 'Refresh creative or pause';
+      })(),
+      spendDisplay: spend > 0 ? `$${spend.toFixed(2)}` : '$0.00',
+    };
+
     return new Response(
-      JSON.stringify({ success: true, recommendations: finalRecs, changeContext }),
+      JSON.stringify({ success: true, recommendations: finalRecs, changeContext, cardDisplay }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error: any) {

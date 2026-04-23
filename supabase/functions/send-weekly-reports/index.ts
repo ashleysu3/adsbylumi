@@ -37,6 +37,23 @@ interface CampaignSummary {
   metrics?: Record<string, any>;
   adMetrics?: any[];
   goals?: any;
+  // Populated by the pass-2 rec invocation below. Drives the new goal-aware
+  // KPI tiles in the email that mirror the Ad Performance page's card. If
+  // absent (e.g. rec call failed), the template falls back to the legacy
+  // 3-tile layout derived from the stored report text.
+  cardDisplay?: {
+    primary: { key: string; label: string; valueDisplay: string; goalDisplay: string | null; status: 'healthy' | 'attention' | 'critical' | 'no-data' };
+    secondary?: { key: string; label: string; valueDisplay: string; goalDisplay: string; status: 'healthy' | 'attention' | 'critical' | 'no-data' } | null;
+    ctr: { valueDisplay: string; benchmarkDisplay: string; status: 'healthy' | 'attention' | 'critical' | 'no-data' };
+    frequency: { valueDisplay: string; goalDisplay: string; status: 'healthy' | 'attention' | 'critical' | 'no-data' };
+    overallStatus: 'healthy' | 'attention' | 'critical' | 'no-data';
+    actionRec: string;
+    spendDisplay: string;
+  };
+  changeContext?: {
+    recentEventsCount: number;
+    summary: string | null;
+  };
 }
 
 Deno.serve(async (req) => {
@@ -302,6 +319,9 @@ Deno.serve(async (req) => {
         }
 
         // Pass 2: structured approvals from live rec engine output.
+        // This pass ALSO captures each campaign's `cardDisplay` and
+        // `changeContext` so the email can render the same KPI tiles and
+        // "data settling" chip the Ad Performance page shows in-app.
         const ACTIONABLE_REC_TYPES = new Set([
           'pause_ad', 'resume_ad',
           'budget_increase', 'budget_decrease',
@@ -322,7 +342,22 @@ Deno.serve(async (req) => {
                 },
               },
             );
-            if (recsErr || !recsResp?.recommendations) continue;
+            if (recsErr || !recsResp) continue;
+
+            // Attach display state + change context to the campaign entry so
+            // the email template can render them. Doing it here, inline, so
+            // the rec call's work is reused.
+            if (recsResp.cardDisplay) {
+              c.cardDisplay = recsResp.cardDisplay;
+            }
+            if (recsResp.changeContext) {
+              c.changeContext = {
+                recentEventsCount: recsResp.changeContext.recentEventsCount,
+                summary: recsResp.changeContext.summary,
+              };
+            }
+
+            if (!recsResp.recommendations) continue;
 
             const actionable = (recsResp.recommendations as any[])
               .filter(r => ACTIONABLE_REC_TYPES.has(r.type))
@@ -480,12 +515,33 @@ function buildConsolidatedEmail(params: {
     ? `${onTrack} on track · ${needsAttention} need${needsAttention !== 1 ? '' : 's'} attention`
     : `All ${campaigns.length} campaign${campaigns.length !== 1 ? 's' : ''} on track 🎉`;
 
-  // Campaign rows
-  const campaignRowsHtml = campaigns.map(c => `
-    <tr><td style="padding:20px;border-bottom:1px solid #F1F5F9;">
-      <p style="margin:0;font-size:16px;font-weight:800;color:#111;">${c.statusEmoji} ${c.name}</p>
-      <p style="margin:4px 0 12px;font-size:12px;color:#64748B;">${c.statusNote}</p>
-      <table width="100%" cellpadding="0" cellspacing="0"><tr>
+  // Status color palette — matches the in-app KPI tiles so the email and
+  // the Ad Performance page tell the same visual story.
+  const tileColors = (status: string): { bg: string; border: string; text: string } => {
+    switch (status) {
+      case 'healthy': return { bg: '#F0FDF4', border: '#BBF7D0', text: '#166534' };
+      case 'attention': return { bg: '#FFFBEB', border: '#FDE68A', text: '#92400E' };
+      case 'critical': return { bg: '#FEF2F2', border: '#FECACA', text: '#991B1B' };
+      default: return { bg: '#F8FAFC', border: '#E2E8F0', text: '#64748B' };
+    }
+  };
+  const actionRecBadgeColors = (status: string): { bg: string; text: string; border: string } => {
+    switch (status) {
+      case 'healthy': return { bg: '#DCFCE7', text: '#166534', border: '#BBF7D0' };
+      case 'attention': return { bg: '#FEF3C7', text: '#92400E', border: '#FDE68A' };
+      case 'critical': return { bg: '#FEE2E2', text: '#991B1B', border: '#FECACA' };
+      default: return { bg: '#F1F5F9', text: '#475569', border: '#CBD5E1' };
+    }
+  };
+
+  // Build a 4-tile KPI strip that mirrors the in-app CampaignKPISummary.
+  // When cardDisplay is present (structured live recs returned it), we use
+  // it. When absent (e.g. rec call failed for this campaign), we fall back
+  // to the legacy 3-tile layout from the stored report text.
+  const renderKpiStrip = (c: CampaignSummary): string => {
+    if (!c.cardDisplay) {
+      // Legacy fallback — same layout as before patch #7 Phase 2.
+      return `<table width="100%" cellpadding="0" cellspacing="0"><tr>
         <td width="33%" style="text-align:center;padding:4px;">
           <div style="background:#F8FAFC;border-radius:8px;padding:10px 6px;">
             <p style="margin:0;font-size:10px;color:#64748B;text-transform:uppercase;font-weight:700;letter-spacing:.5px;">Ad Spend</p>
@@ -506,7 +562,62 @@ function buildConsolidatedEmail(params: {
             <p style="margin:2px 0 0;font-size:11px;color:#64748B;">${c.resultsLabel}</p>
           </div>
         </td>
-      </tr></table>
+      </tr></table>`;
+    }
+
+    const cd = c.cardDisplay;
+    const tile = (label: string, value: string, sub: string | null, status: string): string => {
+      const col = tileColors(status);
+      return `<td style="text-align:center;padding:3px;">
+        <div style="background:${col.bg};border:1px solid ${col.border};border-radius:8px;padding:10px 6px;">
+          <p style="margin:0;font-size:9px;color:#64748B;text-transform:uppercase;font-weight:700;letter-spacing:.5px;">${label}</p>
+          <p style="margin:4px 0 0;font-size:16px;font-weight:800;color:${col.text};">${value}</p>
+          ${sub ? `<p style="margin:2px 0 0;font-size:10px;color:#64748B;">${sub}</p>` : ''}
+        </div>
+      </td>`;
+    };
+
+    // Show (primary) + (secondary OR CTR) + (CTR OR frequency) + (frequency OR spend)
+    // We always want primary first. Then fill remaining 3 slots with
+    // secondary (if set), CTR, frequency. If secondary isn't set, we have
+    // room for a Spend tile in slot 4.
+    const slots: string[] = [];
+    slots.push(tile(cd.primary.label, cd.primary.valueDisplay, cd.primary.goalDisplay ? `Goal: ${cd.primary.goalDisplay}` : null, cd.primary.status));
+    if (cd.secondary) {
+      slots.push(tile(cd.secondary.label, cd.secondary.valueDisplay, `Goal: ${cd.secondary.goalDisplay}`, cd.secondary.status));
+    }
+    slots.push(tile('CTR', cd.ctr.valueDisplay, `Benchmark: ${cd.ctr.benchmarkDisplay}`, cd.ctr.status));
+    slots.push(tile('Frequency', cd.frequency.valueDisplay, `Goal: ${cd.frequency.goalDisplay}`, cd.frequency.status));
+    if (!cd.secondary) {
+      slots.push(tile('Spend', cd.spendDisplay, null, 'no-data'));
+    }
+    return `<table width="100%" cellpadding="0" cellspacing="0"><tr>${slots.join('')}</tr></table>`;
+  };
+
+  const renderActionRecBadge = (c: CampaignSummary): string => {
+    if (!c.cardDisplay) return '';
+    const col = actionRecBadgeColors(c.cardDisplay.overallStatus);
+    return `<div style="display:inline-block;margin-top:10px;background:${col.bg};color:${col.text};border:1px solid ${col.border};padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;">
+      ${c.cardDisplay.actionRec}
+    </div>`;
+  };
+
+  const renderChangeChip = (c: CampaignSummary): string => {
+    if (!c.changeContext || !c.changeContext.recentEventsCount) return '';
+    const text = c.changeContext.summary || `${c.changeContext.recentEventsCount} recent change${c.changeContext.recentEventsCount === 1 ? '' : 's'} — data still settling`;
+    return `<div style="display:inline-block;margin-right:6px;margin-top:6px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:600;">
+      ⏳ ${text}
+    </div>`;
+  };
+
+  // Campaign rows — goal-aware tiles + action rec badge + change chip,
+  // all matching the Ad Performance page's in-app visual language.
+  const campaignRowsHtml = campaigns.map(c => `
+    <tr><td style="padding:20px;border-bottom:1px solid #F1F5F9;">
+      <p style="margin:0;font-size:16px;font-weight:800;color:#111;">${c.statusEmoji} ${c.name}</p>
+      <p style="margin:4px 0 12px;font-size:12px;color:#64748B;">${c.statusNote}</p>
+      <div>${renderChangeChip(c)}${renderActionRecBadge(c)}</div>
+      <div style="margin-top:10px;">${renderKpiStrip(c)}</div>
       ${c.whatsHappening ? `
       <div style="margin-top:14px;padding:12px 16px;background:#FAFBFC;border-radius:10px;border:1px solid #E2E8F0;">
         <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;">What's Happening</p>
