@@ -459,12 +459,27 @@ Deno.serve(async (req) => {
     );
   } catch (error: any) {
     console.error('Error fetching Meta performance:', error);
+    const message = error?.message || 'Unknown error';
+    const isTokenInvalid =
+      message.includes('Error validating access token') ||
+      message.includes('session has been invalidated') ||
+      message.includes('OAuthException');
+
+    if (isTokenInvalid) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          tokenInvalid: true,
+          error: 'META_TOKEN_INVALID',
+          message: 'Your Meta connection has expired. Please reconnect your Meta account.',
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      }
+      JSON.stringify({ error: message, success: false }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
     );
   }
 });
