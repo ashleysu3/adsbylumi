@@ -21,7 +21,8 @@ import {
   TrendingUp,
   TrendingDown,
   Pause,
-  Play } from
+  Play,
+  Rocket } from
 'lucide-react';
 import { ClientReportModal } from './ClientReportModal';
 import {
@@ -64,6 +65,7 @@ function iconFor(key: string): React.ReactNode {
     case 'RefreshCw': return <RefreshCw className="h-3.5 w-3.5" />;
     case 'Plus': return <Plus className="h-3.5 w-3.5" />;
     case 'Eye': return <Eye className="h-3.5 w-3.5" />;
+    case 'Rocket': return <Rocket className="h-3.5 w-3.5" />;
     case 'Wand2':
     default: return <Wand2 className="h-3.5 w-3.5" />;
   }

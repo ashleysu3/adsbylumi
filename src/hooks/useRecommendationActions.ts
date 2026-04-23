@@ -13,7 +13,8 @@ export interface Recommendation {
     | 'resume_ad'
     | 'swap_creative'
     | 'keep_running'
-    | 'create_creative';
+    | 'create_creative'
+    | 'promote_to_scaling';
   title: string;
   description: string;
   impact: string;
@@ -122,6 +123,36 @@ export function useRecommendationActions(options?: {
             break;
           }
 
+          case 'promote_to_scaling': {
+            // Duplicates the source ad into the target (Scaling) ad set,
+            // then pauses the original in Testing. If the pause fails Meta
+            // still created the duplicate — we surface a warning toast so
+            // the user can clean up in Meta Ads Manager manually.
+            const { data, error } = await supabase.functions.invoke(
+              'promote-ad-to-scaling',
+              {
+                body: {
+                  workspaceId: actionPayload.workspaceId,
+                  brandId: actionPayload.brandId,
+                  sourceAdId: actionPayload.sourceAdId,
+                  sourceAdName: actionPayload.sourceAdName,
+                  targetAdSetId: actionPayload.targetAdSetId,
+                  reason: actionPayload.reason || 'Approved Lumi promote-to-scaling recommendation',
+                },
+              },
+            );
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.error || 'Promote failed');
+            if (data.pausedInTesting === false) {
+              toast.warning(
+                `Ad promoted to Scaling, but we couldn't pause the original in Testing. Pause it manually in Meta Ads Manager to avoid duplicate delivery.`,
+              );
+            } else {
+              toast.success(`Ad promoted to Scaling — paused in Testing`);
+            }
+            break;
+          }
+
           default:
             // keep_running / create_creative are navigations handled by the UI,
             // not executions — no-op here.
@@ -191,6 +222,8 @@ export function describeRecAction(
         iconKey: 'RefreshCw',
         url: rec.actionUrl || `/creative-studio?workspace=${campaignId}&refreshCreative=true`,
       };
+    case 'promote_to_scaling':
+      return { kind: 'execute', label: 'Promote to Scaling', iconKey: 'Rocket' };
     case 'keep_running': {
       // keep_running is intentionally vague — fall back to the title signal.
       const title = (rec.title || '').toLowerCase();

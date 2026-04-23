@@ -7,7 +7,15 @@ const corsHeaders = {
 
 interface Recommendation {
   id: string;
-  type: 'budget_increase' | 'budget_decrease' | 'pause_ad' | 'resume_ad' | 'swap_creative' | 'keep_running' | 'create_creative';
+  type:
+    | 'budget_increase'
+    | 'budget_decrease'
+    | 'pause_ad'
+    | 'resume_ad'
+    | 'swap_creative'
+    | 'keep_running'
+    | 'create_creative'
+    | 'promote_to_scaling'; // Testing → Scaling promotion (Layer 1 of #4)
   title: string;
   description: string;
   impact: string;
@@ -38,10 +46,12 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Fetch workspace to get brand thresholds and bench items
+    // Fetch workspace + brand. We need the Meta access token and ad account
+    // ID for the Testing→Scaling detection pass at the bottom (it queries
+    // Meta for ad-set names, which the client doesn't currently send).
     const { data: workspace } = await supabase
       .from('campaign_workspaces')
-      .select('*, brands(name, alert_thresholds, notification_preferences)')
+      .select('*, brands(name, alert_thresholds, notification_preferences, meta_access_token, meta_account_id)')
       .eq('id', workspaceId)
       .single();
 
@@ -199,7 +209,7 @@ Deno.serve(async (req) => {
           recommendations.push({
             id: `conversion-problem-${workspaceId}`,
             type: 'keep_running',
-            title: `${primaryKpi.toUpperCase()} is ${formatKpiValue(primaryKpi, primaryValue)} — test new audiences or pause weakest ads`,
+            title: `${primaryKpi.toUpperCase()} is ${formatKpiValue(primaryKpi, primaryValue)} — clicks aren't converting`,
             description: `Your goal is ${formatThreshold(primaryKpi, primaryThreshold!)} but you're at ${formatKpiValue(primaryKpi, primaryValue)}. CTR is ${ctr.toFixed(2)}% — people are clicking but not taking action. Try testing new audiences, adjusting your targeting, or pausing your weakest-performing ads to let Meta re-optimize delivery.`,
             impact: 'Better targeting and ad optimization can bring your cost per result to goal',
             confidence: 'high',
@@ -412,6 +422,148 @@ Deno.serve(async (req) => {
             priority: priority++,
           });
         }
+      }
+    }
+
+    // ============================================================
+    // PROMOTE-TO-SCALING RECOMMENDATIONS (Layer 1 of #4)
+    //
+    // Detects the Testing + Scaling ad-set structure by ad-set name
+    // ('Testing' / 'Scaling' case-insensitive). If a campaign has at least
+    // one of each, we look for winners in the Testing set — ads that meet
+    // ALL FOUR signals the user specified:
+    //
+    //   1) Hitting the user's primary KPI goal (ad-level CPR)
+    //   2) CTR ≥ 1.2x the campaign average (statistically above mean)
+    //   3) Reach ≥ 1000 AND age ≥ 3 days (meaningful sample size)
+    //   4) Frequency < 4 (not already saturated in Testing)
+    //
+    // The resulting rec surfaces as "Promote to Scaling" on the card; on
+    // approval, the promote-ad-to-scaling edge function duplicates the ad
+    // into the Scaling set and pauses the original in Testing.
+    // ============================================================
+
+    const metaToken = (workspace?.brands as any)?.meta_access_token;
+
+    if (adList.length > 0 && hasEnoughData && metaToken) {
+      try {
+        // Pull name, status, created_time, and parent ad-set details for each
+        // ad we have metrics for. One call per ad — fine for the ≤50 ads a
+        // typical campaign has; can batch with fields expansion later if
+        // this becomes a hotspot.
+        const adDetails: any[] = [];
+        for (const ad of adList) {
+          const adId = ad.adId || ad.id;
+          if (!adId) continue;
+          try {
+            const res = await fetch(
+              `https://graph.facebook.com/v21.0/${adId}?fields=name,status,created_time,adset{id,name,status}&access_token=${encodeURIComponent(metaToken)}`,
+            );
+            const data = await res.json();
+            if (data && !data.error) adDetails.push({ ...ad, ...data, adId });
+          } catch (e) {
+            console.error(`promote-detection: failed to fetch ad ${adId}:`, e);
+          }
+        }
+
+        // Classify ad sets by name. Use the first match of each — most users
+        // have one Testing and one Scaling set; we refine later if needed.
+        const testingSetId = adDetails.find(a => {
+          const n = (a.adset?.name || '').toLowerCase();
+          return n.includes('testing') || n.includes('test ') || n.endsWith(' test');
+        })?.adset?.id;
+        const scalingSetId = adDetails.find(a => {
+          const n = (a.adset?.name || '').toLowerCase();
+          return n.includes('scaling') || n.includes('scale ') || n.endsWith(' scale');
+        })?.adset?.id;
+
+        if (testingSetId && scalingSetId && testingSetId !== scalingSetId) {
+          // Signal thresholds — conservative by design. Ashley explicitly
+          // picked all four, so we AND them rather than scoring.
+          const CTR_LIFT = 1.2;
+          const MIN_REACH = 1000;
+          const MIN_AGE_DAYS = 3;
+          const MAX_FREQ = 4;
+
+          // Helper to resolve an ad's primary-KPI value from its raw Meta
+          // insights payload (cost_per_action_type for conversion KPIs,
+          // direct field for CTR/CPC/CPM, purchase_roas array for ROAS).
+          const adPrimaryValue = (ad: any): number | null => {
+            if (primaryKpi === 'cpl') {
+              const a = (ad.cost_per_action_type || []).find((x: any) => x.action_type === 'lead');
+              return a ? parseFloat(a.value) || null : null;
+            }
+            if (primaryKpi === 'cpp') {
+              const a = (ad.cost_per_action_type || []).find((x: any) => x.action_type === 'purchase');
+              return a ? parseFloat(a.value) || null : null;
+            }
+            if (primaryKpi === 'cpc') return parseFloat(ad.cpc) || null;
+            if (primaryKpi === 'cpm') return parseFloat(ad.cpm) || null;
+            if (primaryKpi === 'ctr') return parseFloat(ad.ctr) || null;
+            if (primaryKpi === 'roas') {
+              const r = ad.purchase_roas;
+              if (Array.isArray(r) && r.length) return parseFloat(r[0].value) || null;
+              return null;
+            }
+            return null;
+          };
+
+          for (const ad of adDetails) {
+            if (ad.adset?.id !== testingSetId) continue;
+            if ((ad.status || '').toUpperCase() !== 'ACTIVE') continue;
+
+            const adReach = parseFloat(ad.reach) || 0;
+            const adCtr = parseFloat(ad.ctr) || 0;
+            const adFreq = parseFloat(ad.frequency) || 0;
+            const adAgeDays = ad.created_time
+              ? Math.floor((Date.now() - new Date(ad.created_time).getTime()) / (1000 * 60 * 60 * 24))
+              : 0;
+            const adPrimary = adPrimaryValue(ad);
+
+            // Signal 1: Hitting the user's primary KPI goal. Skip this check
+            // (and the whole rec) if no goal is set — without a goal we
+            // don't know what "winner" means.
+            if (primaryThreshold === null || adPrimary === null) continue;
+            const hittingGoal = primaryGoalType === 'less_than'
+              ? adPrimary <= primaryThreshold
+              : adPrimary >= primaryThreshold;
+
+            // Signal 2: CTR meaningfully above campaign average.
+            const goodCtr = ctr > 0 && adCtr >= ctr * CTR_LIFT;
+
+            // Signal 3: statistically meaningful.
+            const statsReady = adReach >= MIN_REACH && adAgeDays >= MIN_AGE_DAYS;
+
+            // Signal 4: frequency healthy.
+            const freqHealthy = adFreq < MAX_FREQ;
+
+            if (hittingGoal && goodCtr && statsReady && freqHealthy) {
+              const ctrLiftPct = ctr > 0 ? Math.round(((adCtr / ctr) - 1) * 100) : 0;
+              recommendations.push({
+                id: `promote-${ad.adId}`,
+                type: 'promote_to_scaling',
+                title: `Promote "${ad.name}" to Scaling`,
+                description: `This ad hit your ${primaryKpi.toUpperCase()} goal (${formatKpiValue(primaryKpi, adPrimary)} vs ${formatThreshold(primaryKpi, primaryThreshold)}) with ${adCtr.toFixed(2)}% CTR — ${ctrLiftPct}% above your campaign average. ${adAgeDays} days of data, frequency ${adFreq.toFixed(1)}. Move it to Scaling to put more budget behind a proven winner.`,
+                impact: 'Scale a proven creative into your higher-budget ad set',
+                confidence: 'high',
+                requiresDoubleApproval: false,
+                actionPayload: {
+                  workspaceId,
+                  brandId,
+                  sourceAdId: ad.adId,
+                  sourceAdName: ad.name,
+                  targetAdSetId: scalingSetId,
+                  reason: 'Meets Testing→Scaling promotion criteria',
+                },
+                priority: priority++,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        // Non-fatal — if the promote detection path fails we still return
+        // whatever recs we've already built.
+        console.error('promote-to-scaling detection failed:', err);
       }
     }
 
