@@ -72,25 +72,31 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${workspaces?.length || 0} published workspaces`);
 
-    // Group workspaces by user_id
-    const userGroups = new Map<string, { brand: any; workspaces: any[] }>();
+    // Group workspaces by BRAND (not by user). Agency users own multiple
+    // brands (one per client); each client needs its own email with a
+    // subject that matches the brand and content scoped to that brand's
+    // campaigns only. The previous user_id grouping lumped every client's
+    // campaigns into one email tagged with whichever brand happened to be
+    // seen first — bad UX for agencies.
+    const brandGroups = new Map<string, { brand: any; workspaces: any[] }>();
 
     for (const ws of workspaces || []) {
       const brand = ws.brands as any;
-      const userId = brand.user_id;
-      if (!userGroups.has(userId)) {
-        userGroups.set(userId, { brand, workspaces: [] });
+      const brandId = brand.id;
+      if (!brandGroups.has(brandId)) {
+        brandGroups.set(brandId, { brand, workspaces: [] });
       }
-      userGroups.get(userId)!.workspaces.push(ws);
+      brandGroups.get(brandId)!.workspaces.push(ws);
     }
 
-    console.log(`Grouped into ${userGroups.size} users`);
+    console.log(`Grouped into ${brandGroups.size} brands`);
 
-    const results: { userId: string; email: string; status: string; error?: string; campaignCount: number }[] = [];
+    const results: { brandId: string; userId: string; email: string; status: string; error?: string; campaignCount: number }[] = [];
 
-    for (const [userId, group] of userGroups) {
+    for (const [brandId, group] of brandGroups) {
       try {
         const { brand } = group;
+        const userId = brand.user_id;
         const prefs: NotificationPrefs = brand.notification_preferences || {};
 
         let reportFrequency: 'off' | 'daily' | 'weekly' = prefs.report_frequency || 'weekly';
@@ -99,7 +105,7 @@ Deno.serve(async (req) => {
         }
 
         if (reportFrequency === 'off') {
-          results.push({ userId, email: '', status: 'skipped', error: 'Reports disabled', campaignCount: group.workspaces.length });
+          results.push({ brandId, userId, email: '', status: 'skipped', error: 'Reports disabled', campaignCount: group.workspaces.length });
           continue;
         }
 
@@ -107,18 +113,18 @@ Deno.serve(async (req) => {
 
         if (reportFrequency === 'weekly') {
           if (dayOfWeek !== 1) {
-            results.push({ userId, email: '', status: 'skipped', error: 'Not Monday', campaignCount: group.workspaces.length });
+            results.push({ brandId, userId, email: '', status: 'skipped', error: 'Not Monday', campaignCount: group.workspaces.length });
             continue;
           }
           if (lastSent && (today.getTime() - lastSent.getTime()) < 7 * 24 * 60 * 60 * 1000) {
-            results.push({ userId, email: '', status: 'skipped', error: 'Already sent this week', campaignCount: group.workspaces.length });
+            results.push({ brandId, userId, email: '', status: 'skipped', error: 'Already sent this week', campaignCount: group.workspaces.length });
             continue;
           }
         }
 
         if (reportFrequency === 'daily') {
           if (lastSent && lastSent.toDateString() === today.toDateString()) {
-            results.push({ userId, email: '', status: 'skipped', error: 'Already sent today', campaignCount: group.workspaces.length });
+            results.push({ brandId, userId, email: '', status: 'skipped', error: 'Already sent today', campaignCount: group.workspaces.length });
             continue;
           }
         }
@@ -130,7 +136,7 @@ Deno.serve(async (req) => {
           .single();
 
         if (!profile?.email) {
-          results.push({ userId, email: '', status: 'skipped', error: 'No email', campaignCount: group.workspaces.length });
+          results.push({ brandId, userId, email: '', status: 'skipped', error: 'No email', campaignCount: group.workspaces.length });
           continue;
         }
 
@@ -284,7 +290,11 @@ Deno.serve(async (req) => {
 
             if (tokenRow) {
               approvalTokens.push({
-                description: item,
+                // Include the campaign name so users can tell which item
+                // is which when the rec engine generates similar-looking
+                // titles across campaigns (e.g. multiple "Strong ROAS —
+                // ready to scale" recs with no campaign disambiguation).
+                description: `${item} — ${c.name}`,
                 url: `${supabaseUrl}/functions/v1/approve-from-email?token=${tokenRow.token}`,
               });
             }
@@ -340,7 +350,10 @@ Deno.serve(async (req) => {
 
               if (tokenRow) {
                 approvalTokens.push({
-                  description: rec.title,
+                  // Same fix as the legacy pass above: prepend/append the
+                  // campaign name so clicking "Approve" on an email button
+                  // tells the user which campaign is affected.
+                  description: `${rec.title} — ${c.name}`,
                   url: `${supabaseUrl}/functions/v1/approve-from-email?token=${tokenRow.token}`,
                 });
               }
@@ -368,16 +381,16 @@ Deno.serve(async (req) => {
 
         if (emailError) {
           console.error(`Email failed for user ${userId}:`, emailError);
-          results.push({ userId, email: profile.email, status: 'error', error: (emailError as any).message, campaignCount: campaigns.length });
+          results.push({ brandId, userId, email: profile.email, status: 'error', error: (emailError as any).message, campaignCount: campaigns.length });
         } else {
           console.log(`Consolidated email sent to ${profile.email} (${campaigns.length} campaigns)`);
           const updatedPrefs = { ...prefs, report_frequency: reportFrequency, last_report_sent_at: today.toISOString() };
           await supabase.from('brands').update({ notification_preferences: updatedPrefs }).eq('id', brand.id);
-          results.push({ userId, email: profile.email, status: 'sent', campaignCount: campaigns.length });
+          results.push({ brandId, userId, email: profile.email, status: 'sent', campaignCount: campaigns.length });
         }
       } catch (userError: any) {
         console.error(`Error processing user ${userId}:`, userError);
-        results.push({ userId, email: '', status: 'error', error: userError.message, campaignCount: group.workspaces.length });
+        results.push({ brandId, userId, email: '', status: 'error', error: userError.message, campaignCount: group.workspaces.length });
       }
     }
 
