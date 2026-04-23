@@ -22,7 +22,8 @@ import {
   TrendingDown,
   Pause,
   Play,
-  Rocket } from
+  Rocket,
+  Hourglass } from
 'lucide-react';
 import { ClientReportModal } from './ClientReportModal';
 import {
@@ -282,9 +283,13 @@ export function InsightsHome({
       onExecuted: () => { fetchRecommendations(); },
     });
   const [recCountsByWorkspace, setRecCountsByWorkspace] = useState<Record<string, number>>({});
+  // Change context per campaign from generate-recommendations (#6). Drives
+  // the "Data settling" chip on each card and lets users see why some
+  // aggressive recs got suppressed.
+  const [changeContextByWorkspace, setChangeContextByWorkspace] = useState<Record<string, any>>({});
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [goalsMap, setGoalsMap] = useState<Record<string, any>>({});
-  const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('detailed');
+  const [viewMode, setViewMode] = useState<'simple' | 'detailed'>('simple');
 
   // Post picker state
   const [postPickerOpen, setPostPickerOpen] = useState(false);
@@ -492,12 +497,14 @@ export function InsightsHome({
     if (campaignsWithMetrics.length === 0) {
       setRecommendations([]);
       setRecCountsByWorkspace({});
+      setChangeContextByWorkspace({});
       return;
     }
 
     setRecsLoading(true);
     try {
       const allRecs: any[] = [];
+      const contextsById: Record<string, any> = {};
       const globalDedup = new Set<string>();
       const normalizeDesc = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
       for (const campaign of campaignsWithMetrics.slice(0, 5)) {
@@ -537,6 +544,12 @@ export function InsightsHome({
               allRecs.push({ ...r, campaignName: campaign.name, campaignId: campaign.id });
             }
           });
+        }
+
+        // Stash the per-campaign change context (#6) keyed by workspaceId
+        // so the render loop can show the "Data settling" chip.
+        if (!error && data?.changeContext) {
+          contextsById[campaign.id] = data.changeContext;
         }
 
         // Pull in any existing AI-analyzed next_steps from analyze-performance
@@ -627,6 +640,7 @@ export function InsightsHome({
         counts[r.campaignId] = (counts[r.campaignId] || 0) + 1;
       });
       setRecCountsByWorkspace(counts);
+      setChangeContextByWorkspace(contextsById);
     } catch (err) {
       console.error('Failed to fetch recommendations:', err);
     } finally {
@@ -734,14 +748,45 @@ export function InsightsHome({
         onLinkOffer={(campaign) => setLinkOfferModal({ open: true, campaign })} />
       
 
-      {/* Status Filter */}
+      {/* Status Filter + View Toggle */}
       {campaigns.length > 0 && (
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <StatusFilter
             selectedStatuses={selectedStatuses}
             onStatusChange={setSelectedStatuses}
             statusCounts={statusCounts} />
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              onClick={() => setViewMode('simple')}
+              className={`px-3 py-1.5 rounded-full font-medium transition-colors ${viewMode === 'simple' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            >
+              Simple
+            </button>
+            <button
+              onClick={() => setViewMode('detailed')}
+              className={`px-3 py-1.5 rounded-full font-medium transition-colors ${viewMode === 'detailed' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+            >
+              Detailed
+            </button>
+          </div>
         </div>
+      )}
+
+      {/* Lumi Summary Card */}
+      {lumiSummary && (
+        <Card className="rounded-2xl border-primary/20 bg-gradient-to-r from-lumi-orange-1/5 via-lumi-pink-1/5 to-lumi-purple-1/5">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground">Here's what Lumi sees</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{lumiSummary}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Campaign Cards */}
@@ -787,6 +832,11 @@ export function InsightsHome({
           const isActive = campaign.status === 'active' || campaign.status === 'live';
           const isToggling = togglingCampaign === campaign.id;
           const recCount = recCountsByWorkspace[campaign.id] || 0;
+          // Change context (#6): if recent changes happened on this campaign,
+          // we show a small chip so users know LUMI is reading the current
+          // state against a backdrop of recent activity.
+          const ctx = changeContextByWorkspace[campaign.id];
+          const hasRecentChanges = ctx && ctx.recentEventsCount > 0;
 
           return (
             <Card
@@ -796,6 +846,23 @@ export function InsightsHome({
 
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex flex-col gap-3">
+                    {/* Change-context chip (#6) — shows when recent events
+                        exist on this campaign. Rendered OUTSIDE the
+                        simple/detailed conditional so it's always visible. */}
+                    {hasRecentChanges && (
+                      <div className="pl-5 -mb-1">
+                        <div
+                          className="inline-flex items-center gap-1.5 text-[11px] rounded-full px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900"
+                          title={ctx.events?.map((e: any) => `• ${e.summary}`).join('\n') || ''}
+                        >
+                          <Hourglass className="h-3 w-3" />
+                          <span className="truncate">
+                            {ctx.summary || `${ctx.recentEventsCount} recent change${ctx.recentEventsCount === 1 ? '' : 's'} — data still settling`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Row 1: Name + status dot + Live/Paused label + toggle */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0 flex-1">

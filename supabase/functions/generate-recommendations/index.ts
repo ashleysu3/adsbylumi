@@ -15,7 +15,8 @@ interface Recommendation {
     | 'swap_creative'
     | 'keep_running'
     | 'create_creative'
-    | 'promote_to_scaling'; // Testing → Scaling promotion (Layer 1 of #4)
+    | 'promote_to_scaling' // Testing → Scaling promotion (Layer 1 of #4)
+    | 'hold_for_data';     // Post-change state, trending well — don't poke at it (#6)
   title: string;
   description: string;
   impact: string;
@@ -25,6 +26,31 @@ interface Recommendation {
   priority: number;
   userAction?: boolean;
   actionUrl?: string;
+  isInfoOnly?: boolean;
+}
+
+// Change context derived from ad_action_log + Meta side-by-side trend analysis.
+// Returned to the frontend so the campaign card can show a "data settling" chip
+// and reason about whether to show certain recs.
+interface ChangeContext {
+  recentEventsCount: number;
+  mostRecentChangeAt: string | null; // ISO timestamp
+  hoursSinceMostRecentChange: number | null;
+  events: Array<{
+    timestamp: string;
+    actionType: string;
+    source: string;
+    summary: string; // human-readable one-liner
+  }>;
+  trend: {
+    // Primary KPI trend: recent 3-day avg vs prior 4-day avg.
+    recentAvg: number | null;
+    priorAvg: number | null;
+    direction: 'improving' | 'degrading' | 'stable' | 'unknown';
+    magnitudePct: number | null; // absolute change as percent of prior
+  };
+  isPostChange: boolean; // recent events + clear trend direction
+  summary: string | null; // e.g. "Since your 4 pauses 2 days ago, CPL dropped from $27 → $21"
 }
 
 Deno.serve(async (req) => {
@@ -73,6 +99,200 @@ Deno.serve(async (req) => {
 
     const m = metrics || {};
     const adList: any[] = ads || [];
+
+    // ============================================================
+    // CHANGE CONTEXT (#6)
+    //
+    // Before running any rec rules, assemble a picture of "what's changed
+    // on this campaign recently and how is it responding". Two sources:
+    //
+    //   1) ad_action_log — authoritative record of LUMI-initiated actions
+    //      (pauses, budget changes, swaps, promotes).
+    //   2) Meta API — daily metrics over the last 7 days, so we can compare
+    //      the trailing 3 days against the prior 4 and tell whether the
+    //      campaign is improving, degrading, or stable post-change.
+    //
+    // This context gets passed into rec emission: if a campaign just had
+    // a bunch of changes AND is trending well, we suppress "pause more
+    // ads" / "raise budget" style aggressive recs and emit a single
+    // "hold_for_data" rec instead. Even when we still emit a rec, we
+    // enrich its description with the trend so the user sees context.
+    // ============================================================
+
+    const CHANGE_LOOKBACK_HOURS = 72;
+
+    const humanizeActionType = (action_type: string): string => {
+      return action_type.replace(/_/g, ' ');
+    };
+
+    const summarizeEvent = (row: any): string => {
+      const t = row.action_type;
+      const d = row.action_detail || {};
+      if (t === 'paused_ad' || t === 'ad_paused') {
+        return d.ad_name ? `Paused "${d.ad_name}"` : 'Paused an ad';
+      }
+      if (t === 'activated_ad' || t === 'ad_activated') {
+        return d.ad_name ? `Activated "${d.ad_name}"` : 'Activated an ad';
+      }
+      if (t === 'budget_update') {
+        const lvl = d.level || 'campaign';
+        return `Budget ${lvl === 'adset_targeted' || lvl === 'adset_single' ? 'on ad set' : 'at campaign level'} → $${d.new_budget}/day`;
+      }
+      if (t === 'promoted_to_scaling') {
+        return d.source_ad_name ? `Promoted "${d.source_ad_name}" to Scaling` : 'Promoted an ad to Scaling';
+      }
+      if (t === 'swap_creative' || t === 'creative_swap') {
+        return 'Swapped creative';
+      }
+      return humanizeActionType(t);
+    };
+
+    // Step 1: fetch ad_action_log rows for this workspace in the lookback window.
+    const cutoff = new Date(Date.now() - CHANGE_LOOKBACK_HOURS * 3600 * 1000).toISOString();
+    const { data: actionRows } = await supabase
+      .from('ad_action_log')
+      .select('action_type, action_detail, source, meta_entity_id, created_at')
+      .eq('workspace_id', workspaceId)
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false });
+
+    const events: ChangeContext['events'] = (actionRows || []).map((r: any) => ({
+      timestamp: r.created_at,
+      actionType: r.action_type,
+      source: r.source,
+      summary: summarizeEvent(r),
+    }));
+
+    const mostRecentChangeAt = events.length > 0 ? events[0].timestamp : null;
+    const hoursSinceMostRecentChange = mostRecentChangeAt
+      ? (Date.now() - new Date(mostRecentChangeAt).getTime()) / (1000 * 60 * 60)
+      : null;
+
+    // Step 2: Meta daily-increment call to compute trend.
+    //
+    // We ask Meta for per-day metrics over the last 7 days, average the
+    // primary-KPI field across (a) the last 3 days and (b) the prior 4,
+    // and compare. Uses the same primaryKpi already resolved above, so
+    // the trend respects the user's goal type.
+    const metaTokenForTrend = (workspace?.brands as any)?.meta_access_token;
+    const metaCampaignIds = (workspace as any)?.meta_campaign_ids || {};
+    const campaignIdForTrend = metaCampaignIds.campaignId;
+
+    let trendRecent: number | null = null;
+    let trendPrior: number | null = null;
+    let trendDirection: ChangeContext['trend']['direction'] = 'unknown';
+    let trendMagnitudePct: number | null = null;
+
+    if (metaTokenForTrend && campaignIdForTrend) {
+      try {
+        const trendUrl =
+          `https://graph.facebook.com/v21.0/${campaignIdForTrend}/insights` +
+          `?fields=spend,impressions,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency,purchase_roas` +
+          `&time_increment=1&date_preset=last_7d&access_token=${encodeURIComponent(metaTokenForTrend)}`;
+        const trendResp = await fetch(trendUrl);
+        const trendData = await trendResp.json();
+        const days: any[] = Array.isArray(trendData?.data) ? trendData.data : [];
+
+        // Helper to extract the primary KPI value from a daily Meta insight row.
+        const extractPrimary = (row: any): number | null => {
+          if (primaryKpi === 'cpl') {
+            const a = (row.cost_per_action_type || []).find((x: any) => x.action_type === 'lead');
+            return a ? parseFloat(a.value) || null : null;
+          }
+          if (primaryKpi === 'cpp') {
+            const a = (row.cost_per_action_type || []).find((x: any) => x.action_type === 'purchase');
+            return a ? parseFloat(a.value) || null : null;
+          }
+          if (primaryKpi === 'cpc') return parseFloat(row.cpc) || null;
+          if (primaryKpi === 'cpm') return parseFloat(row.cpm) || null;
+          if (primaryKpi === 'ctr') return parseFloat(row.ctr) || null;
+          if (primaryKpi === 'roas') {
+            const r = row.purchase_roas;
+            if (Array.isArray(r) && r.length) return parseFloat(r[0].value) || null;
+            return null;
+          }
+          return null;
+        };
+
+        const primaryValues: number[] = days
+          .map(extractPrimary)
+          .filter((v): v is number => typeof v === 'number' && !isNaN(v));
+
+        if (primaryValues.length >= 4) {
+          const recentSlice = primaryValues.slice(-3); // last up-to-3 days
+          const priorSlice = primaryValues.slice(0, primaryValues.length - 3);
+          const avg = (arr: number[]) => arr.reduce((s, v) => s + v, 0) / arr.length;
+          trendRecent = avg(recentSlice);
+          trendPrior = avg(priorSlice);
+          if (trendPrior > 0) {
+            const deltaPct = ((trendRecent - trendPrior) / trendPrior) * 100;
+            trendMagnitudePct = Math.abs(deltaPct);
+            // For cost-based KPIs (cpl, cpp, cpc, cpm), lower is better →
+            // a NEGATIVE delta is "improving". ROAS flips that.
+            const higherIsBetter = primaryKpi === 'roas';
+            const improving = higherIsBetter ? deltaPct > 0 : deltaPct < 0;
+            const degrading = higherIsBetter ? deltaPct < 0 : deltaPct > 0;
+            if (trendMagnitudePct < 5) trendDirection = 'stable';
+            else if (improving) trendDirection = 'improving';
+            else if (degrading) trendDirection = 'degrading';
+          } else {
+            trendDirection = 'stable';
+          }
+        }
+      } catch (err) {
+        console.error('change-context trend fetch failed:', err);
+      }
+    }
+
+    // Step 3: compose changeContext + a human-readable summary.
+    const isPostChange =
+      events.length > 0 && trendDirection !== 'unknown' && trendDirection !== 'stable';
+
+    const formatKpiVal = (v: number | null | undefined) => {
+      if (v === null || v === undefined || isNaN(v)) return '—';
+      const currencyKPIs = ['cpc', 'cpm', 'cpl', 'cpp', 'costPerThruPlay'];
+      if (currencyKPIs.includes(primaryKpi)) return `$${v.toFixed(2)}`;
+      if (primaryKpi === 'roas') return `${v.toFixed(1)}x`;
+      return v.toFixed(2);
+    };
+
+    let contextSummary: string | null = null;
+    if (isPostChange && trendRecent !== null && trendPrior !== null) {
+      const eventCountStr = events.length === 1 ? '1 change' : `${events.length} changes`;
+      const whenStr = hoursSinceMostRecentChange !== null
+        ? hoursSinceMostRecentChange < 24
+          ? `${Math.round(hoursSinceMostRecentChange)}h ago`
+          : `${Math.round(hoursSinceMostRecentChange / 24)}d ago`
+        : 'recently';
+      const direction = trendDirection === 'improving' ? 'dropped' : 'rose';
+      contextSummary =
+        `Since your ${eventCountStr} ${whenStr}, ${primaryKpi.toUpperCase()} ${direction} ` +
+        `from ${formatKpiVal(trendPrior)} → ${formatKpiVal(trendRecent)} ` +
+        `(${trendDirection === 'improving' ? '-' : '+'}${trendMagnitudePct!.toFixed(0)}%)`;
+    } else if (events.length > 0 && !isPostChange) {
+      const eventCountStr = events.length === 1 ? '1 recent change' : `${events.length} recent changes`;
+      contextSummary = `${eventCountStr} in the last ${CHANGE_LOOKBACK_HOURS}h — data still settling`;
+    }
+
+    const changeContext: ChangeContext = {
+      recentEventsCount: events.length,
+      mostRecentChangeAt,
+      hoursSinceMostRecentChange,
+      events: events.slice(0, 10), // don't stream back a huge list
+      trend: {
+        recentAvg: trendRecent,
+        priorAvg: trendPrior,
+        direction: trendDirection,
+        magnitudePct: trendMagnitudePct,
+      },
+      isPostChange,
+      summary: contextSummary,
+    };
+
+    // Convenience flags used throughout the rec rule tree.
+    const isMeaningfullyImproving = isPostChange && trendDirection === 'improving' && (trendMagnitudePct ?? 0) >= 15;
+    const isMeaningfullyDegrading = isPostChange && trendDirection === 'degrading' && (trendMagnitudePct ?? 0) >= 15;
+
 
     // ============================================================
     // GOAL-AWARE THRESHOLDS
@@ -567,17 +787,66 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Sort: high confidence first, then by priority number
+    // ============================================================
+    // Apply change-awareness (#6) — happens after all rules have
+    // emitted, so we filter/enrich the final set in one pass rather
+    // than threading the logic through every rule.
+    // ============================================================
+    let finalRecs: Recommendation[] = [...recommendations];
+
+    if (isMeaningfullyImproving) {
+      // Prepend an info-only "hold for data" rec and suppress
+      // contradictory aggressive recs. Pause + budget_decrease would
+      // be the main offenders — pausing an ad or cutting spend on a
+      // campaign that's already self-correcting is exactly what
+      // Ashley flagged as the stale-advice problem today.
+      finalRecs.unshift({
+        id: `hold-for-data-${workspaceId}`,
+        type: 'hold_for_data',
+        title: 'Let recent changes breathe',
+        description: (contextSummary || 'Your changes are taking effect.') +
+          ' Give it 2–3 more days before making further changes — performance is still settling.',
+        impact: "Don't disrupt a campaign that's already self-correcting",
+        confidence: 'high',
+        requiresDoubleApproval: false,
+        actionPayload: {},
+        priority: -1, // pin to top
+        userAction: true,
+        isInfoOnly: true,
+      });
+
+      const AGGRESSIVE_SUPPRESSED = new Set<Recommendation['type']>([
+        'pause_ad',
+        'budget_decrease',
+      ]);
+      finalRecs = finalRecs.filter(
+        r => r.type === 'hold_for_data' || !AGGRESSIVE_SUPPRESSED.has(r.type),
+      );
+    }
+
+    // Even when we're NOT suppressing, enrich every non-info rec with
+    // change context so users see both the action AND the story.
+    if (contextSummary) {
+      finalRecs = finalRecs.map(r =>
+        r.type === 'hold_for_data' || r.isInfoOnly
+          ? r
+          : { ...r, description: `${r.description}\n\nContext: ${contextSummary}` },
+      );
+    }
+
+    // Sort: hold_for_data pinned first (via priority=-1), then high
+    // confidence first, then by priority number.
     const confOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-    recommendations.sort((a, b) => {
+    finalRecs.sort((a, b) => {
       const confDiff = confOrder[a.confidence] - confOrder[b.confidence];
       if (confDiff !== 0) return confDiff;
       return a.priority - b.priority;
     });
 
-    return new Response(JSON.stringify({ success: true, recommendations }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ success: true, recommendations: finalRecs, changeContext }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   } catch (error: any) {
     console.error('generate-recommendations error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
