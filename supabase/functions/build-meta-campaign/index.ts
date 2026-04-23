@@ -973,24 +973,21 @@ Deno.serve(async (req) => {
         // Force-disable Advantage+ creative enhancements including multi-advertiser ads.
         // Meta requires explicit OPT_OUT on every standard enhancement to prevent the
         // "multi-advertiser ads" checkbox from auto-enabling at the ad level.
+        // Force-disable Advantage+ creative enhancements. Only keys currently
+        // accepted by Meta v21.0 in creative_features_spec are included here.
+        // Sending unrecognized keys (e.g. "music", "advantage_plus_creative")
+        // causes Meta error #100 and blocks creative creation.
+        // Allowed keys: IG_VIDEO_NATIVE_SUBTITLE, IMAGE_ANIMATION,
+        // PRODUCT_METADATA_AUTOMATION, PROFILE_CARD,
+        // STANDARD_ENHANCEMENTS_CATALOG, TEXT_OVERLAY_TRANSLATION.
         const degreesOfFreedomSpec = {
           creative_features_spec: {
-            standard_enhancements: { enroll_status: 'OPT_OUT' },
-            image_brightness_and_contrast: { enroll_status: 'OPT_OUT' },
-            image_uncrop: { enroll_status: 'OPT_OUT' },
-            image_touchups: { enroll_status: 'OPT_OUT' },
-            inline_comment: { enroll_status: 'OPT_OUT' },
-            text_optimizations: { enroll_status: 'OPT_OUT' },
-            description_automation: { enroll_status: 'OPT_OUT' },
-            add_text_overlay: { enroll_status: 'OPT_OUT' },
-            video_auto_crop: { enroll_status: 'OPT_OUT' },
-            image_templates: { enroll_status: 'OPT_OUT' },
-            advantage_plus_creative: { enroll_status: 'OPT_OUT' },
-            product_extensions: { enroll_status: 'OPT_OUT' },
-            site_extensions: { enroll_status: 'OPT_OUT' },
-            music: { enroll_status: 'OPT_OUT' },
-            '3d_animation': { enroll_status: 'OPT_OUT' },
-            translate_text: { enroll_status: 'OPT_OUT' },
+            ig_video_native_subtitle: { enroll_status: 'OPT_OUT' },
+            image_animation: { enroll_status: 'OPT_OUT' },
+            product_metadata_automation: { enroll_status: 'OPT_OUT' },
+            profile_card: { enroll_status: 'OPT_OUT' },
+            standard_enhancements_catalog: { enroll_status: 'OPT_OUT' },
+            text_overlay_translation: { enroll_status: 'OPT_OUT' },
           }
         };
 
