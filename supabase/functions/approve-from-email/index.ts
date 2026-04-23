@@ -400,7 +400,7 @@ function buildConfirmationEmail(userName: string, actionDescription: string, app
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:30px 20px"><tr><td align="center">
 <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.06)">
 <tr><td style="background:linear-gradient(135deg,${applied ? '#22C55E,#10B981' : '#F59E0B,#EF4444'});padding:30px 40px;text-align:center">
-<h1 style="color:#fff;margin:0;font-size:22px;font-weight:800">${applied ? '✅ Change Applied' : '⚠️ Couldn\\'t Apply'}</h1>
+<h1 style="color:#fff;margin:0;font-size:22px;font-weight:800">${applied ? '✅ Change Applied' : "⚠️ Couldn't Apply"}</h1>
 </td></tr>
 <tr><td style="padding:30px 40px">
 <p style="margin:0;color:#111;font-size:16px;font-weight:600">Hey ${escapeHtml(userName)} 👋</p>
