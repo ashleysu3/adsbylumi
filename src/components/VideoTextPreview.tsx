@@ -75,10 +75,11 @@ export function VideoTextPreview({ videoUrl, overlays, style = DEFAULT_OVERLAY_S
     };
   }, []);
 
+  // Reserve top 1/8 and bottom 1/8 of the frame for Meta's profile photo / caption overlays
   const positionClass = {
-    top: "top-4",
+    top: "top-[12.5%]",
     center: "top-1/2 -translate-y-1/2",
-    bottom: "bottom-4",
+    bottom: "bottom-[12.5%]",
   }[style.position];
 
   const fontSize = compact ? Math.max(12, style.fontSize * 0.5) : style.fontSize * 0.6;
