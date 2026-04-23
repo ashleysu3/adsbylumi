@@ -758,23 +758,6 @@ export function InsightsHome({
         </div>
       )}
 
-      {/* Lumi Summary Card */}
-      {lumiSummary && (
-        <Card className="rounded-2xl border-primary/20 bg-gradient-to-r from-lumi-orange-1/5 via-lumi-pink-1/5 to-lumi-purple-1/5">
-          <CardContent className="p-4 sm:p-5">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-foreground">Here's what Lumi sees</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{lumiSummary}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Campaign Cards */}
       {isLoading ?
       <div className="space-y-4">
