@@ -57,6 +57,14 @@ interface PerformanceAnalysis {
   next_steps?: string[];
 }
 
+interface AdSetInfo {
+  id: string;
+  name: string;
+  role: 'testing' | 'scaling' | 'other';
+  dailyBudget?: number | null;
+  status?: string;
+}
+
 interface CampaignData {
   id: string;
   name: string;
@@ -71,6 +79,10 @@ interface CampaignData {
   brandId?: string;
   dailyBudget?: number;
   budgetLevel?: 'campaign' | 'adset' | null;
+  // Ad-set info captured from Meta at sync time, including role detection
+  // (testing/scaling/other based on name). Drives the Scaling-aware
+  // BudgetAdjustmentPanel.
+  adSets?: AdSetInfo[];
   trackingVerified?: boolean;
   lastSyncedAt?: string | null;
 }
@@ -537,6 +549,12 @@ export default function AdPerformance() {
 
       const campaignData: CampaignData[] = publishedWorkspaces.map((w) => {
         const normalizedStatus = ((w.meta_campaign_status || 'unknown') as string).toLowerCase();
+        // sync-meta-campaigns + fetch-meta-performance drop ad-set info into
+        // campaign_builder_answers.adSets. Roles are detected server-side.
+        const builderAnswers = (w.campaign_builder_answers as any) || {};
+        const adSets: AdSetInfo[] | undefined = Array.isArray(builderAnswers?.adSets)
+          ? builderAnswers.adSets
+          : undefined;
         return {
           id: w.id,
           name: w.name,
@@ -552,6 +570,7 @@ export default function AdPerformance() {
           brandId: w.brand_id,
           dailyBudget: undefined,
           budgetLevel: null,
+          adSets,
           trackingVerified: (w as any).tracking_verified ?? false,
           lastSyncedAt: (w as any).meta_insights_last_sync || null
         };

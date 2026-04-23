@@ -15,12 +15,16 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { workspaceId, newBudget } = await req.json();
+    const { workspaceId, newBudget, adSetId } = await req.json();
 
     if (!workspaceId) throw new Error("workspaceId is required");
     if (!newBudget || typeof newBudget !== "number" || newBudget < 1) {
       throw new Error("newBudget must be a positive number (dollars/day)");
     }
+    // adSetId is optional. When provided, we update ONLY that specific ad set —
+    // used when the caller (the BudgetAdjustmentPanel opened against a
+    // Scaling ad set in a Testing+Scaling campaign) wants the increase to
+    // land on that one set, rather than being distributed across all.
 
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
@@ -91,7 +95,54 @@ Deno.serve(async (req) => {
     const accessToken = brand.meta_access_token;
     const budgetCents = Math.round(newBudget * 100).toString(); // Meta uses cents
 
-    logStep("Attempting budget update", { campaignId, newBudget, budgetCents });
+    logStep("Attempting budget update", { campaignId, newBudget, budgetCents, adSetId: adSetId || null });
+
+    // ============================================
+    // Targeted path: adSetId provided → update ONLY that ad set.
+    // Skip the CBO fallback entirely.
+    // ============================================
+    if (adSetId) {
+      const targetUrl = `https://graph.facebook.com/v21.0/${adSetId}`;
+      const resp = await fetch(targetUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          access_token: accessToken,
+          daily_budget: budgetCents,
+        }),
+      });
+      const result = await resp.json();
+      if (!result.success) {
+        throw new Error(
+          `Failed to update ad set budget: ${result.error?.message || "unknown error"}`,
+        );
+      }
+
+      await supabase.from("ad_action_log").insert({
+        brand_id: brand.id,
+        workspace_id: workspaceId,
+        action_type: "budget_update",
+        action_detail: {
+          level: "adset_targeted",
+          campaign_id: campaignId,
+          ad_set_id: adSetId,
+          new_budget: newBudget,
+        },
+        source: "user",
+        meta_entity_id: adSetId,
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          level: "adset_targeted",
+          ad_set_id: adSetId,
+          new_budget: newBudget,
+          message: `Budget updated to $${newBudget}/day on the target ad set`,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
 
     // Step 1: Try updating the campaign-level daily budget (CBO campaigns)
     const campaignUrl = `https://graph.facebook.com/v21.0/${campaignId}`;

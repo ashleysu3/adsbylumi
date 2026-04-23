@@ -100,6 +100,18 @@ function FatigueAdRow({ adName, workspaceId }: { adName: string; workspaceId: st
   );
 }
 
+// When a campaign has a Scaling ad set, return it in the shape the
+// BudgetAdjustmentPanel expects. Same helper as InsightsHome — kept local
+// to avoid a tiny shared utility file just for this.
+function findScalingTarget(
+  campaign: { adSets?: AdSetInfo[] | null; dailyBudget?: number },
+) {
+  const scaling = (campaign.adSets || []).find(a => a.role === 'scaling');
+  if (!scaling) return null;
+  const currentBudget = scaling.dailyBudget ?? campaign.dailyBudget ?? 25;
+  return { id: scaling.id, name: scaling.name, currentBudget };
+}
+
 // Resolve a lucide icon for the label key describeRecAction returns.
 function iconForKey(key: string): React.ReactNode {
   switch (key) {
@@ -193,6 +205,14 @@ interface PerformanceAnalysis {
   kpi_benchmarks?: Record<string, { min: number; max: number; unit: string }>;
 }
 
+interface AdSetInfo {
+  id: string;
+  name: string;
+  role: 'testing' | 'scaling' | 'other';
+  dailyBudget?: number | null;
+  status?: string;
+}
+
 interface CampaignInsightDetailProps {
   campaign: {
     id: string;
@@ -205,6 +225,11 @@ interface CampaignInsightDetailProps {
     offerId?: string | null;
     offerName?: string | null;
     brandId?: string;
+    // Ad-set info with role detection. Threaded down from Data.tsx →
+    // InsightsHome → CampaignInsightDetail. Used to target the Scaling
+    // ad set specifically in the budget panel.
+    adSets?: AdSetInfo[];
+    dailyBudget?: number;
   };
   analysis: PerformanceAnalysis | null;
   globalDateRange: string;
@@ -707,6 +732,7 @@ export function CampaignInsightDetail({
                                   frequency: undefined,
                                   spend: campaign.metrics?.spend,
                                 }}
+                                targetAdSet={findScalingTarget(campaign as any)}
                                 inline
                               />
                             </PopoverContent>
@@ -914,13 +940,14 @@ export function CampaignInsightDetail({
                 currentBudget={campaign.metrics?.spend ? Math.round(campaign.metrics.spend / 7) : 20}
                 metrics={{
                   roas: campaign.metrics?.roas ?? undefined,
-                  ctr: campaign.metrics?.clicks && campaign.metrics?.impressions 
-                    ? (campaign.metrics.clicks / campaign.metrics.impressions) * 100 
+                  ctr: campaign.metrics?.clicks && campaign.metrics?.impressions
+                    ? (campaign.metrics.clicks / campaign.metrics.impressions) * 100
                     : undefined,
                   frequency: campaign.metrics?.impressions && campaign.metrics?.spend
                     ? campaign.metrics.impressions / (campaign.metrics.spend * 10)
                     : undefined,
                 }}
+                targetAdSet={findScalingTarget(campaign as any)}
               />
             </CollapsibleContent>
           </Collapsible>

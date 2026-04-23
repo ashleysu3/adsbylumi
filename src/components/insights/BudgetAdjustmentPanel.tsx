@@ -30,6 +30,20 @@ interface BudgetAdjustmentPanelProps {
   onBudgetUpdate?: (newBudget: number) => void;
   /** When true, panel renders open immediately without the toggle button */
   inline?: boolean;
+  /**
+   * Optional: when the calling surface has detected that this campaign has
+   * a Testing + Scaling structure, it can point the budget change at the
+   * Scaling ad set specifically. When set, the panel:
+   *   - shows the target ad set name in the header,
+   *   - uses the ad set's own daily budget as `currentBudget`,
+   *   - sends `adSetId` to the update-meta-budget function so the change
+   *     lands only on that set (instead of being distributed across all).
+   */
+  targetAdSet?: {
+    id: string;
+    name: string;
+    currentBudget: number;
+  } | null;
 }
 
 type Recommendation = {
@@ -46,8 +60,13 @@ export function BudgetAdjustmentPanel({
   metrics,
   onBudgetUpdate,
   inline = false,
+  targetAdSet = null,
 }: BudgetAdjustmentPanelProps) {
-  const [newBudget, setNewBudget] = useState(currentBudget);
+  // When targeting a specific ad set (e.g. "Scaling"), use that set's budget
+  // as the starting point — not the campaign-wide aggregate. Keeps the
+  // percentage math honest.
+  const effectiveCurrentBudget = targetAdSet ? targetAdSet.currentBudget : currentBudget;
+  const [newBudget, setNewBudget] = useState(effectiveCurrentBudget);
   const [updating, setUpdating] = useState(false);
   const [showPanel, setShowPanel] = useState(inline);
 
@@ -122,7 +141,7 @@ export function BudgetAdjustmentPanel({
   };
 
   const recommendation = getRecommendation();
-  const suggestedBudget = Math.round(currentBudget * (1 + recommendation.percentage / 100));
+  const suggestedBudget = Math.round(effectiveCurrentBudget * (1 + recommendation.percentage / 100));
 
   const handleApplyRecommendation = () => {
     setNewBudget(suggestedBudget);
@@ -131,15 +150,23 @@ export function BudgetAdjustmentPanel({
   const handleSaveBudget = async () => {
     setUpdating(true);
     try {
-      // Call edge function to update budget on Meta
+      // When we have a specific target ad set, route the Meta change to it.
+      // Otherwise keep the old campaign-level / distributed behavior.
       const { data, error } = await supabase.functions.invoke("update-meta-budget", {
-        body: { workspaceId, newBudget },
+        body: {
+          workspaceId,
+          newBudget,
+          ...(targetAdSet ? { adSetId: targetAdSet.id } : {}),
+        },
       });
 
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Failed to update budget on Meta");
 
-      // Also update local workspace record
+      // Mirror the change in campaign_builder_answers so the UI reflects
+      // the new budget without waiting for the next sync. If we targeted a
+      // specific ad set, update that entry in the adSets array; otherwise
+      // update the aggregate `budget` field as before.
       const { data: existing } = await supabase
         .from("campaign_workspaces")
         .select("campaign_builder_answers")
@@ -148,10 +175,19 @@ export function BudgetAdjustmentPanel({
 
       const existingAnswers = (existing?.campaign_builder_answers as Record<string, any>) || {};
 
+      const updatedAnswers: Record<string, any> = { ...existingAnswers };
+      if (targetAdSet && Array.isArray(existingAnswers.adSets)) {
+        updatedAnswers.adSets = existingAnswers.adSets.map((a: any) =>
+          a.id === targetAdSet.id ? { ...a, dailyBudget: newBudget } : a,
+        );
+      } else {
+        updatedAnswers.budget = newBudget;
+      }
+
       await supabase
         .from("campaign_workspaces")
         .update({
-          campaign_builder_answers: { ...existingAnswers, budget: newBudget },
+          campaign_builder_answers: updatedAnswers,
           updated_at: new Date().toISOString(),
         })
         .eq("id", workspaceId);
@@ -208,14 +244,21 @@ export function BudgetAdjustmentPanel({
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          Lumi Budget Recommendation
+          {targetAdSet ? `Scale "${targetAdSet.name}"` : 'Lumi Budget Recommendation'}
         </CardTitle>
+        {targetAdSet && (
+          <p className="text-xs text-muted-foreground pt-1">
+            Changes land on this ad set only — not the whole campaign.
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Current Budget */}
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Current budget</span>
-          <span className="font-semibold">${currentBudget}/day</span>
+          <span className="text-muted-foreground">
+            {targetAdSet ? 'Ad set budget' : 'Current budget'}
+          </span>
+          <span className="font-semibold">${effectiveCurrentBudget}/day</span>
         </div>
 
         {/* Recommendation */}
@@ -263,13 +306,13 @@ export function BudgetAdjustmentPanel({
             value={[newBudget]}
             onValueChange={(v) => setNewBudget(v[0])}
             min={5}
-            max={Math.max(500, currentBudget * 2)}
+            max={Math.max(500, effectiveCurrentBudget * 2)}
             step={5}
             className="py-2"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>$5/day</span>
-            <span>${Math.max(500, currentBudget * 2)}/day</span>
+            <span>${Math.max(500, effectiveCurrentBudget * 2)}/day</span>
           </div>
         </div>
 
@@ -286,7 +329,7 @@ export function BudgetAdjustmentPanel({
           <Button
             size="sm"
             onClick={handleSaveBudget}
-            disabled={updating || newBudget === currentBudget}
+            disabled={updating || newBudget === effectiveCurrentBudget}
             className="flex-1 gap-2"
           >
             {updating ? (
@@ -303,7 +346,9 @@ export function BudgetAdjustmentPanel({
         </div>
 
         <p className="text-xs text-center text-muted-foreground">
-          Budget will be updated directly on your Meta campaign
+          {targetAdSet
+            ? `Budget will be updated on "${targetAdSet.name}" in Meta`
+            : 'Budget will be updated directly on your Meta campaign'}
         </p>
       </CardContent>
     </Card>
