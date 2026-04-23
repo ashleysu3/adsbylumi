@@ -31,6 +31,12 @@ interface CampaignSummary {
   lumiRecommends: string;
   todoItems: string[];
   approveItems: string[];
+  // Raw data carried into the post-campaigns loop so we can fetch live recs
+  // from generate-recommendations and mint structured approval tokens that
+  // approve-from-email can actually execute.
+  metrics?: Record<string, any>;
+  adMetrics?: any[];
+  goals?: any;
 }
 
 Deno.serve(async (req) => {
@@ -243,14 +249,29 @@ Deno.serve(async (req) => {
             lumiRecommends,
             todoItems,
             approveItems,
+            // Passed through for the structured-approval-tokens pass below.
+            metrics: { ...metrics, dailyBudget },
+            adMetrics: latestSnapshot?.adMetrics || [],
+            goals: goals || null,
           });
         }
 
         const userName = profile.full_name || 'there';
         const frequencyLabel = reportFrequency === 'daily' ? 'Daily' : 'Weekly';
 
-        // Generate approval tokens for approve items
+        // Generate approval tokens. Two passes:
+        //   1) LEGACY: narrative items parsed from "Approve These Changes"
+        //      in the stored report text. No structured action data, so
+        //      approve-from-email will mark them as "recorded, apply manually
+        //      in LUMI" on click. Kept for backward compat until we fully
+        //      migrate to rec-engine-driven emails in Phase 2.
+        //   2) STRUCTURED: live from generate-recommendations per campaign.
+        //      These carry full actionType + actionPayload so approve-from-
+        //      email can dispatch them to Meta directly. These are the ones
+        //      that actually "work" end-to-end after patch #7.
         const approvalTokens: { description: string; url: string }[] = [];
+
+        // Pass 1: legacy narrative approvals.
         for (const c of campaigns) {
           for (const item of c.approveItems) {
             const { data: tokenRow } = await supabase.from('email_approval_tokens').insert({
@@ -267,6 +288,65 @@ Deno.serve(async (req) => {
                 url: `${supabaseUrl}/functions/v1/approve-from-email?token=${tokenRow.token}`,
               });
             }
+          }
+        }
+
+        // Pass 2: structured approvals from live rec engine output.
+        const ACTIONABLE_REC_TYPES = new Set([
+          'pause_ad', 'resume_ad',
+          'budget_increase', 'budget_decrease',
+          'swap_creative', 'promote_to_scaling',
+        ]);
+        const MAX_STRUCTURED_PER_CAMPAIGN = 2; // keep the email tight
+        for (const c of campaigns) {
+          try {
+            const { data: recsResp, error: recsErr } = await supabase.functions.invoke(
+              'generate-recommendations',
+              {
+                body: {
+                  workspaceId: c.workspaceId,
+                  brandId: brand.id,
+                  metrics: c.metrics,
+                  ads: c.adMetrics,
+                  goals: c.goals,
+                },
+              },
+            );
+            if (recsErr || !recsResp?.recommendations) continue;
+
+            const actionable = (recsResp.recommendations as any[])
+              .filter(r => ACTIONABLE_REC_TYPES.has(r.type))
+              .slice(0, MAX_STRUCTURED_PER_CAMPAIGN);
+
+            for (const rec of actionable) {
+              const { data: tokenRow } = await supabase
+                .from('email_approval_tokens')
+                .insert({
+                  user_id: userId,
+                  brand_id: brand.id,
+                  workspace_id: c.workspaceId,
+                  action_description: rec.title,
+                  action_data: {
+                    source: 'weekly_report',
+                    campaign: c.name,
+                    actionType: rec.type,
+                    actionPayload: rec.actionPayload || {},
+                    recDescription: rec.description || '',
+                    confidence: rec.confidence || 'medium',
+                  },
+                })
+                .select('token')
+                .single();
+
+              if (tokenRow) {
+                approvalTokens.push({
+                  description: rec.title,
+                  url: `${supabaseUrl}/functions/v1/approve-from-email?token=${tokenRow.token}`,
+                });
+              }
+            }
+          } catch (err) {
+            console.error(`Failed to fetch recs for workspace ${c.workspaceId}:`, err);
           }
         }
 
