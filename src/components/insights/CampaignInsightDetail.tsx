@@ -40,7 +40,7 @@ import {
   getLumiStatusLabel,
 } from '@/lib/lumi-kpi-config';
 import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
-import { Eye, Pause, Play, Rocket } from 'lucide-react';
+import { Eye, Pause, Play, Rocket, Hourglass } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AdBreakdown } from './AdBreakdown';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
@@ -286,6 +286,9 @@ export function CampaignInsightDetail({
   const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
+  // Change context from generate-recommendations (#6) — drives the
+  // "Data settling" chip at the top of the detail view.
+  const [changeContext, setChangeContext] = useState<any>(null);
   const [workspaceData, setWorkspaceData] = useState<any>(null);
   // Campaign goals for this workspace — drives goal-aware status, budget
   // verdict, and the "What's Not Working" goal-miss line. Without this, the
@@ -391,6 +394,11 @@ export function CampaignInsightDetail({
       if (!error && data?.recommendations) {
         setRecommendations(data.recommendations);
       }
+      if (!error && data?.changeContext) {
+        setChangeContext(data.changeContext);
+      } else if (!error) {
+        setChangeContext(null);
+      }
     } catch (err) {
       console.error('Failed to fetch recommendations:', err);
     } finally {
@@ -490,11 +498,26 @@ export function CampaignInsightDetail({
 
       {/* Campaign Header */}
       <div className="space-y-2">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Sparkles className="h-5 w-5 text-[hsl(var(--lumi-orange-1))]" />
           <Badge variant="outline" className="rounded-full text-xs">
             {kpiConfig.friendlyName}
           </Badge>
+          {/* Change-context chip (#6): shows when recent events exist on
+              this campaign so the user understands why LUMI's advice
+              may be conservative. Hover for event list. */}
+          {changeContext && changeContext.recentEventsCount > 0 && (
+            <div
+              className="inline-flex items-center gap-1.5 text-xs rounded-full px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-900"
+              title={(changeContext.events || []).map((e: any) => `• ${e.summary}`).join('\n')}
+            >
+              <Hourglass className="h-3 w-3" />
+              <span>
+                {changeContext.summary ||
+                  `${changeContext.recentEventsCount} recent change${changeContext.recentEventsCount === 1 ? '' : 's'} — data still settling`}
+              </span>
+            </div>
+          )}
         </div>
         <h1 className="text-2xl font-display font-bold">{campaign.name}</h1>
       </div>

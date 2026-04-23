@@ -14,7 +14,8 @@ export interface Recommendation {
     | 'swap_creative'
     | 'keep_running'
     | 'create_creative'
-    | 'promote_to_scaling';
+    | 'promote_to_scaling'
+    | 'hold_for_data';
   title: string;
   description: string;
   impact: string;
@@ -224,6 +225,10 @@ export function describeRecAction(
       };
     case 'promote_to_scaling':
       return { kind: 'execute', label: 'Promote to Scaling', iconKey: 'Rocket' };
+    case 'hold_for_data':
+      // Info-only — advisory rec that tells the user to wait. Frontend
+      // renders this as text + chip without an action button.
+      return { kind: 'navigate', label: '', iconKey: 'Hourglass', url: '' };
     case 'keep_running': {
       // keep_running is intentionally vague — fall back to the title signal.
       const title = (rec.title || '').toLowerCase();
