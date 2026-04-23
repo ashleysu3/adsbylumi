@@ -169,10 +169,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch existing workspaces for this brand to check for duplicates
+    // Fetch existing workspaces for this brand to check for duplicates.
+    // We also pull campaign_builder_answers so we can merge (not clobber)
+    // when backfilling ad-set info onto older rows.
     const { data: existingWorkspaces, error: fetchError } = await supabase
       .from('campaign_workspaces')
-      .select('id, meta_campaign_ids, objective')
+      .select('id, meta_campaign_ids, objective, campaign_builder_answers')
       .eq('brand_id', brandId);
 
     if (fetchError) {
@@ -184,19 +186,57 @@ Deno.serve(async (req) => {
     // both skip duplicates AND backfill `objective` on older rows that were
     // imported before the column existed. (One-time heal; subsequent syncs
     // are cheap no-ops.)
-    const existingByCampaignId = new Map<string, { id: string; objective: string | null }>();
+    const existingByCampaignId = new Map<string, { id: string; objective: string | null; campaignBuilderAnswers: any }>();
     for (const w of existingWorkspaces || []) {
       const campaignId = (w.meta_campaign_ids as any)?.campaignId;
       if (campaignId) {
         existingByCampaignId.set(campaignId, {
           id: w.id,
           objective: (w as any).objective ?? null,
+          campaignBuilderAnswers: (w as any).campaign_builder_answers ?? null,
         });
       }
     }
     const existingCampaignIds = new Set(existingByCampaignId.keys());
 
+    // Update select to also include campaign_builder_answers so the backfill
+    // path can merge rather than overwrite.
+
     console.log(`Found ${existingCampaignIds.size} existing campaign workspaces`);
+
+    // Helper: classify an ad-set role by name. Used so the frontend can
+    // target "Increase budget" at the Scaling set specifically. Zero-config
+    // for users (including Ashley + her agency clients) who already name
+    // their sets with "Testing" / "Scaling" conventions.
+    const detectAdSetRole = (name: string): 'testing' | 'scaling' | 'other' => {
+      const n = (name || '').toLowerCase();
+      if (n.includes('scaling') || n.includes('scale ') || n.endsWith(' scale')) return 'scaling';
+      if (n.includes('testing') || n.includes('test ') || n.endsWith(' test')) return 'testing';
+      return 'other';
+    };
+
+    // Helper: fetch ad-set info from Meta for a given campaign, including
+    // names + detected roles. Used for both new-campaign inserts and
+    // backfills on existing workspaces.
+    const fetchAdSetsWithRoles = async (campaignId: string, accessToken: string) => {
+      try {
+        const url = `https://graph.facebook.com/v21.0/${campaignId}/adsets?fields=id,name,daily_budget,lifetime_budget,status&limit=100&access_token=${accessToken}`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (!Array.isArray(data?.data)) return [];
+        return data.data.map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          role: detectAdSetRole(a.name || ''),
+          dailyBudget: a.daily_budget ? parseFloat(a.daily_budget) / 100 : null,
+          lifetimeBudget: a.lifetime_budget ? parseFloat(a.lifetime_budget) / 100 : null,
+          status: a.status,
+        }));
+      } catch (e) {
+        console.error('fetchAdSetsWithRoles failed:', e);
+        return [];
+      }
+    };
 
     // Helper function to fetch performance data for a campaign
     const fetchCampaignPerformance = async (campaignId: string, accessToken: string) => {
@@ -261,19 +301,39 @@ Deno.serve(async (req) => {
     for (const campaign of campaignsToSync) {
       // Check if campaign already exists
       if (existingCampaignIds.has(campaign.id)) {
-        // Duplicate — but opportunistically backfill `objective` for rows
-        // that were imported before we started storing it. Only write when
-        // we'd actually change something; no-op otherwise.
+        // Duplicate path — opportunistically backfill (a) `objective` for
+        // rows imported before that column existed and (b) `adSets` so the
+        // Scaling-aware budget UI has something to work with on older
+        // campaigns (e.g. Lindsay's Masterclass). Merges into existing
+        // campaign_builder_answers rather than overwriting.
         const existing = existingByCampaignId.get(campaign.id);
-        if (existing && !existing.objective && campaign.objective) {
-          const { error: backfillError } = await supabase
-            .from('campaign_workspaces')
-            .update({ objective: campaign.objective })
-            .eq('id', existing.id);
-          if (backfillError) {
-            console.error(`Objective backfill failed for ${campaign.id}:`, backfillError);
-          } else {
-            console.log(`Backfilled objective=${campaign.objective} for existing workspace ${existing.id}`);
+        if (existing) {
+          const updates: Record<string, any> = {};
+
+          if (!existing.objective && campaign.objective) {
+            updates.objective = campaign.objective;
+          }
+
+          // Always refresh adSets on duplicate encounters — names may have
+          // changed since import (user renamed Testing/Scaling in Meta).
+          const refreshedAdSets = await fetchAdSetsWithRoles(campaign.id, metaAccessToken);
+          if (refreshedAdSets.length > 0) {
+            const prev = (existing.campaignBuilderAnswers as any) || {};
+            updates.campaign_builder_answers = { ...prev, adSets: refreshedAdSets };
+          }
+
+          if (Object.keys(updates).length > 0) {
+            const { error: backfillError } = await supabase
+              .from('campaign_workspaces')
+              .update(updates)
+              .eq('id', existing.id);
+            if (backfillError) {
+              console.error(`Backfill failed for ${campaign.id}:`, backfillError);
+            } else {
+              console.log(
+                `Backfilled existing workspace ${existing.id}: ${Object.keys(updates).join(', ')}`,
+              );
+            }
           }
         }
         console.log(`Skipping duplicate campaign: ${campaign.name} (${campaign.id})`);
@@ -298,34 +358,29 @@ Deno.serve(async (req) => {
         budgetLevel = 'campaign';
       }
 
-      // If no campaign-level budget, fetch ad set budgets (ABO)
-      if (!resolvedDailyBudget) {
-        try {
-          const adSetsUrl = `https://graph.facebook.com/v21.0/${campaign.id}/adsets?fields=daily_budget,lifetime_budget,status&limit=100&access_token=${metaAccessToken}`;
-          const adSetsResponse = await fetch(adSetsUrl);
-          const adSetsData = await adSetsResponse.json();
+      // Always fetch ad-set info (name, budget, status) so we have it for
+      // the Scaling-aware budget UI even when the campaign is CBO. Roles
+      // are detected from the ad-set name.
+      const adSetsWithRoles = await fetchAdSetsWithRoles(campaign.id, metaAccessToken);
 
-          if (adSetsData.data && Array.isArray(adSetsData.data)) {
-            let totalDailyBudget = 0;
-            let hasDaily = false;
-            for (const adSet of adSetsData.data) {
-              if (adSet.status !== 'ACTIVE') continue;
-              if (adSet.daily_budget) {
-                totalDailyBudget += parseFloat(adSet.daily_budget) / 100;
-                hasDaily = true;
-              }
-            }
-            if (hasDaily) {
-              resolvedDailyBudget = totalDailyBudget;
-              budgetLevel = 'adset';
-            }
+      // If no campaign-level budget, aggregate active ad-set daily budgets.
+      if (!resolvedDailyBudget && adSetsWithRoles.length > 0) {
+        let totalDailyBudget = 0;
+        let hasDaily = false;
+        for (const adSet of adSetsWithRoles) {
+          if (adSet.status !== 'ACTIVE') continue;
+          if (adSet.dailyBudget) {
+            totalDailyBudget += adSet.dailyBudget;
+            hasDaily = true;
           }
-        } catch (adSetErr) {
-          console.error(`Error fetching ad set budgets for campaign ${campaign.id}:`, adSetErr);
+        }
+        if (hasDaily) {
+          resolvedDailyBudget = totalDailyBudget;
+          budgetLevel = 'adset';
         }
       }
 
-      console.log(`Campaign ${campaign.name}: budget=$${resolvedDailyBudget}, level=${budgetLevel}`);
+      console.log(`Campaign ${campaign.name}: budget=$${resolvedDailyBudget}, level=${budgetLevel}, adSets=${adSetsWithRoles.length}`);
 
       // Fetch initial performance data
       console.log(`Fetching performance data for: ${campaign.name} (${campaign.id})`);
@@ -341,8 +396,20 @@ Deno.serve(async (req) => {
         syncedAt: new Date().toISOString(),
       }] : [];
 
-      // Store budget in campaign_builder_answers so the UI can read it
-      const builderAnswers = resolvedDailyBudget ? { budget: resolvedDailyBudget, budgetLevel } : null;
+      // Store budget + ad-set info in campaign_builder_answers so the UI
+      // can read both. adSets includes detected roles (testing/scaling/other)
+      // which the Scaling-aware budget UI uses to target the Scaling set.
+      const builderAnswers: Record<string, any> | null = (() => {
+        const out: Record<string, any> = {};
+        if (resolvedDailyBudget) {
+          out.budget = resolvedDailyBudget;
+          out.budgetLevel = budgetLevel;
+        }
+        if (adSetsWithRoles.length > 0) {
+          out.adSets = adSetsWithRoles;
+        }
+        return Object.keys(out).length > 0 ? out : null;
+      })();
 
       // Create new workspace record with initial performance data
       const { data: newWorkspace, error: insertError } = await supabase
