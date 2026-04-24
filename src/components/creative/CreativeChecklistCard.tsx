@@ -6,12 +6,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Video, Film, Image, ChevronDown, ChevronUp, 
+import {
+  Video, Film, Image, ChevronDown, ChevronUp,
   Upload, Eye, CheckCircle2, Trash2, Maximize2,
   Library, Loader2, Info, Trophy, Mic, Type, Brain, Sparkles, Copy, Volume2,
-  MessageSquare, RefreshCw, FileText, Pencil, Check
+  MessageSquare, RefreshCw, FileText, Pencil, Check,
+  Wand2
 } from "lucide-react";
+import { useRenderQueue } from "@/contexts/RenderQueueContext";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -79,7 +81,54 @@ interface CreativeChecklistCardProps {
   brand?: any;
 }
 
-export function CreativeChecklistCard({ 
+// Simple tag-keyword match: score each clip by how often a word from the
+// overlay text appears in one of the clip's tags. Ties broken by upload
+// recency. Falls back to the first clip when nothing matches. Good enough
+// for v1 — upgrade to LLM-backed semantic pick when users hit the ceiling.
+function pickBestBroll(
+  overlays: Array<{ text: string }>,
+  clips: Array<{ id: string; file_name: string; tags?: string[]; uploaded_at?: string }>,
+): { id: string; reason: string } | null {
+  if (!clips || clips.length === 0) return null;
+  const overlayText = overlays.map(o => o.text).join(' ').toLowerCase();
+  const keywords = overlayText
+    .split(/[^a-z0-9]+/)
+    .filter(w => w.length > 3);
+
+  type Scored = { clip: (typeof clips)[number]; score: number; matched: string[] };
+  const scored: Scored[] = clips.map(clip => {
+    const tags = (clip.tags || []).map(t => t.toLowerCase());
+    const matched: string[] = [];
+    for (const tag of tags) {
+      for (const kw of keywords) {
+        if (tag.includes(kw) || kw.includes(tag)) {
+          matched.push(tag);
+          break;
+        }
+      }
+    }
+    return { clip, score: matched.length, matched };
+  });
+
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    // tiebreak: most recently uploaded wins
+    const at = a.clip.uploaded_at ? new Date(a.clip.uploaded_at).getTime() : 0;
+    const bt = b.clip.uploaded_at ? new Date(b.clip.uploaded_at).getTime() : 0;
+    return bt - at;
+  });
+
+  const top = scored[0];
+  if (top.score > 0) {
+    return {
+      id: top.clip.id,
+      reason: `Matched on tag${top.matched.length === 1 ? '' : 's'}: ${top.matched.slice(0, 3).join(', ')}`,
+    };
+  }
+  return { id: top.clip.id, reason: 'No tag match — picked most recently uploaded' };
+}
+
+export function CreativeChecklistCard({
   item, 
   uploadedAsset,
   uploadedAssetVertical,
@@ -108,6 +157,9 @@ export function CreativeChecklistCard({
   const [customBrollUrl, setCustomBrollUrl] = useState<string | null>(null);
   const [customBrollName, setCustomBrollName] = useState<string | null>(null);
   const [uploadingBroll, setUploadingBroll] = useState(false);
+  // Render queue for "Queue Render" — user clicks, we enqueue the job,
+  // they keep working. Toast + bell icon + email notify on completion.
+  const { enqueue } = useRenderQueue();
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
@@ -647,7 +699,7 @@ export function CreativeChecklistCard({
                             onClick={() => setBrollSource("lumi")}
                           >
                             <Sparkles className="h-3 w-3 mr-1" />
-                            Use Lumi Creative
+                            Make it for me
                           </Button>
                           <Button
                             variant={brollSource === "upload" ? "default" : "outline"}
@@ -664,10 +716,27 @@ export function CreativeChecklistCard({
                           <>
                             {brollClips.length > 0 ? (
                               <>
-                                <div className="flex justify-end">
+                                <div className="flex items-center justify-between gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-[11px] gap-1"
+                                    disabled={rendering}
+                                    onClick={() => {
+                                      const best = pickBestBroll(tOverlays, brollClips);
+                                      if (best) {
+                                        setSelectedBrollClipId(best.id);
+                                        toast.success(`Lumi picked "${brollClips.find((c: any) => c.id === best.id)?.file_name}" · ${best.reason}`);
+                                      }
+                                    }}
+                                  >
+                                    <Wand2 className="h-3 w-3" />
+                                    Let Lumi pick
+                                  </Button>
                                   <Select
                                     value={selectedBrollClipId || brollClips[0]?.id}
                                     onValueChange={setSelectedBrollClipId}
+                                    disabled={rendering}
                                   >
                                     <SelectTrigger className="w-[140px] h-7 text-[11px]">
                                       <SelectValue placeholder="Swap clip" />
@@ -686,22 +755,59 @@ export function CreativeChecklistCard({
                                   const clip = brollClips.find((c: any) => c.id === clipId);
                                   if (!clip) return null;
                                   return (
-                                    <div className="mx-auto w-[180px]">
-                                      {tOverlays.length > 0 ? (
-                                        <VideoTextPreview
-                                          videoUrl={clip.file_url}
-                                          overlays={tOverlays}
-                                          style={oStyle}
-                                          compact
-                                        />
-                                      ) : (
-                                        <video
-                                          src={clip.file_url}
-                                          className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
-                                          controls muted playsInline preload="metadata"
-                                        />
+                                    <>
+                                      <div className="mx-auto w-[180px]">
+                                        {tOverlays.length > 0 ? (
+                                          <VideoTextPreview
+                                            videoUrl={clip.file_url}
+                                            overlays={tOverlays}
+                                            style={oStyle}
+                                            compact
+                                          />
+                                        ) : (
+                                          <video
+                                            src={clip.file_url}
+                                            className="w-full aspect-[9/16] object-contain rounded-lg bg-black"
+                                            controls muted playsInline preload="metadata"
+                                          />
+                                        )}
+                                      </div>
+                                      {tOverlays.length > 0 && (
+                                        <Button
+                                          variant="lumi"
+                                          size="sm"
+                                          className="w-full gap-1.5 h-8 text-[11px]"
+                                          onClick={() => {
+                                            const specs = tOverlays
+                                              .map(o => {
+                                                const m = (o.timing || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                                                if (!m) return null;
+                                                return {
+                                                  text: o.text,
+                                                  startSeconds: parseFloat(m[1]),
+                                                  endSeconds: parseFloat(m[2]),
+                                                };
+                                              })
+                                              .filter((x): x is { text: string; startSeconds: number; endSeconds: number } => !!x);
+                                            if (specs.length === 0) {
+                                              toast.error('No overlays with valid timing — edit the timings and try again.');
+                                              return;
+                                            }
+                                            enqueue({
+                                              title: `${item.angle_name || 'Creative'} — ${clip.file_name || 'b-roll'}`,
+                                              sourceClipName: clip.file_name,
+                                              videoUrl: clip.file_url,
+                                              overlays: specs,
+                                              style: oStyle,
+                                              context: brand?.id ? { brandId: brand.id } : undefined,
+                                            });
+                                          }}
+                                        >
+                                          <Film className="h-3 w-3" />
+                                          Queue Render
+                                        </Button>
                                       )}
-                                    </div>
+                                    </>
                                   );
                                 })()}
                               </>
@@ -748,6 +854,41 @@ export function CreativeChecklistCard({
                                     />
                                   )}
                                 </div>
+                                {tOverlays.length > 0 && (
+                                  <Button
+                                    variant="lumi"
+                                    size="sm"
+                                    className="w-full gap-1.5 h-8 text-[11px]"
+                                    onClick={() => {
+                                      const specs = tOverlays
+                                        .map(o => {
+                                          const m = (o.timing || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+                                          if (!m) return null;
+                                          return {
+                                            text: o.text,
+                                            startSeconds: parseFloat(m[1]),
+                                            endSeconds: parseFloat(m[2]),
+                                          };
+                                        })
+                                        .filter((x): x is { text: string; startSeconds: number; endSeconds: number } => !!x);
+                                      if (specs.length === 0) {
+                                        toast.error('No overlays with valid timing — edit the timings and try again.');
+                                        return;
+                                      }
+                                      enqueue({
+                                        title: `${item.angle_name || 'Creative'} — ${customBrollName || 'upload'}`,
+                                        sourceClipName: customBrollName || undefined,
+                                        videoUrl: customBrollUrl,
+                                        overlays: specs,
+                                        style: oStyle,
+                                        context: brand?.id ? { brandId: brand.id } : undefined,
+                                      });
+                                    }}
+                                  >
+                                    <Film className="h-3 w-3" />
+                                    Queue Render
+                                  </Button>
+                                )}
                               </div>
                             ) : (
                               <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors">

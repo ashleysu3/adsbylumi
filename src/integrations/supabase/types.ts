@@ -2091,6 +2091,78 @@ export type Database = {
         }
         Relationships: []
       }
+      text_overlay_templates: {
+        Row: {
+          bg_color: string
+          bg_opacity: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          font_family: string
+          font_size: number
+          font_weight: string
+          id: string
+          is_active: boolean
+          letter_case: string
+          name: string
+          position: string
+          reference_video_storage_path: string | null
+          reference_video_url: string | null
+          sort_order: number
+          text_color: string
+          text_shadow: boolean
+          text_stroke_color: string | null
+          text_stroke_width: number
+          updated_at: string
+        }
+        Insert: {
+          bg_color?: string
+          bg_opacity?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          font_family?: string
+          font_size?: number
+          font_weight?: string
+          id?: string
+          is_active?: boolean
+          letter_case?: string
+          name: string
+          position?: string
+          reference_video_storage_path?: string | null
+          reference_video_url?: string | null
+          sort_order?: number
+          text_color?: string
+          text_shadow?: boolean
+          text_stroke_color?: string | null
+          text_stroke_width?: number
+          updated_at?: string
+        }
+        Update: {
+          bg_color?: string
+          bg_opacity?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          font_family?: string
+          font_size?: number
+          font_weight?: string
+          id?: string
+          is_active?: boolean
+          letter_case?: string
+          name?: string
+          position?: string
+          reference_video_storage_path?: string | null
+          reference_video_url?: string | null
+          sort_order?: number
+          text_color?: string
+          text_shadow?: boolean
+          text_stroke_color?: string | null
+          text_stroke_width?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_alerts: {
         Row: {
           action_label: string | null

@@ -43,12 +43,6 @@ export interface RenderStyle {
   bgOpacity: number; // 0–1
   position: 'top' | 'center' | 'bottom';
   textShadow: boolean;
-  // Extended fields (patch #13 templates). All optional so existing callers
-  // keep working without changes.
-  fontWeight?: 'normal' | 'bold' | 'black'; // defaults to 'bold'
-  letterCase?: 'as-typed' | 'upper' | 'lower' | 'title'; // defaults to 'as-typed'
-  textStrokeColor?: string | null; // null = no stroke
-  textStrokeWidth?: number; // px, 0 = no stroke
 }
 
 export interface RenderOptions {
@@ -66,25 +60,7 @@ export const DEFAULT_RENDER_STYLE: RenderStyle = {
   bgOpacity: 0.6,
   position: 'bottom',
   textShadow: true,
-  fontWeight: 'bold',
-  letterCase: 'as-typed',
-  textStrokeColor: null,
-  textStrokeWidth: 0,
 };
-
-/** Normalize text per the chosen letter-case transform. Applied before
- *  canvas rendering so both the preview and the rendered MP4 match. */
-function applyLetterCase(text: string, mode: RenderStyle['letterCase']): string {
-  switch (mode) {
-    case 'upper': return text.toUpperCase();
-    case 'lower': return text.toLowerCase();
-    case 'title':
-      return text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase());
-    case 'as-typed':
-    default:
-      return text;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Singleton ffmpeg instance. Loading the wasm core is expensive (~25 MB
@@ -146,29 +122,17 @@ async function renderTextToPng(
   // Transparent base — overlay will composite over the video.
   ctx.clearRect(0, 0, width, height);
 
-  // Apply letter-case transform to the text (upper / lower / title / as-typed).
-  const transformed = applyLetterCase(text, style.letterCase);
-
   // Try to scale font reasonably to video size. The `style.fontSize` is
-  // the editor's chosen size against a 540px-wide preview; we scale up
+  // the editor's chosen size against a 360px-wide preview; we scale up
   // proportionally so it looks the same on the real video dimensions.
   const scaledFontSize = Math.round(style.fontSize * (width / 540));
-  const scaledStrokeWidth = Math.max(
-    0,
-    Math.round((style.textStrokeWidth || 0) * (width / 540)),
-  );
-  const weightCss = style.fontWeight === 'black'
-    ? '900'
-    : style.fontWeight === 'normal'
-      ? '400'
-      : '700';
 
-  ctx.font = `${weightCss} ${scaledFontSize}px "${style.fontFamily}", Inter, sans-serif`;
+  ctx.font = `bold ${scaledFontSize}px "${style.fontFamily}", Inter, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   // Split on explicit \n; no auto-wrap in v1.
-  const lines = transformed.split('\n');
+  const lines = text.split('\n');
   const lineHeight = scaledFontSize * 1.3;
   const totalHeight = lines.length * lineHeight;
 
@@ -205,21 +169,6 @@ async function renderTextToPng(
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
     ctx.shadowBlur = 4;
-  }
-
-  // Stroke pass first (underneath the fill) so fill visually sits on top.
-  // Skip shadow on stroke pass to avoid a shadowed-outline look.
-  if (scaledStrokeWidth > 0 && style.textStrokeColor) {
-    ctx.save();
-    ctx.shadowColor = 'transparent';
-    ctx.strokeStyle = style.textStrokeColor;
-    ctx.lineWidth = scaledStrokeWidth * 2; // canvas strokes center on path, so 2x for visual width
-    ctx.lineJoin = 'round';
-    lines.forEach((line, i) => {
-      const y = yCenter - totalHeight / 2 + lineHeight * i + lineHeight / 2;
-      ctx.strokeText(line, width / 2, y);
-    });
-    ctx.restore();
   }
 
   ctx.fillStyle = style.textColor;

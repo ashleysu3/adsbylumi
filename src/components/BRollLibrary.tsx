@@ -21,11 +21,12 @@ import {
   Pencil,
   Check,
   Plus,
-  Scissors,
+  Type,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { BRollTrimDialog } from "./BRollTrimDialog";
+import { BRollTextEditor } from "@/components/BRollTextEditor";
+import type { OverlayStyle } from "@/components/VideoTextPreview";
 
 export interface BRollClip {
   id: string;
@@ -34,12 +35,6 @@ export interface BRollClip {
   storage_path: string;
   tags?: string[];
   uploaded_at: string;
-  /** Optional trim start (seconds). Defaults to 0. */
-  trim_start?: number;
-  /** Optional trim end (seconds). Defaults to clip duration. */
-  trim_end?: number;
-  /** Source video duration in seconds (captured on first trim). */
-  duration?: number;
 }
 
 interface BRollLibraryProps {
@@ -56,6 +51,13 @@ interface BRollLibraryProps {
   embedded?: boolean;
   /** Stable id used to persist search/filter state per library. */
   libraryKey?: string;
+  /**
+   * Brand-level overlay styling (from OverlayStylePicker). Passed through
+   * to the BRollTextEditor so preview + export match the brand's default
+   * font / color / position. When absent the editor falls back to the
+   * VideoTextPreview default.
+   */
+  overlayStyle?: OverlayStyle;
 }
 
 type SortMode = "newest" | "filename" | "tag_matches";
@@ -176,32 +178,14 @@ export function BRollLibrary({
   storagePrefix,
   embedded = false,
   libraryKey,
+  overlayStyle,
 }: BRollLibraryProps) {
   const persistKey = libraryKey || storagePrefix || brandId;
 
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [trimTarget, setTrimTarget] = useState<BRollClip | null>(null);
-
-  const handleSaveTrim = async (
-    trimStart: number,
-    trimEnd: number,
-    duration: number
-  ) => {
-    if (!trimTarget) return;
-    const next = clips.map((c) =>
-      c.id === trimTarget.id
-        ? { ...c, trim_start: trimStart, trim_end: trimEnd, duration }
-        : c
-    );
-    try {
-      await persistClips(next);
-      onUpdate(next);
-      toast.success("Trim saved");
-    } catch {
-      toast.error("Failed to save trim");
-    }
-  };
+  // Clip currently open in the text-overlay editor (null when closed).
+  const [editingTextClip, setEditingTextClip] = useState<BRollClip | null>(null);
 
   // Lazy-init from localStorage so the value is restored on mount.
   const initial = useMemo(() => loadPersistedFilters(persistKey), [persistKey]);
@@ -667,36 +651,15 @@ export function BRollLibrary({
                 muted
                 preload="metadata"
                 playsInline
-                onLoadedMetadata={(e) => {
-                  const v = e.target as HTMLVideoElement;
-                  if (clip.trim_start !== undefined) v.currentTime = clip.trim_start;
-                }}
-                onTimeUpdate={(e) => {
-                  const v = e.target as HTMLVideoElement;
-                  const end = clip.trim_end;
-                  const start = clip.trim_start ?? 0;
-                  if (end !== undefined && v.currentTime >= end) {
-                    v.currentTime = start;
-                  }
-                }}
-                onMouseEnter={(e) => {
-                  const v = e.target as HTMLVideoElement;
-                  const start = clip.trim_start ?? 0;
-                  if (v.currentTime < start) v.currentTime = start;
-                  v.play().catch(() => {});
-                }}
+                onMouseEnter={(e) =>
+                  (e.target as HTMLVideoElement).play().catch(() => {})
+                }
                 onMouseLeave={(e) => {
                   const v = e.target as HTMLVideoElement;
                   v.pause();
-                  v.currentTime = clip.trim_start ?? 0;
+                  v.currentTime = 0;
                 }}
               />
-              {(clip.trim_start !== undefined || clip.trim_end !== undefined) && (
-                <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-primary/90 text-primary-foreground text-[10px] font-medium flex items-center gap-1 pointer-events-none">
-                  <Scissors className="h-2.5 w-2.5" />
-                  Trimmed
-                </div>
-              )}
               <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
                 <p className="text-xs text-white truncate">{clip.file_name}</p>
                 {clip.tags && clip.tags.length > 0 && (
@@ -785,12 +748,12 @@ export function BRollLibrary({
                   <Button
                     variant="secondary"
                     size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setTrimTarget(clip)}
-                    aria-label="Trim clip"
-                    title="Trim clip"
+                    className="h-7 w-7 bg-background/95 hover:bg-background"
+                    onClick={() => setEditingTextClip(clip)}
+                    aria-label="Add text overlay"
+                    title="Add text to this clip"
                   >
-                    <Scissors className="h-3 w-3" />
+                    <Type className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="destructive"
@@ -812,6 +775,18 @@ export function BRollLibrary({
         </div>
       )}
 
+      {/* B-roll text editor modal — opens when user clicks the Type icon
+          on any clip. Exports a rendered MP4 with text burned in. */}
+      {editingTextClip && (
+        <BRollTextEditor
+          open={!!editingTextClip}
+          onOpenChange={(o) => { if (!o) setEditingTextClip(null); }}
+          videoUrl={editingTextClip.file_url}
+          clipName={editingTextClip.file_name}
+          style={overlayStyle}
+        />
+      )}
+
       {clips.length > 0 && filteredClips.length === 0 && (
         <div className="text-center py-6">
           <p className="text-sm text-muted-foreground">
@@ -828,13 +803,6 @@ export function BRollLibrary({
           </p>
         </div>
       )}
-
-      <BRollTrimDialog
-        open={!!trimTarget}
-        clip={trimTarget}
-        onClose={() => setTrimTarget(null)}
-        onSave={handleSaveTrim}
-      />
     </div>
   );
 
