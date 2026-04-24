@@ -9,6 +9,7 @@ import { LumiProvider } from "@/contexts/LumiContext";
 import { BrandProvider } from "@/contexts/BrandContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { LumiAssistantProvider } from "@/components/LumiAssistant";
+import { RenderQueueProvider } from "@/contexts/RenderQueueContext";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { GlobalAnnouncementBanner } from "@/components/GlobalAnnouncementBanner";
 import SplashScreen from "@/components/SplashScreen";
@@ -31,6 +32,7 @@ import AdminKnowledge from "./pages/admin/Knowledge";
 import AdminAnalytics from "./pages/admin/Analytics";
 import AdminTemplates from "./pages/admin/Templates";
 import AdminCreativeToolkit from "./pages/admin/CreativeToolkit";
+import AdminOverlayTemplates from "./pages/admin/OverlayTemplates";
 import AdminSubscriptions from "./pages/admin/Subscriptions";
 import AdminBugReports from "./pages/admin/BugReports";
 import AdminUsers from "./pages/admin/Users";
@@ -95,6 +97,7 @@ const App = () => {
         <SubscriptionProvider>
           <LumiProvider>
               <BrandProvider>
+              <RenderQueueProvider>
               <SplashScreen isVisible={showSplash} />
               <Toaster />
               <Sonner />
@@ -150,6 +153,7 @@ const App = () => {
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/templates" element={<AdminTemplates />} />
                   <Route path="/admin/creative-toolkit" element={<AdminCreativeToolkit />} />
+                  <Route path="/admin/overlay-templates" element={<AdminOverlayTemplates />} />
                   <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
                   <Route path="/admin/bug-reports" element={<AdminBugReports />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
@@ -172,7 +176,8 @@ const App = () => {
                 </Routes>
               </LumiAssistantProvider>
             </BrowserRouter>
-          </BrandProvider>
+              </RenderQueueProvider>
+              </BrandProvider>
         </LumiProvider>
       </SubscriptionProvider>
       </ImpersonationProvider>
