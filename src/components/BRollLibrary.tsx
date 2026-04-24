@@ -181,6 +181,27 @@ export function BRollLibrary({
 
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [trimTarget, setTrimTarget] = useState<BRollClip | null>(null);
+
+  const handleSaveTrim = async (
+    trimStart: number,
+    trimEnd: number,
+    duration: number
+  ) => {
+    if (!trimTarget) return;
+    const next = clips.map((c) =>
+      c.id === trimTarget.id
+        ? { ...c, trim_start: trimStart, trim_end: trimEnd, duration }
+        : c
+    );
+    try {
+      await persistClips(next);
+      onUpdate(next);
+      toast.success("Trim saved");
+    } catch {
+      toast.error("Failed to save trim");
+    }
+  };
 
   // Lazy-init from localStorage so the value is restored on mount.
   const initial = useMemo(() => loadPersistedFilters(persistKey), [persistKey]);
