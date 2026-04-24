@@ -43,6 +43,8 @@ export interface RenderStyle {
   bgOpacity: number; // 0–1
   position: 'top' | 'center' | 'bottom';
   textShadow: boolean;
+  letterCase?: 'none' | 'upper' | 'lower';
+  fontWeight?: number | string;
 }
 
 export interface RenderOptions {
