@@ -32,6 +32,12 @@ export interface BRollClip {
   storage_path: string;
   tags?: string[];
   uploaded_at: string;
+  /** Optional trim start (seconds). Defaults to 0. */
+  trim_start?: number;
+  /** Optional trim end (seconds). Defaults to clip duration. */
+  trim_end?: number;
+  /** Source video duration in seconds (captured on first trim). */
+  duration?: number;
 }
 
 interface BRollLibraryProps {
