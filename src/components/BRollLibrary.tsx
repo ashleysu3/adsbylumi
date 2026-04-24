@@ -781,19 +781,31 @@ export function BRollLibrary({
                   </Button>
                 </div>
               ) : (
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => handleDelete(clip)}
-                  disabled={deleting === clip.id}
-                >
-                  {deleting === clip.id ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-3 w-3" />
-                  )}
-                </Button>
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setTrimTarget(clip)}
+                    aria-label="Trim clip"
+                    title="Trim clip"
+                  >
+                    <Scissors className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleDelete(clip)}
+                    disabled={deleting === clip.id}
+                  >
+                    {deleting === clip.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           ))}
