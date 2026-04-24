@@ -667,15 +667,36 @@ export function BRollLibrary({
                 muted
                 preload="metadata"
                 playsInline
-                onMouseEnter={(e) =>
-                  (e.target as HTMLVideoElement).play().catch(() => {})
-                }
+                onLoadedMetadata={(e) => {
+                  const v = e.target as HTMLVideoElement;
+                  if (clip.trim_start !== undefined) v.currentTime = clip.trim_start;
+                }}
+                onTimeUpdate={(e) => {
+                  const v = e.target as HTMLVideoElement;
+                  const end = clip.trim_end;
+                  const start = clip.trim_start ?? 0;
+                  if (end !== undefined && v.currentTime >= end) {
+                    v.currentTime = start;
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  const v = e.target as HTMLVideoElement;
+                  const start = clip.trim_start ?? 0;
+                  if (v.currentTime < start) v.currentTime = start;
+                  v.play().catch(() => {});
+                }}
                 onMouseLeave={(e) => {
                   const v = e.target as HTMLVideoElement;
                   v.pause();
-                  v.currentTime = 0;
+                  v.currentTime = clip.trim_start ?? 0;
                 }}
               />
+              {(clip.trim_start !== undefined || clip.trim_end !== undefined) && (
+                <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-primary/90 text-primary-foreground text-[10px] font-medium flex items-center gap-1 pointer-events-none">
+                  <Scissors className="h-2.5 w-2.5" />
+                  Trimmed
+                </div>
+              )}
               <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
                 <p className="text-xs text-white truncate">{clip.file_name}</p>
                 {clip.tags && clip.tags.length > 0 && (
