@@ -10,6 +10,8 @@ import { Loader2, Sparkles, Check, Palette } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { RenderStyle } from '@/lib/ffmpeg-renderer';
 
+const overlayTemplatesTable = 'text_overlay_templates' as any;
+
 // ============================================================================
 // TemplateGallery
 //
@@ -57,7 +59,7 @@ export function TemplateGallery({
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('text_overlay_templates')
+        .from(overlayTemplatesTable)
         .select('*')
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
