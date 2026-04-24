@@ -35,6 +35,8 @@ import { Plus, Pencil, Trash2, Upload, Loader2, Palette } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+const overlayTemplatesTable = 'text_overlay_templates' as any;
+
 // ============================================================================
 // Admin · Text Overlay Templates
 //
@@ -110,7 +112,7 @@ export default function AdminOverlayTemplates() {
   const loadTemplates = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('text_overlay_templates')
+      .from(overlayTemplatesTable)
       .select('*')
       .order('sort_order', { ascending: true });
     if (error) {
@@ -127,7 +129,7 @@ export default function AdminOverlayTemplates() {
 
   const handleDelete = async (t: Template) => {
     if (!window.confirm(`Delete "${t.name}"? Users won't see it anymore.`)) return;
-    const { error } = await supabase.from('text_overlay_templates').delete().eq('id', t.id);
+    const { error } = await supabase.from(overlayTemplatesTable).delete().eq('id', t.id);
     if (error) {
       toast.error('Delete failed: ' + error.message);
     } else {
@@ -138,7 +140,7 @@ export default function AdminOverlayTemplates() {
 
   const handleToggleActive = async (t: Template) => {
     const { error } = await supabase
-      .from('text_overlay_templates')
+      .from(overlayTemplatesTable)
       .update({ is_active: !t.is_active })
       .eq('id', t.id);
     if (error) {
@@ -333,12 +335,12 @@ function TemplateFormDialog({
       };
       if (template) {
         const { error } = await supabase
-          .from('text_overlay_templates')
+          .from(overlayTemplatesTable)
           .update(payload)
           .eq('id', template.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('text_overlay_templates').insert(payload);
+        const { error } = await supabase.from(overlayTemplatesTable).insert(payload);
         if (error) throw error;
       }
       toast.success(template ? 'Template updated' : 'Template created');
