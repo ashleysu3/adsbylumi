@@ -795,7 +795,7 @@ export function CreativeChecklistCard({
                                               return;
                                             }
                                             enqueue({
-                                              title: `${item.angle_name || 'Creative'} — ${clip.file_name || 'b-roll'}`,
+                                              title: `${item.angleName || 'Creative'} — ${clip.file_name || 'b-roll'}`,
                                               sourceClipName: clip.file_name,
                                               videoUrl: clip.file_url,
                                               overlays: specs,
@@ -877,7 +877,7 @@ export function CreativeChecklistCard({
                                         return;
                                       }
                                       enqueue({
-                                        title: `${item.angle_name || 'Creative'} — ${customBrollName || 'upload'}`,
+                                        title: `${item.angleName || 'Creative'} — ${customBrollName || 'upload'}`,
                                         sourceClipName: customBrollName || undefined,
                                         videoUrl: customBrollUrl,
                                         overlays: specs,

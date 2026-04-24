@@ -35,6 +35,9 @@ export interface BRollClip {
   storage_path: string;
   tags?: string[];
   uploaded_at: string;
+  trim_start?: number;
+  trim_end?: number;
+  duration?: number;
 }
 
 interface BRollLibraryProps {
