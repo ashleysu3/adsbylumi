@@ -159,7 +159,8 @@ export function CreativeChecklistCard({
   const [uploadingBroll, setUploadingBroll] = useState(false);
   // Render queue for "Queue Render" — user clicks, we enqueue the job,
   // they keep working. Toast + bell icon + email notify on completion.
-  const { enqueue } = useRenderQueue();
+  const { enqueue, jobs } = useRenderQueue();
+  const rendering = jobs.some(j => j.status === 'pending' || j.status === 'rendering');
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackText, setFeedbackText] = useState("");
   const [isRefining, setIsRefining] = useState(false);
