@@ -877,7 +877,7 @@ export function CreativeChecklistCard({
                                         return;
                                       }
                                       enqueue({
-                                        title: `${item.angle_name || 'Creative'} — ${customBrollName || 'upload'}`,
+                                        title: `${item.angleName || 'Creative'} — ${customBrollName || 'upload'}`,
                                         sourceClipName: customBrollName || undefined,
                                         videoUrl: customBrollUrl,
                                         overlays: specs,
