@@ -21,9 +21,11 @@ import {
   Pencil,
   Check,
   Plus,
+  Scissors,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { BRollTrimDialog } from "./BRollTrimDialog";
 
 export interface BRollClip {
   id: string;
@@ -32,6 +34,12 @@ export interface BRollClip {
   storage_path: string;
   tags?: string[];
   uploaded_at: string;
+  /** Optional trim start (seconds). Defaults to 0. */
+  trim_start?: number;
+  /** Optional trim end (seconds). Defaults to clip duration. */
+  trim_end?: number;
+  /** Source video duration in seconds (captured on first trim). */
+  duration?: number;
 }
 
 interface BRollLibraryProps {
@@ -173,6 +181,27 @@ export function BRollLibrary({
 
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [trimTarget, setTrimTarget] = useState<BRollClip | null>(null);
+
+  const handleSaveTrim = async (
+    trimStart: number,
+    trimEnd: number,
+    duration: number
+  ) => {
+    if (!trimTarget) return;
+    const next = clips.map((c) =>
+      c.id === trimTarget.id
+        ? { ...c, trim_start: trimStart, trim_end: trimEnd, duration }
+        : c
+    );
+    try {
+      await persistClips(next);
+      onUpdate(next);
+      toast.success("Trim saved");
+    } catch {
+      toast.error("Failed to save trim");
+    }
+  };
 
   // Lazy-init from localStorage so the value is restored on mount.
   const initial = useMemo(() => loadPersistedFilters(persistKey), [persistKey]);
@@ -638,15 +667,36 @@ export function BRollLibrary({
                 muted
                 preload="metadata"
                 playsInline
-                onMouseEnter={(e) =>
-                  (e.target as HTMLVideoElement).play().catch(() => {})
-                }
+                onLoadedMetadata={(e) => {
+                  const v = e.target as HTMLVideoElement;
+                  if (clip.trim_start !== undefined) v.currentTime = clip.trim_start;
+                }}
+                onTimeUpdate={(e) => {
+                  const v = e.target as HTMLVideoElement;
+                  const end = clip.trim_end;
+                  const start = clip.trim_start ?? 0;
+                  if (end !== undefined && v.currentTime >= end) {
+                    v.currentTime = start;
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  const v = e.target as HTMLVideoElement;
+                  const start = clip.trim_start ?? 0;
+                  if (v.currentTime < start) v.currentTime = start;
+                  v.play().catch(() => {});
+                }}
                 onMouseLeave={(e) => {
                   const v = e.target as HTMLVideoElement;
                   v.pause();
-                  v.currentTime = 0;
+                  v.currentTime = clip.trim_start ?? 0;
                 }}
               />
+              {(clip.trim_start !== undefined || clip.trim_end !== undefined) && (
+                <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-primary/90 text-primary-foreground text-[10px] font-medium flex items-center gap-1 pointer-events-none">
+                  <Scissors className="h-2.5 w-2.5" />
+                  Trimmed
+                </div>
+              )}
               <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
                 <p className="text-xs text-white truncate">{clip.file_name}</p>
                 {clip.tags && clip.tags.length > 0 && (
@@ -731,19 +781,31 @@ export function BRollLibrary({
                   </Button>
                 </div>
               ) : (
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => handleDelete(clip)}
-                  disabled={deleting === clip.id}
-                >
-                  {deleting === clip.id ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-3 w-3" />
-                  )}
-                </Button>
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setTrimTarget(clip)}
+                    aria-label="Trim clip"
+                    title="Trim clip"
+                  >
+                    <Scissors className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleDelete(clip)}
+                    disabled={deleting === clip.id}
+                  >
+                    {deleting === clip.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
               )}
             </div>
           ))}
@@ -766,6 +828,13 @@ export function BRollLibrary({
           </p>
         </div>
       )}
+
+      <BRollTrimDialog
+        open={!!trimTarget}
+        clip={trimTarget}
+        onClose={() => setTrimTarget(null)}
+        onSave={handleSaveTrim}
+      />
     </div>
   );
 

@@ -123,6 +123,21 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
           </div>
         </div>
 
+        {/* Font Size */}
+        <div className="space-y-2">
+          <Label>Font Size ({style.fontSize}px)</Label>
+          <Slider
+            value={[style.fontSize]}
+            onValueChange={([v]) => update({ fontSize: v })}
+            min={16}
+            max={72}
+            step={1}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Size of the text overlay on the rendered 9:16 video.
+          </p>
+        </div>
+
         {/* BG Opacity */}
         <div className="space-y-2">
           <Label>Background Opacity ({Math.round(style.bgOpacity * 100)}%)</Label>
@@ -233,7 +248,7 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
           <span
             style={{
               fontFamily: style.fontFamily,
-              fontSize: "18px",
+              fontSize: `${Math.max(12, style.fontSize * 0.5)}px`,
               color: style.textColor,
               backgroundColor: hexToRgba(style.bgColor, style.bgOpacity),
               textShadow: style.textShadow ? "0 2px 4px rgba(0,0,0,0.5)" : "none",
