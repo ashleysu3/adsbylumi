@@ -335,12 +335,12 @@ function TemplateFormDialog({
       };
       if (template) {
         const { error } = await supabase
-          .from('text_overlay_templates')
+          .from(overlayTemplatesTable)
           .update(payload)
           .eq('id', template.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('text_overlay_templates').insert(payload);
+        const { error } = await supabase.from(overlayTemplatesTable).insert(payload);
         if (error) throw error;
       }
       toast.success(template ? 'Template updated' : 'Template created');
