@@ -828,6 +828,13 @@ export function BRollLibrary({
           </p>
         </div>
       )}
+
+      <BRollTrimDialog
+        open={!!trimTarget}
+        clip={trimTarget}
+        onClose={() => setTrimTarget(null)}
+        onSave={handleSaveTrim}
+      />
     </div>
   );
 
