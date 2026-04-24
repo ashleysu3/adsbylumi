@@ -26,9 +26,8 @@ import {
   type TextOverlay,
   type OverlayStyle,
 } from '@/components/VideoTextPreview';
-import { DEFAULT_RENDER_STYLE, type RenderStyle } from '@/lib/ffmpeg-renderer';
+import { DEFAULT_RENDER_STYLE } from '@/lib/ffmpeg-renderer';
 import { useRenderQueue } from '@/contexts/RenderQueueContext';
-import { TemplateGallery } from '@/components/TemplateGallery';
 
 // ============================================================================
 // BRollTextEditor
@@ -87,22 +86,6 @@ export function BRollTextEditor({
   const [overlays, setOverlays] = useState<TextOverlay[]>([
     { text: 'Your hook here', timing: '0-3s', type: 'hook' },
   ]);
-  // Optional style template from the TemplateGallery. When set, we use it
-  // for both the live preview and the queued render; otherwise we fall back
-  // to the brand-default style the caller passed in.
-  const [templateStyle, setTemplateStyle] = useState<RenderStyle | null>(null);
-  const [templateId, setTemplateId] = useState<string | null>(null);
-  const effectiveStyle: OverlayStyle = templateStyle
-    ? {
-        fontFamily: templateStyle.fontFamily,
-        fontSize: templateStyle.fontSize,
-        textColor: templateStyle.textColor,
-        bgColor: templateStyle.bgColor,
-        bgOpacity: templateStyle.bgOpacity,
-        position: templateStyle.position,
-        textShadow: templateStyle.textShadow,
-      }
-    : style;
 
   const addOverlay = () => {
     setOverlays([
@@ -140,25 +123,20 @@ export function BRollTextEditor({
       })
       .filter((x): x is { text: string; startSeconds: number; endSeconds: number } => !!x);
 
-    // If a template was picked, use its full RenderStyle (with extended
-    // fields like letterCase, fontWeight, textStroke). Otherwise fall back
-    // to the brand's OverlayStyle with the renderer defaults filled in.
-    const renderStyle: RenderStyle = templateStyle ?? {
-      fontFamily: style.fontFamily,
-      fontSize: style.fontSize,
-      textColor: style.textColor,
-      bgColor: style.bgColor,
-      bgOpacity: style.bgOpacity,
-      position: style.position,
-      textShadow: style.textShadow,
-    };
-
     enqueue({
       title: clipName || 'B-roll video',
       sourceClipName: clipName,
       videoUrl,
       overlays: specs,
-      style: renderStyle,
+      style: {
+        fontFamily: style.fontFamily,
+        fontSize: style.fontSize,
+        textColor: style.textColor,
+        bgColor: style.bgColor,
+        bgOpacity: style.bgOpacity,
+        position: style.position,
+        textShadow: style.textShadow,
+      },
       context: brandId ? { brandId } : undefined,
     });
 
@@ -182,30 +160,7 @@ export function BRollTextEditor({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Template gallery — pick a style and apply it to all overlays. */}
-        <div className="mt-2">
-          <TemplateGallery
-            selectedTemplateId={templateId}
-            onSelectTemplateId={setTemplateId}
-            onApply={(newStyle, name) => {
-              setTemplateStyle(newStyle);
-              toast.success(`Style applied: ${name}`);
-            }}
-          />
-          {templateStyle && (
-            <button
-              className="text-[11px] text-muted-foreground underline ml-2"
-              onClick={() => {
-                setTemplateStyle(null);
-                setTemplateId(null);
-              }}
-            >
-              reset to brand default
-            </button>
-          )}
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6 mt-4">
+        <div className="grid md:grid-cols-2 gap-6 mt-2">
           {/* LEFT: overlay editor */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -305,11 +260,10 @@ export function BRollTextEditor({
             <VideoTextPreview
               videoUrl={videoUrl}
               overlays={overlays}
-              style={effectiveStyle}
+              style={style}
             />
             <p className="text-[11px] text-muted-foreground mt-2 text-center">
-              Scrub the video to see each overlay appear at its timing. (Preview uses basic style
-              fields; extended effects like stroke and case transform appear in the rendered MP4.)
+              Scrub the video to see each overlay appear at its timing.
             </p>
           </div>
         </div>

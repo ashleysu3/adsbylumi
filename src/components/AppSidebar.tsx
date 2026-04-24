@@ -6,6 +6,7 @@ import { useState as useReactState } from "react";
 import { BugReportModal } from "@/components/BugReportModal";
 import { NavLink } from "@/components/NavLink";
 import { BrandSelector } from "@/components/BrandSelector";
+import { RenderQueueBell } from "@/components/RenderQueueBell";
 import { SparkleIcon } from "@/components/SparkleIcon";
 import { useLumiAssistant } from "@/components/LumiAssistant";
 import { useBrand } from "@/contexts/BrandContext";
@@ -168,7 +169,7 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
   return (
     <>
     <Sidebar collapsible="icon">
-      {/* Header: Logo + Brand Selector */}
+      {/* Header: Logo + Brand Selector + Render Queue Bell */}
       <SidebarHeader className="p-3 pb-2">
         <div className="flex items-center gap-2 min-h-[40px]">
           <img
@@ -178,7 +179,11 @@ export function AppSidebar({ isAdmin, brandId }: AppSidebarProps) {
             onClick={() => navigate("/start")}
           />
           {!collapsed && (
-            <BrandSelector className="ml-auto" compact />
+            <>
+              <BrandSelector className="ml-auto" compact />
+              {/* Bell icon renders itself only when there are active renders. */}
+              <RenderQueueBell />
+            </>
           )}
         </div>
 
