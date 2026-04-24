@@ -248,7 +248,7 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
           <span
             style={{
               fontFamily: style.fontFamily,
-              fontSize: "18px",
+              fontSize: `${Math.max(12, style.fontSize * 0.5)}px`,
               color: style.textColor,
               backgroundColor: hexToRgba(style.bgColor, style.bgOpacity),
               textShadow: style.textShadow ? "0 2px 4px rgba(0,0,0,0.5)" : "none",
