@@ -55,6 +55,10 @@ export interface OverlayStyle {
   emphasizeHookCta?: boolean;
   emphasisBoost?: number;
   emphasisStyle?: EmphasisStyle;
+  /** Brand-level default xy (0-1). Wins over `position` preset when set. */
+  defaultXY?: OverlayXY;
+  /** Brand-level default font-size multiplier. Applied to overlays without their own scale. */
+  defaultScale?: number;
 }
 
 export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
@@ -71,6 +75,8 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
   emphasizeHookCta: true,
   emphasisBoost: 0.3,
   emphasisStyle: "bold-upper",
+  defaultXY: { x: 0.5, y: 0.78 },
+  defaultScale: 1,
 };
 
 interface VideoTextPreviewProps {
@@ -133,6 +139,21 @@ export function defaultXYFromPosition(p: OverlayStyle["position"]): OverlayXY {
     default:
       return { x: 0.5, y: 0.92 };
   }
+}
+
+/**
+ * Resolve the default xy for a brand. Prefers `style.defaultXY` (drag-set)
+ * and falls back to the legacy top/center/bottom preset.
+ */
+export function resolveDefaultXY(style: OverlayStyle): OverlayXY {
+  if (
+    style.defaultXY &&
+    typeof style.defaultXY.x === "number" &&
+    typeof style.defaultXY.y === "number"
+  ) {
+    return style.defaultXY;
+  }
+  return defaultXYFromPosition(style.position);
 }
 
 export function resolveOverlayRender(
