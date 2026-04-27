@@ -55,6 +55,10 @@ export interface OverlayStyle {
   emphasizeHookCta?: boolean;
   emphasisBoost?: number;
   emphasisStyle?: EmphasisStyle;
+  /** Brand-level default xy (0-1). Wins over `position` preset when set. */
+  defaultXY?: OverlayXY;
+  /** Brand-level default font-size multiplier. Applied to overlays without their own scale. */
+  defaultScale?: number;
 }
 
 export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
@@ -71,6 +75,8 @@ export const DEFAULT_OVERLAY_STYLE: OverlayStyle = {
   emphasizeHookCta: true,
   emphasisBoost: 0.3,
   emphasisStyle: "bold-upper",
+  defaultXY: { x: 0.5, y: 0.78 },
+  defaultScale: 1,
 };
 
 interface VideoTextPreviewProps {
@@ -133,6 +139,21 @@ export function defaultXYFromPosition(p: OverlayStyle["position"]): OverlayXY {
     default:
       return { x: 0.5, y: 0.92 };
   }
+}
+
+/**
+ * Resolve the default xy for a brand. Prefers `style.defaultXY` (drag-set)
+ * and falls back to the legacy top/center/bottom preset.
+ */
+export function resolveDefaultXY(style: OverlayStyle): OverlayXY {
+  if (
+    style.defaultXY &&
+    typeof style.defaultXY.x === "number" &&
+    typeof style.defaultXY.y === "number"
+  ) {
+    return style.defaultXY;
+  }
+  return defaultXYFromPosition(style.position);
 }
 
 export function resolveOverlayRender(
@@ -362,7 +383,7 @@ export function VideoTextPreview({
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const xy = overlay.xy ?? defaultXYFromPosition(style.position);
+    const xy = overlay.xy ?? resolveDefaultXY(style);
     const centerClientX = rect.left + xy.x * rect.width;
     const centerClientY = rect.top + xy.y * rect.height;
     const initialDistance = Math.max(
@@ -439,7 +460,7 @@ export function VideoTextPreview({
     const resolved = resolveOverlayRender(overlay, style);
 
     // Per-overlay font scale (live during corner-resize, persisted otherwise)
-    const persistedScale = overlay.scale ?? 1;
+    const persistedScale = overlay.scale ?? style.defaultScale ?? 1;
     const effectiveScale =
       resizeIdx === idx && resizeMode === "scale" && liveScale !== null
         ? liveScale
@@ -466,7 +487,7 @@ export function VideoTextPreview({
     const liveXY: OverlayXY =
       dragIdx === idx && dragXY
         ? dragXY
-        : overlay.xy ?? defaultXYFromPosition(style.position);
+        : overlay.xy ?? resolveDefaultXY(style);
 
     const dragging = dragIdx === idx;
     const resizing = resizeIdx === idx;
@@ -603,53 +624,97 @@ export function VideoTextPreview({
     );
   };
 
+  const showSafeZones = editable && !isPlaying;
+  const showEditChrome = editable && overlays.length > 0;
+
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "relative rounded-lg overflow-hidden bg-black aspect-[9/16] max-h-[400px]",
-        className,
-      )}
-    >
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        className="w-full h-full object-contain"
-        controls
-        muted
-        loop
-        playsInline
-        preload="metadata"
-      />
+    <div className="flex flex-col md:flex-row md:items-start gap-3">
+      <div
+        ref={containerRef}
+        className={cn(
+          "relative rounded-lg overflow-hidden bg-black aspect-[9/16] max-h-[400px]",
+          className,
+        )}
+      >
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          className="w-full h-full object-contain"
+          controls
+          muted
+          loop
+          playsInline
+          preload="metadata"
+        />
 
-      {/* CTA mockup PNG overlay */}
-      {showCtaImage && style.ctaOverlayUrl && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-          <img
-            src={style.ctaOverlayUrl}
-            alt="CTA overlay"
-            className="max-w-[80%] max-h-[40%] object-contain drop-shadow-lg transition-opacity duration-500"
-            style={{ opacity: showCtaImage ? 1 : 0 }}
-          />
-        </div>
-      )}
+        {/* Instagram safe-zone bands — visual guide only, hidden during playback. */}
+        {showSafeZones && (
+          <>
+            <div
+              className="absolute top-0 left-0 right-0 pointer-events-none z-[5] border-b border-dashed border-amber-300/50"
+              style={{
+                height: "20%",
+                backgroundColor: "hsl(var(--warning, 38 92% 50%) / 0.18)",
+                backgroundImage:
+                  "repeating-linear-gradient(135deg, rgba(0,0,0,0.18) 0 6px, transparent 6px 12px)",
+              }}
+            >
+              <span className="absolute top-1 left-1 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide rounded bg-black/60 text-amber-100">
+                IG profile area
+              </span>
+            </div>
+            <div
+              className="absolute bottom-0 left-0 right-0 pointer-events-none z-[5] border-t border-dashed border-amber-300/50"
+              style={{
+                height: "20%",
+                backgroundColor: "hsl(var(--warning, 38 92% 50%) / 0.18)",
+                backgroundImage:
+                  "repeating-linear-gradient(135deg, rgba(0,0,0,0.18) 0 6px, transparent 6px 12px)",
+              }}
+            >
+              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide rounded bg-black/60 text-amber-100">
+                IG caption / actions
+              </span>
+            </div>
+          </>
+        )}
 
-      {/* Text overlays */}
-      {visibleIndexes.map(i => renderOverlay(overlays[i], i))}
+        {/* CTA mockup PNG overlay */}
+        {showCtaImage && style.ctaOverlayUrl && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <img
+              src={style.ctaOverlayUrl}
+              alt="CTA overlay"
+              className="max-w-[80%] max-h-[40%] object-contain drop-shadow-lg transition-opacity duration-500"
+              style={{ opacity: showCtaImage ? 1 : 0 }}
+            />
+          </div>
+        )}
 
-      {/* Edit-mode badge: makes it explicit that all overlays are stacked
-          for editing, not playing in real-time order. */}
-      {isStackedEditMode && (
-        <div className="absolute top-2 left-2 z-30 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur-sm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/95 pointer-events-none shadow">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-          Edit mode · all overlays shown
-        </div>
-      )}
+        {/* Text overlays */}
+        {visibleIndexes.map(i => renderOverlay(overlays[i], i))}
+      </div>
 
-      {/* Drag affordance hint when in editable mode */}
-      {editable && !isPlaying && overlays.length > 0 && (
-        <div className="absolute bottom-1 left-1 right-1 text-center text-[10px] text-white/80 pointer-events-none z-30 drop-shadow">
-          Drag text to move · hover for handles to resize · press play to preview timing
+      {/* Edit chrome — lives BESIDE the video (right on md+, below on mobile)
+          so it never obscures the preview. */}
+      {showEditChrome && (
+        <div className="md:w-40 shrink-0 space-y-2 text-xs">
+          {isStackedEditMode && (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground/80">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+              Edit mode
+            </div>
+          )}
+          <p className="text-[11px] text-muted-foreground leading-snug">
+            {isStackedEditMode
+              ? "All overlays are stacked so you can place each one. Drag text to move, hover for handles to resize."
+              : "Press pause to edit overlays."}
+          </p>
+          {showSafeZones && (
+            <p className="text-[10px] text-muted-foreground/80 leading-snug">
+              Amber bands show where Instagram's profile and caption cover the video — keep text in the middle.
+            </p>
+          )}
         </div>
       )}
     </div>

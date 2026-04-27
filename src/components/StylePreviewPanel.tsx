@@ -64,12 +64,13 @@ export function StylePreviewPanel({
   }, [useEmojis, secondaryEmoji, isWe]);
 
   const overlayBg = hexToRgba(overlayStyle.bgColor, overlayStyle.bgOpacity);
-  const overlayPositionClass =
-    overlayStyle.position === "top"
-      ? "top-4"
+  const defaultXY = overlayStyle.defaultXY ??
+    (overlayStyle.position === "top"
+      ? { x: 0.5, y: 0.08 }
       : overlayStyle.position === "center"
-      ? "top-1/2 -translate-y-1/2"
-      : "bottom-4";
+      ? { x: 0.5, y: 0.5 }
+      : { x: 0.5, y: 0.92 });
+  const defaultScale = overlayStyle.defaultScale ?? 1;
 
   return (
     <Card variant="glow" className="md:sticky md:top-4">
@@ -120,15 +121,23 @@ export function StylePreviewPanel({
           <div className="relative mx-3 mb-3 rounded-lg overflow-hidden bg-[image:var(--gradient-lumi)]" style={{ aspectRatio: "9 / 16", maxHeight: 360 }}>
             {/* Subtle pattern */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40" />
-            {/* Overlay text */}
-            <div className={cn("absolute left-3 right-3 px-3 py-2 rounded-md", overlayPositionClass)}>
+            {/* Overlay text — positioned at brand defaultXY */}
+            <div
+              className="absolute px-2"
+              style={{
+                left: `${defaultXY.x * 100}%`,
+                top: `${defaultXY.y * 100}%`,
+                transform: "translate(-50%, -50%)",
+                maxWidth: "90%",
+              }}
+            >
               <div
                 className="rounded-md px-3 py-2 text-center"
                 style={{
                   backgroundColor: overlayBg,
                   color: overlayStyle.textColor,
                   fontFamily: overlayStyle.fontFamily,
-                  fontSize: Math.max(12, overlayStyle.fontSize * 0.45),
+                  fontSize: Math.max(12, overlayStyle.fontSize * 0.45 * defaultScale),
                   textShadow: overlayStyle.textShadow ? "0 2px 4px rgba(0,0,0,0.5)" : "none",
                   fontWeight: 600,
                   lineHeight: 1.2,

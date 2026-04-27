@@ -49,6 +49,10 @@ export interface RenderStyle {
   emphasizeHookCta?: boolean;
   emphasisBoost?: number;
   emphasisStyle?: EmphasisStyle;
+  /** Brand-level default position (0–1 normalized). Wins over `position` preset when set. */
+  defaultXY?: OverlayXY;
+  /** Brand-level default font-size multiplier applied to overlays without their own scale. */
+  defaultScale?: number;
 }
 
 export interface RenderOptions {
@@ -73,6 +77,8 @@ export const DEFAULT_RENDER_STYLE: RenderStyle = {
   emphasizeHookCta: true,
   emphasisBoost: 0.3,
   emphasisStyle: 'bold-upper',
+  defaultXY: { x: 0.5, y: 0.78 },
+  defaultScale: 1,
 };
 
 function applyLetterCase(text: string, mode: RenderStyle['letterCase']): string {
@@ -94,6 +100,15 @@ function defaultXYFromPosition(p: RenderStyle['position']): OverlayXY {
     case 'bottom':
     default: return { x: 0.5, y: 0.92 };
   }
+}
+
+function resolveDefaultXY(style: RenderStyle): OverlayXY {
+  if (style.defaultXY &&
+      typeof style.defaultXY.x === 'number' &&
+      typeof style.defaultXY.y === 'number') {
+    return style.defaultXY;
+  }
+  return defaultXYFromPosition(style.position);
 }
 
 function resolveOverlayRender(
@@ -202,7 +217,10 @@ async function renderTextToPng(
 
   const resolved = resolveOverlayRender(overlay, style);
 
-  const overlayScale = Math.max(0.4, Math.min(3, overlay.scale ?? 1));
+  const overlayScale = Math.max(
+    0.4,
+    Math.min(3, overlay.scale ?? style.defaultScale ?? 1),
+  );
   const scaledFontSize = Math.max(
     8,
     Math.round(resolved.fontSize * overlayScale * (width / 540)),
@@ -250,7 +268,7 @@ async function renderTextToPng(
 
   // Resolve positioning: per-overlay xy wins, otherwise use the style's
   // top/center/bottom default. xy is the CENTER of the text bounding box.
-  const xy = overlay.xy ?? defaultXYFromPosition(style.position);
+  const xy = overlay.xy ?? resolveDefaultXY(style);
   const xCenter = Math.max(0, Math.min(width, Math.round(xy.x * width)));
   let yCenter = Math.max(0, Math.min(height, Math.round(xy.y * height)));
 
