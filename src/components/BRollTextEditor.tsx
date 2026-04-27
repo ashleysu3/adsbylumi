@@ -26,42 +26,32 @@ import {
   type TextOverlay,
   type OverlayStyle,
 } from '@/components/VideoTextPreview';
-import { DEFAULT_RENDER_STYLE } from '@/lib/ffmpeg-renderer';
+import { DEFAULT_RENDER_STYLE, type RenderStyle } from '@/lib/ffmpeg-renderer';
 import { useRenderQueue } from '@/contexts/RenderQueueContext';
+import { TemplateGallery } from '@/components/TemplateGallery';
 
 // ============================================================================
-// BRollTextEditor
+// BRollTextEditor (patch #15)
 //
-// Modal UI for adding text overlays to a b-roll clip and exporting an MP4
-// with the text burned in. Matches the scope agreed with Ashley 2026-04-23:
-//
-//   - Per-use editing (overlays live with the export, not with the clip).
-//   - Standard features: multi-line text + timing (appears at X–Y seconds).
-//   - Live in-browser preview that matches the exported file.
-//   - Export → download MP4; caller's onExported gets the Blob if it wants
-//     to also save to Supabase storage or hand off to a campaign flow.
-//
-// Uses the existing VideoTextPreview for live preview and the new
-// ffmpeg-renderer for the actual burn-in. The brand's OverlayStylePicker
-// styling (font, colors, position) is passed in via `style` so the preview
-// and the exported file look consistent with the rest of the app.
+// Modal UI for adding text overlays to a b-roll clip and queuing a render.
+// Patch #15 changes:
+//   1. Overlay `type` is carried through into the render spec so the
+//      renderer can apply hook/CTA emphasis correctly.
+//   2. When a template is picked, we merge the brand's emphasis settings
+//      (emphasizeHookCta / emphasisBoost / emphasisStyle) on top of the
+//      template's base typography — template controls the look,
+//      brand controls whether hooks/CTAs get boosted.
 // ============================================================================
 
 interface BRollTextEditorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The clip being edited. */
   videoUrl: string;
-  /** Display name shown in the dialog header. */
   clipName?: string;
-  /**
-   * Optional brand-level overlay style from OverlayStylePicker. When absent
-   * we use DEFAULT_OVERLAY_STYLE which matches what users see in any other
-   * VideoTextPreview that isn't brand-styled.
-   */
+  /** Brand-level overlay style from OverlayStylePicker. Used for the base
+   * look AND for emphasis settings (which layer on top of any picked
+   * template). */
   style?: OverlayStyle;
-  /** Optional brand context — if provided, the queued render stores it so
-   * the email + any future auto-attach flows know which brand this is for. */
   brandId?: string;
 }
 
@@ -86,6 +76,31 @@ export function BRollTextEditor({
   const [overlays, setOverlays] = useState<TextOverlay[]>([
     { text: 'Your hook here', timing: '0-3s', type: 'hook' },
   ]);
+  const [templateStyle, setTemplateStyle] = useState<RenderStyle | null>(null);
+  const [templateId, setTemplateId] = useState<string | null>(null);
+
+  // When a template is picked, it defines the BASE typography (font,
+  // color, position, weight, case, stroke). Emphasis fields stay tied to
+  // the brand — templates control the look, brand controls whether to
+  // auto-emphasize hooks / CTAs. That way users don't have to re-tune
+  // emphasis every time they swap templates.
+  const effectiveStyle: OverlayStyle = templateStyle
+    ? {
+        fontFamily: templateStyle.fontFamily,
+        fontSize: templateStyle.fontSize,
+        textColor: templateStyle.textColor,
+        bgColor: templateStyle.bgColor,
+        bgOpacity: templateStyle.bgOpacity,
+        position: templateStyle.position,
+        textShadow: templateStyle.textShadow,
+        fontWeight: templateStyle.fontWeight,
+        letterCase: templateStyle.letterCase,
+        // Emphasis inherited from brand.
+        emphasizeHookCta: style.emphasizeHookCta,
+        emphasisBoost: style.emphasisBoost,
+        emphasisStyle: style.emphasisStyle,
+      }
+    : style;
 
   const addOverlay = () => {
     setOverlays([
@@ -109,8 +124,8 @@ export function BRollTextEditor({
       toast.error('Each overlay needs text and a valid timing (e.g. "0-3s").');
       return;
     }
-    // Map UI overlays → renderer specs. The `type` is forwarded so the
-    // renderer can apply hook/CTA emphasis to match the live preview.
+    // Map UI overlays → renderer specs. Carry the overlay `type` through
+    // so the renderer can apply hook/CTA emphasis.
     const specs = overlays
       .map(o => {
         const t = parseTimingRange(o.timing || '');
@@ -122,30 +137,44 @@ export function BRollTextEditor({
           type: o.type,
         };
       })
-      .filter((x): x is NonNullable<typeof x> => !!x);
+      .filter(
+        (x): x is { text: string; startSeconds: number; endSeconds: number; type?: TextOverlay['type'] } =>
+          !!x,
+      );
+
+    // If a template was picked, compose its base style with the brand's
+    // emphasis settings. Otherwise fall back to the brand style.
+    const renderStyle: RenderStyle = templateStyle
+      ? {
+          ...templateStyle,
+          emphasizeHookCta: style.emphasizeHookCta,
+          emphasisBoost: style.emphasisBoost,
+          emphasisStyle: style.emphasisStyle,
+        }
+      : {
+          fontFamily: style.fontFamily,
+          fontSize: style.fontSize,
+          textColor: style.textColor,
+          bgColor: style.bgColor,
+          bgOpacity: style.bgOpacity,
+          position: style.position,
+          textShadow: style.textShadow,
+          fontWeight: style.fontWeight,
+          letterCase: style.letterCase,
+          emphasizeHookCta: style.emphasizeHookCta,
+          emphasisBoost: style.emphasisBoost,
+          emphasisStyle: style.emphasisStyle,
+        };
 
     enqueue({
       title: clipName || 'B-roll video',
       sourceClipName: clipName,
       videoUrl,
       overlays: specs,
-      style: {
-        fontFamily: style.fontFamily,
-        fontSize: style.fontSize,
-        textColor: style.textColor,
-        bgColor: style.bgColor,
-        bgOpacity: style.bgOpacity,
-        position: style.position,
-        textShadow: style.textShadow,
-        emphasizeHookCta: style.emphasizeHookCta,
-        emphasisBoost: style.emphasisBoost,
-        emphasisStyle: style.emphasisStyle,
-      },
+      style: renderStyle,
       context: brandId ? { brandId } : undefined,
     });
 
-    // Immediately close the modal. The queue context fires its own toast +
-    // the bell icon tracks progress; we don't need a modal-scoped UI here.
     onOpenChange(false);
   };
 
@@ -164,7 +193,29 @@ export function BRollTextEditor({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-2 gap-6 mt-2">
+        <div className="mt-2">
+          <TemplateGallery
+            selectedTemplateId={templateId}
+            onSelectTemplateId={setTemplateId}
+            onApply={(newStyle, name) => {
+              setTemplateStyle(newStyle);
+              toast.success(`Style applied: ${name}`);
+            }}
+          />
+          {templateStyle && (
+            <button
+              className="text-[11px] text-muted-foreground underline ml-2"
+              onClick={() => {
+                setTemplateStyle(null);
+                setTemplateId(null);
+              }}
+            >
+              reset to brand default
+            </button>
+          )}
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6 mt-4">
           {/* LEFT: overlay editor */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -264,10 +315,11 @@ export function BRollTextEditor({
             <VideoTextPreview
               videoUrl={videoUrl}
               overlays={overlays}
-              style={style}
+              style={effectiveStyle}
             />
             <p className="text-[11px] text-muted-foreground mt-2 text-center">
-              Scrub the video to see each overlay appear at its timing.
+              Play the video to see each overlay appear at its timing. Hook and CTA lines are emphasized
+              automatically if your brand settings enable it.
             </p>
           </div>
         </div>
@@ -291,6 +343,4 @@ export function BRollTextEditor({
   );
 }
 
-// Re-export the renderer's style default so callers can reach it via the
-// same import surface.
 export { DEFAULT_RENDER_STYLE };

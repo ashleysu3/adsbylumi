@@ -1,5 +1,5 @@
 // ============================================================================
-// ffmpeg-renderer.ts
+// ffmpeg-renderer.ts (patch #15)
 //
 // Browser-side MP4 renderer that burns text overlays INTO a video file so
 // users can upload it to Meta (or anywhere else) and the text travels with
@@ -7,37 +7,38 @@
 //
 // Approach:
 //   1. For each overlay, render the text to an HTML <canvas> using the
-//      browser's native font rendering (same fonts that are already loaded
-//      via OverlayStylePicker's Google Fonts <link>).
-//   2. Export the canvas to PNG (with transparency for the uncovered area).
+//      browser's native font rendering (fonts are preloaded globally from
+//      index.html so we don't depend on any particular screen mounting
+//      a Google Fonts <link>).
+//   2. Export the canvas to PNG (transparent outside the text area).
 //   3. Load the source video + each PNG into ffmpeg's virtual filesystem.
 //   4. Use ffmpeg's `overlay` filter with `enable=between(t, start, end)`
 //      to composite the overlay PNG onto the video only during the
 //      overlay's active window.
 //   5. Export as MP4 Blob for the caller to download / upload.
 //
-// This avoids the `drawtext` filter entirely, which would need bundled
-// .ttf files — the canvas approach lets us reuse whatever font the user
-// already sees in the preview.
-//
-// Single-thread ffmpeg core (no SharedArrayBuffer required) so this works
-// on any Lovable deploy without special CORS headers. Trade-off is speed:
-// a 30-second clip takes ~30–60s to render on desktop, longer on mobile.
-// We report progress via the onProgress callback.
+// Patch #15 changes:
+//   - RenderOverlay gains optional `type` ('hook' | 'insight' | 'transition'
+//     | 'cta') and RenderStyle gains emphasis fields (mirror of OverlayStyle
+//     on the frontend). The renderer uses these to auto-boost hook/CTA
+//     lines — same logic as VideoTextPreview.resolveOverlayRender so
+//     preview and burned MP4 stay in sync.
+//   - DEFAULT_RENDER_STYLE modernized (Bebas Neue, upper, no pill).
 // ============================================================================
 
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
-export type RenderEmphasisStyle = 'bold' | 'uppercase' | 'bold-uppercase';
+export type OverlayType = 'hook' | 'insight' | 'transition' | 'cta';
+export type EmphasisStyle = 'bold' | 'upper' | 'bold-upper';
 
 export interface RenderOverlay {
   text: string;
   startSeconds: number;
   endSeconds: number;
-  /** Used to apply hook/cta emphasis (size boost + bold/uppercase) so the
-   * burned video matches the in-app preview. */
-  type?: 'hook' | 'insight' | 'transition' | 'cta';
+  // Optional — drives hook/CTA emphasis. Falls back to 'insight' when
+  // absent (no emphasis applied).
+  type?: OverlayType;
 }
 
 export interface RenderStyle {
@@ -48,16 +49,16 @@ export interface RenderStyle {
   bgOpacity: number; // 0–1
   position: 'top' | 'center' | 'bottom';
   textShadow: boolean;
-  letterCase?: 'none' | 'upper' | 'lower' | 'as-typed';
-  fontWeight?: number | string;
-  textStrokeColor?: string | null;
-  textStrokeWidth?: number;
-  /** Apply emphasis to overlays whose type is 'hook' or 'cta'. */
-  emphasizeHookCta?: boolean;
-  /** Multiplier on fontSize for emphasized overlays. Default 1.3. */
-  emphasisBoost?: number;
-  /** How to emphasize. Default 'bold-uppercase'. */
-  emphasisStyle?: RenderEmphasisStyle;
+  // Extended (patch #13 templates). Optional so existing callers keep
+  // working without changes.
+  fontWeight?: 'normal' | 'bold' | 'black'; // defaults to 'bold'
+  letterCase?: 'as-typed' | 'upper' | 'lower' | 'title'; // defaults to 'as-typed'
+  textStrokeColor?: string | null; // null = no stroke
+  textStrokeWidth?: number; // px, 0 = no stroke
+  // Emphasis (patch #15). Auto-applied to hook / cta overlays when on.
+  emphasizeHookCta?: boolean; // default true
+  emphasisBoost?: number; // 0.0–1.0, applied to fontSize (default 0.3)
+  emphasisStyle?: EmphasisStyle; // default 'bold-upper'
 }
 
 export interface RenderOptions {
@@ -68,17 +69,68 @@ export interface RenderOptions {
 }
 
 export const DEFAULT_RENDER_STYLE: RenderStyle = {
-  fontFamily: 'Inter',
-  fontSize: 48,
+  fontFamily: 'Bebas Neue',
+  fontSize: 56,
   textColor: '#FFFFFF',
   bgColor: '#000000',
-  bgOpacity: 0.6,
+  bgOpacity: 0,
   position: 'bottom',
   textShadow: true,
+  fontWeight: 'bold',
+  letterCase: 'upper',
+  textStrokeColor: null,
+  textStrokeWidth: 0,
   emphasizeHookCta: true,
-  emphasisBoost: 1.3,
-  emphasisStyle: 'bold-uppercase',
+  emphasisBoost: 0.3,
+  emphasisStyle: 'bold-upper',
 };
+
+/** Normalize text per the chosen letter-case transform. Applied before
+ *  canvas rendering so both the preview and the rendered MP4 match. */
+function applyLetterCase(text: string, mode: RenderStyle['letterCase']): string {
+  switch (mode) {
+    case 'upper': return text.toUpperCase();
+    case 'lower': return text.toLowerCase();
+    case 'title':
+      return text.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.substr(1).toLowerCase());
+    case 'as-typed':
+    default:
+      return text;
+  }
+}
+
+/**
+ * Given a single overlay + the active style, compute the effective render
+ * parameters (text, fontSize, fontWeight). Mirrors VideoTextPreview's
+ * resolveOverlayRender so preview and MP4 are consistent.
+ */
+function resolveOverlayRender(
+  overlay: RenderOverlay,
+  style: RenderStyle,
+): { text: string; fontSize: number; fontWeight: 'normal' | 'bold' | 'black' } {
+  const baseSize = style.fontSize;
+  const baseWeight: 'normal' | 'bold' | 'black' = style.fontWeight ?? 'bold';
+  const emphasize =
+    (style.emphasizeHookCta ?? true) && (overlay.type === 'hook' || overlay.type === 'cta');
+
+  let size = baseSize;
+  let weight = baseWeight;
+  let text = applyLetterCase(overlay.text, style.letterCase);
+
+  if (emphasize) {
+    const boost = Math.max(0, Math.min(1, style.emphasisBoost ?? 0.3));
+    size = Math.round(baseSize * (1 + boost));
+    const mode = style.emphasisStyle ?? 'bold-upper';
+    if (mode === 'bold' || mode === 'bold-upper') {
+      weight = 'black';
+    }
+    if (mode === 'upper' || mode === 'bold-upper') {
+      text = text.toUpperCase();
+    }
+  }
+
+  return { text, fontSize: size, fontWeight: weight };
+}
 
 // ---------------------------------------------------------------------------
 // Singleton ffmpeg instance. Loading the wasm core is expensive (~25 MB
@@ -97,9 +149,6 @@ export async function getFFmpeg(
     onProgress?.('Loading video engine…');
     const ffmpeg = new FFmpeg();
 
-    // Unpkg CDN for the core files. Using `toBlobURL` so the browser can
-    // load them from a blob: URL, which avoids some cross-origin gotchas
-    // with wasm module loading.
     const baseURL = 'https://unpkg.com/@ffmpeg/[email protected]/dist/umd';
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
@@ -125,14 +174,6 @@ function hexToRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
-function isEmphasizedOverlay(
-  overlay: { type?: 'hook' | 'insight' | 'transition' | 'cta' },
-  style: RenderStyle,
-): boolean {
-  if (!style.emphasizeHookCta) return false;
-  return overlay.type === 'hook' || overlay.type === 'cta';
-}
-
 async function renderTextToPng(
   overlay: RenderOverlay,
   style: RenderStyle,
@@ -145,36 +186,35 @@ async function renderTextToPng(
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D context unavailable');
 
-  // Transparent base — overlay will composite over the video.
   ctx.clearRect(0, 0, width, height);
 
-  // Apply hook/cta emphasis: bigger size + bold/uppercase.
-  const emphasized = isEmphasizedOverlay(overlay, style);
-  const emphasisBoost = style.emphasisBoost ?? 1.3;
-  const emphasisMode = style.emphasisStyle ?? 'bold-uppercase';
-  const useUpper = emphasized && (emphasisMode === 'uppercase' || emphasisMode === 'bold-uppercase');
-  const useBold = !emphasized || emphasisMode === 'bold' || emphasisMode === 'bold-uppercase';
-  const effectiveFontSize = emphasized ? style.fontSize * emphasisBoost : style.fontSize;
+  // Resolve emphasis — hook / CTA get a size bump + weight/case override.
+  const resolved = resolveOverlayRender(overlay, style);
 
-  // Try to scale font reasonably to video size. The `style.fontSize` is
-  // the editor's chosen size against a 540px-wide preview; we scale up
-  // proportionally so it looks the same on the real video dimensions.
-  const scaledFontSize = Math.round(effectiveFontSize * (width / 540));
+  // Scale the resolved (post-emphasis) font size up to the real video
+  // dimensions. 540px-wide reference matches the preview container math.
+  const scaledFontSize = Math.round(resolved.fontSize * (width / 540));
+  const scaledStrokeWidth = Math.max(
+    0,
+    Math.round((style.textStrokeWidth || 0) * (width / 540)),
+  );
+  const weightCss = resolved.fontWeight === 'black'
+    ? '900'
+    : resolved.fontWeight === 'normal'
+      ? '400'
+      : '700';
 
-  const weight = useBold ? '800' : '400';
-  ctx.font = `${weight} ${scaledFontSize}px "${style.fontFamily}", Inter, sans-serif`;
+  ctx.font = `${weightCss} ${scaledFontSize}px "${style.fontFamily}", Inter, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const renderedText = useUpper ? overlay.text.toUpperCase() : overlay.text;
-
   // Split on explicit \n; no auto-wrap in v1.
-  const lines = renderedText.split('\n');
-  const lineHeight = scaledFontSize * 1.3;
+  const lines = resolved.text.split('\n');
+  const lineHeight = scaledFontSize * 1.15;
   const totalHeight = lines.length * lineHeight;
 
   // Vertical anchor by position choice.
-  const padding = height * 0.05;
+  const padding = height * 0.06;
   const yCenter =
     style.position === 'top'
       ? totalHeight / 2 + padding
@@ -186,6 +226,8 @@ async function renderTextToPng(
   const padY = scaledFontSize * 0.2;
 
   // Background boxes first (per line) so text can overlay them cleanly.
+  // Skipped entirely when bgOpacity is 0 — matches the preview's no-pill
+  // rendering for the modern default look.
   if (style.bgOpacity > 0) {
     ctx.fillStyle = hexToRgba(style.bgColor, style.bgOpacity);
     lines.forEach((line, i) => {
@@ -200,12 +242,29 @@ async function renderTextToPng(
     });
   }
 
-  // Shadow if enabled. Applied to text only, not background.
+  // Shadow if enabled. Applied to text only, not background. Stronger when
+  // there's no pill background — the shadow has to carry readability on its
+  // own. Matches VideoTextPreview's CSS.
   if (style.textShadow) {
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-    ctx.shadowBlur = 4;
+    ctx.shadowColor = style.bgOpacity > 0 ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.85)';
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = style.bgOpacity > 0 ? 2 : 3;
+    ctx.shadowBlur = style.bgOpacity > 0 ? 4 : 10;
+  }
+
+  // Stroke pass first (underneath the fill) so fill visually sits on top.
+  // Skip shadow on stroke pass to avoid a shadowed-outline look.
+  if (scaledStrokeWidth > 0 && style.textStrokeColor) {
+    ctx.save();
+    ctx.shadowColor = 'transparent';
+    ctx.strokeStyle = style.textStrokeColor;
+    ctx.lineWidth = scaledStrokeWidth * 2; // canvas strokes center on path, so 2x for visual width
+    ctx.lineJoin = 'round';
+    lines.forEach((line, i) => {
+      const y = yCenter - totalHeight / 2 + lineHeight * i + lineHeight / 2;
+      ctx.strokeText(line, width / 2, y);
+    });
+    ctx.restore();
   }
 
   ctx.fillStyle = style.textColor;
@@ -214,7 +273,6 @@ async function renderTextToPng(
     ctx.fillText(line, width / 2, y);
   });
 
-  // Export.
   const blob: Blob = await new Promise((resolve, reject) => {
     canvas.toBlob(b => (b ? resolve(b) : reject(new Error('toBlob returned null'))), 'image/png');
   });
@@ -238,6 +296,22 @@ function readVideoDimensions(videoUrl: string): Promise<{ width: number; height:
   });
 }
 
+/**
+ * Try to ensure the requested font face is actually loaded before we
+ * paint to canvas. Without this the first overlay in a render can fall
+ * back to sans-serif while the Google Fonts stylesheet is still fetching
+ * the woff2 file. `document.fonts.load()` is safe to call for any family —
+ * it resolves immediately if the font is already loaded.
+ */
+async function ensureFontLoaded(family: string, weightCss: string): Promise<void> {
+  try {
+    if (typeof document === 'undefined' || !('fonts' in document)) return;
+    await (document as any).fonts.load(`${weightCss} 48px "${family}"`);
+  } catch {
+    // Non-fatal — fall back to whatever the browser has.
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main entry point.
 // ---------------------------------------------------------------------------
@@ -252,7 +326,6 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
   // Phase 1: load engine (only first time is slow).
   const ffmpeg = await getFFmpeg(msg => onProgress?.({ pct: 0, message: msg }));
 
-  // Progress handler — ffmpeg.wasm reports as 0–1.
   const progressListener = ({ progress }: { progress: number }) => {
     const pct = Math.max(0, Math.min(100, Math.round(progress * 100)));
     onProgress?.({ pct, message: `Rendering… ${pct}%` });
@@ -268,6 +341,16 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
     const videoBytes = await fetchFile(videoUrl);
     await ffmpeg.writeFile('input.mp4', videoBytes);
 
+    // Make sure the chosen font is in the browser's font cache before we
+    // rasterize any overlay. Preload 400/700/900 since emphasis may push
+    // to 900 and the base might be 400 or 700.
+    onProgress?.({ pct: 0, message: 'Preparing fonts…' });
+    await Promise.all([
+      ensureFontLoaded(style.fontFamily, '400'),
+      ensureFontLoaded(style.fontFamily, '700'),
+      ensureFontLoaded(style.fontFamily, '900'),
+    ]);
+
     onProgress?.({ pct: 0, message: 'Building text overlays…' });
     for (let i = 0; i < overlays.length; i++) {
       const png = await renderTextToPng(overlays[i], style, width, height);
@@ -277,10 +360,6 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
     // Build the filter_complex. Each overlay PNG is a separate input; we
     // chain them with `overlay` filters that enable only during the
     // overlay's time window. Audio stream (0:a) is copied through.
-    //
-    //   [0:v][1:v] overlay=0:0:enable='between(t,S1,E1)' [v1];
-    //   [v1][2:v]  overlay=0:0:enable='between(t,S2,E2)' [v2];
-    //   ...
     const filterParts: string[] = [];
     let prev = '[0:v]';
     overlays.forEach((o, i) => {
@@ -300,7 +379,7 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
     args.push(
       '-filter_complex', filterComplex,
       '-map', '[vout]',
-      '-map', '0:a?', // audio is optional (silent clips still work)
+      '-map', '0:a?',
       '-c:v', 'libx264',
       '-preset', 'ultrafast',
       '-crf', '23',
@@ -315,8 +394,6 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
     const data = await ffmpeg.readFile('output.mp4');
     const bytes = data instanceof Uint8Array ? data : new Uint8Array(data as any);
 
-    // Cleanup the virtual FS for this render so subsequent renders don't
-    // OOM on long sessions.
     try { await ffmpeg.deleteFile('input.mp4'); } catch { /* ignore */ }
     for (let i = 0; i < overlays.length; i++) {
       try { await ffmpeg.deleteFile(`overlay_${i}.png`); } catch { /* ignore */ }
