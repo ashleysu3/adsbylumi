@@ -106,6 +106,9 @@ export function BRollTextEditor({
   const handlePositionChange = (idx: number, xy: OverlayXY) => {
     updateOverlay(idx, { xy });
   };
+  const handleResize = (idx: number, patch: { width?: number; scale?: number }) => {
+    updateOverlay(idx, patch);
+  };
 
   const allValid = overlays.every(
     o => o.text.trim().length > 0 && parseTimingRange(o.timing || '') !== null,
@@ -126,6 +129,8 @@ export function BRollTextEditor({
           endSeconds: t.end,
           type: o.type,
           xy: o.xy,
+          width: o.width,
+          scale: o.scale,
         };
       })
       .filter((x): x is NonNullable<typeof x> => !!x);
@@ -311,10 +316,11 @@ export function BRollTextEditor({
               style={effectiveStyle}
               editable
               onOverlayPositionChange={handlePositionChange}
+              onOverlayResize={handleResize}
             />
             <p className="text-[11px] text-muted-foreground mt-2 text-center">
-              Pause the video to see all overlays at once. Drag any line to reposition it. Hook and CTA
-              are auto-emphasized if your brand settings have it on.
+              Pause the video to see all overlays. Drag any line to move it. Hover any line and use the
+              right-edge handle to change line wrapping, or the corner handle to resize the text.
             </p>
           </div>
         </div>

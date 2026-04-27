@@ -733,6 +733,8 @@ export function ProductionManager({
           endSeconds: parseFloat(m[2]),
           type: o.type,
           xy: o.xy,
+          width: (o as any).width,
+          scale: (o as any).scale,
         };
       })
       .filter((x): x is NonNullable<typeof x> => !!x);

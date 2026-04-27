@@ -33,6 +33,10 @@ export interface TextOverlay {
   type?: "hook" | "insight" | "transition" | "cta";
   /** Optional drag-positioned xy. Falls back to style.position when absent. */
   xy?: OverlayXY;
+  /** Max text-box width as a fraction (0-1) of the video width. Default 0.92. */
+  width?: number;
+  /** Per-overlay font-size multiplier on top of the style's base size. Default 1. */
+  scale?: number;
 }
 
 export type EmphasisStyle = "bold" | "upper" | "bold-upper";
@@ -82,6 +86,9 @@ interface VideoTextPreviewProps {
   /** Called when the user finishes dragging an overlay. The parent should
    *  update overlays[idx].xy and persist via its overlay-change pipeline. */
   onOverlayPositionChange?: (idx: number, xy: OverlayXY) => void;
+  /** Called when the user finishes resizing an overlay (right edge → width,
+   *  bottom-right corner → font scale). Either field may be present. */
+  onOverlayResize?: (idx: number, patch: { width?: number; scale?: number }) => void;
 }
 
 function parseTimingString(timing?: string): { start: number; end: number } | null {
@@ -172,6 +179,7 @@ export function VideoTextPreview({
   compact,
   editable = false,
   onOverlayPositionChange,
+  onOverlayResize,
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -184,6 +192,20 @@ export function VideoTextPreview({
   // when the pointer is released.
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragXY, setDragXY] = useState<OverlayXY | null>(null);
+
+  // Resize state. Mode 'width' tracks horizontal drag → overlay.width fraction.
+  // Mode 'scale' tracks corner drag → overlay.scale multiplier (uses initial
+  // pointer offset from overlay center to compute a stable scaling factor).
+  const [resizeIdx, setResizeIdx] = useState<number | null>(null);
+  const [resizeMode, setResizeMode] = useState<"width" | "scale" | null>(null);
+  const [liveWidth, setLiveWidth] = useState<number | null>(null);
+  const [liveScale, setLiveScale] = useState<number | null>(null);
+  const resizeStartRef = useRef<{
+    initialDistance: number;
+    initialScale: number;
+    centerClientX: number;
+    centerClientY: number;
+  } | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -321,13 +343,119 @@ export function VideoTextPreview({
   };
 
   // ---------------------------------------------------------------------------
+  // Resize handlers. Right-edge handle adjusts overlay.width (controls the
+  // wrapping max width → fewer/more lines). Bottom-right corner adjusts
+  // overlay.scale (font-size multiplier). Both commit on pointer-up.
+  // ---------------------------------------------------------------------------
+
+  const startResize = (
+    e: React.PointerEvent,
+    idx: number,
+    mode: "width" | "scale",
+    overlay: TextOverlay,
+  ) => {
+    if (!editable) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const xy = overlay.xy ?? defaultXYFromPosition(style.position);
+    const centerClientX = rect.left + xy.x * rect.width;
+    const centerClientY = rect.top + xy.y * rect.height;
+    const initialDistance = Math.max(
+      8,
+      Math.hypot(e.clientX - centerClientX, e.clientY - centerClientY),
+    );
+
+    setResizeIdx(idx);
+    setResizeMode(mode);
+    setLiveWidth(overlay.width ?? 0.92);
+    setLiveScale(overlay.scale ?? 1);
+    resizeStartRef.current = {
+      initialDistance,
+      initialScale: overlay.scale ?? 1,
+      centerClientX,
+      centerClientY,
+    };
+  };
+
+  const handleResizeMove = (e: React.PointerEvent) => {
+    if (resizeIdx === null || !resizeMode) return;
+    const el = containerRef.current;
+    const start = resizeStartRef.current;
+    if (!el || !start) return;
+    const rect = el.getBoundingClientRect();
+
+    if (resizeMode === "width") {
+      // Distance from overlay center to pointer's X → half-width.
+      const halfWidthPx = Math.abs(e.clientX - start.centerClientX);
+      const fullWidthPx = halfWidthPx * 2;
+      const fraction = Math.max(0.2, Math.min(1, fullWidthPx / rect.width));
+      setLiveWidth(fraction);
+    } else {
+      const distance = Math.max(
+        8,
+        Math.hypot(e.clientX - start.centerClientX, e.clientY - start.centerClientY),
+      );
+      const ratio = distance / start.initialDistance;
+      const next = Math.max(0.5, Math.min(2.5, start.initialScale * ratio));
+      setLiveScale(next);
+    }
+  };
+
+  const endResize = (e: React.PointerEvent) => {
+    if (resizeIdx === null || !resizeMode) return;
+    const idx = resizeIdx;
+    const mode = resizeMode;
+    const w = liveWidth;
+    const s = liveScale;
+    setResizeIdx(null);
+    setResizeMode(null);
+    setLiveWidth(null);
+    setLiveScale(null);
+    resizeStartRef.current = null;
+    try {
+      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (!onOverlayResize) return;
+    if (mode === "width" && w !== null) {
+      onOverlayResize(idx, { width: Number(w.toFixed(3)) });
+    } else if (mode === "scale" && s !== null) {
+      onOverlayResize(idx, { scale: Number(s.toFixed(2)) });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
   // Render a single overlay at its computed xy. Position is absolute (left/
   // top in %) with a translate(-50%, -50%) so the xy refers to the CENTER of
   // the text bounding box.
   // ---------------------------------------------------------------------------
   const renderOverlay = (overlay: TextOverlay, idx: number) => {
     const resolved = resolveOverlayRender(overlay, style);
-    const fontSizePx = Math.max(10, Math.round(resolved.fontSize * sizeScale));
+
+    // Per-overlay font scale (live during corner-resize, persisted otherwise)
+    const persistedScale = overlay.scale ?? 1;
+    const effectiveScale =
+      resizeIdx === idx && resizeMode === "scale" && liveScale !== null
+        ? liveScale
+        : persistedScale;
+    const fontSizePx = Math.max(
+      10,
+      Math.round(resolved.fontSize * sizeScale * effectiveScale),
+    );
+
+    // Per-overlay max width fraction (live during edge-resize, persisted otherwise)
+    const persistedWidth = overlay.width ?? 0.92;
+    const effectiveWidth =
+      resizeIdx === idx && resizeMode === "width" && liveWidth !== null
+        ? liveWidth
+        : persistedWidth;
+
     const weightCss =
       resolved.fontWeight === "black"
         ? 900
@@ -341,18 +469,21 @@ export function VideoTextPreview({
         : overlay.xy ?? defaultXYFromPosition(style.position);
 
     const dragging = dragIdx === idx;
+    const resizing = resizeIdx === idx;
     const dimmedInStack =
       isStackedEditMode &&
       activeIndexAtPlayhead !== null &&
       activeIndexAtPlayhead !== idx;
 
+    const widthPx = (containerWidth || widthBasis) * effectiveWidth;
+
     return (
       <div
         key={idx}
         className={cn(
-          "absolute select-none transition-shadow",
+          "absolute select-none transition-shadow group",
           editable
-            ? dragging
+            ? dragging || resizing
               ? "cursor-grabbing ring-2 ring-primary/60 ring-offset-1 ring-offset-black/30 rounded"
               : "cursor-grab hover:ring-1 hover:ring-primary/40 rounded"
             : "pointer-events-none",
@@ -361,16 +492,38 @@ export function VideoTextPreview({
           left: `${liveXY.x * 100}%`,
           top: `${liveXY.y * 100}%`,
           transform: "translate(-50%, -50%)",
-          maxWidth: "92%",
+          width: `${widthPx}px`,
+          maxWidth: "100%",
           textAlign: "center",
           touchAction: "none",
           zIndex: 10 + idx,
           opacity: dimmedInStack ? 0.45 : 1,
         }}
         onPointerDown={editable ? e => handlePointerDown(e, idx) : undefined}
-        onPointerMove={editable ? handlePointerMove : undefined}
-        onPointerUp={editable ? handlePointerUp : undefined}
-        onPointerCancel={editable ? handlePointerUp : undefined}
+        onPointerMove={
+          editable
+            ? e => {
+                if (resizeIdx === idx) handleResizeMove(e);
+                else handlePointerMove(e);
+              }
+            : undefined
+        }
+        onPointerUp={
+          editable
+            ? e => {
+                if (resizeIdx === idx) endResize(e);
+                else handlePointerUp(e);
+              }
+            : undefined
+        }
+        onPointerCancel={
+          editable
+            ? e => {
+                if (resizeIdx === idx) endResize(e);
+                else handlePointerUp(e);
+              }
+            : undefined
+        }
       >
         {isStackedEditMode && (
           <span
@@ -398,11 +551,54 @@ export function VideoTextPreview({
             display: "inline-block",
             lineHeight: 1.15,
             letterSpacing: style.fontFamily === "Bebas Neue" ? "0.02em" : "normal",
-            whiteSpace: "pre-line",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            width: "100%",
+            boxSizing: "border-box",
           }}
         >
           {resolved.text}
         </span>
+
+        {/* Resize handles — only when editable + paused. The right-edge
+            handle widens/narrows the text box (controls wrapping). The
+            bottom-right corner scales font size. */}
+        {editable && !isPlaying && (
+          <>
+            <div
+              role="button"
+              aria-label="Drag to change line wrapping"
+              title="Drag to change line wrapping"
+              onPointerDown={e => startResize(e, idx, "width", overlay)}
+              onPointerMove={handleResizeMove}
+              onPointerUp={endResize}
+              onPointerCancel={endResize}
+              className={cn(
+                "absolute top-1/2 -right-1 -translate-y-1/2 w-3 h-8 rounded-sm",
+                "bg-primary/80 border border-white/80 shadow cursor-ew-resize",
+                "opacity-0 group-hover:opacity-100 transition-opacity",
+                resizing && resizeMode === "width" && "opacity-100",
+              )}
+              style={{ touchAction: "none", zIndex: 30 }}
+            />
+            <div
+              role="button"
+              aria-label="Drag to resize text"
+              title="Drag to resize text"
+              onPointerDown={e => startResize(e, idx, "scale", overlay)}
+              onPointerMove={handleResizeMove}
+              onPointerUp={endResize}
+              onPointerCancel={endResize}
+              className={cn(
+                "absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-sm",
+                "bg-primary border border-white shadow cursor-nwse-resize",
+                "opacity-0 group-hover:opacity-100 transition-opacity",
+                resizing && resizeMode === "scale" && "opacity-100",
+              )}
+              style={{ touchAction: "none", zIndex: 30 }}
+            />
+          </>
+        )}
       </div>
     );
   };
@@ -453,7 +649,7 @@ export function VideoTextPreview({
       {/* Drag affordance hint when in editable mode */}
       {editable && !isPlaying && overlays.length > 0 && (
         <div className="absolute bottom-1 left-1 right-1 text-center text-[10px] text-white/80 pointer-events-none z-30 drop-shadow">
-          Drag any text to reposition · Press play to preview real timing
+          Drag text to move · hover for handles to resize · press play to preview timing
         </div>
       )}
     </div>
