@@ -437,7 +437,25 @@ export function VideoTextPreview({
   // ---------------------------------------------------------------------------
   const renderOverlay = (overlay: TextOverlay, idx: number) => {
     const resolved = resolveOverlayRender(overlay, style);
-    const fontSizePx = Math.max(10, Math.round(resolved.fontSize * sizeScale));
+
+    // Per-overlay font scale (live during corner-resize, persisted otherwise)
+    const persistedScale = overlay.scale ?? 1;
+    const effectiveScale =
+      resizeIdx === idx && resizeMode === "scale" && liveScale !== null
+        ? liveScale
+        : persistedScale;
+    const fontSizePx = Math.max(
+      10,
+      Math.round(resolved.fontSize * sizeScale * effectiveScale),
+    );
+
+    // Per-overlay max width fraction (live during edge-resize, persisted otherwise)
+    const persistedWidth = overlay.width ?? 0.92;
+    const effectiveWidth =
+      resizeIdx === idx && resizeMode === "width" && liveWidth !== null
+        ? liveWidth
+        : persistedWidth;
+
     const weightCss =
       resolved.fontWeight === "black"
         ? 900
@@ -451,18 +469,21 @@ export function VideoTextPreview({
         : overlay.xy ?? defaultXYFromPosition(style.position);
 
     const dragging = dragIdx === idx;
+    const resizing = resizeIdx === idx;
     const dimmedInStack =
       isStackedEditMode &&
       activeIndexAtPlayhead !== null &&
       activeIndexAtPlayhead !== idx;
 
+    const widthPx = (containerWidth || widthBasis) * effectiveWidth;
+
     return (
       <div
         key={idx}
         className={cn(
-          "absolute select-none transition-shadow",
+          "absolute select-none transition-shadow group",
           editable
-            ? dragging
+            ? dragging || resizing
               ? "cursor-grabbing ring-2 ring-primary/60 ring-offset-1 ring-offset-black/30 rounded"
               : "cursor-grab hover:ring-1 hover:ring-primary/40 rounded"
             : "pointer-events-none",
@@ -471,16 +492,38 @@ export function VideoTextPreview({
           left: `${liveXY.x * 100}%`,
           top: `${liveXY.y * 100}%`,
           transform: "translate(-50%, -50%)",
-          maxWidth: "92%",
+          width: `${widthPx}px`,
+          maxWidth: "100%",
           textAlign: "center",
           touchAction: "none",
           zIndex: 10 + idx,
           opacity: dimmedInStack ? 0.45 : 1,
         }}
         onPointerDown={editable ? e => handlePointerDown(e, idx) : undefined}
-        onPointerMove={editable ? handlePointerMove : undefined}
-        onPointerUp={editable ? handlePointerUp : undefined}
-        onPointerCancel={editable ? handlePointerUp : undefined}
+        onPointerMove={
+          editable
+            ? e => {
+                if (resizeIdx === idx) handleResizeMove(e);
+                else handlePointerMove(e);
+              }
+            : undefined
+        }
+        onPointerUp={
+          editable
+            ? e => {
+                if (resizeIdx === idx) endResize(e);
+                else handlePointerUp(e);
+              }
+            : undefined
+        }
+        onPointerCancel={
+          editable
+            ? e => {
+                if (resizeIdx === idx) endResize(e);
+                else handlePointerUp(e);
+              }
+            : undefined
+        }
       >
         {isStackedEditMode && (
           <span
@@ -508,11 +551,54 @@ export function VideoTextPreview({
             display: "inline-block",
             lineHeight: 1.15,
             letterSpacing: style.fontFamily === "Bebas Neue" ? "0.02em" : "normal",
-            whiteSpace: "pre-line",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            width: "100%",
+            boxSizing: "border-box",
           }}
         >
           {resolved.text}
         </span>
+
+        {/* Resize handles — only when editable + paused. The right-edge
+            handle widens/narrows the text box (controls wrapping). The
+            bottom-right corner scales font size. */}
+        {editable && !isPlaying && (
+          <>
+            <div
+              role="button"
+              aria-label="Drag to change line wrapping"
+              title="Drag to change line wrapping"
+              onPointerDown={e => startResize(e, idx, "width", overlay)}
+              onPointerMove={handleResizeMove}
+              onPointerUp={endResize}
+              onPointerCancel={endResize}
+              className={cn(
+                "absolute top-1/2 -right-1 -translate-y-1/2 w-3 h-8 rounded-sm",
+                "bg-primary/80 border border-white/80 shadow cursor-ew-resize",
+                "opacity-0 group-hover:opacity-100 transition-opacity",
+                resizing && resizeMode === "width" && "opacity-100",
+              )}
+              style={{ touchAction: "none", zIndex: 30 }}
+            />
+            <div
+              role="button"
+              aria-label="Drag to resize text"
+              title="Drag to resize text"
+              onPointerDown={e => startResize(e, idx, "scale", overlay)}
+              onPointerMove={handleResizeMove}
+              onPointerUp={endResize}
+              onPointerCancel={endResize}
+              className={cn(
+                "absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-sm",
+                "bg-primary border border-white shadow cursor-nwse-resize",
+                "opacity-0 group-hover:opacity-100 transition-opacity",
+                resizing && resizeMode === "scale" && "opacity-100",
+              )}
+              style={{ touchAction: "none", zIndex: 30 }}
+            />
+          </>
+        )}
       </div>
     );
   };
