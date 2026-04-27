@@ -441,10 +441,19 @@ export function VideoTextPreview({
       {/* Text overlays */}
       {visibleIndexes.map(i => renderOverlay(overlays[i], i))}
 
+      {/* Edit-mode badge: makes it explicit that all overlays are stacked
+          for editing, not playing in real-time order. */}
+      {isStackedEditMode && (
+        <div className="absolute top-2 left-2 z-30 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur-sm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/95 pointer-events-none shadow">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+          Edit mode · all overlays shown
+        </div>
+      )}
+
       {/* Drag affordance hint when in editable mode */}
       {editable && !isPlaying && overlays.length > 0 && (
-        <div className="absolute bottom-1 left-1 right-1 text-center text-[10px] text-white/70 pointer-events-none z-30 drop-shadow">
-          Drag any text to reposition
+        <div className="absolute bottom-1 left-1 right-1 text-center text-[10px] text-white/80 pointer-events-none z-30 drop-shadow">
+          Drag any text to reposition · Press play to preview real timing
         </div>
       )}
     </div>
