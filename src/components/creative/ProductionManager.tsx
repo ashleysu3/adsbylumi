@@ -1098,6 +1098,7 @@ export function ProductionManager({
                           angleCopy={getCopyForItem(item)}
                           onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                           onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
+                          onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
                           brand={mergedBrand}
                         />
                       );
@@ -1138,6 +1139,7 @@ export function ProductionManager({
                               angleCopy={getCopyForItem(item)}
                               onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                               onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
+                              onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
                               brand={mergedBrand}
                             />
                           );
@@ -1196,6 +1198,7 @@ export function ProductionManager({
                                   angleCopy={getCopyForItem(item)}
                                   onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                                   onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
+                                  onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
                                   brand={mergedBrand}
                                 />
                               ))}
