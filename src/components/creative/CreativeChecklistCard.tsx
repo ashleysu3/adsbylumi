@@ -14,6 +14,7 @@ import {
   Wand2
 } from "lucide-react";
 import { useRenderQueue } from "@/contexts/RenderQueueContext";
+import type { RenderStyle } from "@/lib/ffmpeg-renderer";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
@@ -78,6 +79,17 @@ interface CreativeChecklistCardProps {
   angleCopy?: AngleCopyData;
   onCopyChange?: (updatedCopy: AngleCopyData) => void;
   onOverlaysChange?: (overlays: TextOverlay[]) => void;
+  /**
+   * Called when the user clicks "Make my video". The parent wires this
+   * to the render queue + auto-attach logic. The card just collects the
+   * inputs (clip, overlays, brand style) and hands them up.
+   */
+  onMakeVideo?: (args: {
+    videoUrl: string;
+    sourceClipName?: string;
+    overlays: TextOverlay[];
+    style: RenderStyle;
+  }) => void;
   brand?: any;
 }
 
@@ -148,6 +160,7 @@ export function CreativeChecklistCard({
   angleCopy,
   onCopyChange,
   onOverlaysChange,
+  onMakeVideo,
   brand,
 }: CreativeChecklistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
