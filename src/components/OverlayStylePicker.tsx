@@ -1,24 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Type, Upload, X, ImageIcon } from "lucide-react";
+import { Loader2, Type, Upload, X, ImageIcon, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { OverlayStyle } from "./VideoTextPreview";
+import type { OverlayStyle, EmphasisStyle } from "./VideoTextPreview";
 
-const GOOGLE_FONT_FAMILIES = [
-  "Playfair+Display",
-  "Montserrat",
-  "Bebas+Neue",
-  "Poppins",
-  "Oswald",
-  "Lora",
-  "Raleway",
-];
+// ============================================================================
+// OverlayStylePicker (patch #15)
+//
+// Per-brand text overlay style. Stored on brands.overlay_style (JSONB) so
+// no schema migration is needed when we add fields here — new keys just
+// live alongside the old ones.
+//
+// Changes in this patch:
+//   - Removed the dynamic Google Fonts <link> injection. Those fonts are
+//     now loaded globally from index.html, so they're available in the
+//     queue-render flow too (which didn't mount this component).
+//   - Added "Emphasize Hook & CTA" section: toggle, size boost slider, and
+//     emphasis style select. The renderer reads these fields at render
+//     time and applies them to overlays whose `type` is 'hook' or 'cta'.
+// ============================================================================
 
 const FONT_OPTIONS = [
   { value: "Inter", label: "Inter" },
@@ -35,6 +41,12 @@ const POSITION_OPTIONS = [
   { value: "top", label: "Top" },
   { value: "center", label: "Center" },
   { value: "bottom", label: "Bottom" },
+];
+
+const EMPHASIS_STYLE_OPTIONS: { value: EmphasisStyle; label: string }[] = [
+  { value: "bold", label: "Bold only" },
+  { value: "upper", label: "ALL CAPS" },
+  { value: "bold-upper", label: "Bold + ALL CAPS" },
 ];
 
 interface OverlayStylePickerProps {
@@ -56,15 +68,10 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
   const update = (partial: Partial<OverlayStyle>) => onChange({ ...style, ...partial });
   const [uploadingCta, setUploadingCta] = useState(false);
 
-  useEffect(() => {
-    const linkId = "overlay-google-fonts";
-    if (document.getElementById(linkId)) return;
-    const link = document.createElement("link");
-    link.id = linkId;
-    link.rel = "stylesheet";
-    link.href = `https://fonts.googleapis.com/css2?${GOOGLE_FONT_FAMILIES.map(f => `family=${f}:wght@400;700`).join("&")}&display=swap`;
-    document.head.appendChild(link);
-  }, []);
+  // Emphasis defaults when the brand's saved style pre-dates patch #15.
+  const emphasizeHookCta = style.emphasizeHookCta ?? true;
+  const emphasisBoost = style.emphasisBoost ?? 0.3;
+  const emphasisStyle: EmphasisStyle = style.emphasisStyle ?? "bold-upper";
 
   return (
     <Card>
@@ -123,21 +130,6 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
           </div>
         </div>
 
-        {/* Font Size */}
-        <div className="space-y-2">
-          <Label>Font Size ({style.fontSize}px)</Label>
-          <Slider
-            value={[style.fontSize]}
-            onValueChange={([v]) => update({ fontSize: v })}
-            min={16}
-            max={72}
-            step={1}
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Size of the text overlay on the rendered 9:16 video.
-          </p>
-        </div>
-
         {/* BG Opacity */}
         <div className="space-y-2">
           <Label>Background Opacity ({Math.round(style.bgOpacity * 100)}%)</Label>
@@ -148,6 +140,9 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
             max={1}
             step={0.05}
           />
+          <p className="text-[11px] text-muted-foreground">
+            Set to 0% for no pill background (recommended — relies on text shadow / stroke for readability).
+          </p>
         </div>
 
         {/* Position */}
@@ -173,52 +168,60 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
           <Switch checked={style.textShadow} onCheckedChange={(v) => update({ textShadow: v })} />
         </div>
 
-        {/* Hook & CTA Emphasis */}
-        <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-sm">Emphasize Hook & CTA</Label>
-              <p className="text-[11px] text-muted-foreground">
-                Makes the opening hook and closing CTA stand out from regular lines.
+        {/* ------------------------------------------------------------------ */}
+        {/* Hook / CTA Emphasis                                                 */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <Label className="flex items-center gap-1.5 text-sm font-semibold">
+                <Sparkles className="h-4 w-4" />
+                Emphasize Hook & CTA
+              </Label>
+              <p className="text-[12px] text-muted-foreground leading-snug">
+                Make the first line (hook) and last line (CTA) stand out against the rest of the text — bigger,
+                bolder, or capitalized. Applied automatically based on the overlay's type.
               </p>
             </div>
             <Switch
-              checked={style.emphasizeHookCta ?? true}
+              checked={emphasizeHookCta}
               onCheckedChange={(v) => update({ emphasizeHookCta: v })}
             />
           </div>
 
-          {(style.emphasizeHookCta ?? true) && (
-            <>
+          {emphasizeHookCta && (
+            <div className="space-y-4 pt-1">
               <div className="space-y-2">
                 <Label className="text-xs">
-                  Emphasis size boost (+{Math.round(((style.emphasisBoost ?? 1.3) - 1) * 100)}%)
+                  Size boost (+{Math.round(emphasisBoost * 100)}%)
                 </Label>
                 <Slider
-                  value={[Math.round(((style.emphasisBoost ?? 1.3) - 1) * 100)]}
-                  onValueChange={([v]) => update({ emphasisBoost: 1 + v / 100 })}
-                  min={20}
-                  max={80}
-                  step={5}
+                  value={[emphasisBoost]}
+                  onValueChange={([v]) => update({ emphasisBoost: v })}
+                  min={0.2}
+                  max={0.8}
+                  step={0.05}
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">Emphasis style</Label>
                 <Select
-                  value={style.emphasisStyle ?? "bold-uppercase"}
-                  onValueChange={(v) => update({ emphasisStyle: v as OverlayStyle["emphasisStyle"] })}
+                  value={emphasisStyle}
+                  onValueChange={(v) => update({ emphasisStyle: v as EmphasisStyle })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="bold">Bold only</SelectItem>
-                    <SelectItem value="uppercase">ALL CAPS</SelectItem>
-                    <SelectItem value="bold-uppercase">Bold + ALL CAPS</SelectItem>
+                    {EMPHASIS_STYLE_OPTIONS.map((e) => (
+                      <SelectItem key={e.value} value={e.value}>
+                        {e.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -296,14 +299,20 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
         >
           <span
             style={{
-              fontFamily: style.fontFamily,
-              fontSize: `${Math.max(12, style.fontSize * 0.5)}px`,
+              fontFamily: `"${style.fontFamily}", Inter, sans-serif`,
+              fontSize: "20px",
+              fontWeight: style.fontWeight === "black" ? 900 : 700,
               color: style.textColor,
-              backgroundColor: hexToRgba(style.bgColor, style.bgOpacity),
-              textShadow: style.textShadow ? "0 2px 4px rgba(0,0,0,0.5)" : "none",
-              padding: "6px 16px",
-              borderRadius: "4px",
+              backgroundColor: style.bgOpacity > 0 ? hexToRgba(style.bgColor, style.bgOpacity) : "transparent",
+              textShadow: style.textShadow
+                ? style.bgOpacity > 0
+                  ? "0 2px 4px rgba(0,0,0,0.5)"
+                  : "0 2px 6px rgba(0,0,0,0.85), 0 0 14px rgba(0,0,0,0.5)"
+                : "none",
+              padding: style.bgOpacity > 0 ? "6px 16px" : "0",
+              borderRadius: style.bgOpacity > 0 ? "4px" : "0",
               display: "inline-block",
+              letterSpacing: style.fontFamily === "Bebas Neue" ? "0.02em" : "normal",
             }}
           >
             Your text overlay preview
