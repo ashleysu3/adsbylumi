@@ -132,11 +132,36 @@ export async function getFFmpeg(
   ffmpegLoadPromise = (async () => {
     onProgress?.('Loading video engine…');
     const ffmpeg = new FFmpeg();
-    const baseURL = 'https://unpkg.com/@ffmpeg/[email protected]/dist/umd';
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    });
+    // Try multiple CDNs — some sandbox/preview environments block specific hosts.
+    const candidates = [
+      'https://cdn.jsdelivr.net/npm/@ffmpeg/[email protected]/dist/umd',
+      'https://unpkg.com/@ffmpeg/[email protected]/dist/umd',
+      'https://cdn.skypack.dev/@ffmpeg/[email protected]/dist/umd',
+    ];
+    let lastErr: unknown = null;
+    let loaded = false;
+    for (const baseURL of candidates) {
+      try {
+        const [coreURL, wasmURL] = await Promise.all([
+          toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+          toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        ]);
+        await ffmpeg.load({ coreURL, wasmURL });
+        loaded = true;
+        break;
+      } catch (err) {
+        lastErr = err;
+        console.warn(`[ffmpeg] Failed to load core from ${baseURL}:`, err);
+      }
+    }
+    if (!loaded) {
+      ffmpegLoadPromise = null;
+      throw new Error(
+        `Couldn't load the video engine. Your network may be blocking the CDN. (${
+          lastErr instanceof Error ? lastErr.message : 'unknown error'
+        })`,
+      );
+    }
     ffmpegInstance = ffmpeg;
     return ffmpeg;
   })();
