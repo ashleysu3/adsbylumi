@@ -270,7 +270,7 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
 
     onProgress?.({ pct: 0, message: 'Building text overlays…' });
     for (let i = 0; i < overlays.length; i++) {
-      const png = await renderTextToPng(overlays[i].text, style, width, height);
+      const png = await renderTextToPng(overlays[i], style, width, height);
       await ffmpeg.writeFile(`overlay_${i}.png`, png);
     }
 
