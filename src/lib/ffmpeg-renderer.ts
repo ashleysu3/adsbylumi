@@ -29,10 +29,15 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
+export type RenderEmphasisStyle = 'bold' | 'uppercase' | 'bold-uppercase';
+
 export interface RenderOverlay {
   text: string;
   startSeconds: number;
   endSeconds: number;
+  /** Used to apply hook/cta emphasis (size boost + bold/uppercase) so the
+   * burned video matches the in-app preview. */
+  type?: 'hook' | 'insight' | 'transition' | 'cta';
 }
 
 export interface RenderStyle {
@@ -47,6 +52,12 @@ export interface RenderStyle {
   fontWeight?: number | string;
   textStrokeColor?: string | null;
   textStrokeWidth?: number;
+  /** Apply emphasis to overlays whose type is 'hook' or 'cta'. */
+  emphasizeHookCta?: boolean;
+  /** Multiplier on fontSize for emphasized overlays. Default 1.3. */
+  emphasisBoost?: number;
+  /** How to emphasize. Default 'bold-uppercase'. */
+  emphasisStyle?: RenderEmphasisStyle;
 }
 
 export interface RenderOptions {
