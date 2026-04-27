@@ -341,6 +341,10 @@ export function VideoTextPreview({
         : overlay.xy ?? defaultXYFromPosition(style.position);
 
     const dragging = dragIdx === idx;
+    const dimmedInStack =
+      isStackedEditMode &&
+      activeIndexAtPlayhead !== null &&
+      activeIndexAtPlayhead !== idx;
 
     return (
       <div
@@ -361,12 +365,21 @@ export function VideoTextPreview({
           textAlign: "center",
           touchAction: "none",
           zIndex: 10 + idx,
+          opacity: dimmedInStack ? 0.45 : 1,
         }}
         onPointerDown={editable ? e => handlePointerDown(e, idx) : undefined}
         onPointerMove={editable ? handlePointerMove : undefined}
         onPointerUp={editable ? handlePointerUp : undefined}
         onPointerCancel={editable ? handlePointerUp : undefined}
       >
+        {isStackedEditMode && (
+          <span
+            className="absolute -top-2 -left-2 z-20 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold shadow"
+            style={{ pointerEvents: "none" }}
+          >
+            {idx + 1}
+          </span>
+        )}
         <span
           style={{
             fontFamily: `"${style.fontFamily}", Inter, sans-serif`,
