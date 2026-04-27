@@ -137,10 +137,7 @@ export function BRollTextEditor({
           type: o.type,
         };
       })
-      .filter(
-        (x): x is { text: string; startSeconds: number; endSeconds: number; type?: TextOverlay['type'] } =>
-          !!x,
-      );
+      .filter((x): x is NonNullable<typeof x> => !!x);
 
     // If a template was picked, compose its base style with the brand's
     // emphasis settings. Otherwise fall back to the brand style.
