@@ -77,6 +77,8 @@ export const DEFAULT_RENDER_STYLE: RenderStyle = {
   emphasizeHookCta: true,
   emphasisBoost: 0.3,
   emphasisStyle: 'bold-upper',
+  defaultXY: { x: 0.5, y: 0.78 },
+  defaultScale: 1,
 };
 
 function applyLetterCase(text: string, mode: RenderStyle['letterCase']): string {
