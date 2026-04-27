@@ -33,6 +33,10 @@ export interface TextOverlay {
   type?: "hook" | "insight" | "transition" | "cta";
   /** Optional drag-positioned xy. Falls back to style.position when absent. */
   xy?: OverlayXY;
+  /** Max text-box width as a fraction (0-1) of the video width. Default 0.92. */
+  width?: number;
+  /** Per-overlay font-size multiplier on top of the style's base size. Default 1. */
+  scale?: number;
 }
 
 export type EmphasisStyle = "bold" | "upper" | "bold-upper";
