@@ -226,8 +226,10 @@ export function VideoTextPreview({
   //   - In non-editable mode: one at a time at currentTime, with the first
   //     overlay shown as a preview anchor when paused at t≈0.
   // ---------------------------------------------------------------------------
+  const isStackedEditMode = editable && !isPlaying && overlays.length > 0;
+
   const visibleIndexes: number[] = (() => {
-    if (editable && !isPlaying) {
+    if (isStackedEditMode) {
       return overlays.map((_, i) => i);
     }
     for (let i = 0; i < overlays.length; i++) {
@@ -236,6 +238,16 @@ export function VideoTextPreview({
     }
     if (!isPlaying && currentTime < 0.1 && overlays.length > 0) return [0];
     return [];
+  })();
+
+  // Which overlay is "active" at the current playhead — used to highlight
+  // the live one when all overlays are stacked in edit mode.
+  const activeIndexAtPlayhead: number | null = (() => {
+    for (let i = 0; i < overlays.length; i++) {
+      const t = parseTimingString(overlays[i].timing);
+      if (t && currentTime >= t.start && currentTime < t.end) return i;
+    }
+    return null;
   })();
 
   // CTA mockup PNG overlay (unchanged from patch #15 logic).
@@ -329,6 +341,10 @@ export function VideoTextPreview({
         : overlay.xy ?? defaultXYFromPosition(style.position);
 
     const dragging = dragIdx === idx;
+    const dimmedInStack =
+      isStackedEditMode &&
+      activeIndexAtPlayhead !== null &&
+      activeIndexAtPlayhead !== idx;
 
     return (
       <div
@@ -349,12 +365,21 @@ export function VideoTextPreview({
           textAlign: "center",
           touchAction: "none",
           zIndex: 10 + idx,
+          opacity: dimmedInStack ? 0.45 : 1,
         }}
         onPointerDown={editable ? e => handlePointerDown(e, idx) : undefined}
         onPointerMove={editable ? handlePointerMove : undefined}
         onPointerUp={editable ? handlePointerUp : undefined}
         onPointerCancel={editable ? handlePointerUp : undefined}
       >
+        {isStackedEditMode && (
+          <span
+            className="absolute -top-2 -left-2 z-20 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold shadow"
+            style={{ pointerEvents: "none" }}
+          >
+            {idx + 1}
+          </span>
+        )}
         <span
           style={{
             fontFamily: `"${style.fontFamily}", Inter, sans-serif`,
@@ -416,10 +441,19 @@ export function VideoTextPreview({
       {/* Text overlays */}
       {visibleIndexes.map(i => renderOverlay(overlays[i], i))}
 
+      {/* Edit-mode badge: makes it explicit that all overlays are stacked
+          for editing, not playing in real-time order. */}
+      {isStackedEditMode && (
+        <div className="absolute top-2 left-2 z-30 inline-flex items-center gap-1.5 rounded-full bg-black/70 backdrop-blur-sm px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/95 pointer-events-none shadow">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
+          Edit mode · all overlays shown
+        </div>
+      )}
+
       {/* Drag affordance hint when in editable mode */}
       {editable && !isPlaying && overlays.length > 0 && (
-        <div className="absolute bottom-1 left-1 right-1 text-center text-[10px] text-white/70 pointer-events-none z-30 drop-shadow">
-          Drag any text to reposition
+        <div className="absolute bottom-1 left-1 right-1 text-center text-[10px] text-white/80 pointer-events-none z-30 drop-shadow">
+          Drag any text to reposition · Press play to preview real timing
         </div>
       )}
     </div>
