@@ -226,8 +226,10 @@ export function VideoTextPreview({
   //   - In non-editable mode: one at a time at currentTime, with the first
   //     overlay shown as a preview anchor when paused at t≈0.
   // ---------------------------------------------------------------------------
+  const isStackedEditMode = editable && !isPlaying && overlays.length > 0;
+
   const visibleIndexes: number[] = (() => {
-    if (editable && !isPlaying) {
+    if (isStackedEditMode) {
       return overlays.map((_, i) => i);
     }
     for (let i = 0; i < overlays.length; i++) {
@@ -236,6 +238,16 @@ export function VideoTextPreview({
     }
     if (!isPlaying && currentTime < 0.1 && overlays.length > 0) return [0];
     return [];
+  })();
+
+  // Which overlay is "active" at the current playhead — used to highlight
+  // the live one when all overlays are stacked in edit mode.
+  const activeIndexAtPlayhead: number | null = (() => {
+    for (let i = 0; i < overlays.length; i++) {
+      const t = parseTimingString(overlays[i].timing);
+      if (t && currentTime >= t.start && currentTime < t.end) return i;
+    }
+    return null;
   })();
 
   // CTA mockup PNG overlay (unchanged from patch #15 logic).
