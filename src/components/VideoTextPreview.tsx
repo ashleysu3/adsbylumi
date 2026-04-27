@@ -179,6 +179,7 @@ export function VideoTextPreview({
   compact,
   editable = false,
   onOverlayPositionChange,
+  onOverlayResize,
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -191,6 +192,20 @@ export function VideoTextPreview({
   // when the pointer is released.
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragXY, setDragXY] = useState<OverlayXY | null>(null);
+
+  // Resize state. Mode 'width' tracks horizontal drag → overlay.width fraction.
+  // Mode 'scale' tracks corner drag → overlay.scale multiplier (uses initial
+  // pointer offset from overlay center to compute a stable scaling factor).
+  const [resizeIdx, setResizeIdx] = useState<number | null>(null);
+  const [resizeMode, setResizeMode] = useState<"width" | "scale" | null>(null);
+  const [liveWidth, setLiveWidth] = useState<number | null>(null);
+  const [liveScale, setLiveScale] = useState<number | null>(null);
+  const resizeStartRef = useRef<{
+    initialDistance: number;
+    initialScale: number;
+    centerClientX: number;
+    centerClientY: number;
+  } | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
