@@ -24,6 +24,9 @@ import { ExportChecklistModal } from "./ExportChecklistModal";
 import { ShareWithClientDialog } from "./ShareWithClientDialog";
 import { ClientActivityFeed } from "./ClientActivityFeed";
 import { format } from "date-fns";
+import { useRenderQueue, type AttachedRenderInfo } from "@/contexts/RenderQueueContext";
+import type { RenderStyle } from "@/lib/ffmpeg-renderer";
+import type { TextOverlay } from "@/components/VideoTextPreview";
 
 interface RankedItem extends ProductionItem {
   rank: number;
@@ -706,7 +709,88 @@ export function ProductionManager({
     );
     onUpdateWorkspace({ production_items: updatedItems });
   };
-  
+
+  const { enqueue } = useRenderQueue();
+
+  // Patch #17: queue a "Make my video" render from a creative card. Checks for
+  // an existing uploaded asset on this concept and confirms replacement
+  // before starting; on completion, auto-attaches the rendered MP4 to the
+  // concept so the user doesn't have to download + re-upload.
+  const handleMakeVideo = (args: {
+    item: ProductionItem;
+    videoUrl: string;
+    sourceClipName?: string;
+    overlays: TextOverlay[];
+    style: RenderStyle;
+  }) => {
+    const specs = args.overlays
+      .map(o => {
+        const m = (o.timing || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+        if (!m) return null;
+        return {
+          text: o.text,
+          startSeconds: parseFloat(m[1]),
+          endSeconds: parseFloat(m[2]),
+          type: o.type,
+          xy: o.xy,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => !!x);
+
+    if (specs.length === 0) {
+      toast.error('No overlays with valid timing — edit the timings and try again.');
+      return;
+    }
+
+    const existing = uploadedAssets.find((a: any) => a.linked_concept_id === args.item.id);
+    if (existing) {
+      const label = (args.item as any).hook || (args.item as any).angle_name || 'this creative';
+      const ok = window.confirm(
+        `"${label}" already has a video uploaded. Replace it with the new rendered version when it's done?`
+      );
+      if (!ok) return;
+    }
+
+    enqueue({
+      title: `${(args.item as any).angle_name || 'Creative'} — ${args.sourceClipName || 'b-roll'}`,
+      sourceClipName: args.sourceClipName,
+      videoUrl: args.videoUrl,
+      overlays: specs,
+      style: args.style,
+      context: brandId
+        ? { brandId, workspaceId: workspace?.id, creativeItemId: args.item.id }
+        : { creativeItemId: args.item.id },
+      onAttached: async (info: AttachedRenderInfo) => {
+        const newAsset = {
+          id: `asset_${Date.now()}`,
+          file_name: info.filename,
+          file_type: 'video/mp4',
+          file_size: 0,
+          file_url: info.url,
+          storage_path: info.storagePath,
+          uploaded_at: new Date().toISOString(),
+          linked_concept_id: args.item.id,
+          linked_concept_title: (args.item as any).hook || null,
+        };
+        const filtered = uploadedAssets.filter(
+          (a: any) => a.linked_concept_id !== args.item.id,
+        );
+        const updated = [...filtered, newAsset];
+
+        if (workspace?.id) {
+          await supabase
+            .from('campaign_workspaces')
+            .update({
+              user_uploaded_assets: updated,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', workspace.id);
+        }
+        onUpdateWorkspace({ user_uploaded_assets: updated });
+      },
+    });
+  };
+
   if (productionItems.length === 0) {
     return (
       <Card>
@@ -1014,6 +1098,7 @@ export function ProductionManager({
                           angleCopy={getCopyForItem(item)}
                           onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                           onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
+                          onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
                           brand={mergedBrand}
                         />
                       );
@@ -1054,6 +1139,7 @@ export function ProductionManager({
                               angleCopy={getCopyForItem(item)}
                               onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                               onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
+                              onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
                               brand={mergedBrand}
                             />
                           );
@@ -1112,6 +1198,7 @@ export function ProductionManager({
                                   angleCopy={getCopyForItem(item)}
                                   onCopyChange={(updated) => handleChecklistCopyChange(item, updated)}
                                   onOverlaysChange={(overlays) => handleOverlaysChange(item, overlays)}
+                                  onMakeVideo={(args) => handleMakeVideo({ ...args, item })}
                                   brand={mergedBrand}
                                 />
                               ))}

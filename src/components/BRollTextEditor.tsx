@@ -25,22 +25,20 @@ import {
   DEFAULT_OVERLAY_STYLE,
   type TextOverlay,
   type OverlayStyle,
+  type OverlayXY,
 } from '@/components/VideoTextPreview';
 import { DEFAULT_RENDER_STYLE, type RenderStyle } from '@/lib/ffmpeg-renderer';
 import { useRenderQueue } from '@/contexts/RenderQueueContext';
 import { TemplateGallery } from '@/components/TemplateGallery';
 
 // ============================================================================
-// BRollTextEditor (patch #15)
+// BRollTextEditor (patch #17)
 //
-// Modal UI for adding text overlays to a b-roll clip and queuing a render.
-// Patch #15 changes:
-//   1. Overlay `type` is carried through into the render spec so the
-//      renderer can apply hook/CTA emphasis correctly.
-//   2. When a template is picked, we merge the brand's emphasis settings
-//      (emphasizeHookCta / emphasisBoost / emphasisStyle) on top of the
-//      template's base typography — template controls the look,
-//      brand controls whether hooks/CTAs get boosted.
+// Patch #17 changes:
+//   - "Queue Render" button → "Make my video".
+//   - Preview is now editable: drag any text in the preview to reposition.
+//     Position is persisted on the overlay's `xy` field and carried through
+//     to the renderer.
 // ============================================================================
 
 interface BRollTextEditorProps {
@@ -48,9 +46,6 @@ interface BRollTextEditorProps {
   onOpenChange: (open: boolean) => void;
   videoUrl: string;
   clipName?: string;
-  /** Brand-level overlay style from OverlayStylePicker. Used for the base
-   * look AND for emphasis settings (which layer on top of any picked
-   * template). */
   style?: OverlayStyle;
   brandId?: string;
 }
@@ -79,11 +74,6 @@ export function BRollTextEditor({
   const [templateStyle, setTemplateStyle] = useState<RenderStyle | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
 
-  // When a template is picked, it defines the BASE typography (font,
-  // color, position, weight, case, stroke). Emphasis fields stay tied to
-  // the brand — templates control the look, brand controls whether to
-  // auto-emphasize hooks / CTAs. That way users don't have to re-tune
-  // emphasis every time they swap templates.
   const effectiveStyle: OverlayStyle = templateStyle
     ? {
         fontFamily: templateStyle.fontFamily,
@@ -95,7 +85,6 @@ export function BRollTextEditor({
         textShadow: templateStyle.textShadow,
         fontWeight: templateStyle.fontWeight,
         letterCase: templateStyle.letterCase,
-        // Emphasis inherited from brand.
         emphasizeHookCta: style.emphasizeHookCta,
         emphasisBoost: style.emphasisBoost,
         emphasisStyle: style.emphasisStyle,
@@ -114,6 +103,9 @@ export function BRollTextEditor({
   const removeOverlay = (i: number) => {
     setOverlays(overlays.filter((_, idx) => idx !== i));
   };
+  const handlePositionChange = (idx: number, xy: OverlayXY) => {
+    updateOverlay(idx, { xy });
+  };
 
   const allValid = overlays.every(
     o => o.text.trim().length > 0 && parseTimingRange(o.timing || '') !== null,
@@ -124,8 +116,6 @@ export function BRollTextEditor({
       toast.error('Each overlay needs text and a valid timing (e.g. "0-3s").');
       return;
     }
-    // Map UI overlays → renderer specs. Carry the overlay `type` through
-    // so the renderer can apply hook/CTA emphasis.
     const specs = overlays
       .map(o => {
         const t = parseTimingRange(o.timing || '');
@@ -135,12 +125,11 @@ export function BRollTextEditor({
           startSeconds: t.start,
           endSeconds: t.end,
           type: o.type,
+          xy: o.xy,
         };
       })
       .filter((x): x is NonNullable<typeof x> => !!x);
 
-    // If a template was picked, compose its base style with the brand's
-    // emphasis settings. Otherwise fall back to the brand style.
     const renderStyle: RenderStyle = templateStyle
       ? {
           ...templateStyle,
@@ -184,9 +173,8 @@ export function BRollTextEditor({
             Add Text to "{clipName || 'B-roll clip'}"
           </DialogTitle>
           <DialogDescription>
-            Write one or more text blocks, pick when each appears, then queue the
-            render. Your MP4 will appear in the bell icon + get emailed to you when
-            it's done. Styling (font, color, position) uses your brand's overlay settings.
+            Write one or more text blocks, set when each appears, drag any line in the preview to
+            reposition it, then make the video. Your MP4 will appear in the bell + get emailed to you.
           </DialogDescription>
         </DialogHeader>
 
@@ -293,6 +281,14 @@ export function BRollTextEditor({
                       </Select>
                     </div>
                   </div>
+                  {o.xy && (
+                    <button
+                      className="text-[11px] text-muted-foreground underline"
+                      onClick={() => updateOverlay(i, { xy: undefined })}
+                    >
+                      reset to default position
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -313,10 +309,12 @@ export function BRollTextEditor({
               videoUrl={videoUrl}
               overlays={overlays}
               style={effectiveStyle}
+              editable
+              onOverlayPositionChange={handlePositionChange}
             />
             <p className="text-[11px] text-muted-foreground mt-2 text-center">
-              Play the video to see each overlay appear at its timing. Hook and CTA lines are emphasized
-              automatically if your brand settings enable it.
+              Pause the video to see all overlays at once. Drag any line to reposition it. Hook and CTA
+              are auto-emphasized if your brand settings have it on.
             </p>
           </div>
         </div>
@@ -332,7 +330,7 @@ export function BRollTextEditor({
             className="gap-2"
           >
             <Film className="h-4 w-4" />
-            Queue Render
+            Make my video
           </Button>
         </DialogFooter>
       </DialogContent>

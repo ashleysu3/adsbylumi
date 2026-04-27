@@ -1,36 +1,38 @@
-import { useRef, useState, useEffect, useLayoutEffect } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
-// VideoTextPreview (patch #15)
+// VideoTextPreview (patch #17)
 //
 // Live preview of a video with text overlays. Designed to match what the
-// ffmpeg burn-in renderer produces as closely as possible.
+// ffmpeg burn-in renderer produces.
 //
-// Key changes vs. patch #12/#13:
-//   1. **Paused state shows ONE overlay at a time**, not all of them stacked.
-//      Previously `|| !isPlaying` meant a paused video displayed every
-//      overlay simultaneously — which is exactly how the composition
-//      *doesn't* look in the final MP4. Now we find the overlay whose
-//      timing window contains `currentTime` and show just that one; if no
-//      overlay is active and the video is at t=0, we show the first
-//      overlay as a preview anchor so the user can see their work.
-//   2. **Emphasis for hook / CTA** — when the overlay type is `hook` or
-//      `cta` and `emphasizeHookCta` is on (brand setting), we boost font
-//      size and/or force bold + uppercase per the emphasis style. Matches
-//      the renderer so preview === final output.
-//   3. **Proportional font sizing** — the preview uses the same
-//      `fontSize * (containerWidth / 540)` math as the renderer, so what
-//      you see lines up with what ffmpeg writes into the MP4.
-//   4. **Modernized DEFAULT_OVERLAY_STYLE** — Bebas Neue, uppercase, no
-//      pill background (bgOpacity 0), strong drop shadow. The old
-//      0.6-opacity black pill look felt dated.
+// Patch #17 changes:
+//   1. Per-overlay positioning. Each overlay can carry its own `xy` (0–1
+//      normalized of video dimensions, referencing the CENTER of the text
+//      bounding box). When absent, falls back to the brand's `position`
+//      setting (top / center / bottom). Lets users drop the hook at the
+//      top of one frame and the CTA at the bottom of another.
+//   2. Drag-to-position. When `editable` is true and the video is paused,
+//      all overlays render simultaneously and each is draggable. Releasing
+//      a drag fires `onOverlayPositionChange(idx, xy)` so the parent can
+//      persist the new position via the existing onOverlaysChange path.
+//   3. Editable mode opt-in. Live playback (and preview-only contexts like
+//      the small in-card thumbnail when `editable` is false) keep the
+//      patch #15 behavior: one overlay at a time at the active timestamp.
 // ============================================================================
+
+export interface OverlayXY {
+  x: number; // 0 (left) to 1 (right) — center of the text
+  y: number; // 0 (top) to 1 (bottom) — center of the text
+}
 
 export interface TextOverlay {
   text: string;
   timing?: string;
   type?: "hook" | "insight" | "transition" | "cta";
+  /** Optional drag-positioned xy. Falls back to style.position when absent. */
+  xy?: OverlayXY;
 }
 
 export type EmphasisStyle = "bold" | "upper" | "bold-upper";
@@ -44,14 +46,10 @@ export interface OverlayStyle {
   position: "top" | "center" | "bottom";
   textShadow: boolean;
   ctaOverlayUrl?: string;
-  // Extended (optional so old saved brand styles still work):
   letterCase?: "as-typed" | "upper" | "lower" | "title";
   fontWeight?: "normal" | "bold" | "black";
-  // Hook/CTA emphasis. `undefined` is treated as "on with sane defaults"
-  // so brands that saved a style before patch #15 automatically get the
-  // new behavior without an explicit opt-in.
   emphasizeHookCta?: boolean;
-  emphasisBoost?: number; // 0.0–1.0, applied to fontSize
+  emphasisBoost?: number;
   emphasisStyle?: EmphasisStyle;
 }
 
@@ -77,6 +75,13 @@ interface VideoTextPreviewProps {
   style?: OverlayStyle;
   className?: string;
   compact?: boolean;
+  /** When true and the video is paused, all overlays render simultaneously
+   *  and are draggable. Use this for editor surfaces; leave false for
+   *  read-only previews (thumbnails, ad-mockup tiles, etc.). */
+  editable?: boolean;
+  /** Called when the user finishes dragging an overlay. The parent should
+   *  update overlays[idx].xy and persist via its overlay-change pipeline. */
+  onOverlayPositionChange?: (idx: number, xy: OverlayXY) => void;
 }
 
 function parseTimingString(timing?: string): { start: number; end: number } | null {
@@ -107,11 +112,22 @@ function applyLetterCase(text: string, mode: OverlayStyle["letterCase"]): string
 }
 
 /**
- * Given an overlay and the active style, compute the effective rendering
- * params (size, weight, transformed text). Shared with ffmpeg-renderer via
- * an equivalent implementation there, so the preview and the burned MP4
- * stay in sync.
+ * Map the brand-level position setting (top/center/bottom) to an xy that
+ * the renderer can use as a default when an overlay doesn't have its own
+ * dragged position.
  */
+export function defaultXYFromPosition(p: OverlayStyle["position"]): OverlayXY {
+  switch (p) {
+    case "top":
+      return { x: 0.5, y: 0.08 };
+    case "center":
+      return { x: 0.5, y: 0.5 };
+    case "bottom":
+    default:
+      return { x: 0.5, y: 0.92 };
+  }
+}
+
 export function resolveOverlayRender(
   overlay: TextOverlay,
   style: OverlayStyle,
@@ -134,7 +150,6 @@ export function resolveOverlayRender(
     size = Math.round(baseSize * (1 + boost));
     const mode = style.emphasisStyle ?? "bold-upper";
     if (mode === "bold" || mode === "bold-upper") {
-      // Promote to heavier weight. If already black, this is a no-op.
       weight = "black";
     }
     if (mode === "upper" || mode === "bold-upper") {
@@ -145,12 +160,18 @@ export function resolveOverlayRender(
   return { text, fontSize: size, fontWeight: weight };
 }
 
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n));
+}
+
 export function VideoTextPreview({
   videoUrl,
   overlays,
   style = DEFAULT_OVERLAY_STYLE,
   className,
   compact,
+  editable = false,
+  onOverlayPositionChange,
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -159,7 +180,11 @@ export function VideoTextPreview({
   const [duration, setDuration] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
 
-  // Track playback state so we can show the "active at current time" overlay.
+  // Drag state — local only, committed to parent via onOverlayPositionChange
+  // when the pointer is released.
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragXY, setDragXY] = useState<OverlayXY | null>(null);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -182,8 +207,6 @@ export function VideoTextPreview({
     };
   }, []);
 
-  // Measure container width so preview font size tracks the real render
-  // (fontSize * width / 540 is what ffmpeg-renderer uses).
   useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -194,39 +217,28 @@ export function VideoTextPreview({
     return () => ro.disconnect();
   }, []);
 
-  const positionClass = {
-    top: "top-4",
-    center: "top-1/2 -translate-y-1/2",
-    bottom: "bottom-6",
-  }[style.position];
-
   // ---------------------------------------------------------------------------
-  // Find the overlay that should be visible RIGHT NOW.
+  // Decide which overlays to render this frame.
   //
-  // Rules:
-  //   - If any overlay's timing window contains currentTime, show that one
-  //     (first match wins if there's an overlap — same as the renderer).
-  //   - If no overlay is active AND we're paused at t≈0, show the first
-  //     overlay as a preview anchor so the editor isn't blank.
-  //   - Otherwise show nothing (dead air between overlays is accurate to
-  //     the rendered MP4).
+  //   - In editable mode + paused: render ALL overlays so the user can drop
+  //     each one onto the right spot.
+  //   - In editable mode + playing: same as non-editable (one at a time).
+  //   - In non-editable mode: one at a time at currentTime, with the first
+  //     overlay shown as a preview anchor when paused at t≈0.
   // ---------------------------------------------------------------------------
-  const activeOverlayIndex = (() => {
+  const visibleIndexes: number[] = (() => {
+    if (editable && !isPlaying) {
+      return overlays.map((_, i) => i);
+    }
     for (let i = 0; i < overlays.length; i++) {
       const t = parseTimingString(overlays[i].timing);
-      if (t && currentTime >= t.start && currentTime < t.end) return i;
+      if (t && currentTime >= t.start && currentTime < t.end) return [i];
     }
-    // Preview anchor when nothing is active + video is at the start + paused.
-    if (!isPlaying && currentTime < 0.1 && overlays.length > 0) {
-      return 0;
-    }
-    return -1;
+    if (!isPlaying && currentTime < 0.1 && overlays.length > 0) return [0];
+    return [];
   })();
 
-  const activeOverlay = activeOverlayIndex >= 0 ? overlays[activeOverlayIndex] : null;
-
-  // CTA overlay image (PNG mockup) — same behavior as before: shown during
-  // CTA-type overlays or in the last 3 seconds.
+  // CTA mockup PNG overlay (unchanged from patch #15 logic).
   const showCtaImage = (() => {
     if (!style.ctaOverlayUrl) return false;
     const ctaOverlay = overlays.find(o => o.type === "cta");
@@ -240,13 +252,135 @@ export function VideoTextPreview({
     return false;
   })();
 
-  // Compute the preview font size based on actual container width. Mirror
-  // of the renderer's math (referenced 540px). On a compact sidebar preview
-  // the container is ~180px → font appears smaller, just like it will on a
-  // 1080x1920 MP4 when someone watches at phone scale. Clamp so text never
-  // disappears if container hasn't measured yet.
+  // Mirror of the renderer's font-size math (referenced 540px). Use the
+  // measured container width so what you see matches what ffmpeg writes.
   const widthBasis = containerWidth || (compact ? 180 : 360);
   const sizeScale = widthBasis / 540;
+
+  // ---------------------------------------------------------------------------
+  // Drag handling. We use pointer events so this works on mouse, pen and
+  // touch. We intentionally stop propagation so the underlying <video>
+  // doesn't grab the click and play/pause.
+  // ---------------------------------------------------------------------------
+
+  const computeXYFromPointer = useCallback(
+    (clientX: number, clientY: number): OverlayXY | null => {
+      const el = containerRef.current;
+      if (!el) return null;
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return null;
+      const x = clamp01((clientX - rect.left) / rect.width);
+      const y = clamp01((clientY - rect.top) / rect.height);
+      return { x, y };
+    },
+    [],
+  );
+
+  const handlePointerDown = (e: React.PointerEvent, idx: number) => {
+    if (!editable) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    const xy = computeXYFromPointer(e.clientX, e.clientY);
+    setDragIdx(idx);
+    setDragXY(xy);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (dragIdx === null) return;
+    const xy = computeXYFromPointer(e.clientX, e.clientY);
+    if (xy) setDragXY(xy);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (dragIdx === null) return;
+    const xy = computeXYFromPointer(e.clientX, e.clientY) ?? dragXY;
+    const idx = dragIdx;
+    setDragIdx(null);
+    setDragXY(null);
+    if (xy && onOverlayPositionChange) {
+      onOverlayPositionChange(idx, xy);
+    }
+    try {
+      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render a single overlay at its computed xy. Position is absolute (left/
+  // top in %) with a translate(-50%, -50%) so the xy refers to the CENTER of
+  // the text bounding box.
+  // ---------------------------------------------------------------------------
+  const renderOverlay = (overlay: TextOverlay, idx: number) => {
+    const resolved = resolveOverlayRender(overlay, style);
+    const fontSizePx = Math.max(10, Math.round(resolved.fontSize * sizeScale));
+    const weightCss =
+      resolved.fontWeight === "black"
+        ? 900
+        : resolved.fontWeight === "normal"
+          ? 400
+          : 700;
+
+    const liveXY: OverlayXY =
+      dragIdx === idx && dragXY
+        ? dragXY
+        : overlay.xy ?? defaultXYFromPosition(style.position);
+
+    const dragging = dragIdx === idx;
+
+    return (
+      <div
+        key={idx}
+        className={cn(
+          "absolute select-none transition-shadow",
+          editable
+            ? dragging
+              ? "cursor-grabbing ring-2 ring-primary/60 ring-offset-1 ring-offset-black/30 rounded"
+              : "cursor-grab hover:ring-1 hover:ring-primary/40 rounded"
+            : "pointer-events-none",
+        )}
+        style={{
+          left: `${liveXY.x * 100}%`,
+          top: `${liveXY.y * 100}%`,
+          transform: "translate(-50%, -50%)",
+          maxWidth: "92%",
+          textAlign: "center",
+          touchAction: "none",
+          zIndex: 10 + idx,
+        }}
+        onPointerDown={editable ? e => handlePointerDown(e, idx) : undefined}
+        onPointerMove={editable ? handlePointerMove : undefined}
+        onPointerUp={editable ? handlePointerUp : undefined}
+        onPointerCancel={editable ? handlePointerUp : undefined}
+      >
+        <span
+          style={{
+            fontFamily: `"${style.fontFamily}", Inter, sans-serif`,
+            fontWeight: weightCss,
+            fontSize: `${fontSizePx}px`,
+            color: style.textColor,
+            backgroundColor:
+              style.bgOpacity > 0 ? hexToRgba(style.bgColor, style.bgOpacity) : "transparent",
+            textShadow: style.textShadow
+              ? style.bgOpacity > 0
+                ? "0 2px 4px rgba(0,0,0,0.6)"
+                : "0 2px 6px rgba(0,0,0,0.85), 0 0 14px rgba(0,0,0,0.5)"
+              : "none",
+            padding: style.bgOpacity > 0 ? "6px 14px" : "0",
+            borderRadius: style.bgOpacity > 0 ? "4px" : "0",
+            display: "inline-block",
+            lineHeight: 1.15,
+            letterSpacing: style.fontFamily === "Bebas Neue" ? "0.02em" : "normal",
+            whiteSpace: "pre-line",
+          }}
+        >
+          {resolved.text}
+        </span>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -279,52 +413,13 @@ export function VideoTextPreview({
         </div>
       )}
 
-      {/* Single active text overlay */}
-      {activeOverlay && (
-        <div
-          className={cn(
-            "absolute left-0 right-0 px-4 pointer-events-none z-10 text-center",
-            positionClass,
-          )}
-        >
-          {(() => {
-            const resolved = resolveOverlayRender(activeOverlay, style);
-            const fontSizePx = Math.max(10, Math.round(resolved.fontSize * sizeScale));
-            const weightCss =
-              resolved.fontWeight === "black"
-                ? 900
-                : resolved.fontWeight === "normal"
-                  ? 400
-                  : 700;
+      {/* Text overlays */}
+      {visibleIndexes.map(i => renderOverlay(overlays[i], i))}
 
-            return (
-              <span
-                style={{
-                  fontFamily: `"${style.fontFamily}", Inter, sans-serif`,
-                  fontWeight: weightCss,
-                  fontSize: `${fontSizePx}px`,
-                  color: style.textColor,
-                  backgroundColor:
-                    style.bgOpacity > 0 ? hexToRgba(style.bgColor, style.bgOpacity) : "transparent",
-                  // Stronger shadow when there's no pill background — gives
-                  // the "no box" variant enough contrast against busy video.
-                  textShadow: style.textShadow
-                    ? style.bgOpacity > 0
-                      ? "0 2px 4px rgba(0,0,0,0.6)"
-                      : "0 2px 6px rgba(0,0,0,0.85), 0 0 14px rgba(0,0,0,0.5)"
-                    : "none",
-                  padding: style.bgOpacity > 0 ? "6px 14px" : "0",
-                  borderRadius: style.bgOpacity > 0 ? "4px" : "0",
-                  display: "inline-block",
-                  lineHeight: 1.15,
-                  letterSpacing: style.fontFamily === "Bebas Neue" ? "0.02em" : "normal",
-                  whiteSpace: "pre-line",
-                }}
-              >
-                {resolved.text}
-              </span>
-            );
-          })()}
+      {/* Drag affordance hint when in editable mode */}
+      {editable && !isPlaying && overlays.length > 0 && (
+        <div className="absolute bottom-1 left-1 right-1 text-center text-[10px] text-white/70 pointer-events-none z-30 drop-shadow">
+          Drag any text to reposition
         </div>
       )}
     </div>

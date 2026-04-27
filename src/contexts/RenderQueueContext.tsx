@@ -9,45 +9,42 @@ import {
 } from '@/lib/ffmpeg-renderer';
 
 // ============================================================================
-// RenderQueueContext
+// RenderQueueContext (patch #17)
 //
-// Client-side queue for b-roll text-burn renders. Users click "Render" in the
-// Creative Studio or B-Roll Library and the work goes here instead of running
-// inline in a modal. Gives them:
-//
-//   1) An immediate "Queued!" confirmation (user keeps working).
-//   2) A bell-icon list of pending + completed renders (see RenderQueueBell).
-//   3) A toast when each render finishes with a download button.
-//   4) An email notification with the download link (send-render-ready-email).
-//   5) A stable URL (MP4 uploaded to Supabase `creative-assets` bucket) that
-//      the email + any future auto-attach / Meta-upload flows can use.
-//
-// Constraint: the render runs in the browser via ffmpeg.wasm, so the user
-// has to keep the LUMI tab open. Patch #12 is the MVP of the queue+notify
-// UX; Patch #13 will add auto-attach to campaign + auto-upload to Meta, and
-// a later patch could move the render to a server worker so the tab can
-// close too.
+// Patch #17 changes:
+//   - Friendlier copy throughout ("Make my video" / "Got it" / "Your video
+//     is ready").
+//   - New optional `onAttached` callback on EnqueueSpec — fires after the
+//     storage upload succeeds with { url, storagePath, filename }. Lets
+//     callers (like CreativeChecklistCard) bind the rendered MP4 to a
+//     creative item so the user doesn't have to re-upload.
 // ============================================================================
 
 export interface RenderContextMeta {
-  // Optional campaign / brand context for later auto-attach / Meta upload
-  // flows. Stored on the job so those paths have what they need when they
-  // land.
   brandId?: string;
   workspaceId?: string;
   creativeItemId?: string;
 }
 
+export interface AttachedRenderInfo {
+  url: string;
+  storagePath: string;
+  filename: string;
+}
+
 export interface EnqueueSpec {
-  /** Human-readable title shown in the bell and toast. */
   title: string;
-  /** Clip name used in the saved filename. */
   sourceClipName?: string;
-  /** Source video URL (same one ffmpeg-renderer expects). */
   videoUrl: string;
   overlays: RenderOverlay[];
   style: RenderStyle;
   context?: RenderContextMeta;
+  /** Fired after the storage upload completes (before the toast / email).
+   *  Use this to attach the rendered MP4 to wherever it needs to go in the
+   *  rest of the app (e.g. a creative item's uploaded asset slot). Errors
+   *  thrown here are logged but do not fail the render — the user still
+   *  gets the download link. */
+  onAttached?: (info: AttachedRenderInfo) => void | Promise<void>;
 }
 
 export type RenderJobStatus = 'pending' | 'rendering' | 'completed' | 'failed';
@@ -59,18 +56,21 @@ export interface RenderJob {
   sourceClipName: string;
   progress: number;
   message: string;
-  resultUrl?: string; // Public Supabase URL after upload
+  resultUrl?: string;
   downloadFilename: string;
   error?: string;
   enqueuedAt: number;
   completedAt?: number;
   context?: RenderContextMeta;
-  // spec is kept so the queue worker can retry or re-render later if needed.
   spec: {
     videoUrl: string;
     overlays: RenderOverlay[];
     style: RenderStyle;
   };
+  // onAttached lives here so the worker can call it on success. Held in a
+  // separate ref-style field rather than inside `spec` so it doesn't
+  // serialize awkwardly if we ever persist queue state.
+  onAttached?: (info: AttachedRenderInfo) => void | Promise<void>;
 }
 
 interface RenderQueueContextValue {
@@ -85,14 +85,10 @@ interface RenderQueueContextValue {
 
 const RenderQueueContext = createContext<RenderQueueContextValue | null>(null);
 
-// Max number of jobs to keep in memory. Older completed/failed ones get
-// pruned after this. Keeps the bell tidy.
 const MAX_HISTORY = 10;
 
 export function RenderQueueProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<RenderJob[]>([]);
-  // A ref mirror so we can read the current queue state inside async work
-  // without triggering re-render churn on every progress tick.
   const jobsRef = useRef<RenderJob[]>([]);
   jobsRef.current = jobs;
 
@@ -119,12 +115,11 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      // Upload to Supabase storage so we have a stable URL for the email
-      // link + any downstream auto-attach / Meta upload.
       let publicUrl: string | undefined;
+      let storagePath: string | undefined;
       try {
         const pathPrefix = next.context?.brandId ? `${next.context.brandId}/renders` : 'renders';
-        const storagePath = `${pathPrefix}/${next.id}-${next.downloadFilename}`;
+        storagePath = `${pathPrefix}/${next.id}-${next.downloadFilename}`;
         const { error: upErr } = await supabase.storage
           .from('creative-assets')
           .upload(storagePath, blob, {
@@ -137,24 +132,39 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
           .getPublicUrl(storagePath);
         publicUrl = urlData.publicUrl;
       } catch (uploadErr) {
-        // Non-fatal — we can still give the user a local download even if
-        // the cloud save failed. They just don't get the email link.
         console.error('Render upload to creative-assets failed (non-fatal):', uploadErr);
+      }
+
+      // Auto-attach hook. Runs before the user-facing toast so by the time
+      // the user sees "Your video is ready", the MP4 is already wired up
+      // wherever the caller asked it to go.
+      if (publicUrl && storagePath && next.onAttached) {
+        try {
+          await next.onAttached({
+            url: publicUrl,
+            storagePath,
+            filename: next.downloadFilename,
+          });
+        } catch (attachErr) {
+          console.error('onAttached callback failed (non-fatal):', attachErr);
+        }
       }
 
       updateJob(next.id, {
         status: 'completed',
         progress: 100,
-        message: 'Ready to download',
+        message: 'Ready',
         resultUrl: publicUrl,
         completedAt: Date.now(),
       });
 
-      // In-app toast with a Download action.
-      toast.success(`Video ready: ${next.title}`, {
-        description: publicUrl
-          ? 'Click Download to save it — or open the bell to find it later.'
-          : 'Click Download to save it. (Cloud link unavailable; available for this session only.)',
+      const attached = !!publicUrl && !!next.onAttached;
+      toast.success(`Your video is ready: ${next.title}`, {
+        description: attached
+          ? "It's already attached to the creative — open the bell if you want a download too."
+          : publicUrl
+            ? "Click Download to save it — or open the bell to find it later."
+            : "Click Download to save it. (Cloud link unavailable; available for this session only.)",
         action: {
           label: 'Download',
           onClick: () => {
@@ -171,9 +181,6 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
         duration: 12000,
       });
 
-      // Email notification (best-effort). Edge function `send-render-ready-email`
-      // looks up the user via the auth session; falls back gracefully if
-      // email fails.
       if (publicUrl) {
         try {
           await supabase.functions.invoke('send-render-ready-email', {
@@ -197,12 +204,11 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
         error: err?.message || 'Unknown error',
         completedAt: Date.now(),
       });
-      toast.error(`Couldn't render "${next.title}"`, {
+      toast.error(`Couldn't make your video for "${next.title}"`, {
         description: err?.message || 'Unknown error — try again from the bell.',
       });
     } finally {
       processingRef.current = false;
-      // Prune history.
       setJobs(prev => {
         const terminal = prev.filter(j => j.status === 'completed' || j.status === 'failed');
         if (terminal.length <= MAX_HISTORY) return prev;
@@ -213,12 +219,10 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
           .map(j => j.id);
         return prev.filter(j => !oldestTerminalIds.includes(j.id));
       });
-      // Kick the next pending job, if any.
       setTimeout(() => processQueue(), 50);
     }
   }, [updateJob]);
 
-  // Whenever jobs changes, see if there's work to do.
   useEffect(() => {
     processQueue();
   }, [jobs, processQueue]);
@@ -245,13 +249,13 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
           overlays: spec.overlays,
           style: spec.style,
         },
+        onAttached: spec.onAttached,
       };
       setJobs(prev => [newJob, ...prev]);
 
-      // Confirm to the user right away so they know the action landed.
-      toast.info(`Queued: ${spec.title}`, {
+      toast.info(`Got it — making your video: ${spec.title}`, {
         description:
-          'Your video is rendering in the background. Keep this LUMI tab open — we\'ll ping the bell icon and email you when it\'s ready. Takes up to about 3 minutes.',
+          "Keep this LUMI tab open. We'll ping the bell + email you when it's ready (usually under 3 minutes).",
         duration: 8000,
       });
 
