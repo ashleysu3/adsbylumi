@@ -1613,6 +1613,30 @@ export default function CreativeStudio() {
                       setWorkspace((prev: any) => prev ? { ...prev, creative_json: merged } : prev);
                     });
                 }
+
+                // If production_items changed (e.g. text overlay edits in
+                // CreativeChecklistCard), sync the productionItems state — the
+                // UI reads from it — AND persist to the DB. Without this, the
+                // edit lands only in workspace state, the UI doesn't reflect
+                // it, and the change is lost on reload (which is why the
+                // rendered MP4 was using the old overlay text).
+                const incomingProductionItems = (updates as any)?.production_items;
+                if (incomingProductionItems && Array.isArray(incomingProductionItems)) {
+                  setProductionItems(incomingProductionItems as ProductionItem[]);
+                  if (workspace?.id) {
+                    supabase
+                      .from("campaign_workspaces")
+                      .update({
+                        production_items: incomingProductionItems as unknown as Json,
+                        updated_at: new Date().toISOString(),
+                      })
+                      .eq("id", workspace.id)
+                      .then(({ error }) => {
+                        if (error) console.error("Failed to persist production_items:", error);
+                      });
+                  }
+                }
+
                 setWorkspace((prev: any) => ({ ...prev, ...updates }));
               }}
               onSaveToLibrary={saveItemToLibrary}
