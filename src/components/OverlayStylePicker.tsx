@@ -145,22 +145,11 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
           </p>
         </div>
 
-        {/* Position */}
-        <div className="space-y-2">
-          <Label>Text Position</Label>
-          <div className="flex gap-2">
-            {POSITION_OPTIONS.map((p) => (
-              <Button
-                key={p.value}
-                variant={style.position === p.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => update({ position: p.value as OverlayStyle["position"] })}
-              >
-                {p.label}
-              </Button>
-            ))}
-          </div>
-        </div>
+        {/* Default text position + size — auto-applies to every b-roll */}
+        <DefaultTextPositionEditor
+          style={style}
+          onChange={(patch) => update(patch)}
+        />
 
         {/* Text Shadow */}
         <div className="flex items-center justify-between">
