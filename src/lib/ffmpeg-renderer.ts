@@ -29,10 +29,15 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
+export type RenderEmphasisStyle = 'bold' | 'uppercase' | 'bold-uppercase';
+
 export interface RenderOverlay {
   text: string;
   startSeconds: number;
   endSeconds: number;
+  /** Used to apply hook/cta emphasis (size boost + bold/uppercase) so the
+   * burned video matches the in-app preview. */
+  type?: 'hook' | 'insight' | 'transition' | 'cta';
 }
 
 export interface RenderStyle {
@@ -47,6 +52,12 @@ export interface RenderStyle {
   fontWeight?: number | string;
   textStrokeColor?: string | null;
   textStrokeWidth?: number;
+  /** Apply emphasis to overlays whose type is 'hook' or 'cta'. */
+  emphasizeHookCta?: boolean;
+  /** Multiplier on fontSize for emphasized overlays. Default 1.3. */
+  emphasisBoost?: number;
+  /** How to emphasize. Default 'bold-uppercase'. */
+  emphasisStyle?: RenderEmphasisStyle;
 }
 
 export interface RenderOptions {
@@ -64,6 +75,9 @@ export const DEFAULT_RENDER_STYLE: RenderStyle = {
   bgOpacity: 0.6,
   position: 'bottom',
   textShadow: true,
+  emphasizeHookCta: true,
+  emphasisBoost: 1.3,
+  emphasisStyle: 'bold-uppercase',
 };
 
 // ---------------------------------------------------------------------------
@@ -111,8 +125,16 @@ function hexToRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
+function isEmphasizedOverlay(
+  overlay: { type?: 'hook' | 'insight' | 'transition' | 'cta' },
+  style: RenderStyle,
+): boolean {
+  if (!style.emphasizeHookCta) return false;
+  return overlay.type === 'hook' || overlay.type === 'cta';
+}
+
 async function renderTextToPng(
-  text: string,
+  overlay: RenderOverlay,
   style: RenderStyle,
   width: number,
   height: number,
@@ -126,17 +148,28 @@ async function renderTextToPng(
   // Transparent base — overlay will composite over the video.
   ctx.clearRect(0, 0, width, height);
 
-  // Try to scale font reasonably to video size. The `style.fontSize` is
-  // the editor's chosen size against a 360px-wide preview; we scale up
-  // proportionally so it looks the same on the real video dimensions.
-  const scaledFontSize = Math.round(style.fontSize * (width / 540));
+  // Apply hook/cta emphasis: bigger size + bold/uppercase.
+  const emphasized = isEmphasizedOverlay(overlay, style);
+  const emphasisBoost = style.emphasisBoost ?? 1.3;
+  const emphasisMode = style.emphasisStyle ?? 'bold-uppercase';
+  const useUpper = emphasized && (emphasisMode === 'uppercase' || emphasisMode === 'bold-uppercase');
+  const useBold = !emphasized || emphasisMode === 'bold' || emphasisMode === 'bold-uppercase';
+  const effectiveFontSize = emphasized ? style.fontSize * emphasisBoost : style.fontSize;
 
-  ctx.font = `bold ${scaledFontSize}px "${style.fontFamily}", Inter, sans-serif`;
+  // Try to scale font reasonably to video size. The `style.fontSize` is
+  // the editor's chosen size against a 540px-wide preview; we scale up
+  // proportionally so it looks the same on the real video dimensions.
+  const scaledFontSize = Math.round(effectiveFontSize * (width / 540));
+
+  const weight = useBold ? '800' : '400';
+  ctx.font = `${weight} ${scaledFontSize}px "${style.fontFamily}", Inter, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
+  const renderedText = useUpper ? overlay.text.toUpperCase() : overlay.text;
+
   // Split on explicit \n; no auto-wrap in v1.
-  const lines = text.split('\n');
+  const lines = renderedText.split('\n');
   const lineHeight = scaledFontSize * 1.3;
   const totalHeight = lines.length * lineHeight;
 
@@ -237,7 +270,7 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
 
     onProgress?.({ pct: 0, message: 'Building text overlays…' });
     for (let i = 0; i < overlays.length; i++) {
-      const png = await renderTextToPng(overlays[i].text, style, width, height);
+      const png = await renderTextToPng(overlays[i], style, width, height);
       await ffmpeg.writeFile(`overlay_${i}.png`, png);
     }
 

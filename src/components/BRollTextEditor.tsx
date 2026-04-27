@@ -109,8 +109,8 @@ export function BRollTextEditor({
       toast.error('Each overlay needs text and a valid timing (e.g. "0-3s").');
       return;
     }
-    // Map UI overlays → renderer specs. The renderer does not care about
-    // the `type` field — that's only for the in-app preview styling.
+    // Map UI overlays → renderer specs. The `type` is forwarded so the
+    // renderer can apply hook/CTA emphasis to match the live preview.
     const specs = overlays
       .map(o => {
         const t = parseTimingRange(o.timing || '');
@@ -119,9 +119,10 @@ export function BRollTextEditor({
           text: o.text,
           startSeconds: t.start,
           endSeconds: t.end,
+          type: o.type,
         };
       })
-      .filter((x): x is { text: string; startSeconds: number; endSeconds: number } => !!x);
+      .filter((x): x is NonNullable<typeof x> => !!x);
 
     enqueue({
       title: clipName || 'B-roll video',
@@ -136,6 +137,9 @@ export function BRollTextEditor({
         bgOpacity: style.bgOpacity,
         position: style.position,
         textShadow: style.textShadow,
+        emphasizeHookCta: style.emphasizeHookCta,
+        emphasisBoost: style.emphasisBoost,
+        emphasisStyle: style.emphasisStyle,
       },
       context: brandId ? { brandId } : undefined,
     });

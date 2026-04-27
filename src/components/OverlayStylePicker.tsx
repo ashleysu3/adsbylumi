@@ -173,6 +173,55 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
           <Switch checked={style.textShadow} onCheckedChange={(v) => update({ textShadow: v })} />
         </div>
 
+        {/* Hook & CTA Emphasis */}
+        <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label className="text-sm">Emphasize Hook & CTA</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Makes the opening hook and closing CTA stand out from regular lines.
+              </p>
+            </div>
+            <Switch
+              checked={style.emphasizeHookCta ?? true}
+              onCheckedChange={(v) => update({ emphasizeHookCta: v })}
+            />
+          </div>
+
+          {(style.emphasizeHookCta ?? true) && (
+            <>
+              <div className="space-y-2">
+                <Label className="text-xs">
+                  Emphasis size boost (+{Math.round(((style.emphasisBoost ?? 1.3) - 1) * 100)}%)
+                </Label>
+                <Slider
+                  value={[Math.round(((style.emphasisBoost ?? 1.3) - 1) * 100)]}
+                  onValueChange={([v]) => update({ emphasisBoost: 1 + v / 100 })}
+                  min={20}
+                  max={80}
+                  step={5}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Emphasis style</Label>
+                <Select
+                  value={style.emphasisStyle ?? "bold-uppercase"}
+                  onValueChange={(v) => update({ emphasisStyle: v as OverlayStyle["emphasisStyle"] })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bold">Bold only</SelectItem>
+                    <SelectItem value="uppercase">ALL CAPS</SelectItem>
+                    <SelectItem value="bold-uppercase">Bold + ALL CAPS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+        </div>
+
         {/* CTA Mockup Overlay */}
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5">
