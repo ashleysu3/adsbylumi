@@ -33,6 +33,8 @@ export interface TextOverlay {
   text: string;
   timing: string;
   type?: "hook" | "transition" | "insight" | "cta";
+  /** Optional drag-positioned xy (0–1 normalized of video size, center of text). */
+  xy?: { x: number; y: number };
 }
 
 export interface ProductionItem {
