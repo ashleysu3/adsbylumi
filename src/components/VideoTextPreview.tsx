@@ -383,7 +383,7 @@ export function VideoTextPreview({
     const el = containerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const xy = overlay.xy ?? defaultXYFromPosition(style.position);
+    const xy = overlay.xy ?? resolveDefaultXY(style);
     const centerClientX = rect.left + xy.x * rect.width;
     const centerClientY = rect.top + xy.y * rect.height;
     const initialDistance = Math.max(
@@ -460,7 +460,7 @@ export function VideoTextPreview({
     const resolved = resolveOverlayRender(overlay, style);
 
     // Per-overlay font scale (live during corner-resize, persisted otherwise)
-    const persistedScale = overlay.scale ?? 1;
+    const persistedScale = overlay.scale ?? style.defaultScale ?? 1;
     const effectiveScale =
       resizeIdx === idx && resizeMode === "scale" && liveScale !== null
         ? liveScale
@@ -487,7 +487,7 @@ export function VideoTextPreview({
     const liveXY: OverlayXY =
       dragIdx === idx && dragXY
         ? dragXY
-        : overlay.xy ?? defaultXYFromPosition(style.position);
+        : overlay.xy ?? resolveDefaultXY(style);
 
     const dragging = dragIdx === idx;
     const resizing = resizeIdx === idx;
