@@ -870,9 +870,10 @@ export function CreativeChecklistCard({
                                             text: o.text,
                                             startSeconds: parseFloat(m[1]),
                                             endSeconds: parseFloat(m[2]),
+                                            type: o.type,
                                           };
                                         })
-                                        .filter((x): x is { text: string; startSeconds: number; endSeconds: number } => !!x);
+                                        .filter((x): x is NonNullable<typeof x> => !!x);
                                       if (specs.length === 0) {
                                         toast.error('No overlays with valid timing — edit the timings and try again.');
                                         return;
