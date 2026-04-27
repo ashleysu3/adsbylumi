@@ -202,7 +202,11 @@ async function renderTextToPng(
 
   const resolved = resolveOverlayRender(overlay, style);
 
-  const scaledFontSize = Math.round(resolved.fontSize * (width / 540));
+  const overlayScale = Math.max(0.4, Math.min(3, overlay.scale ?? 1));
+  const scaledFontSize = Math.max(
+    8,
+    Math.round(resolved.fontSize * overlayScale * (width / 540)),
+  );
   const scaledStrokeWidth = Math.max(
     0,
     Math.round((style.textStrokeWidth || 0) * (width / 540)),
@@ -217,7 +221,30 @@ async function renderTextToPng(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  const lines = resolved.text.split('\n');
+  // Auto-wrap to a max width. overlay.width is a 0-1 fraction of video width;
+  // hard line breaks (\n) in the source are preserved as forced breaks.
+  const maxWidthFraction = Math.max(0.1, Math.min(1, overlay.width ?? 0.92));
+  const maxLinePx = Math.round(width * maxWidthFraction);
+  const wrapLine = (raw: string): string[] => {
+    const words = raw.split(/\s+/).filter(Boolean);
+    if (words.length === 0) return [''];
+    const out: string[] = [];
+    let current = '';
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (ctx.measureText(candidate).width <= maxLinePx) {
+        current = candidate;
+      } else {
+        if (current) out.push(current);
+        current = word;
+      }
+    }
+    if (current) out.push(current);
+    return out;
+  };
+  const lines = resolved.text
+    .split('\n')
+    .flatMap(hardLine => wrapLine(hardLine));
   const lineHeight = scaledFontSize * 1.15;
   const totalHeight = lines.length * lineHeight;
 
