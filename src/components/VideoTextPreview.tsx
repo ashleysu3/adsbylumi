@@ -649,7 +649,7 @@ export function VideoTextPreview({
       {/* Drag affordance hint when in editable mode */}
       {editable && !isPlaying && overlays.length > 0 && (
         <div className="absolute bottom-1 left-1 right-1 text-center text-[10px] text-white/80 pointer-events-none z-30 drop-shadow">
-          Drag any text to reposition · Press play to preview real timing
+          Drag text to move · hover for handles to resize · press play to preview timing
         </div>
       )}
     </div>
