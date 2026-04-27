@@ -75,6 +75,9 @@ export const DEFAULT_RENDER_STYLE: RenderStyle = {
   bgOpacity: 0.6,
   position: 'bottom',
   textShadow: true,
+  emphasizeHookCta: true,
+  emphasisBoost: 1.3,
+  emphasisStyle: 'bold-uppercase',
 };
 
 // ---------------------------------------------------------------------------
