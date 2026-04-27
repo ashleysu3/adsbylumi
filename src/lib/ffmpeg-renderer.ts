@@ -28,6 +28,10 @@ export interface RenderOverlay {
   type?: OverlayType;
   /** Per-overlay drag-positioned xy. Falls back to style.position when absent. */
   xy?: OverlayXY;
+  /** Max width as a fraction (0-1) of the video width. When set, text auto-wraps to fit. Default 0.92. */
+  width?: number;
+  /** Per-overlay font-size multiplier on top of the style's base size. Default 1. */
+  scale?: number;
 }
 
 export interface RenderStyle {
