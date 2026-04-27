@@ -86,6 +86,9 @@ interface VideoTextPreviewProps {
   /** Called when the user finishes dragging an overlay. The parent should
    *  update overlays[idx].xy and persist via its overlay-change pipeline. */
   onOverlayPositionChange?: (idx: number, xy: OverlayXY) => void;
+  /** Called when the user finishes resizing an overlay (right edge → width,
+   *  bottom-right corner → font scale). Either field may be present. */
+  onOverlayResize?: (idx: number, patch: { width?: number; scale?: number }) => void;
 }
 
 function parseTimingString(timing?: string): { start: number; end: number } | null {
