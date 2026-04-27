@@ -106,6 +106,9 @@ export function BRollTextEditor({
   const handlePositionChange = (idx: number, xy: OverlayXY) => {
     updateOverlay(idx, { xy });
   };
+  const handleResize = (idx: number, patch: { width?: number; scale?: number }) => {
+    updateOverlay(idx, patch);
+  };
 
   const allValid = overlays.every(
     o => o.text.trim().length > 0 && parseTimingRange(o.timing || '') !== null,
