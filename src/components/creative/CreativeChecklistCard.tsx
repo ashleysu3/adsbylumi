@@ -783,6 +783,11 @@ export function CreativeChecklistCard({
                                               updated[idx] = { ...updated[idx], xy };
                                               onOverlaysChange?.(updated as TextOverlay[]);
                                             }}
+                                            onOverlayResize={(idx, patch) => {
+                                              const updated = [...(item.text_overlays || [])];
+                                              updated[idx] = { ...updated[idx], ...patch };
+                                              onOverlaysChange?.(updated as TextOverlay[]);
+                                            }}
                                           />
                                         ) : (
                                           <video
