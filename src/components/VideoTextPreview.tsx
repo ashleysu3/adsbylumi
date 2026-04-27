@@ -343,6 +343,94 @@ export function VideoTextPreview({
   };
 
   // ---------------------------------------------------------------------------
+  // Resize handlers. Right-edge handle adjusts overlay.width (controls the
+  // wrapping max width → fewer/more lines). Bottom-right corner adjusts
+  // overlay.scale (font-size multiplier). Both commit on pointer-up.
+  // ---------------------------------------------------------------------------
+
+  const startResize = (
+    e: React.PointerEvent,
+    idx: number,
+    mode: "width" | "scale",
+    overlay: TextOverlay,
+  ) => {
+    if (!editable) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const xy = overlay.xy ?? defaultXYFromPosition(style.position);
+    const centerClientX = rect.left + xy.x * rect.width;
+    const centerClientY = rect.top + xy.y * rect.height;
+    const initialDistance = Math.max(
+      8,
+      Math.hypot(e.clientX - centerClientX, e.clientY - centerClientY),
+    );
+
+    setResizeIdx(idx);
+    setResizeMode(mode);
+    setLiveWidth(overlay.width ?? 0.92);
+    setLiveScale(overlay.scale ?? 1);
+    resizeStartRef.current = {
+      initialDistance,
+      initialScale: overlay.scale ?? 1,
+      centerClientX,
+      centerClientY,
+    };
+  };
+
+  const handleResizeMove = (e: React.PointerEvent) => {
+    if (resizeIdx === null || !resizeMode) return;
+    const el = containerRef.current;
+    const start = resizeStartRef.current;
+    if (!el || !start) return;
+    const rect = el.getBoundingClientRect();
+
+    if (resizeMode === "width") {
+      // Distance from overlay center to pointer's X → half-width.
+      const halfWidthPx = Math.abs(e.clientX - start.centerClientX);
+      const fullWidthPx = halfWidthPx * 2;
+      const fraction = Math.max(0.2, Math.min(1, fullWidthPx / rect.width));
+      setLiveWidth(fraction);
+    } else {
+      const distance = Math.max(
+        8,
+        Math.hypot(e.clientX - start.centerClientX, e.clientY - start.centerClientY),
+      );
+      const ratio = distance / start.initialDistance;
+      const next = Math.max(0.5, Math.min(2.5, start.initialScale * ratio));
+      setLiveScale(next);
+    }
+  };
+
+  const endResize = (e: React.PointerEvent) => {
+    if (resizeIdx === null || !resizeMode) return;
+    const idx = resizeIdx;
+    const mode = resizeMode;
+    const w = liveWidth;
+    const s = liveScale;
+    setResizeIdx(null);
+    setResizeMode(null);
+    setLiveWidth(null);
+    setLiveScale(null);
+    resizeStartRef.current = null;
+    try {
+      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (!onOverlayResize) return;
+    if (mode === "width" && w !== null) {
+      onOverlayResize(idx, { width: Number(w.toFixed(3)) });
+    } else if (mode === "scale" && s !== null) {
+      onOverlayResize(idx, { scale: Number(s.toFixed(2)) });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
   // Render a single overlay at its computed xy. Position is absolute (left/
   // top in %) with a translate(-50%, -50%) so the xy refers to the CENTER of
   // the text bounding box.
