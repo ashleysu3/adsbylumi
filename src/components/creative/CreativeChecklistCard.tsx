@@ -777,6 +777,12 @@ export function CreativeChecklistCard({
                                             overlays={tOverlays}
                                             style={oStyle}
                                             compact
+                                            editable
+                                            onOverlayPositionChange={(idx, xy) => {
+                                              const updated = [...(item.text_overlays || [])];
+                                              updated[idx] = { ...updated[idx], xy };
+                                              onOverlaysChange?.(updated as TextOverlay[]);
+                                            }}
                                           />
                                         ) : (
                                           <video
@@ -792,34 +798,16 @@ export function CreativeChecklistCard({
                                           size="sm"
                                           className="w-full gap-1.5 h-8 text-[11px]"
                                           onClick={() => {
-                                            const specs = tOverlays
-                                              .map(o => {
-                                                const m = (o.timing || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-                                                if (!m) return null;
-                                                return {
-                                                  text: o.text,
-                                                  startSeconds: parseFloat(m[1]),
-                                                  endSeconds: parseFloat(m[2]),
-                                                  type: o.type,
-                                                };
-                                              })
-                                              .filter((x): x is NonNullable<typeof x> => !!x);
-                                            if (specs.length === 0) {
-                                              toast.error('No overlays with valid timing — edit the timings and try again.');
-                                              return;
-                                            }
-                                            enqueue({
-                                              title: `${item.angleName || 'Creative'} — ${clip.file_name || 'b-roll'}`,
-                                              sourceClipName: clip.file_name,
+                                            onMakeVideo?.({
                                               videoUrl: clip.file_url,
-                                              overlays: specs,
-                                              style: oStyle,
-                                              context: brand?.id ? { brandId: brand.id } : undefined,
+                                              sourceClipName: clip.file_name,
+                                              overlays: tOverlays,
+                                              style: oStyle as unknown as RenderStyle,
                                             });
                                           }}
                                         >
                                           <Film className="h-3 w-3" />
-                                          Queue Render
+                                          Make my video
                                         </Button>
                                       )}
                                     </>
@@ -860,6 +848,12 @@ export function CreativeChecklistCard({
                                       overlays={tOverlays}
                                       style={oStyle}
                                       compact
+                                      editable
+                                      onOverlayPositionChange={(idx, xy) => {
+                                        const updated = [...(item.text_overlays || [])];
+                                        updated[idx] = { ...updated[idx], xy };
+                                        onOverlaysChange?.(updated as TextOverlay[]);
+                                      }}
                                     />
                                   ) : (
                                     <video
@@ -875,34 +869,16 @@ export function CreativeChecklistCard({
                                     size="sm"
                                     className="w-full gap-1.5 h-8 text-[11px]"
                                     onClick={() => {
-                                      const specs = tOverlays
-                                        .map(o => {
-                                          const m = (o.timing || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-                                          if (!m) return null;
-                                          return {
-                                            text: o.text,
-                                            startSeconds: parseFloat(m[1]),
-                                            endSeconds: parseFloat(m[2]),
-                                            type: o.type,
-                                          };
-                                        })
-                                        .filter((x): x is NonNullable<typeof x> => !!x);
-                                      if (specs.length === 0) {
-                                        toast.error('No overlays with valid timing — edit the timings and try again.');
-                                        return;
-                                      }
-                                      enqueue({
-                                        title: `${item.angleName || 'Creative'} — ${customBrollName || 'upload'}`,
-                                        sourceClipName: customBrollName || undefined,
+                                      onMakeVideo?.({
                                         videoUrl: customBrollUrl,
-                                        overlays: specs,
-                                        style: oStyle,
-                                        context: brand?.id ? { brandId: brand.id } : undefined,
+                                        sourceClipName: customBrollName || undefined,
+                                        overlays: tOverlays,
+                                        style: oStyle as unknown as RenderStyle,
                                       });
                                     }}
                                   >
                                     <Film className="h-3 w-3" />
-                                    Queue Render
+                                    Make my video
                                   </Button>
                                 )}
                               </div>
