@@ -129,6 +129,8 @@ export function BRollTextEditor({
           endSeconds: t.end,
           type: o.type,
           xy: o.xy,
+          width: o.width,
+          scale: o.scale,
         };
       })
       .filter((x): x is NonNullable<typeof x> => !!x);
