@@ -316,3 +316,183 @@ export function OverlayStylePicker({ style, onChange, onSave, saving, brandId }:
     </Card>
   );
 }
+
+// ============================================================================
+// DefaultTextPositionEditor
+//
+// Mini 9:16 stage where the user drags a "Aa" sample chip to set the brand
+// default text position. Also exposes a default font-size slider. Both
+// values are written to the OverlayStyle as `defaultXY` and `defaultScale`
+// and auto-applied to every b-roll overlay that doesn't have its own
+// per-clip override.
+// ============================================================================
+
+const POSITION_PRESETS: { value: OverlayStyle["position"]; label: string; xy: OverlayXY }[] = [
+  { value: "top", label: "Top", xy: { x: 0.5, y: 0.18 } },
+  { value: "center", label: "Center", xy: { x: 0.5, y: 0.5 } },
+  { value: "bottom", label: "Bottom", xy: { x: 0.5, y: 0.82 } },
+];
+
+interface DefaultTextPositionEditorProps {
+  style: OverlayStyle;
+  onChange: (patch: Partial<OverlayStyle>) => void;
+}
+
+function clamp01(n: number) {
+  return Math.max(0.04, Math.min(0.96, n));
+}
+
+function DefaultTextPositionEditor({ style, onChange }: DefaultTextPositionEditorProps) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const xy: OverlayXY = style.defaultXY ??
+    POSITION_PRESETS.find(p => p.value === style.position)?.xy ??
+    { x: 0.5, y: 0.82 };
+  const scale = style.defaultScale ?? 1;
+
+  const computeXY = (clientX: number, clientY: number): OverlayXY | null => {
+    const el = stageRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    return {
+      x: clamp01((clientX - rect.left) / rect.width),
+      y: clamp01((clientY - rect.top) / rect.height),
+    };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    setDragging(true);
+    const next = computeXY(e.clientX, e.clientY);
+    if (next) onChange({ defaultXY: next });
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return;
+    const next = computeXY(e.clientX, e.clientY);
+    if (next) onChange({ defaultXY: next });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setDragging(false);
+    try {
+      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+      <div className="space-y-1">
+        <Label className="flex items-center gap-1.5 text-sm font-semibold">
+          <Move className="h-4 w-4" />
+          Default Text Position & Size
+        </Label>
+        <p className="text-[12px] text-muted-foreground leading-snug">
+          Where should text land on every b-roll by default? Drag the sample below. You can still
+          reposition individual lines per clip.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {POSITION_PRESETS.map((p) => {
+          const isActive =
+            style.position === p.value &&
+            (!style.defaultXY ||
+              (Math.abs(style.defaultXY.x - p.xy.x) < 0.02 &&
+                Math.abs(style.defaultXY.y - p.xy.y) < 0.02));
+          return (
+            <Button
+              key={p.value}
+              variant={isActive ? "default" : "outline"}
+              size="sm"
+              onClick={() =>
+                onChange({ position: p.value, defaultXY: p.xy })
+              }
+            >
+              {p.label}
+            </Button>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-4 items-start">
+        {/* Mini 9:16 stage */}
+        <div
+          ref={stageRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          className="relative rounded-md overflow-hidden border bg-[image:var(--gradient-lumi)] cursor-crosshair shrink-0"
+          style={{ width: 140, height: 250, touchAction: "none" }}
+        >
+          {/* IG safe-zone bands */}
+          <div
+            className="absolute top-0 left-0 right-0 pointer-events-none"
+            style={{
+              height: "20%",
+              backgroundColor: "rgba(0,0,0,0.35)",
+              backgroundImage:
+                "repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 4px, transparent 4px 8px)",
+            }}
+          />
+          <div
+            className="absolute bottom-0 left-0 right-0 pointer-events-none"
+            style={{
+              height: "20%",
+              backgroundColor: "rgba(0,0,0,0.35)",
+              backgroundImage:
+                "repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 4px, transparent 4px 8px)",
+            }}
+          />
+          {/* Sample text chip */}
+          <div
+            className="absolute select-none px-2 py-1 rounded bg-black/55 text-white text-center pointer-events-none shadow"
+            style={{
+              left: `${xy.x * 100}%`,
+              top: `${xy.y * 100}%`,
+              transform: "translate(-50%, -50%)",
+              fontFamily: `"${style.fontFamily}", Inter, sans-serif`,
+              fontSize: Math.max(10, 14 * scale),
+              fontWeight: 700,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Aa
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-3 w-full">
+          <div className="space-y-1.5">
+            <Label className="text-xs">
+              Default text size ({scale.toFixed(2)}×)
+            </Label>
+            <Slider
+              value={[scale]}
+              onValueChange={([v]) => onChange({ defaultScale: v })}
+              min={0.5}
+              max={2}
+              step={0.05}
+            />
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Multiplier applied to every b-roll's overlay font size by default.
+            </p>
+          </div>
+          <div className="text-[11px] text-muted-foreground space-y-1">
+            <p>
+              Position: <span className="font-mono">{Math.round(xy.x * 100)}%, {Math.round(xy.y * 100)}%</span>
+            </p>
+            <p className="text-amber-600 dark:text-amber-400">
+              Amber bands = Instagram's profile (top) and caption (bottom) areas — keep text in the middle.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
