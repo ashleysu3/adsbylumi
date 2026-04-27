@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Type, Upload, X, ImageIcon, Sparkles } from "lucide-react";
+import { Loader2, Type, Upload, X, ImageIcon, Sparkles, Move } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { OverlayStyle, EmphasisStyle } from "./VideoTextPreview";
+import type { OverlayStyle, EmphasisStyle, OverlayXY } from "./VideoTextPreview";
 
 // ============================================================================
 // OverlayStylePicker (patch #15)
