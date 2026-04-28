@@ -363,13 +363,65 @@ export function BRollTextEditor({
             <Label className="text-xs text-muted-foreground uppercase font-semibold tracking-wide mb-2 block">
               Preview
             </Label>
+
+            {overflows && (
+              <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="text-xs">
+                    <p className="font-semibold text-amber-700">
+                      Your text runs longer than the video
+                    </p>
+                    <p className="text-muted-foreground mt-0.5">
+                      Video is {videoDuration.toFixed(1)}s but your last text ends at {maxOverlayEnd.toFixed(1)}s.
+                      Pick how to fit it:
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    size="sm"
+                    variant={fitMode === 'loop' ? 'default' : 'outline'}
+                    onClick={() => setFitMode('loop')}
+                    className="gap-1 h-auto py-2 flex-col"
+                  >
+                    <Repeat className="h-3.5 w-3.5" />
+                    <span className="text-[11px]">Loop video</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={fitMode === 'speed' ? 'default' : 'outline'}
+                    onClick={() => setFitMode('speed')}
+                    className="gap-1 h-auto py-2 flex-col"
+                  >
+                    <FastForward className="h-3.5 w-3.5" />
+                    <span className="text-[11px]">Speed up text</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      onOpenChange(false);
+                      toast.info('Pick a longer clip from your B-roll library to replace this one.');
+                    }}
+                    className="gap-1 h-auto py-2 flex-col"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    <span className="text-[11px]">Replace video</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <VideoTextPreview
               videoUrl={videoUrl}
-              overlays={overlays}
+              overlays={fittedOverlays}
               style={effectiveStyle}
               editable
               onOverlayPositionChange={handlePositionChange}
               onOverlayResize={handleResize}
+              onDurationChange={setVideoDuration}
+              loopVideo={fitMode !== 'speed'}
             />
             <p className="text-[11px] text-muted-foreground mt-2 text-center">
               Pause the video to see all overlays. Drag any line to move it. Hover any line and use the
