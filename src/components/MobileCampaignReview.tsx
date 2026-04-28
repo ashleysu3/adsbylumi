@@ -311,7 +311,7 @@ export function MobileCampaignReview({
           className="w-full h-14 text-base font-semibold gap-2 bg-gradient-to-r from-lumi-orange-1 via-lumi-pink-1 to-lumi-purple-1 hover:opacity-90"
         >
           <Rocket className="h-5 w-5" />
-          Publish to Meta
+          Publish my Ad to Meta
         </Button>
         {!canPublish && (
           <p className="text-xs text-center text-muted-foreground mt-2">

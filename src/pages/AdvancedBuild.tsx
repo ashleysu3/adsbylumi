@@ -463,7 +463,7 @@ export default function AdvancedBuild() {
   const canProceedToStep2 = assets.length > 0;
   const canProceedToStep3 = sharedCopy.variations.length > 0 && sharedCopy.selectedIndices.length > 0;
   const approvedCount = sharedCopy.selectedIndices.length;
-  const publishLabel = saveToBench ? "Save to Bench" : isExistingCampaign ? "Add to Campaign" : "Build Campaign";
+  const publishLabel = saveToBench ? "Save to Bench" : "Publish my Ad to Meta";
 
   if (loading) {
     return (

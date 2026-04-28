@@ -503,8 +503,8 @@ export function CampaignReview({ workspace, answers, onBack, onPublish }: Campai
           >
             <Rocket className="h-4 w-4" />
             {isAlreadyPublished 
-              ? (confirmRepublish ? 'Publish Duplicate Campaign' : 'Campaign Already Published')
-              : 'Publish to Meta'
+              ? (confirmRepublish ? 'Publish my Ad to Meta' : 'Campaign Already Published')
+              : 'Publish my Ad to Meta'
             }
           </Button>
         </div>
