@@ -288,6 +288,34 @@ export function VideoTextPreview({
     video.playbackRate = playbackRate || 1;
   }, [playbackRate, videoUrl]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const resetTimeline = () => {
+      isPlayingRef.current = false;
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setTimelineTime(0);
+      playTimelineBaseRef.current = 0;
+      playStartedAtRef.current = 0;
+    };
+    video.addEventListener("emptied", resetTimeline);
+    return () => video.removeEventListener("emptied", resetTimeline);
+  }, [videoUrl]);
+
+  useEffect(() => {
+    let frame = 0;
+    const tick = () => {
+      if (isPlayingRef.current) {
+        const elapsed = ((performance.now() - playStartedAtRef.current) / 1000) * (playbackRate || 1);
+        setTimelineTime(playTimelineBaseRef.current + elapsed);
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [playbackRate]);
+
   useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -314,30 +342,21 @@ export function VideoTextPreview({
   // the screen never goes blank mid-clip. The last overlay extends to the
   // video's duration (or its declared end, whichever is later) so the final
   // text always rides through to the end of playback.
-  const effectiveTimings: Array<{ start: number; end: number } | null> = (() => {
-    const parsed = overlays.map(o => parseTimingString(o.timing));
-    return parsed.map((t, i) => {
-      if (!t) return null;
-      const nextStart = (() => {
-        for (let j = i + 1; j < parsed.length; j++) {
-          if (parsed[j]) return parsed[j]!.start;
-        }
-        return null;
-      })();
-      const tail = nextStart ?? (duration > 0 ? duration : t.end);
-      return { start: t.start, end: Math.max(t.end, tail) };
-    });
-  })();
+  const parsedTimings = useMemo(() => overlays.map(o => parseTimingString(o.timing)), [overlays]);
+
+  const playbackTimelineTime = duration > 0 && loopVideo
+    ? timelineTime % duration
+    : timelineTime;
 
   const visibleIndexes: number[] = (() => {
     if (isStackedEditMode) {
       return overlays.map((_, i) => i);
     }
     for (let i = 0; i < overlays.length; i++) {
-      const t = effectiveTimings[i];
-      if (t && currentTime >= t.start && currentTime < t.end) return [i];
+      const t = parsedTimings[i];
+      if (t && playbackTimelineTime >= t.start && playbackTimelineTime < t.end) return [i];
     }
-    if (!isPlaying && currentTime < 0.1 && overlays.length > 0) return [0];
+    if (!isPlaying && playbackTimelineTime < 0.1 && overlays.length > 0) return [0];
     return [];
   })();
 
@@ -345,8 +364,8 @@ export function VideoTextPreview({
   // the live one when all overlays are stacked in edit mode.
   const activeIndexAtPlayhead: number | null = (() => {
     for (let i = 0; i < overlays.length; i++) {
-      const t = effectiveTimings[i];
-      if (t && currentTime >= t.start && currentTime < t.end) return i;
+      const t = parsedTimings[i];
+      if (t && playbackTimelineTime >= t.start && playbackTimelineTime < t.end) return i;
     }
     return null;
   })();
