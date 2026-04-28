@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
@@ -10,7 +10,7 @@ import {
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
   Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
-  Share2
+  Share2, Repeat, FastForward
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -50,6 +50,27 @@ interface ProductionManagerProps {
   onClearAll?: () => Promise<void>;
   onUrlChange?: (url: string) => void;
   brand?: any;
+}
+
+function parseOverlayTiming(raw?: string): { start: number; end: number } | null {
+  const m = (raw || "").match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s?/i);
+  if (!m) return null;
+  const start = parseFloat(m[1]);
+  const end = parseFloat(m[2]);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return { start, end };
+}
+
+function readVideoDuration(videoUrl: string): Promise<number> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.crossOrigin = "anonymous";
+    video.src = videoUrl;
+    video.onloadedmetadata = () => resolve(Number.isFinite(video.duration) ? video.duration : 0);
+    video.onerror = () => resolve(0);
+  });
 }
 
 export function ProductionManager({
