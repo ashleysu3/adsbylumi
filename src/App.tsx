@@ -69,6 +69,7 @@ import AdsManagerClient from "./pages/AdsManagerClient";
 import SubmitReview from "./pages/SubmitReview";
 import AdminReviews from "./pages/admin/Reviews";
 import AdminMetaDebug from "./pages/admin/MetaDebug";
+import AdminOverlayTemplates from "./pages/admin/OverlayTemplates";
 import FreeTrial from "./pages/FreeTrial";
 import Welcome from "./pages/Welcome";
 
@@ -169,6 +170,7 @@ const App = () => {
                   <Route path="/review" element={<SubmitReview />} />
                   <Route path="/admin/reviews" element={<AdminReviews />} />
                   <Route path="/admin/meta-debug" element={<AdminMetaDebug />} />
+                  <Route path="/admin/overlay-templates" element={<AdminOverlayTemplates />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
