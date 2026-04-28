@@ -95,6 +95,15 @@ interface VideoTextPreviewProps {
   /** Called when the user finishes resizing an overlay (right edge → width,
    *  bottom-right corner → font scale). Either field may be present. */
   onOverlayResize?: (idx: number, patch: { width?: number; scale?: number }) => void;
+  /** Whether the video should loop. Defaults to true. Set false when the
+   *  parent wants to detect overflow (text past video end). */
+  loopVideo?: boolean;
+  /** Playback rate for the underlying <video> element. Use < 1 to slow,
+   *  > 1 to speed up. Defaults to 1. */
+  playbackRate?: number;
+  /** Fires whenever the video's duration is known. Lets parents detect when
+   *  overlay timings exceed the video length and offer fit options. */
+  onDurationChange?: (duration: number) => void;
 }
 
 function parseTimingString(timing?: string): { start: number; end: number } | null {
@@ -201,6 +210,9 @@ export function VideoTextPreview({
   editable = false,
   onOverlayPositionChange,
   onOverlayResize,
+  loopVideo = true,
+  playbackRate = 1,
+  onDurationChange,
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
