@@ -95,6 +95,15 @@ interface VideoTextPreviewProps {
   /** Called when the user finishes resizing an overlay (right edge → width,
    *  bottom-right corner → font scale). Either field may be present. */
   onOverlayResize?: (idx: number, patch: { width?: number; scale?: number }) => void;
+  /** Whether the video should loop. Defaults to true. Set false when the
+   *  parent wants to detect overflow (text past video end). */
+  loopVideo?: boolean;
+  /** Playback rate for the underlying <video> element. Use < 1 to slow,
+   *  > 1 to speed up. Defaults to 1. */
+  playbackRate?: number;
+  /** Fires whenever the video's duration is known. Lets parents detect when
+   *  overlay timings exceed the video length and offer fit options. */
+  onDurationChange?: (duration: number) => void;
 }
 
 function parseTimingString(timing?: string): { start: number; end: number } | null {
@@ -201,6 +210,9 @@ export function VideoTextPreview({
   editable = false,
   onOverlayPositionChange,
   onOverlayResize,
+  loopVideo = true,
+  playbackRate = 1,
+  onDurationChange,
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -235,7 +247,11 @@ export function VideoTextPreview({
     const handleTimeUpdate = () => setCurrentTime(video.currentTime);
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-    const handleMeta = () => setDuration(video.duration || 0);
+    const handleMeta = () => {
+      const d = video.duration || 0;
+      setDuration(d);
+      onDurationChange?.(d);
+    };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("play", handlePlay);
@@ -248,7 +264,14 @@ export function VideoTextPreview({
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("loadedmetadata", handleMeta);
     };
-  }, []);
+  }, [onDurationChange]);
+
+  // Apply playbackRate to the video element whenever it changes.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = playbackRate || 1;
+  }, [playbackRate, videoUrl]);
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -271,12 +294,32 @@ export function VideoTextPreview({
   // ---------------------------------------------------------------------------
   const isStackedEditMode = editable && !isPlaying && overlays.length > 0;
 
+  // Build "effective" timings that bridge gaps between overlays. If overlay
+  // N ends at 2s and overlay N+1 starts at 4s, we extend overlay N to 4s so
+  // the screen never goes blank mid-clip. The last overlay extends to the
+  // video's duration (or its declared end, whichever is later) so the final
+  // text always rides through to the end of playback.
+  const effectiveTimings: Array<{ start: number; end: number } | null> = (() => {
+    const parsed = overlays.map(o => parseTimingString(o.timing));
+    return parsed.map((t, i) => {
+      if (!t) return null;
+      const nextStart = (() => {
+        for (let j = i + 1; j < parsed.length; j++) {
+          if (parsed[j]) return parsed[j]!.start;
+        }
+        return null;
+      })();
+      const tail = nextStart ?? (duration > 0 ? duration : t.end);
+      return { start: t.start, end: Math.max(t.end, tail) };
+    });
+  })();
+
   const visibleIndexes: number[] = (() => {
     if (isStackedEditMode) {
       return overlays.map((_, i) => i);
     }
     for (let i = 0; i < overlays.length; i++) {
-      const t = parseTimingString(overlays[i].timing);
+      const t = effectiveTimings[i];
       if (t && currentTime >= t.start && currentTime < t.end) return [i];
     }
     if (!isPlaying && currentTime < 0.1 && overlays.length > 0) return [0];
@@ -287,7 +330,7 @@ export function VideoTextPreview({
   // the live one when all overlays are stacked in edit mode.
   const activeIndexAtPlayhead: number | null = (() => {
     for (let i = 0; i < overlays.length; i++) {
-      const t = parseTimingString(overlays[i].timing);
+      const t = effectiveTimings[i];
       if (t && currentTime >= t.start && currentTime < t.end) return i;
     }
     return null;
@@ -642,7 +685,7 @@ export function VideoTextPreview({
           className="w-full h-full object-contain"
           controls
           muted
-          loop
+          {...(loopVideo ? { loop: true } : {})}
           playsInline
           preload="metadata"
         />

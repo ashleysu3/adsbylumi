@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Type, Film } from 'lucide-react';
+import { Plus, X, Type, Film, AlertTriangle, Repeat, FastForward, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   VideoTextPreview,
@@ -73,6 +73,44 @@ export function BRollTextEditor({
   ]);
   const [templateStyle, setTemplateStyle] = useState<RenderStyle | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number>(0);
+  // null = no fit mode chosen yet (overlays render as-typed). 'loop' = loop
+  // the preview video so all overlays play through. 'speed' = compress overlay
+  // timings to fit within the video's duration.
+  const [fitMode, setFitMode] = useState<'loop' | 'speed' | null>(null);
+
+  // Compute the latest end time across all overlays. Used to detect when
+  // text would run past the end of the video.
+  const maxOverlayEnd = useMemo(() => {
+    return overlays.reduce((acc, o) => {
+      const t = parseTimingRange(o.timing || '');
+      return t ? Math.max(acc, t.end) : acc;
+    }, 0);
+  }, [overlays]);
+
+  const overflows = videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05;
+
+  // Apply the chosen fit mode to the overlays before they're rendered or
+  // sent to the encoder. 'speed' rescales every timing to fit into the
+  // video duration. 'loop' leaves timings alone (preview will loop the
+  // video; for the final render we clamp so the encoder doesn't drop the
+  // tail texts off-screen).
+  const fittedOverlays = useMemo<TextOverlay[]>(() => {
+    if (!overflows || !fitMode) return overlays;
+    if (fitMode === 'speed') {
+      const factor = videoDuration / maxOverlayEnd;
+      return overlays.map(o => {
+        const t = parseTimingRange(o.timing || '');
+        if (!t) return o;
+        const start = +(t.start * factor).toFixed(2);
+        const end = +(t.end * factor).toFixed(2);
+        return { ...o, timing: `${start}-${end}s` };
+      });
+    }
+    // loop mode — keep original timings for preview; the looping <video>
+    // will replay so all texts can be seen during their original windows.
+    return overlays;
+  }, [overlays, fitMode, overflows, videoDuration, maxOverlayEnd]);
 
   const effectiveStyle: OverlayStyle = templateStyle
     ? {
@@ -119,7 +157,22 @@ export function BRollTextEditor({
       toast.error('Each overlay needs text and a valid timing (e.g. "0-3s").');
       return;
     }
-    const specs = overlays
+    if (overflows && !fitMode) {
+      toast.error('Your text runs longer than the video. Pick a fit option above (Loop, Speed up, or Replace).');
+      return;
+    }
+    // Use fittedOverlays (rescaled when fitMode === 'speed'). For 'loop' we
+    // also clamp the tail end of any overlay that still extends past the
+    // video so the encoder doesn't lose the last text on a non-looping
+    // output file.
+    const sourceOverlays = fittedOverlays.map(o => {
+      const t = parseTimingRange(o.timing || '');
+      if (!t || !overflows || fitMode !== 'loop' || videoDuration <= 0) return o;
+      if (t.end <= videoDuration) return o;
+      const clampedStart = Math.min(t.start, Math.max(0, videoDuration - 0.5));
+      return { ...o, timing: `${clampedStart}-${videoDuration.toFixed(2)}s` };
+    });
+    const specs = sourceOverlays
       .map(o => {
         const t = parseTimingRange(o.timing || '');
         if (!t) return null;
@@ -310,13 +363,65 @@ export function BRollTextEditor({
             <Label className="text-xs text-muted-foreground uppercase font-semibold tracking-wide mb-2 block">
               Preview
             </Label>
+
+            {overflows && (
+              <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="text-xs">
+                    <p className="font-semibold text-amber-700">
+                      Your text runs longer than the video
+                    </p>
+                    <p className="text-muted-foreground mt-0.5">
+                      Video is {videoDuration.toFixed(1)}s but your last text ends at {maxOverlayEnd.toFixed(1)}s.
+                      Pick how to fit it:
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    size="sm"
+                    variant={fitMode === 'loop' ? 'default' : 'outline'}
+                    onClick={() => setFitMode('loop')}
+                    className="gap-1 h-auto py-2 flex-col"
+                  >
+                    <Repeat className="h-3.5 w-3.5" />
+                    <span className="text-[11px]">Loop video</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={fitMode === 'speed' ? 'default' : 'outline'}
+                    onClick={() => setFitMode('speed')}
+                    className="gap-1 h-auto py-2 flex-col"
+                  >
+                    <FastForward className="h-3.5 w-3.5" />
+                    <span className="text-[11px]">Speed up text</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      onOpenChange(false);
+                      toast.info('Pick a longer clip from your B-roll library to replace this one.');
+                    }}
+                    className="gap-1 h-auto py-2 flex-col"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    <span className="text-[11px]">Replace video</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <VideoTextPreview
               videoUrl={videoUrl}
-              overlays={overlays}
+              overlays={fittedOverlays}
               style={effectiveStyle}
               editable
               onOverlayPositionChange={handlePositionChange}
               onOverlayResize={handleResize}
+              onDurationChange={setVideoDuration}
+              loopVideo={fitMode !== 'speed'}
             />
             <p className="text-[11px] text-muted-foreground mt-2 text-center">
               Pause the video to see all overlays. Drag any line to move it. Hover any line and use the
