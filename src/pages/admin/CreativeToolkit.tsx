@@ -310,7 +310,7 @@ export default function AdminCreativeToolkit() {
               />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
                 {templates.map((pack, i) => (
-                  <EditableCard key={i} onEdit={() => openEdit("templates", i, pack)} onDelete={canEdit("templates") ? () => deleteItem("templates", i) : undefined}>
+                  <EditableCard key={i} onEdit={() => openEdit("templates", i, pack)} onDelete={() => deleteItem("templates", i)}>
                     <AspectRatio ratio={16 / 9}>
                       <div className="w-full h-full bg-[image:var(--gradient-lumi)] opacity-80 flex items-center justify-center relative">
                         <span className="text-white font-display font-bold text-lg text-center px-4 drop-shadow-md">{pack.name}</span>
@@ -336,7 +336,7 @@ export default function AdminCreativeToolkit() {
                 onAdd={() => addItem("broll_sources", { name: "", badge: "", badgeColor: "", description: "", url: "", buttonLabel: "" })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 {brollSources.map((src, i) => (
-                  <EditableCard key={i} onEdit={() => openEdit("broll_sources", i, src)} onDelete={canEdit("broll_sources") ? () => deleteItem("broll_sources", i) : undefined}>
+                  <EditableCard key={i} onEdit={() => openEdit("broll_sources", i, src)} onDelete={() => deleteItem("broll_sources", i)}>
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-lg bg-[image:var(--gradient-lumi)] flex items-center justify-center"><Film className="h-4 w-4 text-white" /></div>
@@ -382,7 +382,7 @@ export default function AdminCreativeToolkit() {
                 onAdd={() => addItem("music_sources", { name: "", badge: "", badgeColor: "", description: "", url: "", buttonLabel: "" })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                 {musicSources.map((src, i) => (
-                  <EditableCard key={i} onEdit={() => openEdit("music_sources", i, src)} onDelete={canEdit("music_sources") ? () => deleteItem("music_sources", i) : undefined}>
+                  <EditableCard key={i} onEdit={() => openEdit("music_sources", i, src)} onDelete={() => deleteItem("music_sources", i)}>
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-start gap-3">
                         <div className="h-9 w-9 rounded-lg bg-[image:var(--gradient-lumi)] flex items-center justify-center flex-shrink-0"><Music className="h-4 w-4 text-white" /></div>
@@ -404,7 +404,7 @@ export default function AdminCreativeToolkit() {
                   onAdd={() => addItem("production_tools", { name: "", badge: "", badgeColor: "", description: "", url: "", buttonLabel: "" })} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   {productionTools.map((tool, i) => (
-                    <EditableCard key={i} onEdit={() => openEdit("production_tools", i, tool)} onDelete={canEdit("production_tools") ? () => deleteItem("production_tools", i) : undefined}>
+                    <EditableCard key={i} onEdit={() => openEdit("production_tools", i, tool)} onDelete={() => deleteItem("production_tools", i)}>
                       <CardContent className="p-5 space-y-3">
                         <div className="flex items-start gap-3">
                           <div className="h-9 w-9 rounded-lg bg-[image:var(--gradient-lumi)] flex items-center justify-center flex-shrink-0"><Video className="h-4 w-4 text-white" /></div>
@@ -429,7 +429,7 @@ export default function AdminCreativeToolkit() {
                 onAdd={() => addItem("marketplace_packs", { name: "", contributor: { name: "", avatar: null, url: "#" }, price: "", priceNum: 0, category: "", formats: [], description: "", externalUrl: "" })} />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
                 {marketplacePacks.map((pack, i) => (
-                  <EditableCard key={i} onEdit={() => openEdit("marketplace_packs", i, pack)} onDelete={canEdit("marketplace_packs") ? () => deleteItem("marketplace_packs", i) : undefined}>
+                  <EditableCard key={i} onEdit={() => openEdit("marketplace_packs", i, pack)} onDelete={() => deleteItem("marketplace_packs", i)}>
                     <AspectRatio ratio={16 / 9}>
                       <div className="w-full h-full bg-[image:var(--gradient-lumi)] opacity-80 flex items-center justify-center relative">
                         <span className="text-white font-display font-bold text-lg text-center px-4 drop-shadow-md">{pack.name}</span>
