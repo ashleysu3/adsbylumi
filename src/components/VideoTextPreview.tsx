@@ -247,7 +247,11 @@ export function VideoTextPreview({
     const handleTimeUpdate = () => setCurrentTime(video.currentTime);
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
-    const handleMeta = () => setDuration(video.duration || 0);
+    const handleMeta = () => {
+      const d = video.duration || 0;
+      setDuration(d);
+      onDurationChange?.(d);
+    };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("play", handlePlay);
@@ -260,7 +264,14 @@ export function VideoTextPreview({
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("loadedmetadata", handleMeta);
     };
-  }, []);
+  }, [onDurationChange]);
+
+  // Apply playbackRate to the video element whenever it changes.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = playbackRate || 1;
+  }, [playbackRate, videoUrl]);
 
   useLayoutEffect(() => {
     const el = containerRef.current;
