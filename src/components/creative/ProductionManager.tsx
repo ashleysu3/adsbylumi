@@ -817,7 +817,26 @@ export function ProductionManager({
           linked_concept_id: args.item.id,
           linked_concept_title: (args.item as any).hook || null,
         };
-        const filtered = uploadedAssets.filter(
+
+        // Read CURRENT user_uploaded_assets fresh from the DB. Renders take
+        // ~2 minutes; during that window the user may have uploaded other
+        // assets (manually or via another auto-attach). Using the closure-
+        // captured `uploadedAssets` would silently overwrite those changes.
+        let current: any[] = uploadedAssets;
+        if (workspace?.id) {
+          const { data: row, error: readErr } = await supabase
+            .from('campaign_workspaces')
+            .select('user_uploaded_assets')
+            .eq('id', workspace.id)
+            .single();
+          if (readErr) {
+            console.error('Failed to re-read user_uploaded_assets, falling back to local state:', readErr);
+          } else {
+            current = (row?.user_uploaded_assets as any[]) || [];
+          }
+        }
+
+        const filtered = current.filter(
           (a: any) => a.linked_concept_id !== args.item.id,
         );
         const updated = [...filtered, newAsset];
