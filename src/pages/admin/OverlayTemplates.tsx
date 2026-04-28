@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,20 +31,23 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Trash2, Upload, Loader2, Palette } from 'lucide-react';
+import { Plus, Pencil, Trash2, Upload, Loader2, Palette, Sparkles, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const overlayTemplatesTable = 'text_overlay_templates' as any;
 
 // ============================================================================
-// Admin · Text Overlay Templates
+// Admin · Text Overlay Templates (patch #18)
 //
-// CRUD UI for the global text-overlay style template library. Ashley (and
-// other admins) use this to create templates modeled on reference videos
-// they admire — set font/color/position/case/stroke, upload the reference
-// clip, save. Users see the result in the TemplateGallery picker from the
-// B-Roll Text Editor and Creative Studio card.
+// CRUD UI for the global text-overlay style template library. Patch #18:
+//   - Re-ships the AI auto-analyze flow that drifted out of production.
+//     Click "Auto-analyze with AI" after uploading a reference video and
+//     Gemini extracts the style — font, color, position, case, stroke —
+//     into the form so admin just reviews + saves.
+//   - Adds a "Paste URL" option alongside the upload, so admins don't
+//     have to download IG clips to their device first. Server-side
+//     fetcher edge function pulls the bytes and uploads to storage.
 // ============================================================================
 
 type LetterCase = 'as-typed' | 'upper' | 'lower' | 'title';
@@ -103,6 +106,62 @@ const EMPTY_FORM: Omit<Template, 'id'> = {
   reference_video_storage_path: null,
 };
 
+// Grab a frame at ~50% of the video's duration and return it as a base64
+// PNG data URL. Used for AI auto-analyze — text is usually visible by the
+// middle of a short IG clip, so that's a reasonable default sample point.
+async function captureMidFrame(videoUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.src = videoUrl;
+
+    const cleanup = () => {
+      video.removeEventListener('loadedmetadata', onMeta);
+      video.removeEventListener('seeked', onSeeked);
+      video.removeEventListener('error', onErr);
+    };
+
+    const onMeta = () => {
+      const t = Math.max(0.5, (video.duration || 5) * 0.5);
+      try {
+        video.currentTime = t;
+      } catch (e) {
+        cleanup();
+        reject(new Error('Seek failed'));
+      }
+    };
+
+    const onSeeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 720;
+        canvas.height = video.videoHeight || 1280;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('No 2D context');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/png');
+        cleanup();
+        resolve(dataUrl);
+      } catch (err) {
+        cleanup();
+        reject(err);
+      }
+    };
+
+    const onErr = () => {
+      cleanup();
+      reject(new Error('Could not load video for frame capture'));
+    };
+
+    video.addEventListener('loadedmetadata', onMeta);
+    video.addEventListener('seeked', onSeeked);
+    video.addEventListener('error', onErr);
+  });
+}
+
 export default function AdminOverlayTemplates() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,7 +219,8 @@ export default function AdminOverlayTemplates() {
               Text Overlay Templates
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Curated style presets users pick from in the b-roll text editor. Upload an Instagram reference clip to show them the vibe.
+              Curated style presets users pick from in the b-roll text editor. Upload an Instagram reference clip
+              (or paste a direct video URL) to show them the vibe.
             </p>
           </div>
           <Button variant="lumi" className="gap-1.5" onClick={() => setShowCreate(true)}>
@@ -299,10 +359,18 @@ function TemplateFormDialog({
   );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  // URL paste UI state.
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlValue, setUrlValue] = useState('');
+  const [fetchingUrl, setFetchingUrl] = useState(false);
 
   useEffect(() => {
     if (template) setForm({ ...template } as any);
     else setForm(EMPTY_FORM);
+    setShowUrlInput(false);
+    setUrlValue('');
   }, [template, open]);
 
   const patch = (p: Partial<typeof form>) => setForm(prev => ({ ...prev, ...p }));
@@ -370,13 +438,93 @@ function TemplateFormDialog({
     }
   };
 
+  // Patch #18: paste a URL instead of uploading. Calls the
+  // fetch-reference-video edge function which downloads server-side and
+  // stores in the same creative-assets bucket as the upload path.
+  const handleFetchUrl = async () => {
+    const url = urlValue.trim();
+    if (!url) {
+      toast.error('Paste a URL first');
+      return;
+    }
+    setFetchingUrl(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-reference-video', {
+        body: { url },
+      });
+      if (error) throw new Error(error.message || 'Request failed');
+      if (!data?.success || !data?.url) {
+        const hint = (data as any)?.hint ? `\n\n${(data as any).hint}` : '';
+        throw new Error(((data as any)?.error || 'Could not load that URL') + hint);
+      }
+      patch({ reference_video_url: data.url, reference_video_storage_path: data.storagePath });
+      setShowUrlInput(false);
+      setUrlValue('');
+      toast.success('Reference video imported from URL');
+    } catch (err: any) {
+      toast.error('Import failed', {
+        description: err?.message || 'Try a direct video URL or upload the file.',
+        duration: 10000,
+      });
+    } finally {
+      setFetchingUrl(false);
+    }
+  };
+
+  // Grab a frame ~halfway through the video (text is usually visible by
+  // then in IG b-roll) and send it to Gemini via the AI gateway. Returns
+  // once the form has been populated or an error is shown.
+  const handleAutoAnalyze = async () => {
+    if (!form.reference_video_url) {
+      toast.error('Upload or paste a reference video first');
+      return;
+    }
+    setAnalyzing(true);
+    try {
+      const frameDataUrl = await captureMidFrame(form.reference_video_url);
+      const { data, error } = await supabase.functions.invoke('analyze-overlay-reference', {
+        body: { imageBase64: frameDataUrl },
+      });
+      if (error) throw new Error(error.message || 'Request failed');
+      if (!data?.success || !data?.draft) {
+        throw new Error(data?.error || 'AI returned no draft');
+      }
+      const d = data.draft;
+      patch({
+        name: form.name || d.name_suggestion || 'Reference Style',
+        description: form.description || d.description_suggestion || '',
+        font_family: d.font_family,
+        font_size: d.font_size,
+        font_weight: d.font_weight,
+        text_color: d.text_color,
+        bg_color: d.bg_color,
+        bg_opacity: d.bg_opacity,
+        position: d.position,
+        text_shadow: d.text_shadow,
+        letter_case: d.letter_case,
+        text_stroke_color: d.text_stroke_color,
+        text_stroke_width: d.text_stroke_width,
+      });
+      toast.success('Style extracted — review + save when it looks right', {
+        description: d.confidence_notes || undefined,
+        duration: 10000,
+      });
+    } catch (err: any) {
+      console.error('Auto-analyze failed:', err);
+      toast.error('Auto-analyze failed: ' + (err?.message || 'unknown error'));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{template ? 'Edit template' : 'New template'}</DialogTitle>
           <DialogDescription>
-            Describe the text style. Upload the Instagram reference so users see the vibe in the picker.
+            Drop in an Instagram reference (upload or paste URL), click "Auto-analyze with AI", review the extracted
+            style, save.
           </DialogDescription>
         </DialogHeader>
 
@@ -555,13 +703,14 @@ function TemplateFormDialog({
             </div>
           </div>
 
-          {/* Right column: reference video + preview */}
+          {/* Right column: reference video + AI analyze */}
           <div className="space-y-3">
             <div>
               <Label className="text-sm font-semibold">Reference video</Label>
               <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
-                The clip users see in the picker as "this is the vibe." Download the IG post you like and upload here.
+                The clip users see in the picker as "this is the vibe."
               </p>
+
               {form.reference_video_url ? (
                 <div className="space-y-2">
                   <video
@@ -572,36 +721,115 @@ function TemplateFormDialog({
                     loop
                     playsInline
                   />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="lumi"
+                      className="gap-1.5"
+                      onClick={handleAutoAnalyze}
+                      disabled={analyzing}
+                    >
+                      {analyzing ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      {analyzing ? 'Analyzing…' : 'Auto-analyze with AI'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => patch({ reference_video_url: null, reference_video_storage_path: null })}
+                    >
+                      Remove reference
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    AI prefills the form with its best guess. You review + tweak before saving.
+                  </p>
+                </div>
+              ) : showUrlInput ? (
+                <div className="space-y-2">
+                  <Input
+                    type="url"
+                    placeholder="https://… (direct .mp4 link works best)"
+                    value={urlValue}
+                    onChange={e => setUrlValue(e.target.value)}
+                    disabled={fetchingUrl}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleFetchUrl();
+                      }
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="lumi"
+                      onClick={handleFetchUrl}
+                      disabled={fetchingUrl || !urlValue.trim()}
+                      className="gap-1.5"
+                    >
+                      {fetchingUrl ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <LinkIcon className="h-3.5 w-3.5" />
+                      )}
+                      {fetchingUrl ? 'Fetching…' : 'Import from URL'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setShowUrlInput(false);
+                        setUrlValue('');
+                      }}
+                      disabled={fetchingUrl}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Direct video URLs (.mp4 / .mov) work reliably. Instagram and TikTok page URLs may fail
+                    because those sites hide videos from anonymous requests — if so, save the clip locally
+                    and use the upload option instead.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="block aspect-[9/16] border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/40 transition-colors flex items-center justify-center">
+                    {uploading ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-xs text-muted-foreground">Click to upload MP4 / MOV</p>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={e => {
+                        const f = e.target.files?.[0];
+                        if (f) handleVideoUpload(f);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => patch({ reference_video_url: null, reference_video_storage_path: null })}
+                    className="w-full gap-1.5"
+                    onClick={() => setShowUrlInput(true)}
+                    disabled={uploading}
                   >
-                    Remove reference
+                    <LinkIcon className="h-3.5 w-3.5" />
+                    …or paste a video URL
                   </Button>
                 </div>
-              ) : (
-                <label className="block aspect-[9/16] border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/40 transition-colors flex items-center justify-center">
-                  {uploading ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  ) : (
-                    <div className="text-center">
-                      <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-xs text-muted-foreground">Click to upload MP4 / MOV</p>
-                    </div>
-                  )}
-                  <input
-                    type="file"
-                    accept="video/*"
-                    className="hidden"
-                    disabled={uploading}
-                    onChange={e => {
-                      const f = e.target.files?.[0];
-                      if (f) handleVideoUpload(f);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
               )}
             </div>
           </div>
