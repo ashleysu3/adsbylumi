@@ -297,12 +297,14 @@ export function VideoTextPreview({
     if (!video) return;
     const resetTimeline = () => {
       isPlayingRef.current = false;
+      timelineTimeRef.current = 0;
       setIsPlaying(false);
       setCurrentTime(0);
       setTimelineTime(0);
       playTimelineBaseRef.current = 0;
       playStartedAtRef.current = 0;
     };
+    resetTimeline();
     video.addEventListener("emptied", resetTimeline);
     return () => video.removeEventListener("emptied", resetTimeline);
   }, [videoUrl]);
@@ -382,10 +384,10 @@ export function VideoTextPreview({
     const ctaOverlay = overlays.find(o => o.type === "cta");
     if (ctaOverlay) {
       const timing = parseTimingString(ctaOverlay.timing);
-      if (timing) return currentTime >= timing.start && currentTime < timing.end;
+      if (timing) return playbackTimelineTime >= timing.start && playbackTimelineTime < timing.end;
       return !isPlaying;
     }
-    if (duration > 0 && currentTime >= duration - 3) return true;
+    if (duration > 0 && playbackTimelineTime >= duration - 3) return true;
     if (!isPlaying) return true;
     return false;
   })();
