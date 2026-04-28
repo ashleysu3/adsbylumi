@@ -216,7 +216,7 @@ export function VideoTextPreview({
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [, setCurrentTime] = useState(0);
   const [timelineTime, setTimelineTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -345,16 +345,11 @@ export function VideoTextPreview({
   // ---------------------------------------------------------------------------
   const isStackedEditMode = editable && !isPlaying && overlays.length > 0;
 
-  // Build "effective" timings that bridge gaps between overlays. If overlay
-  // N ends at 2s and overlay N+1 starts at 4s, we extend overlay N to 4s so
-  // the screen never goes blank mid-clip. The last overlay extends to the
-  // video's duration (or its declared end, whichever is later) so the final
-  // text always rides through to the end of playback.
+  // Use the exact timing windows shown beside each overlay. Text does not
+  // bridge gaps or linger past its listed end time.
   const parsedTimings = useMemo(() => overlays.map(o => parseTimingString(o.timing)), [overlays]);
 
-  const playbackTimelineTime = duration > 0 && loopVideo
-    ? timelineTime % duration
-    : timelineTime;
+  const playbackTimelineTime = timelineTime;
 
   const visibleIndexes: number[] = (() => {
     if (isStackedEditMode) {
