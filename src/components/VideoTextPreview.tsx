@@ -312,7 +312,9 @@ export function VideoTextPreview({
     const tick = () => {
       if (isPlayingRef.current) {
         const elapsed = ((performance.now() - playStartedAtRef.current) / 1000) * (playbackRate || 1);
-        setTimelineTime(playTimelineBaseRef.current + elapsed);
+        const nextTimeline = playTimelineBaseRef.current + elapsed;
+        timelineTimeRef.current = nextTimeline;
+        setTimelineTime(nextTimeline);
       }
       frame = requestAnimationFrame(tick);
     };
