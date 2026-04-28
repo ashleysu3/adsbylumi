@@ -52,15 +52,19 @@ Deno.serve(async req => {
     // and use that. Direct video URLs skip this step.
     const resolved = await resolveVideoUrl(url);
     if (!resolved.ok) {
+      // Return 200 with a fallback flag so the frontend can show a friendly
+      // "upload manually instead" message rather than a generic error toast.
       return json(
         {
+          ok: false,
+          fallback: true,
           error: resolved.error,
           hint:
             'For Instagram / TikTok page URLs, this often fails because the platform hides the video URL from anonymous requests. ' +
             'Workaround: open the post in your browser, save the video to your device (or an MP4 link service), ' +
             'and either upload directly or paste the resulting direct video URL here.',
         },
-        400,
+        200,
         corsHeaders,
       );
     }
