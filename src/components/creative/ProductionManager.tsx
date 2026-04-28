@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
@@ -10,7 +10,7 @@ import {
   Video, Film, Image, Eye, FolderOpen, Maximize2,
   Sparkles, Loader2, Filter, Library, Info, Download,
   Archive, Trash2, ChevronDown, Star, Printer, CheckSquare, Square, XCircle,
-  Share2
+  Share2, Repeat, FastForward
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -52,6 +52,27 @@ interface ProductionManagerProps {
   brand?: any;
 }
 
+function parseOverlayTiming(raw?: string): { start: number; end: number } | null {
+  const m = (raw || "").match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s?/i);
+  if (!m) return null;
+  const start = parseFloat(m[1]);
+  const end = parseFloat(m[2]);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  return { start, end };
+}
+
+function readVideoDuration(videoUrl: string): Promise<number> {
+  return new Promise((resolve) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.muted = true;
+    video.crossOrigin = "anonymous";
+    video.src = videoUrl;
+    video.onloadedmetadata = () => resolve(Number.isFinite(video.duration) ? video.duration : 0);
+    video.onerror = () => resolve(0);
+  });
+}
+
 export function ProductionManager({
   workspace,
   productionItems,
@@ -86,6 +107,15 @@ export function ProductionManager({
   const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(
     (workspace as any)?.broll_library_id || null
   );
+  const [pendingShortVideoRender, setPendingShortVideoRender] = useState<{
+    item: ProductionItem;
+    videoUrl: string;
+    sourceClipName?: string;
+    overlays: TextOverlay[];
+    style: RenderStyle;
+    videoDuration: number;
+    maxOverlayEnd: number;
+  } | null>(null);
 
   // Load named b-roll libraries for this brand
   useEffect(() => {
@@ -716,21 +746,31 @@ export function ProductionManager({
   // an existing uploaded asset on this concept and confirms replacement
   // before starting; on completion, auto-attaches the rendered MP4 to the
   // concept so the user doesn't have to download + re-upload.
-  const handleMakeVideo = (args: {
+  const queueMakeVideo = (args: {
     item: ProductionItem;
     videoUrl: string;
     sourceClipName?: string;
     overlays: TextOverlay[];
     style: RenderStyle;
-  }) => {
+  }, fitMode: 'loop' | 'speed' | null = null) => {
+    const maxOverlayEnd = args.overlays.reduce((max, overlay) => {
+      const timing = parseOverlayTiming(overlay.timing);
+      return timing ? Math.max(max, timing.end) : max;
+    }, 0);
+    const duration = pendingShortVideoRender?.videoUrl === args.videoUrl
+      ? pendingShortVideoRender.videoDuration
+      : 0;
+    const speedFactor = fitMode === 'speed' && duration > 0 && maxOverlayEnd > 0
+      ? duration / maxOverlayEnd
+      : 1;
     const specs = args.overlays
       .map(o => {
-        const m = (o.timing || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-        if (!m) return null;
+        const timing = parseOverlayTiming(o.timing);
+        if (!timing) return null;
         return {
           text: o.text,
-          startSeconds: parseFloat(m[1]),
-          endSeconds: parseFloat(m[2]),
+          startSeconds: Number((timing.start * speedFactor).toFixed(2)),
+          endSeconds: Number((timing.end * speedFactor).toFixed(2)),
           type: o.type,
           xy: o.xy,
           width: (o as any).width,
@@ -753,12 +793,15 @@ export function ProductionManager({
       if (!ok) return;
     }
 
+    setPendingShortVideoRender(null);
+
     enqueue({
       title: `${(args.item as any).angle_name || 'Creative'} — ${args.sourceClipName || 'b-roll'}`,
       sourceClipName: args.sourceClipName,
       videoUrl: args.videoUrl,
       overlays: specs,
       style: args.style,
+      loopVideo: fitMode === 'loop',
       context: brandId
         ? { brandId, workspaceId: workspace?.id, creativeItemId: args.item.id }
         : { creativeItemId: args.item.id },
@@ -791,6 +834,32 @@ export function ProductionManager({
         onUpdateWorkspace({ user_uploaded_assets: updated });
       },
     });
+  };
+
+  const handleMakeVideo = async (args: {
+    item: ProductionItem;
+    videoUrl: string;
+    sourceClipName?: string;
+    overlays: TextOverlay[];
+    style: RenderStyle;
+  }) => {
+    const maxOverlayEnd = args.overlays.reduce((max, overlay) => {
+      const timing = parseOverlayTiming(overlay.timing);
+      return timing ? Math.max(max, timing.end) : max;
+    }, 0);
+
+    if (maxOverlayEnd === 0) {
+      toast.error('No overlays with valid timing — edit the timings and try again.');
+      return;
+    }
+
+    const videoDuration = await readVideoDuration(args.videoUrl);
+    if (videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05) {
+      setPendingShortVideoRender({ ...args, videoDuration, maxOverlayEnd });
+      return;
+    }
+
+    queueMakeVideo(args);
   };
 
   if (productionItems.length === 0) {
@@ -1372,6 +1441,46 @@ export function ProductionManager({
           onUrlChange={onUrlChange}
         />
       )}
+
+      <Dialog open={!!pendingShortVideoRender} onOpenChange={(open) => !open && setPendingShortVideoRender(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose how to fit your text</DialogTitle>
+            <DialogDescription>
+              This video is {pendingShortVideoRender?.videoDuration.toFixed(1)}s, but the final text ends at {pendingShortVideoRender?.maxOverlayEnd.toFixed(1)}s. Pick one option so every text block shows.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3"
+              onClick={() => pendingShortVideoRender && queueMakeVideo(pendingShortVideoRender, 'loop')}
+            >
+              <Repeat className="h-4 w-4" />
+              Loop video
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3"
+              onClick={() => pendingShortVideoRender && queueMakeVideo(pendingShortVideoRender, 'speed')}
+            >
+              <FastForward className="h-4 w-4" />
+              Speed up text
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3"
+              onClick={() => {
+                setPendingShortVideoRender(null);
+                toast.info('Choose a longer b-roll clip, then make the video again.');
+              }}
+            >
+              <Upload className="h-4 w-4" />
+              Replace video
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Export Checklist Modal */}
       <ExportChecklistModal

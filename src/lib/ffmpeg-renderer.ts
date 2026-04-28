@@ -59,6 +59,7 @@ export interface RenderOptions {
   videoUrl: string;
   overlays: RenderOverlay[];
   style: RenderStyle;
+  loopVideo?: boolean;
   onProgress?: (info: { pct: number; message: string }) => void;
 }
 
@@ -329,14 +330,18 @@ async function renderTextToPng(
   return new Uint8Array(buf);
 }
 
-function readVideoDimensions(videoUrl: string): Promise<{ width: number; height: number }> {
+function readVideoMetadata(videoUrl: string): Promise<{ width: number; height: number; duration: number }> {
   return new Promise((resolve, reject) => {
     const v = document.createElement('video');
     v.preload = 'metadata';
     v.muted = true;
     v.src = videoUrl;
     v.crossOrigin = 'anonymous';
-    v.onloadedmetadata = () => resolve({ width: v.videoWidth, height: v.videoHeight });
+    v.onloadedmetadata = () => resolve({
+      width: v.videoWidth,
+      height: v.videoHeight,
+      duration: Number.isFinite(v.duration) ? v.duration : 0,
+    });
     v.onerror = () => reject(new Error('Could not read video metadata'));
   });
 }
@@ -351,7 +356,7 @@ async function ensureFontLoaded(family: string, weightCss: string): Promise<void
 }
 
 export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
-  const { videoUrl, overlays, style, onProgress } = opts;
+  const { videoUrl, overlays, style, loopVideo = false, onProgress } = opts;
 
   if (overlays.length === 0) {
     throw new Error('No overlays to render');
@@ -367,7 +372,7 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
 
   try {
     onProgress?.({ pct: 0, message: 'Reading video dimensions…' });
-    const { width, height } = await readVideoDimensions(videoUrl);
+    const { width, height, duration } = await readVideoMetadata(videoUrl);
     if (!width || !height) throw new Error('Video has no dimensions');
 
     onProgress?.({ pct: 0, message: 'Fetching video…' });
@@ -399,7 +404,14 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
     });
     const filterComplex = filterParts.join(';');
 
-    const args: string[] = ['-i', 'input.mp4'];
+    const maxOverlayEnd = overlays.reduce((max, o) => Math.max(max, o.endSeconds), 0);
+    const outputDuration = loopVideo && maxOverlayEnd > duration
+      ? Math.max(maxOverlayEnd, duration)
+      : 0;
+
+    const args: string[] = loopVideo && outputDuration > 0
+      ? ['-stream_loop', '-1', '-i', 'input.mp4']
+      : ['-i', 'input.mp4'];
     for (let i = 0; i < overlays.length; i++) {
       args.push('-i', `overlay_${i}.png`);
     }
@@ -412,8 +424,11 @@ export async function renderVideoWithText(opts: RenderOptions): Promise<Blob> {
       '-crf', '23',
       '-c:a', 'copy',
       '-movflags', '+faststart',
-      'output.mp4',
     );
+    if (outputDuration > 0) {
+      args.push('-t', outputDuration.toFixed(2));
+    }
+    args.push('output.mp4');
 
     onProgress?.({ pct: 0, message: 'Rendering…' });
     await ffmpeg.exec(args);

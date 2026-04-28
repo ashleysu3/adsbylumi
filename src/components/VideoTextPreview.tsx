@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -216,10 +216,15 @@ export function VideoTextPreview({
 }: VideoTextPreviewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [, setCurrentTime] = useState(0);
+  const [timelineTime, setTimelineTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
+  const isPlayingRef = useRef(false);
+  const timelineTimeRef = useRef(0);
+  const playStartedAtRef = useRef(0);
+  const playTimelineBaseRef = useRef(0);
 
   // Drag state — local only, committed to parent via onOverlayPositionChange
   // when the pointer is released.
@@ -244,9 +249,23 @@ export function VideoTextPreview({
     const video = videoRef.current;
     if (!video) return;
 
-    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+      if (!isPlayingRef.current) {
+        timelineTimeRef.current = video.currentTime;
+        setTimelineTime(video.currentTime);
+      }
+    };
+    const handlePlay = () => {
+      isPlayingRef.current = true;
+      playStartedAtRef.current = performance.now();
+      playTimelineBaseRef.current = timelineTimeRef.current;
+      setIsPlaying(true);
+    };
+    const handlePause = () => {
+      isPlayingRef.current = false;
+      setIsPlaying(false);
+    };
     const handleMeta = () => {
       const d = video.duration || 0;
       setDuration(d);
@@ -273,6 +292,38 @@ export function VideoTextPreview({
     video.playbackRate = playbackRate || 1;
   }, [playbackRate, videoUrl]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const resetTimeline = () => {
+      isPlayingRef.current = false;
+      timelineTimeRef.current = 0;
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setTimelineTime(0);
+      playTimelineBaseRef.current = 0;
+      playStartedAtRef.current = 0;
+    };
+    resetTimeline();
+    video.addEventListener("emptied", resetTimeline);
+    return () => video.removeEventListener("emptied", resetTimeline);
+  }, [videoUrl]);
+
+  useEffect(() => {
+    let frame = 0;
+    const tick = () => {
+      if (isPlayingRef.current) {
+        const elapsed = ((performance.now() - playStartedAtRef.current) / 1000) * (playbackRate || 1);
+        const nextTimeline = playTimelineBaseRef.current + elapsed;
+        timelineTimeRef.current = nextTimeline;
+        setTimelineTime(nextTimeline);
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [playbackRate]);
+
   useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -294,35 +345,21 @@ export function VideoTextPreview({
   // ---------------------------------------------------------------------------
   const isStackedEditMode = editable && !isPlaying && overlays.length > 0;
 
-  // Build "effective" timings that bridge gaps between overlays. If overlay
-  // N ends at 2s and overlay N+1 starts at 4s, we extend overlay N to 4s so
-  // the screen never goes blank mid-clip. The last overlay extends to the
-  // video's duration (or its declared end, whichever is later) so the final
-  // text always rides through to the end of playback.
-  const effectiveTimings: Array<{ start: number; end: number } | null> = (() => {
-    const parsed = overlays.map(o => parseTimingString(o.timing));
-    return parsed.map((t, i) => {
-      if (!t) return null;
-      const nextStart = (() => {
-        for (let j = i + 1; j < parsed.length; j++) {
-          if (parsed[j]) return parsed[j]!.start;
-        }
-        return null;
-      })();
-      const tail = nextStart ?? (duration > 0 ? duration : t.end);
-      return { start: t.start, end: Math.max(t.end, tail) };
-    });
-  })();
+  // Use the exact timing windows shown beside each overlay. Text does not
+  // bridge gaps or linger past its listed end time.
+  const parsedTimings = useMemo(() => overlays.map(o => parseTimingString(o.timing)), [overlays]);
+
+  const playbackTimelineTime = timelineTime;
 
   const visibleIndexes: number[] = (() => {
     if (isStackedEditMode) {
       return overlays.map((_, i) => i);
     }
     for (let i = 0; i < overlays.length; i++) {
-      const t = effectiveTimings[i];
-      if (t && currentTime >= t.start && currentTime < t.end) return [i];
+      const t = parsedTimings[i];
+      if (t && playbackTimelineTime >= t.start && playbackTimelineTime < t.end) return [i];
     }
-    if (!isPlaying && currentTime < 0.1 && overlays.length > 0) return [0];
+    if (!isPlaying && playbackTimelineTime < 0.1 && overlays.length > 0) return [0];
     return [];
   })();
 
@@ -330,8 +367,8 @@ export function VideoTextPreview({
   // the live one when all overlays are stacked in edit mode.
   const activeIndexAtPlayhead: number | null = (() => {
     for (let i = 0; i < overlays.length; i++) {
-      const t = effectiveTimings[i];
-      if (t && currentTime >= t.start && currentTime < t.end) return i;
+      const t = parsedTimings[i];
+      if (t && playbackTimelineTime >= t.start && playbackTimelineTime < t.end) return i;
     }
     return null;
   })();
@@ -342,10 +379,10 @@ export function VideoTextPreview({
     const ctaOverlay = overlays.find(o => o.type === "cta");
     if (ctaOverlay) {
       const timing = parseTimingString(ctaOverlay.timing);
-      if (timing) return currentTime >= timing.start && currentTime < timing.end;
+      if (timing) return playbackTimelineTime >= timing.start && playbackTimelineTime < timing.end;
       return !isPlaying;
     }
-    if (duration > 0 && currentTime >= duration - 3) return true;
+    if (duration > 0 && playbackTimelineTime >= duration - 3) return true;
     if (!isPlaying) return true;
     return false;
   })();
