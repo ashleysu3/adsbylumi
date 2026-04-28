@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -217,9 +217,13 @@ export function VideoTextPreview({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const [timelineTime, setTimelineTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
+  const isPlayingRef = useRef(false);
+  const playStartedAtRef = useRef(0);
+  const playTimelineBaseRef = useRef(0);
 
   // Drag state — local only, committed to parent via onOverlayPositionChange
   // when the pointer is released.
@@ -244,9 +248,20 @@ export function VideoTextPreview({
     const video = videoRef.current;
     if (!video) return;
 
-    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+      if (!isPlayingRef.current) setTimelineTime(video.currentTime);
+    };
+    const handlePlay = () => {
+      isPlayingRef.current = true;
+      playStartedAtRef.current = performance.now();
+      playTimelineBaseRef.current = timelineTime;
+      setIsPlaying(true);
+    };
+    const handlePause = () => {
+      isPlayingRef.current = false;
+      setIsPlaying(false);
+    };
     const handleMeta = () => {
       const d = video.duration || 0;
       setDuration(d);
@@ -264,7 +279,7 @@ export function VideoTextPreview({
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("loadedmetadata", handleMeta);
     };
-  }, [onDurationChange]);
+  }, [onDurationChange, timelineTime]);
 
   // Apply playbackRate to the video element whenever it changes.
   useEffect(() => {
