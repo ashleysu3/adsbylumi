@@ -597,7 +597,7 @@ export default function AdvancedBuild() {
                   onClick={() => setCurrentStep(2)}
                   disabled={!canProceedToStep2}
                 >
-                  Continue to Copy <ChevronRight className="h-4 w-4 ml-1" />
+                  Continue <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
             </motion.div>
@@ -767,7 +767,7 @@ export default function AdvancedBuild() {
                   }}
                   disabled={!canProceedToStep3}
                 >
-                  Review <ChevronRight className="h-4 w-4 ml-1" />
+                  Next Step <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
             </motion.div>

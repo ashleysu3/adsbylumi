@@ -648,7 +648,7 @@ export function CampaignBuilderForm({
       {/* Continue Button */}
       <Button onClick={onComplete} className="w-full gap-2" size="lg">
         <Sparkles className="h-4 w-4" />
-        Review Campaign
+        Continue
       </Button>
     </div>
   );
