@@ -358,12 +358,10 @@ export default function AdminCreativeToolkit() {
                 <Accordion type="multiple" className="space-y-2 mt-4">
                   {shotLists.map((list, i) => (
                     <AccordionItem key={i} value={String(i)} className="border rounded-lg px-4 relative group">
-                      {canEdit("shot_lists") && (
-                        <div className="absolute top-2 right-10 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                          <button onClick={() => openEdit("shot_lists", i, list)} className="h-7 w-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"><Pencil className="h-3 w-3" /></button>
-                          <button onClick={() => deleteItem("shot_lists", i)} className="h-7 w-7 rounded-md bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90"><Trash2 className="h-3 w-3" /></button>
-                        </div>
-                      )}
+                      <div className="absolute top-2 right-10 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                        <button onClick={() => openEdit("shot_lists", i, list)} className="h-7 w-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"><Pencil className="h-3 w-3" /></button>
+                        <button onClick={() => deleteItem("shot_lists", i)} className="h-7 w-7 rounded-md bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90"><Trash2 className="h-3 w-3" /></button>
+                      </div>
                       <AccordionTrigger className="text-foreground font-display font-semibold text-sm">{list.title || "Untitled"}</AccordionTrigger>
                       <AccordionContent>
                         <ul className="list-disc pl-5 space-y-1.5">
