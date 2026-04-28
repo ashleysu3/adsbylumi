@@ -1442,6 +1442,46 @@ export function ProductionManager({
         />
       )}
 
+      <Dialog open={!!pendingShortVideoRender} onOpenChange={(open) => !open && setPendingShortVideoRender(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose how to fit your text</DialogTitle>
+            <DialogDescription>
+              This video is {pendingShortVideoRender?.videoDuration.toFixed(1)}s, but the final text ends at {pendingShortVideoRender?.maxOverlayEnd.toFixed(1)}s. Pick one option so every text block shows.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3"
+              onClick={() => pendingShortVideoRender && queueMakeVideo(pendingShortVideoRender, 'loop')}
+            >
+              <Repeat className="h-4 w-4" />
+              Loop video
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3"
+              onClick={() => pendingShortVideoRender && queueMakeVideo(pendingShortVideoRender, 'speed')}
+            >
+              <FastForward className="h-4 w-4" />
+              Speed up text
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto flex-col gap-2 py-3"
+              onClick={() => {
+                setPendingShortVideoRender(null);
+                toast.info('Choose a longer b-roll clip, then make the video again.');
+              }}
+            >
+              <Upload className="h-4 w-4" />
+              Replace video
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Export Checklist Modal */}
       <ExportChecklistModal
         open={exportModalOpen}
