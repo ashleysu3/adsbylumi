@@ -107,6 +107,15 @@ export function ProductionManager({
   const [selectedLibraryId, setSelectedLibraryId] = useState<string | null>(
     (workspace as any)?.broll_library_id || null
   );
+  const [pendingShortVideoRender, setPendingShortVideoRender] = useState<{
+    item: ProductionItem;
+    videoUrl: string;
+    sourceClipName?: string;
+    overlays: TextOverlay[];
+    style: RenderStyle;
+    videoDuration: number;
+    maxOverlayEnd: number;
+  } | null>(null);
 
   // Load named b-roll libraries for this brand
   useEffect(() => {
