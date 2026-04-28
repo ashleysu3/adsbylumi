@@ -685,7 +685,7 @@ export function VideoTextPreview({
           className="w-full h-full object-contain"
           controls
           muted
-          loop
+          {...(loopVideo ? { loop: true } : {})}
           playsInline
           preload="metadata"
         />
