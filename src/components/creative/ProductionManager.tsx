@@ -746,21 +746,31 @@ export function ProductionManager({
   // an existing uploaded asset on this concept and confirms replacement
   // before starting; on completion, auto-attaches the rendered MP4 to the
   // concept so the user doesn't have to download + re-upload.
-  const handleMakeVideo = (args: {
+  const queueMakeVideo = (args: {
     item: ProductionItem;
     videoUrl: string;
     sourceClipName?: string;
     overlays: TextOverlay[];
     style: RenderStyle;
-  }) => {
+  }, fitMode: 'loop' | 'speed' | null = null) => {
+    const maxOverlayEnd = args.overlays.reduce((max, overlay) => {
+      const timing = parseOverlayTiming(overlay.timing);
+      return timing ? Math.max(max, timing.end) : max;
+    }, 0);
+    const duration = pendingShortVideoRender?.videoUrl === args.videoUrl
+      ? pendingShortVideoRender.videoDuration
+      : 0;
+    const speedFactor = fitMode === 'speed' && duration > 0 && maxOverlayEnd > 0
+      ? duration / maxOverlayEnd
+      : 1;
     const specs = args.overlays
       .map(o => {
-        const m = (o.timing || '').match(/(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
-        if (!m) return null;
+        const timing = parseOverlayTiming(o.timing);
+        if (!timing) return null;
         return {
           text: o.text,
-          startSeconds: parseFloat(m[1]),
-          endSeconds: parseFloat(m[2]),
+          startSeconds: Number((timing.start * speedFactor).toFixed(2)),
+          endSeconds: Number((timing.end * speedFactor).toFixed(2)),
           type: o.type,
           xy: o.xy,
           width: (o as any).width,
@@ -783,12 +793,15 @@ export function ProductionManager({
       if (!ok) return;
     }
 
+    setPendingShortVideoRender(null);
+
     enqueue({
       title: `${(args.item as any).angle_name || 'Creative'} — ${args.sourceClipName || 'b-roll'}`,
       sourceClipName: args.sourceClipName,
       videoUrl: args.videoUrl,
       overlays: specs,
       style: args.style,
+      loopVideo: fitMode === 'loop',
       context: brandId
         ? { brandId, workspaceId: workspace?.id, creativeItemId: args.item.id }
         : { creativeItemId: args.item.id },
@@ -821,6 +834,32 @@ export function ProductionManager({
         onUpdateWorkspace({ user_uploaded_assets: updated });
       },
     });
+  };
+
+  const handleMakeVideo = async (args: {
+    item: ProductionItem;
+    videoUrl: string;
+    sourceClipName?: string;
+    overlays: TextOverlay[];
+    style: RenderStyle;
+  }) => {
+    const maxOverlayEnd = args.overlays.reduce((max, overlay) => {
+      const timing = parseOverlayTiming(overlay.timing);
+      return timing ? Math.max(max, timing.end) : max;
+    }, 0);
+
+    if (maxOverlayEnd === 0) {
+      toast.error('No overlays with valid timing — edit the timings and try again.');
+      return;
+    }
+
+    const videoDuration = await readVideoDuration(args.videoUrl);
+    if (videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05) {
+      setPendingShortVideoRender({ ...args, videoDuration, maxOverlayEnd });
+      return;
+    }
+
+    queueMakeVideo(args);
   };
 
   if (productionItems.length === 0) {
