@@ -41,10 +41,10 @@ Deno.serve(async req => {
   try {
     const { url } = await req.json();
     if (!url || typeof url !== 'string') {
-      return json({ error: 'Missing url' }, 400, corsHeaders);
+      return json({ ok: false, error: 'Missing url' }, 200, corsHeaders);
     }
     if (!/^https:\/\//i.test(url)) {
-      return json({ error: 'URL must start with https://' }, 400, corsHeaders);
+      return json({ ok: false, error: 'URL must start with https://' }, 200, corsHeaders);
     }
 
     // Resolve the actual video URL. If the user pasted a page URL (e.g.
@@ -89,8 +89,12 @@ Deno.serve(async req => {
 
       if (!res.ok) {
         return json(
-          { error: `Source returned ${res.status}. URL may be expired, private, or rate-limited.` },
-          502,
+          {
+            ok: false,
+            fallback: true,
+            error: `Source returned ${res.status}. URL may be expired, private, or rate-limited.`,
+          },
+          200,
           corsHeaders,
         );
       }
@@ -99,9 +103,11 @@ Deno.serve(async req => {
       if (!ct.startsWith('video/')) {
         return json(
           {
+            ok: false,
+            fallback: true,
             error: `URL did not return a video (got "${ct}"). Paste a direct video URL (.mp4 / .mov), not a webpage URL.`,
           },
-          400,
+          200,
           corsHeaders,
         );
       }
@@ -110,23 +116,30 @@ Deno.serve(async req => {
       const cl = res.headers.get('content-length');
       if (cl && parseInt(cl, 10) > MAX_BYTES) {
         return json(
-          { error: `Video too large (${(parseInt(cl, 10) / 1024 / 1024).toFixed(1)} MB). Max is 50 MB.` },
-          413,
+          {
+            ok: false,
+            error: `Video too large (${(parseInt(cl, 10) / 1024 / 1024).toFixed(1)} MB). Max is 50 MB.`,
+          },
+          200,
           corsHeaders,
         );
       }
 
       const buf = await res.arrayBuffer();
       if (buf.byteLength > MAX_BYTES) {
-        return json({ error: `Video too large (>50 MB).` }, 413, corsHeaders);
+        return json({ ok: false, error: `Video too large (>50 MB).` }, 200, corsHeaders);
       }
       bytes = new Uint8Array(buf);
     } catch (fetchErr: any) {
       clearTimeout(timeout);
       if (fetchErr?.name === 'AbortError') {
-        return json({ error: 'Fetch timed out (30s).' }, 504, corsHeaders);
+        return json({ ok: false, error: 'Fetch timed out (30s).' }, 200, corsHeaders);
       }
-      return json({ error: `Fetch failed: ${fetchErr?.message || 'unknown'}` }, 502, corsHeaders);
+      return json(
+        { ok: false, error: `Fetch failed: ${fetchErr?.message || 'unknown'}` },
+        200,
+        corsHeaders,
+      );
     }
 
     // Upload to Supabase storage. Service role bypasses RLS — this
@@ -134,7 +147,7 @@ Deno.serve(async req => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
     const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-      return json({ error: 'Storage configuration missing on this deployment' }, 500, corsHeaders);
+      return json({ ok: false, error: 'Storage configuration missing on this deployment' }, 200, corsHeaders);
     }
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -151,18 +164,22 @@ Deno.serve(async req => {
       .from('creative-assets')
       .upload(storagePath, bytes, { contentType, upsert: false });
     if (upErr) {
-      return json({ error: `Storage upload failed: ${upErr.message}` }, 500, corsHeaders);
+      return json({ ok: false, error: `Storage upload failed: ${upErr.message}` }, 200, corsHeaders);
     }
 
     const { data: urlData } = sb.storage.from('creative-assets').getPublicUrl(storagePath);
     return json(
-      { success: true, url: urlData.publicUrl, storagePath },
+      { success: true, ok: true, url: urlData.publicUrl, storagePath },
       200,
       corsHeaders,
     );
   } catch (error: any) {
     console.error('fetch-reference-video error:', error);
-    return json({ error: error?.message || 'Unknown error' }, 500, getCorsHeaders(req.headers.get('origin')));
+    return json(
+      { ok: false, error: error?.message || 'Unknown error' },
+      200,
+      getCorsHeaders(req.headers.get('origin')),
+    );
   }
 });
 
