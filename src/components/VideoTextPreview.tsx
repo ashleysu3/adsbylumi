@@ -271,12 +271,32 @@ export function VideoTextPreview({
   // ---------------------------------------------------------------------------
   const isStackedEditMode = editable && !isPlaying && overlays.length > 0;
 
+  // Build "effective" timings that bridge gaps between overlays. If overlay
+  // N ends at 2s and overlay N+1 starts at 4s, we extend overlay N to 4s so
+  // the screen never goes blank mid-clip. The last overlay extends to the
+  // video's duration (or its declared end, whichever is later) so the final
+  // text always rides through to the end of playback.
+  const effectiveTimings: Array<{ start: number; end: number } | null> = (() => {
+    const parsed = overlays.map(o => parseTimingString(o.timing));
+    return parsed.map((t, i) => {
+      if (!t) return null;
+      const nextStart = (() => {
+        for (let j = i + 1; j < parsed.length; j++) {
+          if (parsed[j]) return parsed[j]!.start;
+        }
+        return null;
+      })();
+      const tail = nextStart ?? (duration > 0 ? duration : t.end);
+      return { start: t.start, end: Math.max(t.end, tail) };
+    });
+  })();
+
   const visibleIndexes: number[] = (() => {
     if (isStackedEditMode) {
       return overlays.map((_, i) => i);
     }
     for (let i = 0; i < overlays.length; i++) {
-      const t = parseTimingString(overlays[i].timing);
+      const t = effectiveTimings[i];
       if (t && currentTime >= t.start && currentTime < t.end) return [i];
     }
     if (!isPlaying && currentTime < 0.1 && overlays.length > 0) return [0];
@@ -287,7 +307,7 @@ export function VideoTextPreview({
   // the live one when all overlays are stacked in edit mode.
   const activeIndexAtPlayhead: number | null = (() => {
     for (let i = 0; i < overlays.length; i++) {
-      const t = parseTimingString(overlays[i].timing);
+      const t = effectiveTimings[i];
       if (t && currentTime >= t.start && currentTime < t.end) return i;
     }
     return null;
