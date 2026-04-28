@@ -251,6 +251,7 @@ export function RenderQueueProvider({ children }: { children: ReactNode }) {
           videoUrl: spec.videoUrl,
           overlays: spec.overlays,
           style: spec.style,
+          loopVideo: spec.loopVideo,
         },
         onAttached: spec.onAttached,
       };
