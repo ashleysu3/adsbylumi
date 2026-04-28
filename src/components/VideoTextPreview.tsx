@@ -632,7 +632,7 @@ export function VideoTextPreview({
       <div
         ref={containerRef}
         className={cn(
-          "relative rounded-lg overflow-hidden bg-black aspect-[9/16] max-h-[400px]",
+          "relative rounded-lg overflow-hidden bg-black aspect-[9/16] w-[225px] max-w-full shrink-0",
           className,
         )}
       >
