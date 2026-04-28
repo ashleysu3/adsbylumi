@@ -157,7 +157,22 @@ export function BRollTextEditor({
       toast.error('Each overlay needs text and a valid timing (e.g. "0-3s").');
       return;
     }
-    const specs = overlays
+    if (overflows && !fitMode) {
+      toast.error('Your text runs longer than the video. Pick a fit option above (Loop, Speed up, or Replace).');
+      return;
+    }
+    // Use fittedOverlays (rescaled when fitMode === 'speed'). For 'loop' we
+    // also clamp the tail end of any overlay that still extends past the
+    // video so the encoder doesn't lose the last text on a non-looping
+    // output file.
+    const sourceOverlays = fittedOverlays.map(o => {
+      const t = parseTimingRange(o.timing || '');
+      if (!t || !overflows || fitMode !== 'loop' || videoDuration <= 0) return o;
+      if (t.end <= videoDuration) return o;
+      const clampedStart = Math.min(t.start, Math.max(0, videoDuration - 0.5));
+      return { ...o, timing: `${clampedStart}-${videoDuration.toFixed(2)}s` };
+    });
+    const specs = sourceOverlays
       .map(o => {
         const t = parseTimingRange(o.timing || '');
         if (!t) return null;
