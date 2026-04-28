@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Type, Film } from 'lucide-react';
+import { Plus, X, Type, Film, AlertTriangle, Repeat, FastForward, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   VideoTextPreview,
