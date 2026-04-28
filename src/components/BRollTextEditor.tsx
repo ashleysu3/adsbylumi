@@ -161,17 +161,10 @@ export function BRollTextEditor({
       toast.error('Your text runs longer than the video. Pick a fit option above (Loop, Speed up, or Replace).');
       return;
     }
-    // Use fittedOverlays (rescaled when fitMode === 'speed'). For 'loop' we
-    // also clamp the tail end of any overlay that still extends past the
-    // video so the encoder doesn't lose the last text on a non-looping
-    // output file.
-    const sourceOverlays = fittedOverlays.map(o => {
-      const t = parseTimingRange(o.timing || '');
-      if (!t || !overflows || fitMode !== 'loop' || videoDuration <= 0) return o;
-      if (t.end <= videoDuration) return o;
-      const clampedStart = Math.min(t.start, Math.max(0, videoDuration - 0.5));
-      return { ...o, timing: `${clampedStart}-${videoDuration.toFixed(2)}s` };
-    });
+    // Use fittedOverlays (rescaled when fitMode === 'speed'). Loop mode keeps
+    // the exact listed timings and asks the renderer to loop the source clip
+    // long enough for every text block to appear.
+    const sourceOverlays = fittedOverlays;
     const specs = sourceOverlays
       .map(o => {
         const t = parseTimingRange(o.timing || '');
@@ -216,6 +209,7 @@ export function BRollTextEditor({
       videoUrl,
       overlays: specs,
       style: renderStyle,
+      loopVideo: overflows && fitMode === 'loop',
       context: brandId ? { brandId } : undefined,
     });
 
@@ -437,7 +431,7 @@ export function BRollTextEditor({
           <Button
             variant="lumi"
             onClick={handleQueue}
-            disabled={overlays.length === 0 || !allValid}
+            disabled={overlays.length === 0 || !allValid || (overflows && !fitMode)}
             className="gap-2"
           >
             <Film className="h-4 w-4" />
