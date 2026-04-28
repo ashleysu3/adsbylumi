@@ -222,6 +222,7 @@ export function VideoTextPreview({
   const [duration, setDuration] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const isPlayingRef = useRef(false);
+  const timelineTimeRef = useRef(0);
   const playStartedAtRef = useRef(0);
   const playTimelineBaseRef = useRef(0);
 
@@ -250,12 +251,15 @@ export function VideoTextPreview({
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
-      if (!isPlayingRef.current) setTimelineTime(video.currentTime);
+      if (!isPlayingRef.current) {
+        timelineTimeRef.current = video.currentTime;
+        setTimelineTime(video.currentTime);
+      }
     };
     const handlePlay = () => {
       isPlayingRef.current = true;
       playStartedAtRef.current = performance.now();
-      playTimelineBaseRef.current = timelineTime;
+      playTimelineBaseRef.current = timelineTimeRef.current;
       setIsPlaying(true);
     };
     const handlePause = () => {
@@ -279,7 +283,7 @@ export function VideoTextPreview({
       video.removeEventListener("pause", handlePause);
       video.removeEventListener("loadedmetadata", handleMeta);
     };
-  }, [onDurationChange, timelineTime]);
+  }, [onDurationChange]);
 
   // Apply playbackRate to the video element whenever it changes.
   useEffect(() => {
