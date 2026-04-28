@@ -187,13 +187,54 @@ export default function AdminCreativeToolkit() {
     closeEdit();
   };
 
+  // Map of fallback defaults so we can lazily seed before mutating
+  const DEFAULTS_MAP: Record<string, any[]> = {
+    templates: DEFAULT_TEMPLATES,
+    broll_sources: DEFAULT_BROLL,
+    music_sources: DEFAULT_MUSIC,
+    production_tools: DEFAULT_TOOLS,
+    marketplace_packs: DEFAULT_MARKETPLACE,
+    shot_lists: DEFAULT_SHOTS,
+  };
+
+  // Persist a config update immediately (so Delete actually sticks without
+  // making the admin remember to click "Save All Changes").
+  const persistConfig = async (next: ToolkitConfig) => {
+    try {
+      const { data: existing } = await supabase
+        .from("site_settings").select("id").eq("key", "creative_toolkit_config").maybeSingle();
+      if (existing) {
+        const { error } = await supabase.from("site_settings")
+          .update({ value: next as unknown as Json, updated_at: new Date().toISOString() })
+          .eq("key", "creative_toolkit_config");
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("site_settings")
+          .insert([{ key: "creative_toolkit_config", value: next as unknown as Json }]);
+        if (error) throw error;
+      }
+    } catch (e) {
+      console.error("Auto-save failed:", e);
+      toast.error("Couldn't save delete — try clicking Save All Changes");
+    }
+  };
+
   const deleteItem = (type: string, index: number) => {
+    if (!window.confirm("Delete this item? This can't be undone.")) return;
+    const key = type as keyof ToolkitConfig;
     setConfig(prev => {
-      const key = type as keyof ToolkitConfig;
-      const arr = [...(prev[key] as any[])];
+      // If the section is empty in DB, seed with the visible (default) array
+      // first so the index lines up with what the admin sees on screen.
+      const current = (prev[key] as any[]) ?? [];
+      const base = current.length > 0 ? current : (DEFAULTS_MAP[type] ?? []);
+      const arr = [...base];
       arr.splice(index, 1);
-      return { ...prev, [key]: arr };
+      const next = { ...prev, [key]: arr };
+      // Persist asynchronously so users see the deletion stick across reloads
+      void persistConfig(next);
+      return next;
     });
+    toast.success("Deleted");
   };
 
   const addItem = (type: string, blank: any) => {
