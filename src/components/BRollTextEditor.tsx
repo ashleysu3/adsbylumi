@@ -73,6 +73,44 @@ export function BRollTextEditor({
   ]);
   const [templateStyle, setTemplateStyle] = useState<RenderStyle | null>(null);
   const [templateId, setTemplateId] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number>(0);
+  // null = no fit mode chosen yet (overlays render as-typed). 'loop' = loop
+  // the preview video so all overlays play through. 'speed' = compress overlay
+  // timings to fit within the video's duration.
+  const [fitMode, setFitMode] = useState<'loop' | 'speed' | null>(null);
+
+  // Compute the latest end time across all overlays. Used to detect when
+  // text would run past the end of the video.
+  const maxOverlayEnd = useMemo(() => {
+    return overlays.reduce((acc, o) => {
+      const t = parseTimingRange(o.timing || '');
+      return t ? Math.max(acc, t.end) : acc;
+    }, 0);
+  }, [overlays]);
+
+  const overflows = videoDuration > 0 && maxOverlayEnd > videoDuration + 0.05;
+
+  // Apply the chosen fit mode to the overlays before they're rendered or
+  // sent to the encoder. 'speed' rescales every timing to fit into the
+  // video duration. 'loop' leaves timings alone (preview will loop the
+  // video; for the final render we clamp so the encoder doesn't drop the
+  // tail texts off-screen).
+  const fittedOverlays = useMemo<TextOverlay[]>(() => {
+    if (!overflows || !fitMode) return overlays;
+    if (fitMode === 'speed') {
+      const factor = videoDuration / maxOverlayEnd;
+      return overlays.map(o => {
+        const t = parseTimingRange(o.timing || '');
+        if (!t) return o;
+        const start = +(t.start * factor).toFixed(2);
+        const end = +(t.end * factor).toFixed(2);
+        return { ...o, timing: `${start}-${end}s` };
+      });
+    }
+    // loop mode — keep original timings for preview; the looping <video>
+    // will replay so all texts can be seen during their original windows.
+    return overlays;
+  }, [overlays, fitMode, overflows, videoDuration, maxOverlayEnd]);
 
   const effectiveStyle: OverlayStyle = templateStyle
     ? {
