@@ -187,13 +187,54 @@ export default function AdminCreativeToolkit() {
     closeEdit();
   };
 
+  // Map of fallback defaults so we can lazily seed before mutating
+  const DEFAULTS_MAP: Record<string, any[]> = {
+    templates: DEFAULT_TEMPLATES,
+    broll_sources: DEFAULT_BROLL,
+    music_sources: DEFAULT_MUSIC,
+    production_tools: DEFAULT_TOOLS,
+    marketplace_packs: DEFAULT_MARKETPLACE,
+    shot_lists: DEFAULT_SHOTS,
+  };
+
+  // Persist a config update immediately (so Delete actually sticks without
+  // making the admin remember to click "Save All Changes").
+  const persistConfig = async (next: ToolkitConfig) => {
+    try {
+      const { data: existing } = await supabase
+        .from("site_settings").select("id").eq("key", "creative_toolkit_config").maybeSingle();
+      if (existing) {
+        const { error } = await supabase.from("site_settings")
+          .update({ value: next as unknown as Json, updated_at: new Date().toISOString() })
+          .eq("key", "creative_toolkit_config");
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("site_settings")
+          .insert([{ key: "creative_toolkit_config", value: next as unknown as Json }]);
+        if (error) throw error;
+      }
+    } catch (e) {
+      console.error("Auto-save failed:", e);
+      toast.error("Couldn't save delete — try clicking Save All Changes");
+    }
+  };
+
   const deleteItem = (type: string, index: number) => {
+    if (!window.confirm("Delete this item? This can't be undone.")) return;
+    const key = type as keyof ToolkitConfig;
     setConfig(prev => {
-      const key = type as keyof ToolkitConfig;
-      const arr = [...(prev[key] as any[])];
+      // If the section is empty in DB, seed with the visible (default) array
+      // first so the index lines up with what the admin sees on screen.
+      const current = (prev[key] as any[]) ?? [];
+      const base = current.length > 0 ? current : (DEFAULTS_MAP[type] ?? []);
+      const arr = [...base];
       arr.splice(index, 1);
-      return { ...prev, [key]: arr };
+      const next = { ...prev, [key]: arr };
+      // Persist asynchronously so users see the deletion stick across reloads
+      void persistConfig(next);
+      return next;
     });
+    toast.success("Deleted");
   };
 
   const addItem = (type: string, blank: any) => {
@@ -269,7 +310,7 @@ export default function AdminCreativeToolkit() {
               />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
                 {templates.map((pack, i) => (
-                  <EditableCard key={i} onEdit={() => openEdit("templates", i, pack)} onDelete={canEdit("templates") ? () => deleteItem("templates", i) : undefined}>
+                  <EditableCard key={i} onEdit={() => openEdit("templates", i, pack)} onDelete={() => deleteItem("templates", i)}>
                     <AspectRatio ratio={16 / 9}>
                       <div className="w-full h-full bg-[image:var(--gradient-lumi)] opacity-80 flex items-center justify-center relative">
                         <span className="text-white font-display font-bold text-lg text-center px-4 drop-shadow-md">{pack.name}</span>
@@ -295,7 +336,7 @@ export default function AdminCreativeToolkit() {
                 onAdd={() => addItem("broll_sources", { name: "", badge: "", badgeColor: "", description: "", url: "", buttonLabel: "" })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 {brollSources.map((src, i) => (
-                  <EditableCard key={i} onEdit={() => openEdit("broll_sources", i, src)} onDelete={canEdit("broll_sources") ? () => deleteItem("broll_sources", i) : undefined}>
+                  <EditableCard key={i} onEdit={() => openEdit("broll_sources", i, src)} onDelete={() => deleteItem("broll_sources", i)}>
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-lg bg-[image:var(--gradient-lumi)] flex items-center justify-center"><Film className="h-4 w-4 text-white" /></div>
@@ -317,12 +358,10 @@ export default function AdminCreativeToolkit() {
                 <Accordion type="multiple" className="space-y-2 mt-4">
                   {shotLists.map((list, i) => (
                     <AccordionItem key={i} value={String(i)} className="border rounded-lg px-4 relative group">
-                      {canEdit("shot_lists") && (
-                        <div className="absolute top-2 right-10 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                          <button onClick={() => openEdit("shot_lists", i, list)} className="h-7 w-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"><Pencil className="h-3 w-3" /></button>
-                          <button onClick={() => deleteItem("shot_lists", i)} className="h-7 w-7 rounded-md bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90"><Trash2 className="h-3 w-3" /></button>
-                        </div>
-                      )}
+                      <div className="absolute top-2 right-10 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                        <button onClick={() => openEdit("shot_lists", i, list)} className="h-7 w-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"><Pencil className="h-3 w-3" /></button>
+                        <button onClick={() => deleteItem("shot_lists", i)} className="h-7 w-7 rounded-md bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90"><Trash2 className="h-3 w-3" /></button>
+                      </div>
                       <AccordionTrigger className="text-foreground font-display font-semibold text-sm">{list.title || "Untitled"}</AccordionTrigger>
                       <AccordionContent>
                         <ul className="list-disc pl-5 space-y-1.5">
@@ -341,7 +380,7 @@ export default function AdminCreativeToolkit() {
                 onAdd={() => addItem("music_sources", { name: "", badge: "", badgeColor: "", description: "", url: "", buttonLabel: "" })} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                 {musicSources.map((src, i) => (
-                  <EditableCard key={i} onEdit={() => openEdit("music_sources", i, src)} onDelete={canEdit("music_sources") ? () => deleteItem("music_sources", i) : undefined}>
+                  <EditableCard key={i} onEdit={() => openEdit("music_sources", i, src)} onDelete={() => deleteItem("music_sources", i)}>
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-start gap-3">
                         <div className="h-9 w-9 rounded-lg bg-[image:var(--gradient-lumi)] flex items-center justify-center flex-shrink-0"><Music className="h-4 w-4 text-white" /></div>
@@ -363,7 +402,7 @@ export default function AdminCreativeToolkit() {
                   onAdd={() => addItem("production_tools", { name: "", badge: "", badgeColor: "", description: "", url: "", buttonLabel: "" })} />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                   {productionTools.map((tool, i) => (
-                    <EditableCard key={i} onEdit={() => openEdit("production_tools", i, tool)} onDelete={canEdit("production_tools") ? () => deleteItem("production_tools", i) : undefined}>
+                    <EditableCard key={i} onEdit={() => openEdit("production_tools", i, tool)} onDelete={() => deleteItem("production_tools", i)}>
                       <CardContent className="p-5 space-y-3">
                         <div className="flex items-start gap-3">
                           <div className="h-9 w-9 rounded-lg bg-[image:var(--gradient-lumi)] flex items-center justify-center flex-shrink-0"><Video className="h-4 w-4 text-white" /></div>
@@ -388,7 +427,7 @@ export default function AdminCreativeToolkit() {
                 onAdd={() => addItem("marketplace_packs", { name: "", contributor: { name: "", avatar: null, url: "#" }, price: "", priceNum: 0, category: "", formats: [], description: "", externalUrl: "" })} />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-4">
                 {marketplacePacks.map((pack, i) => (
-                  <EditableCard key={i} onEdit={() => openEdit("marketplace_packs", i, pack)} onDelete={canEdit("marketplace_packs") ? () => deleteItem("marketplace_packs", i) : undefined}>
+                  <EditableCard key={i} onEdit={() => openEdit("marketplace_packs", i, pack)} onDelete={() => deleteItem("marketplace_packs", i)}>
                     <AspectRatio ratio={16 / 9}>
                       <div className="w-full h-full bg-[image:var(--gradient-lumi)] opacity-80 flex items-center justify-center relative">
                         <span className="text-white font-display font-bold text-lg text-center px-4 drop-shadow-md">{pack.name}</span>
@@ -414,12 +453,10 @@ export default function AdminCreativeToolkit() {
               <Accordion type="multiple" className="space-y-2 mt-4">
                 {shotLists.map((list, i) => (
                   <AccordionItem key={i} value={String(i)} className="border rounded-lg px-4 relative group">
-                    {canEdit("shot_lists") && (
-                      <div className="absolute top-2 right-10 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                        <button onClick={() => openEdit("shot_lists", i, list)} className="h-7 w-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"><Pencil className="h-3 w-3" /></button>
-                        <button onClick={() => deleteItem("shot_lists", i)} className="h-7 w-7 rounded-md bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90"><Trash2 className="h-3 w-3" /></button>
-                      </div>
-                    )}
+                    <div className="absolute top-2 right-10 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <button onClick={() => openEdit("shot_lists", i, list)} className="h-7 w-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90"><Pencil className="h-3 w-3" /></button>
+                      <button onClick={() => deleteItem("shot_lists", i)} className="h-7 w-7 rounded-md bg-destructive text-destructive-foreground flex items-center justify-center hover:opacity-90"><Trash2 className="h-3 w-3" /></button>
+                    </div>
                     <AccordionTrigger className="text-foreground font-display font-semibold text-sm">{list.title || "Untitled"}</AccordionTrigger>
                     <AccordionContent>
                       <ul className="list-disc pl-5 space-y-1.5">
