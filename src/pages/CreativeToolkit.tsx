@@ -71,9 +71,6 @@ export default function CreativeToolkit() {
               productionTools={config?.production_tools}
             />
           </TabsContent>
-          <TabsContent value="marketplace">
-            <MarketplaceTab packs={config?.marketplace_packs} />
-          </TabsContent>
         </Tabs>
 
         {/* Coming Soon Overlay — only shown when NOT live */}
