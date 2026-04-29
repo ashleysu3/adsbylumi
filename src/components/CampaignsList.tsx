@@ -79,7 +79,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     try {
       let query = supabase
         .from("campaign_workspaces")
-        .select("id, name, progress_status, meta_campaign_status, offer_name, created_at, updated_at, archived, archived_at, template_id")
+        .select("id, name, progress_status, meta_campaign_status, meta_campaign_ids, offer_name, created_at, updated_at, archived, archived_at, template_id")
         .eq("brand_id", brandId);
 
       if (!showArchived) {
