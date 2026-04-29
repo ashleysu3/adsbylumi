@@ -159,9 +159,12 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     return campaign.template_slug && SOCIAL_POST_SLUGS.includes(campaign.template_slug);
   };
 
-  const isLive = (status: string, metaStatus?: string | null) => 
-    ['live', 'completed', 'publishing_to_meta'].includes(status) || metaStatus === 'active';
-  const isDraft = (status: string, metaStatus?: string | null) => !isLive(status, metaStatus);
+  const isLive = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => {
+    const claimsLive = ['live', 'completed', 'publishing_to_meta'].includes(status) || metaStatus === 'active';
+    // Only consider it truly live if a real Meta campaign ID is attached
+    return claimsLive && hasRealMetaCampaign(metaCampaignIds);
+  };
+  const isDraft = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => !isLive(status, metaStatus, metaCampaignIds);
 
   const getStatusDot = (status: string, metaStatus?: string | null) => {
     if (isLive(status, metaStatus)) return 'bg-green-500';
