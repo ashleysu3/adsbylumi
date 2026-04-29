@@ -27,7 +27,7 @@ import { useBrand } from '@/contexts/BrandContext';
 import { CampaignDetailDrawer } from '@/components/CampaignDetailDrawer';
 import { ActionHistoryTimeline } from '@/components/insights/ActionHistoryTimeline';
 import { GoalSetupModal } from '@/components/insights/GoalSetupModal';
-import { suggestGoals, KPI_OPTIONS } from '@/lib/goal-suggestions';
+import { suggestGoals, KPI_OPTIONS as GOAL_KPI_OPTIONS } from '@/lib/goal-suggestions';
 import lumiLogo from '@/assets/lumi-logo.png';
 
 interface PerformanceAnalysis {
@@ -600,7 +600,7 @@ export default function AdPerformance() {
               const offerPrice = (ws as any)?.offer_price || null;
               const templateSlug = (ws as any)?.campaign_templates?.slug || null;
               const sug = suggestGoals(offerPrice, templateSlug);
-              const kpiOpt = KPI_OPTIONS.find(o => o.value === sug.primary.kpi);
+              const kpiOpt = GOAL_KPI_OPTIONS.find(o => o.value === sug.primary.kpi);
               return {
                 workspace_id: c.id,
                 brand_id: c.brandId,
