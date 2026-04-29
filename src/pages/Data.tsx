@@ -27,6 +27,7 @@ import { useBrand } from '@/contexts/BrandContext';
 import { CampaignDetailDrawer } from '@/components/CampaignDetailDrawer';
 import { ActionHistoryTimeline } from '@/components/insights/ActionHistoryTimeline';
 import { GoalSetupModal } from '@/components/insights/GoalSetupModal';
+import { suggestGoals, KPI_OPTIONS } from '@/lib/goal-suggestions';
 import lumiLogo from '@/assets/lumi-logo.png';
 
 interface PerformanceAnalysis {
