@@ -337,6 +337,7 @@ Deno.serve(async (req) => {
             secondary_kpi_goal_type: goals.secondary_kpi_goal_type,
             secondary_kpi_threshold: goals.secondary_kpi_threshold,
             frequency_threshold: goals.frequency_threshold,
+            auto_suggested: (goals as any).auto_suggested === true,
           },
           metrics: { spend, impressions, clicks, ctr, cpm, cpc, frequency, reach, leads, purchases, roas, cpl, cplpv },
           primary_kpi_value: primaryKpiValue,
