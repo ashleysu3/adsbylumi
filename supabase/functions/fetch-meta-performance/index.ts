@@ -126,14 +126,27 @@ Deno.serve(async (req) => {
       throw new Error('Meta access token not found. Please reconnect your Meta account.');
     }
 
-    // Check if campaign is actually published to Meta
-    if (!workspace.meta_campaign_status || workspace.meta_campaign_status === 'draft') {
-      throw new Error('Campaign has not been published to Meta yet. Please publish your campaign first.');
-    }
-
+    // Check if campaign is actually published to Meta. Return a soft 200
+    // so the UI can skip metrics for this workspace without crashing the page.
     const metaCampaignIds = workspace.meta_campaign_ids as any;
-    if (!metaCampaignIds || !metaCampaignIds.campaignId) {
-      throw new Error('Campaign not published to Meta yet');
+    const notPublished =
+      !workspace.meta_campaign_status ||
+      workspace.meta_campaign_status === 'draft' ||
+      !metaCampaignIds ||
+      !metaCampaignIds.campaignId;
+
+    if (notPublished) {
+      console.log('Campaign not published to Meta yet — returning soft response');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          notPublished: true,
+          error: 'CAMPAIGN_NOT_PUBLISHED',
+          message: 'Campaign has not been published to Meta yet.',
+          metrics: null,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
     }
 
     let campaignId = metaCampaignIds.campaignId;
