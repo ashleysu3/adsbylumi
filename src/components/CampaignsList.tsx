@@ -186,7 +186,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
       navigate(`/creative-studio?workspace=${campaign.id}`);
       return;
     }
-    if (isLive(campaign.progress_status, campaign.meta_campaign_status)) {
+    if (isLive(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids)) {
       setActionDialogCampaign(campaign);
       return;
     }
@@ -306,13 +306,13 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
   // Filtered campaigns
   const filteredCampaigns = campaigns.filter(c => {
-    if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status);
-    if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status);
+    if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
+    if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
     return true;
   });
 
-  const liveCount = campaigns.filter(c => isLive(c.progress_status, c.meta_campaign_status)).length;
-  const draftCount = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status)).length;
+  const liveCount = campaigns.filter(c => isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
+  const draftCount = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
 
   if (loading) {
     return (
@@ -435,7 +435,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
           <div className="divide-y divide-border">
             {filteredCampaigns.map((campaign) => {
               const social = isSocialCampaign(campaign);
-              const live = isLive(campaign.progress_status, campaign.meta_campaign_status);
+              const live = isLive(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids);
 
               return (
                 <div
@@ -450,7 +450,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                   }}
                 >
                   {/* Combine checkbox */}
-                  {combineMode && isDraft(campaign.progress_status, campaign.meta_campaign_status) && (
+                  {combineMode && isDraft(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids) && (
                     <Checkbox
                       checked={selectedForCombine.has(campaign.id)}
                       onCheckedChange={() => toggleCombineSelect(campaign.id)}
@@ -459,7 +459,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                   )}
 
                   {/* Status dot */}
-                  <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getStatusDot(campaign.progress_status, campaign.meta_campaign_status)}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getStatusDot(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids)}`} />
 
                   {/* Info */}
                   <div
@@ -502,7 +502,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                       : 'bg-muted text-muted-foreground'
                   }`}>
                     {live && <Radio className="h-3 w-3 inline mr-1" />}
-                    {getStatusLabelForDisplay(campaign.progress_status, campaign.meta_campaign_status)}
+                    {getStatusLabelForDisplay(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids)}
                   </span>
 
                   {/* Actions */}
