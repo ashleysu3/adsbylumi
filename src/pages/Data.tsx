@@ -1196,6 +1196,28 @@ export default function AdPerformance() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {c.goals?.auto_suggested && (
+                    <div className="rounded-lg border border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5 p-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <img src={lumiLogo} className="h-4 w-4 mt-0.5" alt="" />
+                        <div className="text-sm flex-1">
+                          <p className="font-medium">LUMI auto-set your goals so you can see results right away.</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Targeting {c.goals.primary_kpi_label} {c.goals.primary_kpi_goal_type === 'less_than' ? 'under' : 'over'}{' '}
+                            {formatKpiValue(c.goals.primary_kpi_threshold, c.goals.primary_kpi)}. Confirm to lock these in, or customize to set your own.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="rounded-xl" onClick={() => handleConfirmAutoGoal(c.workspace_id)}>
+                          Keep LUMI's goals
+                        </Button>
+                        <Button size="sm" variant="outline" className="rounded-xl" onClick={() => handleCustomizeGoal(c.workspace_id, c.workspace_name)}>
+                          Customize
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   {c.goals && (
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center justify-between">
