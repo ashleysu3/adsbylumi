@@ -923,7 +923,44 @@ export default function AdPerformance() {
     ));
   };
 
-  // ─── Digest Settings ───
+  // Confirm a LUMI-auto-suggested goal — flips auto_suggested off so the
+  // banner disappears. Goals stay exactly as suggested.
+  const handleConfirmAutoGoal = async (workspaceId: string) => {
+    try {
+      const { error } = await supabase
+        .from('campaign_goals')
+        .update({ auto_suggested: false })
+        .eq('workspace_id', workspaceId);
+      if (error) throw error;
+      toast.success("Goals confirmed — LUMI is tracking this campaign");
+      setGoalsVersion(v => v + 1);
+      // Refresh the optimization report so the UI reflects confirmed state
+      try {
+        await supabase.functions.invoke('run-optimization-report', {
+          body: { brandId: activeBrand?.id, autoTriggered: true },
+        });
+        await fetchOptimizationReport();
+      } catch {}
+    } catch (e: any) {
+      toast.error(e.message || "Couldn't save");
+    }
+  };
+
+  // Open the goal-setup modal pre-loaded with this single campaign so the
+  // user can swap LUMI's suggestion for their own targets.
+  const handleCustomizeGoal = (workspaceId: string, workspaceName: string) => {
+    const ws = campaigns.find(c => c.id === workspaceId);
+    setCampaignsNeedingGoals([{
+      id: workspaceId,
+      name: workspaceName,
+      brandId: ws?.brandId,
+      offerPrice: null,
+      templateSlug: null,
+    }]);
+    setGoalSetupModalOpen(true);
+  };
+
+
   const toggleDay = (day: string) => {
     setDigestSettings(p => {
       const current = p.send_days;
