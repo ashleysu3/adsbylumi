@@ -200,6 +200,13 @@ export default function AdPerformance() {
   const [drawerCampaignId, setDrawerCampaignId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Fallback campaign for the detail view when the selected workspace exists
+  // but was filtered out of `campaigns` (e.g. placeholder Meta IDs). Without
+  // this we'd show "Campaign not found" for live campaigns surfaced by the
+  // optimization report.
+  const [fallbackCampaign, setFallbackCampaign] = useState<CampaignData | null>(null);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+
   // Contextual Lumi recommendations
   useEffect(() => {
     if (loading) return;
