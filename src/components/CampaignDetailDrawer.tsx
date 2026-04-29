@@ -448,6 +448,13 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate,
     const status = workspace.progress_status;
     
     if (status === 'live' || status === 'completed') {
+      // Prefer in-page detail view if parent provided a handler — avoids
+      // navigating back to the same /data page (which felt like a loop).
+      if (onViewResults) {
+        onViewResults(workspace.id);
+        onOpenChange(false);
+        return;
+      }
       navigate('/data');
     } else if (status === 'ready_to_publish' || status === 'publishing_to_meta') {
       navigate(`/campaigns/build?workspace=${workspace.id}`);
