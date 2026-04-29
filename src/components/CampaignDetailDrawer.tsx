@@ -99,6 +99,9 @@ interface CampaignDetailDrawerProps {
   onOpenChange: (open: boolean) => void;
   campaignId: string | null;
   onUpdate?: () => void;
+  // When provided, used instead of navigating away for live/completed campaigns.
+  // Lets parent route to its in-page campaign detail view (avoids reloading /data).
+  onViewResults?: (campaignId: string) => void;
 }
 
 interface WorkspaceData {
