@@ -74,6 +74,7 @@ export function GoalSetupModal({ open, onOpenChange, campaigns, onGoalsSaved }: 
         primary_kpi_threshold: parseFloat(currentForm.threshold),
         check_frequency_at: 'campaign',
         frequency_threshold: 4,
+        auto_suggested: false,
       };
 
       // Use upsert to handle cases where a goal already exists for this workspace

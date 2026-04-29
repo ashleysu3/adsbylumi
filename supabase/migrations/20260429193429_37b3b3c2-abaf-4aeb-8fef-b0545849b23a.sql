@@ -1,0 +1,1 @@
+ALTER TABLE public.campaign_goals ADD COLUMN IF NOT EXISTS auto_suggested boolean NOT NULL DEFAULT false;

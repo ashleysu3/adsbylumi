@@ -669,6 +669,7 @@ export type Database = {
       }
       campaign_goals: {
         Row: {
+          auto_suggested: boolean
           brand_id: string | null
           check_frequency_at: string | null
           created_at: string | null
@@ -687,6 +688,7 @@ export type Database = {
           workspace_id: string | null
         }
         Insert: {
+          auto_suggested?: boolean
           brand_id?: string | null
           check_frequency_at?: string | null
           created_at?: string | null
@@ -705,6 +707,7 @@ export type Database = {
           workspace_id?: string | null
         }
         Update: {
+          auto_suggested?: boolean
           brand_id?: string | null
           check_frequency_at?: string | null
           created_at?: string | null

@@ -27,6 +27,7 @@ import { useBrand } from '@/contexts/BrandContext';
 import { CampaignDetailDrawer } from '@/components/CampaignDetailDrawer';
 import { ActionHistoryTimeline } from '@/components/insights/ActionHistoryTimeline';
 import { GoalSetupModal } from '@/components/insights/GoalSetupModal';
+import { suggestGoals, KPI_OPTIONS as GOAL_KPI_OPTIONS } from '@/lib/goal-suggestions';
 import lumiLogo from '@/assets/lumi-logo.png';
 
 interface PerformanceAnalysis {
@@ -578,34 +579,63 @@ export default function AdPerformance() {
 
       setCampaigns(campaignData);
 
-      // Check for live campaigns without goals → show forced goal setup
-      const liveCampaigns = campaignData.filter(c => {
-        const s = (c.status || '').toLowerCase();
-        return s === 'active' || s === 'live';
-      });
-      if (liveCampaigns.length > 0) {
-        const liveIds = liveCampaigns.map(c => c.id);
-        const { data: existingGoals } = await supabase
-          .from('campaign_goals')
-          .select('workspace_id')
-          .in('workspace_id', liveIds);
-        const idsWithGoals = new Set((existingGoals || []).map((g: any) => g.workspace_id));
-        const needGoals = liveCampaigns.filter(c => !idsWithGoals.has(c.id));
-        if (needGoals.length > 0) {
-          // Map to include offer price and template slug for suggestions
-          const forGoals = needGoals.map(c => {
-            const ws = publishedWorkspaces.find((w: any) => w.id === c.id);
-            return {
-              id: c.id,
-              name: c.name,
-              brandId: c.brandId,
-              offerPrice: (ws as any)?.offer_price || null,
-              templateSlug: (ws as any)?.campaign_templates?.slug || null,
-            };
-          });
-          setCampaignsNeedingGoals(forGoals);
-          setGoalSetupModalOpen(true);
+      // Auto-suggest goals for ANY published campaign (active, paused, scheduled)
+      // that doesn't have one yet. This guarantees the user can always see
+      // results + LUMI recommendations, even before they confirm custom goals.
+      // Goals created here are flagged auto_suggested=true so the UI can
+      // surface a "Confirm or customize" prompt on each campaign card.
+      try {
+        const allIds = campaignData.map(c => c.id);
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (allIds.length > 0) {
+          const { data: existingGoals } = await supabase
+            .from('campaign_goals')
+            .select('workspace_id')
+            .in('workspace_id', allIds);
+          const idsWithGoals = new Set((existingGoals || []).map((g: any) => g.workspace_id));
+          const needGoals = campaignData.filter(c => !idsWithGoals.has(c.id));
+
+          if (needGoals.length > 0 && authUser?.id) {
+            const rowsToInsert = needGoals.map(c => {
+              const ws = publishedWorkspaces.find((w: any) => w.id === c.id);
+              const offerPrice = (ws as any)?.offer_price || null;
+              const templateSlug = (ws as any)?.campaign_templates?.slug || null;
+              const sug = suggestGoals(offerPrice, templateSlug);
+              const kpiOpt = GOAL_KPI_OPTIONS.find(o => o.value === sug.primary.kpi);
+              return {
+                workspace_id: c.id,
+                brand_id: c.brandId,
+                created_by: authUser.id,
+                primary_kpi: sug.primary.kpi,
+                primary_kpi_label: kpiOpt?.label || sug.primary.label,
+                primary_kpi_goal_type: sug.primary.goalType,
+                primary_kpi_threshold: sug.primary.threshold,
+                check_frequency_at: 'campaign' as const,
+                frequency_threshold: 4,
+                auto_suggested: true,
+              };
+            });
+
+            const { error: autoErr } = await supabase
+              .from('campaign_goals')
+              .upsert(rowsToInsert as any, { onConflict: 'workspace_id' });
+            if (autoErr) {
+              console.warn('Auto-suggest goals failed:', autoErr);
+            } else {
+              // Trigger an optimization-report refresh so the newly-configured
+              // campaigns flip from "Unconfigured" to scored on next render.
+              try {
+                await supabase.functions.invoke('run-optimization-report', {
+                  body: { brandId: activeBrand.id, autoTriggered: true },
+                });
+              } catch (e) {
+                console.warn('Refresh recommendations after auto-goals failed:', e);
+              }
+            }
+          }
         }
+      } catch (e) {
+        console.warn('Auto goal-suggestion path failed:', e);
       }
 
       if (metaConnected && campaignData.length > 0) {
@@ -893,7 +923,44 @@ export default function AdPerformance() {
     ));
   };
 
-  // ─── Digest Settings ───
+  // Confirm a LUMI-auto-suggested goal — flips auto_suggested off so the
+  // banner disappears. Goals stay exactly as suggested.
+  const handleConfirmAutoGoal = async (workspaceId: string) => {
+    try {
+      const { error } = await supabase
+        .from('campaign_goals')
+        .update({ auto_suggested: false })
+        .eq('workspace_id', workspaceId);
+      if (error) throw error;
+      toast.success("Goals confirmed — LUMI is tracking this campaign");
+      setGoalsVersion(v => v + 1);
+      // Refresh the optimization report so the UI reflects confirmed state
+      try {
+        await supabase.functions.invoke('run-optimization-report', {
+          body: { brandId: activeBrand?.id, autoTriggered: true },
+        });
+        await loadOptimizationReport();
+      } catch {}
+    } catch (e: any) {
+      toast.error(e.message || "Couldn't save");
+    }
+  };
+
+  // Open the goal-setup modal pre-loaded with this single campaign so the
+  // user can swap LUMI's suggestion for their own targets.
+  const handleCustomizeGoal = (workspaceId: string, workspaceName: string) => {
+    const ws = campaigns.find(c => c.id === workspaceId);
+    setCampaignsNeedingGoals([{
+      id: workspaceId,
+      name: workspaceName,
+      brandId: ws?.brandId,
+      offerPrice: null,
+      templateSlug: null,
+    }]);
+    setGoalSetupModalOpen(true);
+  };
+
+
   const toggleDay = (day: string) => {
     setDigestSettings(p => {
       const current = p.send_days;
@@ -1129,6 +1196,28 @@ export default function AdPerformance() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {c.goals?.auto_suggested && (
+                    <div className="rounded-lg border border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5 p-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <img src={lumiLogo} className="h-4 w-4 mt-0.5" alt="" />
+                        <div className="text-sm flex-1">
+                          <p className="font-medium">LUMI auto-set your goals so you can see results right away.</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Targeting {c.goals.primary_kpi_label} {c.goals.primary_kpi_goal_type === 'less_than' ? 'under' : 'over'}{' '}
+                            {formatKpiValue(c.goals.primary_kpi_threshold, c.goals.primary_kpi)}. Confirm to lock these in, or customize to set your own.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="rounded-xl" onClick={() => handleConfirmAutoGoal(c.workspace_id)}>
+                          Keep LUMI's goals
+                        </Button>
+                        <Button size="sm" variant="outline" className="rounded-xl" onClick={() => handleCustomizeGoal(c.workspace_id, c.workspace_name)}>
+                          Customize
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   {c.goals && (
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center justify-between">
