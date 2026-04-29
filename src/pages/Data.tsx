@@ -359,6 +359,69 @@ export default function AdPerformance() {
     }
   }, [view, selectedCampaignId]);
 
+  // Fallback: if the selected workspace isn't in `campaigns` (e.g. it had a
+  // placeholder Meta ID and was filtered out), fetch it directly so the
+  // detail view can still render instead of "Campaign not found".
+  useEffect(() => {
+    if (view !== 'detail' || !selectedCampaignId) {
+      setFallbackCampaign(null);
+      return;
+    }
+    if (campaigns.some(c => c.id === selectedCampaignId)) {
+      setFallbackCampaign(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setFallbackLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('campaign_workspaces')
+          .select(`
+            id, name, meta_campaign_ids, meta_campaign_status, template_id, final_answers,
+            objective,
+            offer_id, offer_name, offer_price, brand_id, campaign_builder_answers, tracking_verified, meta_insights_last_sync,
+            campaign_templates!campaign_workspaces_template_id_fkey (id, name, objective, slug)
+          `)
+          .eq('id', selectedCampaignId)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error || !data) {
+          setFallbackCampaign(null);
+          return;
+        }
+        const w: any = data;
+        const builderAnswers = (w.campaign_builder_answers as any) || {};
+        const adSets: AdSetInfo[] | undefined = Array.isArray(builderAnswers?.adSets)
+          ? builderAnswers.adSets
+          : undefined;
+        setFallbackCampaign({
+          id: w.id,
+          name: w.name,
+          templateName: (w.campaign_templates as any)?.name || null,
+          objective: w.objective || (w.campaign_templates as any)?.objective || null,
+          metrics: null,
+          userGoal: (w.final_answers as any)?.userKpiGoal || null,
+          status: ((w.meta_campaign_status || 'unknown') as string).toLowerCase(),
+          offerId: w.offer_id || null,
+          offerName: w.offer_name || null,
+          brandId: w.brand_id,
+          dailyBudget: undefined,
+          budgetLevel: null,
+          adSets,
+          trackingVerified: w.tracking_verified ?? false,
+          lastSyncedAt: w.meta_insights_last_sync || null,
+        });
+      } catch (err) {
+        console.error('Fallback workspace fetch failed:', err);
+        if (!cancelled) setFallbackCampaign(null);
+      } finally {
+        if (!cancelled) setFallbackLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [view, selectedCampaignId, campaigns]);
+
   // ─── Auto-run optimization report on load ───
   useEffect(() => {
     if (brandId && metaConnected && !metaTokenExpired && view === 'home') {
