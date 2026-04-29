@@ -136,7 +136,7 @@ interface GoalsData {
   check_frequency_at: string | null;
 }
 
-export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate }: CampaignDetailDrawerProps) {
+export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate, onViewResults }: CampaignDetailDrawerProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
