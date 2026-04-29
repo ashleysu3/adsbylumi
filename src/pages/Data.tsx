@@ -578,34 +578,62 @@ export default function AdPerformance() {
 
       setCampaigns(campaignData);
 
-      // Check for live campaigns without goals → show forced goal setup
-      const liveCampaigns = campaignData.filter(c => {
-        const s = (c.status || '').toLowerCase();
-        return s === 'active' || s === 'live';
-      });
-      if (liveCampaigns.length > 0) {
-        const liveIds = liveCampaigns.map(c => c.id);
-        const { data: existingGoals } = await supabase
-          .from('campaign_goals')
-          .select('workspace_id')
-          .in('workspace_id', liveIds);
-        const idsWithGoals = new Set((existingGoals || []).map((g: any) => g.workspace_id));
-        const needGoals = liveCampaigns.filter(c => !idsWithGoals.has(c.id));
-        if (needGoals.length > 0) {
-          // Map to include offer price and template slug for suggestions
-          const forGoals = needGoals.map(c => {
-            const ws = publishedWorkspaces.find((w: any) => w.id === c.id);
-            return {
-              id: c.id,
-              name: c.name,
-              brandId: c.brandId,
-              offerPrice: (ws as any)?.offer_price || null,
-              templateSlug: (ws as any)?.campaign_templates?.slug || null,
-            };
-          });
-          setCampaignsNeedingGoals(forGoals);
-          setGoalSetupModalOpen(true);
+      // Auto-suggest goals for ANY published campaign (active, paused, scheduled)
+      // that doesn't have one yet. This guarantees the user can always see
+      // results + LUMI recommendations, even before they confirm custom goals.
+      // Goals created here are flagged auto_suggested=true so the UI can
+      // surface a "Confirm or customize" prompt on each campaign card.
+      try {
+        const allIds = campaignData.map(c => c.id);
+        if (allIds.length > 0) {
+          const { data: existingGoals } = await supabase
+            .from('campaign_goals')
+            .select('workspace_id')
+            .in('workspace_id', allIds);
+          const idsWithGoals = new Set((existingGoals || []).map((g: any) => g.workspace_id));
+          const needGoals = campaignData.filter(c => !idsWithGoals.has(c.id));
+
+          if (needGoals.length > 0 && user?.id) {
+            const rowsToInsert = needGoals.map(c => {
+              const ws = publishedWorkspaces.find((w: any) => w.id === c.id);
+              const offerPrice = (ws as any)?.offer_price || null;
+              const templateSlug = (ws as any)?.campaign_templates?.slug || null;
+              const sug = suggestGoals(offerPrice, templateSlug);
+              const kpiOpt = KPI_OPTIONS.find(o => o.value === sug.primary.kpi);
+              return {
+                workspace_id: c.id,
+                brand_id: c.brandId,
+                created_by: user.id,
+                primary_kpi: sug.primary.kpi,
+                primary_kpi_label: kpiOpt?.label || sug.primary.label,
+                primary_kpi_goal_type: sug.primary.goalType,
+                primary_kpi_threshold: sug.primary.threshold,
+                check_frequency_at: 'campaign' as const,
+                frequency_threshold: 4,
+                auto_suggested: true,
+              };
+            });
+
+            const { error: autoErr } = await supabase
+              .from('campaign_goals')
+              .upsert(rowsToInsert as any, { onConflict: 'workspace_id' });
+            if (autoErr) {
+              console.warn('Auto-suggest goals failed:', autoErr);
+            } else {
+              // Trigger an optimization-report refresh so the newly-configured
+              // campaigns flip from "Unconfigured" to scored on next render.
+              try {
+                await supabase.functions.invoke('run-optimization-report', {
+                  body: { brandId: activeBrand.id, autoTriggered: true },
+                });
+              } catch (e) {
+                console.warn('Refresh recommendations after auto-goals failed:', e);
+              }
+            }
+          }
         }
+      } catch (e) {
+        console.warn('Auto goal-suggestion path failed:', e);
       }
 
       if (metaConnected && campaignData.length > 0) {
