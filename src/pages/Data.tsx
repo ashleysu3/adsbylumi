@@ -1713,6 +1713,7 @@ export default function AdPerformance() {
           onOpenChange={setDrawerOpen}
           campaignId={drawerCampaignId}
           onUpdate={loadOptimizationReport}
+          onViewResults={(id) => handleViewInsights(id)}
         />
 
         {/* Forced goal setup modal for live campaigns without goals */}

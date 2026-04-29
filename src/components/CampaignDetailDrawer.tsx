@@ -99,6 +99,9 @@ interface CampaignDetailDrawerProps {
   onOpenChange: (open: boolean) => void;
   campaignId: string | null;
   onUpdate?: () => void;
+  // When provided, used instead of navigating away for live/completed campaigns.
+  // Lets parent route to its in-page campaign detail view (avoids reloading /data).
+  onViewResults?: (campaignId: string) => void;
 }
 
 interface WorkspaceData {
@@ -133,7 +136,7 @@ interface GoalsData {
   check_frequency_at: string | null;
 }
 
-export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate }: CampaignDetailDrawerProps) {
+export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate, onViewResults }: CampaignDetailDrawerProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
@@ -445,6 +448,13 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate 
     const status = workspace.progress_status;
     
     if (status === 'live' || status === 'completed') {
+      // Prefer in-page detail view if parent provided a handler — avoids
+      // navigating back to the same /data page (which felt like a loop).
+      if (onViewResults) {
+        onViewResults(workspace.id);
+        onOpenChange(false);
+        return;
+      }
       navigate('/data');
     } else if (status === 'ready_to_publish' || status === 'publishing_to_meta') {
       navigate(`/campaigns/build?workspace=${workspace.id}`);
