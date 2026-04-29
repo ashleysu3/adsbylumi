@@ -24,6 +24,7 @@ interface Campaign {
   name: string;
   progress_status: string;
   meta_campaign_status: string | null;
+  meta_campaign_ids: any | null;
   offer_name: string | null;
   created_at: string;
   updated_at: string;
@@ -32,6 +33,13 @@ interface Campaign {
   template_id: string | null;
   template_slug?: string | null;
 }
+
+// A workspace is only "really" published to Meta if it has a real campaign ID
+const hasRealMetaCampaign = (metaCampaignIds: any): boolean => {
+  if (!metaCampaignIds || typeof metaCampaignIds !== 'object') return false;
+  const id = metaCampaignIds.campaignId || metaCampaignIds.campaign_id;
+  return typeof id === 'string' && /^\d{6,}$/.test(id);
+};
 
 interface CampaignsListProps {
   brandId: string;
@@ -71,7 +79,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     try {
       let query = supabase
         .from("campaign_workspaces")
-        .select("id, name, progress_status, meta_campaign_status, offer_name, created_at, updated_at, archived, archived_at, template_id")
+        .select("id, name, progress_status, meta_campaign_status, meta_campaign_ids, offer_name, created_at, updated_at, archived, archived_at, template_id")
         .eq("brand_id", brandId);
 
       if (!showArchived) {
@@ -151,18 +159,21 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
     return campaign.template_slug && SOCIAL_POST_SLUGS.includes(campaign.template_slug);
   };
 
-  const isLive = (status: string, metaStatus?: string | null) => 
-    ['live', 'completed', 'publishing_to_meta'].includes(status) || metaStatus === 'active';
-  const isDraft = (status: string, metaStatus?: string | null) => !isLive(status, metaStatus);
+  const isLive = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => {
+    const claimsLive = ['live', 'completed', 'publishing_to_meta'].includes(status) || metaStatus === 'active';
+    // Only consider it truly live if a real Meta campaign ID is attached
+    return claimsLive && hasRealMetaCampaign(metaCampaignIds);
+  };
+  const isDraft = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => !isLive(status, metaStatus, metaCampaignIds);
 
-  const getStatusDot = (status: string, metaStatus?: string | null) => {
-    if (isLive(status, metaStatus)) return 'bg-green-500';
+  const getStatusDot = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => {
+    if (isLive(status, metaStatus, metaCampaignIds)) return 'bg-green-500';
     if (status === 'ready_to_publish') return 'bg-amber-400';
     return 'bg-muted-foreground/40';
   };
 
-  const getStatusLabelForDisplay = (status: string, metaStatus?: string | null) => {
-    if (isLive(status, metaStatus)) return 'Running Live ✅';
+  const getStatusLabelForDisplay = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => {
+    if (isLive(status, metaStatus, metaCampaignIds)) return 'Running Live ✅';
     return getStatusLabel(status);
   };
 
@@ -175,7 +186,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
       navigate(`/creative-studio?workspace=${campaign.id}`);
       return;
     }
-    if (isLive(campaign.progress_status, campaign.meta_campaign_status)) {
+    if (isLive(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids)) {
       setActionDialogCampaign(campaign);
       return;
     }
@@ -295,13 +306,13 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
 
   // Filtered campaigns
   const filteredCampaigns = campaigns.filter(c => {
-    if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status);
-    if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status);
+    if (viewFilter === "live") return isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
+    if (viewFilter === "draft") return isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids);
     return true;
   });
 
-  const liveCount = campaigns.filter(c => isLive(c.progress_status, c.meta_campaign_status)).length;
-  const draftCount = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status)).length;
+  const liveCount = campaigns.filter(c => isLive(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
+  const draftCount = campaigns.filter(c => isDraft(c.progress_status, c.meta_campaign_status, c.meta_campaign_ids)).length;
 
   if (loading) {
     return (
@@ -424,7 +435,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
           <div className="divide-y divide-border">
             {filteredCampaigns.map((campaign) => {
               const social = isSocialCampaign(campaign);
-              const live = isLive(campaign.progress_status, campaign.meta_campaign_status);
+              const live = isLive(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids);
 
               return (
                 <div
@@ -439,7 +450,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                   }}
                 >
                   {/* Combine checkbox */}
-                  {combineMode && isDraft(campaign.progress_status, campaign.meta_campaign_status) && (
+                  {combineMode && isDraft(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids) && (
                     <Checkbox
                       checked={selectedForCombine.has(campaign.id)}
                       onCheckedChange={() => toggleCombineSelect(campaign.id)}
@@ -448,7 +459,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                   )}
 
                   {/* Status dot */}
-                  <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getStatusDot(campaign.progress_status, campaign.meta_campaign_status)}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${getStatusDot(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids)}`} />
 
                   {/* Info */}
                   <div
@@ -491,7 +502,7 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
                       : 'bg-muted text-muted-foreground'
                   }`}>
                     {live && <Radio className="h-3 w-3 inline mr-1" />}
-                    {getStatusLabelForDisplay(campaign.progress_status, campaign.meta_campaign_status)}
+                    {getStatusLabelForDisplay(campaign.progress_status, campaign.meta_campaign_status, campaign.meta_campaign_ids)}
                   </span>
 
                   {/* Actions */}
