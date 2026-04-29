@@ -472,6 +472,33 @@ Deno.serve(async (req) => {
         },
       };
 
+      // Special handling for login_info: generate a password reset link so the
+      // user can set a new password and sign in. We can't email an actual
+      // password (they're hashed), so this is the secure equivalent.
+      if (body.emailTemplate === "login_info") {
+        const siteUrl = Deno.env.get("SITE_URL") || "https://adsbylumi.com";
+        const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+          type: "recovery",
+          email: userEmail,
+          options: { redirectTo: `${siteUrl}/auth?type=recovery` },
+        });
+        if (linkErr || !linkData?.properties?.action_link) {
+          throw new Error(`Failed to generate reset link: ${linkErr?.message || "unknown error"}`);
+        }
+        const resetLink = linkData.properties.action_link;
+        templates.login_info = {
+          subject: "Your Lumi Login Info 🔑",
+          body:
+            `Hi there!\n\nHere's how to get back into your Lumi account:\n\n` +
+            `Login email: ${userEmail}\n` +
+            `Login page: ${siteUrl}/auth\n\n` +
+            `For security, we don't store passwords in a way we can read them. ` +
+            `If you need to reset your password, use this secure link (expires in 1 hour):\n\n${resetLink}\n\n` +
+            `If you didn't request this, you can safely ignore the reset link — your account stays unchanged.\n\n` +
+            `Best,\nThe Lumi Team`,
+        };
+      }
+
       const template = templates[body.emailTemplate];
       if (!template) throw new Error("Invalid email template");
 
