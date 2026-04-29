@@ -166,14 +166,14 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
   };
   const isDraft = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => !isLive(status, metaStatus, metaCampaignIds);
 
-  const getStatusDot = (status: string, metaStatus?: string | null) => {
-    if (isLive(status, metaStatus)) return 'bg-green-500';
+  const getStatusDot = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => {
+    if (isLive(status, metaStatus, metaCampaignIds)) return 'bg-green-500';
     if (status === 'ready_to_publish') return 'bg-amber-400';
     return 'bg-muted-foreground/40';
   };
 
-  const getStatusLabelForDisplay = (status: string, metaStatus?: string | null) => {
-    if (isLive(status, metaStatus)) return 'Running Live ✅';
+  const getStatusLabelForDisplay = (status: string, metaStatus?: string | null, metaCampaignIds?: any) => {
+    if (isLive(status, metaStatus, metaCampaignIds)) return 'Running Live ✅';
     return getStatusLabel(status);
   };
 
