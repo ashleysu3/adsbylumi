@@ -24,6 +24,7 @@ interface Campaign {
   name: string;
   progress_status: string;
   meta_campaign_status: string | null;
+  meta_campaign_ids: any | null;
   offer_name: string | null;
   created_at: string;
   updated_at: string;
@@ -32,6 +33,13 @@ interface Campaign {
   template_id: string | null;
   template_slug?: string | null;
 }
+
+// A workspace is only "really" published to Meta if it has a real campaign ID
+const hasRealMetaCampaign = (metaCampaignIds: any): boolean => {
+  if (!metaCampaignIds || typeof metaCampaignIds !== 'object') return false;
+  const id = metaCampaignIds.campaignId || metaCampaignIds.campaign_id;
+  return typeof id === 'string' && /^\d{6,}$/.test(id);
+};
 
 interface CampaignsListProps {
   brandId: string;
