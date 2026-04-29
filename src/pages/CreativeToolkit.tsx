@@ -5,7 +5,7 @@ import { Wrench, Lock } from "lucide-react";
 import { TemplatesTab } from "@/components/creative-toolkit/TemplatesTab";
 import { BRollTab } from "@/components/creative-toolkit/BRollTab";
 import { MusicToolsTab } from "@/components/creative-toolkit/MusicToolsTab";
-import { MarketplaceTab } from "@/components/creative-toolkit/MarketplaceTab";
+
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import type { ToolkitConfig } from "@/components/admin/CreativeToolkitManager";
@@ -54,7 +54,6 @@ export default function CreativeToolkit() {
             <TabsTrigger value="templates">Templates</TabsTrigger>
             <TabsTrigger value="broll">B-Roll</TabsTrigger>
             <TabsTrigger value="music-tools">Music & Tools</TabsTrigger>
-            <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
           </TabsList>
 
           <TabsContent value="templates">
