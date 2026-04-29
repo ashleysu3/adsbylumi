@@ -939,7 +939,7 @@ export default function AdPerformance() {
         await supabase.functions.invoke('run-optimization-report', {
           body: { brandId: activeBrand?.id, autoTriggered: true },
         });
-        await fetchOptimizationReport();
+        await loadOptimizationReport();
       } catch {}
     } catch (e: any) {
       toast.error(e.message || "Couldn't save");
