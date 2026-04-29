@@ -1224,6 +1224,10 @@ export default function AdPerformance() {
             dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
             detailLevel={detailLevel}
           />
+        ) : fallbackLoading ? (
+          <div className="text-center py-12 space-y-3">
+            <div className="animate-pulse text-muted-foreground text-sm">Loading campaign…</div>
+          </div>
         ) : (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Campaign not found</p>
