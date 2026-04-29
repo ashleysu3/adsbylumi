@@ -650,8 +650,10 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate,
                 </CardContent>
               </Card>
 
-              {/* Tabs for Creative / Copy / Goals / Details */}
-              <Tabs defaultValue="creative" className="w-full">
+              {/* Tabs for Creative / Copy / Goals / Details. Default to Goals
+                  when there's no creative or copy yet so the drawer never
+                  feels empty for live campaigns surfaced by the report. */}
+              <Tabs defaultValue={(creativePreview || copyPreview) ? 'creative' : 'goals'} className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="creative" className="text-xs">Creative</TabsTrigger>
                   <TabsTrigger value="copy" className="text-xs">Copy</TabsTrigger>
@@ -698,8 +700,10 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate,
                   ) : (
                     <div className="text-center py-8">
                       <Image className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-                      <p className="text-sm text-muted-foreground">No creative generated yet</p>
-                      <p className="text-xs text-muted-foreground mt-1">Continue setup to generate creative</p>
+                      <p className="text-sm text-muted-foreground">No creative saved in LUMI for this campaign</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This is normal for campaigns built outside LUMI. Use the Goals tab to set targets, or tap View Results to see performance.
+                      </p>
                     </div>
                   )}
                 </TabsContent>
