@@ -1110,7 +1110,7 @@ export default function AdPerformance() {
     setDrawerOpen(true);
   };
 
-  const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId);
+  const selectedCampaign = campaigns.find((c) => c.id === selectedCampaignId) ?? fallbackCampaign;
 
   return (
     <DashboardLayout>
