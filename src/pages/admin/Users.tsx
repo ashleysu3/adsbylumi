@@ -97,6 +97,7 @@ const tierDisplayNames: Record<string, string> = {
 };
 
 const EMAIL_TEMPLATES = [
+  { value: "login_info", label: "🔑 Login Info", description: "Send their email + secure password reset link" },
   { value: "welcome", label: "👋 Welcome", description: "Welcome new user" },
   { value: "credit_applied", label: "🎁 Credit Applied", description: "Confirm credit added" },
   { value: "refund_processed", label: "💰 Refund Processed", description: "Confirm refund" },
