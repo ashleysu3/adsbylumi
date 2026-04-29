@@ -586,6 +586,7 @@ export default function AdPerformance() {
       // surface a "Confirm or customize" prompt on each campaign card.
       try {
         const allIds = campaignData.map(c => c.id);
+        const { data: { user: authUser } } = await supabase.auth.getUser();
         if (allIds.length > 0) {
           const { data: existingGoals } = await supabase
             .from('campaign_goals')
@@ -594,7 +595,7 @@ export default function AdPerformance() {
           const idsWithGoals = new Set((existingGoals || []).map((g: any) => g.workspace_id));
           const needGoals = campaignData.filter(c => !idsWithGoals.has(c.id));
 
-          if (needGoals.length > 0 && user?.id) {
+          if (needGoals.length > 0 && authUser?.id) {
             const rowsToInsert = needGoals.map(c => {
               const ws = publishedWorkspaces.find((w: any) => w.id === c.id);
               const offerPrice = (ws as any)?.offer_price || null;
@@ -604,7 +605,7 @@ export default function AdPerformance() {
               return {
                 workspace_id: c.id,
                 brand_id: c.brandId,
-                created_by: user.id,
+                created_by: authUser.id,
                 primary_kpi: sug.primary.kpi,
                 primary_kpi_label: kpiOpt?.label || sug.primary.label,
                 primary_kpi_goal_type: sug.primary.goalType,
