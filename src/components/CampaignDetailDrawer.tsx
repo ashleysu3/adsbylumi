@@ -650,8 +650,10 @@ export function CampaignDetailDrawer({ open, onOpenChange, campaignId, onUpdate,
                 </CardContent>
               </Card>
 
-              {/* Tabs for Creative / Copy / Goals / Details */}
-              <Tabs defaultValue="creative" className="w-full">
+              {/* Tabs for Creative / Copy / Goals / Details. Default to Goals
+                  when there's no creative or copy yet so the drawer never
+                  feels empty for live campaigns surfaced by the report. */}
+              <Tabs defaultValue={(creativePreview || copyPreview) ? 'creative' : 'goals'} className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="creative" className="text-xs">Creative</TabsTrigger>
                   <TabsTrigger value="copy" className="text-xs">Copy</TabsTrigger>
