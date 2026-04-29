@@ -162,7 +162,16 @@ Deno.serve(async (req) => {
       const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
       
       if (timestamp > oneYearAgo && timestamp <= now) {
-        throw new Error('This campaign uses a placeholder ID and has not been published to Meta yet. Please build and publish your campaign first.');
+        return new Response(
+          JSON.stringify({
+            success: false,
+            notPublished: true,
+            error: 'CAMPAIGN_NOT_PUBLISHED',
+            message: 'Campaign uses a placeholder ID and has not been published to Meta yet.',
+            metrics: null,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        );
       }
       
       // Use the numeric part
@@ -171,7 +180,16 @@ Deno.serve(async (req) => {
     
     // Validate campaign ID format (Meta campaign IDs should be numeric)
     if (!campaignId || !/^\d+$/.test(campaignId)) {
-      throw new Error('Invalid Meta campaign ID format. This campaign may not have been properly published to Meta.');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          notPublished: true,
+          error: 'CAMPAIGN_NOT_PUBLISHED',
+          message: 'Invalid Meta campaign ID format. This campaign may not have been properly published to Meta.',
+          metrics: null,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
     }
 
     console.log('Fetching Meta performance for campaign:', campaignId);
