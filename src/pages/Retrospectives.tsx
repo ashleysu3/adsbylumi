@@ -55,6 +55,7 @@ interface RetroRow {
   total_results: number;
   avg_cpl: number | null;
   summary: string;
+  retrospective_json: CampaignRetrospectiveJSON | null;
 }
 
 interface MetaCampaign {
