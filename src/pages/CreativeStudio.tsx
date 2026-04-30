@@ -28,6 +28,7 @@ import { CreativeCellData } from "@/components/creative/CreativeCell";
 import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { ProductionManager } from "@/components/creative/ProductionManager";
 import { AngleCopyEditor } from "@/components/creative/AngleCopyEditor";
+import { CampaignRetrospective, type CampaignRetrospectiveJSON } from "@/components/creative/CampaignRetrospective";
  import { CreativeContextInput, CreativeContext } from "@/components/creative/CreativeContextInput";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
@@ -268,10 +269,10 @@ export default function CreativeStudio() {
 
       const { data: workspacesData } = await supabase
         .from("campaign_workspaces")
-        .select("id, name, offer_name, creative_json, production_items, strategy_json, archived")
+        .select("id, name, offer_name, creative_json, production_items, strategy_json, archived, retrospective_json, retrospective_generated_at")
         .eq("brand_id", activeBrand.id)
         .not("strategy_json", "is", null)
-        .neq("archived", true)
+        // Load archived workspaces too — they need to be selectable to view their retrospective.
         .order("updated_at", { ascending: false });
 
       const options: WorkspaceOption[] = (workspacesData || []).map(w => {
@@ -1227,6 +1228,32 @@ export default function CreativeStudio() {
               )}
             </div>
           </div>
+
+          {workspace?.id && (
+            <Card className="rounded-2xl mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Campaign Retrospective
+                </CardTitle>
+                <CardDescription>
+                  Lumi's post-mortem on what worked, what didn't, and what to do differently next time.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <CampaignRetrospective
+                  workspaceId={workspace.id}
+                  initialRetrospective={(workspace as any).retrospective_json as CampaignRetrospectiveJSON | null}
+                  onGenerated={(retro) => {
+                    setWorkspace((prev: any) => prev
+                      ? { ...prev, retrospective_json: retro, retrospective_generated_at: retro.generated_at }
+                      : prev,
+                    );
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as WorkflowTab)}>
             <TabsList className="grid w-full grid-cols-4 mb-6 h-12 bg-transparent p-0 gap-2 rounded-none">
