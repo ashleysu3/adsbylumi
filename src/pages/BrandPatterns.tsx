@@ -168,7 +168,11 @@ export default function BrandPatterns() {
       if (cancelled) return;
 
       const retroRows: RetroSummary[] = ((retroRes.data as unknown as RetrospectiveWorkspaceRow[]) || []).map(w => {
-        const r = w.retrospective_json;
+        const r: RetrospectiveJSON = w.retrospective_json ?? {
+          summary: '',
+          stats: { total_spend: 0, total_results: 0, avg_cpl: null, duration_days: null },
+          generated_at: w.retrospective_generated_at || new Date().toISOString(),
+        };
         const stats = r.stats || { total_spend: 0, total_results: 0, avg_cpl: null, duration_days: null };
         return {
           workspace_id: w.id,
@@ -371,7 +375,7 @@ export default function BrandPatterns() {
                         <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
                         <YAxis tickFormatter={v => `$${v}`} tick={{ fontSize: 11 }} />
                         <ChartTooltip
-                          formatter={(value: any, name: any) => name === 'cpl' ? fmtCurrency(Number(value)) : value}
+                          formatter={(value: unknown, name: unknown) => name === 'cpl' ? fmtCurrency(Number(value)) : String(value)}
                           labelStyle={{ fontSize: 12 }}
                         />
                         <Line type="monotone" dataKey="cpl" stroke="#7c3aed" strokeWidth={2} dot={{ r: 4 }} />
