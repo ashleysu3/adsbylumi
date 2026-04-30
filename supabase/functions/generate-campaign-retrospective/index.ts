@@ -305,21 +305,67 @@ async function fetchCampaignPerformance(metaCampaignId: string, accessToken: str
     'date_start', 'date_stop',
   ].join(',');
 
-  try {
-    const campaignRes = await fetch(
-      `https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields}&date_preset=lifetime&level=campaign&access_token=${accessToken}`,
-    );
-    const campaignData = await campaignRes.json();
-    const adsetRes = await fetch(
-      `https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields},adset_id,adset_name&date_preset=lifetime&level=adset&access_token=${accessToken}`,
-    );
-    const adsetData = await adsetRes.json();
-    const adRes = await fetch(
-      `https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields},ad_id,ad_name,adset_id&date_preset=lifetime&level=ad&access_token=${accessToken}`,
-    );
-    const adData = await adRes.json();
+  // Helper that tries lifetime first, then falls back to an explicit
+  // 3-year time_range. Meta's insights endpoint sometimes returns an empty
+  // data array for date_preset=lifetime on archived/old campaigns; an
+  // explicit time_range covers those cases.
+  const fetchInsights = async (level: 'campaign' | 'adset' | 'ad', extraFields = '') => {
+    const f = extraFields ? `${fields},${extraFields}` : fields;
+    const base = `https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${f}&level=${level}&access_token=${accessToken}`;
+    try {
+      const r1 = await fetch(`${base}&date_preset=maximum`);
+      const d1 = await r1.json();
+      if (!r1.ok) {
+        console.error(`Meta insights ${level} error:`, r1.status, JSON.stringify(d1?.error || d1).slice(0, 300));
+      }
+      if (Array.isArray(d1?.data) && d1.data.length > 0) return d1.data;
 
-    const c = campaignData?.data?.[0];
+      // Fallback: explicit wide time_range (Meta typically retains 37 months)
+      const today = new Date().toISOString().slice(0, 10);
+      const since = new Date(Date.now() - 1100 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const tr = encodeURIComponent(JSON.stringify({ since, until: today }));
+      const r2 = await fetch(`${base}&time_range=${tr}`);
+      const d2 = await r2.json();
+      if (!r2.ok) {
+        console.error(`Meta insights ${level} fallback error:`, r2.status, JSON.stringify(d2?.error || d2).slice(0, 300));
+      }
+      return Array.isArray(d2?.data) ? d2.data : [];
+    } catch (e) {
+      console.error(`Meta insights ${level} fetch threw:`, e);
+      return [];
+    }
+  };
+
+  try {
+    // Always fetch the campaign metadata directly so we have name/objective
+    // even when insights are empty (campaign never delivered).
+    let campaignMeta: any = null;
+    try {
+      const mr = await fetch(
+        `https://graph.facebook.com/v21.0/${metaCampaignId}?fields=name,objective,status,effective_status,created_time,start_time,stop_time&access_token=${accessToken}`,
+      );
+      const md = await mr.json();
+      if (mr.ok) campaignMeta = md;
+      else console.error('Meta campaign meta error:', mr.status, JSON.stringify(md?.error || md).slice(0, 300));
+    } catch (e) {
+      console.error('Meta campaign meta fetch threw:', e);
+    }
+
+    const [campaignRows, adsetRows, adRows] = await Promise.all([
+      fetchInsights('campaign'),
+      fetchInsights('adset', 'adset_id,adset_name'),
+      fetchInsights('ad', 'ad_id,ad_name,adset_id'),
+    ]);
+
+    console.log('Meta insights row counts:', {
+      campaign: campaignRows.length,
+      adset: adsetRows.length,
+      ad: adRows.length,
+      hasMeta: !!campaignMeta,
+      objective: campaignMeta?.objective,
+    });
+
+    const c = campaignRows[0];
     const totals = c
       ? {
           spend: Number(c.spend || 0),
@@ -329,14 +375,25 @@ async function fetchCampaignPerformance(metaCampaignId: string, accessToken: str
           cpc: Number(c.cpc || 0),
           results: extractResultCount(c),
           cpl: extractCostPerResult(c),
-          objective: c.objective,
+          objective: c.objective || campaignMeta?.objective || null,
+          status: campaignMeta?.effective_status || campaignMeta?.status || null,
+          campaign_name: c.campaign_name || campaignMeta?.name || null,
         }
-      : null;
+      : campaignMeta
+        ? {
+            spend: 0, impressions: 0, clicks: 0, ctr: 0, cpc: 0,
+            results: 0, cpl: null,
+            objective: campaignMeta.objective || null,
+            status: campaignMeta.effective_status || campaignMeta.status || null,
+            campaign_name: campaignMeta.name || null,
+          }
+        : null;
 
     return {
       totals,
-      adsets: adsetData?.data || [],
-      ads: adData?.data || [],
+      adsets: adsetRows,
+      ads: adRows,
+      meta: campaignMeta,
     };
   } catch (err) {
     console.error('Meta API fetch failed:', err);
