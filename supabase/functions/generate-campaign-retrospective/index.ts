@@ -294,15 +294,23 @@ Deno.serve(async req => {
           },
           { role: 'user', content: prompt },
         ],
+        response_format: { type: 'json_object' },
       }),
     });
     if (!aiRes.ok) {
       const errText = await aiRes.text().catch(() => '');
       console.error('AI gateway error:', aiRes.status, errText);
-      return json({ error: `AI analysis failed (${aiRes.status})` }, 502);
+      if (aiRes.status === 429) return json({ error: 'AI is rate-limited. Try again in a minute.' }, 200);
+      if (aiRes.status === 402) return json({ error: 'AI credits exhausted. Add credits in Settings.' }, 200);
+      return json({ error: `AI analysis failed (${aiRes.status})` }, 200);
     }
     const aiData = await aiRes.json();
     const raw = aiData?.choices?.[0]?.message?.content ?? '';
+    const finishReason = aiData?.choices?.[0]?.finish_reason;
+    if (!raw || !String(raw).trim()) {
+      console.error('AI returned empty content. finish_reason:', finishReason, 'full:', JSON.stringify(aiData).slice(0, 800));
+      return json({ error: `AI returned empty output (finish_reason: ${finishReason || 'unknown'}). Try again.` }, 200);
+    }
     const cleaned = String(raw)
       .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
@@ -310,7 +318,7 @@ Deno.serve(async req => {
     try { parsed = JSON.parse(cleaned); }
     catch (_) {
       console.error('Parse failed. Raw:', cleaned.slice(0, 400));
-      return json({ error: 'AI returned unparseable output. Try again.' }, 502);
+      return json({ error: 'AI returned unparseable output. Try again.' }, 200);
     }
 
     const retrospective: RetrospectiveJSON = {
