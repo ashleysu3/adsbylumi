@@ -401,25 +401,102 @@ async function fetchCampaignPerformance(metaCampaignId: string, accessToken: str
   }
 }
 
-function extractResultCount(insight: any): number {
-  const actions = insight?.actions;
-  if (!Array.isArray(actions)) return 0;
-  const priority = ['purchase', 'offsite_conversion.fb_pixel_purchase', 'lead', 'offsite_conversion.fb_pixel_lead', 'complete_registration'];
-  for (const t of priority) {
-    const m = actions.find((a: any) => a.action_type === t);
-    if (m) return Number(m.value || 0);
+// Maps a Meta objective to the result type that should be the campaign's
+// primary KPI. Lead campaigns track leads/CPL, sales campaigns track
+// purchases/CPP, traffic campaigns track link clicks/CPC, etc.
+function resultTypeForObjective(objective: string | null | undefined): {
+  kind: 'leads' | 'purchases' | 'link_clicks' | 'engagement' | 'video_views' | 'reach' | 'clicks';
+  label: string;
+  cost_label: string;
+  action_priority: string[];
+} {
+  const o = String(objective || '').toUpperCase();
+  if (o.includes('LEAD')) {
+    return {
+      kind: 'leads',
+      label: 'Leads',
+      cost_label: 'Cost per Lead (CPL)',
+      action_priority: ['lead', 'offsite_conversion.fb_pixel_lead', 'onsite_conversion.lead_grouped', 'leadgen.other', 'complete_registration', 'offsite_conversion.fb_pixel_complete_registration'],
+    };
   }
-  return Number(insight?.clicks || 0);
+  if (o.includes('SALES') || o.includes('CONVERSION') || o.includes('PURCHASE') || o.includes('CATALOG')) {
+    return {
+      kind: 'purchases',
+      label: 'Purchases',
+      cost_label: 'Cost per Purchase (CPP)',
+      action_priority: ['purchase', 'offsite_conversion.fb_pixel_purchase', 'onsite_web_purchase', 'omni_purchase'],
+    };
+  }
+  if (o.includes('TRAFFIC') || o.includes('LINK_CLICKS')) {
+    return {
+      kind: 'link_clicks',
+      label: 'Link Clicks',
+      cost_label: 'Cost per Link Click (CPC)',
+      action_priority: ['link_click'],
+    };
+  }
+  if (o.includes('ENGAGEMENT') || o.includes('POST_ENGAGEMENT') || o.includes('MESSAGES')) {
+    return {
+      kind: 'engagement',
+      label: 'Engagements',
+      cost_label: 'Cost per Engagement',
+      action_priority: ['post_engagement', 'page_engagement', 'onsite_conversion.messaging_conversation_started_7d'],
+    };
+  }
+  if (o.includes('VIDEO')) {
+    return {
+      kind: 'video_views',
+      label: 'Video Views (ThruPlay)',
+      cost_label: 'Cost per ThruPlay',
+      action_priority: ['video_view', 'video_thruplay_watched_actions'],
+    };
+  }
+  if (o.includes('AWARENESS') || o.includes('REACH') || o.includes('BRAND')) {
+    return {
+      kind: 'reach',
+      label: 'Reach',
+      cost_label: 'CPM',
+      action_priority: [],
+    };
+  }
+  return {
+    kind: 'clicks',
+    label: 'Results',
+    cost_label: 'Cost per Result',
+    action_priority: ['purchase', 'offsite_conversion.fb_pixel_purchase', 'lead', 'offsite_conversion.fb_pixel_lead', 'complete_registration', 'link_click'],
+  };
 }
 
-function extractCostPerResult(insight: any): number | null {
-  const cpa = insight?.cost_per_action_type;
-  if (!Array.isArray(cpa)) return null;
-  const priority = ['purchase', 'offsite_conversion.fb_pixel_purchase', 'lead', 'offsite_conversion.fb_pixel_lead'];
-  for (const t of priority) {
-    const m = cpa.find((a: any) => a.action_type === t);
-    if (m && m.value) return Number(m.value);
+function extractResultCount(insight: any, objective?: string | null): number {
+  const cfg = resultTypeForObjective(objective);
+  if (cfg.kind === 'reach') return Number(insight?.reach || insight?.impressions || 0);
+  const actions = insight?.actions;
+  if (Array.isArray(actions)) {
+    for (const t of cfg.action_priority) {
+      const m = actions.find((a: any) => a.action_type === t);
+      if (m) return Number(m.value || 0);
+    }
   }
+  if (!objective) return Number(insight?.clicks || 0);
+  return 0;
+}
+
+function extractCostPerResult(insight: any, objective?: string | null): number | null {
+  const cfg = resultTypeForObjective(objective);
+  if (cfg.kind === 'reach') {
+    const cpm = Number(insight?.cpm);
+    return isFinite(cpm) && cpm > 0 ? cpm : null;
+  }
+  const cpa = insight?.cost_per_action_type;
+  if (Array.isArray(cpa)) {
+    for (const t of cfg.action_priority) {
+      const m = cpa.find((a: any) => a.action_type === t);
+      if (m && m.value) return Number(m.value);
+    }
+  }
+  const results = extractResultCount(insight, objective);
+  const spend = Number(insight?.spend || 0);
+  if (results > 0 && spend > 0) return spend / results;
   return null;
 }
 
