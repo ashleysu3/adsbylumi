@@ -26,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { RetrospectiveSetupDialog, type RetroSetupResult } from '@/components/creative/RetrospectiveSetupDialog';
+import { useBrand } from '@/contexts/BrandContext';
 
 // ============================================================================
 // Retrospectives (Patch #24 — merged page)
@@ -95,8 +96,8 @@ const RANGE_OPTIONS = [
 
 export default function Retrospectives() {
   const navigate = useNavigate();
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [activeBrandId, setActiveBrandId] = useState<string | null>(null);
+  const { activeBrand } = useBrand();
+  const activeBrandId = activeBrand?.id ?? null;
 
   const [retros, setRetros] = useState<RetroRow[]>([]);
   const [learnings, setLearnings] = useState<Learning[]>([]);
@@ -111,20 +112,6 @@ export default function Retrospectives() {
   // Setup dialog (goal + window)
   const [setupCampaign, setSetupCampaign] = useState<MetaCampaign | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
-
-  // Brands.
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from('brands').select('id, name, meta_account_id')
-        .eq('user_id', user.id).order('name');
-      const list = (data as any[]) || [];
-      setBrands(list);
-      if (list.length > 0) setActiveBrandId(list[0].id);
-    })();
-  }, []);
 
   // Past retros + brand learnings, both for the active brand.
   useEffect(() => {
@@ -179,10 +166,7 @@ export default function Retrospectives() {
     return () => { cancelled = true; };
   }, [activeBrandId]);
 
-  const activeBrand = useMemo(
-    () => brands.find(b => b.id === activeBrandId) || null,
-    [brands, activeBrandId],
-  );
+  // activeBrand provided by BrandContext above
 
   const loadCampaigns = async (days: number) => {
     if (!activeBrandId) return;
@@ -244,8 +228,7 @@ export default function Retrospectives() {
       toast.success(`Retrospective ready: ${setupCampaign.name}`);
       setTrayOpen(false);
 
-      // Reload retros + learnings.
-      setActiveBrandId(id => id);
+      // Reload retros + learnings (state below appends the new one).
       const r = data.retrospective;
       const stats = r?.stats || {};
       setRetros(prev => [
@@ -315,19 +298,6 @@ export default function Retrospectives() {
             </p>
           </div>
           <div className="flex items-end gap-3">
-            {brands.length > 1 && (
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Brand</Label>
-                <Select value={activeBrandId ?? ''} onValueChange={setActiveBrandId}>
-                  <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {brands.map(b => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
             <Button variant="lumi" className="gap-1.5" onClick={handleOpenTray}>
               <Plus className="h-4 w-4" />
               Create retrospective
