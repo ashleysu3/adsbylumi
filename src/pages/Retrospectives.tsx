@@ -169,6 +169,13 @@ export default function Retrospectives() {
         },
       });
       if (error) throw new Error(error.message || 'Request failed');
+      if (data?.code === 'META_TOKEN_EXPIRED') {
+        toast.error('Meta connection expired', {
+          description: data?.error || 'Please reconnect Meta in Settings to continue.',
+        });
+        setCampaigns([]);
+        return;
+      }
       if (!data?.success) throw new Error(data?.error || 'Could not load campaigns');
       setCampaigns(data.campaigns || []);
     } catch (err: any) {
