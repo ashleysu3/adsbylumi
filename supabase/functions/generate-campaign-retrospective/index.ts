@@ -517,6 +517,9 @@ function buildPrompt(args: {
   performance: any;
   isImported: boolean;
 }): string {
+  const objective = args.performance?.totals?.objective || args.strategy?.objective || null;
+  const cfg = resultTypeForObjective(objective);
+
   const summary = {
     brand: args.brandName,
     offer: args.offerName,
@@ -524,6 +527,9 @@ function buildPrompt(args: {
     note: args.isImported
       ? 'This campaign was imported from Meta — LUMI does not have its angle/copy metadata. Base your post-mortem entirely on the Meta performance data.'
       : null,
+    meta_objective: objective,
+    primary_kpi: cfg.label,
+    primary_cost_kpi: cfg.cost_label,
     strategy_objective: args.strategy?.objective || 'unknown',
     strategy_audiences: args.strategy?.audiences || args.strategy?.audience_set || null,
     angles: Array.isArray(args.creative?.angles)
@@ -538,15 +544,16 @@ function buildPrompt(args: {
     adset_breakdown: (args.performance?.adsets || []).slice(0, 10).map((a: any) => ({
       name: a.adset_name,
       spend: Number(a.spend || 0),
-      results: extractResultCount(a),
-      cpl: extractCostPerResult(a),
+      results: extractResultCount(a, objective),
+      cost_per_result: extractCostPerResult(a, objective),
+      ctr: Number(a.ctr || 0),
     })),
     ad_breakdown: (args.performance?.ads || []).slice(0, 20).map((a: any) => ({
       name: a.ad_name,
       adset: a.adset_id,
       spend: Number(a.spend || 0),
-      results: extractResultCount(a),
-      cpl: extractCostPerResult(a),
+      results: extractResultCount(a, objective),
+      cost_per_result: extractCostPerResult(a, objective),
       ctr: Number(a.ctr || 0),
     })),
   };
@@ -578,9 +585,15 @@ Return a JSON object with this exact shape (no prose, no code fences):
   ]
 }
 
+Critical KPI rules:
+- This campaign's Meta objective is "${objective || 'unknown'}". The primary KPI is ${cfg.label} and ${cfg.cost_label}.
+- "total_results" MUST be the count of ${cfg.label} (NOT clicks, NOT impressions, unless the objective is link clicks/awareness).
+- "avg_cpl" MUST be the ${cfg.cost_label} value. If the campaign has no ${cfg.label}, set total_results to 0 and avg_cpl to null — do NOT substitute clicks or CPC.
+- All wins/misses/recommendations should be evaluated against ${cfg.label} and ${cfg.cost_label}, not generic clicks.
+
 Guidance:
 - Aim for 2-3 wins, 2-3 misses, 4-5 recommendations. More if the data clearly supports more; never invent insights.
-- Recommendations should be specific and actionable for the NEXT campaign — e.g. "Lead with curiosity-style hooks; testimonial format averaged 3x higher CPL." Avoid generic advice.
+- Recommendations should be specific and actionable for the NEXT campaign — e.g. "Lead with curiosity-style hooks; testimonial format averaged 3x higher ${cfg.cost_label}." Avoid generic advice.
 - Use confidence "high" only when the data clearly supports the claim. Use "medium" by default. Use "low" when you're guessing because the dataset is thin.
 - If performance data is missing or zero (campaign was never published), focus on what the creative + strategy reveal, and set confidence appropriately.
 - For imported (non-LUMI) campaigns, lean on adset/ad name patterns + spend curves — those are your only signals.
