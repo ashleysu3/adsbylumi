@@ -141,7 +141,7 @@ const App = () => {
                   <Route path="/offers" element={<Offers />} />
                   <Route path="/style" element={<Style />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
-                  <Route path="/brand/patterns" element={<BrandPatterns />} />
+                  <Route path="/brand/patterns" element={<Navigate to="/retrospectives" replace />} />
                   <Route path="/retrospectives" element={<Retrospectives />} />
                   <Route path="/glossary" element={<Glossary />} />
                   <Route path="/creative-toolkit" element={<CreativeToolkit />} />
