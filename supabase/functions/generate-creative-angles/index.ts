@@ -203,7 +203,37 @@ Deno.serve(async (req) => {
       previousAnglesContext += "\nCRITICAL: Every angle you generate must be meaningfully DIFFERENT from the above list. Do not simply rephrase or slightly rename a previously used angle. Explore entirely new psychological territories, emotional triggers, or messaging frameworks that were NOT covered before. If you find yourself generating something similar to an angle above, STOP and think of a genuinely new direction.\n";
     }
 
-    const systemPrompt = `You are Lumi's Creative Engine. Your job is to generate creative angle recommendations for Meta ads campaigns.
+    // Patch #21: brand learnings prompt block.
+    let learningsContext = "";
+    if (brandLearnings.length > 0) {
+      const wins = brandLearnings.filter(l => l.category === 'win');
+      const misses = brandLearnings.filter(l => l.category === 'miss');
+      const recs = brandLearnings.filter(l => l.category === 'recommendation');
+
+      learningsContext += "\n\n=== ACCUMULATED LEARNINGS FOR THIS BRAND (from past campaign retrospectives) ===\n";
+      learningsContext += "These are explicit lessons from this brand's prior campaigns. Weight your output to LEAN INTO the wins, AVOID the misses, and FOLLOW the recommendations. Higher-confidence items should carry more weight.\n";
+
+      if (wins.length > 0) {
+        learningsContext += "\nWHAT'S WORKED IN PRIOR CAMPAIGNS:\n";
+        wins.forEach(w => {
+          learningsContext += `- [${w.confidence}] ${w.insight}${w.supporting_data ? ' — ' + w.supporting_data : ''}\n`;
+        });
+      }
+      if (misses.length > 0) {
+        learningsContext += "\nWHAT HASN'T WORKED — AVOID REPEATING:\n";
+        misses.forEach(m => {
+          learningsContext += `- [${m.confidence}] ${m.insight}${m.supporting_data ? ' — ' + m.supporting_data : ''}\n`;
+        });
+      }
+      if (recs.length > 0) {
+        learningsContext += "\nEXPLICIT RECOMMENDATIONS FOR THE NEXT CAMPAIGN:\n";
+        recs.forEach(r => {
+          learningsContext += `- [${r.confidence}] ${r.insight}${r.supporting_data ? ' — ' + r.supporting_data : ''}\n`;
+        });
+      }
+      learningsContext += "\n";
+    }
+
 
 KNOWLEDGE BASE:
 ${kbContext}
