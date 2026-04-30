@@ -25,7 +25,6 @@ import {
   BarChart,
   Legend,
 } from 'recharts';
-import { Link } from 'react-router-dom';
 import { Trophy, AlertTriangle, Lightbulb, TrendingUp, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -88,6 +87,7 @@ export default function BrandPatterns() {
   const [retros, setRetros] = useState<RetroSummary[]>([]);
   const [learnings, setLearnings] = useState<Learning[]>([]);
   const [eligibleCampaigns, setEligibleCampaigns] = useState<EligibleCampaign[]>([]);
+  const [generatingWorkspaceId, setGeneratingWorkspaceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { getEffectiveUserId, isImpersonating, impersonatedUser } = useImpersonation();
 
@@ -196,6 +196,48 @@ export default function BrandPatterns() {
   const misses = learnings.filter(l => l.category === 'miss');
   const recs = learnings.filter(l => l.category === 'recommendation');
 
+  const handleGenerateRetrospective = async (campaign: EligibleCampaign) => {
+    if (!activeBrandId) return;
+    setGeneratingWorkspaceId(campaign.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-campaign-retrospective', {
+        body: { workspaceId: campaign.id, impersonatedUserId: isImpersonating ? impersonatedUser?.id : undefined },
+      });
+      if (error) throw new Error(error.message || 'Request failed');
+      const result = data as { success?: boolean; retrospective?: RetrospectiveJSON; error?: string } | null;
+      if (!result?.success || !result.retrospective) throw new Error(result?.error || 'No retrospective returned');
+
+      const stats = result.retrospective.stats || {};
+      setRetros(prev => [{
+        workspace_id: campaign.id,
+        workspace_name: campaign.name,
+        generated_at: result.retrospective.generated_at,
+        archived_at: campaign.archived_at,
+        total_spend: Number(stats.total_spend || 0),
+        total_results: Number(stats.total_results || 0),
+        avg_cpl: stats.avg_cpl != null ? Number(stats.avg_cpl) : null,
+        duration_days: stats.duration_days != null ? Number(stats.duration_days) : null,
+        summary: result.retrospective.summary || '',
+      }, ...prev]);
+      setEligibleCampaigns(prev => prev.filter(c => c.id !== campaign.id));
+
+      const { data: freshLearnings } = await supabase
+        .from('brand_learnings' as any)
+        .select('id, category, insight, supporting_data, confidence, source_workspace_id, created_at')
+        .eq('brand_id', activeBrandId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      setLearnings(((freshLearnings as unknown[]) || []) as Learning[]);
+      toast.success('Retrospective ready');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown';
+      console.error('retrospective failed:', err);
+      toast.error('Could not generate retrospective: ' + message);
+    } finally {
+      setGeneratingWorkspaceId(null);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -245,9 +287,8 @@ export default function BrandPatterns() {
                   </p>
                   <div className="space-y-1.5 max-w-xl mx-auto">
                     {eligibleCampaigns.slice(0, 8).map(c => (
-                      <Link
+                      <div
                         key={c.id}
-                        to={`/creative-studio?workspace=${c.id}&retrospective=true`}
                         className="flex items-center justify-between gap-3 rounded-md border p-2.5 hover:bg-muted/50 transition-colors"
                       >
                         <div className="min-w-0">
@@ -258,10 +299,16 @@ export default function BrandPatterns() {
                             </p>
                           )}
                         </div>
-                        <Button size="sm" variant="outline" tabIndex={-1}>
-                          Run retrospective
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleGenerateRetrospective(c)}
+                          disabled={generatingWorkspaceId === c.id}
+                        >
+                          {generatingWorkspaceId === c.id && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                          {generatingWorkspaceId === c.id ? 'Running…' : 'Run retrospective'}
                         </Button>
-                      </Link>
+                      </div>
                     ))}
                   </div>
                 </div>
