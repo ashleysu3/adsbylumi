@@ -92,6 +92,22 @@ interface EligibleCampaign {
   archived_at: string | null;
 }
 
+interface RetrospectiveWorkspaceRow {
+  id: string;
+  name: string | null;
+  offer_name: string | null;
+  retrospective_json: RetrospectiveJSON | null;
+  retrospective_generated_at: string | null;
+  archived_at: string | null;
+}
+
+interface EligibleWorkspaceRow {
+  id: string;
+  name: string | null;
+  offer_name: string | null;
+  archived_at: string | null;
+}
+
 export default function BrandPatterns() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [activeBrandId, setActiveBrandId] = useState<string | null>(null);
@@ -112,7 +128,7 @@ export default function BrandPatterns() {
         .select('id, name')
         .eq('user_id', effectiveUserId)
         .order('name');
-      const list = (data as any[]) || [];
+      const list = (data as Brand[]) || [];
       setBrands(list);
       // Reset active brand when the effective user changes (e.g. impersonation toggled).
       setActiveBrandId(list.length > 0 ? list[0].id : null);
@@ -133,7 +149,7 @@ export default function BrandPatterns() {
           .not('retrospective_json', 'is', null)
           .order('archived_at', { ascending: false, nullsFirst: false }),
         supabase
-          .from('brand_learnings' as any)
+          .from('brand_learnings' as never)
           .select('id, category, insight, supporting_data, confidence, source_workspace_id, created_at')
           .eq('brand_id', activeBrandId)
           .eq('is_active', true)
@@ -151,9 +167,9 @@ export default function BrandPatterns() {
 
       if (cancelled) return;
 
-      const retroRows: RetroSummary[] = ((retroRes.data as any[]) || []).map(w => {
+      const retroRows: RetroSummary[] = ((retroRes.data as unknown as RetrospectiveWorkspaceRow[]) || []).map(w => {
         const r = w.retrospective_json || {};
-        const stats = r.stats || {};
+        const stats = r.stats || { total_spend: 0, total_results: 0, avg_cpl: null, duration_days: null };
         return {
           workspace_id: w.id,
           workspace_name: w.offer_name || w.name || 'Unnamed campaign',
@@ -168,8 +184,8 @@ export default function BrandPatterns() {
       });
 
       setRetros(retroRows);
-      setLearnings(((learningRes.data as any[]) || []) as Learning[]);
-      setEligibleCampaigns(((eligibleRes.data as any[]) || []).map(w => ({
+      setLearnings(((learningRes.data as unknown[]) || []) as Learning[]);
+      setEligibleCampaigns(((eligibleRes.data as unknown as EligibleWorkspaceRow[]) || []).map(w => ({
         id: w.id,
         name: w.offer_name || w.name || 'Unnamed campaign',
         archived_at: w.archived_at,
