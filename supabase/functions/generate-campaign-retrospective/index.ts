@@ -65,16 +65,18 @@ Deno.serve(async req => {
       .from('campaign_workspaces')
       .select('id, brand_id, name, offer_name, creative_json, production_items, strategy_json, archived_at, created_at, meta_campaign_id')
       .eq('id', workspaceId)
-      .single();
-    if (wErr || !workspace) return json({ error: 'Workspace not found' }, 404);
+      .maybeSingle();
+    if (wErr) return json({ error: `Workspace lookup failed: ${wErr.message}` }, 200);
+    if (!workspace) return json({ error: `Workspace not found for id ${workspaceId}` }, 200);
 
     const { data: brand, error: bErr } = await sb
       .from('brands')
       .select('id, user_id, name, meta_account_id, meta_access_token')
       .eq('id', workspace.brand_id)
-      .single();
-    if (bErr || !brand) return json({ error: 'Brand not found' }, 404);
-    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
+      .maybeSingle();
+    if (bErr) return json({ error: `Brand lookup failed: ${bErr.message}` }, 200);
+    if (!brand) return json({ error: 'Brand not found' }, 200);
+    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 200);
 
     // Pull Meta campaign performance. If the workspace doesn't have a
     // meta_campaign_id (campaign was never published) we still produce a
