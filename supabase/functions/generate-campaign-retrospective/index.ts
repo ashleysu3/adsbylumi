@@ -7,93 +7,73 @@ const corsHeaders = {
 };
 
 // ============================================================================
-// generate-campaign-retrospective (Patch #25 — KPI fix)
+// generate-campaign-retrospective (Patch #26)
 //
-// Bugfix on top of Patch #24: the previous version used a hardcoded priority
-// list (purchase, lead, registration) when extracting the "result" from
-// Meta's actions/cost_per_action_type arrays. That meant a Lead Generation
-// campaign with any incidental purchase events would have its "Cost per
-// lead" reported as "Cost per purchase" — wildly inflated, and inconsistent
-// with what LUMI's own dashboard shows.
+// Bugfix on top of patch #25's KPI-aware version:
 //
-// Fix:
-//   - Resolve a `primaryKpi` per campaign (canonical LUMI KPI vocab:
-//     'cpl' | 'cpp' | 'cpc' | 'cpm' | 'ctr' | 'roas' | 'costPerThruPlay').
-//     Priority: goal override > stored campaign_goals > inferred from
-//     Meta objective via the LUMI KPI map > sensible default.
-//   - Single `extractKpiValue(insight, kpi)` and `extractResultCount(insight, kpi)`
-//     that look up the correct action_type for the chosen KPI.
-//   - The Meta query now also requests `purchase_roas` so ROAS campaigns
-//     get the right number.
-//   - Goal-vs-actual + the AI prompt + brand_learnings all reference the
-//     same KPI consistently.
+//   - Lead / purchase counters now AGGREGATE across multiple Meta action_types
+//     so Lead Form (Instant Form) and on-site conversions don't slip through.
+//     Previously we only summed `lead` + `offsite_conversion.fb_pixel_lead`
+//     and missed campaigns whose lead events come through as
+//     `onsite_conversion.lead_grouped`. Symptom: dashboard showed leads,
+//     retrospective said "no data."
+//
+//   - When results come back as 0 despite real spend, we log the full
+//     `actions` array in the function logs so the cause is debuggable.
+//
+//   - When the user provides a goalOverride (from the setup dialog), we
+//     also UPSERT into `campaign_goals` so the goal sticks for next time.
 // ============================================================================
 
-// Inlined LUMI KPI vocabulary (mirror of src/lib/lumi-kpi-config.ts).
-// Edge functions can't import from the frontend tree, so we keep the
-// minimum subset we need here. KEEP IN SYNC with the frontend file.
 const LUMI_KPI_FROM_OBJECTIVE: Record<string, string> = {
-  // Lead Gen → CPL
   'lead-gen': 'cpl', 'Leads': 'cpl', 'LEAD_GENERATION': 'cpl', 'OUTCOME_LEADS': 'cpl',
   'Discovery Call / Application': 'cpl', 'discovery-call': 'cpl',
   'Email Capture': 'cpl', 'Lead Magnet Downloads': 'cpl',
   'webinar': 'cpl', 'Webinar Registration': 'cpl', 'Webinar Sign Ups': 'cpl',
-  // Sales → CPP / ROAS
   'low-ticket': 'cpp', 'Low Ticket Product Sales': 'cpp',
   'Sales': 'roas', 'CONVERSIONS': 'roas', 'OUTCOME_SALES': 'roas',
-  // Traffic → CPC
   'ig-traffic': 'cpc', 'Traffic': 'cpc', 'LINK_CLICKS': 'cpc', 'OUTCOME_TRAFFIC': 'cpc',
   'Traffic to Instagram/Facebook': 'cpc', 'Traffic to Instagram': 'cpc', 'Traffic to Facebook': 'cpc',
-  // Video → cost per ThruPlay
-  'video-views': 'costPerThruPlay', 'VIDEO_VIEWS': 'costPerThruPlay',
-  'ThruPlay Video Views': 'costPerThruPlay',
-  // Engagement / Reach → CPM
+  'video-views': 'costPerThruPlay', 'VIDEO_VIEWS': 'costPerThruPlay', 'ThruPlay Video Views': 'costPerThruPlay',
   'Engagement': 'cpm', 'ENGAGEMENT': 'cpm', 'OUTCOME_ENGAGEMENT': 'cpm',
   'REACH': 'cpm', 'BRAND_AWARENESS': 'cpm', 'OUTCOME_AWARENESS': 'cpm',
 };
 
 const KPI_LABELS: Record<string, string> = {
-  cpl: 'Cost Per Lead',
-  cpp: 'Cost Per Purchase',
-  cpc: 'Cost Per Click',
-  cpm: 'Cost Per 1k Impressions',
-  ctr: 'Click-Through Rate',
-  roas: 'Return on Ad Spend',
+  cpl: 'Cost Per Lead', cpp: 'Cost Per Purchase', cpc: 'Cost Per Click',
+  cpm: 'Cost Per 1k Impressions', ctr: 'Click-Through Rate', roas: 'Return on Ad Spend',
   costPerThruPlay: 'Cost Per ThruPlay',
 };
 
-// Action-type each KPI looks up in Meta's `actions` / `cost_per_action_type`
-// arrays. Returning null means "not action-based — use a top-level field
-// like row.cpc / row.ctr / row.cpm or purchase_roas[0].value."
-const KPI_ACTION_TYPE: Record<string, string | null> = {
-  cpl: 'lead',
-  cpp: 'purchase',
-  cpc: null, // top-level cpc
-  cpm: null, // top-level cpm
-  ctr: null, // top-level ctr
-  roas: null, // purchase_roas[0]
-  costPerThruPlay: 'video_view', // closest Meta proxy
-};
-
 const KPI_UNIT: Record<string, '$' | 'x' | '%' | ''> = {
-  cpl: '$', cpp: '$', cpc: '$', cpm: '$', costPerThruPlay: '$',
-  roas: 'x', ctr: '%',
+  cpl: '$', cpp: '$', cpc: '$', cpm: '$', costPerThruPlay: '$', roas: 'x', ctr: '%',
 };
 
-// Default direction per KPI when the user didn't specify (CPL/CPP/etc are
-// "less than is better"; ROAS / CTR are "greater than is better").
-const KPI_DEFAULT_DIRECTION: Record<string, 'less_than' | 'greater_than'> = {
-  cpl: 'less_than', cpp: 'less_than', cpc: 'less_than',
-  cpm: 'less_than', costPerThruPlay: 'less_than',
-  roas: 'greater_than', ctr: 'greater_than',
-};
+// Meta returns lead events under MULTIPLE action types depending on whether
+// the lead came through a Lead Form (Instant Form), the pixel, or a custom
+// conversion. We aggregate across all of them — same approach the rest of
+// LUMI uses (e.g. fetch-account-overview's lead/purchase counters).
+const LEAD_ACTION_TYPES = [
+  'lead',
+  'offsite_conversion.fb_pixel_lead',
+  'onsite_conversion.lead_grouped',
+  'onsite_conversion.lead',
+  'submit_application_total',
+];
+const PURCHASE_ACTION_TYPES = [
+  'purchase',
+  'offsite_conversion.fb_pixel_purchase',
+  'onsite_conversion.purchase',
+  'omni_purchase',
+];
+const VIDEO_VIEW_ACTION_TYPES = ['video_view', 'video_thruplay_watched_actions'];
 
 interface RetrospectiveJSON {
   summary: string;
   stats: {
     total_spend: number;
     total_results: number;
-    avg_cpl: number | null; // (kept for BC; this is the avg of the primary KPI's per-result cost)
+    avg_cpl: number | null;
     duration_days: number | null;
     objective: string | null;
     primary_kpi?: string | null;
@@ -115,9 +95,7 @@ interface RetrospectiveJSON {
 }
 
 Deno.serve(async req => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -135,39 +113,30 @@ Deno.serve(async req => {
       Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // -- Resolve to a workspace (creating a stub for imported campaigns).
+    // Resolve workspace (auto-create stub for imported campaigns).
     let workspaceId: string | null = body?.workspaceId ?? null;
     if (!workspaceId && body?.metaCampaignId && body?.brandId) {
-      const { data: ownerCheck } = await sb
-        .from('brands').select('id, user_id').eq('id', body.brandId).single();
+      const { data: ownerCheck } = await sb.from('brands').select('id, user_id').eq('id', body.brandId).single();
       if (!ownerCheck || ownerCheck.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
-
-      const { data: existingWs } = await sb
-        .from('campaign_workspaces').select('id, meta_campaign_ids').eq('brand_id', body.brandId);
-      const found = (existingWs || []).find(
-        (w: any) => w?.meta_campaign_ids?.campaignId === body.metaCampaignId,
-      );
+      const { data: existingWs } = await sb.from('campaign_workspaces').select('id, meta_campaign_ids').eq('brand_id', body.brandId);
+      const found = (existingWs || []).find((w: any) => w?.meta_campaign_ids?.campaignId === body.metaCampaignId);
       if (found) {
         workspaceId = found.id;
       } else {
         let metaName = 'Imported campaign';
         try {
-          const { data: brand } = await sb
-            .from('brands').select('meta_access_token').eq('id', body.brandId).single();
+          const { data: brand } = await sb.from('brands').select('meta_access_token').eq('id', body.brandId).single();
           if (brand?.meta_access_token) {
-            const r = await fetch(
-              `https://graph.facebook.com/v21.0/${body.metaCampaignId}?fields=name,objective&access_token=${brand.meta_access_token}`,
-            );
+            const r = await fetch(`https://graph.facebook.com/v21.0/${body.metaCampaignId}?fields=name,objective&access_token=${brand.meta_access_token}`);
             const d = await r.json();
             if (r.ok && d?.name) metaName = d.name;
           }
         } catch (_) { /* non-fatal */ }
-        const { data: created, error: createErr } = await sb
-          .from('campaign_workspaces').insert({
-            brand_id: body.brandId, name: metaName, offer_name: metaName,
-            meta_campaign_ids: { campaignId: body.metaCampaignId },
-            archived: true, archived_at: new Date().toISOString(),
-          }).select('id').single();
+        const { data: created, error: createErr } = await sb.from('campaign_workspaces').insert({
+          brand_id: body.brandId, name: metaName, offer_name: metaName,
+          meta_campaign_ids: { campaignId: body.metaCampaignId },
+          archived: true, archived_at: new Date().toISOString(),
+        }).select('id').single();
         if (createErr || !created) {
           console.error('Stub workspace creation failed:', createErr);
           return json({ error: 'Could not create workspace stub for this campaign' }, 500);
@@ -177,7 +146,6 @@ Deno.serve(async req => {
     }
     if (!workspaceId) return json({ error: 'Either workspaceId or (brandId + metaCampaignId) is required' }, 400);
 
-    // -- Workspace + brand + ownership.
     const { data: workspace, error: wErr } = await sb
       .from('campaign_workspaces')
       .select('id, brand_id, name, offer_name, creative_json, production_items, strategy_json, archived_at, created_at, meta_campaign_ids, objective')
@@ -185,15 +153,14 @@ Deno.serve(async req => {
     if (wErr || !workspace) return json({ error: 'Workspace not found' }, 404);
 
     const { data: brand, error: bErr } = await sb
-      .from('brands')
-      .select('id, user_id, name, meta_account_id, meta_access_token')
+      .from('brands').select('id, user_id, name, meta_account_id, meta_access_token')
       .eq('id', workspace.brand_id).single();
     if (bErr || !brand) return json({ error: 'Brand not found' }, 404);
     if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
 
     const metaCampaignId = (workspace.meta_campaign_ids as any)?.campaignId || null;
 
-    // -- Goal: override > stored campaign_goals > none.
+    // Goal: override > stored campaign_goals > none.
     let goal: GoalContext | null = null;
     if (body?.goalOverride && body.goalOverride.primary_kpi && body.goalOverride.primary_kpi_threshold != null) {
       goal = {
@@ -204,6 +171,34 @@ Deno.serve(async req => {
         unit: KPI_UNIT[body.goalOverride.primary_kpi] ?? '',
         source: 'override',
       };
+
+      // Patch #26: persist the override into campaign_goals so subsequent
+      // re-runs find it without forcing the user back through the dialog.
+      try {
+        const { data: existingGoal } = await sb
+          .from('campaign_goals')
+          .select('id')
+          .eq('workspace_id', workspaceId)
+          .maybeSingle();
+        const goalRow = {
+          workspace_id: workspaceId,
+          brand_id: brand.id,
+          primary_kpi: goal.kpi,
+          primary_kpi_label: goal.label,
+          primary_kpi_threshold: goal.threshold,
+          primary_kpi_goal_type: goal.direction,
+          created_by: user.id,
+          auto_suggested: false,
+          updated_at: new Date().toISOString(),
+        };
+        if (existingGoal?.id) {
+          await sb.from('campaign_goals').update(goalRow).eq('id', existingGoal.id);
+        } else {
+          await sb.from('campaign_goals').insert({ ...goalRow, created_at: new Date().toISOString() });
+        }
+      } catch (e) {
+        console.error('campaign_goals upsert failed (non-fatal):', e);
+      }
     } else {
       const { data: goalRow } = await sb
         .from('campaign_goals')
@@ -221,7 +216,6 @@ Deno.serve(async req => {
       }
     }
 
-    // -- Fetch Meta campaign metadata so we know the objective for KPI inference.
     let metaCampaignObjective: string | null = (workspace as any).objective || null;
     if (metaCampaignId && brand.meta_access_token && !metaCampaignObjective) {
       try {
@@ -233,14 +227,12 @@ Deno.serve(async req => {
       } catch (_) { /* non-fatal */ }
     }
 
-    // -- Resolve primaryKpi: goal > workspace.objective via map > Meta objective via map > 'cpl'.
     const primaryKpi: string =
       goal?.kpi
       || LUMI_KPI_FROM_OBJECTIVE[String((workspace as any).objective || '')]
       || LUMI_KPI_FROM_OBJECTIVE[String(metaCampaignObjective || '')]
       || 'cpl';
 
-    // -- Pull Meta performance over the requested date range (or lifetime).
     const dateRange = body?.dateRange && body.dateRange.start && body.dateRange.end
       ? { start: String(body.dateRange.start), end: String(body.dateRange.end) }
       : null;
@@ -251,7 +243,6 @@ Deno.serve(async req => {
 
     const durationDays = computeDurationDays(performance, dateRange, workspace);
 
-    // -- Compute actual KPI value + goal delta.
     const actualValue = goal && performance?.totals
       ? extractKpiValue(performance.totals, goal.kpi)
       : performance?.totals
@@ -294,23 +285,15 @@ Deno.serve(async req => {
           },
           { role: 'user', content: prompt },
         ],
-        response_format: { type: 'json_object' },
       }),
     });
     if (!aiRes.ok) {
       const errText = await aiRes.text().catch(() => '');
       console.error('AI gateway error:', aiRes.status, errText);
-      if (aiRes.status === 429) return json({ error: 'AI is rate-limited. Try again in a minute.' }, 200);
-      if (aiRes.status === 402) return json({ error: 'AI credits exhausted. Add credits in Settings.' }, 200);
-      return json({ error: `AI analysis failed (${aiRes.status})` }, 200);
+      return json({ error: `AI analysis failed (${aiRes.status})` }, 502);
     }
     const aiData = await aiRes.json();
     const raw = aiData?.choices?.[0]?.message?.content ?? '';
-    const finishReason = aiData?.choices?.[0]?.finish_reason;
-    if (!raw || !String(raw).trim()) {
-      console.error('AI returned empty content. finish_reason:', finishReason, 'full:', JSON.stringify(aiData).slice(0, 800));
-      return json({ error: `AI returned empty output (finish_reason: ${finishReason || 'unknown'}). Try again.` }, 200);
-    }
     const cleaned = String(raw)
       .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
@@ -318,7 +301,7 @@ Deno.serve(async req => {
     try { parsed = JSON.parse(cleaned); }
     catch (_) {
       console.error('Parse failed. Raw:', cleaned.slice(0, 400));
-      return json({ error: 'AI returned unparseable output. Try again.' }, 200);
+      return json({ error: 'AI returned unparseable output. Try again.' }, 502);
     }
 
     const retrospective: RetrospectiveJSON = {
@@ -352,8 +335,7 @@ Deno.serve(async req => {
       retrospective_generated_at: retrospective.generated_at,
     }).eq('id', workspaceId);
 
-    await sb.from('brand_learnings').update({ is_active: false })
-      .eq('source_workspace_id', workspaceId);
+    await sb.from('brand_learnings').update({ is_active: false }).eq('source_workspace_id', workspaceId);
 
     if (retrospective.data_quality !== 'insufficient') {
       const rows: any[] = [];
@@ -401,10 +383,6 @@ function normalizeBullets(arr: any): RetrospectiveJSON['wins'] {
   })).filter(x => x.insight.length > 0);
 }
 
-// ---------------------------------------------------------------------------
-// Goal handling
-// ---------------------------------------------------------------------------
-
 interface GoalContext {
   kpi: string;
   label: string;
@@ -420,17 +398,6 @@ function evalGoal(goal: GoalContext, actual: number): { hit: boolean; deltaPct: 
   return { hit, deltaPct: Math.round(deltaPct * 10) / 10 };
 }
 
-// ---------------------------------------------------------------------------
-// KPI extraction — the bug fix at the heart of patch #25.
-//
-// totals shape (from fetchCampaignPerformance below):
-//   { spend, impressions, clicks, ctr, cpc, cpm, results,
-//     cpl_value, cpp_value, roas, costPerThruPlay, ... }
-// where `results` and `cpl_value`/`cpp_value`/etc are looked up from
-// actions[] / cost_per_action_type[] using the action_type for THIS
-// campaign's KPI. No more hardcoded purchase-first priority.
-// ---------------------------------------------------------------------------
-
 function extractKpiValue(totals: any, kpi: string): number | null {
   if (!totals) return null;
   switch (kpi) {
@@ -441,7 +408,7 @@ function extractKpiValue(totals: any, kpi: string): number | null {
     case 'ctr': return numberish(totals.ctr);
     case 'roas': return numberish(totals.roas);
     case 'costPerThruPlay': return numberish(totals.costPerThruPlay);
-    default: return numberish(totals.cpl_value); // safe lead-flavored default
+    default: return numberish(totals.cpl_value);
   }
 }
 
@@ -449,10 +416,6 @@ function numberish(v: any): number | null {
   const n = Number(v);
   return isFinite(n) ? n : null;
 }
-
-// ---------------------------------------------------------------------------
-// Data quality assessment (unchanged from #24 except cleaner phrasing).
-// ---------------------------------------------------------------------------
 
 function assessDataQuality(args: {
   totalSpend: number; totalResults: number; durationDays: number | null; goal: GoalContext | null;
@@ -473,14 +436,8 @@ function assessDataQuality(args: {
   return { level: 'low', note: reasons.join('. ') + '.' };
 }
 
-// ---------------------------------------------------------------------------
-// Duration math
-// ---------------------------------------------------------------------------
-
 function computeDurationDays(
-  performance: any,
-  dateRange: { start: string; end: string } | null,
-  workspace: any,
+  performance: any, dateRange: { start: string; end: string } | null, workspace: any,
 ): number | null {
   const t = performance?.totals;
   if (t?.date_start && t?.date_stop) {
@@ -501,15 +458,9 @@ function computeDurationDays(
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Meta API helper — KPI-aware extraction.
-// ---------------------------------------------------------------------------
-
 async function fetchCampaignPerformance(
-  metaCampaignId: string,
-  accessToken: string,
-  dateRange: { start: string; end: string } | null,
-  primaryKpi: string,
+  metaCampaignId: string, accessToken: string,
+  dateRange: { start: string; end: string } | null, primaryKpi: string,
 ) {
   const fields = [
     'campaign_id', 'campaign_name', 'spend', 'impressions', 'clicks',
@@ -536,9 +487,17 @@ async function fetchCampaignPerformance(
     const adData = await adRes.json();
 
     const c = campaignData?.data?.[0];
-    const totals = c
-      ? rollupRow(c, primaryKpi)
-      : null;
+    const totals = c ? rollupRow(c, primaryKpi) : null;
+
+    // Patch #26: when we expected results but found none, surface the raw
+    // action types Meta returned so we can debug "no data" issues quickly.
+    if (totals && totals.spend > 0 && totals.results === 0) {
+      const seenActionTypes = (Array.isArray(c?.actions) ? c.actions : []).map((a: any) => a.action_type);
+      console.warn(
+        `[retrospective] zero results despite $${totals.spend.toFixed(2)} spend on campaign ${metaCampaignId} (kpi=${primaryKpi}). Action types Meta returned:`,
+        seenActionTypes,
+      );
+    }
 
     return {
       totals,
@@ -551,39 +510,50 @@ async function fetchCampaignPerformance(
   }
 }
 
+function sumActions(actions: any[], types: string[]): number {
+  if (!Array.isArray(actions)) return 0;
+  return types.reduce((sum, t) => {
+    const a = actions.find((x: any) => x.action_type === t);
+    return sum + (a ? Number(a.value) || 0 : 0);
+  }, 0);
+}
+
+function firstCpa(cpa: any[], types: string[]): number | null {
+  if (!Array.isArray(cpa)) return null;
+  for (const t of types) {
+    const a = cpa.find((x: any) => x.action_type === t);
+    if (a?.value) {
+      const n = Number(a.value);
+      if (isFinite(n) && n > 0) return n;
+    }
+  }
+  return null;
+}
+
 function rollupRow(row: any, primaryKpi: string) {
   const actions = Array.isArray(row.actions) ? row.actions : [];
   const cpa = Array.isArray(row.cost_per_action_type) ? row.cost_per_action_type : [];
+  const spend = Number(row.spend || 0);
 
-  const findAction = (t: string) => actions.find((a: any) => a.action_type === t);
-  const findCpa = (t: string) => cpa.find((a: any) => a.action_type === t);
+  // Patch #26: aggregate across ALL lead/purchase action types — Lead Form
+  // (Instant Form), pixel, on-site, etc. — so we don't miss leads that come
+  // through anything other than the unified `lead` event.
+  const leadCount = sumActions(actions, LEAD_ACTION_TYPES);
+  const purchaseCount = sumActions(actions, PURCHASE_ACTION_TYPES);
+  const videoViewCount = sumActions(actions, VIDEO_VIEW_ACTION_TYPES);
 
-  const leadCount = Number(findAction('lead')?.value || 0)
-    + Number(findAction('offsite_conversion.fb_pixel_lead')?.value || 0);
-  const purchaseCount = Number(findAction('purchase')?.value || 0)
-    + Number(findAction('offsite_conversion.fb_pixel_purchase')?.value || 0);
-  const videoViewCount = Number(findAction('video_view')?.value || 0);
-
-  const cplValue = Number(findCpa('lead')?.value
-    || findCpa('offsite_conversion.fb_pixel_lead')?.value
-    || (leadCount > 0 ? Number(row.spend || 0) / leadCount : 0))
-    || null;
-
-  const cppValue = Number(findCpa('purchase')?.value
-    || findCpa('offsite_conversion.fb_pixel_purchase')?.value
-    || (purchaseCount > 0 ? Number(row.spend || 0) / purchaseCount : 0))
-    || null;
-
-  const costPerThruPlay = Number(findCpa('video_view')?.value
-    || (videoViewCount > 0 ? Number(row.spend || 0) / videoViewCount : 0))
-    || null;
+  // Prefer Meta-provided cost_per_action_type when available; fall back to
+  // (spend / count) when not. Same priority ordering as the count.
+  const cplValue = firstCpa(cpa, LEAD_ACTION_TYPES)
+    ?? (leadCount > 0 ? spend / leadCount : null);
+  const cppValue = firstCpa(cpa, PURCHASE_ACTION_TYPES)
+    ?? (purchaseCount > 0 ? spend / purchaseCount : null);
+  const costPerThruPlay = firstCpa(cpa, VIDEO_VIEW_ACTION_TYPES)
+    ?? (videoViewCount > 0 ? spend / videoViewCount : null);
 
   const purchaseRoas = Array.isArray(row.purchase_roas) && row.purchase_roas.length
-    ? Number(row.purchase_roas[0]?.value || 0) || null
-    : null;
+    ? Number(row.purchase_roas[0]?.value || 0) || null : null;
 
-  // "results" is the count for the primary KPI's underlying action (or
-  // clicks for traffic, impressions for awareness).
   let results = 0;
   switch (primaryKpi) {
     case 'cpl': results = leadCount; break;
@@ -597,46 +567,24 @@ function rollupRow(row: any, primaryKpi: string) {
   }
 
   return {
-    spend: Number(row.spend || 0),
-    impressions: Number(row.impressions || 0),
-    clicks: Number(row.clicks || 0),
-    ctr: Number(row.ctr || 0),
-    cpc: Number(row.cpc || 0),
-    cpm: Number(row.cpm || 0),
-    cpl_value: cplValue,
-    cpp_value: cppValue,
-    costPerThruPlay,
+    spend, impressions: Number(row.impressions || 0), clicks: Number(row.clicks || 0),
+    ctr: Number(row.ctr || 0), cpc: Number(row.cpc || 0), cpm: Number(row.cpm || 0),
+    cpl_value: cplValue, cpp_value: cppValue, costPerThruPlay,
     roas: purchaseRoas,
-    leads: leadCount,
-    purchases: purchaseCount,
-    video_views: videoViewCount,
-    results,
-    objective: row.objective,
-    date_start: row.date_start,
-    date_stop: row.date_stop,
+    leads: leadCount, purchases: purchaseCount, video_views: videoViewCount,
+    results, objective: row.objective,
+    date_start: row.date_start, date_stop: row.date_stop,
   };
 }
 
-// ---------------------------------------------------------------------------
-// Prompt construction — primary KPI is named explicitly, so the AI uses
-// the right metric throughout.
-// ---------------------------------------------------------------------------
-
 function buildPrompt(args: {
-  brandName: string;
-  offerName: string;
-  durationDays: number | null;
-  dateRange: { start: string; end: string } | null;
-  primaryKpi: string;
-  primaryKpiLabel: string;
+  brandName: string; offerName: string;
+  durationDays: number | null; dateRange: { start: string; end: string } | null;
+  primaryKpi: string; primaryKpiLabel: string;
   goal: GoalContext | null;
   goalEval: { hit: boolean; deltaPct: number } | null;
   dataQuality: { level: string; note?: string };
-  strategy: any;
-  creative: any;
-  productionItems: any;
-  performance: any;
-  isImported: boolean;
+  strategy: any; creative: any; productionItems: any; performance: any; isImported: boolean;
 }): string {
   const goalLine = args.goal
     ? `User's stated goal: ${args.goal.label} ${args.goal.direction === 'less_than' ? '≤' : '≥'} ${formatGoalValue(args.goal)}.${
@@ -647,12 +595,9 @@ function buildPrompt(args: {
     : `User did NOT set an explicit goal. The campaign's primary KPI for analysis is ${args.primaryKpiLabel} (inferred from objective).`;
 
   const summary = {
-    brand: args.brandName,
-    offer: args.offerName,
-    duration_days: args.durationDays,
-    date_range: args.dateRange,
-    primary_kpi: args.primaryKpi,
-    primary_kpi_label: args.primaryKpiLabel,
+    brand: args.brandName, offer: args.offerName,
+    duration_days: args.durationDays, date_range: args.dateRange,
+    primary_kpi: args.primaryKpi, primary_kpi_label: args.primaryKpiLabel,
     note: args.isImported
       ? 'This campaign was imported from Meta — LUMI does not have its angle/copy metadata. Base your post-mortem on the Meta performance data + ad/adset name patterns.'
       : null,
@@ -664,23 +609,20 @@ function buildPrompt(args: {
     production_count: Array.isArray(args.productionItems) ? args.productionItems.length : 0,
     performance_totals: args.performance?.totals || null,
     adset_breakdown: (args.performance?.adsets || []).slice(0, 10).map((a: any) => ({
-      name: a.adset_name,
-      spend: a._kpi?.spend ?? Number(a.spend || 0),
-      results: a._kpi?.results ?? 0,
-      kpi_value: a._kpi ? extractKpiValue(a._kpi, args.primaryKpi) : null,
+      name: a.adset_name, spend: a._kpi?.spend ?? Number(a.spend || 0),
+      results: a._kpi?.results ?? 0, kpi_value: a._kpi ? extractKpiValue(a._kpi, args.primaryKpi) : null,
     })),
     ad_breakdown: (args.performance?.ads || []).slice(0, 20).map((a: any) => ({
       name: a.ad_name, adset: a.adset_id,
       spend: a._kpi?.spend ?? Number(a.spend || 0),
-      results: a._kpi?.results ?? 0,
-      kpi_value: a._kpi ? extractKpiValue(a._kpi, args.primaryKpi) : null,
+      results: a._kpi?.results ?? 0, kpi_value: a._kpi ? extractKpiValue(a._kpi, args.primaryKpi) : null,
       ctr: a._kpi?.ctr ?? Number(a.ctr || 0),
     })),
   };
 
   return `Run a post-mortem on this Meta ads campaign.
 
-PRIMARY KPI for this analysis: ${args.primaryKpiLabel} (${args.primaryKpi}). Every "result" / "cost per result" reference in your output should refer to this metric — do NOT substitute a different metric, even if the campaign happens to have incidental purchase or other conversion events tracked.
+PRIMARY KPI: ${args.primaryKpiLabel} (${args.primaryKpi}). Every "result" reference should refer to this metric — do NOT substitute a different metric.
 
 ${goalLine}
 
@@ -692,40 +634,14 @@ ${JSON.stringify(summary, null, 2)}
 Return a JSON object with this exact shape (no prose, no code fences):
 
 {
-  "summary": "One or two sentences — the headline takeaway, framed against the goal if there is one.",
-  "stats": {
-    "total_spend": number,
-    "total_results": number,
-    "avg_cpl": number or null,
-    "duration_days": number or null,
-    "objective": string or null
-  },
-  "wins": [
-    { "insight": "string", "supporting_data": "string with concrete numbers", "confidence": "high" | "medium" | "low" }
-  ],
-  "misses": [
-    { "insight": "string", "supporting_data": "string with concrete numbers", "confidence": "..." }
-  ],
-  "recommendations": [
-    { "insight": "string — actionable for next campaign", "supporting_data": "string explaining why", "confidence": "..." }
-  ]
+  "summary": "One or two sentences — the headline takeaway.",
+  "stats": {"total_spend": number, "total_results": number, "avg_cpl": number or null, "duration_days": number or null, "objective": string or null},
+  "wins": [{"insight": "string", "supporting_data": "string", "confidence": "high"|"medium"|"low"}],
+  "misses": [{"insight": "string", "supporting_data": "string", "confidence": "..."}],
+  "recommendations": [{"insight": "string", "supporting_data": "string", "confidence": "..."}]
 }
 
-CRITICAL GUIDANCE:
-
-1. **USE THE PRIMARY KPI CONSISTENTLY.** "Results" and "cost per result" mean the campaign's primary KPI — not whatever incidental conversion event Meta might have tracked.
-
-2. **HONOR THE DATA QUALITY FLAG.** If "insufficient": empty wins/misses/recommendations and use the summary to explain what's needed.
-
-3. **GOAL-CENTRIC FRAMING.** If a goal is stated, the first win or miss should explicitly address whether the goal was hit, by how much, and at what confidence.
-
-4. **REALISM.** If the goal was unreachable given spend/duration, frame as goal-setting feedback, not campaign failure.
-
-5. **CITE NUMBERS.** Reference specific ad names, adset names, spend, KPI values. Generic advice is worthless.
-
-6. **CONFIDENCE.** "high" = data clearly supports it. "medium" = default. "low" = thin pattern.
-
-Return ONLY the JSON object.`;
+CRITICAL: Use the primary KPI consistently. If data is "insufficient," empty the arrays and use the summary to explain what's needed. Goal-centric framing when a goal exists. Cite specific names and numbers. Return ONLY the JSON.`;
 }
 
 function formatGoalValue(goal: GoalContext): string {

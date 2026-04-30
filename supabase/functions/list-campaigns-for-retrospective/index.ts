@@ -7,15 +7,10 @@ const corsHeaders = {
 };
 
 // ============================================================================
-// list-campaigns-for-retrospective (Patch #25 — KPI-aware)
+// list-campaigns-for-retrospective (Patch #26)
 //
-// Same bugfix as the retrospective: each row in the tray now reports
-// performance using the campaign's CORRECT primary KPI (CPL for lead gen,
-// CPP for sales, ROAS for conversions, etc.) — not the previous fall-
-// through that always preferred purchase.
-//
-// Returns an additional `kpi` and `kpiLabel` per row so the UI can render
-// "$4.20 / lead" or "2.4x ROAS" instead of a generic "$X / result."
+// Same broader action_type aggregation as the retrospective function so the
+// tray's per-row counters don't miss Lead Form / on-site conversions.
 // ============================================================================
 
 const LUMI_KPI_FROM_OBJECTIVE: Record<string, string> = {
@@ -42,10 +37,18 @@ const KPI_UNIT: Record<string, '$' | 'x' | '%' | ''> = {
   cpl: '$', cpp: '$', cpc: '$', cpm: '$', costPerThruPlay: '$', roas: 'x', ctr: '%',
 };
 
+const LEAD_ACTION_TYPES = [
+  'lead', 'offsite_conversion.fb_pixel_lead',
+  'onsite_conversion.lead_grouped', 'onsite_conversion.lead', 'submit_application_total',
+];
+const PURCHASE_ACTION_TYPES = [
+  'purchase', 'offsite_conversion.fb_pixel_purchase',
+  'onsite_conversion.purchase', 'omni_purchase',
+];
+const VIDEO_VIEW_ACTION_TYPES = ['video_view', 'video_thruplay_watched_actions'];
+
 Deno.serve(async req => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -59,25 +62,18 @@ Deno.serve(async req => {
     if (authErr || !user) return json({ error: 'Unauthorized' }, 401);
 
     const { brandId, startDate, endDate } = await req.json();
-    if (!brandId || !startDate || !endDate) {
-      return json({ error: 'brandId, startDate, endDate are required' }, 400);
-    }
+    if (!brandId || !startDate || !endDate) return json({ error: 'brandId, startDate, endDate are required' }, 400);
 
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
     const { data: brand, error: bErr } = await sb
-      .from('brands').select('id, user_id, meta_account_id, meta_access_token')
-      .eq('id', brandId).single();
+      .from('brands').select('id, user_id, meta_account_id, meta_access_token').eq('id', brandId).single();
     if (bErr || !brand) return json({ error: 'Brand not found' }, 404);
     if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
-    if (!brand.meta_account_id || !brand.meta_access_token) {
-      return json({ error: 'This brand is not connected to Meta yet' }, 400);
-    }
+    if (!brand.meta_account_id || !brand.meta_access_token) return json({ error: 'This brand is not connected to Meta yet' }, 400);
 
-    // Pull insights at the campaign level. We need actions / cost_per_action_type
-    // / purchase_roas to compute per-KPI numbers per row.
     const fields = [
       'campaign_id', 'campaign_name', 'spend', 'impressions', 'clicks',
       'ctr', 'cpc', 'cpm', 'actions', 'cost_per_action_type',
@@ -99,7 +95,6 @@ Deno.serve(async req => {
     }
     const insightsArr: any[] = Array.isArray(insData?.data) ? insData.data : [];
 
-    // Fetch campaign-list metadata (status) — insights doesn't include status.
     let statusMap: Record<string, string> = {};
     if (insightsArr.length > 0) {
       const campsRes = await fetch(
@@ -113,7 +108,6 @@ Deno.serve(async req => {
       }
     }
 
-    // Cross-reference with our campaign_workspaces table.
     const { data: existingWorkspaces } = await sb
       .from('campaign_workspaces').select('id, meta_campaign_ids, retrospective_json')
       .eq('brand_id', brandId);
@@ -130,27 +124,16 @@ Deno.serve(async req => {
       const kpi = LUMI_KPI_FROM_OBJECTIVE[String(objective || '')] || 'cpl';
       const ref = wsByMetaId.get(i.campaign_id);
       const r = rollupRow(i, kpi);
-
       return {
-        metaCampaignId: i.campaign_id,
-        name: i.campaign_name || 'Unnamed',
-        status: statusMap[i.campaign_id] || 'UNKNOWN',
-        objective,
-        spend: r.spend,
-        results: r.results,
-        // `cpl` field name kept for backwards compat in the existing UI; semantically
-        // it's the campaign's PRIMARY KPI value (CPL for lead, CPP for sales, etc.).
+        metaCampaignId: i.campaign_id, name: i.campaign_name || 'Unnamed',
+        status: statusMap[i.campaign_id] || 'UNKNOWN', objective,
+        spend: r.spend, results: r.results,
         cpl: extractKpiValue(r, kpi),
-        kpi,
-        kpiLabel: KPI_LABELS[kpi] || kpi,
-        kpiUnit: KPI_UNIT[kpi] || '$',
-        hasWorkspace: !!ref,
-        workspaceId: ref?.workspaceId || null,
+        kpi, kpiLabel: KPI_LABELS[kpi] || kpi, kpiUnit: KPI_UNIT[kpi] || '$',
+        hasWorkspace: !!ref, workspaceId: ref?.workspaceId || null,
         hasRetrospective: ref?.hasRetrospective || false,
       };
     });
-
-    // Sort by spend desc.
     campaigns.sort((a, b) => b.spend - a.spend);
 
     return json({ success: true, campaigns });
@@ -166,26 +149,38 @@ function json(body: unknown, status: number) {
   });
 }
 
+function sumActions(actions: any[], types: string[]): number {
+  if (!Array.isArray(actions)) return 0;
+  return types.reduce((sum, t) => {
+    const a = actions.find((x: any) => x.action_type === t);
+    return sum + (a ? Number(a.value) || 0 : 0);
+  }, 0);
+}
+
+function firstCpa(cpa: any[], types: string[]): number | null {
+  if (!Array.isArray(cpa)) return null;
+  for (const t of types) {
+    const a = cpa.find((x: any) => x.action_type === t);
+    if (a?.value) {
+      const n = Number(a.value);
+      if (isFinite(n) && n > 0) return n;
+    }
+  }
+  return null;
+}
+
 function rollupRow(row: any, primaryKpi: string) {
   const actions = Array.isArray(row.actions) ? row.actions : [];
   const cpa = Array.isArray(row.cost_per_action_type) ? row.cost_per_action_type : [];
-  const findAction = (t: string) => actions.find((a: any) => a.action_type === t);
-  const findCpa = (t: string) => cpa.find((a: any) => a.action_type === t);
+  const spend = Number(row.spend || 0);
 
-  const leadCount = Number(findAction('lead')?.value || 0)
-    + Number(findAction('offsite_conversion.fb_pixel_lead')?.value || 0);
-  const purchaseCount = Number(findAction('purchase')?.value || 0)
-    + Number(findAction('offsite_conversion.fb_pixel_purchase')?.value || 0);
-  const videoViewCount = Number(findAction('video_view')?.value || 0);
+  const leadCount = sumActions(actions, LEAD_ACTION_TYPES);
+  const purchaseCount = sumActions(actions, PURCHASE_ACTION_TYPES);
+  const videoViewCount = sumActions(actions, VIDEO_VIEW_ACTION_TYPES);
 
-  const cplValue = Number(findCpa('lead')?.value
-    || findCpa('offsite_conversion.fb_pixel_lead')?.value
-    || (leadCount > 0 ? Number(row.spend || 0) / leadCount : 0)) || null;
-  const cppValue = Number(findCpa('purchase')?.value
-    || findCpa('offsite_conversion.fb_pixel_purchase')?.value
-    || (purchaseCount > 0 ? Number(row.spend || 0) / purchaseCount : 0)) || null;
-  const costPerThruPlay = Number(findCpa('video_view')?.value
-    || (videoViewCount > 0 ? Number(row.spend || 0) / videoViewCount : 0)) || null;
+  const cplValue = firstCpa(cpa, LEAD_ACTION_TYPES) ?? (leadCount > 0 ? spend / leadCount : null);
+  const cppValue = firstCpa(cpa, PURCHASE_ACTION_TYPES) ?? (purchaseCount > 0 ? spend / purchaseCount : null);
+  const costPerThruPlay = firstCpa(cpa, VIDEO_VIEW_ACTION_TYPES) ?? (videoViewCount > 0 ? spend / videoViewCount : null);
   const purchaseRoas = Array.isArray(row.purchase_roas) && row.purchase_roas.length
     ? Number(row.purchase_roas[0]?.value || 0) || null : null;
 
@@ -202,17 +197,10 @@ function rollupRow(row: any, primaryKpi: string) {
   }
 
   return {
-    spend: Number(row.spend || 0),
-    impressions: Number(row.impressions || 0),
-    clicks: Number(row.clicks || 0),
-    ctr: Number(row.ctr || 0),
-    cpc: Number(row.cpc || 0),
-    cpm: Number(row.cpm || 0),
-    cpl_value: cplValue,
-    cpp_value: cppValue,
-    costPerThruPlay,
-    roas: purchaseRoas,
-    results,
+    spend, impressions: Number(row.impressions || 0), clicks: Number(row.clicks || 0),
+    ctr: Number(row.ctr || 0), cpc: Number(row.cpc || 0), cpm: Number(row.cpm || 0),
+    cpl_value: cplValue, cpp_value: cppValue, costPerThruPlay,
+    roas: purchaseRoas, results,
   };
 }
 
