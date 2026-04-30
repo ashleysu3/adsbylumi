@@ -19,10 +19,18 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Sparkles, Plus, Loader2, Calendar, ExternalLink, RefreshCcw, TrendingUp } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Sparkles, Plus, Loader2, Calendar, RefreshCcw, TrendingUp, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { CampaignRetrospective, type CampaignRetrospectiveJSON } from '@/components/creative/CampaignRetrospective';
 
 // ============================================================================
 // Retrospectives (Patch #23)
