@@ -34,6 +34,22 @@ Deno.serve(async (req) => {
 
     const kbContext = kbDocs?.map(doc => `## ${doc.title}\n${doc.content}`).join("\n\n") || "";
 
+    // Patch #21: pull active brand_learnings so the AI's angles benefit
+    // from prior campaign retrospectives.
+    let brandLearnings: Array<{ category: string; insight: string; supporting_data: string | null; confidence: string }> = [];
+    if (brandId) {
+      const { data: learningRows } = await supabase
+        .from("brand_learnings")
+        .select("category, insight, supporting_data, confidence, created_at")
+        .eq("brand_id", brandId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(40);
+      if (Array.isArray(learningRows)) {
+        brandLearnings = learningRows as any;
+      }
+    }
+
     // Fetch content assets for this brand
     let contentAssetsContext = "";
     if (brandId) {
@@ -196,6 +212,7 @@ ${insightsContext}
 ${offerAudienceContext}
 ${preGenContext}
 ${intelligenceContext}
+${learningsContext}
 ${previousAnglesContext}
 ${Array.isArray(neverUseWords) && neverUseWords.length > 0 ? `\n🚫 BANNED WORDS/PHRASES (strictly forbidden in all output):\n${neverUseWords.map((w: string) => `- "${w}"`).join('\n')}\nDo NOT use any of these words in angle names, descriptions, or any generated text. Find alternative phrasing.\n` : ''}
 
