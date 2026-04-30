@@ -29,6 +29,7 @@ import { ProductionItem } from "@/components/creative/ProductionChecklistPanel";
 import { ProductionManager } from "@/components/creative/ProductionManager";
 import { AngleCopyEditor } from "@/components/creative/AngleCopyEditor";
 import { CampaignRetrospective, type CampaignRetrospectiveJSON } from "@/components/creative/CampaignRetrospective";
+import { BrandLearningsPanel } from "@/components/creative/BrandLearningsPanel";
  import { CreativeContextInput, CreativeContext } from "@/components/creative/CreativeContextInput";
 import { CreativeStudioExplainer, useCreativeStudioExplainer } from "@/components/creative/CreativeStudioExplainer";
 import { Json } from "@/integrations/supabase/types";
@@ -1320,6 +1321,11 @@ export default function CreativeStudio() {
           )}
 
           <TabsContent value="angles">
+            {workspace && brandId && (
+              <div className="mb-4">
+                <BrandLearningsPanel brandId={brandId} compact />
+              </div>
+            )}
             {!workspace ? (
               <Card className="rounded-2xl"><CardContent className="pt-6 text-center py-16"><Target className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" /><h3 className="text-lg font-semibold">Select a campaign above</h3></CardContent></Card>
             ) : showBYOUploader ? (
