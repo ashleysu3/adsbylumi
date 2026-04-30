@@ -196,8 +196,7 @@ export default function Retrospectives() {
       if (!data?.success) throw new Error(data?.error || 'No retrospective returned');
       toast.success(`Retrospective ready: ${c.name}`);
       setTrayOpen(false);
-      // Refresh the retrospectives list.
-      setActiveBrandId(id => id); // bump effect
+      // The retrospectives list will refresh via the activeBrandId effect.
       // Also push the new row into the existing list immediately so the
       // user sees it without waiting for the requery.
       const r = data.retrospective;
