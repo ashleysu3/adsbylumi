@@ -352,6 +352,57 @@ export type Database = {
           },
         ]
       }
+      brand_learnings: {
+        Row: {
+          brand_id: string
+          category: string
+          confidence: string
+          created_at: string
+          id: string
+          insight: string
+          is_active: boolean
+          source_workspace_id: string | null
+          supporting_data: string | null
+        }
+        Insert: {
+          brand_id: string
+          category: string
+          confidence?: string
+          created_at?: string
+          id?: string
+          insight: string
+          is_active?: boolean
+          source_workspace_id?: string | null
+          supporting_data?: string | null
+        }
+        Update: {
+          brand_id?: string
+          category?: string
+          confidence?: string
+          created_at?: string
+          id?: string
+          insight?: string
+          is_active?: boolean
+          source_workspace_id?: string | null
+          supporting_data?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_learnings_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_learnings_source_workspace_id_fkey"
+            columns: ["source_workspace_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_team_members: {
         Row: {
           brand_id: string
@@ -848,6 +899,8 @@ export type Database = {
           production_items: Json | null
           progress_status: string
           published_at: string | null
+          retrospective_generated_at: string | null
+          retrospective_json: Json | null
           rotation_preferences: Json | null
           selected_copy: Json | null
           strategy_id: string | null
@@ -891,6 +944,8 @@ export type Database = {
           production_items?: Json | null
           progress_status?: string
           published_at?: string | null
+          retrospective_generated_at?: string | null
+          retrospective_json?: Json | null
           rotation_preferences?: Json | null
           selected_copy?: Json | null
           strategy_id?: string | null
@@ -934,6 +989,8 @@ export type Database = {
           production_items?: Json | null
           progress_status?: string
           published_at?: string | null
+          retrospective_generated_at?: string | null
+          retrospective_json?: Json | null
           rotation_preferences?: Json | null
           selected_copy?: Json | null
           strategy_id?: string | null
