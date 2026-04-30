@@ -41,7 +41,7 @@ Deno.serve(async req => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return json({ error: 'Unauthorized' }, 401);
+      return json({ error: 'Unauthorized' }, 200);
     }
 
     const supabaseAuth = createClient(
@@ -50,10 +50,10 @@ Deno.serve(async req => {
       { global: { headers: { Authorization: authHeader } } },
     );
     const { data: { user }, error: authErr } = await supabaseAuth.auth.getUser();
-    if (authErr || !user) return json({ error: 'Unauthorized' }, 401);
+    if (authErr || !user) return json({ error: 'Unauthorized' }, 200);
 
     const { workspaceId } = await req.json();
-    if (!workspaceId) return json({ error: 'workspaceId is required' }, 400);
+    if (!workspaceId) return json({ error: 'workspaceId is required' }, 200);
 
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -65,16 +65,18 @@ Deno.serve(async req => {
       .from('campaign_workspaces')
       .select('id, brand_id, name, offer_name, creative_json, production_items, strategy_json, archived_at, created_at, meta_campaign_id')
       .eq('id', workspaceId)
-      .single();
-    if (wErr || !workspace) return json({ error: 'Workspace not found' }, 404);
+      .maybeSingle();
+    if (wErr) return json({ error: `Workspace lookup failed: ${wErr.message}` }, 200);
+    if (!workspace) return json({ error: `Workspace not found for id ${workspaceId}` }, 200);
 
     const { data: brand, error: bErr } = await sb
       .from('brands')
       .select('id, user_id, name, meta_account_id, meta_access_token')
       .eq('id', workspace.brand_id)
-      .single();
-    if (bErr || !brand) return json({ error: 'Brand not found' }, 404);
-    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
+      .maybeSingle();
+    if (bErr) return json({ error: `Brand lookup failed: ${bErr.message}` }, 200);
+    if (!brand) return json({ error: 'Brand not found' }, 200);
+    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 200);
 
     // Pull Meta campaign performance. If the workspace doesn't have a
     // meta_campaign_id (campaign was never published) we still produce a
@@ -103,7 +105,7 @@ Deno.serve(async req => {
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      return json({ error: 'LOVABLE_API_KEY not configured' }, 500);
+      return json({ error: 'LOVABLE_API_KEY not configured' }, 200);
     }
 
     const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -128,7 +130,7 @@ Deno.serve(async req => {
     if (!aiRes.ok) {
       const errText = await aiRes.text().catch(() => '');
       console.error('AI gateway error:', aiRes.status, errText);
-      return json({ error: `AI analysis failed (${aiRes.status})` }, 502);
+      return json({ error: `AI analysis failed (${aiRes.status})` }, 200);
     }
     const aiData = await aiRes.json();
     const raw = aiData?.choices?.[0]?.message?.content ?? '';
@@ -143,7 +145,7 @@ Deno.serve(async req => {
       parsed = JSON.parse(cleaned);
     } catch (e) {
       console.error('Parse failed. Raw:', cleaned.slice(0, 400));
-      return json({ error: 'AI returned unparseable output. Try again.' }, 502);
+      return json({ error: 'AI returned unparseable output. Try again.' }, 200);
     }
 
     const retrospective: RetrospectiveJSON = {
@@ -206,7 +208,7 @@ Deno.serve(async req => {
     return json({ success: true, retrospective });
   } catch (err: any) {
     console.error('generate-campaign-retrospective error:', err);
-    return json({ error: err?.message || 'Unknown error' }, 500);
+    return json({ error: err?.message || 'Unknown error' }, 200);
   }
 });
 
