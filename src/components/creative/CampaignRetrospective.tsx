@@ -2,20 +2,24 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, TrendingUp, TrendingDown, Lightbulb, Trophy, AlertTriangle } from 'lucide-react';
+import {
+  Loader2, Sparkles, Lightbulb, Trophy, AlertTriangle, Target, CheckCircle2, XCircle, Info,
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 // ============================================================================
-// CampaignRetrospective (Patch #20)
+// CampaignRetrospective (Patch #24)
 //
-// Post-mortem report for a single campaign workspace. Renders the cached
-// retrospective_json if it exists, with a button to (re)generate. Calls
-// the `generate-campaign-retrospective` edge function which pulls Meta
-// data + LUMI's creative metadata, runs an AI post-mortem, and persists
-// the report + extracted brand_learnings.
+// Renders the retrospective report. Patch #24 changes:
+//   - Goal-vs-actual block is the FIRST thing the user sees (when a goal
+//     was set). Big "Hit" / "Missed" / "No goal set" framing.
+//   - Data quality banner above the report when AI flagged 'low' or
+//     'insufficient'. Tells the user the analysis is on thin ice.
+//   - Stats strip below the goal block.
+//   - Wins / Misses / Recommendations in cards as before, but skipped
+//     entirely when data_quality === 'insufficient'.
 // ============================================================================
 
 export interface CampaignRetrospectiveJSON {
@@ -26,7 +30,16 @@ export interface CampaignRetrospectiveJSON {
     avg_cpl: number | null;
     duration_days: number | null;
     objective: string | null;
+    goal_label?: string | null;
+    goal_threshold?: number | null;
+    goal_unit?: string | null;
+    goal_direction?: 'less_than' | 'greater_than' | null;
+    goal_actual?: number | null;
+    goal_hit?: boolean | null;
+    goal_delta_pct?: number | null;
   };
+  data_quality?: 'high' | 'medium' | 'low' | 'insufficient';
+  data_quality_note?: string;
   wins: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   misses: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
   recommendations: Array<{ insight: string; supporting_data?: string; confidence: 'high' | 'medium' | 'low' }>;
@@ -37,18 +50,24 @@ interface Props {
   workspaceId: string;
   initialRetrospective?: CampaignRetrospectiveJSON | null;
   onGenerated?: (retro: CampaignRetrospectiveJSON) => void;
+  /** Triggers the patch #24 setup dialog when the user wants to (re)generate. */
+  onRequestRegenerate?: () => void;
 }
 
-export function CampaignRetrospective({ workspaceId, initialRetrospective, onGenerated }: Props) {
+export function CampaignRetrospective({
+  workspaceId, initialRetrospective, onGenerated, onRequestRegenerate,
+}: Props) {
   const [retro, setRetro] = useState<CampaignRetrospectiveJSON | null>(initialRetrospective || null);
   const [generating, setGenerating] = useState(false);
-  const { isImpersonating, impersonatedUser } = useImpersonation();
 
+  // Same-flow generation (no setup dialog) — used as a fallback when
+  // onRequestRegenerate isn't provided. Calls the function with no goal
+  // override, so it'll use stored campaign_goals if any.
   const handleGenerate = async () => {
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-campaign-retrospective', {
-        body: { workspaceId, impersonatedUserId: isImpersonating ? impersonatedUser?.id : undefined },
+        body: { workspaceId },
       });
       if (error) throw new Error(error.message || 'Request failed');
       if (!data?.success || !data?.retrospective) {
@@ -57,13 +76,17 @@ export function CampaignRetrospective({ workspaceId, initialRetrospective, onGen
       setRetro(data.retrospective);
       onGenerated?.(data.retrospective);
       toast.success('Retrospective ready');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'unknown';
+    } catch (err: any) {
       console.error('retrospective failed:', err);
-      toast.error('Could not generate retrospective: ' + message);
+      toast.error('Could not generate retrospective: ' + (err?.message || 'unknown'));
     } finally {
       setGenerating(false);
     }
+  };
+
+  const handleClickGenerate = () => {
+    if (onRequestRegenerate) onRequestRegenerate();
+    else handleGenerate();
   };
 
   if (!retro) {
@@ -74,11 +97,10 @@ export function CampaignRetrospective({ workspaceId, initialRetrospective, onGen
           <div>
             <p className="font-semibold">No retrospective yet</p>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-              Lumi will pull this campaign's Meta performance + your creative metadata and produce a post-mortem
-              you can use to inform the next campaign.
+              Lumi will pull this campaign's Meta performance, measure it against your goal, and produce a post-mortem you can use to inform the next campaign.
             </p>
           </div>
-          <Button variant="lumi" className="gap-1.5" onClick={handleGenerate} disabled={generating}>
+          <Button variant="lumi" className="gap-1.5" onClick={handleClickGenerate} disabled={generating}>
             {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {generating ? 'Analyzing…' : 'Generate retrospective'}
           </Button>
@@ -87,9 +109,13 @@ export function CampaignRetrospective({ workspaceId, initialRetrospective, onGen
     );
   }
 
+  const dq = retro.data_quality || 'medium';
+  const insufficient = dq === 'insufficient';
+  const goalSet = retro.stats.goal_threshold != null;
+
   return (
     <div className="space-y-4">
-      {/* Header + regenerate */}
+      {/* Header with regenerate */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm text-muted-foreground">
@@ -98,9 +124,8 @@ export function CampaignRetrospective({ workspaceId, initialRetrospective, onGen
           <h3 className="text-lg font-semibold mt-1">{retro.summary}</h3>
         </div>
         <Button
-          variant="outline"
-          size="sm"
-          onClick={handleGenerate}
+          variant="outline" size="sm"
+          onClick={handleClickGenerate}
           disabled={generating}
           className="gap-1.5 shrink-0"
         >
@@ -108,6 +133,27 @@ export function CampaignRetrospective({ workspaceId, initialRetrospective, onGen
           {generating ? 'Refreshing…' : 'Regenerate'}
         </Button>
       </div>
+
+      {/* GOAL vs ACTUAL — the headline */}
+      {goalSet ? <GoalVsActual stats={retro.stats} /> : <NoGoalCard />}
+
+      {/* Data quality warning when low/insufficient */}
+      {(dq === 'low' || dq === 'insufficient') && retro.data_quality_note && (
+        <Card className={cn(
+          'border-amber-500/40 bg-amber-500/5',
+          insufficient && 'border-destructive/40 bg-destructive/5',
+        )}>
+          <CardContent className="p-3 flex gap-2 items-start">
+            <AlertTriangle className={cn('h-4 w-4 shrink-0 mt-0.5', insufficient ? 'text-destructive' : 'text-amber-600')} />
+            <div className="space-y-1 text-sm">
+              <p className="font-semibold">
+                {insufficient ? 'Not enough data for a confident retrospective' : 'Limited data — read with caution'}
+              </p>
+              <p className="text-xs text-muted-foreground leading-snug">{retro.data_quality_note}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -117,34 +163,87 @@ export function CampaignRetrospective({ workspaceId, initialRetrospective, onGen
         <StatTile label="Duration" value={retro.stats.duration_days != null ? `${retro.stats.duration_days}d` : '—'} />
       </div>
 
-      {/* Wins */}
-      <Section
-        title="What worked"
-        icon={<Trophy className="h-4 w-4 text-emerald-600" />}
-        items={retro.wins}
-        emptyText="No clear wins surfaced — typically means the data was thin."
-        accentClass="bg-emerald-500/5 border-emerald-500/30"
-      />
-
-      {/* Misses */}
-      <Section
-        title="What didn't"
-        icon={<AlertTriangle className="h-4 w-4 text-amber-600" />}
-        items={retro.misses}
-        emptyText="No clear misses called out."
-        accentClass="bg-amber-500/5 border-amber-500/30"
-      />
-
-      {/* Recommendations */}
-      <Section
-        title="What to do differently next time"
-        icon={<Lightbulb className="h-4 w-4 text-primary" />}
-        items={retro.recommendations}
-        emptyText="No specific recommendations."
-        accentClass="bg-primary/5 border-primary/30"
-        showArrow
-      />
+      {/* Wins/Misses/Recs — suppressed when insufficient */}
+      {!insufficient && (
+        <>
+          <Section
+            title="What worked"
+            icon={<Trophy className="h-4 w-4 text-emerald-600" />}
+            items={retro.wins}
+            emptyText="No clear wins surfaced — typically means the data was thin."
+            accentClass="bg-emerald-500/5 border-emerald-500/30"
+          />
+          <Section
+            title="What didn't"
+            icon={<AlertTriangle className="h-4 w-4 text-amber-600" />}
+            items={retro.misses}
+            emptyText="No clear misses called out."
+            accentClass="bg-amber-500/5 border-amber-500/30"
+          />
+          <Section
+            title="What to do differently next time"
+            icon={<Lightbulb className="h-4 w-4 text-primary" />}
+            items={retro.recommendations}
+            emptyText="No specific recommendations."
+            accentClass="bg-primary/5 border-primary/30"
+            showArrow
+          />
+        </>
+      )}
     </div>
+  );
+}
+
+function GoalVsActual({ stats }: { stats: CampaignRetrospectiveJSON['stats'] }) {
+  const hit = stats.goal_hit;
+  const noActual = stats.goal_actual == null;
+  const Icon = hit ? CheckCircle2 : noActual ? Info : XCircle;
+  const tone = hit ? 'border-emerald-500/40 bg-emerald-500/5'
+    : noActual ? 'border-blue-500/40 bg-blue-500/5'
+      : 'border-destructive/40 bg-destructive/5';
+  const textTone = hit ? 'text-emerald-700'
+    : noActual ? 'text-blue-700'
+      : 'text-destructive';
+  const headline = hit ? 'Goal hit' : noActual ? 'Goal — actual not measurable yet' : 'Goal missed';
+
+  const goalStr = formatGoalLine(stats);
+  const actualStr = formatActualLine(stats);
+  const deltaStr = stats.goal_delta_pct != null && !noActual
+    ? `${Math.abs(stats.goal_delta_pct).toFixed(1)}% ${
+        hit ? 'better than target' : 'off target'
+      }`
+    : null;
+
+  return (
+    <Card className={cn('rounded-2xl', tone)}>
+      <CardContent className="p-4 flex items-start gap-3">
+        <Icon className={cn('h-6 w-6 shrink-0 mt-0.5', textTone)} />
+        <div className="flex-1 min-w-0">
+          <p className={cn('text-sm font-semibold', textTone)}>{headline}</p>
+          <p className="text-base font-bold mt-0.5">
+            {goalStr}{actualStr && <> → <span className={textTone}>{actualStr}</span></>}
+          </p>
+          {deltaStr && <p className="text-xs text-muted-foreground mt-0.5">{deltaStr}</p>}
+        </div>
+        <Target className="h-5 w-5 text-muted-foreground/50 shrink-0" />
+      </CardContent>
+    </Card>
+  );
+}
+
+function NoGoalCard() {
+  return (
+    <Card className="rounded-2xl border-dashed bg-muted/20">
+      <CardContent className="p-4 flex items-start gap-3">
+        <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold">No goal was set for this campaign</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            The retro below reflects what happened, but without a goal you can't say whether it was a "win" or a "miss." Re-generate after setting a goal for a sharper read.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -158,12 +257,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 }
 
 function Section({
-  title,
-  icon,
-  items,
-  emptyText,
-  accentClass,
-  showArrow,
+  title, icon, items, emptyText, accentClass, showArrow,
 }: {
   title: string;
   icon: React.ReactNode;
@@ -209,6 +303,25 @@ function ConfidencePill({ confidence }: { confidence: 'high' | 'medium' | 'low' 
     low: 'bg-muted text-muted-foreground border-muted',
   }[confidence];
   return <Badge variant="outline" className={cn('text-[10px] capitalize', styles)}>{confidence} confidence</Badge>;
+}
+
+function formatGoalLine(stats: CampaignRetrospectiveJSON['stats']): string {
+  if (stats.goal_threshold == null) return '';
+  const arrow = stats.goal_direction === 'greater_than' ? '≥' : '≤';
+  const v = formatValue(stats.goal_threshold, stats.goal_unit || '');
+  return `${stats.goal_label || 'Goal'} ${arrow} ${v}`;
+}
+
+function formatActualLine(stats: CampaignRetrospectiveJSON['stats']): string | null {
+  if (stats.goal_actual == null) return null;
+  return formatValue(stats.goal_actual, stats.goal_unit || '');
+}
+
+function formatValue(n: number, unit: string): string {
+  if (unit === '$') return `$${n.toFixed(2)}`;
+  if (unit === 'x') return `${n.toFixed(2)}x`;
+  if (unit === '%') return `${n.toFixed(2)}%`;
+  return String(n);
 }
 
 function fmtCurrency(n: number): string {
