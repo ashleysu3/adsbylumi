@@ -92,6 +92,9 @@ export default function Retrospectives() {
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
 
+  // Selected retro for viewing
+  const [selectedRetro, setSelectedRetro] = useState<RetroRow | null>(null);
+
   // Load brands + auto-select first.
   useEffect(() => {
     (async () => {
