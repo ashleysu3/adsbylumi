@@ -401,6 +401,42 @@ export default function Retrospectives() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Retrospective viewer */}
+      <Dialog open={!!selectedRetro} onOpenChange={(o) => !o && setSelectedRetro(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              {selectedRetro?.workspace_name}
+            </DialogTitle>
+            <DialogDescription>
+              Lumi's post-mortem on what worked, what didn't, and what to do differently next time.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRetro && (
+            <CampaignRetrospective
+              workspaceId={selectedRetro.workspace_id}
+              initialRetrospective={selectedRetro.retrospective_json}
+              onGenerated={(retro) => {
+                setSelectedRetro((prev) => prev ? { ...prev, retrospective_json: retro, summary: retro.summary } : prev);
+                setRetros((prev) => prev.map((row) => row.workspace_id === selectedRetro.workspace_id
+                  ? {
+                      ...row,
+                      retrospective_json: retro,
+                      summary: retro.summary,
+                      total_spend: Number(retro.stats?.total_spend || 0),
+                      total_results: Number(retro.stats?.total_results || 0),
+                      avg_cpl: retro.stats?.avg_cpl != null ? Number(retro.stats.avg_cpl) : null,
+                      generated_at: retro.generated_at,
+                    }
+                  : row,
+                ));
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
