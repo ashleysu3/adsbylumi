@@ -63,7 +63,7 @@ Deno.serve(async req => {
     // Fetch workspace + ownership check via brand.
     const { data: workspace, error: wErr } = await sb
       .from('campaign_workspaces')
-      .select('id, brand_id, name, offer_name, creative_json, production_items, strategy_json, archived_at, created_at, meta_campaign_id')
+      .select('id, brand_id, name, offer_name, creative_json, production_items, strategy_json, archived_at, created_at, meta_campaign_ids')
       .eq('id', workspaceId)
       .maybeSingle();
     if (wErr) return json({ error: `Workspace lookup failed: ${wErr.message}` }, 200);
