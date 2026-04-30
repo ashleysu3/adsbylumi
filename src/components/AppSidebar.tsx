@@ -31,6 +31,7 @@ import {
 
 const createNav = [
   { path: "/campaigns", icon: FolderKanban, label: "My Campaigns", tooltip: "See and manage all your ads" },
+  { path: "/brand/patterns", icon: TrendingUp, label: "Campaign Retrospectives", tooltip: "What's working across all your reviewed campaigns" },
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio", tooltip: "Build your ad angles, copy, and creative briefs" },
   { path: "/content-library", icon: Library, label: "Concept Library", tooltip: "Browse your saved ad concepts" },
   { path: "/creative-toolkit", icon: Wrench, label: "Creative Toolkit", tooltip: "Templates, B-roll ideas, music, and production tools" },
@@ -41,7 +42,6 @@ const brandNav = [
   { path: "/dashboard", icon: Building2, label: "Home", tooltip: "Your brand info and settings" },
   { path: "/offers", icon: Package, label: "Offers", tooltip: "Add and manage your offers and services" },
   { path: "/style", icon: Palette, label: "Style", tooltip: "Ad copy voice, emojis, b-roll, and text overlays" },
-  { path: "/brand/patterns", icon: TrendingUp, label: "Patterns", tooltip: "What's working across all your reviewed campaigns" },
 ];
 
 interface AppSidebarProps {
