@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { RetrospectiveSetupDialog, type RetroSetupResult } from '@/components/creative/RetrospectiveSetupDialog';
+import { CampaignRetrospective, type CampaignRetrospectiveJSON } from '@/components/creative/CampaignRetrospective';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useBrand } from '@/contexts/BrandContext';
 
 // ============================================================================
@@ -62,6 +63,7 @@ interface RetroRow {
   goal_actual: number | null;
   goal_hit: boolean | null;
   data_quality: 'high' | 'medium' | 'low' | 'insufficient' | null;
+  retrospective_json: CampaignRetrospectiveJSON | null;
 }
 
 interface MetaCampaign {
@@ -95,7 +97,6 @@ const RANGE_OPTIONS = [
 ];
 
 export default function Retrospectives() {
-  const navigate = useNavigate();
   const { activeBrand } = useBrand();
   const activeBrandId = activeBrand?.id ?? null;
 
@@ -112,6 +113,7 @@ export default function Retrospectives() {
   // Setup dialog (goal + window)
   const [setupCampaign, setSetupCampaign] = useState<MetaCampaign | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [viewingRetro, setViewingRetro] = useState<RetroRow | null>(null);
 
   // Past retros + brand learnings, both for the active brand.
   useEffect(() => {
@@ -154,6 +156,7 @@ export default function Retrospectives() {
             goal_actual: stats.goal_actual != null ? Number(stats.goal_actual) : null,
             goal_hit: stats.goal_hit ?? null,
             data_quality: r.data_quality ?? null,
+            retrospective_json: w.retrospective_json,
           };
         });
         setRetros(rows);
@@ -248,6 +251,7 @@ export default function Retrospectives() {
           goal_actual: stats.goal_actual != null ? Number(stats.goal_actual) : null,
           goal_hit: stats.goal_hit ?? null,
           data_quality: r?.data_quality ?? null,
+          retrospective_json: r ?? null,
         },
         ...prev.filter(x => x.workspace_id !== data.workspaceId),
       ]);
@@ -335,7 +339,7 @@ export default function Retrospectives() {
                 </CardContent>
               </Card>
             ) : (
-              retros.map(r => <RetroRowCard key={r.workspace_id} row={r} onOpen={() => navigate(`/creative-studio?workspace=${r.workspace_id}`)} />)
+              retros.map(r => <RetroRowCard key={r.workspace_id} row={r} onOpen={() => setViewingRetro(r)} />)
             )}
           </TabsContent>
 
@@ -527,6 +531,41 @@ export default function Retrospectives() {
           onConfirm={handleConfirmSetup}
         />
       )}
+
+      {/* Inline retrospective viewer */}
+      <Dialog open={!!viewingRetro} onOpenChange={(o) => !o && setViewingRetro(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{viewingRetro?.workspace_name || 'Retrospective'}</DialogTitle>
+          </DialogHeader>
+          {viewingRetro && (
+            <CampaignRetrospective
+              workspaceId={viewingRetro.workspace_id}
+              initialRetrospective={viewingRetro.retrospective_json}
+              onGenerated={(retro) => {
+                setViewingRetro(prev => prev ? { ...prev, retrospective_json: retro } : prev);
+                setRetros(prev => prev.map(x => x.workspace_id === viewingRetro.workspace_id
+                  ? { ...x, retrospective_json: retro,
+                      total_spend: Number(retro.stats.total_spend || 0),
+                      total_results: Number(retro.stats.total_results || 0),
+                      avg_cpl: retro.stats.avg_cpl ?? null,
+                      duration_days: retro.stats.duration_days ?? null,
+                      summary: retro.summary,
+                      goal_label: retro.stats.goal_label ?? null,
+                      goal_threshold: retro.stats.goal_threshold ?? null,
+                      goal_unit: retro.stats.goal_unit ?? null,
+                      goal_direction: retro.stats.goal_direction ?? null,
+                      goal_actual: retro.stats.goal_actual ?? null,
+                      goal_hit: retro.stats.goal_hit ?? null,
+                      data_quality: retro.data_quality ?? null,
+                      generated_at: retro.generated_at,
+                    }
+                  : x));
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
