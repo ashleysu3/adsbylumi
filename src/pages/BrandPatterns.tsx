@@ -29,6 +29,7 @@ import { Trophy, AlertTriangle, Lightbulb, TrendingUp, Loader2, Sparkles } from 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 // ============================================================================
 // BrandPatterns (Patch #22)
