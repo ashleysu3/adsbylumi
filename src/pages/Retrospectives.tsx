@@ -237,19 +237,6 @@ export default function Retrospectives() {
             </p>
           </div>
           <div className="flex items-end gap-3">
-            {brands.length > 1 && (
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Brand</Label>
-                <Select value={activeBrandId ?? ''} onValueChange={setActiveBrandId}>
-                  <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {brands.map(b => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
             <Button variant="lumi" className="gap-1.5" onClick={handleOpenTray}>
               <Plus className="h-4 w-4" />
               Create retrospective
