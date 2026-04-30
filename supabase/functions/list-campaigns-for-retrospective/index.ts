@@ -78,10 +78,13 @@ Deno.serve(async req => {
     const insData = await insRes.json();
     if (!insRes.ok) {
       console.error('Meta insights fetch failed:', insData);
-      return json(
-        { error: insData?.error?.message || 'Failed to load campaigns from Meta' },
-        502,
-      );
+      const code = insData?.error?.code;
+      const subcode = insData?.error?.error_subcode;
+      const isTokenExpired = code === 190 || subcode === 460 || subcode === 463 || subcode === 467;
+      const message = isTokenExpired
+        ? 'Your Meta connection has expired. Please reconnect Meta in Settings to continue.'
+        : insData?.error?.message || 'Failed to load campaigns from Meta';
+      return json({ error: message, code: isTokenExpired ? 'META_TOKEN_EXPIRED' : 'META_ERROR' }, 200);
     }
     const insightsArr: any[] = Array.isArray(insData?.data) ? insData.data : [];
 
