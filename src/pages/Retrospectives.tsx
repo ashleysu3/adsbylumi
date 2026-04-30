@@ -228,8 +228,7 @@ export default function Retrospectives() {
       toast.success(`Retrospective ready: ${setupCampaign.name}`);
       setTrayOpen(false);
 
-      // Reload retros + learnings.
-      setActiveBrandId(id => id);
+      // Reload retros + learnings (state below appends the new one).
       const r = data.retrospective;
       const stats = r?.stats || {};
       setRetros(prev => [
