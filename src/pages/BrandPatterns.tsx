@@ -218,7 +218,7 @@ export default function BrandPatterns() {
       const result = data as { success?: boolean; retrospective?: RetrospectiveJSON; error?: string } | null;
       if (!result?.success || !result.retrospective) throw new Error(result?.error || 'No retrospective returned');
 
-      const stats = result.retrospective.stats || {};
+      const stats = result.retrospective.stats;
       setRetros(prev => [{
         workspace_id: campaign.id,
         workspace_name: campaign.name,
