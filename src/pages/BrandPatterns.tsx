@@ -227,14 +227,50 @@ export default function BrandPatterns() {
             <Loader2 className="h-5 w-5 animate-spin" />Loading…
           </CardContent></Card>
         ) : retros.length === 0 ? (
-          <Card><CardContent className="p-12 text-center space-y-2">
-            <Sparkles className="h-10 w-10 mx-auto text-muted-foreground/40" />
-            <p className="font-semibold">No retrospectives yet for this brand</p>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Run a "Generate retrospective" on a few campaigns from Creative Studio to start building
-              this view. Patterns get more useful with more data.
-            </p>
-          </CardContent></Card>
+          <Card>
+            <CardContent className="p-8 space-y-4">
+              <div className="text-center space-y-2">
+                <Sparkles className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                <p className="font-semibold">No retrospectives yet for this brand</p>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Retrospectives are generated per campaign from Creative Studio. Once you've run a few, this page
+                  will show patterns across all of them.
+                </p>
+              </div>
+              {eligibleCampaigns.length > 0 ? (
+                <div className="border-t pt-4 space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground text-center">
+                    Past campaigns ready for a retrospective ({eligibleCampaigns.length})
+                  </p>
+                  <div className="space-y-1.5 max-w-xl mx-auto">
+                    {eligibleCampaigns.slice(0, 8).map(c => (
+                      <a
+                        key={c.id}
+                        href={`/creative-studio?workspace=${c.id}`}
+                        className="flex items-center justify-between gap-3 rounded-md border p-2.5 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{c.name}</p>
+                          {c.archived_at && (
+                            <p className="text-[11px] text-muted-foreground">
+                              Archived {new Date(c.archived_at).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <Button size="sm" variant="outline" tabIndex={-1}>
+                          Run retrospective
+                        </Button>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-center text-muted-foreground">
+                  No past campaigns found for this brand yet.
+                </p>
+              )}
+            </CardContent>
+          </Card>
         ) : (
           <>
             {/* Top-level stats */}
