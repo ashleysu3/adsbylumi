@@ -65,6 +65,17 @@ interface RetroSummary {
   summary: string;
 }
 
+interface RetrospectiveJSON {
+  summary: string;
+  stats: {
+    total_spend: number;
+    total_results: number;
+    avg_cpl: number | null;
+    duration_days: number | null;
+  };
+  generated_at: string;
+}
+
 interface Learning {
   id: string;
   category: 'win' | 'miss' | 'recommendation';
@@ -81,12 +92,29 @@ interface EligibleCampaign {
   archived_at: string | null;
 }
 
+interface RetrospectiveWorkspaceRow {
+  id: string;
+  name: string | null;
+  offer_name: string | null;
+  retrospective_json: RetrospectiveJSON | null;
+  retrospective_generated_at: string | null;
+  archived_at: string | null;
+}
+
+interface EligibleWorkspaceRow {
+  id: string;
+  name: string | null;
+  offer_name: string | null;
+  archived_at: string | null;
+}
+
 export default function BrandPatterns() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [activeBrandId, setActiveBrandId] = useState<string | null>(null);
   const [retros, setRetros] = useState<RetroSummary[]>([]);
   const [learnings, setLearnings] = useState<Learning[]>([]);
   const [eligibleCampaigns, setEligibleCampaigns] = useState<EligibleCampaign[]>([]);
+  const [generatingWorkspaceId, setGeneratingWorkspaceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { getEffectiveUserId, isImpersonating, impersonatedUser } = useImpersonation();
 
@@ -100,7 +128,7 @@ export default function BrandPatterns() {
         .select('id, name')
         .eq('user_id', effectiveUserId)
         .order('name');
-      const list = (data as any[]) || [];
+      const list = (data as Brand[]) || [];
       setBrands(list);
       // Reset active brand when the effective user changes (e.g. impersonation toggled).
       setActiveBrandId(list.length > 0 ? list[0].id : null);
@@ -121,7 +149,7 @@ export default function BrandPatterns() {
           .not('retrospective_json', 'is', null)
           .order('archived_at', { ascending: false, nullsFirst: false }),
         supabase
-          .from('brand_learnings' as any)
+          .from('brand_learnings' as never)
           .select('id, category, insight, supporting_data, confidence, source_workspace_id, created_at')
           .eq('brand_id', activeBrandId)
           .eq('is_active', true)
@@ -139,9 +167,13 @@ export default function BrandPatterns() {
 
       if (cancelled) return;
 
-      const retroRows: RetroSummary[] = ((retroRes.data as any[]) || []).map(w => {
-        const r = w.retrospective_json || {};
-        const stats = r.stats || {};
+      const retroRows: RetroSummary[] = ((retroRes.data as unknown as RetrospectiveWorkspaceRow[]) || []).map(w => {
+        const r: RetrospectiveJSON = w.retrospective_json ?? {
+          summary: '',
+          stats: { total_spend: 0, total_results: 0, avg_cpl: null, duration_days: null },
+          generated_at: w.retrospective_generated_at || new Date().toISOString(),
+        };
+        const stats = r.stats || { total_spend: 0, total_results: 0, avg_cpl: null, duration_days: null };
         return {
           workspace_id: w.id,
           workspace_name: w.offer_name || w.name || 'Unnamed campaign',
@@ -156,8 +188,8 @@ export default function BrandPatterns() {
       });
 
       setRetros(retroRows);
-      setLearnings(((learningRes.data as any[]) || []) as Learning[]);
-      setEligibleCampaigns(((eligibleRes.data as any[]) || []).map(w => ({
+      setLearnings(((learningRes.data as unknown[]) || []) as Learning[]);
+      setEligibleCampaigns(((eligibleRes.data as unknown as EligibleWorkspaceRow[]) || []).map(w => ({
         id: w.id,
         name: w.offer_name || w.name || 'Unnamed campaign',
         archived_at: w.archived_at,
@@ -194,6 +226,48 @@ export default function BrandPatterns() {
   const wins = learnings.filter(l => l.category === 'win');
   const misses = learnings.filter(l => l.category === 'miss');
   const recs = learnings.filter(l => l.category === 'recommendation');
+
+  const handleGenerateRetrospective = async (campaign: EligibleCampaign) => {
+    if (!activeBrandId) return;
+    setGeneratingWorkspaceId(campaign.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-campaign-retrospective', {
+        body: { workspaceId: campaign.id, impersonatedUserId: isImpersonating ? impersonatedUser?.id : undefined },
+      });
+      if (error) throw new Error(error.message || 'Request failed');
+      const result = data as { success?: boolean; retrospective?: RetrospectiveJSON; error?: string } | null;
+      if (!result?.success || !result.retrospective) throw new Error(result?.error || 'No retrospective returned');
+
+      const stats = result.retrospective.stats;
+      setRetros(prev => [{
+        workspace_id: campaign.id,
+        workspace_name: campaign.name,
+        generated_at: result.retrospective.generated_at,
+        archived_at: campaign.archived_at,
+        total_spend: Number(stats.total_spend || 0),
+        total_results: Number(stats.total_results || 0),
+        avg_cpl: stats.avg_cpl != null ? Number(stats.avg_cpl) : null,
+        duration_days: stats.duration_days != null ? Number(stats.duration_days) : null,
+        summary: result.retrospective.summary || '',
+      }, ...prev]);
+      setEligibleCampaigns(prev => prev.filter(c => c.id !== campaign.id));
+
+      const { data: freshLearnings } = await supabase
+        .from('brand_learnings' as never)
+        .select('id, category, insight, supporting_data, confidence, source_workspace_id, created_at')
+        .eq('brand_id', activeBrandId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      setLearnings(((freshLearnings as unknown[]) || []) as Learning[]);
+      toast.success('Retrospective ready');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown';
+      console.error('retrospective failed:', err);
+      toast.error('Could not generate retrospective: ' + message);
+    } finally {
+      setGeneratingWorkspaceId(null);
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -244,9 +318,8 @@ export default function BrandPatterns() {
                   </p>
                   <div className="space-y-1.5 max-w-xl mx-auto">
                     {eligibleCampaigns.slice(0, 8).map(c => (
-                      <a
+                      <div
                         key={c.id}
-                        href={`/creative-studio?workspace=${c.id}`}
                         className="flex items-center justify-between gap-3 rounded-md border p-2.5 hover:bg-muted/50 transition-colors"
                       >
                         <div className="min-w-0">
@@ -257,10 +330,16 @@ export default function BrandPatterns() {
                             </p>
                           )}
                         </div>
-                        <Button size="sm" variant="outline" tabIndex={-1}>
-                          Run retrospective
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleGenerateRetrospective(c)}
+                          disabled={generatingWorkspaceId === c.id}
+                        >
+                          {generatingWorkspaceId === c.id && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                          {generatingWorkspaceId === c.id ? 'Running…' : 'Run retrospective'}
                         </Button>
-                      </a>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -296,7 +375,7 @@ export default function BrandPatterns() {
                         <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
                         <YAxis tickFormatter={v => `$${v}`} tick={{ fontSize: 11 }} />
                         <ChartTooltip
-                          formatter={(value: any, name: any) => name === 'cpl' ? fmtCurrency(Number(value)) : value}
+                          formatter={(value: unknown, name: unknown) => name === 'cpl' ? fmtCurrency(Number(value)) : String(value)}
                           labelStyle={{ fontSize: 12 }}
                         />
                         <Line type="monotone" dataKey="cpl" stroke="#7c3aed" strokeWidth={2} dot={{ r: 4 }} />

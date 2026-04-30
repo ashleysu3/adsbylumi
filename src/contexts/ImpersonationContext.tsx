@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ImpersonatedUser {
@@ -17,6 +17,16 @@ interface ImpersonationContextType {
 
 const ImpersonationContext = createContext<ImpersonationContextType | undefined>(undefined);
 
+const getStoredImpersonatedUser = (): ImpersonatedUser | null => {
+  try {
+    const stored = sessionStorage.getItem("impersonatedUser");
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    sessionStorage.removeItem("impersonatedUser");
+    return null;
+  }
+};
+
 export const useImpersonation = () => {
   const context = useContext(ImpersonationContext);
   if (!context) {
@@ -30,37 +40,35 @@ interface ImpersonationProviderProps {
 }
 
 export const ImpersonationProvider = ({ children }: ImpersonationProviderProps) => {
-  const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(null);
+  const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(getStoredImpersonatedUser);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
+
+  const checkCurrentUserIsAdmin = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setIsAdmin(false);
+      setAdminChecked(true);
+      return false;
+    }
+
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    const allowed = !!roleData;
+    setIsAdmin(allowed);
+    setAdminChecked(true);
+    return allowed;
+  }, []);
 
   // Check if current user is admin on mount
   useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-
-      setIsAdmin(!!roleData);
-    };
-
-    checkAdmin();
-
-    // Restore impersonation from session storage
-    const stored = sessionStorage.getItem("impersonatedUser");
-    if (stored) {
-      try {
-        setImpersonatedUser(JSON.parse(stored));
-      } catch {
-        sessionStorage.removeItem("impersonatedUser");
-      }
-    }
-  }, []);
+    checkCurrentUserIsAdmin();
+  }, [checkCurrentUserIsAdmin]);
 
   const startImpersonation = (user: ImpersonatedUser) => {
     if (!isAdmin) {
@@ -77,14 +85,18 @@ export const ImpersonationProvider = ({ children }: ImpersonationProviderProps) 
   };
 
   const getEffectiveUserId = async (): Promise<string | null> => {
-    if (impersonatedUser && isAdmin) {
+    if (impersonatedUser && (isAdmin || !adminChecked)) {
+      if (!isAdmin && !(await checkCurrentUserIsAdmin())) {
+        const { data: { user } } = await supabase.auth.getUser();
+        return user?.id || null;
+      }
       return impersonatedUser.id;
     }
     const { data: { user } } = await supabase.auth.getUser();
     return user?.id || null;
   };
 
-  const isImpersonating = !!impersonatedUser && isAdmin;
+  const isImpersonating = !!impersonatedUser && (isAdmin || !adminChecked);
 
   return (
     <ImpersonationContext.Provider

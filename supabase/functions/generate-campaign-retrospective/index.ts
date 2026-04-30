@@ -52,13 +52,26 @@ Deno.serve(async req => {
     const { data: { user }, error: authErr } = await supabaseAuth.auth.getUser();
     if (authErr || !user) return json({ error: 'Unauthorized' }, 200);
 
-    const { workspaceId } = await req.json();
+    const { workspaceId, impersonatedUserId } = await req.json();
     if (!workspaceId) return json({ error: 'workspaceId is required' }, 200);
 
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
+
+    let effectiveUserId = user.id;
+    if (impersonatedUserId && impersonatedUserId !== user.id) {
+      const { data: adminRole, error: roleErr } = await sb
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      if (roleErr) return json({ error: `Admin check failed: ${roleErr.message}` }, 200);
+      if (!adminRole) return json({ error: 'Impersonation disconnected' }, 200);
+      effectiveUserId = impersonatedUserId;
+    }
 
     // Fetch workspace + ownership check via brand.
     const { data: workspace, error: wErr } = await sb
@@ -76,7 +89,7 @@ Deno.serve(async req => {
       .maybeSingle();
     if (bErr) return json({ error: `Brand lookup failed: ${bErr.message}` }, 200);
     if (!brand) return json({ error: 'Brand not found' }, 200);
-    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 200);
+    if (brand.user_id !== effectiveUserId) return json({ error: 'Forbidden' }, 200);
 
     // Pull Meta campaign performance. If the workspace doesn't have a
     // meta_campaign_id (campaign was never published) we still produce a
