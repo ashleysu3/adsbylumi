@@ -72,6 +72,7 @@ import AdminMetaDebug from "./pages/admin/MetaDebug";
 import AdminOverlayTemplates from "./pages/admin/OverlayTemplates";
 import FreeTrial from "./pages/FreeTrial";
 import Welcome from "./pages/Welcome";
+import BrandPatterns from "./pages/BrandPatterns";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -139,6 +140,7 @@ const App = () => {
                   <Route path="/offers" element={<Offers />} />
                   <Route path="/style" element={<Style />} />
                   <Route path="/creative-studio" element={<CreativeStudio />} />
+                  <Route path="/brand/patterns" element={<BrandPatterns />} />
                   <Route path="/glossary" element={<Glossary />} />
                   <Route path="/creative-toolkit" element={<CreativeToolkit />} />
                   

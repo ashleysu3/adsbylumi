@@ -41,6 +41,7 @@ const brandNav = [
   { path: "/dashboard", icon: Building2, label: "Home", tooltip: "Your brand info and settings" },
   { path: "/offers", icon: Package, label: "Offers", tooltip: "Add and manage your offers and services" },
   { path: "/style", icon: Palette, label: "Style", tooltip: "Ad copy voice, emojis, b-roll, and text overlays" },
+  { path: "/brand/patterns", icon: TrendingUp, label: "Patterns", tooltip: "What's working across all your reviewed campaigns" },
 ];
 
 interface AppSidebarProps {
