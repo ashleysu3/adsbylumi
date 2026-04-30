@@ -137,6 +137,7 @@ export default function Retrospectives() {
             total_results: Number(stats.total_results || 0),
             avg_cpl: stats.avg_cpl != null ? Number(stats.avg_cpl) : null,
             summary: r.summary || '',
+            retrospective_json: w.retrospective_json as CampaignRetrospectiveJSON | null,
           };
         });
         setRetros(rows);
