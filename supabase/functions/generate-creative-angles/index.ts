@@ -34,6 +34,22 @@ Deno.serve(async (req) => {
 
     const kbContext = kbDocs?.map(doc => `## ${doc.title}\n${doc.content}`).join("\n\n") || "";
 
+    // Patch #21: pull active brand_learnings so the AI's angles benefit
+    // from prior campaign retrospectives.
+    let brandLearnings: Array<{ category: string; insight: string; supporting_data: string | null; confidence: string }> = [];
+    if (brandId) {
+      const { data: learningRows } = await supabase
+        .from("brand_learnings")
+        .select("category, insight, supporting_data, confidence, created_at")
+        .eq("brand_id", brandId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(40);
+      if (Array.isArray(learningRows)) {
+        brandLearnings = learningRows as any;
+      }
+    }
+
     // Fetch content assets for this brand
     let contentAssetsContext = "";
     if (brandId) {
@@ -187,7 +203,37 @@ Deno.serve(async (req) => {
       previousAnglesContext += "\nCRITICAL: Every angle you generate must be meaningfully DIFFERENT from the above list. Do not simply rephrase or slightly rename a previously used angle. Explore entirely new psychological territories, emotional triggers, or messaging frameworks that were NOT covered before. If you find yourself generating something similar to an angle above, STOP and think of a genuinely new direction.\n";
     }
 
-    const systemPrompt = `You are Lumi's Creative Engine. Your job is to generate creative angle recommendations for Meta ads campaigns.
+    // Patch #21: brand learnings prompt block.
+    let learningsContext = "";
+    if (brandLearnings.length > 0) {
+      const wins = brandLearnings.filter(l => l.category === 'win');
+      const misses = brandLearnings.filter(l => l.category === 'miss');
+      const recs = brandLearnings.filter(l => l.category === 'recommendation');
+
+      learningsContext += "\n\n=== ACCUMULATED LEARNINGS FOR THIS BRAND (from past campaign retrospectives) ===\n";
+      learningsContext += "These are explicit lessons from this brand's prior campaigns. Weight your output to LEAN INTO the wins, AVOID the misses, and FOLLOW the recommendations. Higher-confidence items should carry more weight.\n";
+
+      if (wins.length > 0) {
+        learningsContext += "\nWHAT'S WORKED IN PRIOR CAMPAIGNS:\n";
+        wins.forEach(w => {
+          learningsContext += `- [${w.confidence}] ${w.insight}${w.supporting_data ? ' — ' + w.supporting_data : ''}\n`;
+        });
+      }
+      if (misses.length > 0) {
+        learningsContext += "\nWHAT HASN'T WORKED — AVOID REPEATING:\n";
+        misses.forEach(m => {
+          learningsContext += `- [${m.confidence}] ${m.insight}${m.supporting_data ? ' — ' + m.supporting_data : ''}\n`;
+        });
+      }
+      if (recs.length > 0) {
+        learningsContext += "\nEXPLICIT RECOMMENDATIONS FOR THE NEXT CAMPAIGN:\n";
+        recs.forEach(r => {
+          learningsContext += `- [${r.confidence}] ${r.insight}${r.supporting_data ? ' — ' + r.supporting_data : ''}\n`;
+        });
+      }
+      learningsContext += "\n";
+    }
+
 
 KNOWLEDGE BASE:
 ${kbContext}
@@ -196,6 +242,7 @@ ${insightsContext}
 ${offerAudienceContext}
 ${preGenContext}
 ${intelligenceContext}
+${learningsContext}
 ${previousAnglesContext}
 ${Array.isArray(neverUseWords) && neverUseWords.length > 0 ? `\n🚫 BANNED WORDS/PHRASES (strictly forbidden in all output):\n${neverUseWords.map((w: string) => `- "${w}"`).join('\n')}\nDo NOT use any of these words in angle names, descriptions, or any generated text. Find alternative phrasing.\n` : ''}
 
