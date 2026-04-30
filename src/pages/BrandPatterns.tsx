@@ -25,6 +25,7 @@ import {
   BarChart,
   Legend,
 } from 'recharts';
+import { Link } from 'react-router-dom';
 import { Trophy, AlertTriangle, Lightbulb, TrendingUp, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -244,9 +245,9 @@ export default function BrandPatterns() {
                   </p>
                   <div className="space-y-1.5 max-w-xl mx-auto">
                     {eligibleCampaigns.slice(0, 8).map(c => (
-                      <a
+                      <Link
                         key={c.id}
-                        href={`/creative-studio?workspace=${c.id}`}
+                        to={`/creative-studio?workspace=${c.id}&retrospective=true`}
                         className="flex items-center justify-between gap-3 rounded-md border p-2.5 hover:bg-muted/50 transition-colors"
                       >
                         <div className="min-w-0">
@@ -260,7 +261,7 @@ export default function BrandPatterns() {
                         <Button size="sm" variant="outline" tabIndex={-1}>
                           Run retrospective
                         </Button>
-                      </a>
+                      </Link>
                     ))}
                   </div>
                 </div>
