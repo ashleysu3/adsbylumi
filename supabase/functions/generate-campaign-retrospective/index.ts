@@ -7,15 +7,18 @@ const corsHeaders = {
 };
 
 // ============================================================================
-// generate-campaign-retrospective (Patch #20)
+// generate-campaign-retrospective (Patch #23 upgrade)
 //
-// Pulls Meta performance data + LUMI's creative metadata for a single
-// campaign workspace, sends it to Gemini 2.5 Flash with a structured
-// post-mortem prompt, and saves the result back to the workspace row +
-// brand_learnings table.
+// Two entry paths:
+//   1. { workspaceId } — original path. Pull workspace + brand, run retro.
+//   2. { brandId, metaCampaignId } — new in patch #23. For Meta campaigns
+//      that aren't LUMI workspaces yet (or the user just doesn't want to
+//      open the workspace). We auto-find or auto-create a workspace stub
+//      tagged with that meta_campaign_id, then run the regular flow.
 //
-// Inputs:  { workspaceId }
-// Returns: { success: true, retrospective: {...} }
+// Patch #23 fix: previously read workspace.meta_campaign_id (column doesn't
+// exist) — corrected to workspace.meta_campaign_ids?.campaignId, which is
+// the JSONB shape the rest of the codebase uses.
 // ============================================================================
 
 interface RetrospectiveJSON {
@@ -41,7 +44,7 @@ Deno.serve(async req => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return json({ error: 'Unauthorized' }, 200);
+      return json({ error: 'Unauthorized' }, 401);
     }
 
     const supabaseAuth = createClient(
@@ -50,27 +53,79 @@ Deno.serve(async req => {
       { global: { headers: { Authorization: authHeader } } },
     );
     const { data: { user }, error: authErr } = await supabaseAuth.auth.getUser();
-    if (authErr || !user) return json({ error: 'Unauthorized' }, 200);
+    if (authErr || !user) return json({ error: 'Unauthorized' }, 401);
 
-    const { workspaceId, impersonatedUserId } = await req.json();
-    if (!workspaceId) return json({ error: 'workspaceId is required' }, 200);
-
+    const body = await req.json();
     const sb = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    let effectiveUserId = user.id;
-    if (impersonatedUserId && impersonatedUserId !== user.id) {
-      const { data: adminRole, error: roleErr } = await sb
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-      if (roleErr) return json({ error: `Admin check failed: ${roleErr.message}` }, 200);
-      if (!adminRole) return json({ error: 'Impersonation disconnected' }, 200);
-      effectiveUserId = impersonatedUserId;
+    // Resolve to a workspace, creating a stub if the caller passed
+    // (brandId + metaCampaignId) instead of workspaceId.
+    let workspaceId: string | null = body?.workspaceId ?? null;
+
+    if (!workspaceId && body?.metaCampaignId && body?.brandId) {
+      // Ownership check on the brand.
+      const { data: ownerCheck } = await sb
+        .from('brands')
+        .select('id, user_id')
+        .eq('id', body.brandId)
+        .single();
+      if (!ownerCheck || ownerCheck.user_id !== user.id) {
+        return json({ error: 'Forbidden' }, 403);
+      }
+
+      // Find an existing workspace for that meta campaign on that brand.
+      const { data: existingWs } = await sb
+        .from('campaign_workspaces')
+        .select('id, meta_campaign_ids')
+        .eq('brand_id', body.brandId);
+      const found = (existingWs || []).find(
+        (w: any) => w?.meta_campaign_ids?.campaignId === body.metaCampaignId,
+      );
+      if (found) {
+        workspaceId = found.id;
+      } else {
+        // Look up the campaign's name from Meta to seed a sensible workspace name.
+        let metaName = 'Imported campaign';
+        try {
+          const { data: brand } = await sb
+            .from('brands')
+            .select('meta_access_token')
+            .eq('id', body.brandId)
+            .single();
+          if (brand?.meta_access_token) {
+            const r = await fetch(
+              `https://graph.facebook.com/v21.0/${body.metaCampaignId}?fields=name,objective&access_token=${brand.meta_access_token}`,
+            );
+            const d = await r.json();
+            if (r.ok && d?.name) metaName = d.name;
+          }
+        } catch (_) { /* non-fatal */ }
+
+        const { data: created, error: createErr } = await sb
+          .from('campaign_workspaces')
+          .insert({
+            brand_id: body.brandId,
+            name: metaName,
+            offer_name: metaName,
+            meta_campaign_ids: { campaignId: body.metaCampaignId },
+            archived: true,
+            archived_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+        if (createErr || !created) {
+          console.error('Stub workspace creation failed:', createErr);
+          return json({ error: 'Could not create workspace stub for this campaign' }, 500);
+        }
+        workspaceId = created.id;
+      }
+    }
+
+    if (!workspaceId) {
+      return json({ error: 'Either workspaceId or (brandId + metaCampaignId) is required' }, 400);
     }
 
     // Fetch workspace + ownership check via brand.
@@ -78,31 +133,26 @@ Deno.serve(async req => {
       .from('campaign_workspaces')
       .select('id, brand_id, name, offer_name, creative_json, production_items, strategy_json, archived_at, created_at, meta_campaign_ids')
       .eq('id', workspaceId)
-      .maybeSingle();
-    if (wErr) return json({ error: `Workspace lookup failed: ${wErr.message}` }, 200);
-    if (!workspace) return json({ error: `Workspace not found for id ${workspaceId}` }, 200);
+      .single();
+    if (wErr || !workspace) return json({ error: 'Workspace not found' }, 404);
 
     const { data: brand, error: bErr } = await sb
       .from('brands')
       .select('id, user_id, name, meta_account_id, meta_access_token')
       .eq('id', workspace.brand_id)
-      .maybeSingle();
-    if (bErr) return json({ error: `Brand lookup failed: ${bErr.message}` }, 200);
-    if (!brand) return json({ error: 'Brand not found' }, 200);
-    if (brand.user_id !== effectiveUserId) return json({ error: 'Forbidden' }, 200);
+      .single();
+    if (bErr || !brand) return json({ error: 'Brand not found' }, 404);
+    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
 
-    // Pull Meta campaign performance. If the workspace doesn't have a
-    // meta_campaign_id (campaign was never published) we still produce a
-    // retrospective from creative_json alone — useful for "what would've
-    // worked" reflection on drafts.
-    const firstMetaCampaignId = Array.isArray(workspace.meta_campaign_ids) && workspace.meta_campaign_ids.length > 0
-      ? workspace.meta_campaign_ids[0]
-      : null;
-    const performance = firstMetaCampaignId && brand.meta_access_token
-      ? await fetchCampaignPerformance(firstMetaCampaignId, brand.meta_access_token)
+    // Patch #23 fix: read meta_campaign_ids JSONB shape, not the
+    // (nonexistent) meta_campaign_id column.
+    const metaCampaignId =
+      (workspace.meta_campaign_ids as any)?.campaignId || null;
+
+    const performance = metaCampaignId && brand.meta_access_token
+      ? await fetchCampaignPerformance(metaCampaignId, brand.meta_access_token)
       : null;
 
-    // Build the AI input.
     const startedAt = workspace.created_at ? new Date(workspace.created_at) : null;
     const endedAt = workspace.archived_at ? new Date(workspace.archived_at) : new Date();
     const durationDays = startedAt
@@ -117,11 +167,12 @@ Deno.serve(async req => {
       creative: workspace.creative_json,
       productionItems: workspace.production_items,
       performance,
+      isImported: !workspace.creative_json,
     });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      return json({ error: 'LOVABLE_API_KEY not configured' }, 200);
+      return json({ error: 'LOVABLE_API_KEY not configured' }, 500);
     }
 
     const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -146,7 +197,7 @@ Deno.serve(async req => {
     if (!aiRes.ok) {
       const errText = await aiRes.text().catch(() => '');
       console.error('AI gateway error:', aiRes.status, errText);
-      return json({ error: `AI analysis failed (${aiRes.status})` }, 200);
+      return json({ error: `AI analysis failed (${aiRes.status})` }, 502);
     }
     const aiData = await aiRes.json();
     const raw = aiData?.choices?.[0]?.message?.content ?? '';
@@ -161,7 +212,7 @@ Deno.serve(async req => {
       parsed = JSON.parse(cleaned);
     } catch (e) {
       console.error('Parse failed. Raw:', cleaned.slice(0, 400));
-      return json({ error: 'AI returned unparseable output. Try again.' }, 200);
+      return json({ error: 'AI returned unparseable output. Try again.' }, 502);
     }
 
     const retrospective: RetrospectiveJSON = {
@@ -171,7 +222,7 @@ Deno.serve(async req => {
         total_results: Math.round(numberOr(parsed?.stats?.total_results, performance?.totals?.results ?? 0)),
         avg_cpl: parsed?.stats?.avg_cpl != null ? numberOr(parsed.stats.avg_cpl, null) : performance?.totals?.cpl ?? null,
         duration_days: durationDays,
-        objective: workspace.strategy_json?.objective || null,
+        objective: workspace.strategy_json?.objective || performance?.totals?.objective || null,
       },
       wins: normalizeBullets(parsed.wins),
       misses: normalizeBullets(parsed.misses),
@@ -179,7 +230,6 @@ Deno.serve(async req => {
       generated_at: new Date().toISOString(),
     };
 
-    // Save the cached JSON onto the workspace.
     await sb
       .from('campaign_workspaces')
       .update({
@@ -188,10 +238,6 @@ Deno.serve(async req => {
       })
       .eq('id', workspaceId);
 
-    // Deactivate any prior learnings extracted from THIS workspace (we're
-    // regenerating the post-mortem) and insert the fresh ones. This keeps
-    // brand_learnings clean even if the user re-runs the retro multiple
-    // times on the same campaign.
     await sb
       .from('brand_learnings')
       .update({ is_active: false })
@@ -216,15 +262,13 @@ Deno.serve(async req => {
     pushAll(retrospective.recommendations, 'recommendation');
     if (rows.length > 0) {
       const { error: insErr } = await sb.from('brand_learnings').insert(rows);
-      if (insErr) {
-        console.error('brand_learnings insert failed (non-fatal):', insErr);
-      }
+      if (insErr) console.error('brand_learnings insert failed (non-fatal):', insErr);
     }
 
-    return json({ success: true, retrospective });
+    return json({ success: true, retrospective, workspaceId });
   } catch (err: any) {
     console.error('generate-campaign-retrospective error:', err);
-    return json({ error: err?.message || 'Unknown error' }, 200);
+    return json({ error: err?.message || 'Unknown error' }, 500);
   }
 });
 
@@ -251,13 +295,7 @@ function normalizeBullets(arr: any): RetrospectiveJSON['wins'] {
   })).filter(x => x.insight.length > 0);
 }
 
-// ---------------------------------------------------------------------------
-// Meta Marketing API helper
-// ---------------------------------------------------------------------------
-
 async function fetchCampaignPerformance(metaCampaignId: string, accessToken: string) {
-  // Pull insights at the campaign + ad-set + ad level. Default time range
-  // is "lifetime" since this is a retrospective.
   const fields = [
     'campaign_id', 'campaign_name',
     'spend', 'impressions', 'clicks',
@@ -269,15 +307,15 @@ async function fetchCampaignPerformance(metaCampaignId: string, accessToken: str
 
   try {
     const campaignRes = await fetch(
-      `https://graph.facebook.com/v18.0/${metaCampaignId}/insights?fields=${fields}&date_preset=lifetime&level=campaign&access_token=${accessToken}`,
+      `https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields}&date_preset=lifetime&level=campaign&access_token=${accessToken}`,
     );
     const campaignData = await campaignRes.json();
     const adsetRes = await fetch(
-      `https://graph.facebook.com/v18.0/${metaCampaignId}/insights?fields=${fields},adset_id,adset_name&date_preset=lifetime&level=adset&access_token=${accessToken}`,
+      `https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields},adset_id,adset_name&date_preset=lifetime&level=adset&access_token=${accessToken}`,
     );
     const adsetData = await adsetRes.json();
     const adRes = await fetch(
-      `https://graph.facebook.com/v18.0/${metaCampaignId}/insights?fields=${fields},ad_id,ad_name,adset_id&date_preset=lifetime&level=ad&access_token=${accessToken}`,
+      `https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields},ad_id,ad_name,adset_id&date_preset=lifetime&level=ad&access_token=${accessToken}`,
     );
     const adData = await adRes.json();
 
@@ -289,7 +327,6 @@ async function fetchCampaignPerformance(metaCampaignId: string, accessToken: str
           clicks: Number(c.clicks || 0),
           ctr: Number(c.ctr || 0),
           cpc: Number(c.cpc || 0),
-          // Pick lead/purchase/result counts from actions if available.
           results: extractResultCount(c),
           cpl: extractCostPerResult(c),
           objective: c.objective,
@@ -310,13 +347,11 @@ async function fetchCampaignPerformance(metaCampaignId: string, accessToken: str
 function extractResultCount(insight: any): number {
   const actions = insight?.actions;
   if (!Array.isArray(actions)) return 0;
-  // Prefer purchase, then lead, then registration / complete_registration.
   const priority = ['purchase', 'offsite_conversion.fb_pixel_purchase', 'lead', 'offsite_conversion.fb_pixel_lead', 'complete_registration'];
   for (const t of priority) {
     const m = actions.find((a: any) => a.action_type === t);
     if (m) return Number(m.value || 0);
   }
-  // Fallback: clicks
   return Number(insight?.clicks || 0);
 }
 
@@ -331,10 +366,6 @@ function extractCostPerResult(insight: any): number | null {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// Prompt construction
-// ---------------------------------------------------------------------------
-
 function buildPrompt(args: {
   brandName: string;
   offerName: string;
@@ -343,11 +374,15 @@ function buildPrompt(args: {
   creative: any;
   productionItems: any;
   performance: any;
+  isImported: boolean;
 }): string {
   const summary = {
     brand: args.brandName,
     offer: args.offerName,
     duration_days: args.durationDays,
+    note: args.isImported
+      ? 'This campaign was imported from Meta — LUMI does not have its angle/copy metadata. Base your post-mortem entirely on the Meta performance data.'
+      : null,
     strategy_objective: args.strategy?.objective || 'unknown',
     strategy_audiences: args.strategy?.audiences || args.strategy?.audience_set || null,
     angles: Array.isArray(args.creative?.angles)
@@ -406,7 +441,8 @@ Guidance:
 - Aim for 2-3 wins, 2-3 misses, 4-5 recommendations. More if the data clearly supports more; never invent insights.
 - Recommendations should be specific and actionable for the NEXT campaign — e.g. "Lead with curiosity-style hooks; testimonial format averaged 3x higher CPL." Avoid generic advice.
 - Use confidence "high" only when the data clearly supports the claim. Use "medium" by default. Use "low" when you're guessing because the dataset is thin.
-- If performance data is missing or zero (e.g. campaign was never published), focus on what the creative + strategy reveal, and set confidence appropriately.
+- If performance data is missing or zero (campaign was never published), focus on what the creative + strategy reveal, and set confidence appropriately.
+- For imported (non-LUMI) campaigns, lean on adset/ad name patterns + spend curves — those are your only signals.
 - Cite specific ad names, adset names, or angle names where possible.
 
 Return ONLY the JSON object.`;
