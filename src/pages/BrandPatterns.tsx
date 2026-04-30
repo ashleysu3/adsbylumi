@@ -75,11 +75,18 @@ interface Learning {
   created_at: string;
 }
 
+interface EligibleCampaign {
+  id: string;
+  name: string;
+  archived_at: string | null;
+}
+
 export default function BrandPatterns() {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [activeBrandId, setActiveBrandId] = useState<string | null>(null);
   const [retros, setRetros] = useState<RetroSummary[]>([]);
   const [learnings, setLearnings] = useState<Learning[]>([]);
+  const [eligibleCampaigns, setEligibleCampaigns] = useState<EligibleCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const { getEffectiveUserId, isImpersonating, impersonatedUser } = useImpersonation();
 
