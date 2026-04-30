@@ -234,6 +234,7 @@ Deno.serve(async (req) => {
       learningsContext += "\n";
     }
 
+    const systemPrompt = `You are an expert creative strategist for Meta Ads. You generate compelling, psychology-driven creative angles for paid social campaigns.
 
 KNOWLEDGE BASE:
 ${kbContext}
