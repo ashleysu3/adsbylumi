@@ -65,6 +65,17 @@ interface RetroSummary {
   summary: string;
 }
 
+interface RetrospectiveJSON {
+  summary: string;
+  stats: {
+    total_spend: number;
+    total_results: number;
+    avg_cpl: number | null;
+    duration_days: number | null;
+  };
+  generated_at: string;
+}
+
 interface Learning {
   id: string;
   category: 'win' | 'miss' | 'recommendation';
