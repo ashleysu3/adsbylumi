@@ -113,7 +113,7 @@ export default function BrandPatterns() {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const [retroRes, learningRes] = await Promise.all([
+      const [retroRes, learningRes, eligibleRes] = await Promise.all([
         supabase
           .from('campaign_workspaces')
           .select('id, name, offer_name, retrospective_json, retrospective_generated_at, archived_at')
@@ -126,6 +126,15 @@ export default function BrandPatterns() {
           .eq('brand_id', activeBrandId)
           .eq('is_active', true)
           .order('created_at', { ascending: false }),
+        // Campaigns eligible for a retrospective: published or archived, no retro yet.
+        supabase
+          .from('campaign_workspaces')
+          .select('id, name, offer_name, archived_at, archived, published_at')
+          .eq('brand_id', activeBrandId)
+          .is('retrospective_json', null)
+          .or('archived.eq.true,published_at.not.is.null')
+          .order('archived_at', { ascending: false, nullsFirst: false })
+          .limit(20),
       ]);
 
       if (cancelled) return;
@@ -148,6 +157,11 @@ export default function BrandPatterns() {
 
       setRetros(retroRows);
       setLearnings(((learningRes.data as any[]) || []) as Learning[]);
+      setEligibleCampaigns(((eligibleRes.data as any[]) || []).map(w => ({
+        id: w.id,
+        name: w.offer_name || w.name || 'Unnamed campaign',
+        archived_at: w.archived_at,
+      })));
       setLoading(false);
     })();
     return () => { cancelled = true; };
