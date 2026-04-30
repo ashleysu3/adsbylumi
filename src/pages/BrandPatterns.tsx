@@ -81,22 +81,24 @@ export default function BrandPatterns() {
   const [retros, setRetros] = useState<RetroSummary[]>([]);
   const [learnings, setLearnings] = useState<Learning[]>([]);
   const [loading, setLoading] = useState(true);
+  const { getEffectiveUserId, isImpersonating, impersonatedUser } = useImpersonation();
 
-  // Load brand list (this user's brands).
+  // Load brand list (the EFFECTIVE user's brands — respects impersonation).
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const effectiveUserId = await getEffectiveUserId();
+      if (!effectiveUserId) return;
       const { data } = await supabase
         .from('brands')
         .select('id, name')
-        .eq('user_id', user.id)
+        .eq('user_id', effectiveUserId)
         .order('name');
       const list = (data as any[]) || [];
       setBrands(list);
-      if (list.length > 0) setActiveBrandId(list[0].id);
+      // Reset active brand when the effective user changes (e.g. impersonation toggled).
+      setActiveBrandId(list.length > 0 ? list[0].id : null);
     })();
-  }, []);
+  }, [getEffectiveUserId, isImpersonating, impersonatedUser?.id]);
 
   // Load retrospectives + learnings for the active brand.
   useEffect(() => {
