@@ -308,10 +308,10 @@ export default function Retrospectives() {
                       size="sm"
                       variant="outline"
                       className="gap-1 shrink-0"
-                      onClick={() => navigate(`/creative-studio?workspace=${r.workspace_id}`)}
+                      onClick={() => setSelectedRetro(r)}
                     >
-                      <ExternalLink className="h-3 w-3" />
-                      Open
+                      <Eye className="h-3 w-3" />
+                      View
                     </Button>
                   </div>
                 </div>
