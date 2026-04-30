@@ -168,7 +168,7 @@ export default function BrandPatterns() {
       if (cancelled) return;
 
       const retroRows: RetroSummary[] = ((retroRes.data as unknown as RetrospectiveWorkspaceRow[]) || []).map(w => {
-        const r = w.retrospective_json || {};
+        const r = w.retrospective_json;
         const stats = r.stats || { total_spend: 0, total_results: 0, avg_cpl: null, duration_days: null };
         return {
           workspace_id: w.id,
@@ -249,7 +249,7 @@ export default function BrandPatterns() {
       setEligibleCampaigns(prev => prev.filter(c => c.id !== campaign.id));
 
       const { data: freshLearnings } = await supabase
-        .from('brand_learnings' as any)
+        .from('brand_learnings' as never)
         .select('id, category, insight, supporting_data, confidence, source_workspace_id, created_at')
         .eq('brand_id', activeBrandId)
         .eq('is_active', true)
