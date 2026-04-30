@@ -57,9 +57,10 @@ export function CampaignRetrospective({ workspaceId, initialRetrospective, onGen
       setRetro(data.retrospective);
       onGenerated?.(data.retrospective);
       toast.success('Retrospective ready');
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown';
       console.error('retrospective failed:', err);
-      toast.error('Could not generate retrospective: ' + (err?.message || 'unknown'));
+      toast.error('Could not generate retrospective: ' + message);
     } finally {
       setGenerating(false);
     }
