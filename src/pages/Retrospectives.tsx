@@ -517,8 +517,13 @@ export default function Retrospectives() {
                       <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground mt-1.5">
                         <span>Spend: {fmtCurrency(c.spend)}</span>
                         <span>•</span>
-                        <span>{fmtNumber(c.results)} results</span>
-                        {c.cpl != null && <><span>•</span><span>{fmtCurrency(c.cpl)} / result</span></>}
+                        <span>{fmtNumber(c.results)} {kpiResultsLabel((c as any).kpi)}</span>
+                        {c.cpl != null && (
+                          <>
+                            <span>•</span>
+                            <span>{formatKpiValue(c.cpl, (c as any).kpiUnit || '$')} / {kpiSingularLabel((c as any).kpi)}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                     <Button
@@ -678,4 +683,34 @@ function fmtCurrency(n: number): string {
 }
 function fmtNumber(n: number): string {
   return new Intl.NumberFormat().format(Math.round(n));
+}
+function kpiResultsLabel(kpi?: string): string {
+  switch (kpi) {
+    case 'cpl': return 'leads';
+    case 'cpp': return 'purchases';
+    case 'cpc': return 'clicks';
+    case 'cpm': return 'impressions';
+    case 'ctr': return 'clicks';
+    case 'roas': return 'purchases';
+    case 'costPerThruPlay': return 'thruplays';
+    default: return 'results';
+  }
+}
+function kpiSingularLabel(kpi?: string): string {
+  switch (kpi) {
+    case 'cpl': return 'lead';
+    case 'cpp': return 'purchase';
+    case 'cpc': return 'click';
+    case 'cpm': return '1k impressions';
+    case 'ctr': return 'click';
+    case 'roas': return 'ROAS';
+    case 'costPerThruPlay': return 'thruplay';
+    default: return 'result';
+  }
+}
+function formatKpiValue(n: number, unit: string): string {
+  if (unit === '$') return `$${n.toFixed(2)}`;
+  if (unit === 'x') return `${n.toFixed(2)}x`;
+  if (unit === '%') return `${n.toFixed(2)}%`;
+  return String(n);
 }
