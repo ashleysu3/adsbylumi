@@ -82,8 +82,8 @@ const RANGE_OPTIONS = [
 
 export default function Retrospectives() {
   const navigate = useNavigate();
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [activeBrandId, setActiveBrandId] = useState<string | null>(null);
+  const { activeBrand } = useBrand();
+  const activeBrandId = activeBrand?.id ?? null;
   const [retros, setRetros] = useState<RetroRow[]>([]);
   const [loadingRetros, setLoadingRetros] = useState(false);
 
@@ -96,22 +96,6 @@ export default function Retrospectives() {
 
   // Selected retro for viewing
   const [selectedRetro, setSelectedRetro] = useState<RetroRow | null>(null);
-
-  // Load brands + auto-select first.
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from('brands')
-        .select('id, name, meta_account_id')
-        .eq('user_id', user.id)
-        .order('name');
-      const list = (data as any[]) || [];
-      setBrands(list);
-      if (list.length > 0) setActiveBrandId(list[0].id);
-    })();
-  }, []);
 
   // Load retrospectives whenever brand changes.
   useEffect(() => {
