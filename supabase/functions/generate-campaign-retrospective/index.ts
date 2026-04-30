@@ -365,6 +365,7 @@ async function fetchCampaignPerformance(metaCampaignId: string, accessToken: str
       objective: campaignMeta?.objective,
     });
 
+    const objective = campaignRows[0]?.objective || campaignMeta?.objective || null;
     const c = campaignRows[0];
     const totals = c
       ? {
@@ -373,9 +374,12 @@ async function fetchCampaignPerformance(metaCampaignId: string, accessToken: str
           clicks: Number(c.clicks || 0),
           ctr: Number(c.ctr || 0),
           cpc: Number(c.cpc || 0),
-          results: extractResultCount(c),
-          cpl: extractCostPerResult(c),
-          objective: c.objective || campaignMeta?.objective || null,
+          results: extractResultCount(c, objective),
+          cpl: extractCostPerResult(c, objective),
+          objective,
+          result_kind: resultTypeForObjective(objective).kind,
+          result_label: resultTypeForObjective(objective).label,
+          cost_label: resultTypeForObjective(objective).cost_label,
           status: campaignMeta?.effective_status || campaignMeta?.status || null,
           campaign_name: c.campaign_name || campaignMeta?.name || null,
         }
@@ -383,7 +387,10 @@ async function fetchCampaignPerformance(metaCampaignId: string, accessToken: str
         ? {
             spend: 0, impressions: 0, clicks: 0, ctr: 0, cpc: 0,
             results: 0, cpl: null,
-            objective: campaignMeta.objective || null,
+            objective,
+            result_kind: resultTypeForObjective(objective).kind,
+            result_label: resultTypeForObjective(objective).label,
+            cost_label: resultTypeForObjective(objective).cost_label,
             status: campaignMeta.effective_status || campaignMeta.status || null,
             campaign_name: campaignMeta.name || null,
           }
