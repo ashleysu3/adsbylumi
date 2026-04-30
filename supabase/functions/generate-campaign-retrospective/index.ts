@@ -82,8 +82,11 @@ Deno.serve(async req => {
     // meta_campaign_id (campaign was never published) we still produce a
     // retrospective from creative_json alone — useful for "what would've
     // worked" reflection on drafts.
-    const performance = workspace.meta_campaign_id && brand.meta_access_token
-      ? await fetchCampaignPerformance(workspace.meta_campaign_id, brand.meta_access_token)
+    const firstMetaCampaignId = Array.isArray(workspace.meta_campaign_ids) && workspace.meta_campaign_ids.length > 0
+      ? workspace.meta_campaign_ids[0]
+      : null;
+    const performance = firstMetaCampaignId && brand.meta_access_token
+      ? await fetchCampaignPerformance(firstMetaCampaignId, brand.meta_access_token)
       : null;
 
     // Build the AI input.
