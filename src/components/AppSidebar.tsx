@@ -31,7 +31,8 @@ import {
 
 const createNav = [
   { path: "/campaigns", icon: FolderKanban, label: "My Campaigns", tooltip: "See and manage all your ads" },
-  { path: "/brand/patterns", icon: TrendingUp, label: "Campaign Retrospectives", tooltip: "What's working across all your reviewed campaigns" },
+  { path: "/brand/patterns", icon: TrendingUp, label: "Campaign Patterns", tooltip: "What's working across all your reviewed campaigns" },
+  { path: "/retrospectives", icon: Sparkles, label: "Retrospectives", tooltip: "Post-mortems on past campaigns from your Meta account" },
   { path: "/creative-studio", icon: Sparkles, label: "Creative Studio", tooltip: "Build your ad angles, copy, and creative briefs" },
   { path: "/content-library", icon: Library, label: "Concept Library", tooltip: "Browse your saved ad concepts" },
   { path: "/creative-toolkit", icon: Wrench, label: "Creative Toolkit", tooltip: "Templates, B-roll ideas, music, and production tools" },
