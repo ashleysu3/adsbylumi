@@ -6,6 +6,7 @@ import { Loader2, Sparkles, TrendingUp, TrendingDown, Lightbulb, Trophy, AlertTr
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 
 // ============================================================================
 // CampaignRetrospective (Patch #20)
@@ -41,12 +42,13 @@ interface Props {
 export function CampaignRetrospective({ workspaceId, initialRetrospective, onGenerated }: Props) {
   const [retro, setRetro] = useState<CampaignRetrospectiveJSON | null>(initialRetrospective || null);
   const [generating, setGenerating] = useState(false);
+  const { isImpersonating, impersonatedUser } = useImpersonation();
 
   const handleGenerate = async () => {
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-campaign-retrospective', {
-        body: { workspaceId },
+        body: { workspaceId, impersonatedUserId: isImpersonating ? impersonatedUser?.id : undefined },
       });
       if (error) throw new Error(error.message || 'Request failed');
       if (!data?.success || !data?.retrospective) {
