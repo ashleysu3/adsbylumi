@@ -31,6 +31,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { CampaignRetrospective, type CampaignRetrospectiveJSON } from '@/components/creative/CampaignRetrospective';
+import { useBrand } from '@/contexts/BrandContext';
 
 // ============================================================================
 // Retrospectives (Patch #23)
@@ -81,8 +82,8 @@ const RANGE_OPTIONS = [
 
 export default function Retrospectives() {
   const navigate = useNavigate();
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [activeBrandId, setActiveBrandId] = useState<string | null>(null);
+  const { activeBrand } = useBrand();
+  const activeBrandId = activeBrand?.id ?? null;
   const [retros, setRetros] = useState<RetroRow[]>([]);
   const [loadingRetros, setLoadingRetros] = useState(false);
 
@@ -95,22 +96,6 @@ export default function Retrospectives() {
 
   // Selected retro for viewing
   const [selectedRetro, setSelectedRetro] = useState<RetroRow | null>(null);
-
-  // Load brands + auto-select first.
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from('brands')
-        .select('id, name, meta_account_id')
-        .eq('user_id', user.id)
-        .order('name');
-      const list = (data as any[]) || [];
-      setBrands(list);
-      if (list.length > 0) setActiveBrandId(list[0].id);
-    })();
-  }, []);
 
   // Load retrospectives whenever brand changes.
   useEffect(() => {
@@ -147,10 +132,6 @@ export default function Retrospectives() {
     return () => { cancelled = true; };
   }, [activeBrandId]);
 
-  const activeBrand = useMemo(
-    () => brands.find(b => b.id === activeBrandId) || null,
-    [brands, activeBrandId],
-  );
 
   // Pull campaigns when the tray opens or the range changes.
   const loadCampaigns = async (days: number) => {
@@ -215,8 +196,7 @@ export default function Retrospectives() {
       if (!data?.success) throw new Error(data?.error || 'No retrospective returned');
       toast.success(`Retrospective ready: ${c.name}`);
       setTrayOpen(false);
-      // Refresh the retrospectives list.
-      setActiveBrandId(id => id); // bump effect
+      // The retrospectives list will refresh via the activeBrandId effect.
       // Also push the new row into the existing list immediately so the
       // user sees it without waiting for the requery.
       const r = data.retrospective;
@@ -257,19 +237,6 @@ export default function Retrospectives() {
             </p>
           </div>
           <div className="flex items-end gap-3">
-            {brands.length > 1 && (
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Brand</Label>
-                <Select value={activeBrandId ?? ''} onValueChange={setActiveBrandId}>
-                  <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {brands.map(b => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
             <Button variant="lumi" className="gap-1.5" onClick={handleOpenTray}>
               <Plus className="h-4 w-4" />
               Create retrospective
