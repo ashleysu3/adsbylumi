@@ -132,10 +132,6 @@ export default function Retrospectives() {
     return () => { cancelled = true; };
   }, [activeBrandId]);
 
-  const activeBrand = useMemo(
-    () => brands.find(b => b.id === activeBrandId) || null,
-    [brands, activeBrandId],
-  );
 
   // Pull campaigns when the tray opens or the range changes.
   const loadCampaigns = async (days: number) => {
