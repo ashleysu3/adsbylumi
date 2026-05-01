@@ -71,7 +71,14 @@ Deno.serve(async req => {
     const { data: brand, error: bErr } = await sb
       .from('brands').select('id, user_id, meta_account_id, meta_access_token').eq('id', brandId).single();
     if (bErr || !brand) return json({ error: 'Brand not found' }, 404);
-    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
+    if (brand.user_id !== user.id) {
+      const { data: roleRow } = await sb
+        .from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+      const { data: teamRow } = await sb
+        .from('brand_team_members').select('id')
+        .eq('brand_id', brandId).eq('user_id', user.id).eq('invite_status', 'accepted').maybeSingle();
+      if (!roleRow && !teamRow) return json({ error: 'Forbidden' }, 403);
+    }
     if (!brand.meta_account_id || !brand.meta_access_token) return json({ error: 'This brand is not connected to Meta yet' }, 400);
 
     const fields = [
