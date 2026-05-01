@@ -152,7 +152,7 @@ Deno.serve(async req => {
       .from('brands').select('id, user_id, name, meta_account_id, meta_access_token')
       .eq('id', workspace.brand_id).single();
     if (bErr || !brand) return json({ error: 'Brand not found' }, 404);
-    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
+    if (!(await canAccessBrand(sb, brand.user_id, user.id, brand.id))) return json({ error: 'Forbidden' }, 403);
 
     const metaCampaignId = (workspace.meta_campaign_ids as any)?.campaignId || null;
 
