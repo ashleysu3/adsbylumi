@@ -80,6 +80,16 @@ interface RetrospectiveJSON {
   generated_at: string;
 }
 
+async function canAccessBrand(sb: any, ownerId: string, userId: string, brandId: string): Promise<boolean> {
+  if (ownerId === userId) return true;
+  const { data: roleRow } = await sb.from('user_roles')
+    .select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+  if (roleRow) return true;
+  const { data: teamRow } = await sb.from('brand_team_members')
+    .select('id').eq('brand_id', brandId).eq('user_id', userId).eq('invite_status', 'accepted').maybeSingle();
+  return !!teamRow;
+}
+
 Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
