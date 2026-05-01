@@ -113,7 +113,7 @@ Deno.serve(async req => {
     let workspaceId: string | null = body?.workspaceId ?? null;
     if (!workspaceId && body?.metaCampaignId && body?.brandId) {
       const { data: ownerCheck } = await sb.from('brands').select('id, user_id').eq('id', body.brandId).single();
-      if (!ownerCheck || ownerCheck.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
+      if (!ownerCheck || !(await canAccessBrand(sb, ownerCheck.user_id, user.id, body.brandId))) return json({ error: 'Forbidden' }, 403);
       const { data: existingWs } = await sb.from('campaign_workspaces').select('id, meta_campaign_ids').eq('brand_id', body.brandId);
       const found = (existingWs || []).find((w: any) => w?.meta_campaign_ids?.campaignId === body.metaCampaignId);
       if (found) {
