@@ -369,6 +369,17 @@ function json(body: unknown, status: number) {
   });
 }
 
+async function canAccessBrand(sb: any, ownerId: string, userId: string, brandId: string): Promise<boolean> {
+  if (ownerId === userId) return true;
+  const { data: roleRow } = await sb
+    .from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+  if (roleRow) return true;
+  const { data: teamRow } = await sb
+    .from('brand_team_members').select('id')
+    .eq('brand_id', brandId).eq('user_id', userId).eq('invite_status', 'accepted').maybeSingle();
+  return !!teamRow;
+}
+
 function numberOr(v: any, fallback: any): any {
   const n = Number(v);
   if (!isFinite(n)) return fallback;
