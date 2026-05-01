@@ -442,11 +442,15 @@ async function fetchCampaignPerformance(
   ].join(',');
   const timeParam = dateRange
     ? `time_range=${encodeURIComponent(JSON.stringify({ since: dateRange.start, until: dateRange.end }))}`
-    : `date_preset=lifetime`;
+    : `date_preset=maximum`;
 
   try {
     const campaignRes = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields}&${timeParam}&level=campaign&access_token=${accessToken}`);
     const campaignData = await campaignRes.json();
+    if (!campaignRes.ok) {
+      console.error('Meta campaign insights fetch failed:', campaignData);
+      return null;
+    }
     const adsetRes = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields},adset_id,adset_name&${timeParam}&level=adset&access_token=${accessToken}`);
     const adsetData = await adsetRes.json();
     const adRes = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields},ad_id,ad_name,adset_id&${timeParam}&level=ad&access_token=${accessToken}`);
