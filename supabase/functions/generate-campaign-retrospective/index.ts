@@ -470,7 +470,7 @@ async function fetchCampaignPerformance(
 
   const timeParam = dateRange
     ? `time_range=${encodeURIComponent(JSON.stringify({ since: dateRange.start, until: dateRange.end }))}`
-    : `date_preset=lifetime`;
+    : `date_preset=maximum`;
 
   try {
     const campaignRes = await fetch(
