@@ -117,7 +117,8 @@ Deno.serve(async req => {
     let workspaceId: string | null = body?.workspaceId ?? null;
     if (!workspaceId && body?.metaCampaignId && body?.brandId) {
       const { data: ownerCheck } = await sb.from('brands').select('id, user_id').eq('id', body.brandId).single();
-      if (!ownerCheck || ownerCheck.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
+      if (!ownerCheck) return json({ error: 'Brand not found' }, 404);
+      if (!(await canAccessBrand(sb, ownerCheck.user_id, user.id, body.brandId))) return json({ error: 'Forbidden' }, 403);
       const { data: existingWs } = await sb.from('campaign_workspaces').select('id, meta_campaign_ids').eq('brand_id', body.brandId);
       const found = (existingWs || []).find((w: any) => w?.meta_campaign_ids?.campaignId === body.metaCampaignId);
       if (found) {
@@ -156,7 +157,7 @@ Deno.serve(async req => {
       .from('brands').select('id, user_id, name, meta_account_id, meta_access_token')
       .eq('id', workspace.brand_id).single();
     if (bErr || !brand) return json({ error: 'Brand not found' }, 404);
-    if (brand.user_id !== user.id) return json({ error: 'Forbidden' }, 403);
+    if (!(await canAccessBrand(sb, brand.user_id, user.id, brand.id))) return json({ error: 'Forbidden' }, 403);
 
     const metaCampaignId = (workspace.meta_campaign_ids as any)?.campaignId || null;
 
@@ -366,6 +367,17 @@ function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
     status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+async function canAccessBrand(sb: any, ownerId: string, userId: string, brandId: string): Promise<boolean> {
+  if (ownerId === userId) return true;
+  const { data: roleRow } = await sb
+    .from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+  if (roleRow) return true;
+  const { data: teamRow } = await sb
+    .from('brand_team_members').select('id')
+    .eq('brand_id', brandId).eq('user_id', userId).eq('invite_status', 'accepted').maybeSingle();
+  return !!teamRow;
 }
 
 function numberOr(v: any, fallback: any): any {
