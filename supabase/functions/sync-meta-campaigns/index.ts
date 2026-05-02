@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     console.log('Specific campaign IDs to sync:', campaignIds || 'all active');
 
     // Fetch campaigns from Meta API
-    const campaignsUrl = `https://graph.facebook.com/v21.0/${metaAccountId}/campaigns?fields=id,name,status,objective,created_time,daily_budget,lifetime_budget&limit=500&access_token=${metaAccessToken}`;
+    const campaignsUrl = `https://graph.facebook.com/v21.0/${metaAccountId}/campaigns?fields=id,name,status,effective_status,objective,created_time,daily_budget,lifetime_budget&limit=500&access_token=${metaAccessToken}`;
 
     const campaignsResponse = await fetch(campaignsUrl);
     const campaignsData = await campaignsResponse.json();
