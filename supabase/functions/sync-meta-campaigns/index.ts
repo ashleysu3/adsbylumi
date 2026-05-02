@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
     // both skip duplicates AND backfill `objective` on older rows that were
     // imported before the column existed. (One-time heal; subsequent syncs
     // are cheap no-ops.)
-    const existingByCampaignId = new Map<string, { id: string; objective: string | null; campaignBuilderAnswers: any }>();
+    const existingByCampaignId = new Map<string, { id: string; objective: string | null; campaignBuilderAnswers: any; metaCampaignStatus: string | null }>();
     for (const w of existingWorkspaces || []) {
       const campaignId = (w.meta_campaign_ids as any)?.campaignId;
       if (campaignId) {
@@ -208,6 +208,7 @@ Deno.serve(async (req) => {
           id: w.id,
           objective: (w as any).objective ?? null,
           campaignBuilderAnswers: (w as any).campaign_builder_answers ?? null,
+          metaCampaignStatus: (w as any).meta_campaign_status ?? null,
         });
       }
     }
