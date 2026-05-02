@@ -329,6 +329,14 @@ Deno.serve(async (req) => {
             updates.objective = campaign.objective;
           }
 
+          // ALWAYS refresh meta_campaign_status from Meta — fixes stale "active"
+          // rows that block the 10-live-campaign limit after a user paused or
+          // archived in Meta directly.
+          const freshStatus = mapMetaStatus(campaign.status, campaign.effective_status);
+          if (freshStatus !== existing.metaCampaignStatus) {
+            updates.meta_campaign_status = freshStatus;
+          }
+
           // Always refresh adSets on duplicate encounters — names may have
           // changed since import (user renamed Testing/Scaling in Meta).
           const refreshedAdSets = await fetchAdSetsWithRoles(campaign.id, metaAccessToken);
@@ -338,6 +346,7 @@ Deno.serve(async (req) => {
           }
 
           if (Object.keys(updates).length > 0) {
+            updates.updated_at = new Date().toISOString();
             const { error: backfillError } = await supabase
               .from('campaign_workspaces')
               .update(updates)
@@ -356,10 +365,8 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Determine campaign status based on Meta status
-      const metaStatus = campaign.status === 'ACTIVE' ? 'active' : 
-                         campaign.status === 'PAUSED' ? 'paused' : 
-                         campaign.status === 'ARCHIVED' ? 'archived' : 'unknown';
+      // Determine campaign status based on Meta effective_status (preferred) or status
+      const metaStatus = mapMetaStatus(campaign.status, campaign.effective_status);
 
       // ============================================
       // BUDGET RESOLUTION: Campaign-level or ad set aggregation
