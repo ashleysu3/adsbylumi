@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
     // when backfilling ad-set info onto older rows.
     const { data: existingWorkspaces, error: fetchError } = await supabase
       .from('campaign_workspaces')
-      .select('id, meta_campaign_ids, objective, campaign_builder_answers')
+      .select('id, meta_campaign_ids, objective, campaign_builder_answers, meta_campaign_status')
       .eq('brand_id', brandId);
 
     if (fetchError) {
