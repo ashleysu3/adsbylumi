@@ -5,11 +5,25 @@ interface MetaCampaign {
   id: string;
   name: string;
   status: string;
+  effective_status?: string;
   objective: string;
   created_time: string;
   daily_budget?: string;
   lifetime_budget?: string;
 }
+
+// Map Meta's status / effective_status into our internal token
+const mapMetaStatus = (status?: string, effective?: string): string => {
+  const s = (effective || status || '').toUpperCase();
+  if (s === 'ACTIVE') return 'active';
+  if (s === 'PAUSED' || s === 'CAMPAIGN_PAUSED' || s === 'ADSET_PAUSED') return 'paused';
+  if (s === 'ARCHIVED') return 'archived';
+  if (s === 'DELETED') return 'deleted';
+  if (s === 'PENDING_REVIEW' || s === 'IN_PROCESS') return 'pending_review';
+  if (s === 'DISAPPROVED') return 'disapproved';
+  if (s === 'WITH_ISSUES') return 'with_issues';
+  return s.toLowerCase() || 'unknown';
+};
 
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
