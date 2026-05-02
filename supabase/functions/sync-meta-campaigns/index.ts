@@ -154,6 +154,36 @@ Deno.serve(async (req) => {
     const allCampaigns: MetaCampaign[] = campaignsData.data || [];
     console.log(`Fetched ${allCampaigns.length} total campaigns from Meta`);
 
+    // Fetch existing workspaces for this brand FIRST so we can also refresh
+    // status on campaigns the user paused/archived in Meta directly. We pull
+    // campaign_builder_answers + meta_campaign_status so the backfill path can
+    // merge rather than overwrite, and detect stale status rows.
+    const { data: existingWorkspaces, error: fetchError } = await supabase
+      .from('campaign_workspaces')
+      .select('id, meta_campaign_ids, objective, campaign_builder_answers, meta_campaign_status')
+      .eq('brand_id', brandId);
+
+    if (fetchError) {
+      console.error('Error fetching existing workspaces:', fetchError);
+      throw fetchError;
+    }
+
+    const existingByCampaignId = new Map<string, { id: string; objective: string | null; campaignBuilderAnswers: any; metaCampaignStatus: string | null }>();
+    for (const w of existingWorkspaces || []) {
+      const campaignId = (w.meta_campaign_ids as any)?.campaignId;
+      if (campaignId) {
+        existingByCampaignId.set(campaignId, {
+          id: w.id,
+          objective: (w as any).objective ?? null,
+          campaignBuilderAnswers: (w as any).campaign_builder_answers ?? null,
+          metaCampaignStatus: (w as any).meta_campaign_status ?? null,
+        });
+      }
+    }
+    const existingCampaignIds = new Set(existingByCampaignId.keys());
+
+    console.log(`Found ${existingCampaignIds.size} existing campaign workspaces`);
+
     // Filter campaigns based on whether specific IDs were provided
     let campaignsToSync: MetaCampaign[];
 
@@ -163,9 +193,13 @@ Deno.serve(async (req) => {
       campaignsToSync = allCampaigns.filter((campaign) => campaignIdSet.has(campaign.id));
       console.log(`Found ${campaignsToSync.length} campaigns matching specified IDs`);
     } else {
-      // Default behavior: sync only active campaigns
-      campaignsToSync = allCampaigns.filter((campaign) => campaign.status === 'ACTIVE');
-      console.log(`Found ${campaignsToSync.length} active campaigns`);
+      // Default behavior: include all ACTIVE Meta campaigns AND any campaign
+      // we already track in a workspace (regardless of Meta status) so we can
+      // refresh paused/archived statuses and stop counting them as "live".
+      campaignsToSync = allCampaigns.filter((campaign) =>
+        campaign.status === 'ACTIVE' || existingCampaignIds.has(campaign.id)
+      );
+      console.log(`Found ${campaignsToSync.length} campaigns to sync (active + tracked)`);
     }
 
     if (campaignsToSync.length === 0) {
@@ -183,41 +217,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch existing workspaces for this brand to check for duplicates.
-    // We also pull campaign_builder_answers so we can merge (not clobber)
-    // when backfilling ad-set info onto older rows.
-    const { data: existingWorkspaces, error: fetchError } = await supabase
-      .from('campaign_workspaces')
-      .select('id, meta_campaign_ids, objective, campaign_builder_answers, meta_campaign_status')
-      .eq('brand_id', brandId);
-
-    if (fetchError) {
-      console.error('Error fetching existing workspaces:', fetchError);
-      throw fetchError;
-    }
-
-    // Build a map of Meta campaign ID → existing workspace row so we can
-    // both skip duplicates AND backfill `objective` on older rows that were
-    // imported before the column existed. (One-time heal; subsequent syncs
-    // are cheap no-ops.)
-    const existingByCampaignId = new Map<string, { id: string; objective: string | null; campaignBuilderAnswers: any; metaCampaignStatus: string | null }>();
-    for (const w of existingWorkspaces || []) {
-      const campaignId = (w.meta_campaign_ids as any)?.campaignId;
-      if (campaignId) {
-        existingByCampaignId.set(campaignId, {
-          id: w.id,
-          objective: (w as any).objective ?? null,
-          campaignBuilderAnswers: (w as any).campaign_builder_answers ?? null,
-          metaCampaignStatus: (w as any).meta_campaign_status ?? null,
-        });
-      }
-    }
-    const existingCampaignIds = new Set(existingByCampaignId.keys());
-
-    // Update select to also include campaign_builder_answers so the backfill
-    // path can merge rather than overwrite.
-
-    console.log(`Found ${existingCampaignIds.size} existing campaign workspaces`);
 
     // Helper: classify an ad-set role by name. Used so the frontend can
     // target "Increase budget" at the Scaling set specifically. Zero-config
