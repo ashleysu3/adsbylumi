@@ -242,11 +242,13 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('Error in check-campaign-status:', error);
+    // Per platform standard: 200 OK + JSON error so the client gets a
+    // readable message instead of "non-2xx status code".
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      JSON.stringify({ success: false, error: error.message || 'Unknown error' }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

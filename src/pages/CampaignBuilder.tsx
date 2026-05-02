@@ -181,7 +181,18 @@ export default function CampaignBuilder() {
         }
       }
 
-      // Enforce 10 live campaign limit
+      // Enforce 10 live campaign limit — first refresh statuses from Meta
+      // so paused/archived campaigns the user toggled in Meta directly stop
+      // counting as live (otherwise stale "active" rows can falsely trip
+      // this limit). Best-effort; ignore sync errors.
+      try {
+        await supabase.functions.invoke('sync-meta-campaigns', {
+          body: { brandId: workspace.brand_id },
+        });
+      } catch (syncErr) {
+        console.warn('Pre-publish status refresh failed (continuing):', syncErr);
+      }
+
       const { count, error: countError } = await supabase
         .from('campaign_workspaces')
         .select('*', { count: 'exact', head: true })
