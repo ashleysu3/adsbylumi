@@ -38,6 +38,7 @@ serve(async (req) => {
       creativeJson,
       productionItems,
       offerUrl,
+      selectedCopy,
       template,
     } = await req.json();
 
@@ -48,7 +49,9 @@ serve(async (req) => {
     // Resolve landing page URL from multiple sources
     const resolvedUrl = offerUrl 
       || answers?.destinationUrl 
+      || answers?.finalUrl
       || brand?.website_url 
+      || extractUrlFromSelectedCopy(selectedCopy)
       || extractUrlFromProductionItems(productionItems)
       || null;
     console.log('Resolved landing page URL:', resolvedUrl, '(offerUrl:', offerUrl, ')');
