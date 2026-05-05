@@ -538,6 +538,114 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "list_coupons": {
+        const limit = Math.min(Math.max(Number(params?.limit) || 100, 1), 100);
+        const coupons = await stripe.coupons.list({ limit });
+        // Fetch promotion codes for each coupon (best-effort)
+        const enriched = await Promise.all(coupons.data.map(async (c: any) => {
+          let promoCodes: any[] = [];
+          try {
+            const promos = await stripe.promotionCodes.list({ coupon: c.id, limit: 10 });
+            promoCodes = promos.data.map((p: any) => ({
+              id: p.id,
+              code: p.code,
+              active: p.active,
+              times_redeemed: p.times_redeemed,
+              max_redemptions: p.max_redemptions,
+              expires_at: p.expires_at ? new Date(p.expires_at * 1000).toISOString() : null,
+            }));
+          } catch (_) { /* ignore */ }
+          return {
+            id: c.id,
+            name: c.name,
+            percent_off: c.percent_off,
+            amount_off: c.amount_off,
+            currency: c.currency,
+            duration: c.duration,
+            duration_in_months: c.duration_in_months,
+            max_redemptions: c.max_redemptions,
+            times_redeemed: c.times_redeemed,
+            redeem_by: c.redeem_by ? new Date(c.redeem_by * 1000).toISOString() : null,
+            valid: c.valid,
+            created: new Date(c.created * 1000).toISOString(),
+            promotion_codes: promoCodes,
+          };
+        }));
+        result = { coupons: enriched };
+        break;
+      }
+
+      case "create_coupon": {
+        const p = params || {};
+        if (!p.name || typeof p.name !== "string") throw new Error("params.name is required");
+        if (!p.percent_off && !p.amount_off) throw new Error("Provide either percent_off or amount_off");
+        if (p.percent_off && p.amount_off) throw new Error("Provide only one of percent_off or amount_off");
+
+        const couponParams: any = { name: p.name.trim() };
+        if (p.percent_off) {
+          const pct = Number(p.percent_off);
+          if (!(pct > 0 && pct <= 100)) throw new Error("percent_off must be between 0 and 100");
+          couponParams.percent_off = pct;
+        } else {
+          const amt = Math.round(Number(p.amount_off));
+          if (!(amt > 0)) throw new Error("amount_off must be a positive integer (cents)");
+          couponParams.amount_off = amt;
+          couponParams.currency = (p.currency || "usd").toLowerCase();
+        }
+        const duration = p.duration || "once";
+        if (!["once", "repeating", "forever"].includes(duration)) {
+          throw new Error("duration must be once, repeating, or forever");
+        }
+        couponParams.duration = duration;
+        if (duration === "repeating") {
+          const months = Math.round(Number(p.duration_in_months));
+          if (!(months > 0)) throw new Error("duration_in_months required for repeating");
+          couponParams.duration_in_months = months;
+        }
+        if (p.max_redemptions) couponParams.max_redemptions = Math.round(Number(p.max_redemptions));
+        if (p.redeem_by) {
+          const ts = Math.floor(new Date(p.redeem_by).getTime() / 1000);
+          if (!isNaN(ts)) couponParams.redeem_by = ts;
+        }
+
+        const coupon = await stripe.coupons.create(couponParams);
+
+        // Optionally create a customer-facing promotion code
+        let promoCode: any = null;
+        if (p.promo_code && typeof p.promo_code === "string" && p.promo_code.trim()) {
+          const promoParams: any = {
+            coupon: coupon.id,
+            code: p.promo_code.trim().toUpperCase(),
+          };
+          if (p.max_redemptions) promoParams.max_redemptions = Math.round(Number(p.max_redemptions));
+          if (p.redeem_by) {
+            const ts = Math.floor(new Date(p.redeem_by).getTime() / 1000);
+            if (!isNaN(ts)) promoParams.expires_at = ts;
+          }
+          promoCode = await stripe.promotionCodes.create(promoParams);
+        }
+
+        result = { success: true, coupon, promotion_code: promoCode };
+        break;
+      }
+
+      case "delete_coupon": {
+        const couponId = params?.coupon_id;
+        if (!couponId) throw new Error("params.coupon_id is required");
+        const deleted = await stripe.coupons.del(couponId);
+        result = { success: true, deleted };
+        break;
+      }
+
+      case "toggle_promotion_code": {
+        const promoId = params?.promotion_code_id;
+        if (!promoId) throw new Error("params.promotion_code_id is required");
+        const active = !!params?.active;
+        const updated = await stripe.promotionCodes.update(promoId, { active });
+        result = { success: true, promotion_code: updated };
+        break;
+      }
+
       default:
         throw new Error(`Unknown action: ${action}`);
     }

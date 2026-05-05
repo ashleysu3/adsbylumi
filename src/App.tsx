@@ -38,6 +38,7 @@ import AdminUsers from "./pages/admin/Users";
 import AdminSettings from "./pages/admin/Settings";
 import AdminTeam from "./pages/admin/Team";
 import AdminStripe from "./pages/admin/Stripe";
+import AdminCoupons from "./pages/admin/Coupons";
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
@@ -163,6 +164,7 @@ const App = () => {
                   <Route path="/admin/settings" element={<AdminSettings />} />
                   <Route path="/admin/team" element={<AdminTeam />} />
                   <Route path="/admin/stripe" element={<AdminStripe />} />
+                  <Route path="/admin/coupons" element={<AdminCoupons />} />
                   <Route path="/admin/email-logs" element={<AdminEmailLogs />} />
                   <Route path="/admin/cancellations" element={<AdminCancellations />} />
                   <Route path="/admin/dispute-evidence" element={<AdminDisputeEvidence />} />
