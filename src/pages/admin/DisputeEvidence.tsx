@@ -100,7 +100,6 @@ export default function DisputeEvidence() {
         supabase.from("subscriptions").select("*").eq("user_id", p.id).limit(1).single(),
         (supabase.from("cancellation_requests" as any) as any).select("*").eq("user_id", p.id).order("created_at", { ascending: false }),
         supabase.functions.invoke("stripe-admin", {
-          headers: { "x-admin-secret": adminSecret },
           body: { action: "get_dispute_evidence", email: p.email },
         }),
       ]);
