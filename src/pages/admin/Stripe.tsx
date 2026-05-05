@@ -97,7 +97,7 @@ export default function AdminStripe() {
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === "Enter" && lookupCustomer()}
             />
-            <Button onClick={lookupCustomer} disabled={loading || !secretLocked}>
+            <Button onClick={lookupCustomer} disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Look Up"}
             </Button>
           </CardContent>
