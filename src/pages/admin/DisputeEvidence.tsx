@@ -264,15 +264,6 @@ export default function DisputeEvidence() {
           <CardContent className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1">
-                <Label className="text-xs text-muted-foreground mb-1 block">Admin Secret</Label>
-                <Input
-                  type="password"
-                  placeholder="Enter STRIPE_ADMIN_SECRET"
-                  value={adminSecret}
-                  onChange={(e) => setAdminSecret(e.target.value)}
-                />
-              </div>
-              <div className="flex-1">
                 <Label className="text-xs text-muted-foreground mb-1 block">Search by email or name</Label>
                 <div className="flex gap-2">
                   <Input
