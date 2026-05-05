@@ -92,9 +92,36 @@ serve(async (req) => {
 function extractUrlFromProductionItems(items: any[]): string | null {
   if (!items || !Array.isArray(items)) return null;
   for (const item of items) {
-    const copy = item?.finalCopy || item?.final_copy || {};
-    const url = copy?.destinationUrl || copy?.destination_url || copy?.url;
+    const copy = item?.finalCopy || item?.final_copy || item?.copy || {};
+    const url = copy?.destinationUrl || copy?.destination_url || copy?.url
+      || copy?.landingPageUrl || copy?.landing_page_url
+      || item?.destinationUrl || item?.destination_url || item?.url;
     if (url && typeof url === 'string' && url.trim()) return url.trim();
+  }
+  return null;
+}
+
+function extractUrlFromSelectedCopy(selectedCopy: any): string | null {
+  if (!selectedCopy || typeof selectedCopy !== 'object') return null;
+  const stack: any[] = [selectedCopy];
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node) continue;
+    if (typeof node === 'string') {
+      const t = node.trim();
+      if (/^https?:\/\//i.test(t)) return t;
+      continue;
+    }
+    if (Array.isArray(node)) { stack.push(...node); continue; }
+    if (typeof node === 'object') {
+      for (const k of Object.keys(node)) {
+        const v = (node as any)[k];
+        if (typeof v === 'string' && /url|link|destination/i.test(k) && /^https?:\/\//i.test(v.trim())) {
+          return v.trim();
+        }
+        stack.push(v);
+      }
+    }
   }
   return null;
 }
