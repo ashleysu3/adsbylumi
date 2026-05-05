@@ -13,11 +13,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Search, Loader2, CreditCard, ReceiptText, XCircle, RotateCcw,
-  Tag, DollarSign, Lock, KeyRound,
+  Tag, DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
-
-const FUNCTION_URL = `https://sqwjbndgighjtifijgws.supabase.co/functions/v1/stripe-admin`;
+import { supabase } from "@/integrations/supabase/client";
 
 interface StripeCustomer {
   customer: { id: string; email: string; name: string | null; created: number };
@@ -30,8 +29,6 @@ interface StripeCustomer {
 }
 
 export default function AdminStripe() {
-  const [adminSecret, setAdminSecret] = useState(() => sessionStorage.getItem("stripe_admin_secret") || "");
-  const [secretLocked, setSecretLocked] = useState(() => !!sessionStorage.getItem("stripe_admin_secret"));
   const [email, setEmail] = useState("");
   const [customer, setCustomer] = useState<StripeCustomer | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,23 +39,10 @@ export default function AdminStripe() {
   const [priceId, setPriceId] = useState("");
   const [refundAmount, setRefundAmount] = useState("");
 
-  const lockSecret = () => {
-    if (!adminSecret.trim()) { toast.error("Enter your admin secret first."); return; }
-    sessionStorage.setItem("stripe_admin_secret", adminSecret.trim());
-    setSecretLocked(true);
-    toast.success("Admin secret saved for this session.");
-  };
-
   const callStripeAdmin = useCallback(async (body: Record<string, any>) => {
-    const secret = sessionStorage.getItem("stripe_admin_secret");
-    if (!secret) { toast.error("Admin secret not set."); return null; }
-    const res = await fetch(FUNCTION_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-secret": secret },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Request failed");
+    const { data, error } = await supabase.functions.invoke("stripe-admin", { body });
+    if (error) throw new Error(error.message || "Request failed");
+    if (data?.error) throw new Error(data.error);
     return data;
   }, []);
 
@@ -100,32 +84,6 @@ export default function AdminStripe() {
     <DashboardLayout>
       <AdminTabs />
       <div className="space-y-6 max-w-3xl">
-        {/* Admin Secret */}
-        {!secretLocked ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base"><KeyRound className="h-4 w-4" /> Admin Secret</CardTitle>
-              <CardDescription>Enter your STRIPE_ADMIN_SECRET to authenticate requests. Stored only for this browser session.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex gap-2">
-              <Input
-                type="password"
-                placeholder="Paste admin secret…"
-                value={adminSecret}
-                onChange={e => setAdminSecret(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && lockSecret()}
-              />
-              <Button onClick={lockSecret}><Lock className="h-4 w-4 mr-1" /> Lock</Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Lock className="h-3 w-3" /> Admin secret set for this session.
-            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { sessionStorage.removeItem("stripe_admin_secret"); setSecretLocked(false); setAdminSecret(""); }}>
-              Change
-            </Button>
-          </div>
-        )}
 
         {/* Customer Lookup */}
         <Card>
@@ -139,7 +97,7 @@ export default function AdminStripe() {
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === "Enter" && lookupCustomer()}
             />
-            <Button onClick={lookupCustomer} disabled={loading || !secretLocked}>
+            <Button onClick={lookupCustomer} disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Look Up"}
             </Button>
           </CardContent>

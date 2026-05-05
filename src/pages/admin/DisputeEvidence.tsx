@@ -53,7 +53,6 @@ interface CancelRequest {
 export default function DisputeEvidence() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [adminSecret, setAdminSecret] = useState("");
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [subData, setSubData] = useState<SubData | null>(null);
   const [stripeData, setStripeData] = useState<StripeData | null>(null);
@@ -70,7 +69,7 @@ export default function DisputeEvidence() {
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-    if (!adminSecret.trim()) { toast.error("Enter admin secret first."); return; }
+
 
     setLoading(true);
     setProfile(null);
@@ -101,7 +100,6 @@ export default function DisputeEvidence() {
         supabase.from("subscriptions").select("*").eq("user_id", p.id).limit(1).single(),
         (supabase.from("cancellation_requests" as any) as any).select("*").eq("user_id", p.id).order("created_at", { ascending: false }),
         supabase.functions.invoke("stripe-admin", {
-          headers: { "x-admin-secret": adminSecret },
           body: { action: "get_dispute_evidence", email: p.email },
         }),
       ]);
@@ -265,15 +263,6 @@ export default function DisputeEvidence() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <Label className="text-xs text-muted-foreground mb-1 block">Admin Secret</Label>
-                <Input
-                  type="password"
-                  placeholder="Enter STRIPE_ADMIN_SECRET"
-                  value={adminSecret}
-                  onChange={(e) => setAdminSecret(e.target.value)}
-                />
-              </div>
               <div className="flex-1">
                 <Label className="text-xs text-muted-foreground mb-1 block">Search by email or name</Label>
                 <div className="flex gap-2">
