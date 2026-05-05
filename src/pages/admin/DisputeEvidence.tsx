@@ -53,7 +53,6 @@ interface CancelRequest {
 export default function DisputeEvidence() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
-  const [adminSecret, setAdminSecret] = useState("");
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [subData, setSubData] = useState<SubData | null>(null);
   const [stripeData, setStripeData] = useState<StripeData | null>(null);
@@ -70,7 +69,7 @@ export default function DisputeEvidence() {
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-    if (!adminSecret.trim()) { toast.error("Enter admin secret first."); return; }
+
 
     setLoading(true);
     setProfile(null);
