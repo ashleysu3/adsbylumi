@@ -72,7 +72,7 @@ export default function CampaignBuilder() {
 
       const { data, error } = await supabase
         .from('campaign_workspaces')
-        .select(`*, brands!inner(*), campaign_templates(*)`)
+        .select(`*, brands!inner(*), campaign_templates(*), offers(id, name, url, price)`)
         .eq('id', workspaceId)
         .single();
 
