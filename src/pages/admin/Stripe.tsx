@@ -13,11 +13,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Search, Loader2, CreditCard, ReceiptText, XCircle, RotateCcw,
-  Tag, DollarSign, Lock, KeyRound,
+  Tag, DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
-
-const FUNCTION_URL = `https://sqwjbndgighjtifijgws.supabase.co/functions/v1/stripe-admin`;
+import { supabase } from "@/integrations/supabase/client";
 
 interface StripeCustomer {
   customer: { id: string; email: string; name: string | null; created: number };
