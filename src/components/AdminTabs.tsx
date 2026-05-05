@@ -35,6 +35,7 @@ const adminGroups: AdminGroup[] = [
     icon: DollarSign,
     tabs: [
       { path: "/admin/stripe", label: "Stripe", icon: DollarSign },
+      { path: "/admin/coupons", label: "Coupons", icon: Tag },
       { path: "/admin/cancellations", label: "Cancellations", icon: XCircle },
       { path: "/admin/dispute-evidence", label: "Disputes", icon: FileWarning },
     ],
