@@ -194,8 +194,29 @@ export default function AdminBugReports() {
         }
       });
       if (error) throw error;
-      toast.success("Email sent successfully");
-      setEmailOpen(false);
+
+      // If user was told the issue is fixed, auto-mark resolved & close
+      if (selectedTemplate === 'fixed') {
+        const { error: statusError } = await supabase.functions.invoke("manage-bug-report", {
+          body: {
+            action: "update_status",
+            reportId: selectedReport.id,
+            status: "resolved",
+            resolutionNotes: resolutionNotes || "Resolved — fix confirmation email sent to user.",
+          },
+        });
+        if (statusError) throw statusError;
+        toast.success("✅ Email sent & bug marked resolved", {
+          description: `${selectedReport.user_email} has been notified.`,
+        });
+        fetchReports();
+        setEmailOpen(false);
+        setDetailOpen(false);
+        setSelectedReport(null);
+      } else {
+        toast.success("Email sent successfully");
+        setEmailOpen(false);
+      }
       setSelectedTemplate("");
       setCustomMessage("");
     } catch (error: any) {
