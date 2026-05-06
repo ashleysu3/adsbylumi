@@ -292,6 +292,27 @@ export default function AdminBugReports() {
     setActionLoading(null);
   };
 
+  const handleFixInCode = async (reportId: string) => {
+    setActionLoading("fix-in-code");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-bug-to-lovable", {
+        body: { reportId }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Sent to Slack — paste it into Lovable to fix", {
+        description: "Bug marked as In Progress.",
+      });
+      fetchReports();
+      if (selectedReport?.id === reportId) {
+        setSelectedReport({ ...selectedReport, status: 'in_progress' });
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send to Slack");
+    }
+    setActionLoading(null);
+  };
+
   const filteredReports = reports.filter(report => {
     const matchesSearch = 
       report.user_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
