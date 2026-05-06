@@ -16,14 +16,18 @@ const REMEMBERED_EMAIL_KEY = "lumi_remembered_email";
 export default function Auth() {
   const searchParams = new URLSearchParams(window.location.search);
   const startWithSignup = searchParams.get('signup') === 'true';
+  const hasPaid = searchParams.get('paid') === 'true';
   const returnToParam = searchParams.get('returnTo');
   const inviteToken = searchParams.get('invite');
   const safeReturnTo =
     returnToParam && returnToParam.startsWith('/') && !returnToParam.startsWith('//')
       ? returnToParam
       : null;
-  
-  const [isLogin, setIsLogin] = useState(!startWithSignup);
+
+  // Payment-first: only allow signup form for users coming back from Stripe checkout
+  // (paid=true) or accepting a team invite. Anyone else gets sent to the checkout page.
+  const canShowSignup = hasPaid || !!inviteToken;
+  const [isLogin, setIsLogin] = useState(!startWithSignup || !canShowSignup);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -83,7 +87,12 @@ export default function Auth() {
         
         if (rememberMe) {
           localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
-        } else {
+      } else {
+        if (!canShowSignup) {
+          toast.error("Please choose a plan to create your account.");
+          navigate('/freetrial');
+          return;
+        }
           localStorage.removeItem(REMEMBERED_EMAIL_KEY);
         }
         
@@ -263,15 +272,29 @@ export default function Auth() {
             </Button>
           </form>
           <div className="mt-6 text-center text-sm">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Sign in"}
-            </button>
+            {isLogin ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (canShowSignup) {
+                    setIsLogin(false);
+                  } else {
+                    navigate('/freetrial');
+                  }
+                }}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Don't have an account? Choose a plan
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsLogin(true)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Already have an account? Sign in
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
