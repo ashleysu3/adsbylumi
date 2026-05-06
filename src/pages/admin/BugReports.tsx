@@ -756,10 +756,10 @@ Please investigate the root cause, propose a fix, and implement it.`;
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Sends a fully formatted fix prompt (with all bug context, page URL, and screenshot link) to the <code className="text-xs bg-muted px-1 rounded">#bug-reports</code> Slack channel. Anyone can grab it and paste it straight into Lovable — no Lovable login required to trigger this.
+                          Opens a pop-up with a fully formatted fix prompt (bug details, page URL, screenshot link, and chat context). Copy it and paste straight into Lovable.
                         </p>
                         <Button
-                          onClick={() => handleFixInCode(selectedReport.id)}
+                          onClick={() => handleFixInCode(selectedReport)}
                           disabled={actionLoading === "fix-in-code"}
                           className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white"
                         >
