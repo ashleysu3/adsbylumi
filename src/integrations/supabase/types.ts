@@ -1493,6 +1493,54 @@ export type Database = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          edge_function: string | null
+          enabled: boolean
+          id: string
+          intro: string | null
+          key: string
+          label: string
+          outro: string | null
+          subject: string | null
+          trigger_description: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          edge_function?: string | null
+          enabled?: boolean
+          id?: string
+          intro?: string | null
+          key: string
+          label: string
+          outro?: string | null
+          subject?: string | null
+          trigger_description?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          edge_function?: string | null
+          enabled?: boolean
+          id?: string
+          intro?: string | null
+          key?: string
+          label?: string
+          outro?: string | null
+          subject?: string | null
+          trigger_description?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invite_codes: {
         Row: {
           active: boolean | null

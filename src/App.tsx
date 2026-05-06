@@ -58,6 +58,7 @@ import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import AdminEmailLogs from "./pages/admin/EmailLogs";
+import AdminEmails from "./pages/admin/Emails";
 import AdminCancellations from "./pages/admin/Cancellations";
 import AdminDisputeEvidence from "./pages/admin/DisputeEvidence";
 import ClientPortal from "./pages/ClientPortal";
@@ -166,6 +167,7 @@ const App = () => {
                   <Route path="/admin/stripe" element={<AdminStripe />} />
                   <Route path="/admin/coupons" element={<AdminCoupons />} />
                   <Route path="/admin/email-logs" element={<AdminEmailLogs />} />
+                  <Route path="/admin/emails" element={<AdminEmails />} />
                   <Route path="/admin/cancellations" element={<AdminCancellations />} />
                   <Route path="/admin/dispute-evidence" element={<AdminDisputeEvidence />} />
                   <Route path="/client-portal/:portalId" element={<ClientPortal />} />
