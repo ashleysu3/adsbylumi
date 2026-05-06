@@ -926,6 +926,31 @@ Please investigate the root cause, propose a fix, and implement it.`;
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Fix-in-Code Prompt Dialog */}
+        <Dialog open={fixPromptOpen} onOpenChange={setFixPromptOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-purple-600">
+                <Sparkles className="h-4 w-4" /> Fix it in the Code
+              </DialogTitle>
+              <DialogDescription>
+                Copy this prompt and paste it into Lovable chat to fix the bug.
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea
+              value={fixPromptText}
+              onChange={(e) => setFixPromptText(e.target.value)}
+              className="min-h-[360px] font-mono text-xs"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setFixPromptOpen(false)}>Close</Button>
+              <Button onClick={handleCopyFixPrompt} className="bg-purple-600 hover:bg-purple-700 text-white gap-2">
+                <Sparkles className="h-4 w-4" /> Copy prompt
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
