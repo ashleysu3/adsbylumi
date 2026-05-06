@@ -194,6 +194,9 @@ export function ProductionManager({
   const [resolvedAssetUrls, setResolvedAssetUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const verticalFileInputRef = useRef<HTMLInputElement>(null);
+  const [orphanRelinkOpen, setOrphanRelinkOpen] = useState(false);
+  const [orphanToRelink, setOrphanToRelink] = useState<any>(null);
+  const [relinking, setRelinking] = useState<string | null>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
   const uploadedAssetSignature = uploadedAssets
