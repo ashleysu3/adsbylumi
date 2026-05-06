@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { 
@@ -518,8 +517,8 @@ export default function AdminBugReports() {
 
         {/* Detail Dialog */}
         <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col min-h-0">
-            <DialogHeader>
+          <DialogContent className="max-w-4xl h-[90dvh] overflow-hidden flex flex-col min-h-0 p-0">
+            <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
               <DialogTitle className="flex items-center gap-2">
                 <Bug className="h-5 w-5" />
                 Bug Report Details
@@ -530,14 +529,14 @@ export default function AdminBugReports() {
             </DialogHeader>
 
             {selectedReport && (
-              <Tabs defaultValue="details" className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                <TabsList className="w-full justify-start">
+              <Tabs defaultValue="details" className="flex-1 min-h-0 overflow-hidden flex flex-col px-6 pb-6">
+                <TabsList className="w-full justify-start shrink-0">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="actions">Actions</TabsTrigger>
                   <TabsTrigger value="billing">Billing Actions</TabsTrigger>
                 </TabsList>
 
-                <ScrollArea className="flex-1 min-h-0 mt-4 h-full">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-2">
                   <TabsContent value="details" className="space-y-4 pr-4">
                     {/* Status & Priority */}
                     <div className="grid grid-cols-2 gap-4">
@@ -903,7 +902,7 @@ export default function AdminBugReports() {
                       </CardContent>
                     </Card>
                   </TabsContent>
-                </ScrollArea>
+                </div>
               </Tabs>
             )}
           </DialogContent>
