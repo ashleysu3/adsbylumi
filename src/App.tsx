@@ -58,6 +58,7 @@ import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import AdminEmailLogs from "./pages/admin/EmailLogs";
+import AdminEmails from "./pages/admin/Emails";
 import AdminCancellations from "./pages/admin/Cancellations";
 import AdminDisputeEvidence from "./pages/admin/DisputeEvidence";
 import ClientPortal from "./pages/ClientPortal";
