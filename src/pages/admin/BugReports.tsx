@@ -89,6 +89,8 @@ export default function AdminBugReports() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [fixPromptOpen, setFixPromptOpen] = useState(false);
+  const [fixPromptText, setFixPromptText] = useState("");
   
   // Email form state
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
