@@ -194,6 +194,9 @@ export function ProductionManager({
   const [resolvedAssetUrls, setResolvedAssetUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const verticalFileInputRef = useRef<HTMLInputElement>(null);
+  const [orphanRelinkOpen, setOrphanRelinkOpen] = useState(false);
+  const [orphanToRelink, setOrphanToRelink] = useState<any>(null);
+  const [relinking, setRelinking] = useState<string | null>(null);
   
   const uploadedAssets = workspace?.user_uploaded_assets || [];
   const uploadedAssetSignature = uploadedAssets
@@ -399,6 +402,68 @@ export function ProductionManager({
   // Updated readiness check - needs 3+ concepts AND at least one upload
   const isReadyToBuild = productionItems.length >= 1 && hasAtLeastOneUpload;
   const hasAnyCopy = Object.keys(angleCopy).length > 0;
+
+  // Detect "orphaned" uploaded assets whose linked concept no longer exists
+  // in productionItems. This happens when a user regenerates concepts after
+  // uploading creative — the uploads are still in storage but invisible.
+  const productionItemIds = new Set(
+    productionItems.flatMap((i) => [i.id, `${i.id}_vertical`])
+  );
+  const orphanedUploads = (uploadedAssets as any[]).filter((a) => {
+    if (!a?.linked_concept_id) return false;
+    return !productionItemIds.has(a.linked_concept_id);
+  });
+
+  const handleRelinkOrphan = async (orphan: any, targetItem: ProductionItem) => {
+    if (!workspace?.id) return;
+    setRelinking(orphan.id);
+    try {
+      const isVertical = !!orphan.is_vertical_version;
+      const newConceptId = isVertical ? `${targetItem.id}_vertical` : targetItem.id;
+      const updated = uploadedAssets.map((a: any) =>
+        a.id === orphan.id
+          ? {
+              ...a,
+              linked_concept_id: newConceptId,
+              linked_concept_title: isVertical ? `${targetItem.hook} (9:16)` : targetItem.hook,
+            }
+          : a
+      );
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({ user_uploaded_assets: updated, updated_at: new Date().toISOString() })
+        .eq("id", workspace.id);
+      if (error) throw error;
+      onUpdateWorkspace?.({ user_uploaded_assets: updated });
+      toast.success("Upload relinked to concept");
+      setOrphanRelinkOpen(false);
+      setOrphanToRelink(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to relink upload");
+    } finally {
+      setRelinking(null);
+    }
+  };
+
+  const handleDeleteOrphan = async (orphan: any) => {
+    if (!workspace?.id) return;
+    setRelinking(orphan.id);
+    try {
+      const updated = uploadedAssets.filter((a: any) => a.id !== orphan.id);
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({ user_uploaded_assets: updated, updated_at: new Date().toISOString() })
+        .eq("id", workspace.id);
+      if (error) throw error;
+      onUpdateWorkspace?.({ user_uploaded_assets: updated });
+      toast.success("Upload removed");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to remove upload");
+    } finally {
+      setRelinking(null);
+    }
+  };
+
   
   const handleRankConcepts = async () => {
     if (!brandId) {
@@ -1116,6 +1181,70 @@ export function ProductionManager({
               )}
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Orphaned Uploads Recovery */}
+              {orphanedUploads.length > 0 && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-amber-900">
+                        We found {orphanedUploads.length} uploaded file{orphanedUploads.length === 1 ? "" : "s"} from a previous concept set
+                      </p>
+                      <p className="text-xs text-amber-800 mt-1">
+                        These uploads are still saved — they were attached to concepts that have since been replaced. Relink each one to a current concept, or remove it.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {orphanedUploads.map((orphan: any) => (
+                      <div
+                        key={orphan.id}
+                        className="flex items-center gap-3 bg-white rounded-md border border-amber-200 p-2"
+                      >
+                        {orphan.file_url && orphan.file_type?.startsWith("image/") ? (
+                          <img
+                            src={orphan.file_url}
+                            alt={orphan.file_name}
+                            className="h-12 w-12 rounded object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded bg-muted flex items-center justify-center shrink-0">
+                            <Image className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{orphan.file_name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            Was linked to: {orphan.linked_concept_title || orphan.linked_concept_id}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={relinking === orphan.id || productionItems.length === 0}
+                          onClick={() => {
+                            setOrphanToRelink(orphan);
+                            setOrphanRelinkOpen(true);
+                          }}
+                          className="gap-1"
+                        >
+                          <Repeat className="h-3 w-3" /> Relink
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={relinking === orphan.id}
+                          onClick={() => handleDeleteOrphan(orphan)}
+                          className="gap-1 text-muted-foreground"
+                        >
+                          {relinking === orphan.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Bulk Selection Bar */}
               {bulkSelectMode && (
                 <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
@@ -1550,6 +1679,38 @@ export function ProductionManager({
           </div>
         </DialogContent>
       </Dialog>
-    </>
+
+      {/* Relink Orphaned Upload Dialog */}
+      <Dialog open={orphanRelinkOpen} onOpenChange={setOrphanRelinkOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Relink upload to a concept</DialogTitle>
+            <DialogDescription>
+              Pick the concept this file should be attached to. {orphanToRelink?.is_vertical_version ? "It will be linked as the 9:16 vertical version." : "It will be linked as the primary creative."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[400px] overflow-y-auto space-y-1 pr-1">
+            {productionItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => orphanToRelink && handleRelinkOrphan(orphanToRelink, item)}
+                disabled={!!relinking}
+                className="w-full text-left rounded-md border p-3 hover:bg-muted transition-colors text-sm disabled:opacity-50"
+              >
+                <div className="font-medium truncate">{item.hook}</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {(item as any).angleName || "Unassigned"} · {item.format || (item as any).type || "concept"}
+                </div>
+              </button>
+            ))}
+            {productionItems.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                No current concepts to relink to. Generate concepts first, then come back.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      </>
   );
 }
