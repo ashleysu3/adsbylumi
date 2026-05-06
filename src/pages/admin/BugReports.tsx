@@ -30,7 +30,8 @@ import {
   ExternalLink,
   Loader2,
   Send,
-  Archive
+  Archive,
+  Sparkles
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -287,6 +288,27 @@ export default function AdminBugReports() {
       fetchReports();
     } catch (error: any) {
       toast.error(error.message || "Failed to apply credit");
+    }
+    setActionLoading(null);
+  };
+
+  const handleFixInCode = async (reportId: string) => {
+    setActionLoading("fix-in-code");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-bug-to-lovable", {
+        body: { reportId }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Sent to Slack — paste it into Lovable to fix", {
+        description: "Bug marked as In Progress.",
+      });
+      fetchReports();
+      if (selectedReport?.id === reportId) {
+        setSelectedReport({ ...selectedReport, status: 'in_progress' });
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to send to Slack");
     }
     setActionLoading(null);
   };
@@ -702,6 +724,33 @@ export default function AdminBugReports() {
                             <Send className="h-4 w-4" />
                           )}
                           Send Email
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Fix in Lovable */}
+                    <Card className="border-purple-200">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2 text-purple-600">
+                          <Sparkles className="h-4 w-4" />
+                          Fix it in the Code
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Sends a fully formatted fix prompt (with all bug context, page URL, and screenshot link) to the <code className="text-xs bg-muted px-1 rounded">#bug-reports</code> Slack channel. Anyone can grab it and paste it straight into Lovable — no Lovable login required to trigger this.
+                        </p>
+                        <Button
+                          onClick={() => handleFixInCode(selectedReport.id)}
+                          disabled={actionLoading === "fix-in-code"}
+                          className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                          {actionLoading === "fix-in-code" ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4" />
+                          )}
+                          Fix it in the Code
                         </Button>
                       </CardContent>
                     </Card>
