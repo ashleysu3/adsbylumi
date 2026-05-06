@@ -30,7 +30,8 @@ import {
   ExternalLink,
   Loader2,
   Send,
-  Archive
+  Archive,
+  Sparkles
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 
