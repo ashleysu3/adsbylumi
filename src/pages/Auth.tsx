@@ -87,7 +87,12 @@ export default function Auth() {
         
         if (rememberMe) {
           localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
-        } else {
+      } else {
+        if (!canShowSignup) {
+          toast.error("Please choose a plan to create your account.");
+          navigate('/freetrial');
+          return;
+        }
           localStorage.removeItem(REMEMBERED_EMAIL_KEY);
         }
         
