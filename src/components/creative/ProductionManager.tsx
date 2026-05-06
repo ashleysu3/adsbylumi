@@ -1679,6 +1679,38 @@ export function ProductionManager({
           </div>
         </DialogContent>
       </Dialog>
-    </>
+
+      {/* Relink Orphaned Upload Dialog */}
+      <Dialog open={orphanRelinkOpen} onOpenChange={setOrphanRelinkOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Relink upload to a concept</DialogTitle>
+            <DialogDescription>
+              Pick the concept this file should be attached to. {orphanToRelink?.is_vertical_version ? "It will be linked as the 9:16 vertical version." : "It will be linked as the primary creative."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[400px] overflow-y-auto space-y-1 pr-1">
+            {productionItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => orphanToRelink && handleRelinkOrphan(orphanToRelink, item)}
+                disabled={!!relinking}
+                className="w-full text-left rounded-md border p-3 hover:bg-muted transition-colors text-sm disabled:opacity-50"
+              >
+                <div className="font-medium truncate">{item.hook}</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {(item as any).angleName || "Unassigned"} · {item.format || item.type}
+                </div>
+              </button>
+            ))}
+            {productionItems.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                No current concepts to relink to. Generate concepts first, then come back.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+      </>
   );
 }
