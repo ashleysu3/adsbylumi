@@ -16,14 +16,18 @@ const REMEMBERED_EMAIL_KEY = "lumi_remembered_email";
 export default function Auth() {
   const searchParams = new URLSearchParams(window.location.search);
   const startWithSignup = searchParams.get('signup') === 'true';
+  const hasPaid = searchParams.get('paid') === 'true';
   const returnToParam = searchParams.get('returnTo');
   const inviteToken = searchParams.get('invite');
   const safeReturnTo =
     returnToParam && returnToParam.startsWith('/') && !returnToParam.startsWith('//')
       ? returnToParam
       : null;
-  
-  const [isLogin, setIsLogin] = useState(!startWithSignup);
+
+  // Payment-first: only allow signup form for users coming back from Stripe checkout
+  // (paid=true) or accepting a team invite. Anyone else gets sent to the checkout page.
+  const canShowSignup = hasPaid || !!inviteToken;
+  const [isLogin, setIsLogin] = useState(!startWithSignup || !canShowSignup);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
