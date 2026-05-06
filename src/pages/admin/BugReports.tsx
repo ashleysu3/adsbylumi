@@ -728,6 +728,33 @@ export default function AdminBugReports() {
                       </CardContent>
                     </Card>
 
+                    {/* Fix in Lovable */}
+                    <Card className="border-purple-200">
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2 text-purple-600">
+                          <Sparkles className="h-4 w-4" />
+                          Fix it in the Code
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Sends a fully formatted fix prompt (with all bug context, page URL, and screenshot link) to the <code className="text-xs bg-muted px-1 rounded">#bug-reports</code> Slack channel. Anyone can grab it and paste it straight into Lovable — no Lovable login required to trigger this.
+                        </p>
+                        <Button
+                          onClick={() => handleFixInCode(selectedReport.id)}
+                          disabled={actionLoading === "fix-in-code"}
+                          className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                          {actionLoading === "fix-in-code" ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-4 w-4" />
+                          )}
+                          Fix it in the Code
+                        </Button>
+                      </CardContent>
+                    </Card>
+
                     {/* Quick Status Actions */}
                     <Card>
                       <CardHeader>
