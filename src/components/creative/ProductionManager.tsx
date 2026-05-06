@@ -1699,7 +1699,7 @@ export function ProductionManager({
               >
                 <div className="font-medium truncate">{item.hook}</div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {(item as any).angleName || "Unassigned"} · {item.format || item.type}
+                  {(item as any).angleName || "Unassigned"} · {item.format || (item as any).type || "concept"}
                 </div>
               </button>
             ))}
