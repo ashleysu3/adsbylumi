@@ -587,7 +587,7 @@ export function MetaAccountConnect({
       </DialogTrigger>
       
       
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90dvh] overflow-y-auto overscroll-contain">
         <DialogHeader>
           <DialogTitle>
             {needsReconnect ? "Reconnect Meta Account" : isConnected ? "Change Meta Connection" : "Connect Meta Account"}
