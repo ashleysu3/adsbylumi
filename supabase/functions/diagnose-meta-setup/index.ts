@@ -357,10 +357,11 @@ Deno.serve(async (req) => {
           } else {
             diagnostics.push({
               key: 'pixel',
-              label: 'Meta Pixel / Dataset',
-              status: 'warn',
-              message: 'No Meta Pixel found. A pixel tracks conversions and helps optimize your ads.',
-              fix: 'Create a Meta Pixel in Events Manager.',
+              label: 'Meta Pixel / Dataset (optional)',
+              status: 'pass',
+              optional: true,
+              message: "Optional — you can launch ads without this. A pixel helps track conversions later. You're good to continue.",
+              fix: 'When you\'re ready, create a Meta Pixel in Events Manager.',
               fixUrl: 'https://business.facebook.com/events_manager2/overview',
               fixTime: '~5 minutes',
               steps: [
@@ -375,9 +376,10 @@ Deno.serve(async (req) => {
       } catch {
         diagnostics.push({
           key: 'pixel',
-          label: 'Meta Pixel / Dataset',
-          status: 'warn',
-          message: 'Could not check pixel status.',
+          label: 'Meta Pixel / Dataset (optional)',
+          status: 'pass',
+          optional: true,
+          message: "Optional — couldn't verify pixel right now, but you can still launch ads.",
         });
       }
     }
