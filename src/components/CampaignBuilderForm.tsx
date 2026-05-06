@@ -150,9 +150,10 @@ export function CampaignBuilderForm({
           countries: selectedCountries,
         },
       } : {}),
-      // End date — only include if user explicitly set one
-      ...(hasEndDate && endDate ? { endDate } : {}),
+      // End date — explicitly clear when schedule toggle is off
+      endDate: hasEndDate && endDate ? endDate : undefined,
     };
+    if (!newAnswers.endDate) delete newAnswers.endDate;
     onAnswerUpdate(newAnswers);
   }, [budget, launchActive, additionalPosts, includeExistingPosts, locationAddresses, locationRadius, hasEndDate, endDate, startDate, showSmartLocation, locationMode, selectedCountries]);
 
