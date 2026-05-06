@@ -291,25 +291,42 @@ export default function AdminBugReports() {
     setActionLoading(null);
   };
 
-  const handleFixInCode = async (reportId: string) => {
-    setActionLoading("fix-in-code");
-    try {
-      const { data, error } = await supabase.functions.invoke("send-bug-to-lovable", {
-        body: { reportId }
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("Sent to Slack — paste it into Lovable to fix", {
-        description: "Bug marked as In Progress.",
-      });
-      fetchReports();
-      if (selectedReport?.id === reportId) {
-        setSelectedReport({ ...selectedReport, status: 'in_progress' });
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to send to Slack");
+  const buildLovablePrompt = (report: BugReport) => {
+    return `Please fix this bug reported by a user:
+
+**User's description:**
+${report.details || '(none provided)'}
+
+**Reported by:** ${report.user_email}
+**Page:** ${report.current_page || 'unknown'}
+**URL:** ${report.current_url || 'unknown'}
+**User agent:** ${report.user_agent || 'unknown'}
+${report.screenshot_url ? `**Screenshot:** ${report.screenshot_url}` : ''}
+
+**Recent chat / app context:**
+${report.conversation_context || '(none captured)'}
+
+**Additional context:**
+${report.context || '(none)'}
+
+Please investigate the root cause, propose a fix, and implement it.`;
+  };
+
+  const handleFixInCode = (report: BugReport) => {
+    setFixPromptText(buildLovablePrompt(report));
+    setFixPromptOpen(true);
+    if (report.status === 'new') {
+      handleUpdateStatus(report.id, 'in_progress');
     }
-    setActionLoading(null);
+  };
+
+  const handleCopyFixPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(fixPromptText);
+      toast.success("Prompt copied — paste it into Lovable");
+    } catch {
+      toast.error("Couldn't copy automatically. Select the text and copy manually.");
+    }
   };
 
   const filteredReports = reports.filter(report => {
