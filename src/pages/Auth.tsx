@@ -272,15 +272,29 @@ export default function Auth() {
             </Button>
           </form>
           <div className="mt-6 text-center text-sm">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {isLogin
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Sign in"}
-            </button>
+            {isLogin ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (canShowSignup) {
+                    setIsLogin(false);
+                  } else {
+                    navigate('/freetrial');
+                  }
+                }}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Don't have an account? Choose a plan
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsLogin(true)}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Already have an account? Sign in
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
