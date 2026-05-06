@@ -425,7 +425,7 @@ export function ProductionManager({
           ? {
               ...a,
               linked_concept_id: newConceptId,
-              linked_concept_title: isVertical ? `${targetItem.title} (9:16)` : targetItem.title,
+              linked_concept_title: isVertical ? `${targetItem.hook} (9:16)` : targetItem.hook,
             }
           : a
       );
