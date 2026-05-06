@@ -402,6 +402,68 @@ export function ProductionManager({
   // Updated readiness check - needs 3+ concepts AND at least one upload
   const isReadyToBuild = productionItems.length >= 1 && hasAtLeastOneUpload;
   const hasAnyCopy = Object.keys(angleCopy).length > 0;
+
+  // Detect "orphaned" uploaded assets whose linked concept no longer exists
+  // in productionItems. This happens when a user regenerates concepts after
+  // uploading creative — the uploads are still in storage but invisible.
+  const productionItemIds = new Set(
+    productionItems.flatMap((i) => [i.id, `${i.id}_vertical`])
+  );
+  const orphanedUploads = (uploadedAssets as any[]).filter((a) => {
+    if (!a?.linked_concept_id) return false;
+    return !productionItemIds.has(a.linked_concept_id);
+  });
+
+  const handleRelinkOrphan = async (orphan: any, targetItem: ProductionItem) => {
+    if (!workspace?.id) return;
+    setRelinking(orphan.id);
+    try {
+      const isVertical = !!orphan.is_vertical_version;
+      const newConceptId = isVertical ? `${targetItem.id}_vertical` : targetItem.id;
+      const updated = uploadedAssets.map((a: any) =>
+        a.id === orphan.id
+          ? {
+              ...a,
+              linked_concept_id: newConceptId,
+              linked_concept_title: isVertical ? `${targetItem.title} (9:16)` : targetItem.title,
+            }
+          : a
+      );
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({ user_uploaded_assets: updated, updated_at: new Date().toISOString() })
+        .eq("id", workspace.id);
+      if (error) throw error;
+      onUpdateWorkspace?.({ user_uploaded_assets: updated });
+      toast.success("Upload relinked to concept");
+      setOrphanRelinkOpen(false);
+      setOrphanToRelink(null);
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to relink upload");
+    } finally {
+      setRelinking(null);
+    }
+  };
+
+  const handleDeleteOrphan = async (orphan: any) => {
+    if (!workspace?.id) return;
+    setRelinking(orphan.id);
+    try {
+      const updated = uploadedAssets.filter((a: any) => a.id !== orphan.id);
+      const { error } = await supabase
+        .from("campaign_workspaces")
+        .update({ user_uploaded_assets: updated, updated_at: new Date().toISOString() })
+        .eq("id", workspace.id);
+      if (error) throw error;
+      onUpdateWorkspace?.({ user_uploaded_assets: updated });
+      toast.success("Upload removed");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to remove upload");
+    } finally {
+      setRelinking(null);
+    }
+  };
+
   
   const handleRankConcepts = async () => {
     if (!brandId) {
