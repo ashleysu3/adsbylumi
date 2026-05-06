@@ -1181,6 +1181,70 @@ export function ProductionManager({
               )}
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Orphaned Uploads Recovery */}
+              {orphanedUploads.length > 0 && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-amber-900">
+                        We found {orphanedUploads.length} uploaded file{orphanedUploads.length === 1 ? "" : "s"} from a previous concept set
+                      </p>
+                      <p className="text-xs text-amber-800 mt-1">
+                        These uploads are still saved — they were attached to concepts that have since been replaced. Relink each one to a current concept, or remove it.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {orphanedUploads.map((orphan: any) => (
+                      <div
+                        key={orphan.id}
+                        className="flex items-center gap-3 bg-white rounded-md border border-amber-200 p-2"
+                      >
+                        {orphan.file_url && orphan.file_type?.startsWith("image/") ? (
+                          <img
+                            src={orphan.file_url}
+                            alt={orphan.file_name}
+                            className="h-12 w-12 rounded object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded bg-muted flex items-center justify-center shrink-0">
+                            <Image className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{orphan.file_name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            Was linked to: {orphan.linked_concept_title || orphan.linked_concept_id}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={relinking === orphan.id || productionItems.length === 0}
+                          onClick={() => {
+                            setOrphanToRelink(orphan);
+                            setOrphanRelinkOpen(true);
+                          }}
+                          className="gap-1"
+                        >
+                          <Repeat className="h-3 w-3" /> Relink
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={relinking === orphan.id}
+                          onClick={() => handleDeleteOrphan(orphan)}
+                          className="gap-1 text-muted-foreground"
+                        >
+                          {relinking === orphan.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Bulk Selection Bar */}
               {bulkSelectMode && (
                 <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
