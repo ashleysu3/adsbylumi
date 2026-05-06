@@ -496,7 +496,7 @@ export default function AdminBugReports() {
 
         {/* Detail Dialog */}
         <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col min-h-0">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Bug className="h-5 w-5" />
