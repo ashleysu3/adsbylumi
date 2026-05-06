@@ -662,11 +662,14 @@ Deno.serve(async (req) => {
     // Build tracking_specs — ensures "Track website events" is ON for every ad
     // when a pixel is connected. This is independent of optimization goal so we
     // always capture conversion data, even on Traffic / Engagement / Awareness campaigns.
+    // NOTE: Meta only supports the `fb_pixel` selector with `offsite_conversion`
+    // action types. Pairing it with `link_click` returns
+    // "Wrong Conversion Tags ... does not support selector fb_pixel".
+    // `link_click` is tracked automatically — no spec needed.
     let trackingSpecs: Array<Record<string, any>> | null = null;
     if (pixelId) {
       trackingSpecs = [
         { 'action.type': ['offsite_conversion'], fb_pixel: [pixelId] },
-        { 'action.type': ['link_click'], fb_pixel: [pixelId] },
       ];
     }
 
