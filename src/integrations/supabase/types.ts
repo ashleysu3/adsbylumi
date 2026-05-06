@@ -2118,10 +2118,12 @@ export type Database = {
           created_at: string | null
           current_period_end: string | null
           id: string
+          price_id: string | null
           status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
+          trial_end: string | null
           updated_at: string | null
           user_id: string
         }
@@ -2130,10 +2132,12 @@ export type Database = {
           created_at?: string | null
           current_period_end?: string | null
           id?: string
+          price_id?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
+          trial_end?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -2142,10 +2146,12 @@ export type Database = {
           created_at?: string | null
           current_period_end?: string | null
           id?: string
+          price_id?: string | null
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
+          trial_end?: string | null
           updated_at?: string | null
           user_id?: string
         }
