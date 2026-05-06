@@ -376,9 +376,10 @@ Deno.serve(async (req) => {
       } catch {
         diagnostics.push({
           key: 'pixel',
-          label: 'Meta Pixel / Dataset',
-          status: 'warn',
-          message: 'Could not check pixel status.',
+          label: 'Meta Pixel / Dataset (optional)',
+          status: 'pass',
+          optional: true,
+          message: "Optional — couldn't verify pixel right now, but you can still launch ads.",
         });
       }
     }
