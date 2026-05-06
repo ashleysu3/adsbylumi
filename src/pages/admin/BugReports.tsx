@@ -508,14 +508,14 @@ export default function AdminBugReports() {
             </DialogHeader>
 
             {selectedReport && (
-              <Tabs defaultValue="details" className="flex-1 overflow-hidden flex flex-col">
+              <Tabs defaultValue="details" className="flex-1 min-h-0 overflow-hidden flex flex-col">
                 <TabsList className="w-full justify-start">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="actions">Actions</TabsTrigger>
                   <TabsTrigger value="billing">Billing Actions</TabsTrigger>
                 </TabsList>
 
-                <ScrollArea className="flex-1 mt-4">
+                <ScrollArea className="flex-1 min-h-0 mt-4 h-full">
                   <TabsContent value="details" className="space-y-4 pr-4">
                     {/* Status & Priority */}
                     <div className="grid grid-cols-2 gap-4">
