@@ -232,6 +232,34 @@ Deno.serve(async (req) => {
 
     console.log('Bug report email sent:', emailResponse);
 
+    // Send auto-acknowledgment to the user (fire-and-forget)
+    try {
+      const ackHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+          <div style="background: linear-gradient(135deg, #8B5CF6, #D946EF); padding: 24px; border-radius: 12px 12px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 22px;">We got your message ${reportId}</h1>
+          </div>
+          <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px; color: #374151; line-height: 1.6;">
+            <p style="margin: 0 0 16px;">Hi there,</p>
+            <p style="margin: 0 0 16px;">Got your message and we're on it. We respond to every ticket within 24 hours, and our development team reviews bugs in detail every Friday. Hang tight.</p>
+            ${details ? `<div style="background: white; padding: 12px 16px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 16px 0;"><p style="margin: 0 0 6px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Your message</p><p style="margin: 0; white-space: pre-wrap; color: #374151; font-size: 14px;">${details}</p></div>` : ''}
+            <p style="margin: 16px 0 0; color: #6b7280; font-size: 13px;">— The Lumi team</p>
+          </div>
+        </div>
+      `;
+
+      const ackResponse = await resend.emails.send({
+        from: 'Lumi Support <support@adsbylumi.com>',
+        to: [userEmail],
+        reply_to: 'support@adsbylumi.com',
+        subject: `We got your message ${reportId} — response within 24 hours`,
+        html: ackHtml,
+      });
+      console.log('Auto-acknowledgment sent:', ackResponse);
+    } catch (ackError) {
+      console.error('Failed to send auto-acknowledgment (non-blocking):', ackError);
+    }
+
     // Send Slack notification (fire-and-forget)
     try {
       const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
