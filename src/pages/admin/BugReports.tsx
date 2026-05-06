@@ -89,6 +89,8 @@ export default function AdminBugReports() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [fixPromptOpen, setFixPromptOpen] = useState(false);
+  const [fixPromptText, setFixPromptText] = useState("");
   
   // Email form state
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
@@ -291,25 +293,42 @@ export default function AdminBugReports() {
     setActionLoading(null);
   };
 
-  const handleFixInCode = async (reportId: string) => {
-    setActionLoading("fix-in-code");
-    try {
-      const { data, error } = await supabase.functions.invoke("send-bug-to-lovable", {
-        body: { reportId }
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success("Sent to Slack — paste it into Lovable to fix", {
-        description: "Bug marked as In Progress.",
-      });
-      fetchReports();
-      if (selectedReport?.id === reportId) {
-        setSelectedReport({ ...selectedReport, status: 'in_progress' });
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Failed to send to Slack");
+  const buildLovablePrompt = (report: BugReport) => {
+    return `Please fix this bug reported by a user:
+
+**User's description:**
+${report.details || '(none provided)'}
+
+**Reported by:** ${report.user_email}
+**Page:** ${report.current_page || 'unknown'}
+**URL:** ${report.current_url || 'unknown'}
+**User agent:** ${report.user_agent || 'unknown'}
+${report.screenshot_url ? `**Screenshot:** ${report.screenshot_url}` : ''}
+
+**Recent chat / app context:**
+${report.conversation_context || '(none captured)'}
+
+**Additional context:**
+${report.context || '(none)'}
+
+Please investigate the root cause, propose a fix, and implement it.`;
+  };
+
+  const handleFixInCode = (report: BugReport) => {
+    setFixPromptText(buildLovablePrompt(report));
+    setFixPromptOpen(true);
+    if (report.status === 'new') {
+      handleUpdateStatus(report.id, 'in_progress');
     }
-    setActionLoading(null);
+  };
+
+  const handleCopyFixPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(fixPromptText);
+      toast.success("Prompt copied — paste it into Lovable");
+    } catch {
+      toast.error("Couldn't copy automatically. Select the text and copy manually.");
+    }
   };
 
   const filteredReports = reports.filter(report => {
@@ -737,10 +756,10 @@ export default function AdminBugReports() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Sends a fully formatted fix prompt (with all bug context, page URL, and screenshot link) to the <code className="text-xs bg-muted px-1 rounded">#bug-reports</code> Slack channel. Anyone can grab it and paste it straight into Lovable — no Lovable login required to trigger this.
+                          Opens a pop-up with a fully formatted fix prompt (bug details, page URL, screenshot link, and chat context). Copy it and paste straight into Lovable.
                         </p>
                         <Button
-                          onClick={() => handleFixInCode(selectedReport.id)}
+                          onClick={() => handleFixInCode(selectedReport)}
                           disabled={actionLoading === "fix-in-code"}
                           className="w-full gap-2 bg-purple-600 hover:bg-purple-700 text-white"
                         >
@@ -905,6 +924,31 @@ export default function AdminBugReports() {
                 </div>
               </Tabs>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Fix-in-Code Prompt Dialog */}
+        <Dialog open={fixPromptOpen} onOpenChange={setFixPromptOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-purple-600">
+                <Sparkles className="h-4 w-4" /> Fix it in the Code
+              </DialogTitle>
+              <DialogDescription>
+                Copy this prompt and paste it into Lovable chat to fix the bug.
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea
+              value={fixPromptText}
+              onChange={(e) => setFixPromptText(e.target.value)}
+              className="min-h-[360px] font-mono text-xs"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setFixPromptOpen(false)}>Close</Button>
+              <Button onClick={handleCopyFixPrompt} className="bg-purple-600 hover:bg-purple-700 text-white gap-2">
+                <Sparkles className="h-4 w-4" /> Copy prompt
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
