@@ -9,8 +9,9 @@ import { CampaignSuccess } from "@/components/CampaignSuccess";
 import { PostLaunchWalkthrough } from "@/components/PostLaunchWalkthrough";
 import { QACheckScreen } from "@/components/QACheckScreen";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AutoSaveIndicator, SaveStatus } from "@/components/AutoSaveIndicator";
-import { ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ export default function CampaignBuilder() {
   const [campaignIds, setCampaignIds] = useState<any>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   // Resolve campaign objective + template metadata for the walkthrough
   const objective: string | null =
@@ -234,6 +236,7 @@ export default function CampaignBuilder() {
         return;
       }
 
+      setPublishError(null); // clear any prior error before retry
       setStage('publishing');
       const { data, error } = await supabase.functions.invoke('build-meta-campaign', {
         body: {
@@ -272,6 +275,7 @@ export default function CampaignBuilder() {
         .from('campaign_workspaces')
         .update({ meta_errors: { timestamp: new Date().toISOString(), error: friendlyMsg, stage: 'publishing' } })
         .eq('id', workspaceId);
+      setPublishError(friendlyMsg || "Failed to publish campaign. Try again or contact support.");
       toast.error(friendlyMsg || "Failed to publish campaign");
       setStage('configure');
     } finally {
@@ -324,7 +328,23 @@ export default function CampaignBuilder() {
           </div>
 
           {stage === 'configure' && (
-            <MobileCampaignBuilder workspace={workspace} answers={answers} onAnswerUpdate={handleAnswerUpdate} onComplete={handleReview} />
+            <>
+              {publishError && (
+                <Alert variant="destructive" className="mb-4 relative">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Publish failed — please review</AlertTitle>
+                  <AlertDescription>{publishError}</AlertDescription>
+                  <button
+                    onClick={() => setPublishError(null)}
+                    aria-label="Dismiss"
+                    className="absolute top-3 right-3 text-foreground/60 hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Alert>
+              )}
+              <MobileCampaignBuilder workspace={workspace} answers={answers} onAnswerUpdate={handleAnswerUpdate} onComplete={handleReview} />
+            </>
           )}
           {stage === 'qa-check' && (
             <QACheckScreen workspace={workspace} answers={answers} onBack={handleBackToConfigure} onProceed={handleQAComplete} />
@@ -419,12 +439,28 @@ export default function CampaignBuilder() {
         {/* Main Content — full width, no sidebar */}
         <div>
           {stage === 'configure' && (
-            <CampaignBuilderForm
-              workspace={workspace}
-              answers={answers}
-              onAnswerUpdate={handleAnswerUpdate}
-              onComplete={handleReview}
-            />
+            <>
+              {publishError && (
+                <Alert variant="destructive" className="mb-4 relative">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Publish failed — please review</AlertTitle>
+                  <AlertDescription>{publishError}</AlertDescription>
+                  <button
+                    onClick={() => setPublishError(null)}
+                    aria-label="Dismiss"
+                    className="absolute top-3 right-3 text-foreground/60 hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Alert>
+              )}
+              <CampaignBuilderForm
+                workspace={workspace}
+                answers={answers}
+                onAnswerUpdate={handleAnswerUpdate}
+                onComplete={handleReview}
+              />
+            </>
           )}
           {stage === 'qa-check' && (
             <QACheckScreen workspace={workspace} answers={answers} onBack={handleBackToConfigure} onProceed={handleQAComplete} />

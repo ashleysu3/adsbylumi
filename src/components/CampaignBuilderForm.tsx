@@ -439,26 +439,31 @@ export function CampaignBuilderForm({
           </div>
 
           {hasEndDate && (
-            <div className="grid grid-cols-2 gap-3 pt-1">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Start Date</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                />
+            <>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Start Date</Label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">End Date</Label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate}
+                  />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">End Date</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  min={startDate}
-                />
+              <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-xs leading-relaxed">
+                Heads up: Scheduled campaigns auto-stop on the end date — Meta resets audience learning when they do. If you want to reuse these ads later (next sale, next launch), flip back to Run Continuously and pause manually when you're done. Pausing keeps the learning data so the ads come back warm next time.
               </div>
-            </div>
+            </>
           )}
         </CardContent>
       </Card>
