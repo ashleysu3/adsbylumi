@@ -132,10 +132,6 @@ export default function AdPerformance() {
   const [view, setView] = useState<'home' | 'detail'>(workspaceIdFromUrl ? 'detail' : 'home');
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(workspaceIdFromUrl);
 
-  // Detail level preference
-  const [detailLevel, setDetailLevel] = useState<'simple' | 'detailed'>(() => {
-    return localStorage.getItem('lumi-insights-detail-level') as 'simple' | 'detailed' || 'simple';
-  });
 
   // Data state
   const [campaigns, setCampaigns] = useState<CampaignData[]>([]);

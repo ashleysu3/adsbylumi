@@ -240,7 +240,6 @@ interface CampaignInsightDetailProps {
   isLoading: boolean;
   dateRangeStart?: string;
   dateRangeEnd?: string;
-  detailLevel?: 'simple' | 'detailed';
 }
 
 const dateRangeOptions = [
