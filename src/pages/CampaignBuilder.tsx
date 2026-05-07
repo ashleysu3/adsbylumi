@@ -70,14 +70,41 @@ export default function CampaignBuilder() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate('/auth'); return; }
 
-      const { data, error } = await supabase
+      // Fetch the workspace by itself first so a flaky sub-join (RLS on
+      // offers/templates, missing FK row, etc.) can't take down the whole
+      // builder and surface a confusing "Workspace not found" screen.
+      const { data: ws, error: wsError } = await supabase
         .from('campaign_workspaces')
-        .select(`*, brands!inner(*), campaign_templates(*), offers(id, name, url, price)`)
+        .select('*')
         .eq('id', workspaceId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
-      if (!data) { toast.error("Workspace not found"); navigate('/dashboard'); return; }
+      if (wsError) throw wsError;
+      if (!ws) { toast.error("Workspace not found"); navigate('/dashboard'); return; }
+
+      // Load related rows in parallel; failures here are non-fatal.
+      const [brandRes, templateRes, offerRes] = await Promise.all([
+        ws.brand_id
+          ? supabase.from('brands').select('*').eq('id', ws.brand_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null } as any),
+        ws.template_id
+          ? supabase.from('campaign_templates').select('*').eq('id', ws.template_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null } as any),
+        ws.offer_id
+          ? supabase.from('offers').select('id, name, url, price').eq('id', ws.offer_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null } as any),
+      ]);
+
+      if (brandRes.error) console.warn('Brand load warning:', brandRes.error);
+      if (templateRes.error) console.warn('Template load warning:', templateRes.error);
+      if (offerRes.error) console.warn('Offer load warning:', offerRes.error);
+
+      const data: any = {
+        ...ws,
+        brands: brandRes.data || null,
+        campaign_templates: templateRes.data || null,
+        offers: offerRes.data || null,
+      };
 
       setWorkspace(data);
       if (data.campaign_builder_answers) {
