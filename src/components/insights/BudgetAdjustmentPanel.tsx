@@ -169,7 +169,7 @@ export function BudgetAdjustmentPanel({
   };
 
   const recommendation = getRecommendation();
-  const suggestedBudget = Math.round(effectiveCurrentBudget * (1 + recommendation.percentage / 100));
+  const suggestedBudget = Math.round(liveEffectiveBudget * (1 + recommendation.percentage / 100));
 
   const handleApplyRecommendation = () => {
     setNewBudget(suggestedBudget);
@@ -314,7 +314,7 @@ export function BudgetAdjustmentPanel({
           <span className="text-muted-foreground">
             {targetAdSet ? 'Ad set budget' : 'Current budget'}
           </span>
-          <span className="font-semibold">${effectiveCurrentBudget}/day</span>
+          <span className="font-semibold">${liveEffectiveBudget}/day</span>
         </div>
 
         {/* Recommendation */}
@@ -362,13 +362,13 @@ export function BudgetAdjustmentPanel({
             value={[newBudget]}
             onValueChange={(v) => setNewBudget(v[0])}
             min={5}
-            max={Math.max(500, effectiveCurrentBudget * 2)}
+            max={Math.max(500, liveEffectiveBudget * 2)}
             step={5}
             className="py-2"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>$5/day</span>
-            <span>${Math.max(500, effectiveCurrentBudget * 2)}/day</span>
+            <span>${Math.max(500, liveEffectiveBudget * 2)}/day</span>
           </div>
         </div>
 
@@ -385,7 +385,7 @@ export function BudgetAdjustmentPanel({
           <Button
             size="sm"
             onClick={handleSaveBudget}
-            disabled={updating || newBudget === effectiveCurrentBudget}
+            disabled={updating || newBudget === liveEffectiveBudget}
             className="flex-1 gap-2"
           >
             {updating ? (
