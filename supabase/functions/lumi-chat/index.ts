@@ -156,6 +156,18 @@ Deno.serve(async (req) => {
         if (context.brand.target_audience) {
           contextPrompt += `Target Audience: ${context.brand.target_audience}\n`;
         }
+
+        // Real connection state — NEVER contradict these. If the user asks
+        // whether something is connected, answer from these flags only.
+        if (typeof context.brand.metaAccountConnected === 'boolean') {
+          contextPrompt += `\n--- Verified Connection State for "${context.brand.name}" ---\n`;
+          contextPrompt += `Meta ad account connected: ${context.brand.metaAccountConnected ? `YES (${context.brand.metaAccountId})` : 'NO'}\n`;
+          contextPrompt += `Facebook Page connected: ${context.brand.facebookPageConnected ? `YES (${context.brand.facebookPageName || 'connected'})` : 'NO'}\n`;
+          contextPrompt += `Instagram account connected: ${context.brand.instagramConnected ? `YES (@${context.brand.instagramAccountName || 'connected'})` : 'NO'}\n`;
+          contextPrompt += `Meta Pixel connected: ${context.brand.pixelConnected ? `YES (${context.brand.pixelName || 'connected'})` : 'NO'}\n`;
+          contextPrompt += `Meta token expired: ${context.brand.metaTokenExpired ? 'YES — user must reconnect' : 'NO'}\n`;
+          contextPrompt += `\nCRITICAL: These flags are the source of truth. NEVER tell the user something isn't connected when the flag above says YES. If the user reports a connected item not working, suggest they reconnect or report it as a bug — do not claim it isn't connected.\n`;
+        }
       }
       
       // Include generated angles in context for angle-feedback mode
