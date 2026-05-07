@@ -337,7 +337,7 @@ export function BudgetAdjustmentPanel({
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          {targetAdSet ? `Scale "${targetAdSet.name}"` : 'Lumi Budget Recommendation'}
+          {activeTarget ? `Scale "${activeTarget.name}"` : 'Lumi Budget Recommendation'}
         </CardTitle>
         {targetAdSet && (
           <p className="text-xs text-muted-foreground pt-1">
