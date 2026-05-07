@@ -80,10 +80,23 @@ export function BudgetAdjustmentPanel({
   const knownBudget: number | null = targetAdSet
     ? targetAdSet.currentBudget
     : (typeof currentBudget === 'number' && currentBudget > 0 ? currentBudget : null);
-  const effectiveCurrentBudget = knownBudget ?? 0;
-  const [newBudget, setNewBudget] = useState(effectiveCurrentBudget);
+  const [activeTarget, setActiveTarget] = useState<typeof targetAdSet>(targetAdSet);
+  // Re-resolve effective budget any time the user picks a different ad set.
+  const liveKnownBudget: number | null = activeTarget
+    ? activeTarget.currentBudget
+    : knownBudget;
+  const liveEffectiveBudget = liveKnownBudget ?? 0;
+  const [newBudget, setNewBudget] = useState(liveEffectiveBudget);
   const [updating, setUpdating] = useState(false);
   const [showPanel, setShowPanel] = useState(inline);
+
+  // Inline error state — replaces the silent "panel closes" failure mode.
+  // When set, the panel stays open and renders the error block. If Meta
+  // returned an `adSets` payload (ambiguous ABO case), we render a picker.
+  const [errorState, setErrorState] = useState<{
+    message: string;
+    adSets?: AdSetOption[];
+  } | null>(null);
 
   // Generate Lumi recommendation based on metrics
   const getRecommendation = (): Recommendation => {
