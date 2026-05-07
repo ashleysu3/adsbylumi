@@ -202,7 +202,7 @@ Deno.serve(async (req) => {
       // Fetch Meta campaign insights
       try {
         console.log('[run-optimization-report] Fetching Meta insights for campaign:', campaignId);
-        const insightsUrl = `https://graph.facebook.com/v21.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&access_token=${brand.meta_access_token}`;
+        const insightsUrl = `https://graph.facebook.com/v21.0/${campaignId}/insights?fields=spend,impressions,clicks,ctr,cpm,cpc,actions,cost_per_action_type,frequency,reach,purchase_roas&time_range={'since':'${dateRangeStart}','until':'${dateRangeEnd}'}&access_token=${brand.meta_access_token}`;
         const insightsRes = await fetch(insightsUrl);
         const insightsData = await insightsRes.json();
         console.log('[run-optimization-report] Meta response for', campaignId, ':', JSON.stringify(insightsData).slice(0, 500));
@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
             workspace_name: workspace.name,
             status: 'no_data',
             has_goals: !!goals,
-            message: 'No data for this date range',
+            message: 'No activity in this date range',
           });
           continue;
         }
@@ -241,6 +241,23 @@ Deno.serve(async (req) => {
         const frequency = parseFloat(insight.frequency || '0');
         const reach = parseInt(insight.reach || '0');
 
+        // Skip campaigns with no real activity in the date range. Reporting on
+        // a campaign that didn't spend or serve impressions only confuses the
+        // user (and previously surfaced phantom "budget spent" recommendations).
+        if (spend <= 0 || impressions <= 0) {
+          campaignResults.push({
+            workspace_id: workspace.id,
+            workspace_name: workspace.name,
+            status: 'no_data',
+            has_goals: !!goals,
+            message: spend <= 0
+              ? 'No spend in this date range'
+              : 'No impressions in this date range',
+            metrics: { spend, impressions, clicks, ctr, cpm, cpc, frequency, reach, leads: 0, purchases: 0, roas: 0, cpl: 0, cplpv: 0 },
+          });
+          continue;
+        }
+
         // Parse actions for conversions
         const actions = insight.actions || [];
         const costPerAction = insight.cost_per_action_type || [];
@@ -252,7 +269,16 @@ Deno.serve(async (req) => {
 
         const cpl = costPerAction.find((a: any) => a.action_type === 'lead')?.value ? parseFloat(costPerAction.find((a: any) => a.action_type === 'lead').value) : (leads > 0 ? spend / leads : 0);
         const cplpv = landingPageViews > 0 ? spend / landingPageViews : 0;
-        const roas = purchases > 0 ? (purchases * parseFloat(workspace.offer_price?.replace(/[^0-9.]/g, '') || '0')) / spend : 0;
+        // Prefer Meta's reported purchase_roas (tracks actual revenue from the
+        // pixel) over our offer_price * purchases estimate. Fall back only if
+        // Meta hasn't returned a value yet.
+        const metaRoasArr = insight.purchase_roas;
+        const metaRoas = Array.isArray(metaRoasArr) && metaRoasArr.length > 0
+          ? parseFloat(metaRoasArr[0]?.value || '0')
+          : 0;
+        const roas = metaRoas > 0
+          ? metaRoas
+          : (purchases > 0 ? (purchases * parseFloat(workspace.offer_price?.replace(/[^0-9.]/g, '') || '0')) / spend : 0);
 
         // Build KPI value map
         const kpiValues: Record<string, number> = {

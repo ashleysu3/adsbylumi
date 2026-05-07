@@ -87,6 +87,24 @@ Deno.serve(async (req) => {
     const firstName = profile.full_name?.split(' ')[0] || 'there';
     const shareUrl = `https://adsbylumi.com/report/${report.share_token}`;
 
+    // Only count campaigns that actually ran during this window. Sending an
+    // email about $0-spend campaigns scares users into thinking budget was
+    // wasted on inactive campaigns.
+    const reportableCampaigns = (reportData || []).filter(
+      (c: any) => c.status !== 'unconfigured' && c.status !== 'error' && c.status !== 'no_data'
+    );
+
+    if (reportableCampaigns.length === 0) {
+      console.log(`[send-optimization-digest] Skipping email for brand ${brandId} — no campaigns with activity in window.`);
+      await supabase
+        .from('digest_settings')
+        .update({ last_sent_at: new Date().toISOString() })
+        .eq('brand_id', brandId);
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: 'no_active_campaigns' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Build & send email
     const emailHtml = buildDigestEmail(
       firstName,

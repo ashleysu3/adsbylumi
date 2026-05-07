@@ -253,6 +253,14 @@ Deno.serve(async (req) => {
             }
           }
 
+          // Skip campaigns with no real activity in the report window. Sending a
+          // line item that says "$0 spend, 0 results" alarms users into thinking
+          // money was wasted on an inactive campaign. Only report on campaigns
+          // that actually ran during this period.
+          if (!spend || spend <= 0) {
+            continue;
+          }
+
           campaigns.push({
             workspaceId: ws.id,
             name: ws.offer_name || ws.name,
@@ -277,6 +285,13 @@ Deno.serve(async (req) => {
             adMetrics: latestSnapshot?.adMetrics || [],
             goals: goals || null,
           });
+        }
+
+        // If every campaign had no spend in the window, skip the email
+        // entirely — there's nothing meaningful to report.
+        if (campaigns.length === 0) {
+          results.push({ brandId, userId, email: profile.email, status: 'skipped', error: 'No campaigns with spend in window', campaignCount: 0 });
+          continue;
         }
 
         const userName = profile.full_name || 'there';
