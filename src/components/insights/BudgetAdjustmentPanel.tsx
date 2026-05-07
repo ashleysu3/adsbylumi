@@ -3,17 +3,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { 
-  DollarSign, 
-  TrendingUp, 
+import {
+  DollarSign,
+  TrendingUp,
   TrendingDown,
   Sparkles,
   AlertTriangle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+// Shape returned by update-meta-budget when it refuses to act on an
+// ambiguous ABO campaign (multiple active ad sets, no adSetId given).
+type AdSetOption = {
+  id: string;
+  name: string;
+  status?: string;
+  dailyBudget?: number | null;
+};
 
 interface BudgetAdjustmentPanelProps {
   workspaceId: string;
