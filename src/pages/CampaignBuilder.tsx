@@ -328,7 +328,23 @@ export default function CampaignBuilder() {
           </div>
 
           {stage === 'configure' && (
-            <MobileCampaignBuilder workspace={workspace} answers={answers} onAnswerUpdate={handleAnswerUpdate} onComplete={handleReview} />
+            <>
+              {publishError && (
+                <Alert variant="destructive" className="mb-4 relative">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Publish failed — please review</AlertTitle>
+                  <AlertDescription>{publishError}</AlertDescription>
+                  <button
+                    onClick={() => setPublishError(null)}
+                    aria-label="Dismiss"
+                    className="absolute top-3 right-3 text-foreground/60 hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </Alert>
+              )}
+              <MobileCampaignBuilder workspace={workspace} answers={answers} onAnswerUpdate={handleAnswerUpdate} onComplete={handleReview} />
+            </>
           )}
           {stage === 'qa-check' && (
             <QACheckScreen workspace={workspace} answers={answers} onBack={handleBackToConfigure} onProceed={handleQAComplete} />
