@@ -31,6 +31,7 @@ export default function MetaSettings() {
   const { activeBrand, loading: brandContextLoading } = useBrand();
   const { getEffectiveUserId } = useImpersonation();
   const [loading, setLoading] = useState(true);
+  const pixelSectionRef = useRef<HTMLDivElement | null>(null);
   const [brand, setBrand] = useState<any>(null);
   const [hasValidToken, setHasValidToken] = useState(false);
   const [testing, setTesting] = useState(false);
