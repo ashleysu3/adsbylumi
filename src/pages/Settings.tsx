@@ -795,7 +795,7 @@ export default function Settings() {
               </CardContent>
             </Card>
 
-            <Card variant="glow">
+            <Card variant="glow" id="fatigue">
               <CardHeader>
                 <CardTitle>
                   <GlossaryTooltip term="frequency">Ad Frequency Thresholds</GlossaryTooltip>
