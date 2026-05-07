@@ -590,9 +590,23 @@ export default function MetaSettings() {
           </div>
         </div>
 
+        {/* Patch #30 — unified Meta setup status (single source of truth) */}
+        {brand?.id && (
+          <MetaSetupStatus
+            brandId={brand.id}
+            onReconnectRequested={() => {
+              document.getElementById('meta-connect-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
+            onPixelSetupRequested={() => {
+              pixelSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          />
+        )}
+
         {/* Connection Status Card */}
-        <Card variant="gradient">
+        <Card variant="gradient" id="meta-connect-section">
           <CardHeader>
+
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 {isConnected ? (
