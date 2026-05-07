@@ -304,7 +304,7 @@ Deno.serve(async (req) => {
 
     const hasGoals = !!goals?.primary_kpi;
 
-    const primaryKpi = goals?.primary_kpi || 'cpl';
+    // primaryKpi already resolved above (needed by change-context block).
     const primaryThreshold = goals?.primary_kpi_threshold ? parseFloat(String(goals.primary_kpi_threshold)) : null;
     const primaryGoalType = goals?.primary_kpi_goal_type || 'less_than';
     const secondaryKpi = goals?.secondary_kpi || null;
