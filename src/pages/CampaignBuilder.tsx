@@ -48,6 +48,7 @@ export default function CampaignBuilder() {
   const [campaignIds, setCampaignIds] = useState<any>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [walkthroughOpen, setWalkthroughOpen] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
   // Resolve campaign objective + template metadata for the walkthrough
   const objective: string | null =
