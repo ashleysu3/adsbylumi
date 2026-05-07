@@ -230,6 +230,14 @@ Deno.serve(async (req) => {
 
       const metrics = liveMetrics;
       const spend = Number(metrics.spend || 0);
+
+      // Skip campaigns that didn't actually run during this period. Including
+      // them surfaces $0/0-result lines that read like wasted budget to the
+      // client, even though nothing was spent.
+      if (spend <= 0) {
+        continue;
+      }
+
       const revenue = Number(metrics.roas || 0) * spend;
       totalSpend += spend;
       totalRevenue += revenue;
