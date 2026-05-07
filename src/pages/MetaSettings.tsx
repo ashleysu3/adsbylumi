@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { MetaSetupStatus } from '@/components/MetaSetupStatus';
 import { LumiEducationCard } from '@/components/LumiEducationCard';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '@/components/DashboardLayout';
