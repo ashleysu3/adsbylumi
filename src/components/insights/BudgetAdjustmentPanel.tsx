@@ -339,13 +339,51 @@ export function BudgetAdjustmentPanel({
           <Sparkles className="h-4 w-4 text-primary" />
           {activeTarget ? `Scale "${activeTarget.name}"` : 'Lumi Budget Recommendation'}
         </CardTitle>
-        {targetAdSet && (
+        {activeTarget && (
           <p className="text-xs text-muted-foreground pt-1">
             Changes land on this ad set only — not the whole campaign.
           </p>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Inline error block — never silent. Shows server's reason and,
+            when applicable, an ad-set picker so the user can recover
+            without leaving the panel. */}
+        {errorState && (
+          <div className="p-3 rounded-lg border border-red-200 bg-red-50 space-y-3">
+            <div className="flex items-start gap-2">
+              <XCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-red-900">
+                  We couldn't update this budget on Meta
+                </p>
+                <p className="text-xs text-red-800 mt-1">{errorState.message}</p>
+              </div>
+            </div>
+            {errorState.adSets && errorState.adSets.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-red-900">
+                  Pick which ad set to update:
+                </p>
+                <div className="space-y-1">
+                  {errorState.adSets.map((set) => (
+                    <button
+                      key={set.id}
+                      type="button"
+                      onClick={() => handlePickAdSet(set)}
+                      className="w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded border border-red-200 bg-white hover:bg-red-100 transition-colors"
+                    >
+                      <span className="text-xs font-medium truncate">{set.name}</span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {set.dailyBudget != null ? `$${set.dailyBudget}/day` : 'budget unknown'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {/* Current Budget */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
