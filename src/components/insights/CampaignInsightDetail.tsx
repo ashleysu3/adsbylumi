@@ -40,7 +40,8 @@ import {
   getLumiStatusLabel,
 } from '@/lib/lumi-kpi-config';
 import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
-import { Eye, Pause, Play, Rocket, Hourglass } from 'lucide-react';
+import { Eye, Pause, Play, Rocket, Hourglass, Flame } from 'lucide-react';
+import { getFatigueStatus } from '@/lib/fatigue';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AdBreakdown } from './AdBreakdown';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
