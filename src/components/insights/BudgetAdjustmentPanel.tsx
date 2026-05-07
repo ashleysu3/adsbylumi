@@ -177,36 +177,57 @@ export function BudgetAdjustmentPanel({
 
   const handleSaveBudget = async () => {
     setUpdating(true);
+    setErrorState(null);
     try {
-      // When we have a specific target ad set, route the Meta change to it.
-      // Otherwise keep the old campaign-level / distributed behavior.
-      const { data, error } = await supabase.functions.invoke("update-meta-budget", {
-        body: {
+      // We call the function via fetch (instead of supabase.functions.invoke)
+      // so we can read the response body even on a non-2xx status — the
+      // ambiguous-ABO case returns 400 with the adSets[] payload we need
+      // to render an inline picker.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      const supabaseUrl = (supabase as any).supabaseUrl ||
+        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
+
+      const resp = await fetch(`${supabaseUrl}/functions/v1/update-meta-budget`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
+        },
+        body: JSON.stringify({
           workspaceId,
           newBudget,
-          ...(targetAdSet ? { adSetId: targetAdSet.id } : {}),
-        },
+          ...(activeTarget ? { adSetId: activeTarget.id } : {}),
+        }),
       });
 
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Failed to update budget on Meta");
+      let data: any = null;
+      try { data = await resp.json(); } catch { /* ignore body parse */ }
 
-      // Mirror the change in campaign_builder_answers so the UI reflects
-      // the new budget without waiting for the next sync. If we targeted a
-      // specific ad set, update that entry in the adSets array; otherwise
-      // update the aggregate `budget` field as before.
+      if (!resp.ok || !data?.success) {
+        // Preserve the ad-set list from the server (if any) so we can
+        // render a picker right inside the panel.
+        setErrorState({
+          message: data?.error || `Couldn't update budget on Meta (${resp.status}).`,
+          adSets: Array.isArray(data?.adSets) ? data.adSets : undefined,
+        });
+        return;
+      }
+
+      // Mirror the change locally so UI reflects the new budget without
+      // waiting for the next Meta sync.
       const { data: existing } = await supabase
         .from("campaign_workspaces")
         .select("campaign_builder_answers")
         .eq("id", workspaceId)
-        .single();
+        .maybeSingle();
 
       const existingAnswers = (existing?.campaign_builder_answers as Record<string, any>) || {};
-
       const updatedAnswers: Record<string, any> = { ...existingAnswers };
-      if (targetAdSet && Array.isArray(existingAnswers.adSets)) {
+      if (activeTarget && Array.isArray(existingAnswers.adSets)) {
         updatedAnswers.adSets = existingAnswers.adSets.map((a: any) =>
-          a.id === targetAdSet.id ? { ...a, dailyBudget: newBudget } : a,
+          a.id === activeTarget.id ? { ...a, dailyBudget: newBudget } : a,
         );
       } else {
         updatedAnswers.budget = newBudget;
@@ -225,10 +246,26 @@ export function BudgetAdjustmentPanel({
       setShowPanel(false);
     } catch (error: any) {
       console.error("Error updating budget:", error);
-      toast.error(error.message || "Failed to update budget on Meta. Try changing it directly in Meta Ads Manager.");
+      setErrorState({
+        message: error?.message || "We couldn't reach Meta to update this budget. Please try again.",
+      });
     } finally {
       setUpdating(false);
     }
+  };
+
+  // User picked a specific ad set from the inline picker — make it the
+  // active target and reset the budget slider to that set's current value.
+  const handlePickAdSet = (set: AdSetOption) => {
+    if (set.dailyBudget == null) {
+      setErrorState({
+        message: `We don't have a current daily budget for "${set.name}" yet. Try resyncing this campaign or update the budget directly in Meta Ads Manager.`,
+      });
+      return;
+    }
+    setActiveTarget({ id: set.id, name: set.name, currentBudget: set.dailyBudget });
+    setNewBudget(set.dailyBudget);
+    setErrorState(null);
   };
 
   const getActionIcon = () => {
