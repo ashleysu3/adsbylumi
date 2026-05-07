@@ -819,16 +819,12 @@ export default function AdPerformance() {
             const metaDailyBudget = data?.dailyBudget != null ? Number(data.dailyBudget) : undefined;
             const metaBudgetLevel = data?.budgetLevel || null;
             const syncedAt = new Date().toISOString();
+            const normalizedStatus = metaStatus ? metaStatus.toLowerCase() : (campaign.status || 'unknown');
 
-            if (metaStatus !== 'ACTIVE') {
-              return {
-                ...campaign, metrics: null, previousMetrics: null,
-                status: metaStatus ? metaStatus.toLowerCase() : 'unknown',
-                dailyBudget: metaDailyBudget, budgetLevel: metaBudgetLevel,
-                userGoal: userGoals[campaign.id] || null, lastSyncedAt: syncedAt
-              };
-            }
-
+            // Always keep metrics for the selected window even if the campaign
+            // is currently paused/archived — it may have spent real money during
+            // that window. Previously we wiped metrics whenever status !== ACTIVE
+            // which caused LUMI to report wildly wrong budgets/spend.
             let previousMetrics = null;
             try {
               const { data: prevData } = await supabase.functions.invoke('fetch-meta-performance', {
@@ -838,16 +834,14 @@ export default function AdPerformance() {
                   dateRangeEnd: format(prevDateRange.to, 'yyyy-MM-dd')
                 }
               });
-              if (prevData?.status === 'ACTIVE' || !prevData?.status) {
-                previousMetrics = prevData?.metrics || null;
-              }
+              previousMetrics = prevData?.metrics || null;
             } catch (prevErr) {
               console.log('Could not fetch previous period metrics');
             }
 
             return {
               ...campaign, metrics: data?.metrics || null, previousMetrics,
-              status: 'active', dailyBudget: metaDailyBudget, budgetLevel: metaBudgetLevel,
+              status: normalizedStatus, dailyBudget: metaDailyBudget, budgetLevel: metaBudgetLevel,
               userGoal: userGoals[campaign.id] || null, lastSyncedAt: syncedAt
             };
           } catch (err: any) {
