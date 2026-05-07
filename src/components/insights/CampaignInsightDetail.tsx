@@ -582,42 +582,64 @@ export function CampaignInsightDetail({
           when frequency has crossed the "early" threshold (2.5+). */}
       {(() => {
         const fatigue = getFatigueStatus(campaign.metrics?.frequency as number | null | undefined);
-        if (!fatigue.shouldSurface) return null;
+        const borderClass =
+          fatigue.level === 'high' ? 'border-red-200 bg-red-50/40'
+          : fatigue.level === 'building' ? 'border-orange-200 bg-orange-50/40'
+          : fatigue.level === 'early' ? 'border-amber-200 bg-amber-50/40'
+          : 'border-emerald-200 bg-emerald-50/30';
         return (
-          <Card className={`rounded-2xl border-2 ${
-            fatigue.level === 'high' ? 'border-red-200 bg-red-50/40'
-            : fatigue.level === 'building' ? 'border-orange-200 bg-orange-50/40'
-            : 'border-amber-200 bg-amber-50/40'
-          }`}>
-            <CardContent className="p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex items-start gap-3 min-w-0 flex-1">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    fatigue.level === 'high' ? 'bg-red-100' : fatigue.level === 'building' ? 'bg-orange-100' : 'bg-amber-100'
-                  }`}>
-                    <Flame className={`h-5 w-5 ${
-                      fatigue.level === 'high' ? 'text-red-600' : fatigue.level === 'building' ? 'text-orange-600' : 'text-amber-600'
-                    }`} />
+          <Card className={`rounded-2xl border-2 ${borderClass}`}>
+            <CardContent className="p-5">
+              <div className="flex flex-col md:flex-row md:items-center gap-5">
+                {/* Gauge */}
+                <div className="flex-shrink-0 mx-auto md:mx-0">
+                  <FatigueGauge
+                    frequency={campaign.metrics?.frequency as number | null | undefined}
+                    level={fatigue.level}
+                  />
+                </div>
+
+                {/* Status text */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="font-semibold text-base">Creative Fatigue</p>
+                    <Badge variant="outline" className={`text-xs ${fatigue.badgeClass}`}>
+                      {fatigue.label}
+                    </Badge>
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium text-sm">Creative Fatigue: {fatigue.label}</p>
-                      <Badge variant="outline" className={`text-xs ${fatigue.badgeClass}`}>
-                        Frequency {fatigue.frequency.toFixed(1)}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{fatigue.explanation}</p>
-                    <p className="text-sm font-medium mt-1">{fatigue.recommendation}</p>
+                  <p className="text-sm text-muted-foreground">{fatigue.explanation}</p>
+                  <p className="text-sm font-medium mt-1">{fatigue.recommendation}</p>
+
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    <Button
+                      size="sm"
+                      onClick={() => navigate(`/creative?workspace=${campaign.id}&refreshCreative=true`)}
+                      className="rounded-xl"
+                    >
+                      <Flame className="h-4 w-4 mr-1.5" />
+                      Refresh creative now
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.dispatchEvent(new CustomEvent('open-bench-picker', { detail: { workspaceId: campaign.id } }))}
+                      className="rounded-xl"
+                    >
+                      <Plus className="h-4 w-4 mr-1.5" />
+                      Add to bench
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => navigate('/settings?tab=alerts#fatigue')}
+                      className="rounded-xl"
+                    >
+                      <Sliders className="h-4 w-4 mr-1.5" />
+                      Bench rules
+                    </Button>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => navigate(`/creative?workspace=${campaign.id}&refreshCreative=true`)}
-                  className="rounded-xl"
-                >
-                  Refresh creative
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
               </div>
             </CardContent>
           </Card>
