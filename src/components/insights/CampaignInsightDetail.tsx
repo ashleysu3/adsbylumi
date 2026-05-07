@@ -42,6 +42,8 @@ import {
 import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
 import { Eye, Pause, Play, Rocket, Hourglass, Flame } from 'lucide-react';
 import { getFatigueStatus } from '@/lib/fatigue';
+import { FatigueGauge } from './FatigueGauge';
+import { Sliders, PlusCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AdBreakdown } from './AdBreakdown';
 import { BudgetAdjustmentPanel } from './BudgetAdjustmentPanel';
