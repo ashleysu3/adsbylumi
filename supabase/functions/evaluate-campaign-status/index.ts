@@ -372,14 +372,21 @@ function computeWindows(asOf: Date) {
     d.setUTCDate(d.getUTCDate() - n);
     return d;
   };
-  // Fatigue ref = days 8-21 ago. 14 days. Custom range, but well within Meta's
-  // happy zone (the bug was specific to ranges ending yesterday).
+  // Patch #29.1: date_preset=last_3d/last_7d came back empty for some accounts
+  // (Lindsay Williams) even when real spend existed. Switching back to custom
+  // time_range, but ending at TODAY (asOf) instead of yesterday — the original
+  // empty-result bug was specifically for ranges with `until=yesterday`.
+  const today = fmt(asOf);
+  const short3 = fmt(subtractDays(2));   // last 3 days inclusive of today
+  const med7 = fmt(subtractDays(6));     // last 7 days inclusive of today
+  const long30 = fmt(subtractDays(29));  // last 30 days inclusive of today
+  // Fatigue ref = days 8-21 ago. 14 days, doesn't end today.
   const fatigueUntil = fmt(subtractDays(8));
   const fatigueSince = fmt(subtractDays(21));
   return {
-    short: { preset: 'last_3d', days: 3, label: 'last_3d' } as DateWindow,
-    medium: { preset: 'last_7d', days: 7, label: 'last_7d' } as DateWindow,
-    long: { preset: 'last_30d', days: 30, label: 'last_30d' } as DateWindow,
+    short: { since: short3, until: today, days: 3, label: `time_range_${short3}_to_${today}` } as DateWindow,
+    medium: { since: med7, until: today, days: 7, label: `time_range_${med7}_to_${today}` } as DateWindow,
+    long: { since: long30, until: today, days: 30, label: `time_range_${long30}_to_${today}` } as DateWindow,
     fatigueRef: { since: fatigueSince, until: fatigueUntil, days: 14, label: 'fatigue_ref_8_to_21d' } as DateWindow,
   };
 }
@@ -449,9 +456,13 @@ async function fetchInsights(
     const data = await res.json();
     const rows = Array.isArray(data?.data) ? data.data : [];
     if (rows.length === 0 && data?.error) {
-      console.warn(`[evaluate] empty insights — level=${level} window=${window.label} error=`, data.error);
+      console.warn(`[evaluate] empty insights — level=${level} window=${window.label} error=`, JSON.stringify(data.error));
     } else if (rows.length === 0) {
-      console.log(`[evaluate] zero rows — level=${level} window=${window.label} (campaign may not have run during this window)`);
+      // Diagnostic: log redacted URL + raw payload so we can see why Meta returned nothing
+      const safeUrl = url.replace(/access_token=[^&]+/, 'access_token=REDACTED');
+      console.log(`[evaluate] zero rows — level=${level} window=${window.label} url=${safeUrl} payload=${JSON.stringify(data).slice(0, 500)}`);
+    } else {
+      console.log(`[evaluate] ${rows.length} rows — level=${level} window=${window.label}`);
     }
     return rows;
   } catch (err) {
