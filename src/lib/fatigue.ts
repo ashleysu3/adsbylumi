@@ -74,3 +74,24 @@ export function getFatigueStatus(frequency: number | null | undefined): FatigueS
     shouldSurface: true,
   };
 }
+
+/**
+ * Map frequency value to a needle angle for a 180° gauge.
+ * 0° = far left (healthy), 180° = far right (refresh now).
+ * Scale: 0 → 0°, 6+ → 180°. Threshold marks at 2.5 / 3.5 / 4.5
+ * fall at 75° / 105° / 135° respectively.
+ */
+export function gaugeAngle(frequency: number | null | undefined): number {
+  const f = typeof frequency === 'number' && !isNaN(frequency) && frequency > 0 ? frequency : 0;
+  const max = 6;
+  const clamped = Math.min(f, max);
+  return (clamped / max) * 180;
+}
+
+/** HSL color stops for the four fatigue zones, matching badge colors. */
+export const fatigueZoneColors = {
+  none: 'hsl(152 60% 45%)',     // emerald
+  early: 'hsl(40 95% 55%)',     // amber
+  building: 'hsl(25 90% 55%)',  // orange
+  high: 'hsl(0 75% 55%)',       // red
+} as const;
