@@ -575,8 +575,53 @@ export function CampaignInsightDetail({
           </div>
         </CardContent>
       </Card>
-      
-      {/* Link Offer Modal */}
+
+      {/* Creative Fatigue card — plain-English indicator. Only renders
+          when frequency has crossed the "early" threshold (2.5+). */}
+      {(() => {
+        const fatigue = getFatigueStatus(campaign.metrics?.frequency as number | null | undefined);
+        if (!fatigue.shouldSurface) return null;
+        return (
+          <Card className={`rounded-2xl border-2 ${
+            fatigue.level === 'high' ? 'border-red-200 bg-red-50/40'
+            : fatigue.level === 'building' ? 'border-orange-200 bg-orange-50/40'
+            : 'border-amber-200 bg-amber-50/40'
+          }`}>
+            <CardContent className="p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    fatigue.level === 'high' ? 'bg-red-100' : fatigue.level === 'building' ? 'bg-orange-100' : 'bg-amber-100'
+                  }`}>
+                    <Flame className={`h-5 w-5 ${
+                      fatigue.level === 'high' ? 'text-red-600' : fatigue.level === 'building' ? 'text-orange-600' : 'text-amber-600'
+                    }`} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-sm">Creative Fatigue: {fatigue.label}</p>
+                      <Badge variant="outline" className={`text-xs ${fatigue.badgeClass}`}>
+                        Frequency {fatigue.frequency.toFixed(1)}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{fatigue.explanation}</p>
+                    <p className="text-sm font-medium mt-1">{fatigue.recommendation}</p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => navigate(`/creative?workspace=${campaign.id}&refreshCreative=true`)}
+                  className="rounded-xl"
+                >
+                  Refresh creative
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {campaign.brandId && (
         <LinkOfferModal
           open={showLinkOfferModal}
