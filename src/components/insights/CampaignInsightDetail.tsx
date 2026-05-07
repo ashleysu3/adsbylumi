@@ -743,9 +743,9 @@ export function CampaignInsightDetail({
                                 workspaceId={campaign.id}
                                 workspaceName={campaign.name}
                                 currentBudget={
-                                  rec.actionPayload?.currentBudget ||
-                                  (campaign as any).dailyBudget ||
-                                  25
+                                  rec.actionPayload?.currentBudget ??
+                                  (campaign as any).dailyBudget ??
+                                  null
                                 }
                                 metrics={{
                                   roas: campaign.metrics?.roas,
