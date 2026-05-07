@@ -313,12 +313,27 @@ export default function AdPerformance() {
     }
   };
 
-  // Fetch campaigns when brand is available
+  // Fetch campaigns when brand is available. Auto-sync from Meta first so
+  // live campaigns running in Meta but not yet imported as workspaces get
+  // pulled in, and stale meta_campaign_status values get refreshed. Without
+  // this, users see a stale subset of their campaigns.
   useEffect(() => {
-    if (!brandLoading && activeBrand) {
-      fetchCampaigns();
-    }
-  }, [brandLoading, activeBrand?.id]);
+    if (brandLoading || !activeBrand) return;
+    let cancelled = false;
+    (async () => {
+      if (metaConnected && !metaTokenExpired) {
+        try {
+          await supabase.functions.invoke('sync-meta-campaigns', {
+            body: { brandId: activeBrand.id },
+          });
+        } catch (e) {
+          console.warn('Auto sync-meta-campaigns failed (non-fatal):', e);
+        }
+      }
+      if (!cancelled) await fetchCampaigns();
+    })();
+    return () => { cancelled = true; };
+  }, [brandLoading, activeBrand?.id, metaConnected, metaTokenExpired]);
 
   // Check token expiration
   useEffect(() => {
