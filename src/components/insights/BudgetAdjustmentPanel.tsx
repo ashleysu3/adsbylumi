@@ -65,8 +65,12 @@ export function BudgetAdjustmentPanel({
 }: BudgetAdjustmentPanelProps) {
   // When targeting a specific ad set (e.g. "Scaling"), use that set's budget
   // as the starting point — not the campaign-wide aggregate. Keeps the
-  // percentage math honest.
-  const effectiveCurrentBudget = targetAdSet ? targetAdSet.currentBudget : currentBudget;
+  // percentage math honest. If we don't actually know the budget, do NOT
+  // make one up — render a clear "unknown" state instead.
+  const knownBudget: number | null = targetAdSet
+    ? targetAdSet.currentBudget
+    : (typeof currentBudget === 'number' && currentBudget > 0 ? currentBudget : null);
+  const effectiveCurrentBudget = knownBudget ?? 0;
   const [newBudget, setNewBudget] = useState(effectiveCurrentBudget);
   const [updating, setUpdating] = useState(false);
   const [showPanel, setShowPanel] = useState(inline);
