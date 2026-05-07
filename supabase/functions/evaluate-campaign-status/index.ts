@@ -7,12 +7,27 @@ const corsHeaders = {
 };
 
 // ============================================================================
-// evaluate-campaign-status (Patch #28 — the brain)
+// evaluate-campaign-status (Patch #29 hotfix — fixes 3/7-day windows + budget bug)
 //
-// Implements docs/lumi-decision-playbook.md §6 (rules) and returns the API
-// in §7. Single source of truth for status + recommendation logic.
-// Performance dashboard, weekly email, and campaign retrospective all call
-// this — they differ in time window + depth, not in logic.
+// Hotfixes from Ashley's smoke test of patch #28:
+//
+//   1. Custom `time_range` queries with very recent windows (ending yesterday)
+//      were silently returning empty data from Meta. Switched the three
+//      standard windows to Meta's `date_preset=last_3d / last_7d / last_30d`
+//      which are timezone-aware on Meta's side and consistently populated.
+//      Custom time_range is now used only for the fatigue-reference window.
+//
+//   2. Meta returns `daily_budget` and `lifetime_budget` as STRINGS in the
+//      smallest currency unit (cents for USD). Previous code read them raw,
+//      so a $320 daily budget showed up as 32000 in the spend_starved
+//      reasoning. New `dollarsFromMetaBudget` helper divides by 100 and
+//      skips the spend_starved rule on lifetime-only budgets.
+//
+//   3. Added diagnostic logging on each Meta call + budget read so future
+//      mismatches are visible in function logs.
+//
+// Original purpose unchanged: implements docs/lumi-decision-playbook.md §6
+// (rules) and returns the API in §7.
 //
 // Inputs (one of):
 //   { workspaceId, primaryGoal?, primaryDirection?, attributionWindow?, asOf? }
@@ -231,7 +246,7 @@ Deno.serve(async req => {
         meta3, meta7, meta30, metaFatigueRef,
         adsetType: detectAdsetType(parentAdset?.name),
         audienceTemp: detectAudienceTemp(parentAdset?.name, parentAdset?.targeting),
-        adsetDailyBudget: numberish(parentAdset?.daily_budget) ?? 0,
+        adsetDailyBudget: dollarsFromMetaBudget(parentAdset),
         campaignType,
         adInfo,
       });
@@ -252,7 +267,7 @@ Deno.serve(async req => {
         meta3, meta7, meta30, metaFatigueRef,
         adsetType: detectAdsetType(adsetInfo?.name),
         audienceTemp: detectAudienceTemp(adsetInfo?.name, adsetInfo?.targeting),
-        adsetDailyBudget: numberish(adsetInfo?.daily_budget) ?? 0,
+        adsetDailyBudget: dollarsFromMetaBudget(adsetInfo),
         campaignType,
       });
     });
@@ -266,7 +281,7 @@ Deno.serve(async req => {
       meta3: c3?.[0], meta7: c7?.[0], meta30: c30?.[0], metaFatigueRef: cFatigueRef?.[0],
       adsetType: 'unknown',
       audienceTemp: 'unknown',
-      adsetDailyBudget: numberish(meta.daily_budget) ?? 0,
+      adsetDailyBudget: dollarsFromMetaBudget(meta),
       campaignType,
     });
 
@@ -334,9 +349,21 @@ async function resolveContext(body: any, sb: any, userId: string) {
 
 // ---------------------------------------------------------------------------
 // Window math — playbook §2 (3 / 7 / 30 days, plus fatigue ref = prior 14 days)
+//
+// Patch #29: standard windows now use Meta's date_preset (last_3d/7d/30d)
+// instead of custom time_range. Meta's presets are timezone-aware in the
+// account's local TZ, which is what the user expects, and they don't have
+// the empty-result bug we saw with `until=yesterday` custom ranges.
 // ---------------------------------------------------------------------------
 
-interface DateWindow { since: string; until: string; days: number; }
+interface DateWindow {
+  // Either a Meta-supported date_preset, or a custom { since, until }.
+  preset?: 'last_3d' | 'last_7d' | 'last_14d' | 'last_28d' | 'last_30d' | 'last_90d' | 'lifetime';
+  since?: string;
+  until?: string;
+  days: number;        // for math (impact, fatigue %, etc.)
+  label: string;       // for log lines
+}
 
 function computeWindows(asOf: Date) {
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
@@ -345,19 +372,21 @@ function computeWindows(asOf: Date) {
     d.setUTCDate(d.getUTCDate() - n);
     return d;
   };
-  // The "until" is yesterday so we don't compare on a partial day.
-  const until = subtractDays(1);
-  const w = (n: number): DateWindow => ({ since: fmt(subtractDays(n)), until: fmt(until), days: n });
-  // Fatigue ref = the 14 days before the medium window's "since."
-  const mediumSince = subtractDays(7);
-  const fatigueUntil = subtractDays(8);
-  const fatigueSince = subtractDays(21);
+  // Fatigue ref = days 8-21 ago. 14 days. Custom range, but well within Meta's
+  // happy zone (the bug was specific to ranges ending yesterday).
+  const fatigueUntil = fmt(subtractDays(8));
+  const fatigueSince = fmt(subtractDays(21));
   return {
-    short: w(3),
-    medium: w(7),
-    long: w(30),
-    fatigueRef: { since: fmt(fatigueSince), until: fmt(fatigueUntil), days: 14 },
+    short: { preset: 'last_3d', days: 3, label: 'last_3d' } as DateWindow,
+    medium: { preset: 'last_7d', days: 7, label: 'last_7d' } as DateWindow,
+    long: { preset: 'last_30d', days: 30, label: 'last_30d' } as DateWindow,
+    fatigueRef: { since: fatigueSince, until: fatigueUntil, days: 14, label: 'fatigue_ref_8_to_21d' } as DateWindow,
   };
+}
+
+function timeParam(window: DateWindow): string {
+  if (window.preset) return `date_preset=${window.preset}`;
+  return `time_range=${encodeURIComponent(JSON.stringify({ since: window.since, until: window.until }))}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -411,16 +440,22 @@ async function fetchInsights(
   const url =
     `https://graph.facebook.com/v21.0/${metaCampaignId}/insights` +
     `?level=${level}` +
-    `&time_range=${encodeURIComponent(JSON.stringify({ since: window.since, until: window.until }))}` +
+    `&${timeParam(window)}` +
     `&fields=${fields.join(',')}` +
     `&limit=500&access_token=${accessToken}`;
 
   try {
     const res = await fetch(url);
     const data = await res.json();
-    return Array.isArray(data?.data) ? data.data : [];
+    const rows = Array.isArray(data?.data) ? data.data : [];
+    if (rows.length === 0 && data?.error) {
+      console.warn(`[evaluate] empty insights — level=${level} window=${window.label} error=`, data.error);
+    } else if (rows.length === 0) {
+      console.log(`[evaluate] zero rows — level=${level} window=${window.label} (campaign may not have run during this window)`);
+    }
+    return rows;
   } catch (err) {
-    console.error(`insights fetch failed (level=${level}):`, err);
+    console.error(`insights fetch failed (level=${level}, window=${window.label}):`, err);
     return [];
   }
 }
@@ -450,6 +485,32 @@ function firstCpa(cpa: any[], types: string[]): number | null {
 function numberish(v: any): number | null {
   const n = Number(v);
   return isFinite(n) ? n : null;
+}
+
+/**
+ * Patch #29 hotfix: Meta returns daily_budget / lifetime_budget as STRINGS
+ * in the smallest currency unit (cents for USD, etc.). Reading raw gives
+ * 100× the actual dollar amount. This helper:
+ *   - Returns the EFFECTIVE daily budget in dollars when there's a daily_budget.
+ *   - Returns 0 (rule disabled) when only a lifetime_budget is set, since
+ *     converting that to a meaningful daily allocation requires campaign
+ *     start/end dates we don't always have. Better than reporting wrong.
+ *   - Logs a diagnostic line so future budget mismatches are visible.
+ */
+function dollarsFromMetaBudget(node: any): number {
+  if (!node) return 0;
+  const dailyCents = Number(node.daily_budget || 0);
+  const lifetimeCents = Number(node.lifetime_budget || 0);
+  if (dailyCents > 0) {
+    const dollars = dailyCents / 100;
+    console.log(`[evaluate] daily_budget read: ${dailyCents} cents → $${dollars}`);
+    return dollars;
+  }
+  if (lifetimeCents > 0) {
+    console.log(`[evaluate] lifetime_budget set (${lifetimeCents} cents) — spend_starved rule disabled (no daily allocation without campaign dates)`);
+    return 0;
+  }
+  return 0;
 }
 
 function rollupRowForKpi(row: any, primaryKpi: string): WindowSnapshot {
@@ -638,9 +699,12 @@ function applyRules(r: RuleArgs): { status: Status; recommendation: AdEvaluation
   }
 
   // §6.5 — Spend-starved (campaigns / adsets only — ad-level spend allocation isn't user-controlled).
+  // Patch #29: also require avg spend > 0 — a flat-zero short window means
+  // the campaign genuinely wasn't running, not that Meta underspent. Different
+  // problem, different message (don't trigger the push-delivery suggestion).
   if (args.level !== 'ad' && args.adsetDailyBudget > 0) {
     const avgDailySpend3d = w3.spend / Math.max(1, 3);
-    if (avgDailySpend3d < args.adsetDailyBudget * 0.85) {
+    if (avgDailySpend3d > 0 && avgDailySpend3d < args.adsetDailyBudget * 0.85) {
       const pct = Math.round((avgDailySpend3d / args.adsetDailyBudget) * 100);
       return {
         status: 'spend_starved',
@@ -838,14 +902,3 @@ function pickTopRecommendation(all: AdEvaluation[]): AdEvaluation | null {
 
   return ranked[0] || null;
 }
-
-// Exported for tests only — do not use from production code.
-export const __test_exports = {
-  classify,
-  applyRules,
-  pickTopRecommendation,
-  detectAdsetType,
-  detectAudienceTemp,
-  computeWindows,
-  rollupRowForKpi,
-};
