@@ -18,7 +18,12 @@ import { toast } from "sonner";
 interface BudgetAdjustmentPanelProps {
   workspaceId: string;
   workspaceName: string;
-  currentBudget: number;
+  /**
+   * The campaign's actual daily budget pulled from Meta. May be null/undefined
+   * if Meta hasn't returned a value yet — in that case we DO NOT guess a number.
+   * The panel will show a "budget unknown" state instead.
+   */
+  currentBudget: number | null | undefined;
   metrics: {
     roas?: number | null;
     cpl?: number | null;
@@ -33,11 +38,7 @@ interface BudgetAdjustmentPanelProps {
   /**
    * Optional: when the calling surface has detected that this campaign has
    * a Testing + Scaling structure, it can point the budget change at the
-   * Scaling ad set specifically. When set, the panel:
-   *   - shows the target ad set name in the header,
-   *   - uses the ad set's own daily budget as `currentBudget`,
-   *   - sends `adSetId` to the update-meta-budget function so the change
-   *     lands only on that set (instead of being distributed across all).
+   * Scaling ad set specifically.
    */
   targetAdSet?: {
     id: string;
@@ -64,8 +65,12 @@ export function BudgetAdjustmentPanel({
 }: BudgetAdjustmentPanelProps) {
   // When targeting a specific ad set (e.g. "Scaling"), use that set's budget
   // as the starting point — not the campaign-wide aggregate. Keeps the
-  // percentage math honest.
-  const effectiveCurrentBudget = targetAdSet ? targetAdSet.currentBudget : currentBudget;
+  // percentage math honest. If we don't actually know the budget, do NOT
+  // make one up — render a clear "unknown" state instead.
+  const knownBudget: number | null = targetAdSet
+    ? targetAdSet.currentBudget
+    : (typeof currentBudget === 'number' && currentBudget > 0 ? currentBudget : null);
+  const effectiveCurrentBudget = knownBudget ?? 0;
   const [newBudget, setNewBudget] = useState(effectiveCurrentBudget);
   const [updating, setUpdating] = useState(false);
   const [showPanel, setShowPanel] = useState(inline);
@@ -236,6 +241,34 @@ export function BudgetAdjustmentPanel({
         <DollarSign className="h-4 w-4" />
         Adjust Budget
       </Button>
+    );
+  }
+
+  // If we don't actually know the current budget, refuse to guess.
+  if (knownBudget === null) {
+    return (
+      <Card className="border-2 border-amber-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            Budget unavailable
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            We couldn't read this campaign's current daily budget from Meta yet, so we won't guess a number.
+            Re-sync this campaign or update the budget directly in Meta Ads Manager.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPanel(false)}
+            className="w-full"
+          >
+            Close
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 

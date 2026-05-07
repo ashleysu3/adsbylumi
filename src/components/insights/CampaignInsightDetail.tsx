@@ -108,7 +108,9 @@ function findScalingTarget(
 ) {
   const scaling = (campaign.adSets || []).find(a => a.role === 'scaling');
   if (!scaling) return null;
-  const currentBudget = scaling.dailyBudget ?? campaign.dailyBudget ?? 25;
+  // Only return a target if we actually KNOW the budget. Never guess.
+  const currentBudget = scaling.dailyBudget ?? campaign.dailyBudget ?? null;
+  if (currentBudget == null) return null;
   return { id: scaling.id, name: scaling.name, currentBudget };
 }
 
@@ -741,9 +743,9 @@ export function CampaignInsightDetail({
                                 workspaceId={campaign.id}
                                 workspaceName={campaign.name}
                                 currentBudget={
-                                  rec.actionPayload?.currentBudget ||
-                                  (campaign as any).dailyBudget ||
-                                  25
+                                  rec.actionPayload?.currentBudget ??
+                                  (campaign as any).dailyBudget ??
+                                  null
                                 }
                                 metrics={{
                                   roas: campaign.metrics?.roas,

@@ -100,6 +100,10 @@ Deno.serve(async (req) => {
     const m = metrics || {};
     const adList: any[] = ads || [];
 
+    // Resolve primaryKpi EARLY — the change-context trend block below needs it.
+    // (The full goal-aware block re-resolves these later for clarity.)
+    const primaryKpi: string = goals?.primary_kpi || 'cpl';
+
     // ============================================================
     // CHANGE CONTEXT (#6)
     //
@@ -300,7 +304,7 @@ Deno.serve(async (req) => {
 
     const hasGoals = !!goals?.primary_kpi;
 
-    const primaryKpi = goals?.primary_kpi || 'cpl';
+    // primaryKpi already resolved above (needed by change-context block).
     const primaryThreshold = goals?.primary_kpi_threshold ? parseFloat(String(goals.primary_kpi_threshold)) : null;
     const primaryGoalType = goals?.primary_kpi_goal_type || 'less_than';
     const secondaryKpi = goals?.secondary_kpi || null;

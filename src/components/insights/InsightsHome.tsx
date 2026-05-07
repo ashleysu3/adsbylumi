@@ -62,9 +62,9 @@ const AUTOMATABLE_TYPES = new Set(['budget_increase', 'budget_decrease', 'pause_
 function findScalingTarget(campaign: { adSets?: AdSetInfo[] | null; dailyBudget?: number }) {
   const scaling = (campaign.adSets || []).find(a => a.role === 'scaling');
   if (!scaling) return null;
-  // Fall back to the campaign's aggregate daily budget if the ad set's
-  // own budget isn't populated (rare, but sync may have missed it).
-  const currentBudget = scaling.dailyBudget ?? campaign.dailyBudget ?? 25;
+  // Only return a target if we actually KNOW the budget. Never guess.
+  const currentBudget = scaling.dailyBudget ?? campaign.dailyBudget ?? null;
+  if (currentBudget == null) return null;
   return { id: scaling.id, name: scaling.name, currentBudget };
 }
 
@@ -982,7 +982,7 @@ export function InsightsHome({
                                 <BudgetAdjustmentPanel
                                   workspaceId={campaign.id}
                                   workspaceName={campaign.name}
-                                  currentBudget={campaign.dailyBudget || 25}
+                                  currentBudget={campaign.dailyBudget ?? null}
                                   metrics={{
                                     roas: campaign.metrics?.roas,
                                     cpl: campaign.metrics?.cpl,
@@ -1077,9 +1077,9 @@ export function InsightsHome({
                                             workspaceId={campaign.id}
                                             workspaceName={campaign.name}
                                             currentBudget={
-                                              rec.actionPayload?.currentBudget ||
-                                              campaign.dailyBudget ||
-                                              25
+                                              rec.actionPayload?.currentBudget ??
+                                              campaign.dailyBudget ??
+                                              null
                                             }
                                             metrics={{
                                               roas: campaign.metrics?.roas,
