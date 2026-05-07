@@ -1,50 +1,62 @@
-## Problem
+# Fix budget changes silently failing + add a clear Creative Fatigue indicator
 
-On `/ad-performance`, a campaign appears with a **LIVE** badge inside "LUMI Recommendations" (it comes from the optimization report). When the user clicks:
+Two problems to solve:
 
-- **View Campaign** → drawer opens, but the default Creative tab is empty because no creative was ever generated for this workspace.
-- **View Results** → page renders **"Campaign not found"** with a "Back to Overview" button.
+### 1. "She changed the budget in Lumi but it didn't go to Meta"
 
-The user is stuck in a loop with a "live" campaign they can't inspect.
+The `update-meta-budget` edge function is actually working correctly — it's just **refusing to act in ambiguous cases and the user isn't seeing why**. Specifically, when:
 
-## Root cause
+- The campaign is ABO (Ad Set Budgets) with **2+ active ad sets**, AND
+- The caller didn't specify which ad set to target
 
-`src/pages/Data.tsx` builds the `campaigns` array by calling `fetchCampaigns()`, which filters workspaces out when:
+…the function returns a 400 with an explanatory error. The frontend (`BudgetAdjustmentPanel.handleSaveBudget`) shows a tiny `toast.error(...)`, the panel closes, and from the user's perspective "nothing happened." This is exactly what's happening here.
 
-- `meta_campaign_ids.campaignId` is missing
-- the campaign ID looks like a placeholder timestamp (`*_<timestamp>`)
-- `meta_campaign_status === 'draft'`
+The "Scale 20%" recommendation lands a `targetAdSet` of `null` whenever `findScalingTarget` can't find a Scaling-role ad set OR when the Scaling ad set's `dailyBudget` is unknown — so the request reaches Meta with no `adSetId` and Meta sees an ABO campaign with multiple sets and refuses.
 
-The optimization report (`optimization_reports.report_data`), however, still includes those workspaces. So the report card shows the campaign as LIVE, but `selectedCampaign = campaigns.find(c => c.id === selectedCampaignId)` returns `undefined` and the detail view falls through to the "Campaign not found" branch.
+### 2. "Make creative fatigue easy to understand"
 
-The drawer opens fine (it fetches the workspace by ID directly), but the default "Creative" tab is empty for campaigns that never had creative generated, which feels broken.
+Today, fatigue only surfaces inside long recommendation copy ("Your frequency is getting high — time for fresh creative") buried in CampaignInsightDetail. There's no at-a-glance indicator on the campaign card and no plain-English explanation of what frequency even means.
 
-## Fix
+---
 
-### 1. `src/pages/Data.tsx` — never show "Campaign not found" for a real workspace
+## What we'll build
 
-When `selectedCampaignId` is set but not present in `campaigns`, fall back to fetching the workspace by ID and synthesizing a minimal `CampaignData` object so `CampaignInsightDetail` can still render (it already handles missing metrics gracefully via the soft-200 from `fetch-meta-performance`).
+### Part A — Stop budget changes from silently failing
 
-- Add a `fallbackCampaign` state.
-- In the existing `useEffect` keyed on `[view, selectedCampaignId]`, if `selectedCampaignId` is not in `campaigns`, fetch the workspace row (same `select` shape as `fetchCampaigns`) and map it into `CampaignData` with safe defaults (status `live` if `meta_campaign_status === 'live'`, otherwise pass through).
-- Compute `selectedCampaign = campaigns.find(...) ?? fallbackCampaign`.
-- Remove the "Campaign not found" branch entirely; replace with a small loading skeleton while the fallback fetch is in flight, and only show the not-found message if the fetch returns no row.
+1. **Loud, explanatory error UI** in `BudgetAdjustmentPanel`. Replace the toast with an inline error block inside the panel that:
+   - Stays visible (panel does NOT close on failure)
+   - Uses plain English: "We couldn't update this budget on Meta. Here's why: [reason]"
+   - When Meta returns multiple ad sets to choose from, render a list of the ad sets with their current budgets and a "Pick one" button next to each — clicking pre-fills `targetAdSet` and re-saves
+   - When campaign is CBO + adSetId mismatch, explain CBO in one sentence
 
-### 2. `src/components/CampaignDetailDrawer.tsx` — friendlier empty drawer
+2. **Pre-flight ad-set picker** in `BudgetAdjustmentPanel`: if the user opens the panel and the campaign has multiple active ad sets but no `targetAdSet` was passed, show the same picker proactively before they hit Save (instead of letting them save then fail).
 
-- Default the tab to `"goals"` instead of `"creative"` when there's no `creative_json` and no `selected_copy`. This shows the LUMI suggestion / saved goals immediately (matches the screenshot's intent — a live campaign without creative data still has goals to manage).
-- Add a small inline note at the top of the empty Creative tab pointing the user to "Set goals" or "View Results" so the drawer never feels blank.
+3. **Server returns picker payload**: confirm `update-meta-budget` already returns `adSets[]` in its 400 response (it does) — frontend will consume that to render the picker.
 
-### 3. Status-label safety
+### Part B — Plain-English Creative Fatigue indicator
 
-`CampaignInsightDetail` already handles `notPublished` from `fetch-meta-performance` (we returned 200 in the previous fix), so once the fallback workspace is passed in, the page will render the campaign header + the empty/no-metrics state instead of the dead-end "Campaign not found".
+1. **New shared helper** `getFatigueStatus(frequency, ctrTrend?)` returning:
+   - `none` — frequency < 2.5
+   - `early` — 2.5 ≤ frequency < 3.5  ("Your audience is starting to see this a lot")
+   - `building` — 3.5 ≤ frequency < 4.5  ("Same people seeing your ad many times — refresh soon")
+   - `high` — frequency ≥ 4.5  ("Audience is tapped out — refresh creative now")
 
-## Files to edit
+2. **Compact badge on each campaign card** in `InsightsHome` (next to the existing status pill) — renders only when fatigue is `early`, `building`, or `high`. Color-coded (muted / amber / red) with a tooltip that explains in one sentence what frequency means and what to do.
 
-- `src/pages/Data.tsx` — add fallback workspace fetch, swap "Campaign not found" for synthesized detail view.
-- `src/components/CampaignDetailDrawer.tsx` — change default tab when no creative exists, add helper text in empty Creative tab.
+3. **Detail-view fatigue card** in `CampaignInsightDetail`: a small dedicated section under the KPI summary that shows the frequency number, the plain-English status label, a one-line explanation ("Each person has seen your ad ~X times in this window"), and a clear CTA — "Refresh creative" linking to `/creative?workspace=...&refreshCreative=true`.
 
-## Out of scope
+4. **Standardize the threshold** at 3.5 / 4.5 across the app (matches the existing `getBudgetVerdict` 3.5 cutoff and the brand-level `frequency_warning` default of 4 so we don't introduce a third number).
 
-- Changing how the optimization report decides which workspaces to include.
-- Any backend/edge function changes (the soft-200 fix from the previous turn already covers the metrics path).
+---
+
+## Technical notes
+
+- Files touched:
+  - `src/components/insights/BudgetAdjustmentPanel.tsx` — inline error state, ad-set picker, no auto-close on failure
+  - `src/components/insights/InsightsHome.tsx` — fatigue badge on cards
+  - `src/components/insights/CampaignInsightDetail.tsx` — fatigue section
+  - `src/lib/fatigue.ts` (new) — single helper used by both
+- No edge function changes required; `update-meta-budget` already returns the `adSets` payload we need.
+- No database changes.
+- No new dependencies.
+- Tone follows project memory: advisory ("We recommend refreshing"), creator-friendly language, no jargon.
