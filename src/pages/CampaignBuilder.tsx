@@ -236,6 +236,7 @@ export default function CampaignBuilder() {
         return;
       }
 
+      setPublishError(null); // clear any prior error before retry
       setStage('publishing');
       const { data, error } = await supabase.functions.invoke('build-meta-campaign', {
         body: {
