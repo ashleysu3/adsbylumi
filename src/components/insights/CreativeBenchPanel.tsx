@@ -90,6 +90,19 @@ export function CreativeBenchPanel({
     fetchBenchData();
   }, [workspaceId]);
 
+  // Listen for "Add to bench" requests from the fatigue gauge in CampaignInsightDetail
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail || detail.workspaceId === workspaceId) {
+        setSelectedConcepts([]);
+        setPickerOpen(true);
+      }
+    };
+    window.addEventListener('open-bench-picker', handler);
+    return () => window.removeEventListener('open-bench-picker', handler);
+  }, [workspaceId]);
+
   const fetchBenchData = async () => {
     setLoading(true);
     const [benchRes, logRes] = await Promise.all([
