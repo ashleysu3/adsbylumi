@@ -18,7 +18,12 @@ import { toast } from "sonner";
 interface BudgetAdjustmentPanelProps {
   workspaceId: string;
   workspaceName: string;
-  currentBudget: number;
+  /**
+   * The campaign's actual daily budget pulled from Meta. May be null/undefined
+   * if Meta hasn't returned a value yet — in that case we DO NOT guess a number.
+   * The panel will show a "budget unknown" state instead.
+   */
+  currentBudget: number | null | undefined;
   metrics: {
     roas?: number | null;
     cpl?: number | null;
@@ -33,11 +38,7 @@ interface BudgetAdjustmentPanelProps {
   /**
    * Optional: when the calling surface has detected that this campaign has
    * a Testing + Scaling structure, it can point the budget change at the
-   * Scaling ad set specifically. When set, the panel:
-   *   - shows the target ad set name in the header,
-   *   - uses the ad set's own daily budget as `currentBudget`,
-   *   - sends `adSetId` to the update-meta-budget function so the change
-   *     lands only on that set (instead of being distributed across all).
+   * Scaling ad set specifically.
    */
   targetAdSet?: {
     id: string;
