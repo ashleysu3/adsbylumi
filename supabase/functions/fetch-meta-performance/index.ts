@@ -285,23 +285,14 @@ Deno.serve(async (req) => {
         .eq('id', workspaceId);
     }
 
-    // If campaign is not ACTIVE, return early with status info
-    if (effectiveStatus !== 'ACTIVE') {
-      console.log(`Campaign ${campaignId} is ${effectiveStatus}, not ACTIVE - skipping metrics fetch`);
-      return new Response(
-        JSON.stringify({
-          success: true,
-          metrics: null,
-          status: effectiveStatus,
-          dailyBudget: resolvedDailyBudget,
-          lifetimeBudget: resolvedLifetimeBudget,
-          budgetLevel,
-          message: `Campaign is ${effectiveStatus}, not ACTIVE`,
-          dataIntegrity: { verified: true, source: 'meta_api', fetchedAt: new Date().toISOString() },
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
+    // NOTE: We used to return early here when the campaign wasn't currently
+    // ACTIVE. That was wrong — a campaign that was paused yesterday still
+    // spent real money during the selected window, and excluding it caused
+    // LUMI to hallucinate budgets / spend (e.g. saying $25/day when the
+    // user is actually spending $185/day). We now ALWAYS fetch insights for
+    // the requested date range; status is reported alongside but does not
+    // gate the metrics.
+    console.log(`Campaign ${campaignId} effective_status=${effectiveStatus} — fetching insights for requested range regardless of current status`);
 
     // ============================================
     // STEP 2: Fetch insights for ACTIVE campaigns
