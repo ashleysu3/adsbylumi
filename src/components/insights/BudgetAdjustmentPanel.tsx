@@ -387,7 +387,7 @@ export function BudgetAdjustmentPanel({
         {/* Current Budget */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
-            {targetAdSet ? 'Ad set budget' : 'Current budget'}
+            {activeTarget ? 'Ad set budget' : 'Current budget'}
           </span>
           <span className="font-semibold">${liveEffectiveBudget}/day</span>
         </div>
