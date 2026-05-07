@@ -154,7 +154,7 @@ function LumiAssistantUI({
 }: LumiAssistantUIProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { messages, addMessage, setBrandId } = useLumi();
+  const { messages, addMessage, setBrandId, brandId } = useLumi();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [currentRecommendationId, setCurrentRecommendationId] = useState<string | null>(null);
