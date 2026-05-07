@@ -275,6 +275,7 @@ export default function CampaignBuilder() {
         .from('campaign_workspaces')
         .update({ meta_errors: { timestamp: new Date().toISOString(), error: friendlyMsg, stage: 'publishing' } })
         .eq('id', workspaceId);
+      setPublishError(friendlyMsg || "Failed to publish campaign. Try again or contact support.");
       toast.error(friendlyMsg || "Failed to publish campaign");
       setStage('configure');
     } finally {
