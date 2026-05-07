@@ -1218,7 +1218,6 @@ export default function AdPerformance() {
             isLoading={syncing}
             dateRangeStart={format(getDateRange(detailDateRange, customDateRange).from, 'yyyy-MM-dd')}
             dateRangeEnd={format(getDateRange(detailDateRange, customDateRange).to, 'yyyy-MM-dd')}
-            detailLevel={detailLevel}
           />
         ) : fallbackLoading ? (
           <div className="text-center py-12 space-y-3">

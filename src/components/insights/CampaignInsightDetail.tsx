@@ -275,13 +275,12 @@ export function CampaignInsightDetail({
   isLoading,
   dateRangeStart,
   dateRangeEnd,
-  detailLevel = 'simple',
 }: CampaignInsightDetailProps) {
   const navigate = useNavigate();
   const recsRef = useRef<HTMLDivElement>(null);
   const [localDateRange, setLocalDateRange] = useState<string>('global');
   const [showLinkOfferModal, setShowLinkOfferModal] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(detailLevel === 'detailed');
+  const [advancedOpen, setAdvancedOpen] = useState(true);
   const [autoRotateEnabled, setAutoRotateEnabled] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
