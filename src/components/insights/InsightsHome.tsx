@@ -1077,9 +1077,9 @@ export function InsightsHome({
                                             workspaceId={campaign.id}
                                             workspaceName={campaign.name}
                                             currentBudget={
-                                              rec.actionPayload?.currentBudget ||
-                                              campaign.dailyBudget ||
-                                              25
+                                              rec.actionPayload?.currentBudget ??
+                                              campaign.dailyBudget ??
+                                              null
                                             }
                                             metrics={{
                                               roas: campaign.metrics?.roas,
