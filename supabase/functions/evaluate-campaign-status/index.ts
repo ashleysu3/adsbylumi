@@ -838,3 +838,14 @@ function pickTopRecommendation(all: AdEvaluation[]): AdEvaluation | null {
 
   return ranked[0] || null;
 }
+
+// Exported for tests only — do not use from production code.
+export const __test_exports = {
+  classify,
+  applyRules,
+  pickTopRecommendation,
+  detectAdsetType,
+  detectAudienceTemp,
+  computeWindows,
+  rollupRowForKpi,
+};
