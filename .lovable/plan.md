@@ -1,62 +1,53 @@
-# Fix budget changes silently failing + add a clear Creative Fatigue indicator
+## Goal
 
-Two problems to solve:
+Replace the existing text-only "Creative Fatigue" card on the campaign insight detail with a visual, plain-English gauge — like a car's oil-temp dial — that always shows fatigue status (green → red), explains what it means, and gives the user concrete next-action buttons.
 
-### 1. "She changed the budget in Lumi but it didn't go to Meta"
+## What the user will see
 
-The `update-meta-budget` edge function is actually working correctly — it's just **refusing to act in ambiguous cases and the user isn't seeing why**. Specifically, when:
+On `CampaignInsightDetail` (in `src/components/insights/CampaignInsightDetail.tsx`), the existing fatigue card is replaced with a richer "Creative Fatigue" card that contains:
 
-- The campaign is ABO (Ad Set Budgets) with **2+ active ad sets**, AND
-- The caller didn't specify which ad set to target
+1. **Gauge visual** (left side) — a 180° semicircle SVG arc colored green → yellow → orange → red with a needle pointing at the campaign's frequency. Zone labels: Healthy / Warming up / Refresh soon / Refresh now. Frequency number rendered large under the needle.
+2. **Plain-English status block** (right side) — uses the existing `getFatigueStatus()` helper:
+   - Bold status label (e.g., "Refresh soon")
+   - One-line meaning ("Each person has seen your ad ~3.8 times…")
+   - One-line "what to do next" recommendation
+3. **Action row** (always visible) — three buttons:
+   - **Refresh creative now** → existing `/creative?workspace={id}&refreshCreative=true` route
+   - **Add to bench** → opens the existing `CreativeBenchPanel` "Add from Concepts" picker (we surface it via a small dialog or by scrolling to + opening the bench panel)
+   - **Bench rules** → navigates to `/settings#fatigue` (the existing Alert Thresholds + Creative Automation sections in `Settings.tsx`)
+4. The card renders **at all fatigue levels** (not only when `shouldSurface` is true) so the user can always see the gauge — green is reassuring, not noise.
 
-…the function returns a 400 with an explanatory error. The frontend (`BudgetAdjustmentPanel.handleSaveBudget`) shows a tiny `toast.error(...)`, the panel closes, and from the user's perspective "nothing happened." This is exactly what's happening here.
+## Technical detail
 
-The "Scale 20%" recommendation lands a `targetAdSet` of `null` whenever `findScalingTarget` can't find a Scaling-role ad set OR when the Scaling ad set's `dailyBudget` is unknown — so the request reaches Meta with no `adSetId` and Meta sees an ABO campaign with multiple sets and refuses.
+### New file: `src/components/insights/FatigueGauge.tsx`
+- Pure SVG component, ~180px wide.
+- Props: `frequency: number | null`, `level: FatigueLevel`.
+- Maps frequency 0 → 6+ to a 180° arc. Threshold ticks at 2.5, 3.5, 4.5 matching `lib/fatigue.ts`.
+- Needle color matches level. Below the needle: large frequency number + "views per person" caption.
+- Tooltip on hover explaining the scale.
 
-### 2. "Make creative fatigue easy to understand"
+### Edit: `src/lib/fatigue.ts`
+- Add `gaugeAngle(frequency)` helper → returns degrees for the needle (0° at left, 180° at right; map 0 → 0°, 6 → 180°, clamp).
+- Add `zoneColors` constant (4 hex/HSL values) for the arc segments.
 
-Today, fatigue only surfaces inside long recommendation copy ("Your frequency is getting high — time for fresh creative") buried in CampaignInsightDetail. There's no at-a-glance indicator on the campaign card and no plain-English explanation of what frequency even means.
+### Edit: `src/components/insights/CampaignInsightDetail.tsx`
+- Replace the existing IIFE block (lines ~579–623) with the new `<FatigueCard>` layout described above.
+- Remove the `if (!fatigue.shouldSurface) return null;` early-return so the card always renders.
+- Add three action buttons. "Add to bench" dispatches a custom event (`window.dispatchEvent(new CustomEvent('open-bench-picker', { detail: { workspaceId } }))`) — the bench panel further down the page already exists and will listen for it.
+- "Bench rules" uses `navigate('/settings?tab=alerts#fatigue')`.
 
----
+### Edit: `src/components/insights/CreativeBenchPanel.tsx`
+- Add a `useEffect` that listens for the `open-bench-picker` event and opens the existing concept picker dialog (`setPickerOpen(true)`).
+- No other behavior changes.
 
-## What we'll build
+### Edit: `src/pages/Settings.tsx`
+- Add `id="fatigue"` anchor to the Alert Thresholds card so the deep link from the action button scrolls into view.
 
-### Part A — Stop budget changes from silently failing
+### No changes
+- No database, edge function, or types changes.
+- Thresholds stay in `lib/fatigue.ts` (single source of truth, already used by `InsightsHome` badge).
 
-1. **Loud, explanatory error UI** in `BudgetAdjustmentPanel`. Replace the toast with an inline error block inside the panel that:
-   - Stays visible (panel does NOT close on failure)
-   - Uses plain English: "We couldn't update this budget on Meta. Here's why: [reason]"
-   - When Meta returns multiple ad sets to choose from, render a list of the ad sets with their current budgets and a "Pick one" button next to each — clicking pre-fills `targetAdSet` and re-saves
-   - When campaign is CBO + adSetId mismatch, explain CBO in one sentence
-
-2. **Pre-flight ad-set picker** in `BudgetAdjustmentPanel`: if the user opens the panel and the campaign has multiple active ad sets but no `targetAdSet` was passed, show the same picker proactively before they hit Save (instead of letting them save then fail).
-
-3. **Server returns picker payload**: confirm `update-meta-budget` already returns `adSets[]` in its 400 response (it does) — frontend will consume that to render the picker.
-
-### Part B — Plain-English Creative Fatigue indicator
-
-1. **New shared helper** `getFatigueStatus(frequency, ctrTrend?)` returning:
-   - `none` — frequency < 2.5
-   - `early` — 2.5 ≤ frequency < 3.5  ("Your audience is starting to see this a lot")
-   - `building` — 3.5 ≤ frequency < 4.5  ("Same people seeing your ad many times — refresh soon")
-   - `high` — frequency ≥ 4.5  ("Audience is tapped out — refresh creative now")
-
-2. **Compact badge on each campaign card** in `InsightsHome` (next to the existing status pill) — renders only when fatigue is `early`, `building`, or `high`. Color-coded (muted / amber / red) with a tooltip that explains in one sentence what frequency means and what to do.
-
-3. **Detail-view fatigue card** in `CampaignInsightDetail`: a small dedicated section under the KPI summary that shows the frequency number, the plain-English status label, a one-line explanation ("Each person has seen your ad ~X times in this window"), and a clear CTA — "Refresh creative" linking to `/creative?workspace=...&refreshCreative=true`.
-
-4. **Standardize the threshold** at 3.5 / 4.5 across the app (matches the existing `getBudgetVerdict` 3.5 cutoff and the brand-level `frequency_warning` default of 4 so we don't introduce a third number).
-
----
-
-## Technical notes
-
-- Files touched:
-  - `src/components/insights/BudgetAdjustmentPanel.tsx` — inline error state, ad-set picker, no auto-close on failure
-  - `src/components/insights/InsightsHome.tsx` — fatigue badge on cards
-  - `src/components/insights/CampaignInsightDetail.tsx` — fatigue section
-  - `src/lib/fatigue.ts` (new) — single helper used by both
-- No edge function changes required; `update-meta-budget` already returns the `adSets` payload we need.
-- No database changes.
-- No new dependencies.
-- Tone follows project memory: advisory ("We recommend refreshing"), creator-friendly language, no jargon.
+## Out of scope (will not do)
+- Editing per-campaign fatigue thresholds (those live globally in Settings already).
+- Wiring the gauge into `InsightsHome` cards — the small Flame badge there is already the at-a-glance signal; the gauge stays on the detail view to avoid clutter.
+- Any Meta API changes.
