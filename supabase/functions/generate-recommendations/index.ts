@@ -100,6 +100,10 @@ Deno.serve(async (req) => {
     const m = metrics || {};
     const adList: any[] = ads || [];
 
+    // Resolve primaryKpi EARLY — the change-context trend block below needs it.
+    // (The full goal-aware block re-resolves these later for clarity.)
+    const primaryKpi: string = goals?.primary_kpi || 'cpl';
+
     // ============================================================
     // CHANGE CONTEXT (#6)
     //
