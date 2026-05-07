@@ -206,11 +206,48 @@ export function LumiRecommendations({
 
   if (loading) {
     return (
-      <Card className="rounded-2xl">
-        <CardContent className="p-6 flex items-center justify-center gap-3">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Lumi is analyzing your campaigns...</p>
-        </CardContent>
+      <Card className="rounded-2xl border-2 border-[hsl(var(--lumi-orange-1)/0.4)] bg-gradient-to-br from-[hsl(var(--lumi-orange-1)/0.06)] via-[hsl(var(--lumi-pink-1)/0.05)] to-[hsl(var(--lumi-purple-1)/0.06)] overflow-hidden relative">
+          {/* Animated shimmer band */}
+          <div
+            className="absolute inset-0 opacity-60 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent 0%, hsl(var(--lumi-orange-1)/0.18) 50%, transparent 100%)',
+              backgroundSize: '200% 100%',
+              animation: 'lumi-shimmer 2s linear infinite',
+            }}
+          />
+          <style>{`@keyframes lumi-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+          <CardContent className="p-6 relative">
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
+                <div className="absolute inset-0 rounded-full bg-[hsl(var(--lumi-orange-1)/0.3)] blur-xl animate-pulse" />
+                <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-[hsl(var(--lumi-orange-1))] to-[hsl(var(--lumi-pink-1))] flex items-center justify-center shadow-lg">
+                  <Sparkles className="h-6 w-6 text-white animate-pulse" />
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-base font-semibold text-foreground">Lumi is analyzing your campaigns</p>
+                  <span className="flex gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--lumi-orange-1))] animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--lumi-pink-1))] animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--lumi-purple-1))] animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Pulling fresh data from Meta and reviewing performance — this usually takes 10–30 seconds. You can keep working.
+                </p>
+                <div className="mt-3 h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                  <div
+                    className="h-full w-1/3 rounded-full bg-gradient-to-r from-[hsl(var(--lumi-orange-1))] via-[hsl(var(--lumi-pink-1))] to-[hsl(var(--lumi-purple-1))]"
+                    style={{ animation: 'lumi-progress 1.6s ease-in-out infinite' }}
+                  />
+                  <style>{`@keyframes lumi-progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }`}</style>
+                </div>
+              </div>
+            </div>
+          </CardContent>
       </Card>
     );
   }
