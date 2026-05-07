@@ -154,7 +154,7 @@ function LumiAssistantUI({
 }: LumiAssistantUIProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { messages, addMessage, setBrandId } = useLumi();
+  const { messages, addMessage, setBrandId, brandId } = useLumi();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   const [currentRecommendationId, setCurrentRecommendationId] = useState<string | null>(null);
@@ -273,13 +273,42 @@ function LumiAssistantUI({
     setIsLoading(true);
 
     try {
+      // Pull the active brand's real connection state so Lumi never tells the
+      // user "your Facebook Page isn't connected" when it actually is. Without
+      // this, the assistant guesses based on prompts alone and hallucinates.
+      let brandConnection: any = null;
+      if (brandId) {
+        const { data: brandRow } = await supabase
+          .from('brands')
+          .select('id, name, meta_account_id, page_id, page_name, instagram_account_id, instagram_account_name, meta_pixel_id, meta_pixel_name, meta_token_expires_at')
+          .eq('id', brandId)
+          .maybeSingle();
+        if (brandRow) {
+          const tokenExpiresAt = brandRow.meta_token_expires_at ? new Date(brandRow.meta_token_expires_at) : null;
+          const tokenExpired = tokenExpiresAt ? tokenExpiresAt.getTime() < Date.now() : false;
+          brandConnection = {
+            id: brandRow.id,
+            name: brandRow.name,
+            metaAccountConnected: !!brandRow.meta_account_id,
+            metaAccountId: brandRow.meta_account_id || null,
+            facebookPageConnected: !!brandRow.page_id,
+            facebookPageName: brandRow.page_name || null,
+            instagramConnected: !!brandRow.instagram_account_id,
+            instagramAccountName: brandRow.instagram_account_name || null,
+            pixelConnected: !!brandRow.meta_pixel_id,
+            pixelName: brandRow.meta_pixel_name || null,
+            metaTokenExpired: tokenExpired,
+          };
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('lumi-chat', {
         body: {
           messages: [...messages, userMessage].map(m => ({
             role: m.role,
             content: m.content
           })),
-          context: { context, currentPath: location.pathname },
+          context: { context, currentPath: location.pathname, brand: brandConnection },
         }
       });
 

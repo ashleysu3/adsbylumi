@@ -1026,19 +1026,20 @@ export function CampaignInsightDetail({
                 </Card>
               )}
 
-              {/* Budget Adjustment Panel */}
+              {/* Budget Adjustment Panel — use the real daily budget pulled
+                  from Meta. Never approximate from spend or hard-code a
+                  default; if Meta hasn't returned a budget yet, the panel
+                  itself shows a "budget unknown" state. */}
               <BudgetAdjustmentPanel
                 workspaceId={campaign.id}
                 workspaceName={campaign.name}
-                currentBudget={campaign.metrics?.spend ? Math.round(campaign.metrics.spend / 7) : 20}
+                currentBudget={(campaign as any).dailyBudget ?? null}
                 metrics={{
                   roas: campaign.metrics?.roas ?? undefined,
                   ctr: campaign.metrics?.clicks && campaign.metrics?.impressions
                     ? (campaign.metrics.clicks / campaign.metrics.impressions) * 100
                     : undefined,
-                  frequency: campaign.metrics?.impressions && campaign.metrics?.spend
-                    ? campaign.metrics.impressions / (campaign.metrics.spend * 10)
-                    : undefined,
+                  frequency: campaign.metrics?.frequency ?? undefined,
                 }}
                 targetAdSet={findScalingTarget(campaign as any)}
               />

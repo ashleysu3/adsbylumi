@@ -617,7 +617,15 @@ export function InsightsHome({
         let fallback: any = null;
         switch (status) {
           case 'healthy':
-            fallback = { id: `fallback-${campaign.id}`, type: 'budget_increase', title: 'Strong ad performance — consider scaling', description: 'Your primary ad KPI is above benchmark. This could be a good time to increase ad budget.', impact: 'Capture more results at efficient cost', confidence: 'medium', requiresDoubleApproval: true, actionPayload: { workspaceId: campaign.id, percentageChange: 20, currentBudget: campaign.dailyBudget || 25 }, priority: 50 };
+            // Only suggest a percentage scale when we actually know the daily
+            // budget. Without it, the user sees a wrong "$X/day → $Y/day"
+            // figure (e.g. "$25/day" hallucination). Fall back to a non-budget
+            // suggestion in that case.
+            if (typeof campaign.dailyBudget === 'number' && campaign.dailyBudget > 0) {
+              fallback = { id: `fallback-${campaign.id}`, type: 'budget_increase', title: 'Strong ad performance — consider scaling', description: 'Your primary ad KPI is above benchmark. This could be a good time to increase ad budget.', impact: 'Capture more results at efficient cost', confidence: 'medium', requiresDoubleApproval: true, actionPayload: { workspaceId: campaign.id, percentageChange: 20, currentBudget: campaign.dailyBudget }, priority: 50 };
+            } else {
+              fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Strong ad performance — consider scaling', description: 'Your primary ad KPI is above benchmark. Open this campaign to review the actual budget and scale safely.', impact: 'Capture more results at efficient cost', confidence: 'medium', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: '/data' };
+            }
             break;
           case 'attention':
             fallback = { id: `fallback-${campaign.id}`, type: 'keep_running', title: 'Monitor ads closely — performance is borderline', description: 'Your primary ad KPI is near the benchmark threshold. Keep an eye on it.', impact: 'Prevent ad performance from slipping', confidence: 'medium', requiresDoubleApproval: false, actionPayload: {}, priority: 50, userAction: true, actionUrl: `/data` };
