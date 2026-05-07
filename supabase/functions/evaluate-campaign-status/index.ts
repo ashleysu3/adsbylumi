@@ -456,9 +456,13 @@ async function fetchInsights(
     const data = await res.json();
     const rows = Array.isArray(data?.data) ? data.data : [];
     if (rows.length === 0 && data?.error) {
-      console.warn(`[evaluate] empty insights — level=${level} window=${window.label} error=`, data.error);
+      console.warn(`[evaluate] empty insights — level=${level} window=${window.label} error=`, JSON.stringify(data.error));
     } else if (rows.length === 0) {
-      console.log(`[evaluate] zero rows — level=${level} window=${window.label} (campaign may not have run during this window)`);
+      // Diagnostic: log redacted URL + raw payload so we can see why Meta returned nothing
+      const safeUrl = url.replace(/access_token=[^&]+/, 'access_token=REDACTED');
+      console.log(`[evaluate] zero rows — level=${level} window=${window.label} url=${safeUrl} payload=${JSON.stringify(data).slice(0, 500)}`);
+    } else {
+      console.log(`[evaluate] ${rows.length} rows — level=${level} window=${window.label}`);
     }
     return rows;
   } catch (err) {
