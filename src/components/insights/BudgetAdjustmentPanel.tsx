@@ -244,6 +244,34 @@ export function BudgetAdjustmentPanel({
     );
   }
 
+  // If we don't actually know the current budget, refuse to guess.
+  if (knownBudget === null) {
+    return (
+      <Card className="border-2 border-amber-200">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            Budget unavailable
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            We couldn't read this campaign's current daily budget from Meta yet, so we won't guess a number.
+            Re-sync this campaign or update the budget directly in Meta Ads Manager.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPanel(false)}
+            className="w-full"
+          >
+            Close
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-2 border-primary/20">
       <CardHeader className="pb-3">
