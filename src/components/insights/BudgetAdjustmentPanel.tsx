@@ -477,8 +477,8 @@ export function BudgetAdjustmentPanel({
         </div>
 
         <p className="text-xs text-center text-muted-foreground">
-          {targetAdSet
-            ? `Budget will be updated on "${targetAdSet.name}" in Meta`
+          {activeTarget
+            ? `Budget will be updated on "${activeTarget.name}" in Meta`
             : 'Budget will be updated directly on your Meta campaign'}
         </p>
       </CardContent>
