@@ -48,6 +48,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { SocialGrowthFlow } from '@/components/SocialGrowthFlow';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { getFatigueStatus } from '@/lib/fatigue';
+import { Flame } from 'lucide-react';
 import { useRecommendationActions, describeRecAction, type Recommendation as RecType } from '@/hooks/useRecommendationActions';
 
 // Types intentionally left unfiltered on the home card — every structured rec
@@ -954,6 +957,26 @@ export function InsightsHome({
                                 {isStale && <AlertTriangle className="h-2.5 w-2.5 inline mr-0.5" />}
                                 Synced {syncLabel}
                               </span>
+                            );
+                          })()}
+                          {(() => {
+                            const fatigue = getFatigueStatus(campaign.metrics?.frequency as number | null | undefined);
+                            if (!fatigue.shouldSurface) return null;
+                            return (
+                              <TooltipProvider delayDuration={150}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border cursor-help ${fatigue.badgeClass}`}>
+                                      <Flame className="h-3 w-3" />
+                                      {fatigue.label}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs">
+                                    <p className="text-xs font-medium mb-1">{fatigue.explanation}</p>
+                                    <p className="text-xs text-muted-foreground">{fatigue.recommendation}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             );
                           })()}
                         </div>

@@ -3,17 +3,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { 
-  DollarSign, 
-  TrendingUp, 
+import {
+  DollarSign,
+  TrendingUp,
   TrendingDown,
   Sparkles,
   AlertTriangle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+// Shape returned by update-meta-budget when it refuses to act on an
+// ambiguous ABO campaign (multiple active ad sets, no adSetId given).
+type AdSetOption = {
+  id: string;
+  name: string;
+  status?: string;
+  dailyBudget?: number | null;
+};
 
 interface BudgetAdjustmentPanelProps {
   workspaceId: string;
@@ -70,10 +80,23 @@ export function BudgetAdjustmentPanel({
   const knownBudget: number | null = targetAdSet
     ? targetAdSet.currentBudget
     : (typeof currentBudget === 'number' && currentBudget > 0 ? currentBudget : null);
-  const effectiveCurrentBudget = knownBudget ?? 0;
-  const [newBudget, setNewBudget] = useState(effectiveCurrentBudget);
+  const [activeTarget, setActiveTarget] = useState<typeof targetAdSet>(targetAdSet);
+  // Re-resolve effective budget any time the user picks a different ad set.
+  const liveKnownBudget: number | null = activeTarget
+    ? activeTarget.currentBudget
+    : knownBudget;
+  const liveEffectiveBudget = liveKnownBudget ?? 0;
+  const [newBudget, setNewBudget] = useState(liveEffectiveBudget);
   const [updating, setUpdating] = useState(false);
   const [showPanel, setShowPanel] = useState(inline);
+
+  // Inline error state — replaces the silent "panel closes" failure mode.
+  // When set, the panel stays open and renders the error block. If Meta
+  // returned an `adSets` payload (ambiguous ABO case), we render a picker.
+  const [errorState, setErrorState] = useState<{
+    message: string;
+    adSets?: AdSetOption[];
+  } | null>(null);
 
   // Generate Lumi recommendation based on metrics
   const getRecommendation = (): Recommendation => {
@@ -146,7 +169,7 @@ export function BudgetAdjustmentPanel({
   };
 
   const recommendation = getRecommendation();
-  const suggestedBudget = Math.round(effectiveCurrentBudget * (1 + recommendation.percentage / 100));
+  const suggestedBudget = Math.round(liveEffectiveBudget * (1 + recommendation.percentage / 100));
 
   const handleApplyRecommendation = () => {
     setNewBudget(suggestedBudget);
@@ -154,36 +177,57 @@ export function BudgetAdjustmentPanel({
 
   const handleSaveBudget = async () => {
     setUpdating(true);
+    setErrorState(null);
     try {
-      // When we have a specific target ad set, route the Meta change to it.
-      // Otherwise keep the old campaign-level / distributed behavior.
-      const { data, error } = await supabase.functions.invoke("update-meta-budget", {
-        body: {
+      // We call the function via fetch (instead of supabase.functions.invoke)
+      // so we can read the response body even on a non-2xx status — the
+      // ambiguous-ABO case returns 400 with the adSets[] payload we need
+      // to render an inline picker.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      const supabaseUrl = (supabase as any).supabaseUrl ||
+        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co`;
+
+      const resp = await fetch(`${supabaseUrl}/functions/v1/update-meta-budget`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "",
+        },
+        body: JSON.stringify({
           workspaceId,
           newBudget,
-          ...(targetAdSet ? { adSetId: targetAdSet.id } : {}),
-        },
+          ...(activeTarget ? { adSetId: activeTarget.id } : {}),
+        }),
       });
 
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Failed to update budget on Meta");
+      let data: any = null;
+      try { data = await resp.json(); } catch { /* ignore body parse */ }
 
-      // Mirror the change in campaign_builder_answers so the UI reflects
-      // the new budget without waiting for the next sync. If we targeted a
-      // specific ad set, update that entry in the adSets array; otherwise
-      // update the aggregate `budget` field as before.
+      if (!resp.ok || !data?.success) {
+        // Preserve the ad-set list from the server (if any) so we can
+        // render a picker right inside the panel.
+        setErrorState({
+          message: data?.error || `Couldn't update budget on Meta (${resp.status}).`,
+          adSets: Array.isArray(data?.adSets) ? data.adSets : undefined,
+        });
+        return;
+      }
+
+      // Mirror the change locally so UI reflects the new budget without
+      // waiting for the next Meta sync.
       const { data: existing } = await supabase
         .from("campaign_workspaces")
         .select("campaign_builder_answers")
         .eq("id", workspaceId)
-        .single();
+        .maybeSingle();
 
       const existingAnswers = (existing?.campaign_builder_answers as Record<string, any>) || {};
-
       const updatedAnswers: Record<string, any> = { ...existingAnswers };
-      if (targetAdSet && Array.isArray(existingAnswers.adSets)) {
+      if (activeTarget && Array.isArray(existingAnswers.adSets)) {
         updatedAnswers.adSets = existingAnswers.adSets.map((a: any) =>
-          a.id === targetAdSet.id ? { ...a, dailyBudget: newBudget } : a,
+          a.id === activeTarget.id ? { ...a, dailyBudget: newBudget } : a,
         );
       } else {
         updatedAnswers.budget = newBudget;
@@ -202,10 +246,26 @@ export function BudgetAdjustmentPanel({
       setShowPanel(false);
     } catch (error: any) {
       console.error("Error updating budget:", error);
-      toast.error(error.message || "Failed to update budget on Meta. Try changing it directly in Meta Ads Manager.");
+      setErrorState({
+        message: error?.message || "We couldn't reach Meta to update this budget. Please try again.",
+      });
     } finally {
       setUpdating(false);
     }
+  };
+
+  // User picked a specific ad set from the inline picker — make it the
+  // active target and reset the budget slider to that set's current value.
+  const handlePickAdSet = (set: AdSetOption) => {
+    if (set.dailyBudget == null) {
+      setErrorState({
+        message: `We don't have a current daily budget for "${set.name}" yet. Try resyncing this campaign or update the budget directly in Meta Ads Manager.`,
+      });
+      return;
+    }
+    setActiveTarget({ id: set.id, name: set.name, currentBudget: set.dailyBudget });
+    setNewBudget(set.dailyBudget);
+    setErrorState(null);
   };
 
   const getActionIcon = () => {
@@ -277,21 +337,59 @@ export function BudgetAdjustmentPanel({
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          {targetAdSet ? `Scale "${targetAdSet.name}"` : 'Lumi Budget Recommendation'}
+          {activeTarget ? `Scale "${activeTarget.name}"` : 'Lumi Budget Recommendation'}
         </CardTitle>
-        {targetAdSet && (
+        {activeTarget && (
           <p className="text-xs text-muted-foreground pt-1">
             Changes land on this ad set only — not the whole campaign.
           </p>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Inline error block — never silent. Shows server's reason and,
+            when applicable, an ad-set picker so the user can recover
+            without leaving the panel. */}
+        {errorState && (
+          <div className="p-3 rounded-lg border border-red-200 bg-red-50 space-y-3">
+            <div className="flex items-start gap-2">
+              <XCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-red-900">
+                  We couldn't update this budget on Meta
+                </p>
+                <p className="text-xs text-red-800 mt-1">{errorState.message}</p>
+              </div>
+            </div>
+            {errorState.adSets && errorState.adSets.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-red-900">
+                  Pick which ad set to update:
+                </p>
+                <div className="space-y-1">
+                  {errorState.adSets.map((set) => (
+                    <button
+                      key={set.id}
+                      type="button"
+                      onClick={() => handlePickAdSet(set)}
+                      className="w-full text-left flex items-center justify-between gap-2 px-2 py-1.5 rounded border border-red-200 bg-white hover:bg-red-100 transition-colors"
+                    >
+                      <span className="text-xs font-medium truncate">{set.name}</span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {set.dailyBudget != null ? `$${set.dailyBudget}/day` : 'budget unknown'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {/* Current Budget */}
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
-            {targetAdSet ? 'Ad set budget' : 'Current budget'}
+            {activeTarget ? 'Ad set budget' : 'Current budget'}
           </span>
-          <span className="font-semibold">${effectiveCurrentBudget}/day</span>
+          <span className="font-semibold">${liveEffectiveBudget}/day</span>
         </div>
 
         {/* Recommendation */}
@@ -339,13 +437,13 @@ export function BudgetAdjustmentPanel({
             value={[newBudget]}
             onValueChange={(v) => setNewBudget(v[0])}
             min={5}
-            max={Math.max(500, effectiveCurrentBudget * 2)}
+            max={Math.max(500, liveEffectiveBudget * 2)}
             step={5}
             className="py-2"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>$5/day</span>
-            <span>${Math.max(500, effectiveCurrentBudget * 2)}/day</span>
+            <span>${Math.max(500, liveEffectiveBudget * 2)}/day</span>
           </div>
         </div>
 
@@ -362,7 +460,7 @@ export function BudgetAdjustmentPanel({
           <Button
             size="sm"
             onClick={handleSaveBudget}
-            disabled={updating || newBudget === effectiveCurrentBudget}
+            disabled={updating || newBudget === liveEffectiveBudget}
             className="flex-1 gap-2"
           >
             {updating ? (
@@ -379,8 +477,8 @@ export function BudgetAdjustmentPanel({
         </div>
 
         <p className="text-xs text-center text-muted-foreground">
-          {targetAdSet
-            ? `Budget will be updated on "${targetAdSet.name}" in Meta`
+          {activeTarget
+            ? `Budget will be updated on "${activeTarget.name}" in Meta`
             : 'Budget will be updated directly on your Meta campaign'}
         </p>
       </CardContent>
