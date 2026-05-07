@@ -982,7 +982,7 @@ export function InsightsHome({
                                 <BudgetAdjustmentPanel
                                   workspaceId={campaign.id}
                                   workspaceName={campaign.name}
-                                  currentBudget={campaign.dailyBudget || 25}
+                                  currentBudget={campaign.dailyBudget ?? null}
                                   metrics={{
                                     roas: campaign.metrics?.roas,
                                     cpl: campaign.metrics?.cpl,
