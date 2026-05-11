@@ -217,6 +217,46 @@ Deno.serve(async req => {
       ? await fetchCampaignPerformance(metaCampaignId, brand.meta_access_token, dateRange, primaryKpi)
       : null;
 
+    // Guard: refuse to persist a retrospective if Meta data couldn't be trusted.
+    // Without this, a transient Meta hiccup gets baked into a permanent
+    // "Insufficient data" card the user can't recover from without manual help.
+    if (metaCampaignId && brand.meta_access_token) {
+      if (!performance) {
+        console.warn(`[retrospective] refused to persist — Meta fetch failed for campaign ${metaCampaignId}`);
+        return json({
+          error: "We couldn't reach Meta to pull this campaign's results. Please try again in a moment.",
+        }, 200);
+      }
+      const windowedSpend = performance?.totals?.spend ?? 0;
+      if (windowedSpend === 0) {
+        // Probe lifetime spend with date_preset=maximum. If the campaign actually
+        // has spend on Meta but our window returned 0, treat it as a delivery
+        // glitch (or a wrong/empty window) and bail out instead of saving zeros.
+        try {
+          const probeRes = await fetch(
+            `https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=spend&date_preset=maximum&level=campaign&access_token=${brand.meta_access_token}`,
+          );
+          const probeData = await probeRes.json();
+          const lifetimeSpend = probeRes.ok
+            ? Number(probeData?.data?.[0]?.spend || 0)
+            : 0;
+          console.log(`[retrospective] empty-window probe — campaign ${metaCampaignId}: windowed=$0, lifetime=$${lifetimeSpend.toFixed(2)}`);
+          if (lifetimeSpend > 0) {
+            console.warn(`[retrospective] refused to persist empty retro for campaign ${metaCampaignId} (lifetime spend=$${lifetimeSpend.toFixed(2)})`);
+            return json({
+              error: "Meta returned no spend for the selected window even though this campaign has lifetime spend. This usually clears up in a few minutes — please try again, or widen the date range.",
+            }, 200);
+          }
+        } catch (probeErr) {
+          console.error('[retrospective] lifetime probe failed:', probeErr);
+          // If even the probe fails, treat the whole call as untrusted.
+          return json({
+            error: "We couldn't reach Meta to verify this campaign's results. Please try again in a moment.",
+          }, 200);
+        }
+      }
+    }
+
     const durationDays = computeDurationDays(performance, dateRange, workspace);
 
     const actualValue = goal && performance?.totals
