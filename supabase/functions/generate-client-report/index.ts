@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
         if (campaignId && /^\d+$/.test(campaignId)) {
           try {
             // Fetch campaign status + budget
-            const statusUrl = `https://graph.facebook.com/v21.0/${campaignId}?fields=status,effective_status,daily_budget,lifetime_budget&access_token=${metaAccessToken}`;
+            const statusUrl = `https://graph.facebook.com/v25.0/${campaignId}?fields=status,effective_status,daily_budget,lifetime_budget&access_token=${metaAccessToken}`;
             const statusResp = await fetch(statusUrl);
             const statusData = await safeJson(statusResp);
             if (!statusData.error) {
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
             const since = dateRangeStart || new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
             const until = dateRangeEnd || new Date().toISOString().split('T')[0];
             const fields = 'spend,impressions,clicks,ctr,cpc,cpm,reach,frequency,actions,cost_per_action_type,purchase_roas';
-            const insightsUrl = `https://graph.facebook.com/v21.0/${campaignId}/insights?fields=${fields}&time_range={"since":"${since}","until":"${until}"}&access_token=${metaAccessToken}`;
+            const insightsUrl = `https://graph.facebook.com/v25.0/${campaignId}/insights?fields=${fields}&time_range={"since":"${since}","until":"${until}"}&access_token=${metaAccessToken}`;
             const insightsResp = await fetch(insightsUrl);
             const insightsData = await safeJson(insightsResp);
 
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
 
             // Fetch ad-level breakdown
             const adFields = 'ad_name,ad_id,spend,impressions,clicks,ctr,cpc,actions,cost_per_action_type,purchase_roas';
-            const adUrl = `https://graph.facebook.com/v21.0/${campaignId}/insights?fields=${adFields}&level=ad&time_range={"since":"${since}","until":"${until}"}&limit=20&access_token=${metaAccessToken}`;
+            const adUrl = `https://graph.facebook.com/v25.0/${campaignId}/insights?fields=${adFields}&level=ad&time_range={"since":"${since}","until":"${until}"}&limit=20&access_token=${metaAccessToken}`;
             const adResp = await fetch(adUrl);
             const adData = await safeJson(adResp);
             if (adData.data) {

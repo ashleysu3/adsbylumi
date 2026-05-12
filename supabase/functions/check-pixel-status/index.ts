@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     console.log('Fetching pixels for ad account:', adAccountId);
 
     // Fetch all pixels connected to the ad account
-    const pixelsUrl = `https://graph.facebook.com/v21.0/${adAccountId}/adspixels?fields=id,name&access_token=${accessToken}`;
+    const pixelsUrl = `https://graph.facebook.com/v25.0/${adAccountId}/adspixels?fields=id,name&access_token=${accessToken}`;
     const pixelsResponse = await fetch(pixelsUrl);
     const pixelsData = await pixelsResponse.json();
 
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       console.log(`Fetching stats for pixel ${pixel.id}: ${pixel.name}`);
       
       // Get event stats for the last 7 days using the correct endpoint
-      const statsUrl = `https://graph.facebook.com/v21.0/${pixel.id}/stats?aggregation=event&access_token=${accessToken}`;
+      const statsUrl = `https://graph.facebook.com/v25.0/${pixel.id}/stats?aggregation=event&access_token=${accessToken}`;
       const statsResponse = await fetch(statsUrl);
       const statsData = await statsResponse.json();
 

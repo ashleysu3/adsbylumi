@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     if (fatigueAdId) {
       try {
         const pauseRes = await fetch(
-          `https://graph.facebook.com/v21.0/${fatigueAdId}`,
+          `https://graph.facebook.com/v25.0/${fatigueAdId}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     if (benchAdId) {
       try {
         const activateRes = await fetch(
-          `https://graph.facebook.com/v21.0/${benchAdId}`,
+          `https://graph.facebook.com/v25.0/${benchAdId}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

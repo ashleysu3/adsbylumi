@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
 
         const fields = 'ad_name,spend,impressions,clicks,ctr,actions,cost_per_action_type,purchase_roas,reach';
         const actId = brand.meta_account_id.startsWith('act_') ? brand.meta_account_id : `act_${brand.meta_account_id}`;
-        const metaUrl = `https://graph.facebook.com/v21.0/${actId}/insights?fields=${fields}&time_range={"since":"${sinceStr}","until":"${untilStr}"}&level=ad&limit=100&filtering=[{"field":"spend","operator":"GREATER_THAN","value":"10"}]&access_token=${brand.meta_access_token}`;
+        const metaUrl = `https://graph.facebook.com/v25.0/${actId}/insights?fields=${fields}&time_range={"since":"${sinceStr}","until":"${untilStr}"}&level=ad&limit=100&filtering=[{"field":"spend","operator":"GREATER_THAN","value":"10"}]&access_token=${brand.meta_access_token}`;
 
         console.log('[generate-trend-insights] Fetching Meta ad-level insights...');
         const metaRes = await fetch(metaUrl);

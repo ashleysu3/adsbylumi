@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
     if (metaTokenForTrend && campaignIdForTrend) {
       try {
         const trendUrl =
-          `https://graph.facebook.com/v21.0/${campaignIdForTrend}/insights` +
+          `https://graph.facebook.com/v25.0/${campaignIdForTrend}/insights` +
           `?fields=spend,impressions,clicks,actions,cost_per_action_type,ctr,cpc,cpm,frequency,purchase_roas` +
           `&time_increment=1&date_preset=last_7d&access_token=${encodeURIComponent(metaTokenForTrend)}`;
         const trendResp = await fetch(trendUrl);
@@ -681,7 +681,7 @@ Deno.serve(async (req) => {
           if (!adId) continue;
           try {
             const res = await fetch(
-              `https://graph.facebook.com/v21.0/${adId}?fields=name,status,created_time,adset{id,name,status}&access_token=${encodeURIComponent(metaToken)}`,
+              `https://graph.facebook.com/v25.0/${adId}?fields=name,status,created_time,adset{id,name,status}&access_token=${encodeURIComponent(metaToken)}`,
             );
             const data = await res.json();
             if (data && !data.error) adDetails.push({ ...ad, ...data, adId });

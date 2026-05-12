@@ -85,11 +85,11 @@ serve(async (req) => {
 
       let endpoint = '';
       if (targetType === 'campaign') {
-        endpoint = `https://graph.facebook.com/v21.0/${targetId}`;
+        endpoint = `https://graph.facebook.com/v25.0/${targetId}`;
       } else if (targetType === 'adset') {
-        endpoint = `https://graph.facebook.com/v21.0/${targetId}`;
+        endpoint = `https://graph.facebook.com/v25.0/${targetId}`;
       } else if (targetType === 'ad') {
-        endpoint = `https://graph.facebook.com/v21.0/${targetId}`;
+        endpoint = `https://graph.facebook.com/v25.0/${targetId}`;
       }
 
       console.log(`Setting ${targetType} ${targetId} to ${newStatus}`);
@@ -116,7 +116,7 @@ serve(async (req) => {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       const verifyResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${targetId}?fields=status,effective_status&access_token=${metaAccessToken}`
+        `https://graph.facebook.com/v25.0/${targetId}?fields=status,effective_status&access_token=${metaAccessToken}`
       );
       const verifyResult = await verifyResponse.json();
       const verifiedStatus = verifyResult.effective_status || verifyResult.status || newStatus;
@@ -165,7 +165,7 @@ serve(async (req) => {
     console.log('Fetching campaign status for:', campaignId);
 
     const campaignResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${campaignId}?fields=id,name,status,effective_status&access_token=${metaAccessToken}`
+      `https://graph.facebook.com/v25.0/${campaignId}?fields=id,name,status,effective_status&access_token=${metaAccessToken}`
     );
     const campaignData = await campaignResponse.json();
 
@@ -176,13 +176,13 @@ serve(async (req) => {
 
     // Fetch ad sets
     const adSetsResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${campaignId}/adsets?fields=id,name,status,effective_status&access_token=${metaAccessToken}`
+      `https://graph.facebook.com/v25.0/${campaignId}/adsets?fields=id,name,status,effective_status&access_token=${metaAccessToken}`
     );
     const adSetsData = await adSetsResponse.json();
 
     // Fetch ads
     const adsResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${campaignId}/ads?fields=id,name,status,effective_status,review_feedback&access_token=${metaAccessToken}`
+      `https://graph.facebook.com/v25.0/${campaignId}/ads?fields=id,name,status,effective_status,review_feedback&access_token=${metaAccessToken}`
     );
     const adsData = await adsResponse.json();
 

@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     // We fetch campaign fields + its ad sets once and reason from there.
     // ------------------------------------------------------------
     const campFieldsUrl =
-      `https://graph.facebook.com/v21.0/${campaignId}` +
+      `https://graph.facebook.com/v25.0/${campaignId}` +
       `?fields=id,daily_budget,lifetime_budget&access_token=${encodeURIComponent(accessToken)}`;
     const campFetch = await fetch(campFieldsUrl);
     const campData = await campFetch.json();
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
     }
 
     const adSetsListUrl =
-      `https://graph.facebook.com/v21.0/${campaignId}/adsets` +
+      `https://graph.facebook.com/v25.0/${campaignId}/adsets` +
       `?fields=id,name,daily_budget,lifetime_budget,status&limit=100&access_token=${encodeURIComponent(accessToken)}`;
     const adSetsResp = await fetch(adSetsListUrl);
     const adSetsData = await adSetsResp.json();
@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
         throw new Error(`Ad set ${adSetId} not found under campaign ${campaignId}`);
       }
 
-      const targetUrl = `https://graph.facebook.com/v21.0/${adSetId}`;
+      const targetUrl = `https://graph.facebook.com/v25.0/${adSetId}`;
       const resp = await fetch(targetUrl, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
     // Safe to update campaign-level daily_budget.
     // ------------------------------------------------------------
     if (isCBO) {
-      const campaignUrl = `https://graph.facebook.com/v21.0/${campaignId}`;
+      const campaignUrl = `https://graph.facebook.com/v25.0/${campaignId}`;
       const resp = await fetch(campaignUrl, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -280,7 +280,7 @@ Deno.serve(async (req) => {
 
     if (activeAdSets.length === 1) {
       const only = activeAdSets[0];
-      const resp = await fetch(`https://graph.facebook.com/v21.0/${only.id}`, {
+      const resp = await fetch(`https://graph.facebook.com/v25.0/${only.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({

@@ -49,7 +49,7 @@ serve(async (req) => {
     const metaAccessToken = brand.meta_access_token;
 
     // Search Meta's adgeolocation API for custom_location (returns lat/lng)
-    const searchUrl = `https://graph.facebook.com/v21.0/search?type=adgeolocation&location_types=["custom_location"]&q=${encodeURIComponent(query)}&limit=5&access_token=${metaAccessToken}`;
+    const searchUrl = `https://graph.facebook.com/v25.0/search?type=adgeolocation&location_types=["custom_location"]&q=${encodeURIComponent(query)}&limit=5&access_token=${metaAccessToken}`;
     const response = await fetch(searchUrl);
     const data = await response.json();
 

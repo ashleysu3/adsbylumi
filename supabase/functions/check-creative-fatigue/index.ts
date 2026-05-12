@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
           const sinceStr = since.toISOString().split('T')[0];
           const untilStr = new Date().toISOString().split('T')[0];
 
-          const adsUrl = `https://graph.facebook.com/v21.0/${campaignId}/ads?fields=id,name,status,insights.date_preset(last_7d){impressions,clicks,ctr,frequency,reach,spend}&access_token=${metaToken}`;
+          const adsUrl = `https://graph.facebook.com/v25.0/${campaignId}/ads?fields=id,name,status,insights.date_preset(last_7d){impressions,clicks,ctr,frequency,reach,spend}&access_token=${metaToken}`;
           
           const adsRes = await fetch(adsUrl);
           const adsData = await adsRes.json();

@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
     console.log('Processing OAuth callback for brand:', brandId);
 
     // Exchange code for short-lived access token
-    const tokenUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token');
+    const tokenUrl = new URL('https://graph.facebook.com/v25.0/oauth/access_token');
     tokenUrl.searchParams.set('client_id', META_APP_ID);
     tokenUrl.searchParams.set('client_secret', META_APP_SECRET);
     tokenUrl.searchParams.set('redirect_uri', redirectUri);
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     console.log('Short-lived access token obtained, exchanging for long-lived token...');
 
     // Exchange short-lived token for long-lived token (~60 days)
-    const longLivedUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token');
+    const longLivedUrl = new URL('https://graph.facebook.com/v25.0/oauth/access_token');
     longLivedUrl.searchParams.set('grant_type', 'fb_exchange_token');
     longLivedUrl.searchParams.set('client_id', META_APP_ID);
     longLivedUrl.searchParams.set('client_secret', META_APP_SECRET);
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
     tokenExpiresAt.setSeconds(tokenExpiresAt.getSeconds() + tokenExpiresIn);
 
     // Get user's ad accounts
-    const adAccountsUrl = `https://graph.facebook.com/v21.0/me/adaccounts?fields=id,name,account_status,currency,business_name&access_token=${finalToken}`;
+    const adAccountsUrl = `https://graph.facebook.com/v25.0/me/adaccounts?fields=id,name,account_status,currency,business_name&access_token=${finalToken}`;
     
     console.log('Fetching ad accounts...');
     const adAccountsResponse = await fetch(adAccountsUrl);
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
     console.log('Active ad accounts found:', activeAccounts.length);
 
     // Get user's Facebook Pages (required for ad creative creation)
-    const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,category,access_token,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`;
+    const pagesUrl = `https://graph.facebook.com/v25.0/me/accounts?fields=id,name,category,access_token,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`;
     
     console.log('Fetching Facebook Pages with Instagram accounts...');
     const pagesResponse = await fetch(pagesUrl);
@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
       for (const page of pagesData.data) {
         if (!page.instagram_business_account && page.access_token) {
           try {
-            const pageIgUrl = `https://graph.facebook.com/v21.0/${page.id}?fields=instagram_business_account{id,name,username,profile_picture_url}&access_token=${page.access_token}`;
+            const pageIgUrl = `https://graph.facebook.com/v25.0/${page.id}?fields=instagram_business_account{id,name,username,profile_picture_url}&access_token=${page.access_token}`;
             const pageIgRes = await fetch(pageIgUrl);
             const pageIgData = await pageIgRes.json();
             if (pageIgRes.ok && pageIgData.instagram_business_account) {
@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
 
     // Also fetch pages managed via Business Manager
     try {
-      const businessesUrl = `https://graph.facebook.com/v21.0/me/businesses?fields=id,name&access_token=${finalToken}`;
+      const businessesUrl = `https://graph.facebook.com/v25.0/me/businesses?fields=id,name&access_token=${finalToken}`;
       const businessesRes = await fetch(businessesUrl);
       const businessesData = await businessesRes.json();
 
@@ -217,8 +217,8 @@ Deno.serve(async (req) => {
         const existingPageIds = new Set(pages.map((p: any) => p.id));
 
         const bmPagePromises = businessesData.data.flatMap((biz: any) => [
-          fetch(`https://graph.facebook.com/v21.0/${biz.id}/owned_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
-          fetch(`https://graph.facebook.com/v21.0/${biz.id}/client_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
+          fetch(`https://graph.facebook.com/v25.0/${biz.id}/owned_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
+          fetch(`https://graph.facebook.com/v25.0/${biz.id}/client_pages?fields=id,name,category,instagram_business_account{id,name,username,profile_picture_url}&access_token=${finalToken}`).then(r => r.json()),
         ]);
 
         const bmResults = await Promise.all(bmPagePromises);
@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
         const existingIgIdsPreBM = new Set(instagramAccounts.map((ig: any) => ig.id));
         for (const biz of businessesData.data) {
           try {
-            const bmIgUrl = `https://graph.facebook.com/v21.0/${biz.id}/instagram_accounts?fields=id,username,name,profile_picture_url&access_token=${finalToken}`;
+            const bmIgUrl = `https://graph.facebook.com/v25.0/${biz.id}/instagram_accounts?fields=id,username,name,profile_picture_url&access_token=${finalToken}`;
             const bmIgRes = await fetch(bmIgUrl);
             const bmIgData = await bmIgRes.json();
             if (bmIgRes.ok && bmIgData.data) {
@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
     for (const adAccount of activeAccounts) {
       try {
         const adAccountId = adAccount.id; // format: act_XXXX
-        const igUrl = `https://graph.facebook.com/v21.0/${adAccountId}/instagram_accounts?fields=id,username,name,profile_picture_url&access_token=${finalToken}`;
+        const igUrl = `https://graph.facebook.com/v25.0/${adAccountId}/instagram_accounts?fields=id,username,name,profile_picture_url&access_token=${finalToken}`;
         const igRes = await fetch(igUrl);
         const igData = await igRes.json();
         if (igRes.ok && igData.data) {
@@ -323,7 +323,7 @@ Deno.serve(async (req) => {
       for (const adAccount of activeAccounts) {
         for (const ig of instagramAccounts) {
           try {
-            const connectUrl = `https://graph.facebook.com/v21.0/${adAccount.id}/instagram_accounts`;
+            const connectUrl = `https://graph.facebook.com/v25.0/${adAccount.id}/instagram_accounts`;
             const connectRes = await fetch(connectUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },

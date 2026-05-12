@@ -403,7 +403,7 @@ function timeParam(window: DateWindow): string {
 async function fetchCampaignMeta(metaCampaignId: string, accessToken: string) {
   const fields = 'id,name,objective,status,daily_budget,lifetime_budget,bid_strategy,created_time';
   try {
-    const res = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}?fields=${fields}&access_token=${accessToken}`);
+    const res = await fetch(`https://graph.facebook.com/v25.0/${metaCampaignId}?fields=${fields}&access_token=${accessToken}`);
     return await res.json();
   } catch (err) {
     console.error('campaign meta fetch failed:', err);
@@ -414,7 +414,7 @@ async function fetchCampaignMeta(metaCampaignId: string, accessToken: string) {
 async function fetchAdsetMeta(metaCampaignId: string, accessToken: string) {
   const fields = 'id,name,daily_budget,lifetime_budget,targeting,status';
   try {
-    const res = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}/adsets?fields=${fields}&limit=200&access_token=${accessToken}`);
+    const res = await fetch(`https://graph.facebook.com/v25.0/${metaCampaignId}/adsets?fields=${fields}&limit=200&access_token=${accessToken}`);
     const data = await res.json();
     return Array.isArray(data?.data) ? data.data : [];
   } catch (err) {
@@ -426,7 +426,7 @@ async function fetchAdsetMeta(metaCampaignId: string, accessToken: string) {
 async function fetchAdMeta(metaCampaignId: string, accessToken: string) {
   const fields = 'id,name,adset_id,status,created_time';
   try {
-    const res = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}/ads?fields=${fields}&limit=500&access_token=${accessToken}`);
+    const res = await fetch(`https://graph.facebook.com/v25.0/${metaCampaignId}/ads?fields=${fields}&limit=500&access_token=${accessToken}`);
     const data = await res.json();
     return Array.isArray(data?.data) ? data.data : [];
   } catch (err) {
@@ -445,7 +445,7 @@ async function fetchInsights(
     : [...baseFields, 'campaign_name', 'objective'];
 
   const url =
-    `https://graph.facebook.com/v21.0/${metaCampaignId}/insights` +
+    `https://graph.facebook.com/v25.0/${metaCampaignId}/insights` +
     `?level=${level}` +
     `&${timeParam(window)}` +
     `&fields=${fields.join(',')}` +

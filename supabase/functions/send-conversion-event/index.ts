@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
     }
 
     // Send to Meta Conversions API
-    const capiUrl = `https://graph.facebook.com/v21.0/${pixelId}/events?access_token=${accessToken}`;
+    const capiUrl = `https://graph.facebook.com/v25.0/${pixelId}/events?access_token=${accessToken}`;
     const response = await fetch(capiUrl, {
       method: 'POST',
       headers: {

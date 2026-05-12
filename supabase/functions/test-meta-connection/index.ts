@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     // Test 1: Validate token with /me endpoint
     console.log('Testing token validity...');
     const meResponse = await fetch(
-      `https://graph.facebook.com/v21.0/me?access_token=${token}`
+      `https://graph.facebook.com/v25.0/me?access_token=${token}`
     );
     const meData = await meResponse.json();
 
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
     // Test 2: Check token permissions
     console.log('Checking token permissions...');
     const permissionsResponse = await fetch(
-      `https://graph.facebook.com/v21.0/me/permissions?access_token=${token}`
+      `https://graph.facebook.com/v25.0/me/permissions?access_token=${token}`
     );
     const permissionsData = await permissionsResponse.json();
     
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
       : `act_${brand.meta_account_id}`;
     
     const accountResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${accountId}?fields=name,account_status,currency&access_token=${token}`
+      `https://graph.facebook.com/v25.0/${accountId}?fields=name,account_status,currency&access_token=${token}`
     );
     const accountData = await accountResponse.json();
 

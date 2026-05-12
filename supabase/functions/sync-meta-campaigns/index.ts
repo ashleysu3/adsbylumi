@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
     console.log('Specific campaign IDs to sync:', campaignIds || 'all active');
 
     // Fetch campaigns from Meta API
-    const campaignsUrl = `https://graph.facebook.com/v21.0/${metaAccountId}/campaigns?fields=id,name,status,effective_status,objective,created_time,daily_budget,lifetime_budget&limit=500&access_token=${metaAccessToken}`;
+    const campaignsUrl = `https://graph.facebook.com/v25.0/${metaAccountId}/campaigns?fields=id,name,status,effective_status,objective,created_time,daily_budget,lifetime_budget&limit=500&access_token=${metaAccessToken}`;
 
     const campaignsResponse = await fetch(campaignsUrl);
     const campaignsData = await campaignsResponse.json();
@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
     // backfills on existing workspaces.
     const fetchAdSetsWithRoles = async (campaignId: string, accessToken: string) => {
       try {
-        const url = `https://graph.facebook.com/v21.0/${campaignId}/adsets?fields=id,name,daily_budget,lifetime_budget,status&limit=100&access_token=${accessToken}`;
+        const url = `https://graph.facebook.com/v25.0/${campaignId}/adsets?fields=id,name,daily_budget,lifetime_budget,status&limit=100&access_token=${accessToken}`;
         const resp = await fetch(url);
         const data = await resp.json();
         if (!Array.isArray(data?.data)) return [];
@@ -256,7 +256,7 @@ Deno.serve(async (req) => {
     const fetchCampaignPerformance = async (campaignId: string, accessToken: string) => {
       try {
         const timeRange = 'date_preset=last_7d';
-        const insightsUrl = `https://graph.facebook.com/v21.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${accessToken}`;
+        const insightsUrl = `https://graph.facebook.com/v25.0/${campaignId}/insights?fields=spend,impressions,reach,clicks,ctr,cpc,cpm,frequency,actions,cost_per_action_type&${timeRange}&access_token=${accessToken}`;
         
         const response = await fetch(insightsUrl);
         const data = await response.json();

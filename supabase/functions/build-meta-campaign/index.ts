@@ -482,7 +482,7 @@ Deno.serve(async (req) => {
       console.log('Fetching Meta pixel for conversion tracking...');
       try {
         const pixelResponse = await fetch(
-          `https://graph.facebook.com/v21.0/act_${metaAccountId.replace('act_', '')}/adspixels?fields=id,name&access_token=${metaAccessToken}`
+          `https://graph.facebook.com/v25.0/act_${metaAccountId.replace('act_', '')}/adspixels?fields=id,name&access_token=${metaAccessToken}`
         );
         const pixelData = await pixelResponse.json();
         
@@ -615,7 +615,7 @@ Deno.serve(async (req) => {
     const accountId = metaAccountId.replace('act_', '');
     
     const campaignResponse = await fetch(
-      `https://graph.facebook.com/v21.0/act_${accountId}/campaigns`,
+      `https://graph.facebook.com/v25.0/act_${accountId}/campaigns`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -699,7 +699,7 @@ Deno.serve(async (req) => {
 
       for (const addr of locationAddresses) {
         try {
-          const searchUrl = `https://graph.facebook.com/v21.0/search?type=adgeolocation&location_types=["city","zip","region"]&q=${encodeURIComponent(addr)}&access_token=${metaAccessToken}`;
+          const searchUrl = `https://graph.facebook.com/v25.0/search?type=adgeolocation&location_types=["city","zip","region"]&q=${encodeURIComponent(addr)}&access_token=${metaAccessToken}`;
           const geoResponse = await fetch(searchUrl);
           const geoData = await geoResponse.json();
 
@@ -707,7 +707,7 @@ Deno.serve(async (req) => {
             const loc = geoData.data[0];
             // Meta's adgeolocation search returns key + type, but for custom_locations we need lat/lng
             // Use the place search API for lat/lng
-            const placeUrl = `https://graph.facebook.com/v21.0/search?type=adgeolocation&location_types=["custom_location"]&q=${encodeURIComponent(addr)}&access_token=${metaAccessToken}`;
+            const placeUrl = `https://graph.facebook.com/v25.0/search?type=adgeolocation&location_types=["custom_location"]&q=${encodeURIComponent(addr)}&access_token=${metaAccessToken}`;
             const placeResponse = await fetch(placeUrl);
             const placeData = await placeResponse.json();
 
@@ -805,7 +805,7 @@ Deno.serve(async (req) => {
     }
 
     const coldAdSetResponse = await fetch(
-      `https://graph.facebook.com/v21.0/act_${accountId}/adsets`,
+      `https://graph.facebook.com/v25.0/act_${accountId}/adsets`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -873,7 +873,7 @@ Deno.serve(async (req) => {
       }
 
       const warmAdSetResponse = await fetch(
-        `https://graph.facebook.com/v21.0/act_${accountId}/adsets`,
+        `https://graph.facebook.com/v25.0/act_${accountId}/adsets`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -922,7 +922,7 @@ Deno.serve(async (req) => {
           let videoThumbnailUrl = '';
           try {
             const thumbResponse = await fetch(
-              `https://graph.facebook.com/v21.0/${assetId}?fields=thumbnails&access_token=${metaAccessToken}`
+              `https://graph.facebook.com/v25.0/${assetId}?fields=thumbnails&access_token=${metaAccessToken}`
             );
             const thumbData = await thumbResponse.json();
             if (thumbData.thumbnails?.data?.[0]?.uri) {
@@ -1003,7 +1003,7 @@ Deno.serve(async (req) => {
         };
 
         const creativeResponse = await fetch(
-          `https://graph.facebook.com/v21.0/act_${accountId}/adcreatives`,
+          `https://graph.facebook.com/v25.0/act_${accountId}/adcreatives`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1040,7 +1040,7 @@ Deno.serve(async (req) => {
         }
 
         const adResponse = await fetch(
-          `https://graph.facebook.com/v21.0/act_${accountId}/ads`,
+          `https://graph.facebook.com/v25.0/act_${accountId}/ads`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1091,7 +1091,7 @@ Deno.serve(async (req) => {
             };
 
             const creativeResponse = await fetch(
-              `https://graph.facebook.com/v21.0/act_${accountId}/adcreatives`,
+              `https://graph.facebook.com/v25.0/act_${accountId}/adcreatives`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1124,7 +1124,7 @@ Deno.serve(async (req) => {
             }
 
             const adResponse = await fetch(
-              `https://graph.facebook.com/v21.0/act_${accountId}/ads`,
+              `https://graph.facebook.com/v25.0/act_${accountId}/ads`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
