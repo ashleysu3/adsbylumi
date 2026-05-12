@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     console.log('Fetching campaigns from Meta for account:', metaAccountId);
 
     // Fetch all campaigns (any status)
-    const campaignsUrl = `https://graph.facebook.com/v21.0/${metaAccountId}/campaigns?fields=id,name,status,objective,created_time,daily_budget,lifetime_budget&limit=500&access_token=${metaAccessToken}`;
+    const campaignsUrl = `https://graph.facebook.com/v25.0/${metaAccountId}/campaigns?fields=id,name,status,objective,created_time,daily_budget,lifetime_budget&limit=500&access_token=${metaAccessToken}`;
     
     const campaignsResponse = await fetch(campaignsUrl);
     const campaignsData = await campaignsResponse.json();
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
       console.log(`Filtering campaigns with activity between ${dateRangeStart} and ${dateRangeEnd}`);
       
       // Fetch account-level insights grouped by campaign
-      const insightsUrl = `https://graph.facebook.com/v21.0/${metaAccountId}/insights?level=campaign&time_range={"since":"${dateRangeStart}","until":"${dateRangeEnd}"}&fields=campaign_id,campaign_name,spend&filtering=[{"field":"spend","operator":"GREATER_THAN","value":"0"}]&limit=500&access_token=${metaAccessToken}`;
+      const insightsUrl = `https://graph.facebook.com/v25.0/${metaAccountId}/insights?level=campaign&time_range={"since":"${dateRangeStart}","until":"${dateRangeEnd}"}&fields=campaign_id,campaign_name,spend&filtering=[{"field":"spend","operator":"GREATER_THAN","value":"0"}]&limit=500&access_token=${metaAccessToken}`;
       
       try {
         const insightsResponse = await fetch(insightsUrl);

@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
 
     // Fetch custom audiences from Meta API
     const response = await fetch(
-      `https://graph.facebook.com/v21.0/act_${accountId}/customaudiences?fields=id,name,description,approximate_count,subtype,time_created,delivery_status&limit=100&access_token=${accessToken}`
+      `https://graph.facebook.com/v25.0/act_${accountId}/customaudiences?fields=id,name,description,approximate_count,subtype,time_created,delivery_status&limit=100&access_token=${accessToken}`
     );
 
     const data = await response.json();

@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
       if (hasSavedPage) {
         try {
           const pageRes = await fetch(
-            `https://graph.facebook.com/v21.0/${brand.page_id}?fields=id,name&access_token=${token}`
+            `https://graph.facebook.com/v25.0/${brand.page_id}?fields=id,name&access_token=${token}`
           );
           const pageData = await pageRes.json();
           if (pageRes.ok && !pageData.error) {
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
         // Try fetching from API
         try {
           const res = await fetch(
-            `https://graph.facebook.com/v21.0/me/accounts?fields=id,name&access_token=${token}`
+            `https://graph.facebook.com/v25.0/me/accounts?fields=id,name&access_token=${token}`
           );
           const data = await res.json();
           if (res.ok && !data.error) {
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
           : `act_${brand.meta_account_id}`;
         try {
           const accRes = await fetch(
-            `https://graph.facebook.com/v21.0/${formattedId}?fields=id,name,account_status&access_token=${token}`
+            `https://graph.facebook.com/v25.0/${formattedId}?fields=id,name,account_status&access_token=${token}`
           );
           const accData = await accRes.json();
           if (accRes.ok && !accData.error) {
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
       } else {
         try {
           const res = await fetch(
-            `https://graph.facebook.com/v21.0/me/adaccounts?fields=id,name,account_status&access_token=${token}`
+            `https://graph.facebook.com/v25.0/me/adaccounts?fields=id,name,account_status&access_token=${token}`
           );
           const data = await res.json();
           if (res.ok && !data.error) {
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
         // Try fetching IG from the page
         try {
           const res = await fetch(
-            `https://graph.facebook.com/v21.0/${brand.page_id}?fields=instagram_business_account{id,username}&access_token=${token}`
+            `https://graph.facebook.com/v25.0/${brand.page_id}?fields=instagram_business_account{id,username}&access_token=${token}`
           );
           const data = await res.json();
           if (res.ok && !data.error && data.instagram_business_account) {
@@ -290,7 +290,7 @@ Deno.serve(async (req) => {
       const formattedId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`;
 
       try {
-        const billingUrl = `https://graph.facebook.com/v21.0/${formattedId}?fields=funding_source_details,account_status&access_token=${token}`;
+        const billingUrl = `https://graph.facebook.com/v25.0/${formattedId}?fields=funding_source_details,account_status&access_token=${token}`;
         const billingRes = await fetch(billingUrl);
         const billingData = await billingRes.json();
 
@@ -341,7 +341,7 @@ Deno.serve(async (req) => {
 
       // 5. Check Pixel
       try {
-        const pixelUrl = `https://graph.facebook.com/v21.0/${formattedId}/adspixels?fields=id,name&access_token=${token}`;
+        const pixelUrl = `https://graph.facebook.com/v25.0/${formattedId}/adspixels?fields=id,name&access_token=${token}`;
         const pixelRes = await fetch(pixelUrl);
         const pixelData = await pixelRes.json();
 

@@ -141,7 +141,7 @@ async function refreshBrandToken(
 
   // Exchange for a new long-lived token
   // Meta's token refresh endpoint
-  const refreshUrl = new URL('https://graph.facebook.com/v21.0/oauth/access_token');
+  const refreshUrl = new URL('https://graph.facebook.com/v25.0/oauth/access_token');
   refreshUrl.searchParams.set('grant_type', 'fb_exchange_token');
   refreshUrl.searchParams.set('client_id', appId);
   refreshUrl.searchParams.set('client_secret', appSecret);

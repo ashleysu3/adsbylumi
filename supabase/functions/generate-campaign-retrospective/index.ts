@@ -123,7 +123,7 @@ Deno.serve(async req => {
         try {
           const { data: brand } = await sb.from('brands').select('meta_access_token').eq('id', body.brandId).single();
           if (brand?.meta_access_token) {
-            const r = await fetch(`https://graph.facebook.com/v21.0/${body.metaCampaignId}?fields=name,objective&access_token=${brand.meta_access_token}`);
+            const r = await fetch(`https://graph.facebook.com/v25.0/${body.metaCampaignId}?fields=name,objective&access_token=${brand.meta_access_token}`);
             const d = await r.json();
             if (r.ok && d?.name) metaName = d.name;
           }
@@ -197,7 +197,7 @@ Deno.serve(async req => {
     let metaCampaignObjective: string | null = (workspace as any).objective || null;
     if (metaCampaignId && brand.meta_access_token && !metaCampaignObjective) {
       try {
-        const r = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}?fields=objective&access_token=${brand.meta_access_token}`);
+        const r = await fetch(`https://graph.facebook.com/v25.0/${metaCampaignId}?fields=objective&access_token=${brand.meta_access_token}`);
         const d = await r.json();
         if (r.ok && d?.objective) metaCampaignObjective = d.objective;
       } catch (_) { /* non-fatal */ }
@@ -234,7 +234,7 @@ Deno.serve(async req => {
         // glitch (or a wrong/empty window) and bail out instead of saving zeros.
         try {
           const probeRes = await fetch(
-            `https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=spend&date_preset=maximum&level=campaign&access_token=${brand.meta_access_token}`,
+            `https://graph.facebook.com/v25.0/${metaCampaignId}/insights?fields=spend&date_preset=maximum&level=campaign&access_token=${brand.meta_access_token}`,
           );
           const probeData = await probeRes.json();
           const lifetimeSpend = probeRes.ok
@@ -485,15 +485,15 @@ async function fetchCampaignPerformance(
     : `date_preset=maximum`;
 
   try {
-    const campaignRes = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields}&${timeParam}&level=campaign&access_token=${accessToken}`);
+    const campaignRes = await fetch(`https://graph.facebook.com/v25.0/${metaCampaignId}/insights?fields=${fields}&${timeParam}&level=campaign&access_token=${accessToken}`);
     const campaignData = await campaignRes.json();
     if (!campaignRes.ok) {
       console.error('Meta campaign insights fetch failed:', campaignData);
       return null;
     }
-    const adsetRes = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields},adset_id,adset_name&${timeParam}&level=adset&access_token=${accessToken}`);
+    const adsetRes = await fetch(`https://graph.facebook.com/v25.0/${metaCampaignId}/insights?fields=${fields},adset_id,adset_name&${timeParam}&level=adset&access_token=${accessToken}`);
     const adsetData = await adsetRes.json();
-    const adRes = await fetch(`https://graph.facebook.com/v21.0/${metaCampaignId}/insights?fields=${fields},ad_id,ad_name,adset_id&${timeParam}&level=ad&access_token=${accessToken}`);
+    const adRes = await fetch(`https://graph.facebook.com/v25.0/${metaCampaignId}/insights?fields=${fields},ad_id,ad_name,adset_id&${timeParam}&level=ad&access_token=${accessToken}`);
     const adData = await adRes.json();
 
     const c = campaignData?.data?.[0];

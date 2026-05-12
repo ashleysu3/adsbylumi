@@ -84,11 +84,11 @@ Deno.serve(async (req) => {
 
     // Fetch insights
     const fields = "ad_name,spend,impressions,clicks,ctr,actions,cost_per_action_type,purchase_roas,reach";
-    const metaUrl = `https://graph.facebook.com/v21.0/${actId}/insights?fields=${fields}&time_range={"since":"${sinceStr}","until":"${untilStr}"}&level=ad&limit=100&filtering=[{"field":"spend","operator":"GREATER_THAN","value":"10"}]&access_token=${brand.meta_access_token}`;
+    const metaUrl = `https://graph.facebook.com/v25.0/${actId}/insights?fields=${fields}&time_range={"since":"${sinceStr}","until":"${untilStr}"}&level=ad&limit=100&filtering=[{"field":"spend","operator":"GREATER_THAN","value":"10"}]&access_token=${brand.meta_access_token}`;
 
     // Fetch ads with creative copy + destination URLs
     const adsFields = "name,creative{effective_object_story_spec,object_story_spec,asset_feed_spec}";
-    const adsUrl = `https://graph.facebook.com/v21.0/${actId}/ads?fields=${adsFields}&limit=100&access_token=${brand.meta_access_token}`;
+    const adsUrl = `https://graph.facebook.com/v25.0/${actId}/ads?fields=${adsFields}&limit=100&access_token=${brand.meta_access_token}`;
 
     console.log("[analyze-past-creatives] Fetching Meta insights and ads...");
     const [metaRes, adsRes] = await Promise.all([fetch(metaUrl), fetch(adsUrl)]);

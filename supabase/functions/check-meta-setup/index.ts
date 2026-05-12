@@ -124,7 +124,7 @@ Deno.serve(async req => {
     let tokenWorks = false;
     let tokenError: string | null = null;
     try {
-      const r = await fetch(`https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${token}`);
+      const r = await fetch(`https://graph.facebook.com/v25.0/me?fields=id,name&access_token=${token}`);
       const d = await r.json();
       if (r.ok && d?.id) {
         tokenWorks = true;
@@ -158,7 +158,7 @@ Deno.serve(async req => {
     // ----- 3. Required permissions -----
     let missingPerms: string[] = [];
     try {
-      const r = await fetch(`https://graph.facebook.com/v21.0/me/permissions?access_token=${token}`);
+      const r = await fetch(`https://graph.facebook.com/v25.0/me/permissions?access_token=${token}`);
       const d = await r.json();
       const granted: string[] = (Array.isArray(d?.data) ? d.data : [])
         .filter((p: any) => p.status === 'granted')
@@ -195,7 +195,7 @@ Deno.serve(async req => {
       });
     } else {
       try {
-        const r = await fetch(`https://graph.facebook.com/v21.0/${brand.meta_account_id}?fields=id,name,account_status,currency&access_token=${token}`);
+        const r = await fetch(`https://graph.facebook.com/v25.0/${brand.meta_account_id}?fields=id,name,account_status,currency&access_token=${token}`);
         const d = await r.json();
         if (r.ok && d?.id) {
           m.adAccountId = d.id; m.adAccountName = d.name; m.adAccountCurrency = d.currency;
@@ -231,7 +231,7 @@ Deno.serve(async req => {
     // ----- 5. Facebook Page -----
     if (brand.page_id) {
       try {
-        const r = await fetch(`https://graph.facebook.com/v21.0/${brand.page_id}?fields=id,name&access_token=${token}`);
+        const r = await fetch(`https://graph.facebook.com/v25.0/${brand.page_id}?fields=id,name&access_token=${token}`);
         const d = await r.json();
         if (r.ok && d?.id) {
           checks.push({ id: 'page', label: 'Facebook Page', status: 'pass', detail: d.name || brand.page_name || 'Linked' });
@@ -259,7 +259,7 @@ Deno.serve(async req => {
     // ----- 6. Instagram account -----
     if (brand.instagram_account_id) {
       try {
-        const r = await fetch(`https://graph.facebook.com/v21.0/${brand.instagram_account_id}?fields=id,username&access_token=${token}`);
+        const r = await fetch(`https://graph.facebook.com/v25.0/${brand.instagram_account_id}?fields=id,username&access_token=${token}`);
         const d = await r.json();
         if (r.ok && d?.id) {
           checks.push({ id: 'instagram', label: 'Instagram account', status: 'pass', detail: d.username ? `@${d.username}` : (brand.instagram_account_name || 'Linked') });
@@ -296,7 +296,7 @@ Deno.serve(async req => {
     } else {
       // We have a pixel ID. Check it's active + has recent events.
       try {
-        const r = await fetch(`https://graph.facebook.com/v21.0/${brand.meta_pixel_id}?fields=id,name,last_fired_time&access_token=${token}`);
+        const r = await fetch(`https://graph.facebook.com/v25.0/${brand.meta_pixel_id}?fields=id,name,last_fired_time&access_token=${token}`);
         const d = await r.json();
         if (r.ok && d?.id) {
           const lastFired = d.last_fired_time ? new Date(d.last_fired_time) : null;

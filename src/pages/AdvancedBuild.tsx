@@ -142,7 +142,7 @@ export default function AdvancedBuild() {
     setLoadingInstagram(true);
     try {
       const res = await fetch(
-        `https://graph.facebook.com/v18.0/${pageId}/instagram_accounts?fields=id,username,profile_pic&access_token=${accessToken}`
+        `https://graph.facebook.com/v25.0/${pageId}/instagram_accounts?fields=id,username,profile_pic&access_token=${accessToken}`
       );
       const data = await res.json();
       const accounts = (data?.data || []).map((a: any) => ({

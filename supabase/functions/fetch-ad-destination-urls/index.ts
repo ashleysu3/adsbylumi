@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
     console.log(`Fetching destination URLs for campaign ${campaignId}`);
 
     // Fetch ads with their creative details
-    const adsUrl = `https://graph.facebook.com/v21.0/${campaignId}/ads?fields=id,name,status,creative{object_story_spec,asset_feed_spec}&limit=50&access_token=${metaAccessToken}`;
+    const adsUrl = `https://graph.facebook.com/v25.0/${campaignId}/ads?fields=id,name,status,creative{object_story_spec,asset_feed_spec}&limit=50&access_token=${metaAccessToken}`;
     const adsResponse = await fetch(adsUrl);
     const adsData = await adsResponse.json();
 
@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     if (urls.size === 0) {
       for (const ad of (adsData.data || []).slice(0, 5)) {
         try {
-          const creativeUrl = `https://graph.facebook.com/v21.0/${ad.id}?fields=creative{effective_object_story_id,object_story_spec}&access_token=${metaAccessToken}`;
+          const creativeUrl = `https://graph.facebook.com/v25.0/${ad.id}?fields=creative{effective_object_story_id,object_story_spec}&access_token=${metaAccessToken}`;
           const creativeResp = await fetch(creativeUrl);
           const creativeData = await creativeResp.json();
           

@@ -35,7 +35,7 @@ import { Resend } from 'npm:resend@4.0.0';
 // manually in LUMI and still mark the token used.
 // ============================================================================
 
-const META_API = 'https://graph.facebook.com/v21.0';
+const META_API = 'https://graph.facebook.com/v25.0';
 
 Deno.serve(async (req) => {
   try {

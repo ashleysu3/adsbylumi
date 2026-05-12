@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const requestedFields = simple ? baseFields : `${baseFields},${engagementFields}`;
 
     const fetchPostsByFields = async (igId: string, fields: string) => {
-      const postsUrl = `https://graph.facebook.com/v21.0/${igId}/media?fields=${fields}&limit=25&access_token=${accessToken}`;
+      const postsUrl = `https://graph.facebook.com/v25.0/${igId}/media?fields=${fields}&limit=25&access_token=${accessToken}`;
       const response = await fetch(postsUrl);
       const data = await response.json();
       return { response, data };
@@ -284,7 +284,7 @@ async function discoverInstagramCandidates(
 
   // Source 1: Pages → instagram_business_account
   try {
-    const pagesUrl = `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,name,username}&access_token=${accessToken}`;
+    const pagesUrl = `https://graph.facebook.com/v25.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,name,username}&access_token=${accessToken}`;
     const pagesRes = await fetch(pagesUrl);
     const pagesData = await pagesRes.json();
     if (pagesRes.ok && Array.isArray(pagesData.data)) {
@@ -295,7 +295,7 @@ async function discoverInstagramCandidates(
         // Source 2: Page edge /instagram_accounts (using page token)
         if (page.access_token) {
           try {
-            const edgeUrl = `https://graph.facebook.com/v21.0/${page.id}/instagram_accounts?fields=id,username,name&access_token=${page.access_token}`;
+            const edgeUrl = `https://graph.facebook.com/v25.0/${page.id}/instagram_accounts?fields=id,username,name&access_token=${page.access_token}`;
             const edgeRes = await fetch(edgeUrl);
             const edgeData = await edgeRes.json();
             if (edgeRes.ok && Array.isArray(edgeData.data)) {
@@ -313,7 +313,7 @@ async function discoverInstagramCandidates(
   if (metaAccountId) {
     const actId = metaAccountId.startsWith('act_') ? metaAccountId : `act_${metaAccountId}`;
     try {
-      const adIgUrl = `https://graph.facebook.com/v21.0/${actId}/instagram_accounts?fields=id,username,name&access_token=${accessToken}`;
+      const adIgUrl = `https://graph.facebook.com/v25.0/${actId}/instagram_accounts?fields=id,username,name&access_token=${accessToken}`;
       const adIgRes = await fetch(adIgUrl);
       const adIgData = await adIgRes.json();
       if (adIgRes.ok && Array.isArray(adIgData.data)) {

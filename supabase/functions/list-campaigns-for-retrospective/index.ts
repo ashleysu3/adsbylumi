@@ -87,7 +87,7 @@ Deno.serve(async req => {
       'purchase_roas', 'objective',
     ].join(',');
     const insightsUrl =
-      `https://graph.facebook.com/v21.0/${brand.meta_account_id}/insights` +
+      `https://graph.facebook.com/v25.0/${brand.meta_account_id}/insights` +
       `?level=campaign` +
       `&time_range=${encodeURIComponent(JSON.stringify({ since: startDate, until: endDate }))}` +
       `&fields=${fields}` +
@@ -105,7 +105,7 @@ Deno.serve(async req => {
     let statusMap: Record<string, string> = {};
     if (insightsArr.length > 0) {
       const campsRes = await fetch(
-        `https://graph.facebook.com/v21.0/${brand.meta_account_id}/campaigns?fields=id,status,objective&limit=500&access_token=${brand.meta_access_token}`,
+        `https://graph.facebook.com/v25.0/${brand.meta_account_id}/campaigns?fields=id,status,objective&limit=500&access_token=${brand.meta_access_token}`,
       );
       const campsData = await campsRes.json();
       if (campsRes.ok && Array.isArray(campsData?.data)) {

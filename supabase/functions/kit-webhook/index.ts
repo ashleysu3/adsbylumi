@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
           },
         };
 
-        const capiUrl = `https://graph.facebook.com/v21.0/${brand.meta_pixel_id}/events?access_token=${brand.meta_access_token}`;
+        const capiUrl = `https://graph.facebook.com/v25.0/${brand.meta_pixel_id}/events?access_token=${brand.meta_access_token}`;
         const capiRes = await fetch(capiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

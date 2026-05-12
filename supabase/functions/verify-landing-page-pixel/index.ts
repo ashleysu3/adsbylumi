@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
             ? brand.meta_account_id 
             : `act_${brand.meta_account_id}`;
           
-          const pixelsUrl = `https://graph.facebook.com/v21.0/${adAccountId}/adspixels?fields=id&access_token=${accessToken}`;
+          const pixelsUrl = `https://graph.facebook.com/v25.0/${adAccountId}/adspixels?fields=id&access_token=${accessToken}`;
           const pixelsResponse = await fetch(pixelsUrl);
           const pixelsData = await pixelsResponse.json();
 

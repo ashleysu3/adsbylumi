@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     // so the new ad can use the same underlying creative object.
     // -----------------------------------------------------------------------
     const fetchAdRes = await fetch(
-      `https://graph.facebook.com/v21.0/${sourceAdId}?fields=name,creative{id}&access_token=${encodeURIComponent(metaToken)}`,
+      `https://graph.facebook.com/v25.0/${sourceAdId}?fields=name,creative{id}&access_token=${encodeURIComponent(metaToken)}`,
     );
     const fetchAdData = await fetchAdRes.json();
     if (fetchAdData.error) {
@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     // -----------------------------------------------------------------------
     const newAdName = originalName.startsWith('[Scaling]') ? originalName : `[Scaling] ${originalName}`;
     const createAdRes = await fetch(
-      `https://graph.facebook.com/v21.0/${adAccountId}/ads`,
+      `https://graph.facebook.com/v25.0/${adAccountId}/ads`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
     let pauseFailed: string | null = null;
     try {
       const pauseRes = await fetch(
-        `https://graph.facebook.com/v21.0/${sourceAdId}`,
+        `https://graph.facebook.com/v25.0/${sourceAdId}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
