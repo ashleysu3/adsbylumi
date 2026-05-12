@@ -977,7 +977,7 @@ Deno.serve(async (req) => {
         // Meta requires explicit OPT_OUT on every standard enhancement to prevent the
         // "multi-advertiser ads" checkbox from auto-enabling at the ad level.
         // Force-disable Advantage+ creative enhancements. Only keys currently
-        // accepted by Meta v21.0 in creative_features_spec are included here.
+        // accepted by Meta v25.0 in creative_features_spec are included here.
         // Sending unrecognized keys (e.g. "music", "advantage_plus_creative")
         // causes Meta error #100 and blocks creative creation.
         // Allowed keys: IG_VIDEO_NATIVE_SUBTITLE, IMAGE_ANIMATION,
