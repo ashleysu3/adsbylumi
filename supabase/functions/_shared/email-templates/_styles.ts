@@ -17,27 +17,31 @@ export const container = {
   backgroundColor: '#ffffff',
 }
 
+export const LOGO_URL =
+  'https://sqwjbndgighjtifijgws.supabase.co/storage/v1/object/public/email-assets/lumi-logo.png'
+
 export const headerBar = {
-  background:
-    'linear-gradient(135deg, #F97316 0%, #EC4899 40%, #A78BFA 70%, #93C5FD 100%)',
-  padding: '28px 32px',
+  backgroundColor: '#ffffff',
+  padding: '32px 32px 8px',
   borderRadius: '16px 16px 0 0',
   textAlign: 'center' as const,
+  border: '1px solid #F5F3EE',
+  borderBottom: 'none',
 }
 
-export const wordmark = {
-  color: '#ffffff',
-  fontSize: '24px',
-  fontWeight: 800 as const,
-  letterSpacing: '-0.5px',
-  margin: '0',
+export const logoImg = {
+  height: '44px',
+  width: 'auto',
+  margin: '0 auto',
+  display: 'block',
 }
 
 export const card = {
-  padding: '36px 32px 32px',
+  padding: '20px 32px 32px',
   border: '1px solid #F5F3EE',
   borderTop: 'none',
   borderRadius: '0 0 16px 16px',
+  backgroundColor: '#ffffff',
 }
 
 export const h1 = {
