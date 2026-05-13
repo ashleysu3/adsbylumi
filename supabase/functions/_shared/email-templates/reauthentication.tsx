@@ -21,7 +21,7 @@ export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => 
     <Body style={main}>
       <Container style={container}>
         <Section style={headerBar}>
-          <Heading as="h1" style={wordmark}>Lumi ✨</Heading>
+          <Img src={LOGO_URL} alt="Lumi" style={logoImg} width="140" />
         </Section>
         <Section style={card}>
           <Heading style={h1}>Confirm it's really you</Heading>
