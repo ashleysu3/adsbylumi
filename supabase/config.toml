@@ -1,229 +1,157 @@
 project_id = "sqwjbndgighjtifijgws"
 
-[functions.fetch-meta-performance]
-verify_jwt = true
-
-[functions.analyze-performance]
-verify_jwt = true
-
-[functions.sync-meta-campaigns]
-verify_jwt = true
-
-[functions.fetch-meta-campaigns]
-verify_jwt = true
-
-[functions.fetch-account-overview]
-verify_jwt = true
-
-[functions.fetch-ad-breakdown]
-verify_jwt = true
-
-[functions.generate-weekly-report]
-verify_jwt = true
-
-[functions.generate-copy-variations]
-verify_jwt = true
-
-[functions.finalize-ad-copy]
-verify_jwt = true
-
-[functions.generate-creative]
-verify_jwt = true
-
-[functions.expand-creative]
-verify_jwt = true
-
-[functions.extract-brand-info]
-verify_jwt = true
-
-[functions.generate-audience-psychology]
-verify_jwt = true
-
-[functions.extract-offer-info]
-verify_jwt = true
-
-[functions.generate-product-psychology]
-verify_jwt = true
-
-[functions.recommend-campaign-template]
-verify_jwt = true
-
-[functions.meta-oauth-init]
-verify_jwt = true
-
-[functions.meta-oauth-callback]
-verify_jwt = false
-
-[functions.campaign-builder-chat]
-verify_jwt = true
-
-[functions.build-meta-campaign]
-verify_jwt = true
-
-[functions.upload-creative-to-meta]
-verify_jwt = true
-
-[functions.suggest-next-action]
-verify_jwt = true
-
-[functions.check-campaign-status]
-verify_jwt = true
-
-[functions.fetch-custom-audiences]
-verify_jwt = true
-
-[functions.send-weekly-reports]
-verify_jwt = false
-
-[functions.check-generation-readiness]
-verify_jwt = true
-
-[functions.lumi-chat]
-verify_jwt = true
-
-[functions.generate-creative-angles]
-verify_jwt = true
-
-[functions.generate-creative-grid]
-verify_jwt = true
-
-[functions.regenerate-creative-cell]
-verify_jwt = true
-
-[functions.send-critical-alerts]
-verify_jwt = false
-
-[functions.refresh-meta-token]
-verify_jwt = false
-
-[functions.sync-flodesk]
-verify_jwt = false
-
-[functions.check-subscription]
-verify_jwt = false
-
-[functions.create-checkout]
-verify_jwt = true
-
-[functions.customer-portal]
-verify_jwt = true
-
-[functions.generate-angle-copy]
-verify_jwt = true
-
-[functions.check-pixel-status]
-verify_jwt = true
-
-[functions.verify-landing-page-pixel]
-verify_jwt = true
-
-[functions.send-conversion-event]
-verify_jwt = true
-
-[functions.verify-meta-tokens]
-verify_jwt = false
-
-[functions.rank-creative-concepts]
-verify_jwt = true
-
-[functions.analyze-instagram-posts]
-verify_jwt = true
-
-[functions.qa-preflight-check]
-verify_jwt = true
-
-[functions.analyze-past-creatives]
-verify_jwt = true
-
-[functions.slack-notify]
-verify_jwt = false
-
-[functions.slack-new-user]
-verify_jwt = false
-
-[functions.slack-daily-digest]
-verify_jwt = false
-
-[functions.rotate-creative]
-verify_jwt = true
-
-[functions.check-creative-fatigue]
-verify_jwt = false
-
-[functions.generate-trend-insights]
-verify_jwt = true
-
-[functions.slack-lumi-chat]
-verify_jwt = false
-
-[functions.slack-error-alert]
-verify_jwt = false
-
-[functions.create-custom-conversion]
-verify_jwt = false
-
-[functions.generate-custom-angle]
-verify_jwt = true
-
-[functions.generate-advanced-copy]
-verify_jwt = false
-
-[functions.generate-client-report]
-verify_jwt = false
-
-[functions.add-creative-to-campaign]
-verify_jwt = false
-
-[functions.send-welcome-email]
-verify_jwt = false
-
-[functions.send-cancellation-email]
-verify_jwt = false
-
-[functions.create-affiliate]
-verify_jwt = false
-
-[functions.submit-partner-application]
-verify_jwt = false
-
-[functions.get-affiliate-data]
-verify_jwt = true
-
-[functions.admin-get-affiliates]
-verify_jwt = false
-
-[functions.generate-broll-ideas]
-verify_jwt = false
-
-[functions.run-optimization-report]
-verify_jwt = false
-
-[functions.send-optimization-digest]
-verify_jwt = false
-
-[functions.schedule-digests]
-verify_jwt = false
-
-[functions.get-shared-report]
-verify_jwt = false
-
-[functions.handle-cancellation]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.stripe-admin]
-verify_jwt = false
-
-[functions.apply-optimizations]
-verify_jwt = false
-
-[functions.flodesk-connect]
-verify_jwt = false
-
-[functions.flodesk-webhook]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.add-creative-to-campaign]
+    verify_jwt = false
+  [functions.admin-get-affiliates]
+    verify_jwt = false
+  [functions.analyze-instagram-posts]
+    verify_jwt = true
+  [functions.analyze-past-creatives]
+    verify_jwt = true
+  [functions.analyze-performance]
+    verify_jwt = true
+  [functions.apply-optimizations]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.build-meta-campaign]
+    verify_jwt = true
+  [functions.campaign-builder-chat]
+    verify_jwt = true
+  [functions.check-campaign-status]
+    verify_jwt = true
+  [functions.check-creative-fatigue]
+    verify_jwt = false
+  [functions.check-generation-readiness]
+    verify_jwt = true
+  [functions.check-pixel-status]
+    verify_jwt = true
+  [functions.check-subscription]
+    verify_jwt = false
+  [functions.create-affiliate]
+    verify_jwt = false
+  [functions.create-checkout]
+    verify_jwt = true
+  [functions.create-custom-conversion]
+    verify_jwt = false
+  [functions.customer-portal]
+    verify_jwt = true
+  [functions.expand-creative]
+    verify_jwt = true
+  [functions.extract-brand-info]
+    verify_jwt = true
+  [functions.extract-offer-info]
+    verify_jwt = true
+  [functions.fetch-account-overview]
+    verify_jwt = true
+  [functions.fetch-ad-breakdown]
+    verify_jwt = true
+  [functions.fetch-custom-audiences]
+    verify_jwt = true
+  [functions.fetch-meta-campaigns]
+    verify_jwt = true
+  [functions.fetch-meta-performance]
+    verify_jwt = true
+  [functions.finalize-ad-copy]
+    verify_jwt = true
+  [functions.flodesk-connect]
+    verify_jwt = false
+  [functions.flodesk-webhook]
+    verify_jwt = false
+  [functions.generate-advanced-copy]
+    verify_jwt = false
+  [functions.generate-angle-copy]
+    verify_jwt = true
+  [functions.generate-audience-psychology]
+    verify_jwt = true
+  [functions.generate-broll-ideas]
+    verify_jwt = false
+  [functions.generate-client-report]
+    verify_jwt = false
+  [functions.generate-copy-variations]
+    verify_jwt = true
+  [functions.generate-creative]
+    verify_jwt = true
+  [functions.generate-creative-angles]
+    verify_jwt = true
+  [functions.generate-creative-grid]
+    verify_jwt = true
+  [functions.generate-custom-angle]
+    verify_jwt = true
+  [functions.generate-product-psychology]
+    verify_jwt = true
+  [functions.generate-trend-insights]
+    verify_jwt = true
+  [functions.generate-weekly-report]
+    verify_jwt = true
+  [functions.get-affiliate-data]
+    verify_jwt = true
+  [functions.get-shared-report]
+    verify_jwt = false
+  [functions.handle-cancellation]
+    verify_jwt = false
+  [functions.lumi-chat]
+    verify_jwt = true
+  [functions.meta-oauth-callback]
+    verify_jwt = false
+  [functions.meta-oauth-init]
+    verify_jwt = true
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.qa-preflight-check]
+    verify_jwt = true
+  [functions.rank-creative-concepts]
+    verify_jwt = true
+  [functions.recommend-campaign-template]
+    verify_jwt = true
+  [functions.refresh-meta-token]
+    verify_jwt = false
+  [functions.regenerate-creative-cell]
+    verify_jwt = true
+  [functions.rotate-creative]
+    verify_jwt = true
+  [functions.run-optimization-report]
+    verify_jwt = false
+  [functions.schedule-digests]
+    verify_jwt = false
+  [functions.send-cancellation-email]
+    verify_jwt = false
+  [functions.send-conversion-event]
+    verify_jwt = true
+  [functions.send-critical-alerts]
+    verify_jwt = false
+  [functions.send-optimization-digest]
+    verify_jwt = false
+  [functions.send-weekly-reports]
+    verify_jwt = false
+  [functions.send-welcome-email]
+    verify_jwt = false
+  [functions.slack-daily-digest]
+    verify_jwt = false
+  [functions.slack-error-alert]
+    verify_jwt = false
+  [functions.slack-lumi-chat]
+    verify_jwt = false
+  [functions.slack-new-user]
+    verify_jwt = false
+  [functions.slack-notify]
+    verify_jwt = false
+  [functions.stripe-admin]
+    verify_jwt = false
+  [functions.stripe-webhook]
+    verify_jwt = false
+  [functions.submit-partner-application]
+    verify_jwt = false
+  [functions.suggest-next-action]
+    verify_jwt = true
+  [functions.sync-flodesk]
+    verify_jwt = false
+  [functions.sync-meta-campaigns]
+    verify_jwt = true
+  [functions.upload-creative-to-meta]
+    verify_jwt = true
+  [functions.verify-landing-page-pixel]
+    verify_jwt = true
+  [functions.verify-meta-tokens]
+    verify_jwt = false
