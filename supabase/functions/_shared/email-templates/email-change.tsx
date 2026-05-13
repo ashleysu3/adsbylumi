@@ -5,6 +5,7 @@ import * as React from 'npm:react@18.3.1'
 import {
   Body, Button, Container, Head, Heading, Html, Link, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
+import { Img } from 'npm:@react-email/components@0.0.22'
 
 import {
   main, container, headerBar, LOGO_URL, logoImg, card, h1, text, link, button, footer, footerBar,
