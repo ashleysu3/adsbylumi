@@ -2634,6 +2634,11 @@ export type Database = {
         Args: { p_brand_id: string; p_token: string }
         Returns: string
       }
+      validate_invite_code: { Args: { p_code: string }; Returns: boolean }
+      validate_partner_trial_code: {
+        Args: { p_code: string }
+        Returns: boolean
+      }
       validate_portal_access: { Args: { p_portal_id: string }; Returns: Json }
     }
     Enums: {

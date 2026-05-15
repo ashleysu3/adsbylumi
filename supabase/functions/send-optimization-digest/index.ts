@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { Resend } from 'npm:resend@2.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { isInternalOrAuthenticated } from "../_shared/internal-auth.ts";
 
 const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
@@ -11,6 +12,13 @@ Deno.serve(async (req) => {
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!(await isInternalOrAuthenticated(req))) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {

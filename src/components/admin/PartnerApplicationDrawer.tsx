@@ -53,8 +53,21 @@ const statusStyles: Record<string, string> = {
   declined: "bg-red-100 text-red-800",
 };
 
-function getEmailPreviewHtml(firstName: string, customMessage: string, referralLink: string, referralCode: string) {
-  const trialCode = firstName.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) + '14';
+function escapeHtml(s: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getEmailPreviewHtml(firstNameRaw: string, customMessageRaw: string, referralLinkRaw: string, referralCodeRaw: string) {
+  const firstName = escapeHtml(firstNameRaw);
+  const customMessage = escapeHtml(customMessageRaw);
+  const referralLink = escapeHtml(referralLinkRaw);
+  const referralCode = escapeHtml(referralCodeRaw);
+  const trialCode = escapeHtml(firstNameRaw.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) + '14');
   return `
 <div style="font-family: 'Red Hat Display', Arial, sans-serif; background: #FAF9F6; padding: 24px; border-radius: 12px;">
   <div style="background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
