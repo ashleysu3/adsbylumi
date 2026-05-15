@@ -2,9 +2,6 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-/**
- * Returns true if the request is from a trusted internal caller (service role key).
- */
 export function isServiceRoleRequest(req: Request): boolean {
   const auth = req.headers.get("Authorization") || req.headers.get("authorization");
   if (!auth?.startsWith("Bearer ")) return false;
@@ -13,10 +10,6 @@ export function isServiceRoleRequest(req: Request): boolean {
   return !!serviceKey && token === serviceKey;
 }
 
-/**
- * Verifies the request's Authorization header contains a valid user JWT.
- * Returns { userId } on success, or null on failure.
- */
 export async function getAuthenticatedUser(
   req: Request
 ): Promise<{ userId: string; email?: string } | null> {
@@ -31,8 +24,21 @@ export async function getAuthenticatedUser(
   try {
     const { data, error } = await client.auth.getClaims(token);
     if (error || !data?.claims?.sub) return null;
-    return { userId: data.claims.sub as string, email: data.claims.email as string | undefined };
+    return {
+      userId: data.claims.sub as string,
+      email: data.claims.email as string | undefined,
+    };
   } catch {
     return null;
   }
+}
+
+/**
+ * Allow either internal service-role calls OR an authenticated end user.
+ * Returns true if the caller is authorized.
+ */
+export async function isInternalOrAuthenticated(req: Request): Promise<boolean> {
+  if (isServiceRoleRequest(req)) return true;
+  const user = await getAuthenticatedUser(req);
+  return !!user;
 }
