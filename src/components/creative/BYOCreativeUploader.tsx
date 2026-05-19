@@ -313,7 +313,7 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
         updatedAngleCopy["byo_uploads"] = pickedCopy;
       }
 
-      await supabase.from("campaign_workspaces").update({
+      const { error: saveError } = await supabase.from("campaign_workspaces").update({
         creative_json: {
           ...existingCreative,
           angles: angles_list,
@@ -325,6 +325,13 @@ export function BYOCreativeUploader({ workspaceId, brandId, onComplete, onCancel
         user_uploaded_assets: [...existingAssets, ...newAssets],
         updated_at: new Date().toISOString(),
       }).eq("id", workspaceId);
+
+      if (saveError) {
+        console.error("BYO upload workspace save failed:", saveError);
+        toast.error("Uploads succeeded but failed to save to workspace. Please try again.");
+        setIsUploading(false);
+        return;
+      }
 
       toast.success(`${uploadedFiles.length} creative${uploadedFiles.length > 1 ? 's' : ''} uploaded!`);
       onComplete(productionItems, copyChoice, pickedCopy);

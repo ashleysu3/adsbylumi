@@ -147,14 +147,16 @@ export function ProductionManager({
 
   const handleSelectLibrary = async (value: string) => {
     const newVal = value === "__brand__" ? null : value;
-    setSelectedLibraryId(newVal);
     const wsId = (workspace as any)?.id;
     if (!wsId) return;
+    const prevVal = selectedLibraryId;
+    setSelectedLibraryId(newVal);
     const { error } = await supabase
       .from("campaign_workspaces")
       .update({ broll_library_id: newVal })
       .eq("id", wsId);
     if (error) {
+      setSelectedLibraryId(prevVal);
       toast.error("Failed to save library selection");
       return;
     }
@@ -567,8 +569,20 @@ export function ProductionManager({
     return new Promise((resolve) => {
       const video = document.createElement('video');
       video.preload = 'metadata';
-      video.onloadedmetadata = () => {
+
+      const cleanup = (objectUrl: string) => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      // Safety net: if neither onloadedmetadata nor onerror fires (malformed file), allow after 5s
+      const timeout = setTimeout(() => {
         URL.revokeObjectURL(video.src);
+        resolve(true);
+      }, 5000);
+
+      video.onloadedmetadata = () => {
+        cleanup(video.src);
         const ratio = video.videoWidth / video.videoHeight;
         // 9:16 = 0.5625. Allow some tolerance (0.45–0.65)
         if (ratio > 0.65) {
@@ -579,7 +593,7 @@ export function ProductionManager({
         }
       };
       video.onerror = () => {
-        URL.revokeObjectURL(video.src);
+        cleanup(video.src);
         resolve(true); // Allow on error — don't block uploads we can't validate
       };
       video.src = URL.createObjectURL(file);

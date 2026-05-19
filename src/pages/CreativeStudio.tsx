@@ -389,6 +389,8 @@ export default function CreativeStudio() {
             updated_at: new Date().toISOString(),
           }).eq("id", data.id).then(() => {
             console.log("[CreativeStudio] Reconciled angle_copy saved");
+          }).catch(err => {
+            console.error("[CreativeStudio] Failed to persist reconciled angle_copy:", err);
           });
         }
       }
