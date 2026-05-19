@@ -158,6 +158,8 @@ export default function AdminUsers() {
   const [selectedEmailTemplate, setSelectedEmailTemplate] = useState("");
   const [customEmailMessage, setCustomEmailMessage] = useState("");
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
+  const [newMonthlyPrice, setNewMonthlyPrice] = useState("");
+
 
   useEffect(() => {
     checkAdminAndFetch();
