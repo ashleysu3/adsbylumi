@@ -322,7 +322,7 @@ function checkEventTracking(brand: any, template: any): CheckResult {
   };
 }
 
-async function checkSpellingGrammar(creativeJson: any, productionItems: any[]): Promise<CheckResult> {
+async function checkSpellingGrammar(creativeJson: any, productionItems: any[], selectedCopy?: any): Promise<CheckResult> {
   try {
     const copyToCheck: { field: string; text: string; location: string }[] = [];
 
