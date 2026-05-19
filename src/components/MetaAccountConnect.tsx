@@ -847,11 +847,11 @@ export function MetaAccountConnect({
                 </p>
               </div>
 
-              {instagramAccounts.length === 0 ? (
+              {instagramAccountsForSelectedPage.length === 0 ? (
                 <Card className="p-4 border-amber-500/50 bg-amber-500/5">
                   <p className="text-sm text-amber-600 font-medium mb-2">No Instagram Accounts Found</p>
                   <p className="text-xs text-muted-foreground mb-3">
-                    No Instagram Business or Creator accounts were found through your Facebook Pages or ad account connections.
+                    No Instagram Business or Creator account is linked to the selected Facebook Page.
                   </p>
                   <p className="text-xs text-muted-foreground mb-2">
                     <strong>To fix this:</strong>
@@ -869,7 +869,7 @@ export function MetaAccountConnect({
               ) : (
                 <RadioGroup value={selectedInstagram} onValueChange={setSelectedInstagram}>
                   <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2">
-                    {instagramAccounts.map((ig) => (
+                    {instagramAccountsForSelectedPage.map((ig) => (
                       <Card 
                         key={ig.id}
                         className={`p-3 cursor-pointer transition-colors hover:bg-accent ${
