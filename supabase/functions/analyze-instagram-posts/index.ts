@@ -83,23 +83,27 @@ Deno.serve(async (req) => {
     let { response: postsResponse, data: postsData } = await fetchPostsForAccount(activeIgId);
 
     if (!postsResponse.ok) {
-      console.error('Primary IG account failed, attempting auto-recovery:', postsData?.error);
+      console.error('Primary IG account failed, attempting page-scoped recovery:', postsData?.error);
 
-      // Try to find a readable Instagram account automatically
-      const recovered = await tryRecoverInstagramAccount({
-        failedIgId: activeIgId,
-        accessToken,
-        metaAccountId: brand.meta_account_id,
-        fetchPostsForAccount,
-      });
+      // CRITICAL: Only recover within this brand's own Facebook Page.
+      // On agency accounts the user token can see many Pages — falling back
+      // to /me/accounts can swap in another brand's Instagram account.
+      const recovered = brand.page_id
+        ? await tryRecoverInstagramAccountForPage({
+            pageId: brand.page_id,
+            failedIgId: activeIgId,
+            accessToken,
+            fetchPostsForAccount,
+          })
+        : null;
 
       if (recovered) {
         activeIgId = recovered.igId;
         postsResponse = recovered.response;
         postsData = recovered.data;
-        console.log('Auto-recovered with IG account:', activeIgId);
+        console.log('Page-scoped recovery succeeded with IG account:', activeIgId);
 
-        // Persist the working IG account so future requests don't fail
+        // Only persist if the recovered IG actually belongs to this brand's page
         await supabase
           .from('brands')
           .update({
@@ -108,6 +112,8 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq('id', brandId);
+      } else {
+        console.warn('No page-scoped recovery available for brand', brandId, '— refusing cross-brand fallback');
       }
     }
 
