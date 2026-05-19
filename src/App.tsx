@@ -116,6 +116,8 @@ const App = () => {
                   <Route path="/" element={<Sales />} />
                   <Route path="/waitlist" element={<Waitlist />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/reactivate/:token" element={<Reactivate />} />
+                  <Route path="/welcome-back" element={<WelcomeBack />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/freetrial" element={<FreeTrial />} />
                   <Route path="/free-trial" element={<Navigate to="/freetrial" replace />} />
