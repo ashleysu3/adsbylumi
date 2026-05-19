@@ -52,6 +52,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (!brand.instagram_account_id || instagramAccountId !== brand.instagram_account_id) {
+      return new Response(
+        JSON.stringify({ error: 'Instagram account mismatch. Please refresh and use the Instagram account saved on this brand.', code: 'INSTAGRAM_ACCOUNT_MISMATCH' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const accessToken = brand.meta_access_token;
 
     console.log('Fetching Instagram posts for account:', instagramAccountId);
@@ -83,37 +90,7 @@ Deno.serve(async (req) => {
     let { response: postsResponse, data: postsData } = await fetchPostsForAccount(activeIgId);
 
     if (!postsResponse.ok) {
-      console.error('Primary IG account failed, attempting page-scoped recovery:', postsData?.error);
-
-      // CRITICAL: Only recover within this brand's own Facebook Page.
-      // On agency accounts the user token can see many Pages — falling back
-      // to /me/accounts can swap in another brand's Instagram account.
-      const recovered = brand.page_id
-        ? await tryRecoverInstagramAccountForPage({
-            pageId: brand.page_id,
-            failedIgId: activeIgId,
-            accessToken,
-            fetchPostsForAccount,
-          })
-        : null;
-
-      if (recovered) {
-        activeIgId = recovered.igId;
-        postsResponse = recovered.response;
-        postsData = recovered.data;
-        console.log('Page-scoped recovery succeeded with IG account:', activeIgId);
-
-        // IMPORTANT: Do NOT persist the recovered IG to the brand.
-        // A Facebook Page can have multiple linked Instagram accounts (e.g. on
-        // agency setups where several brands share a Page), and silently
-        // overwriting the user's chosen IG with whichever one happens to
-        // succeed first causes the wrong account to keep coming back even
-        // after the user reconnects in Meta Settings. Recovery is now
-        // request-scoped only — the user remains the source of truth.
-      } else {
-        console.warn('No page-scoped recovery available for brand', brandId, '— refusing cross-brand fallback');
-      }
-
+      console.error('Saved IG account failed; refusing to recover to another account:', postsData?.error);
     }
 
     if (!postsResponse.ok) {
