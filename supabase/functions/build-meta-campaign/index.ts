@@ -329,7 +329,7 @@ Deno.serve(async (req) => {
     // Get production items with linked assets
     // Accept items that are approved OR completed OR simply have a linked asset
     // Copy can come from either item-level finalCopy OR angle-level angle_copy
-    const approvedConcepts: ProductionItem[] = productionItems.filter(
+    let approvedConcepts: ProductionItem[] = productionItems.filter(
       (item: ProductionItem) => {
         // Any production item with a linked asset is valid for publishing.
         // The act of uploading an asset means the creative is ready.
@@ -338,10 +338,52 @@ Deno.serve(async (req) => {
         return hasLinkedAsset || hasUploadedAssetId;
       }
     );
-    
+
+    // Advanced Build fallback: when no production_items exist but the workspace was
+    // built via the Advanced Build flow (upload assets + AI copy → redirect here),
+    // synthesise production items from user_uploaded_assets + selected_copy.
+    if (approvedConcepts.length === 0 && uploadedAssetsList.length > 0) {
+      const campaignAnswers = workspace.campaign_builder_answers as any;
+      if (campaignAnswers?.advancedBuild === true) {
+        const selectedCopy = workspace.selected_copy as any;
+        const sharedVariations: Array<{ primary_text?: string; headline?: string; description?: string }> =
+          selectedCopy?.shared_variations ||
+          campaignAnswers?.sharedCopy?.variations ||
+          [];
+        const selectedIndices: number[] = campaignAnswers?.sharedCopy?.selectedIndices || [];
+        const approvedVariations =
+          selectedIndices.length > 0
+            ? selectedIndices.map((i: number) => sharedVariations[i]).filter(Boolean)
+            : sharedVariations;
+        const firstVariation = approvedVariations[0];
+
+        if (firstVariation) {
+          approvedConcepts = uploadedAssetsList.map((asset: any) => ({
+            id: asset.id,
+            concept: { title: asset.name },
+            status: 'approved',
+            linkedAsset: {
+              id: asset.id,
+              url: asset.file_url,
+              storagePath: asset.storage_path,
+              type: asset.file_type,
+              fileName: asset.name,
+            },
+            finalCopy: {
+              headline: firstVariation.headline || '',
+              primaryText: firstVariation.primary_text || '',
+              description: firstVariation.description || '',
+              cta: 'LEARN_MORE',
+            },
+          }));
+          console.log(`Advanced Build: synthesised ${approvedConcepts.length} item(s) from user_uploaded_assets`);
+        }
+      }
+    }
+
     console.log(`Resolved assets: ${uploadedAssetsList.length} uploaded, ${productionItems.filter((i: any) => i.linkedAsset).length} linked to items`);
     console.log(`Approved concepts: ${approvedConcepts.length} of ${productionItems.length} total items`);
-    
+
     if (approvedConcepts.length < 1) {
       const itemStatuses = productionItems.map((i: any) => ({ id: i.id, status: i.status, completed: i.completed, hasAsset: !!i.linkedAsset, hasCopy: !!(i.finalCopy || i.final_copy) }));
       console.error('No approved concepts found. Item details:', JSON.stringify(itemStatuses));
