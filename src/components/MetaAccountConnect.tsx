@@ -438,17 +438,24 @@ export function MetaAccountConnect({
     // Find Instagram accounts linked to the selected page first, then include others
     const linkedInstagram = instagramAccounts.filter(ig => ig.linked_page_id === selectedPage);
     const otherInstagram = instagramAccounts.filter(ig => ig.linked_page_id !== selectedPage);
-    
-    // If there's exactly one linked Instagram, auto-select it
-    if (linkedInstagram.length === 1) {
+
+    // Only auto-select when there is exactly ONE candidate Instagram account
+    // anywhere — otherwise the user must explicitly pick, since a single
+    // Facebook Page can have multiple Instagram accounts linked to it
+    // (common on agency setups) and silently auto-picking the first one
+    // routinely saved the wrong IG to the brand.
+    if (linkedInstagram.length === 1 && otherInstagram.length === 0) {
       setSelectedInstagram(linkedInstagram[0].id);
     } else if (linkedInstagram.length === 0 && instagramAccounts.length === 1) {
-      // If no page-linked IG but only one total, auto-select
       setSelectedInstagram(instagramAccounts[0].id);
+    } else {
+      // Force explicit choice — clear any pre-selection
+      setSelectedInstagram("");
     }
-    
+
     setStep('select-instagram');
   };
+
 
   const handleSelectAccount = () => {
     if (!selectedAccount) {

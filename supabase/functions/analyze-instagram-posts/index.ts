@@ -103,18 +103,17 @@ Deno.serve(async (req) => {
         postsData = recovered.data;
         console.log('Page-scoped recovery succeeded with IG account:', activeIgId);
 
-        // Only persist if the recovered IG actually belongs to this brand's page
-        await supabase
-          .from('brands')
-          .update({
-            instagram_account_id: activeIgId,
-            instagram_account_name: recovered.name || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', brandId);
+        // IMPORTANT: Do NOT persist the recovered IG to the brand.
+        // A Facebook Page can have multiple linked Instagram accounts (e.g. on
+        // agency setups where several brands share a Page), and silently
+        // overwriting the user's chosen IG with whichever one happens to
+        // succeed first causes the wrong account to keep coming back even
+        // after the user reconnects in Meta Settings. Recovery is now
+        // request-scoped only — the user remains the source of truth.
       } else {
         console.warn('No page-scoped recovery available for brand', brandId, '— refusing cross-brand fallback');
       }
+
     }
 
     if (!postsResponse.ok) {
