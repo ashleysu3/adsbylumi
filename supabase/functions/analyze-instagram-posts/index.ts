@@ -240,6 +240,66 @@ interface RecoveredAccount {
   data: any;
 }
 
+async function tryRecoverInstagramAccountForPage({
+  pageId,
+  failedIgId,
+  accessToken,
+  fetchPostsForAccount,
+}: {
+  pageId: string;
+  failedIgId: string;
+  accessToken: string;
+  fetchPostsForAccount: (igId: string) => Promise<{ response: Response; data: any }>;
+}): Promise<RecoveredAccount | null> {
+  const candidates: Array<{ id: string; name?: string; username?: string }> = [];
+  const seen = new Set<string>();
+  const add = (c: { id: string; name?: string; username?: string }) => {
+    if (!c?.id || seen.has(c.id)) return;
+    seen.add(c.id);
+    candidates.push(c);
+  };
+
+  try {
+    // Get a page access token + the page's own IG business account (one only)
+    const pageUrl = `https://graph.facebook.com/v25.0/${pageId}?fields=access_token,instagram_business_account{id,name,username}&access_token=${accessToken}`;
+    const pageRes = await fetch(pageUrl);
+    const pageData = await pageRes.json();
+    if (pageRes.ok) {
+      if (pageData.instagram_business_account) add(pageData.instagram_business_account);
+      // Page edge using the page token — still scoped to THIS page only
+      const pageToken = pageData.access_token || accessToken;
+      try {
+        const edgeUrl = `https://graph.facebook.com/v25.0/${pageId}/instagram_accounts?fields=id,username,name&access_token=${pageToken}`;
+        const edgeRes = await fetch(edgeUrl);
+        const edgeData = await edgeRes.json();
+        if (edgeRes.ok && Array.isArray(edgeData.data)) {
+          for (const ig of edgeData.data) add(ig);
+        }
+      } catch { /* non-fatal */ }
+    }
+  } catch (err) {
+    console.warn('Page-scoped IG recovery failed:', err);
+  }
+
+  for (const candidate of candidates) {
+    if (candidate.id === failedIgId) continue;
+    try {
+      const result = await fetchPostsForAccount(candidate.id);
+      if (result.response.ok && !result.data?.error) {
+        return {
+          igId: candidate.id,
+          name: candidate.name || candidate.username || null,
+          response: result.response,
+          data: result.data,
+        };
+      }
+    } catch (err) {
+      console.warn(`Page-scoped recovery candidate ${candidate.id} failed:`, err);
+    }
+  }
+  return null;
+}
+
 async function tryRecoverInstagramAccount({
   failedIgId,
   accessToken,
