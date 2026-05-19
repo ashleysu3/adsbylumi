@@ -624,7 +624,9 @@ Deno.serve(async (req) => {
           objective: metaObjective,
           status: launchStatus,
           special_ad_categories: '[]',
-          is_adset_budget_sharing_enabled: 'false',
+          // Meta v24+ requires capitalized string literals for this form field.
+          // Lowercase "false" is rejected with error_subcode 4834011.
+          is_adset_budget_sharing_enabled: 'False',
           access_token: metaAccessToken
         })
       }
