@@ -18,6 +18,8 @@ import Index from "./pages/Index";
 import Sales from "./pages/Sales";
 import Waitlist from "./pages/Waitlist";
 import Auth from "./pages/Auth";
+import Reactivate from "./pages/Reactivate";
+import WelcomeBack from "./pages/WelcomeBack";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Start from "./pages/Start";
