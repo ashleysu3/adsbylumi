@@ -306,14 +306,15 @@ export function MetaAccountConnect({
                 }
               }
 
-              // Auto-select if only one option for each
+              // Auto-select only when the entire brand mapping is unambiguous.
               if (accountCount === 1 && pageCount === 1) {
+                const pageScopedInstagram = returnedInstagram.filter((ig: InstagramAccount) => ig.linked_page_id === returnedPages[0].id);
                 setSelectedAccount(returnedAccounts[0].id);
                 setSelectedPage(returnedPages[0].id);
-                if (igCount === 1) {
-                  setSelectedInstagram(returnedInstagram[0].id);
+                if (pageScopedInstagram.length === 1) {
+                  setSelectedInstagram(pageScopedInstagram[0].id);
                 }
-                toast.info(`We found just one of everything — confirming your setup.`);
+                toast.info(`We found one ad account and one Page — confirm the Instagram account for this brand.`);
               }
 
               setStep('select-account');
@@ -465,17 +466,14 @@ export function MetaAccountConnect({
     
     // Find Instagram accounts linked to the selected page first, then include others
     const linkedInstagram = instagramAccounts.filter(ig => ig.linked_page_id === selectedPage);
-    const otherInstagram = instagramAccounts.filter(ig => ig.linked_page_id !== selectedPage);
 
     // Only auto-select when there is exactly ONE candidate Instagram account
     // anywhere — otherwise the user must explicitly pick, since a single
     // Facebook Page can have multiple Instagram accounts linked to it
     // (common on agency setups) and silently auto-picking the first one
     // routinely saved the wrong IG to the brand.
-    if (linkedInstagram.length === 1 && otherInstagram.length === 0) {
+    if (linkedInstagram.length === 1) {
       setSelectedInstagram(linkedInstagram[0].id);
-    } else if (linkedInstagram.length === 0 && instagramAccounts.length === 1) {
-      setSelectedInstagram(instagramAccounts[0].id);
     } else {
       // Force explicit choice — clear any pre-selection
       setSelectedInstagram("");
@@ -502,9 +500,17 @@ export function MetaAccountConnect({
       toast.error("Please select a Facebook Page");
       return;
     }
+    if (instagramAccountsForSelectedPage.length > 0 && !selectedInstagram) {
+      toast.error("Please select the Instagram account linked to this brand's Facebook Page");
+      return;
+    }
+    if (selectedInstagram && !instagramAccountsForSelectedPage.some(ig => ig.id === selectedInstagram)) {
+      toast.error("That Instagram account is not linked to the selected Facebook Page");
+      return;
+    }
 
     const selectedPageData = pages.find(p => p.id === selectedPage);
-    const selectedInstagramData = instagramAccounts.find(ig => ig.id === selectedInstagram);
+    const selectedInstagramData = instagramAccountsForSelectedPage.find(ig => ig.id === selectedInstagram);
 
     setLoading(true);
     try {
