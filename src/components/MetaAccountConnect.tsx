@@ -74,6 +74,10 @@ export function MetaAccountConnect({
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [step, setStep] = useState<'connect' | 'select-account' | 'select-page' | 'select-instagram'>('connect');
 
+  const instagramAccountsForSelectedPage = selectedPage
+    ? instagramAccounts.filter((ig) => ig.linked_page_id === selectedPage)
+    : [];
+
   const runPostOAuthDiagnostic = async (accts: AdAccount[], pgs: FacebookPage[], igs: InstagramAccount[]) => {
     try {
       setDiagnosticLoading(true);
@@ -106,6 +110,16 @@ export function MetaAccountConnect({
       setSelectedInstagram(currentInstagramId);
     }
   }, [currentAccountId, currentPageId, currentInstagramId]);
+
+  useEffect(() => {
+    if (!selectedPage || !selectedInstagram) return;
+    const instagramBelongsToPage = instagramAccounts.some(
+      (ig) => ig.id === selectedInstagram && ig.linked_page_id === selectedPage
+    );
+    if (!instagramBelongsToPage) {
+      setSelectedInstagram("");
+    }
+  }, [selectedPage, selectedInstagram, instagramAccounts]);
 
   const getPendingSelectionPayload = () => {
     try {
