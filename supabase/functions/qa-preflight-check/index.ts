@@ -63,7 +63,7 @@ serve(async (req) => {
     results.push(checkSchedule(answers));
     results.push(await checkLandingPage(resolvedUrl, brand));
     results.push(checkEventTracking(brand, template));
-    results.push(await checkSpellingGrammar(creativeJson, productionItems));
+    results.push(await checkSpellingGrammar(creativeJson, productionItems, selectedCopy));
 
     const summary = {
       passed: results.filter(r => r.status === 'passed').length,
