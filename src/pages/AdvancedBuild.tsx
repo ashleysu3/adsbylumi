@@ -428,7 +428,7 @@ export default function AdvancedBuild() {
           // so build-meta-campaign can publish (it expects items with linkedAsset + finalCopy).
           const cleanAssets = assets.map(({ file, ...rest }) => rest);
           const synthesizedItems = cleanAssets.map((asset: any, idx: number) => {
-            const variation = approvedVariations[idx % Math.max(approvedVariations.length, 1)] || {};
+            const variation: any = approvedVariations[idx % Math.max(approvedVariations.length, 1)] || {};
             return {
               id: asset.id || `prod_${Date.now()}_${idx}`,
               status: "approved",
