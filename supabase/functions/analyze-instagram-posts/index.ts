@@ -69,19 +69,19 @@ Deno.serve(async (req) => {
     const engagementFields = 'like_count,comments_count';
     const requestedFields = simple ? baseFields : `${baseFields},${engagementFields}`;
 
-    const fetchPostsByFields = async (igId: string, fields: string) => {
-      const postsUrl = `https://graph.facebook.com/v25.0/${igId}/media?fields=${fields}&limit=25&access_token=${accessToken}`;
+    const fetchPostsByFields = async (igId: string, fields: string, token: string = accessToken) => {
+      const postsUrl = `https://graph.facebook.com/v25.0/${igId}/media?fields=${fields}&limit=25&access_token=${token}`;
       const response = await fetch(postsUrl);
       const data = await response.json();
       return { response, data };
     };
 
     // Helper to try fetching posts for a given IG account, with engagement field fallback
-    const fetchPostsForAccount = async (igId: string) => {
-      let result = await fetchPostsByFields(igId, requestedFields);
+    const fetchPostsForAccount = async (igId: string, token: string = accessToken) => {
+      let result = await fetchPostsByFields(igId, requestedFields, token);
       if (!result.response.ok && result.data?.error?.code === 10 && !simple) {
         console.warn(`Retrying without engagement fields for ${igId}`);
-        result = await fetchPostsByFields(igId, baseFields);
+        result = await fetchPostsByFields(igId, baseFields, token);
       }
       return result;
     };
@@ -90,7 +90,13 @@ Deno.serve(async (req) => {
     let { response: postsResponse, data: postsData } = await fetchPostsForAccount(activeIgId);
 
     if (!postsResponse.ok) {
-      console.error('Saved IG account failed; refusing to recover to another account:', postsData?.error);
+      console.error('Saved IG account failed with user token, retrying same IG with Page token only:', postsData?.error);
+      const pageToken = brand.page_id ? await getPageAccessToken(brand.page_id, accessToken) : null;
+      if (pageToken) {
+        const pageTokenResult = await fetchPostsForAccount(activeIgId, pageToken);
+        postsResponse = pageTokenResult.response;
+        postsData = pageTokenResult.data;
+      }
     }
 
     if (!postsResponse.ok) {
