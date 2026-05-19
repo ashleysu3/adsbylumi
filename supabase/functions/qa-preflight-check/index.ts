@@ -410,6 +410,22 @@ async function checkSpellingGrammar(creativeJson: any, productionItems: any[], s
       }
     }
 
+    // 4. From advanced-builder shared_variations (workspace.selected_copy.shared_variations)
+    const sourcesForShared = [selectedCopy, creativeJson?.selected_copy, creativeJson?.copy_selections, creativeJson?.copySelections];
+    for (const src of sourcesForShared) {
+      const sv = src?.shared_variations;
+      if (Array.isArray(sv)) {
+        sv.forEach((v: any, i: number) => {
+          const label = v?.angle ? `Variation ${i + 1} (${v.angle})` : `Variation ${i + 1}`;
+          if (v?.headline) copyToCheck.push({ field: 'headline', text: v.headline, location: label });
+          if (v?.description) copyToCheck.push({ field: 'description', text: v.description, location: label });
+          const pt = v?.primary_text || v?.primaryText;
+          if (pt) copyToCheck.push({ field: 'primary_text', text: pt, location: label });
+        });
+      }
+    }
+
+
     console.log(`Spelling check: found ${copyToCheck.length} copy items to check`);
 
     if (copyToCheck.length === 0) {
