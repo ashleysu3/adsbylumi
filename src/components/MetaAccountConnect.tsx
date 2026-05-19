@@ -259,13 +259,18 @@ export function MetaAccountConnect({
               // Run diagnostic in background
               runPostOAuthDiagnostic(returnedAccounts, returnedPages, returnedInstagram);
 
-              // On reconnection, auto-confirm previous selections if they still exist
+              // On reconnection, auto-confirm previous selections only when the
+              // Instagram choice is unambiguous. Some agency Pages expose more
+              // than one IG account; auto-saving the previous IG in that case
+              // can keep re-saving the wrong brand's Instagram account.
               if (tokenExpired && currentAccountId && currentPageId) {
                 const prevAccountStillExists = returnedAccounts.some((a: AdAccount) => a.id === currentAccountId);
                 const prevPageStillExists = returnedPages.some((p: FacebookPage) => p.id === currentPageId);
                 const prevIgStillExists = !currentInstagramId || returnedInstagram.some((ig: InstagramAccount) => ig.id === currentInstagramId);
+                const pageInstagramCandidates = returnedInstagram.filter((ig: InstagramAccount) => ig.linked_page_id === currentPageId);
+                const canSafelyAutoSaveInstagram = !currentInstagramId || pageInstagramCandidates.length <= 1;
 
-                if (prevAccountStillExists && prevPageStillExists && prevIgStillExists) {
+                if (prevAccountStillExists && prevPageStillExists && prevIgStillExists && canSafelyAutoSaveInstagram) {
                   setSelectedAccount(currentAccountId);
                   setSelectedPage(currentPageId);
                   if (currentInstagramId) setSelectedInstagram(currentInstagramId);
@@ -274,6 +279,15 @@ export function MetaAccountConnect({
                   setTimeout(() => {
                     autoSaveReconnection(currentAccountId, currentPageId, currentInstagramId || undefined, returnedPages, returnedInstagram);
                   }, 100);
+                  return;
+                }
+
+                if (prevAccountStillExists && prevPageStillExists && prevIgStillExists && !canSafelyAutoSaveInstagram) {
+                  setSelectedAccount(currentAccountId);
+                  setSelectedPage(currentPageId);
+                  setSelectedInstagram("");
+                  toast.info('Reconnected — please choose the Instagram account for this brand.');
+                  setStep('select-instagram');
                   return;
                 }
               }
