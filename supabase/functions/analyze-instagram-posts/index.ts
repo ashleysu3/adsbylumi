@@ -83,23 +83,27 @@ Deno.serve(async (req) => {
     let { response: postsResponse, data: postsData } = await fetchPostsForAccount(activeIgId);
 
     if (!postsResponse.ok) {
-      console.error('Primary IG account failed, attempting auto-recovery:', postsData?.error);
+      console.error('Primary IG account failed, attempting page-scoped recovery:', postsData?.error);
 
-      // Try to find a readable Instagram account automatically
-      const recovered = await tryRecoverInstagramAccount({
-        failedIgId: activeIgId,
-        accessToken,
-        metaAccountId: brand.meta_account_id,
-        fetchPostsForAccount,
-      });
+      // CRITICAL: Only recover within this brand's own Facebook Page.
+      // On agency accounts the user token can see many Pages — falling back
+      // to /me/accounts can swap in another brand's Instagram account.
+      const recovered = brand.page_id
+        ? await tryRecoverInstagramAccountForPage({
+            pageId: brand.page_id,
+            failedIgId: activeIgId,
+            accessToken,
+            fetchPostsForAccount,
+          })
+        : null;
 
       if (recovered) {
         activeIgId = recovered.igId;
         postsResponse = recovered.response;
         postsData = recovered.data;
-        console.log('Auto-recovered with IG account:', activeIgId);
+        console.log('Page-scoped recovery succeeded with IG account:', activeIgId);
 
-        // Persist the working IG account so future requests don't fail
+        // Only persist if the recovered IG actually belongs to this brand's page
         await supabase
           .from('brands')
           .update({
@@ -108,6 +112,8 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq('id', brandId);
+      } else {
+        console.warn('No page-scoped recovery available for brand', brandId, '— refusing cross-brand fallback');
       }
     }
 
@@ -232,6 +238,66 @@ interface RecoveredAccount {
   name: string | null;
   response: Response;
   data: any;
+}
+
+async function tryRecoverInstagramAccountForPage({
+  pageId,
+  failedIgId,
+  accessToken,
+  fetchPostsForAccount,
+}: {
+  pageId: string;
+  failedIgId: string;
+  accessToken: string;
+  fetchPostsForAccount: (igId: string) => Promise<{ response: Response; data: any }>;
+}): Promise<RecoveredAccount | null> {
+  const candidates: Array<{ id: string; name?: string; username?: string }> = [];
+  const seen = new Set<string>();
+  const add = (c: { id: string; name?: string; username?: string }) => {
+    if (!c?.id || seen.has(c.id)) return;
+    seen.add(c.id);
+    candidates.push(c);
+  };
+
+  try {
+    // Get a page access token + the page's own IG business account (one only)
+    const pageUrl = `https://graph.facebook.com/v25.0/${pageId}?fields=access_token,instagram_business_account{id,name,username}&access_token=${accessToken}`;
+    const pageRes = await fetch(pageUrl);
+    const pageData = await pageRes.json();
+    if (pageRes.ok) {
+      if (pageData.instagram_business_account) add(pageData.instagram_business_account);
+      // Page edge using the page token — still scoped to THIS page only
+      const pageToken = pageData.access_token || accessToken;
+      try {
+        const edgeUrl = `https://graph.facebook.com/v25.0/${pageId}/instagram_accounts?fields=id,username,name&access_token=${pageToken}`;
+        const edgeRes = await fetch(edgeUrl);
+        const edgeData = await edgeRes.json();
+        if (edgeRes.ok && Array.isArray(edgeData.data)) {
+          for (const ig of edgeData.data) add(ig);
+        }
+      } catch { /* non-fatal */ }
+    }
+  } catch (err) {
+    console.warn('Page-scoped IG recovery failed:', err);
+  }
+
+  for (const candidate of candidates) {
+    if (candidate.id === failedIgId) continue;
+    try {
+      const result = await fetchPostsForAccount(candidate.id);
+      if (result.response.ok && !result.data?.error) {
+        return {
+          igId: candidate.id,
+          name: candidate.name || candidate.username || null,
+          response: result.response,
+          data: result.data,
+        };
+      }
+    } catch (err) {
+      console.warn(`Page-scoped recovery candidate ${candidate.id} failed:`, err);
+    }
+  }
+  return null;
 }
 
 async function tryRecoverInstagramAccount({
