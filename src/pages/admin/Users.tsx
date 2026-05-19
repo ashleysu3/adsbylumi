@@ -380,6 +380,59 @@ export default function AdminUsers() {
     setActionLoading(null);
   };
 
+  const handleGrantWinbackTrial = async () => {
+    if (!selectedUser || !userDetails?.profile?.email) return;
+    if (!confirm("Grant a 14-day free trial to this user? They'll get a confirmation email and won't be charged until the trial ends.")) return;
+
+    setActionLoading("winback");
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: {
+          action: "grant_winback_trial",
+          userId: selectedUser.id,
+          userEmail: userDetails.profile.email,
+          trialDays: 14,
+        },
+      });
+      if (error) throw error;
+      toast.success(data.message);
+      fetchUserDetails(selectedUser);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to grant trial");
+    }
+    setActionLoading(null);
+  };
+
+  const handleUpdateMonthlyPrice = async () => {
+    if (!selectedUser || !userDetails?.profile?.email) return;
+    const price = parseFloat(newMonthlyPrice);
+    if (!price || price <= 0) {
+      toast.error("Enter a valid monthly price in dollars");
+      return;
+    }
+    if (!confirm(`Set this user's monthly price to $${price.toFixed(2)}? Change applies on their next billing cycle.`)) return;
+
+    setActionLoading("price");
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-user-management", {
+        body: {
+          action: "update_subscription_price",
+          userId: selectedUser.id,
+          userEmail: userDetails.profile.email,
+          newMonthlyPrice: price,
+        },
+      });
+      if (error) throw error;
+      toast.success(data.message);
+      setNewMonthlyPrice("");
+      fetchUserDetails(selectedUser);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update price");
+    }
+    setActionLoading(null);
+  };
+
+
   const handleSendEmail = async () => {
     if (!selectedUser || !userDetails?.profile?.email || !selectedEmailTemplate) return;
     
