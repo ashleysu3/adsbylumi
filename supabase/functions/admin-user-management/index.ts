@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
 interface RequestBody {
-  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "grant_winback_trial" | "update_subscription_price" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity" | "delete_user" | "toggle_agency_mode" | "manage_role" | "archive_user" | "unarchive_user";
+  action: "get_user_details" | "get_stripe_info" | "refund" | "cancel_subscription" | "give_credit" | "update_subscription" | "create_winback_offer" | "update_subscription_price" | "send_email" | "list_users" | "get_audit_logs" | "get_user_activity" | "delete_user" | "toggle_agency_mode" | "manage_role" | "archive_user" | "unarchive_user";
   userId?: string;
   userEmail?: string;
   refundAmount?: number;
