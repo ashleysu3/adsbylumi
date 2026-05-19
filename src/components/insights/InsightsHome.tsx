@@ -467,6 +467,7 @@ export function InsightsHome({
             id: p.id,
             media_type: p.media_type,
             caption: p.caption || '',
+            instagram_account_id: p.instagram_account_id,
           })),
         },
       });
