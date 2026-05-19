@@ -280,9 +280,9 @@ export function MetaAccountConnect({
               if (tokenExpired && currentAccountId && currentPageId) {
                 const prevAccountStillExists = returnedAccounts.some((a: AdAccount) => a.id === currentAccountId);
                 const prevPageStillExists = returnedPages.some((p: FacebookPage) => p.id === currentPageId);
-                const prevIgStillExists = !currentInstagramId || returnedInstagram.some((ig: InstagramAccount) => ig.id === currentInstagramId);
                 const pageInstagramCandidates = returnedInstagram.filter((ig: InstagramAccount) => ig.linked_page_id === currentPageId);
-                const canSafelyAutoSaveInstagram = !currentInstagramId || pageInstagramCandidates.length <= 1;
+                const prevIgStillExists = !currentInstagramId || pageInstagramCandidates.some((ig: InstagramAccount) => ig.id === currentInstagramId);
+                const canSafelyAutoSaveInstagram = !currentInstagramId || pageInstagramCandidates.length === 1;
 
                 if (prevAccountStillExists && prevPageStillExists && prevIgStillExists && canSafelyAutoSaveInstagram) {
                   setSelectedAccount(currentAccountId);
