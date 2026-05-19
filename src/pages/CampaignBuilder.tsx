@@ -278,6 +278,12 @@ export default function CampaignBuilder() {
       setPublishError(friendlyMsg || "Failed to publish campaign. Try again or contact support.");
       toast.error(friendlyMsg || "Failed to publish campaign");
       setStage('configure');
+      // Auto-submit a bug report so we can investigate without the user having to file one
+      autoSubmitBugReport({
+        context: "Campaign publish failed",
+        errorMessage: friendlyMsg || String(error?.message || error),
+        extra: { workspaceId, launchStatus, rawError: String(error?.message || error) },
+      });
     } finally {
       setPublishing(false);
     }
