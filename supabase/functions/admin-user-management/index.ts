@@ -442,7 +442,221 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Grant a win-back trial: creates a brand new Stripe subscription with a
+    // trial period (default 14 days) using the user's most recent price.
+    // Designed for users who previously cancelled and want to come back.
+    if (action === "grant_winback_trial") {
+      if (!userEmail) throw new Error("userEmail required");
+      const trialDays = body.trialDays && body.trialDays > 0 ? body.trialDays : 14;
+
+      const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+      if (customers.data.length === 0) throw new Error("No Stripe customer found for this user");
+      const customer = customers.data[0];
+
+      // Refuse if they already have an active/trialing sub — admin should
+      // cancel first or this would double-bill them after the trial.
+      const existing = await stripe.subscriptions.list({
+        customer: customer.id,
+        status: "all",
+        limit: 20,
+      });
+      const liveSub = existing.data.find((s: any) =>
+        ["active", "trialing", "past_due", "unpaid"].includes(s.status),
+      );
+      if (liveSub) {
+        throw new Error(
+          `User already has a ${liveSub.status} subscription. Cancel it first before granting a win-back trial.`,
+        );
+      }
+
+      // Find most recent sub (canceled or otherwise) to reuse its price
+      const lastSub = existing.data.sort((a: any, b: any) => b.created - a.created)[0];
+      const lastPriceId = lastSub?.items?.data?.[0]?.price?.id;
+      if (!lastPriceId) {
+        throw new Error(
+          "Could not find a previous price to reuse. Ask the user to start a fresh checkout instead.",
+        );
+      }
+
+      // Create a new subscription with a trial — no payment collected until
+      // trial ends. The customer's default payment method (if any) will be
+      // charged automatically when the trial ends.
+      const newSub = await stripe.subscriptions.create({
+        customer: customer.id,
+        items: [{ price: lastPriceId }],
+        trial_period_days: trialDays,
+        proration_behavior: "none",
+        payment_behavior: "default_incomplete",
+        payment_settings: { save_default_payment_method: "on_subscription" },
+      });
+
+      // Sync local subscriptions table
+      if (userId) {
+        await supabaseAdmin
+          .from("subscriptions")
+          .upsert(
+            {
+              user_id: userId,
+              stripe_subscription_id: newSub.id,
+              stripe_customer_id: customer.id,
+              status: newSub.status,
+              price_id: lastPriceId,
+              trial_end: newSub.trial_end
+                ? new Date(newSub.trial_end * 1000).toISOString()
+                : null,
+              current_period_end: newSub.current_period_end
+                ? new Date(newSub.current_period_end * 1000).toISOString()
+                : null,
+              cancel_at_period_end: false,
+            },
+            { onConflict: "user_id" },
+          );
+      }
+
+      logStep("Win-back trial granted", { subscriptionId: newSub.id, trialDays });
+
+      // Send activation email (best-effort)
+      try {
+        const resendApiKey = Deno.env.get("RESEND_API_KEY");
+        if (resendApiKey) {
+          const trialEndDate = newSub.trial_end
+            ? new Date(newSub.trial_end * 1000).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })
+            : `${trialDays} days from today`;
+
+          await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "Lumi Support <support@adsbylumi.com>",
+              to: [userEmail],
+              subject: `Welcome back! Your ${trialDays}-day Lumi trial is active 🎁`,
+              text:
+                `Hi there!\n\n` +
+                `Good news — we've activated a ${trialDays}-day free trial on your Lumi account, on us.\n\n` +
+                `You'll have full access until ${trialEndDate}. After that, your subscription will continue automatically at your previous rate. ` +
+                `You can cancel anytime before then with no charge.\n\n` +
+                `Sign back in here: https://adsbylumi.com/auth\n\n` +
+                `Anything you need — just reply to this email.\n\n` +
+                `Welcome back,\nThe Lumi Team`,
+            }),
+          });
+        }
+      } catch (emailErr) {
+        logStep("Win-back trial email failed (non-fatal)", { error: String(emailErr) });
+      }
+
+      await logAdminAction(userId || null, userEmail, "Win-back trial granted", "subscription", {
+        subscription_id: newSub.id,
+        trial_days: trialDays,
+        price_id: lastPriceId,
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `${trialDays}-day trial activated for ${userEmail}. Confirmation email sent.`,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Change a user's monthly subscription price. Creates a new per-customer
+    // Stripe Price for the same product and swaps the subscription item to
+    // use it. No proration by default — change takes effect next cycle.
+    if (action === "update_subscription_price") {
+      if (!userEmail) throw new Error("userEmail required");
+      if (!body.newMonthlyPrice || body.newMonthlyPrice <= 0) {
+        throw new Error("newMonthlyPrice (in dollars) is required and must be > 0");
+      }
+
+      const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+      if (customers.data.length === 0) throw new Error("No Stripe customer found");
+      const customer = customers.data[0];
+
+      const subs = await stripe.subscriptions.list({
+        customer: customer.id,
+        status: "all",
+        limit: 5,
+      });
+      const sub = subs.data.find((s: any) =>
+        ["active", "trialing", "past_due"].includes(s.status),
+      );
+      if (!sub) throw new Error("No active subscription to update");
+
+      const currentItem = sub.items.data[0];
+      const currentPrice = currentItem?.price;
+      if (!currentPrice?.product) {
+        throw new Error("Could not determine current product");
+      }
+      const productId =
+        typeof currentPrice.product === "string"
+          ? currentPrice.product
+          : currentPrice.product.id;
+      const currency = currentPrice.currency || "usd";
+      const interval = currentPrice.recurring?.interval || "month";
+
+      const unitAmount = Math.round(body.newMonthlyPrice * 100);
+
+      // Create a new Price tied to the same product
+      const newPrice = await stripe.prices.create({
+        product: productId,
+        unit_amount: unitAmount,
+        currency,
+        recurring: { interval: interval as any },
+        nickname: `Custom ${userEmail} — $${body.newMonthlyPrice.toFixed(2)}/${interval}`,
+      });
+
+      // Swap the subscription item to the new price
+      const updated = await stripe.subscriptions.update(sub.id, {
+        items: [{ id: currentItem.id, price: newPrice.id }],
+        proration_behavior: "none",
+      });
+
+      if (userId) {
+        await supabaseAdmin
+          .from("subscriptions")
+          .update({ price_id: newPrice.id })
+          .eq("user_id", userId);
+      }
+
+      logStep("Subscription price updated", {
+        subscriptionId: updated.id,
+        newPriceId: newPrice.id,
+        amount: unitAmount,
+      });
+
+      await logAdminAction(
+        userId || null,
+        userEmail,
+        "Subscription price updated",
+        "billing",
+        {
+          subscription_id: updated.id,
+          new_price_id: newPrice.id,
+          new_amount: body.newMonthlyPrice,
+          previous_price_id: currentPrice.id,
+          previous_amount: (currentPrice.unit_amount || 0) / 100,
+        },
+      );
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Monthly price for ${userEmail} set to $${body.newMonthlyPrice.toFixed(2)}/${interval}. Change applies next billing cycle.`,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (action === "send_email") {
+
       if (!userEmail || !body.emailTemplate) throw new Error("userEmail and emailTemplate required");
 
       const resendApiKey = Deno.env.get("RESEND_API_KEY");
