@@ -63,7 +63,7 @@ serve(async (req) => {
     results.push(checkSchedule(answers));
     results.push(await checkLandingPage(resolvedUrl, brand));
     results.push(checkEventTracking(brand, template));
-    results.push(await checkSpellingGrammar(creativeJson, productionItems));
+    results.push(await checkSpellingGrammar(creativeJson, productionItems, selectedCopy));
 
     const summary = {
       passed: results.filter(r => r.status === 'passed').length,
@@ -322,7 +322,7 @@ function checkEventTracking(brand: any, template: any): CheckResult {
   };
 }
 
-async function checkSpellingGrammar(creativeJson: any, productionItems: any[]): Promise<CheckResult> {
+async function checkSpellingGrammar(creativeJson: any, productionItems: any[], selectedCopy?: any): Promise<CheckResult> {
   try {
     const copyToCheck: { field: string; text: string; location: string }[] = [];
 
@@ -409,6 +409,22 @@ async function checkSpellingGrammar(creativeJson: any, productionItems: any[]): 
         copyToCheck.push({ field: key, text: (val as any).text, location: 'Selected Copy' });
       }
     }
+
+    // 4. From advanced-builder shared_variations (workspace.selected_copy.shared_variations)
+    const sourcesForShared = [selectedCopy, creativeJson?.selected_copy, creativeJson?.copy_selections, creativeJson?.copySelections];
+    for (const src of sourcesForShared) {
+      const sv = src?.shared_variations;
+      if (Array.isArray(sv)) {
+        sv.forEach((v: any, i: number) => {
+          const label = v?.angle ? `Variation ${i + 1} (${v.angle})` : `Variation ${i + 1}`;
+          if (v?.headline) copyToCheck.push({ field: 'headline', text: v.headline, location: label });
+          if (v?.description) copyToCheck.push({ field: 'description', text: v.description, location: label });
+          const pt = v?.primary_text || v?.primaryText;
+          if (pt) copyToCheck.push({ field: 'primary_text', text: pt, location: label });
+        });
+      }
+    }
+
 
     console.log(`Spelling check: found ${copyToCheck.length} copy items to check`);
 

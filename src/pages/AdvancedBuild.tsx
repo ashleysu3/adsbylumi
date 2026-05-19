@@ -424,12 +424,39 @@ export default function AdvancedBuild() {
 
           setTimeout(() => navigate("/campaigns"), 2500);
         } else {
+          // Synthesize production_items from uploaded assets × approved copy variations
+          // so build-meta-campaign can publish (it expects items with linkedAsset + finalCopy).
+          const cleanAssets = assets.map(({ file, ...rest }) => rest);
+          const synthesizedItems = cleanAssets.map((asset: any, idx: number) => {
+            const variation: any = approvedVariations[idx % Math.max(approvedVariations.length, 1)] || {};
+            return {
+              id: asset.id || `prod_${Date.now()}_${idx}`,
+              status: "approved",
+              completed: true,
+              angleName: variation.angle || `Ad ${idx + 1}`,
+              linkedAsset: {
+                id: asset.id,
+                url: asset.file_url,
+                storagePath: asset.storage_path,
+                type: asset.file_type,
+                fileName: asset.name,
+              },
+              finalCopy: {
+                headline: variation.headline || "",
+                primaryText: variation.primary_text || variation.primaryText || "",
+                description: variation.description || "",
+                cta: "LEARN_MORE",
+              },
+            };
+          });
+
           await supabase
             .from("campaign_workspaces")
             .update({
               progress_status: "ready_to_publish",
-              user_uploaded_assets: assets.map(({ file, ...rest }) => rest) as any,
+              user_uploaded_assets: cleanAssets as any,
               selected_copy: { shared_variations: approvedVariations } as any,
+              production_items: synthesizedItems as any,
             })
             .eq("id", workspaceId!);
 
