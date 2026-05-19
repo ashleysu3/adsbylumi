@@ -1,4 +1,4 @@
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import Stripe from "npm:stripe@17.7.0";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     };
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
+      apiVersion: "2025-08-27.basil",
     });
 
     // Get Stripe customer info
@@ -1259,7 +1259,7 @@ Deno.serve(async (req) => {
     const errorMessage = error?.message || String(error);
     logStep("Error", { message: errorMessage });
     return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 400,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
