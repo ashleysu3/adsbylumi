@@ -442,19 +442,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Grant a win-back trial: creates a brand new Stripe subscription with a
-    // trial period (default 14 days) using the user's most recent price.
-    // Designed for users who previously cancelled and want to come back.
-    if (action === "grant_winback_trial") {
+    // Create a win-back offer: a tokenized link emailed to the user. The user
+    // controls when the 14-day trial starts by clicking the link and
+    // confirming consent on the reactivation page. NO Stripe subscription is
+    // created here — that happens only after the user accepts.
+    if (action === "create_winback_offer") {
       if (!userEmail) throw new Error("userEmail required");
       const trialDays = body.trialDays && body.trialDays > 0 ? body.trialDays : 14;
 
       const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
-      if (customers.data.length === 0) throw new Error("No Stripe customer found for this user");
+      if (customers.data.length === 0) {
+        throw new Error("No Stripe customer found for this user. They must have an existing Stripe customer record.");
+      }
       const customer = customers.data[0];
 
-      // Refuse if they already have an active/trialing sub — admin should
-      // cancel first or this would double-bill them after the trial.
+      // Refuse if they already have a live subscription
       const existing = await stripe.subscriptions.list({
         customer: customer.id,
         status: "all",
@@ -465,69 +467,118 @@ Deno.serve(async (req) => {
       );
       if (liveSub) {
         throw new Error(
-          `User already has a ${liveSub.status} subscription. Cancel it first before granting a win-back trial.`,
+          `User already has a ${liveSub.status} subscription. Cancel it first before sending a win-back offer.`,
         );
       }
 
-      // Find most recent sub (canceled or otherwise) to reuse its price
+      // Resolve a price to display in the offer. Prefer admin override, else
+      // most recent canceled subscription price, else surface a clear error.
+      let priceId: string | null = null;
+      let offeredCents = 0;
+      let currency = "usd";
+      let interval = "month";
+
       const lastSub = existing.data.sort((a: any, b: any) => b.created - a.created)[0];
-      const lastPriceId = lastSub?.items?.data?.[0]?.price?.id;
-      if (!lastPriceId) {
+      const lastPrice = lastSub?.items?.data?.[0]?.price;
+
+      if (body.newMonthlyPrice && body.newMonthlyPrice > 0) {
+        offeredCents = Math.round(body.newMonthlyPrice * 100);
+        currency = lastPrice?.currency || "usd";
+        interval = lastPrice?.recurring?.interval || "month";
+        // price_id left null — winback-offer will create one at accept time
+        // (or we can create now for transparency); create now for clarity
+        if (lastPrice?.product) {
+          const productId =
+            typeof lastPrice.product === "string" ? lastPrice.product : lastPrice.product.id;
+          const newPrice = await stripe.prices.create({
+            product: productId,
+            unit_amount: offeredCents,
+            currency,
+            recurring: { interval: interval as any },
+            nickname: `Win-back ${userEmail} — $${body.newMonthlyPrice.toFixed(2)}/${interval}`,
+          });
+          priceId = newPrice.id;
+        }
+      } else if (lastPrice) {
+        priceId = lastPrice.id;
+        offeredCents = lastPrice.unit_amount || 0;
+        currency = lastPrice.currency || "usd";
+        interval = lastPrice.recurring?.interval || "month";
+      } else {
         throw new Error(
-          "Could not find a previous price to reuse. Ask the user to start a fresh checkout instead.",
+          "Could not find a previous price for this customer. Enter a custom monthly price in the field above before sending the offer.",
         );
       }
 
-      // Create a new subscription with a trial — no payment collected until
-      // trial ends. The customer's default payment method (if any) will be
-      // charged automatically when the trial ends.
-      const newSub = await stripe.subscriptions.create({
-        customer: customer.id,
-        items: [{ price: lastPriceId }],
-        trial_period_days: trialDays,
-        proration_behavior: "none",
-        payment_behavior: "default_incomplete",
-        payment_settings: { save_default_payment_method: "on_subscription" },
-      });
+      // Generate a URL-safe token
+      const tokenBytes = new Uint8Array(24);
+      crypto.getRandomValues(tokenBytes);
+      const token = Array.from(tokenBytes)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 
-      // Sync local subscriptions table
-      if (userId) {
-        await supabaseAdmin
-          .from("subscriptions")
-          .upsert(
-            {
-              user_id: userId,
-              stripe_subscription_id: newSub.id,
-              stripe_customer_id: customer.id,
-              status: newSub.status,
-              price_id: lastPriceId,
-              trial_end: newSub.trial_end
-                ? new Date(newSub.trial_end * 1000).toISOString()
-                : null,
-              current_period_end: newSub.current_period_end
-                ? new Date(newSub.current_period_end * 1000).toISOString()
-                : null,
-              cancel_at_period_end: false,
-            },
-            { onConflict: "user_id" },
-          );
+      const { data: offer, error: insertErr } = await supabaseAdmin
+        .from("winback_offers")
+        .insert({
+          user_id: userId || null,
+          email: userEmail,
+          token,
+          offered_price_cents: offeredCents,
+          currency,
+          interval,
+          price_id: priceId,
+          trial_days: trialDays,
+          stripe_customer_id: customer.id,
+          created_by_admin_id: userData.user.id,
+        })
+        .select()
+        .single();
+
+      if (insertErr || !offer) {
+        throw new Error(`Failed to create offer: ${insertErr?.message || "unknown error"}`);
       }
 
-      logStep("Win-back trial granted", { subscriptionId: newSub.id, trialDays });
+      const siteUrl = Deno.env.get("SITE_URL") || "https://adsbylumi.com";
+      const offerUrl = `${siteUrl}/reactivate/${token}`;
+      const priceDisplay = `$${(offeredCents / 100).toFixed(2)}/${interval}`;
 
-      // Send activation email (best-effort)
+      logStep("Win-back offer created", { offerId: offer.id, offerUrl });
+
+      // Send the offer email (best-effort)
       try {
         const resendApiKey = Deno.env.get("RESEND_API_KEY");
         if (resendApiKey) {
-          const trialEndDate = newSub.trial_end
-            ? new Date(newSub.trial_end * 1000).toLocaleDateString("en-US", {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              })
-            : `${trialDays} days from today`;
+          const html = `
+<!doctype html><html><body style="font-family:Arial,sans-serif;background:#ffffff;padding:24px;color:#1a1a1a;">
+  <div style="max-width:560px;margin:0 auto;">
+    <h1 style="font-size:24px;margin:0 0 16px;">We saved your spot 🎁</h1>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Good news — we're offering you a fresh <strong>${trialDays}-day free trial</strong> of Lumi, no strings attached.
+    </p>
+    <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+      Your trial doesn't start until <em>you</em> click below and confirm. Once you do, your card on file will be charged <strong>${priceDisplay}</strong> automatically after the ${trialDays} days unless you cancel.
+    </p>
+    <p style="margin:28px 0;text-align:center;">
+      <a href="${offerUrl}" style="background:#10b981;color:#fff;padding:14px 28px;border-radius:8px;font-weight:600;text-decoration:none;display:inline-block;">Reactivate my account</a>
+    </p>
+    <p style="font-size:13px;color:#666;line-height:1.5;margin:0 0 8px;">
+      Or copy this link: <br/>
+      <a href="${offerUrl}" style="color:#0a66c2;word-break:break-all;">${offerUrl}</a>
+    </p>
+    <p style="font-size:12px;color:#888;margin-top:24px;">This offer expires in 30 days. Cancel anytime during the trial and you won't be charged.</p>
+    <p style="font-size:13px;color:#666;margin-top:24px;">— The Lumi Team</p>
+  </div>
+</body></html>`;
 
-          await fetch("https://api.resend.com/emails", {
+          const text =
+            `We saved your spot at Lumi.\n\n` +
+            `Click the link below to start your ${trialDays}-day free trial. ` +
+            `Your trial doesn't start until you confirm. After the trial, your card on file will be charged ${priceDisplay} unless you cancel.\n\n` +
+            `${offerUrl}\n\n` +
+            `This offer expires in 30 days. Cancel anytime before the trial ends and you won't be charged.\n\n` +
+            `— The Lumi Team`;
+
+          const emailRes = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${resendApiKey}`,
@@ -536,36 +587,37 @@ Deno.serve(async (req) => {
             body: JSON.stringify({
               from: "Lumi Support <support@adsbylumi.com>",
               to: [userEmail],
-              subject: `Welcome back! Your ${trialDays}-day Lumi trial is active 🎁`,
-              text:
-                `Hi there!\n\n` +
-                `Good news — we've activated a ${trialDays}-day free trial on your Lumi account, on us.\n\n` +
-                `You'll have full access until ${trialEndDate}. After that, your subscription will continue automatically at your previous rate. ` +
-                `You can cancel anytime before then with no charge.\n\n` +
-                `Sign back in here: https://adsbylumi.com/auth\n\n` +
-                `Anything you need — just reply to this email.\n\n` +
-                `Welcome back,\nThe Lumi Team`,
+              subject: `Your ${trialDays}-day Lumi trial is ready when you are 🎁`,
+              html,
+              text,
             }),
           });
+          if (!emailRes.ok) {
+            const errBody = await emailRes.text();
+            logStep("Win-back offer email failed", { status: emailRes.status, body: errBody });
+          }
         }
       } catch (emailErr) {
-        logStep("Win-back trial email failed (non-fatal)", { error: String(emailErr) });
+        logStep("Win-back offer email threw (non-fatal)", { error: String(emailErr) });
       }
 
-      await logAdminAction(userId || null, userEmail, "Win-back trial granted", "subscription", {
-        subscription_id: newSub.id,
+      await logAdminAction(userId || null, userEmail, "Win-back offer sent", "subscription", {
+        offer_id: offer.id,
         trial_days: trialDays,
-        price_id: lastPriceId,
+        offered_price_cents: offeredCents,
+        offer_url: offerUrl,
       });
 
       return new Response(
         JSON.stringify({
           success: true,
-          message: `${trialDays}-day trial activated for ${userEmail}. Confirmation email sent.`,
+          offer_url: offerUrl,
+          message: `Offer sent to ${userEmail}. They'll receive an email with a link to start their ${trialDays}-day trial on their terms.`,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
 
     // Change a user's monthly subscription price. Creates a new per-customer
     // Stripe Price for the same product and swaps the subscription item to
