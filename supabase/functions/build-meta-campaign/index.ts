@@ -643,19 +643,37 @@ Deno.serve(async (req) => {
     console.log('Campaign created:', result.campaignId);
 
     // Step 3: Create Ad Sets
-    // Build promoted_object — use custom conversion if Lumi set one up
+    // Build promoted_object — use custom conversion if Lumi set one up AND it's still valid
     const customConversionId = workspace.custom_conversion_id;
     let promotedObject: Record<string, string> | null = null;
-    
+    let validCustomConversion = false;
+
     if (customConversionId && pixelId) {
-      // Lumi-created Custom Conversion (URL-based rule)
+      // Validate the custom conversion still exists on Meta before using it.
+      // Stale/deleted IDs throw: "Param promoted_object[custom_conversion_id] must be a valid custom conversion id"
+      try {
+        const ccCheck = await fetch(
+          `https://graph.facebook.com/v25.0/${customConversionId}?fields=id,name&access_token=${encodeURIComponent(metaAccessToken)}`
+        );
+        const ccData = await ccCheck.json();
+        if (ccData?.id && !ccData?.error) {
+          validCustomConversion = true;
+        } else {
+          console.warn('Custom conversion invalid, falling back to standard event:', ccData?.error?.message || 'not found');
+          result.warnings.push('Custom conversion was no longer valid — used standard pixel event instead.');
+        }
+      } catch (e) {
+        console.warn('Custom conversion validation failed, falling back:', e);
+      }
+    }
+
+    if (validCustomConversion && pixelId) {
       promotedObject = {
         pixel_id: pixelId,
         custom_conversion_id: customConversionId,
       };
       console.log('Using Lumi custom conversion:', customConversionId);
     } else if (pixelId) {
-      // Standard pixel event tracking
       promotedObject = {
         pixel_id: pixelId,
         custom_event_type: conversionEvent,
