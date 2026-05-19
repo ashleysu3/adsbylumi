@@ -23,6 +23,7 @@ interface InstagramPost {
   timestamp: string;
   like_count?: number;
   comments_count?: number;
+  instagram_account_id?: string;
 }
 
 interface SocialGrowthFlowProps {
@@ -106,6 +107,7 @@ export function SocialGrowthFlow({
         timestamp: p.timestamp || "",
         like_count: p.like_count,
         comments_count: p.comments_count,
+        instagram_account_id: instagramAccountId,
       }));
       setPosts(fetched);
     } catch (e: any) {
