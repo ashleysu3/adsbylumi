@@ -155,3 +155,5 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.verify-meta-tokens]
     verify_jwt = false
+  [functions.winback-offer]
+    verify_jwt = false

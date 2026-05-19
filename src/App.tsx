@@ -18,6 +18,8 @@ import Index from "./pages/Index";
 import Sales from "./pages/Sales";
 import Waitlist from "./pages/Waitlist";
 import Auth from "./pages/Auth";
+import Reactivate from "./pages/Reactivate";
+import WelcomeBack from "./pages/WelcomeBack";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Start from "./pages/Start";
@@ -114,6 +116,8 @@ const App = () => {
                   <Route path="/" element={<Sales />} />
                   <Route path="/waitlist" element={<Waitlist />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/reactivate/:token" element={<Reactivate />} />
+                  <Route path="/welcome-back" element={<WelcomeBack />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/freetrial" element={<FreeTrial />} />
                   <Route path="/free-trial" element={<Navigate to="/freetrial" replace />} />

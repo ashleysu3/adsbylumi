@@ -382,26 +382,37 @@ export default function AdminUsers() {
 
   const handleGrantWinbackTrial = async () => {
     if (!selectedUser || !userDetails?.profile?.email) return;
-    if (!confirm("Grant a 14-day free trial to this user? They'll get a confirmation email and won't be charged until the trial ends.")) return;
+    const customPrice = parseFloat(newMonthlyPrice);
+    const priceLine = customPrice && customPrice > 0
+      ? `At the offered price of $${customPrice.toFixed(2)}/mo.`
+      : `At their previous price.`;
+    if (!confirm(`Send a 14-day trial offer to this user? ${priceLine}\n\nThey'll get an email with a link. The trial does NOT start until they click and confirm.`)) return;
 
     setActionLoading("winback");
     try {
       const { data, error } = await supabase.functions.invoke("admin-user-management", {
         body: {
-          action: "grant_winback_trial",
+          action: "create_winback_offer",
           userId: selectedUser.id,
           userEmail: userDetails.profile.email,
           trialDays: 14,
+          newMonthlyPrice: customPrice && customPrice > 0 ? customPrice : undefined,
         },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast.success(data.message);
+      if (data?.offer_url) {
+        try { await navigator.clipboard.writeText(data.offer_url); } catch {}
+        toast.message("Offer link copied to clipboard", { description: data.offer_url });
+      }
       fetchUserDetails(selectedUser);
     } catch (error: any) {
-      toast.error(error.message || "Failed to grant trial");
+      toast.error(error.message || "Failed to send offer");
     }
     setActionLoading(null);
   };
+
 
   const handleUpdateMonthlyPrice = async () => {
     if (!selectedUser || !userDetails?.profile?.email) return;
@@ -1784,11 +1795,11 @@ export default function AdminUsers() {
                         </div>
                       </div>
 
-                      {/* Win-back Trial */}
+                      {/* Win-back Trial Offer */}
                       <div className="space-y-2">
-                        <p className="text-xs sm:text-sm font-medium">Win-Back Trial</p>
+                        <p className="text-xs sm:text-sm font-medium">Win-Back Trial Offer</p>
                         <p className="text-[11px] text-muted-foreground">
-                          Grants a fresh 14-day free trial. Use for users who cancelled and are coming back. Requires no active subscription.
+                          Sends an email with a reactivation link. The 14-day trial only starts when the user clicks and confirms consent. Uses the custom monthly price above if set; otherwise their previous price.
                         </p>
                         <Button
                           variant="outline"
@@ -1797,9 +1808,10 @@ export default function AdminUsers() {
                           className="w-full h-10 sm:h-11 border-emerald-500/50 text-emerald-700 hover:bg-emerald-500/10"
                         >
                           {actionLoading === "winback" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Gift className="w-4 h-4 mr-2" />}
-                          Grant 14-Day Trial + Email
+                          Send 14-Day Trial Offer
                         </Button>
                       </div>
+
 
                       {/* Cancel Subscription */}
                       <div className="space-y-2">

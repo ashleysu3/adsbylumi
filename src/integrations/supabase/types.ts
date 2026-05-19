@@ -2587,6 +2587,75 @@ export type Database = {
           },
         ]
       }
+      winback_offers: {
+        Row: {
+          accepted_at: string | null
+          consent_ip: string | null
+          consent_user_agent: string | null
+          created_at: string
+          created_by_admin_id: string | null
+          currency: string
+          email: string
+          expires_at: string
+          id: string
+          interval: string
+          offered_price_cents: number
+          price_id: string | null
+          start_choice: string | null
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          token: string
+          trial_days: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          consent_ip?: string | null
+          consent_user_agent?: string | null
+          created_at?: string
+          created_by_admin_id?: string | null
+          currency?: string
+          email: string
+          expires_at?: string
+          id?: string
+          interval?: string
+          offered_price_cents: number
+          price_id?: string | null
+          start_choice?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          token: string
+          trial_days?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          consent_ip?: string | null
+          consent_user_agent?: string | null
+          created_at?: string
+          created_by_admin_id?: string | null
+          currency?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          interval?: string
+          offered_price_cents?: number
+          price_id?: string | null
+          start_choice?: string | null
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          token?: string
+          trial_days?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2606,6 +2675,7 @@ export type Database = {
       }
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
       get_shared_report: { Args: { p_share_token: string }; Returns: Json }
+      get_winback_offer_by_token: { Args: { p_token: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
