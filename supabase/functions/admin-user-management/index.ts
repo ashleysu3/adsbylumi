@@ -446,6 +446,7 @@ Deno.serve(async (req) => {
     // controls when the 14-day trial starts by clicking the link and
     // confirming consent on the reactivation page. NO Stripe subscription is
     // created here — that happens only after the user accepts.
+    // (redeploy marker v2)
     if (action === "create_winback_offer") {
       if (!userEmail) throw new Error("userEmail required");
       const trialDays = body.trialDays && body.trialDays > 0 ? body.trialDays : 14;
