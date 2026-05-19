@@ -285,30 +285,11 @@ export function ExistingPostPicker({
             {resolving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
           </Button>
         </div>
-        {/* Reconnect banner when posts can't load due to missing permission */}
-        {needsReconnect && !loading && (
-          <Alert className="border-primary/30 bg-primary/5">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <AlertDescription className="text-sm">
-              <span className="font-medium">We've added new features!</span>{" "}
-              Reconnect your Meta account to browse and select posts directly.
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto p-0 ml-1 text-primary font-medium"
-                onClick={() => navigate("/meta-settings")}
-              >
-                Reconnect now →
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        {apiPosts.length === 0 && !loading && !needsReconnect && (
+        {apiPosts.length === 0 && !loading && (
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <Instagram className="h-3 w-3" />
             {fallbackMode
-              ? "Paste an Instagram post or reel URL to add it to your campaign"
+              ? fallbackMessage || "Paste an Instagram post or reel URL to add it to your campaign"
               : "Open Instagram → tap ··· on a post → Copy Link → paste here"}
           </p>
         )}
