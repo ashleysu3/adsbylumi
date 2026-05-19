@@ -74,6 +74,10 @@ export function MetaAccountConnect({
   const [diagnosticLoading, setDiagnosticLoading] = useState(false);
   const [step, setStep] = useState<'connect' | 'select-account' | 'select-page' | 'select-instagram'>('connect');
 
+  const instagramAccountsForSelectedPage = selectedPage
+    ? instagramAccounts.filter((ig) => ig.linked_page_id === selectedPage)
+    : [];
+
   const runPostOAuthDiagnostic = async (accts: AdAccount[], pgs: FacebookPage[], igs: InstagramAccount[]) => {
     try {
       setDiagnosticLoading(true);
@@ -106,6 +110,16 @@ export function MetaAccountConnect({
       setSelectedInstagram(currentInstagramId);
     }
   }, [currentAccountId, currentPageId, currentInstagramId]);
+
+  useEffect(() => {
+    if (!selectedPage || !selectedInstagram) return;
+    const instagramBelongsToPage = instagramAccounts.some(
+      (ig) => ig.id === selectedInstagram && ig.linked_page_id === selectedPage
+    );
+    if (!instagramBelongsToPage) {
+      setSelectedInstagram("");
+    }
+  }, [selectedPage, selectedInstagram, instagramAccounts]);
 
   const getPendingSelectionPayload = () => {
     try {
@@ -266,9 +280,9 @@ export function MetaAccountConnect({
               if (tokenExpired && currentAccountId && currentPageId) {
                 const prevAccountStillExists = returnedAccounts.some((a: AdAccount) => a.id === currentAccountId);
                 const prevPageStillExists = returnedPages.some((p: FacebookPage) => p.id === currentPageId);
-                const prevIgStillExists = !currentInstagramId || returnedInstagram.some((ig: InstagramAccount) => ig.id === currentInstagramId);
                 const pageInstagramCandidates = returnedInstagram.filter((ig: InstagramAccount) => ig.linked_page_id === currentPageId);
-                const canSafelyAutoSaveInstagram = !currentInstagramId || pageInstagramCandidates.length <= 1;
+                const prevIgStillExists = !currentInstagramId || pageInstagramCandidates.some((ig: InstagramAccount) => ig.id === currentInstagramId);
+                const canSafelyAutoSaveInstagram = !currentInstagramId || pageInstagramCandidates.length === 1;
 
                 if (prevAccountStillExists && prevPageStillExists && prevIgStillExists && canSafelyAutoSaveInstagram) {
                   setSelectedAccount(currentAccountId);
@@ -292,14 +306,15 @@ export function MetaAccountConnect({
                 }
               }
 
-              // Auto-select if only one option for each
+              // Auto-select only when the entire brand mapping is unambiguous.
               if (accountCount === 1 && pageCount === 1) {
+                const pageScopedInstagram = returnedInstagram.filter((ig: InstagramAccount) => ig.linked_page_id === returnedPages[0].id);
                 setSelectedAccount(returnedAccounts[0].id);
                 setSelectedPage(returnedPages[0].id);
-                if (igCount === 1) {
-                  setSelectedInstagram(returnedInstagram[0].id);
+                if (pageScopedInstagram.length === 1) {
+                  setSelectedInstagram(pageScopedInstagram[0].id);
                 }
-                toast.info(`We found just one of everything — confirming your setup.`);
+                toast.info(`We found one ad account and one Page — confirm the Instagram account for this brand.`);
               }
 
               setStep('select-account');
@@ -451,17 +466,14 @@ export function MetaAccountConnect({
     
     // Find Instagram accounts linked to the selected page first, then include others
     const linkedInstagram = instagramAccounts.filter(ig => ig.linked_page_id === selectedPage);
-    const otherInstagram = instagramAccounts.filter(ig => ig.linked_page_id !== selectedPage);
 
     // Only auto-select when there is exactly ONE candidate Instagram account
     // anywhere — otherwise the user must explicitly pick, since a single
     // Facebook Page can have multiple Instagram accounts linked to it
     // (common on agency setups) and silently auto-picking the first one
     // routinely saved the wrong IG to the brand.
-    if (linkedInstagram.length === 1 && otherInstagram.length === 0) {
+    if (linkedInstagram.length === 1) {
       setSelectedInstagram(linkedInstagram[0].id);
-    } else if (linkedInstagram.length === 0 && instagramAccounts.length === 1) {
-      setSelectedInstagram(instagramAccounts[0].id);
     } else {
       // Force explicit choice — clear any pre-selection
       setSelectedInstagram("");
@@ -488,9 +500,17 @@ export function MetaAccountConnect({
       toast.error("Please select a Facebook Page");
       return;
     }
+    if (instagramAccountsForSelectedPage.length > 0 && !selectedInstagram) {
+      toast.error("Please select the Instagram account linked to this brand's Facebook Page");
+      return;
+    }
+    if (selectedInstagram && !instagramAccountsForSelectedPage.some(ig => ig.id === selectedInstagram)) {
+      toast.error("That Instagram account is not linked to the selected Facebook Page");
+      return;
+    }
 
     const selectedPageData = pages.find(p => p.id === selectedPage);
-    const selectedInstagramData = instagramAccounts.find(ig => ig.id === selectedInstagram);
+    const selectedInstagramData = instagramAccountsForSelectedPage.find(ig => ig.id === selectedInstagram);
 
     setLoading(true);
     try {
@@ -827,11 +847,11 @@ export function MetaAccountConnect({
                 </p>
               </div>
 
-              {instagramAccounts.length === 0 ? (
+              {instagramAccountsForSelectedPage.length === 0 ? (
                 <Card className="p-4 border-amber-500/50 bg-amber-500/5">
                   <p className="text-sm text-amber-600 font-medium mb-2">No Instagram Accounts Found</p>
                   <p className="text-xs text-muted-foreground mb-3">
-                    No Instagram Business or Creator accounts were found through your Facebook Pages or ad account connections.
+                    No Instagram Business or Creator account is linked to the selected Facebook Page.
                   </p>
                   <p className="text-xs text-muted-foreground mb-2">
                     <strong>To fix this:</strong>
@@ -849,7 +869,7 @@ export function MetaAccountConnect({
               ) : (
                 <RadioGroup value={selectedInstagram} onValueChange={setSelectedInstagram}>
                   <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2">
-                    {instagramAccounts.map((ig) => (
+                    {instagramAccountsForSelectedPage.map((ig) => (
                       <Card 
                         key={ig.id}
                         className={`p-3 cursor-pointer transition-colors hover:bg-accent ${

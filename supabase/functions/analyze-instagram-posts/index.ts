@@ -52,6 +52,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (!brand.instagram_account_id || instagramAccountId !== brand.instagram_account_id) {
+      return new Response(
+        JSON.stringify({ error: 'Instagram account mismatch. Please refresh and use the Instagram account saved on this brand.', code: 'INSTAGRAM_ACCOUNT_MISMATCH' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const accessToken = brand.meta_access_token;
 
     console.log('Fetching Instagram posts for account:', instagramAccountId);
@@ -62,19 +69,19 @@ Deno.serve(async (req) => {
     const engagementFields = 'like_count,comments_count';
     const requestedFields = simple ? baseFields : `${baseFields},${engagementFields}`;
 
-    const fetchPostsByFields = async (igId: string, fields: string) => {
-      const postsUrl = `https://graph.facebook.com/v25.0/${igId}/media?fields=${fields}&limit=25&access_token=${accessToken}`;
+    const fetchPostsByFields = async (igId: string, fields: string, token: string = accessToken) => {
+      const postsUrl = `https://graph.facebook.com/v25.0/${igId}/media?fields=${fields}&limit=25&access_token=${token}`;
       const response = await fetch(postsUrl);
       const data = await response.json();
       return { response, data };
     };
 
     // Helper to try fetching posts for a given IG account, with engagement field fallback
-    const fetchPostsForAccount = async (igId: string) => {
-      let result = await fetchPostsByFields(igId, requestedFields);
+    const fetchPostsForAccount = async (igId: string, token: string = accessToken) => {
+      let result = await fetchPostsByFields(igId, requestedFields, token);
       if (!result.response.ok && result.data?.error?.code === 10 && !simple) {
         console.warn(`Retrying without engagement fields for ${igId}`);
-        result = await fetchPostsByFields(igId, baseFields);
+        result = await fetchPostsByFields(igId, baseFields, token);
       }
       return result;
     };
@@ -83,37 +90,13 @@ Deno.serve(async (req) => {
     let { response: postsResponse, data: postsData } = await fetchPostsForAccount(activeIgId);
 
     if (!postsResponse.ok) {
-      console.error('Primary IG account failed, attempting page-scoped recovery:', postsData?.error);
-
-      // CRITICAL: Only recover within this brand's own Facebook Page.
-      // On agency accounts the user token can see many Pages — falling back
-      // to /me/accounts can swap in another brand's Instagram account.
-      const recovered = brand.page_id
-        ? await tryRecoverInstagramAccountForPage({
-            pageId: brand.page_id,
-            failedIgId: activeIgId,
-            accessToken,
-            fetchPostsForAccount,
-          })
-        : null;
-
-      if (recovered) {
-        activeIgId = recovered.igId;
-        postsResponse = recovered.response;
-        postsData = recovered.data;
-        console.log('Page-scoped recovery succeeded with IG account:', activeIgId);
-
-        // IMPORTANT: Do NOT persist the recovered IG to the brand.
-        // A Facebook Page can have multiple linked Instagram accounts (e.g. on
-        // agency setups where several brands share a Page), and silently
-        // overwriting the user's chosen IG with whichever one happens to
-        // succeed first causes the wrong account to keep coming back even
-        // after the user reconnects in Meta Settings. Recovery is now
-        // request-scoped only — the user remains the source of truth.
-      } else {
-        console.warn('No page-scoped recovery available for brand', brandId, '— refusing cross-brand fallback');
+      console.error('Saved IG account failed with user token, retrying same IG with Page token only:', postsData?.error);
+      const pageToken = brand.page_id ? await getPageAccessToken(brand.page_id, accessToken) : null;
+      if (pageToken) {
+        const pageTokenResult = await fetchPostsForAccount(activeIgId, pageToken);
+        postsResponse = pageTokenResult.response;
+        postsData = pageTokenResult.data;
       }
-
     }
 
     if (!postsResponse.ok) {
@@ -237,6 +220,18 @@ interface RecoveredAccount {
   name: string | null;
   response: Response;
   data: any;
+}
+
+async function getPageAccessToken(pageId: string, accessToken: string): Promise<string | null> {
+  try {
+    const pageUrl = `https://graph.facebook.com/v25.0/${pageId}?fields=access_token&access_token=${accessToken}`;
+    const pageRes = await fetch(pageUrl);
+    const pageData = await pageRes.json();
+    if (pageRes.ok && pageData.access_token) return pageData.access_token;
+  } catch (err) {
+    console.warn('Unable to load Page token for saved Instagram account retry:', err);
+  }
+  return null;
 }
 
 async function tryRecoverInstagramAccountForPage({

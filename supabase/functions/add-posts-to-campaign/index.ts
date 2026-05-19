@@ -215,6 +215,14 @@ Deno.serve(async (req) => {
       const mediaType = post.media_type; // IMAGE or VIDEO
       const caption = post.caption || '';
 
+      if (post.instagram_account_id && post.instagram_account_id !== igAccountId) {
+        failedAds.push({
+          postId,
+          error: 'This post belongs to a different Instagram account than the one saved on this brand.',
+        });
+        continue;
+      }
+
 
       try {
         // Use Existing Post payload for Instagram media:

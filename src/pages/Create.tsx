@@ -1043,7 +1043,8 @@ export default function Create() {
                             thumbnail_url: p.thumbnail_url,
                             media_type: p.media_type,
                             permalink: p.permalink,
-                            caption: p.caption
+                            caption: p.caption,
+                            instagram_account_id: brand.instagram_account_id
                           }))
                         } as any
                       }).
@@ -1221,7 +1222,8 @@ export default function Create() {
                                     thumbnail_url: p.thumbnail_url,
                                     media_type: p.media_type,
                                     permalink: p.permalink,
-                                    caption: p.caption
+                                    caption: p.caption,
+                                    instagram_account_id: brand.instagram_account_id
                                   }))
                                 } as any
                               })

@@ -16,6 +16,7 @@ export interface SelectedPost {
   media_url: string;
   thumbnail_url?: string;
   permalink: string;
+  instagram_account_id?: string;
 }
 
 interface ApiFetchedPost {
@@ -120,6 +121,7 @@ export function ExistingPostPicker({
         media_url: post.media_url || post.thumbnail_url || "",
         thumbnail_url: post.thumbnail_url || post.media_url || "",
         permalink: post.permalink,
+        instagram_account_id: instagramAccountId,
       };
       onSelectionChange([...selectedPosts, newPost]);
     }

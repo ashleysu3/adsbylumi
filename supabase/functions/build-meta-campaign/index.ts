@@ -1081,6 +1081,15 @@ Deno.serve(async (req) => {
       if (igAccountId) {
         for (const post of additionalPosts) {
           try {
+            if (post.instagram_account_id && post.instagram_account_id !== igAccountId) {
+              result.failedAds.push({
+                conceptId: post.id,
+                conceptTitle: `Instagram Post`,
+                error: `Existing post skipped: it belongs to a different Instagram account than the one saved on this brand.`,
+              });
+              continue;
+            }
+
             // Create ad creative using "Use Existing Post" pattern
             const creativeParams: Record<string, string> = {
               name: `Existing Post - ${post.id}`,
