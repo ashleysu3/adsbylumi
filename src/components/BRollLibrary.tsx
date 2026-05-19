@@ -323,7 +323,17 @@ export function BRollLibrary({
             uploaded_at: new Date().toISOString(),
           });
         } catch (err: any) {
-          toast.error(`Failed to upload ${file.name}: ${err.message}`);
+          const msg: string = err.message ?? "";
+          const isSizeError =
+            err.statusCode === "413" ||
+            msg.toLowerCase().includes("payload too large") ||
+            msg.toLowerCase().includes("file size") ||
+            msg.toLowerCase().includes("entity too large");
+          toast.error(
+            isSizeError
+              ? `${file.name} exceeds the 250 MB server limit. Please trim or compress the video before uploading.`
+              : `Failed to upload ${file.name}: ${msg}`
+          );
         }
       }
 
