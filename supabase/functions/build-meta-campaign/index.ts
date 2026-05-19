@@ -633,7 +633,17 @@ Deno.serve(async (req) => {
     
     if (campaignData.error) {
       console.error('Campaign creation failed:', campaignData.error);
-      throw new Error(`Failed to create campaign: ${campaignData.error.message || 'Unknown error'}`);
+      const metaMsg = getMetaErrorMessage(campaignData.error);
+      const errorCode = campaignData.error.code;
+      // Translate the generic "Invalid parameter" Meta error into something actionable
+      if (errorCode === 100 || metaMsg.toLowerCase().includes('invalid parameter')) {
+        const userMsg = campaignData.error.error_user_msg || '';
+        const detail = userMsg
+          ? userMsg
+          : `Meta rejected the campaign objective "${metaObjective}". Check that your ad account has permission to run this campaign type and try again.`;
+        throw new Error(`Failed to create campaign: ${detail}`);
+      }
+      throw new Error(`Failed to create campaign: ${metaMsg}`);
     }
 
     result.campaignId = campaignData.id;
@@ -642,21 +652,31 @@ Deno.serve(async (req) => {
     // Step 3: Create Ad Sets
     // Build promoted_object — use custom conversion if Lumi set one up
     const customConversionId = workspace.custom_conversion_id;
+    // A valid Meta custom conversion ID is numeric only. If the stored value is a URL
+    // (e.g. saved by an older code path), skip it and use standard pixel event tracking
+    // instead. This prevents "Invalid parameter" errors for sites like Squarespace that
+    // use dynamic confirmation URLs and have no static URL to create a custom conversion.
+    const isValidCustomConversionId = customConversionId &&
+      /^\d+$/.test(String(customConversionId).trim());
     let promotedObject: Record<string, string> | null = null;
-    
-    if (customConversionId && pixelId) {
-      // Lumi-created Custom Conversion (URL-based rule)
+
+    if (isValidCustomConversionId && pixelId) {
+      // Lumi-created Custom Conversion (URL-based rule) — ID is a valid numeric Meta ID
       promotedObject = {
         pixel_id: pixelId,
-        custom_conversion_id: customConversionId,
+        custom_conversion_id: String(customConversionId).trim(),
       };
       console.log('Using Lumi custom conversion:', customConversionId);
     } else if (pixelId) {
-      // Standard pixel event tracking
+      // Standard pixel event tracking (also handles dynamic confirmation URL sites)
       promotedObject = {
         pixel_id: pixelId,
         custom_event_type: conversionEvent,
       };
+      if (customConversionId && !isValidCustomConversionId) {
+        console.warn('custom_conversion_id is not a valid numeric Meta ID — using standard pixel event tracking. Value was:', customConversionId);
+        result.warnings.push('Confirmation URL tracking was reconfigured to use standard pixel event tracking (your site uses dynamic confirmation URLs).');
+      }
     }
 
     // Build tracking_specs — ensures "Track website events" is ON for every ad

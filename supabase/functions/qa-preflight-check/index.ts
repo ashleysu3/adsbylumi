@@ -62,7 +62,7 @@ serve(async (req) => {
     results.push(checkBudget(answers));
     results.push(checkSchedule(answers));
     results.push(await checkLandingPage(resolvedUrl, brand));
-    results.push(checkEventTracking(brand, template));
+    results.push(await checkEventTracking(brand, template));
     results.push(await checkSpellingGrammar(creativeJson, productionItems));
 
     const summary = {
@@ -267,13 +267,13 @@ async function checkLandingPage(url: string | undefined, brand: any): Promise<Ch
   }
 }
 
-function checkEventTracking(brand: any, template: any): CheckResult {
+async function checkEventTracking(brand: any, template: any): Promise<CheckResult> {
   const objective = template?.objective?.toLowerCase() || '';
   const optimizationEvent = template?.optimization_event || '';
-  
+
   let requiredEvent = '';
   let campaignGoal: 'leads' | 'sales' = 'leads';
-  
+
   if (optimizationEvent) {
     requiredEvent = optimizationEvent;
     campaignGoal = optimizationEvent.toLowerCase().includes('purchase') ? 'sales' : 'leads';
@@ -303,15 +303,59 @@ function checkEventTracking(brand: any, template: any): CheckResult {
     };
   }
 
-  const eventVerified = pixelEvents[requiredEvent] || pixelEvents[requiredEvent.toLowerCase()];
-  
-  if (eventVerified) {
+  // Check cached event data — ensure the event has actual recent activity (active or count > 0)
+  const cachedEventData = pixelEvents[requiredEvent] ?? pixelEvents[requiredEvent.toLowerCase()];
+  const hasCachedRecentActivity = cachedEventData?.active === true ||
+    (typeof cachedEventData?.count_7d === 'number' && cachedEventData.count_7d > 0);
+
+  if (hasCachedRecentActivity) {
     return {
       id: 'tracking', name: 'Event Tracking', status: 'passed',
       message: `${requiredEvent} event verified`,
       details: `Pixel ${pixelId.slice(-6)} is tracking the ${requiredEvent} event`,
       requiredEvent, pixelId, campaignGoal,
     };
+  }
+
+  // Cached data doesn't show recent activity — query Meta API live for fresh event counts.
+  // This handles sites like Squarespace with dynamic confirmation URLs where cached data
+  // may be stale or empty even though the pixel IS firing in Meta's events manager.
+  const accessToken = brand?.meta_access_token;
+  if (accessToken) {
+    try {
+      const statsUrl = `https://graph.facebook.com/v25.0/${pixelId}/stats?aggregation=event&access_token=${accessToken}`;
+      const statsResponse = await fetch(statsUrl);
+      const statsData = await statsResponse.json();
+
+      if (!statsData.error && Array.isArray(statsData.data)) {
+        const eventTotals: Record<string, number> = {};
+        for (const bucket of statsData.data) {
+          if (bucket.data && Array.isArray(bucket.data)) {
+            for (const entry of bucket.data) {
+              const eventName = typeof entry.value === 'string' ? entry.value : entry.event;
+              const count = typeof entry.count === 'number' ? entry.count : 0;
+              if (eventName && typeof eventName === 'string') {
+                eventTotals[eventName] = (eventTotals[eventName] || 0) + count;
+              }
+            }
+          } else if (bucket.event) {
+            eventTotals[bucket.event] = (eventTotals[bucket.event] || 0) + (bucket.count || 0);
+          }
+        }
+
+        const liveCount = eventTotals[requiredEvent] || 0;
+        if (liveCount > 0) {
+          return {
+            id: 'tracking', name: 'Event Tracking', status: 'passed',
+            message: `${requiredEvent} event verified (${liveCount} events in last 7 days)`,
+            details: `Your Pixel is receiving ${requiredEvent} events — Meta can optimize your ads for conversions. Note: sites with dynamic confirmation URLs (e.g. Squarespace) are fully supported this way.`,
+            requiredEvent, pixelId, campaignGoal,
+          };
+        }
+      }
+    } catch (liveCheckError) {
+      console.error('Live pixel event check failed, falling through to warning:', liveCheckError);
+    }
   }
 
   return {

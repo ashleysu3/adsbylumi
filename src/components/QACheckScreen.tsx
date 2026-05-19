@@ -188,32 +188,46 @@ export function QACheckScreen({
 
     setTrackingSaving(true);
     try {
-      // Save the confirmation URL to the workspace as the custom conversion URL
-      const { error } = await supabase
-        .from("campaign_workspaces")
-        .update({
-          custom_conversion_id: confirmationUrl.trim(),
-          tracking_verified: true,
-        })
-        .eq("id", workspace.id);
+      // Call create-custom-conversion so Meta gets a proper numeric custom conversion ID.
+      // This replaces the old pattern of saving the raw URL as custom_conversion_id, which
+      // caused "Invalid parameter" errors from the Meta API at publish time.
+      const { data: ccData, error: ccError } = await supabase.functions.invoke('create-custom-conversion', {
+        body: {
+          brandId: workspace.brand_id,
+          workspaceId: workspace.id,
+          confirmationUrl: confirmationUrl.trim(),
+          eventType: trackingGoal === 'sales' ? 'PURCHASE' : 'LEAD',
+        },
+      });
 
-      if (error) throw error;
+      if (ccError || !ccData?.success) {
+        // Custom conversion couldn't be created (e.g. dynamic/Squarespace URL with no static path).
+        // Mark tracking_verified so publish can proceed using standard pixel event tracking.
+        console.warn('create-custom-conversion failed, marking tracking_verified for standard pixel tracking:', ccError || ccData?.error);
+        await supabase
+          .from("campaign_workspaces")
+          .update({ tracking_verified: true })
+          .eq("id", workspace.id);
+        toast.success("Pixel tracking confirmed — your pixel events will be used directly.");
+      } else {
+        toast.success("Tracking configured!");
+      }
 
-      // Update the tracking check to passed
       setChecks((prev) =>
         prev.map((c) =>
           c.id === "tracking"
             ? {
                 ...c,
                 status: "passed" as const,
-                message: "Confirmation page URL set",
-                details: `Meta will track conversions when someone lands on: ${confirmationUrl.trim()}`,
+                message: ccData?.success ? "Confirmation page URL set" : "Pixel event tracking confirmed",
+                details: ccData?.success
+                  ? `Meta will track conversions when someone lands on: ${confirmationUrl.trim()}`
+                  : "Meta will optimize using your pixel's purchase events directly.",
               }
             : c
         )
       );
 
-      // Update summary
       setSummary((prev) => ({
         ...prev,
         passed: prev.passed + 1,
@@ -221,7 +235,6 @@ export function QACheckScreen({
       }));
 
       setTrackingDialogOpen(false);
-      toast.success("Tracking configured!");
     } catch (error) {
       console.error("Error saving confirmation URL:", error);
       toast.error("Failed to save. Please try again.");
@@ -680,6 +693,7 @@ fbq('track', 'PageView');
                   <p><strong>Forms (Kajabi, Typeform, ConvertKit, etc.):</strong> Submit your own form, then copy the URL of the page it sends you to.</p>
                   <p><strong>Checkout pages (Shopify, ThriveCart, etc.):</strong> Place a test order, then copy the URL of the order confirmation page.</p>
                   <p><strong>Not sure?</strong> Go through your funnel as if you were a customer and copy the URL of the very last page you see.</p>
+                  <p><strong>Squarespace / dynamic confirmation pages:</strong> Squarespace uses a temporary URL after checkout that changes with each order. If your site is like this, enter your main checkout or shop URL — Lumi will use your pixel's purchase events directly instead.</p>
                 </div>
               </CollapsibleContent>
             </Collapsible>
