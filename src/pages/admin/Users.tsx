@@ -1753,6 +1753,54 @@ export default function AdminUsers() {
                         </div>
                       </div>
 
+                      {/* Change Monthly Price */}
+                      <div className="space-y-2">
+                        <p className="text-xs sm:text-sm font-medium">Change Monthly Price</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Sets a custom monthly amount for this user's active subscription. Applies on next billing cycle.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <div className="relative flex-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                            <Input
+                              type="number"
+                              min="1"
+                              step="0.01"
+                              placeholder="e.g. 67"
+                              value={newMonthlyPrice}
+                              onChange={(e) => setNewMonthlyPrice(e.target.value)}
+                              className="pl-6 h-10 sm:h-11 text-sm"
+                            />
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={handleUpdateMonthlyPrice}
+                            disabled={actionLoading === "price" || !newMonthlyPrice}
+                            className="h-10 sm:h-11 w-full sm:w-auto"
+                          >
+                            {actionLoading === "price" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <DollarSign className="w-4 h-4 mr-2" />}
+                            Update Price
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Win-back Trial */}
+                      <div className="space-y-2">
+                        <p className="text-xs sm:text-sm font-medium">Win-Back Trial</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Grants a fresh 14-day free trial. Use for users who cancelled and are coming back. Requires no active subscription.
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={handleGrantWinbackTrial}
+                          disabled={actionLoading === "winback"}
+                          className="w-full h-10 sm:h-11 border-emerald-500/50 text-emerald-700 hover:bg-emerald-500/10"
+                        >
+                          {actionLoading === "winback" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Gift className="w-4 h-4 mr-2" />}
+                          Grant 14-Day Trial + Email
+                        </Button>
+                      </div>
+
                       {/* Cancel Subscription */}
                       <div className="space-y-2">
                         <p className="text-xs sm:text-sm font-medium">Subscription Management</p>
@@ -1766,6 +1814,7 @@ export default function AdminUsers() {
                           Cancel Subscription
                         </Button>
                       </div>
+
                     </CardContent>
                   </Card>
 
