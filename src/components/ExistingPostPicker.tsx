@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Instagram, X, Link, Loader2, RefreshCw, CheckCircle2, Sparkles } from "lucide-react";
+import { Instagram, X, Link, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -43,7 +41,6 @@ export function ExistingPostPicker({
   selectedPosts,
   onSelectionChange,
 }: ExistingPostPickerProps) {
-  const navigate = useNavigate();
   const [inputUrl, setInputUrl] = useState("");
   const [resolving, setResolving] = useState(false);
 
@@ -51,7 +48,7 @@ export function ExistingPostPicker({
   const [apiPosts, setApiPosts] = useState<ApiFetchedPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [fallbackMode, setFallbackMode] = useState(false);
-  const [needsReconnect, setNeedsReconnect] = useState(false);
+  const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
 
   // Auto-load posts from API on mount
   useEffect(() => {
@@ -62,7 +59,7 @@ export function ExistingPostPicker({
   const loadPosts = async () => {
     setLoading(true);
     setFallbackMode(false);
-    setNeedsReconnect(false);
+    setFallbackMessage(null);
     try {
       const { data, error } = await supabase.functions.invoke("analyze-instagram-posts", {
         body: { brandId, instagramAccountId, simple: true },
@@ -71,8 +68,9 @@ export function ExistingPostPicker({
       if (error) throw error;
 
       if (data?.fallbackMode === "url_paste") {
-        // Permission issue — user likely needs to reconnect to get instagram_basic
-        setNeedsReconnect(true);
+        // Meta can deny media browsing even after a fresh reconnect. Keep URL paste available
+        // without showing a reconnect loop that the user cannot resolve from here.
+        setFallbackMessage(data?.message || "Paste an Instagram post or reel URL to add it to your campaign");
         setFallbackMode(true);
         setApiPosts([]);
         return;
@@ -86,11 +84,7 @@ export function ExistingPostPicker({
 
       if (data?.error) {
         console.warn("API returned error:", data.error);
-        // Check if it's a permission/access error
-        const errMsg = (data.error || "").toLowerCase();
-        if (errMsg.includes("permission") || errMsg.includes("code 10") || errMsg.includes("access")) {
-          setNeedsReconnect(true);
-        }
+        setFallbackMessage("Paste an Instagram post or reel URL to add it to your campaign");
         setFallbackMode(true);
         return;
       }
@@ -291,30 +285,11 @@ export function ExistingPostPicker({
             {resolving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
           </Button>
         </div>
-        {/* Reconnect banner when posts can't load due to missing permission */}
-        {needsReconnect && !loading && (
-          <Alert className="border-primary/30 bg-primary/5">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <AlertDescription className="text-sm">
-              <span className="font-medium">We've added new features!</span>{" "}
-              Reconnect your Meta account to browse and select posts directly.
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-auto p-0 ml-1 text-primary font-medium"
-                onClick={() => navigate("/meta-settings")}
-              >
-                Reconnect now →
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        {apiPosts.length === 0 && !loading && !needsReconnect && (
+        {apiPosts.length === 0 && !loading && (
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <Instagram className="h-3 w-3" />
             {fallbackMode
-              ? "Paste an Instagram post or reel URL to add it to your campaign"
+              ? fallbackMessage || "Paste an Instagram post or reel URL to add it to your campaign"
               : "Open Instagram → tap ··· on a post → Copy Link → paste here"}
           </p>
         )}
