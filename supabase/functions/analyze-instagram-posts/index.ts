@@ -222,6 +222,18 @@ interface RecoveredAccount {
   data: any;
 }
 
+async function getPageAccessToken(pageId: string, accessToken: string): Promise<string | null> {
+  try {
+    const pageUrl = `https://graph.facebook.com/v25.0/${pageId}?fields=access_token&access_token=${accessToken}`;
+    const pageRes = await fetch(pageUrl);
+    const pageData = await pageRes.json();
+    if (pageRes.ok && pageData.access_token) return pageData.access_token;
+  } catch (err) {
+    console.warn('Unable to load Page token for saved Instagram account retry:', err);
+  }
+  return null;
+}
+
 async function tryRecoverInstagramAccountForPage({
   pageId,
   failedIgId,
