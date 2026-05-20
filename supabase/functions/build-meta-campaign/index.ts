@@ -306,9 +306,16 @@ Deno.serve(async (req) => {
       (item: any) => {
         // If item already has linkedAsset, keep it
         if (item.linkedAsset) return item;
-        // Try to resolve from user_uploaded_assets by matching linked_concept_id
+        // Try to resolve from user_uploaded_assets by matching linked_concept_id.
+        // Production items created via ProductionChecklist have item.id (e.g. "prod-1234-0")
+        // distinct from item.concept_id (e.g. "tofu-0"). DragDropUploader stores the asset
+        // with linked_concept_id = concept_id, so we must check both. Also fall back to
+        // matching by uploaded_asset_id for items where linkedAsset was stripped.
         const matchingAsset = uploadedAssetsList.find(
-          (a: any) => a.linked_concept_id === item.id
+          (a: any) =>
+            a.linked_concept_id === item.id ||
+            (item.concept_id && a.linked_concept_id === item.concept_id) ||
+            (item.uploaded_asset_id && a.id === item.uploaded_asset_id)
         );
         if (matchingAsset) {
           return {
@@ -316,9 +323,9 @@ Deno.serve(async (req) => {
             linkedAsset: {
               id: matchingAsset.id,
               url: matchingAsset.file_url,
-              storagePath: matchingAsset.storage_path,
+              storagePath: matchingAsset.storage_path || matchingAsset.storagePath,
               type: matchingAsset.file_type,
-              fileName: matchingAsset.file_name,
+              fileName: matchingAsset.file_name || matchingAsset.name,
             },
           };
         }
