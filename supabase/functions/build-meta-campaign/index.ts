@@ -649,17 +649,24 @@ Deno.serve(async (req) => {
     let validCustomConversion = false;
 
     if (customConversionId && pixelId) {
-      // Validate the custom conversion still exists on Meta before using it.
-      // Stale/deleted IDs throw: "Param promoted_object[custom_conversion_id] must be a valid custom conversion id"
+      // Validate the custom conversion still exists on Meta AND belongs to the current ad account.
+      // Stale/deleted IDs or cross-account IDs throw:
+      // "Param promoted_object[custom_conversion_id] must be a valid custom conversion id"
       try {
         const ccCheck = await fetch(
-          `https://graph.facebook.com/v25.0/${customConversionId}?fields=id,name&access_token=${encodeURIComponent(metaAccessToken)}`
+          `https://graph.facebook.com/v25.0/${customConversionId}?fields=id,name,account_id&access_token=${encodeURIComponent(metaAccessToken)}`
         );
         const ccData = await ccCheck.json();
-        if (ccData?.id && !ccData?.error) {
+        const normalizedAccountId = metaAccountId.replace(/^act_/, '');
+        const ccAccountId = String(ccData?.account_id || '').replace(/^act_/, '');
+        if (ccData?.id && !ccData?.error && ccAccountId === normalizedAccountId) {
           validCustomConversion = true;
+        } else if (ccData?.id && !ccData?.error && ccAccountId && ccAccountId !== normalizedAccountId) {
+          // Object exists but belongs to a different ad account — reject it
+          console.warn(`Custom conversion ${customConversionId} belongs to account ${ccAccountId}, not ${normalizedAccountId}. Falling back.`);
+          result.warnings.push('Custom conversion belongs to a different ad account — used standard pixel event instead.');
         } else {
-          console.warn('Custom conversion invalid, falling back to standard event:', ccData?.error?.message || 'not found');
+          console.warn('Custom conversion invalid or deleted, falling back to standard event:', ccData?.error?.message || 'not found');
           result.warnings.push('Custom conversion was no longer valid — used standard pixel event instead.');
         }
       } catch (e) {
