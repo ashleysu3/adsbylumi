@@ -114,7 +114,8 @@ export function CampaignsList({ brandId, addCreativeMode = false, onCampaignSele
               .eq('brand_id', brandId)
               .eq('name', campaign.offer_name)
               .maybeSingle();
-            if (!offer || !offer.archived || ['live', 'completed'].includes(campaign.progress_status)) {
+            const effectivelyLive = ['live', 'completed', 'publishing_to_meta'].includes(campaign.progress_status) || campaign.meta_campaign_status === 'active';
+            if (!offer || !offer.archived || effectivelyLive) {
               return campaign;
             }
             return null;
