@@ -230,7 +230,12 @@ Deno.serve(async (req) => {
 
       let stripeInfo = null;
       if (profile?.email) {
-        stripeInfo = await getStripeInfo(profile.email);
+        try {
+          stripeInfo = await getStripeInfo(profile.email);
+        } catch (stripeErr: any) {
+          logStep("Stripe info fetch failed (non-fatal)", { error: stripeErr?.message });
+          stripeInfo = { error: stripeErr?.message || "Stripe lookup failed", customer: null, subscriptions: [], payments: [], invoices: [] };
+        }
       }
 
       return new Response(JSON.stringify({

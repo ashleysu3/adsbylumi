@@ -289,15 +289,29 @@ export default function AdminUsers() {
       });
 
       if (error) throw error;
-      setUserDetails(data);
-      
+      // Edge function returns {error: "..."} with status 200 on failure — detect that
+      if (data?.error) throw new Error(data.error);
+      if (!data || !data.profile) throw new Error("No user details returned");
+
+      // Defensive: ensure arrays exist so the render doesn't crash on missing fields
+      setUserDetails({
+        ...data,
+        bugReports: data.bugReports || [],
+        adminNotes: data.adminNotes || [],
+        campaigns: data.campaigns || [],
+        roles: data.roles || [],
+        stripeInfo: data.stripeInfo || null,
+      });
+
       // Fetch activity in parallel
       fetchUserActivity(user.id);
     } catch (error: any) {
-      toast.error("Failed to load user details");
-      console.error(error);
+      toast.error(error?.message || "Failed to load user details");
+      console.error("fetchUserDetails error:", error);
+      setDetailOpen(false);
+    } finally {
+      setDetailsLoading(false);
     }
-    setDetailsLoading(false);
   };
   
   const fetchUserActivity = async (userId: string) => {
