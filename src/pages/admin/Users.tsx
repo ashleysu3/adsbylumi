@@ -24,7 +24,18 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
-import { format } from "date-fns";
+import { format as dfFormat } from "date-fns";
+
+const format = (date: any, fmt: string): string => {
+  try {
+    if (date === null || date === undefined || date === "") return "—";
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return "—";
+    return dfFormat(d, fmt);
+  } catch {
+    return "—";
+  }
+};
 import { cn } from "@/lib/utils";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 
