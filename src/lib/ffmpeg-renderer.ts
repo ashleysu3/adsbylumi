@@ -151,30 +151,34 @@ export async function getFFmpeg(
 
   ffmpegLoadPromise = (async () => {
     onProgress?.('Loading video engine…');
-    const ffmpeg = new FFmpeg();
     // Try multiple CDNs — some sandbox/preview environments block specific hosts.
+    // A fresh FFmpeg instance is created per attempt so a partial failure on one
+    // CDN (e.g. the .wasm fetch succeeds but .js doesn't, or ffmpeg.load() throws
+    // mid-init) doesn't leave a broken instance that poisons subsequent retries.
+    // cdn.skypack.dev is intentionally omitted — it transforms ES modules and
+    // cannot reliably serve binary WASM files.
     const candidates = [
       'https://cdn.jsdelivr.net/npm/@ffmpeg/[email protected]/dist/umd',
       'https://unpkg.com/@ffmpeg/[email protected]/dist/umd',
-      'https://cdn.skypack.dev/@ffmpeg/[email protected]/dist/umd',
     ];
     let lastErr: unknown = null;
-    let loaded = false;
+    let loadedFFmpeg: FFmpeg | null = null;
     for (const baseURL of candidates) {
       try {
+        const attempt = new FFmpeg();
         const [coreURL, wasmURL] = await Promise.all([
           toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
           toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
         ]);
-        await ffmpeg.load({ coreURL, wasmURL });
-        loaded = true;
+        await attempt.load({ coreURL, wasmURL });
+        loadedFFmpeg = attempt;
         break;
       } catch (err) {
         lastErr = err;
         console.warn(`[ffmpeg] Failed to load core from ${baseURL}:`, err);
       }
     }
-    if (!loaded) {
+    if (!loadedFFmpeg) {
       ffmpegLoadPromise = null;
       throw new Error(
         `Couldn't load the video engine. Your network may be blocking the CDN. (${
@@ -182,8 +186,8 @@ export async function getFFmpeg(
         })`,
       );
     }
-    ffmpegInstance = ffmpeg;
-    return ffmpeg;
+    ffmpegInstance = loadedFFmpeg;
+    return loadedFFmpeg;
   })();
 
   return ffmpegLoadPromise;
