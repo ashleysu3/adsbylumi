@@ -511,89 +511,91 @@ Deno.serve(async (req) => {
     const budgetString = String(answers?.budget || '20').replace(/[$,\s]/g, '');
     const dailyBudgetCents = Math.round((parseInt(budgetString) || 20) * 100);
 
-    // Step 1: Upload all assets to Meta
+    // Step 1: Upload all assets to Meta in parallel to avoid sequential timeout
     console.log('Uploading creative assets to Meta...');
     const uploadedAssets: Array<{ item: ProductionItem; assetId: string; assetType: 'image' | 'video' }> = [];
 
-    for (const item of approvedConcepts) {
-      if (!item.linkedAsset) {
-        result.failedAds.push({
-          conceptId: item.id,
-          conceptTitle: item.concept?.title || 'Unknown',
-          error: 'No linked asset found'
-        });
-        continue;
-      }
+    const uploadSettled = await Promise.allSettled(
+      approvedConcepts.map(async (item) => {
+        if (!item.linkedAsset) {
+          return { success: false as const, item, error: 'No linked asset found' };
+        }
 
-      try {
-        console.log(`Uploading asset for concept ${item.id}...`);
-        
-        const normalizedStoragePath = item.linkedAsset.storagePath
-          ? (item.linkedAsset.storagePath.startsWith(`${brand.id}/`)
-            ? item.linkedAsset.storagePath
-            : `${brand.id}/${item.linkedAsset.storagePath}`)
-          : undefined;
+        try {
+          console.log(`Uploading asset for concept ${item.id}...`);
 
-        const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseServiceKey}`,
-          },
-          body: JSON.stringify({
-            assetUrl: item.linkedAsset.url,
-            assetStoragePath: normalizedStoragePath,
-            brandId: brand.id,
-            fileName: item.linkedAsset.url?.split('/').pop(),
-          }),
-        });
+          const normalizedStoragePath = item.linkedAsset.storagePath
+            ? (item.linkedAsset.storagePath.startsWith(`${brand.id}/`)
+              ? item.linkedAsset.storagePath
+              : `${brand.id}/${item.linkedAsset.storagePath}`)
+            : undefined;
 
-        const uploadRawText = await uploadResponse.text();
-        let uploadResult: any = null;
-        if (uploadRawText) {
-          try {
-            uploadResult = JSON.parse(uploadRawText);
-          } catch {
-            uploadResult = null;
+          const uploadResponse = await fetch(`${supabaseUrl}/functions/v1/upload-creative-to-meta`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              assetUrl: item.linkedAsset.url,
+              assetStoragePath: normalizedStoragePath,
+              brandId: brand.id,
+              fileName: item.linkedAsset.url?.split('/').pop(),
+            }),
+          });
+
+          const uploadRawText = await uploadResponse.text();
+          let uploadResult: any = null;
+          if (uploadRawText) {
+            try {
+              uploadResult = JSON.parse(uploadRawText);
+            } catch {
+              uploadResult = null;
+            }
           }
-        }
 
-        if (uploadResult?.success && uploadResult?.assetId) {
-          uploadedAssets.push({
-            item,
-            assetId: uploadResult.assetId,
-            assetType: uploadResult.assetType,
-          });
-          console.log(`Asset uploaded: ${uploadResult.assetType} - ${uploadResult.assetId}`);
+          if (uploadResult?.success && uploadResult?.assetId) {
+            console.log(`Asset uploaded: ${uploadResult.assetType} - ${uploadResult.assetId}`);
+            return { success: true as const, item, assetId: uploadResult.assetId as string, assetType: uploadResult.assetType as 'image' | 'video' };
+          } else {
+            const uploadErrorMessage =
+              uploadResult?.error ||
+              uploadResult?.message ||
+              uploadResult?.details ||
+              (!uploadResponse.ok ? `Upload service returned ${uploadResponse.status}` : '') ||
+              (uploadRawText?.trim() ? uploadRawText.trim().slice(0, 500) : '') ||
+              'Unknown error';
+
+            console.error(`Failed to upload asset for ${item.id}:`, {
+              status: uploadResponse.status,
+              ok: uploadResponse.ok,
+              result: uploadResult,
+              raw: uploadRawText?.slice(0, 500) || '',
+            });
+
+            return { success: false as const, item, error: `Asset upload failed: ${uploadErrorMessage}` };
+          }
+        } catch (uploadError: any) {
+          console.error(`Error uploading asset for ${item.id}:`, uploadError);
+          return { success: false as const, item, error: `Asset upload error: ${uploadError.message}` };
+        }
+      })
+    );
+
+    for (const settled of uploadSettled) {
+      if (settled.status === 'fulfilled') {
+        const outcome = settled.value;
+        if (outcome.success) {
+          uploadedAssets.push({ item: outcome.item, assetId: outcome.assetId, assetType: outcome.assetType });
         } else {
-          const uploadErrorMessage =
-            uploadResult?.error ||
-            uploadResult?.message ||
-            uploadResult?.details ||
-            (!uploadResponse.ok ? `Upload service returned ${uploadResponse.status}` : '') ||
-            (uploadRawText?.trim() ? uploadRawText.trim().slice(0, 500) : '') ||
-            'Unknown error';
-
-          console.error(`Failed to upload asset for ${item.id}:`, {
-            status: uploadResponse.status,
-            ok: uploadResponse.ok,
-            result: uploadResult,
-            raw: uploadRawText?.slice(0, 500) || '',
-          });
-
           result.failedAds.push({
-            conceptId: item.id,
-            conceptTitle: item.concept?.title || 'Unknown',
-            error: `Asset upload failed: ${uploadErrorMessage}`
+            conceptId: outcome.item.id,
+            conceptTitle: outcome.item.concept?.title || 'Unknown',
+            error: outcome.error,
           });
         }
-      } catch (uploadError: any) {
-        console.error(`Error uploading asset for ${item.id}:`, uploadError);
-        result.failedAds.push({
-          conceptId: item.id,
-          conceptTitle: item.concept?.title || 'Unknown',
-          error: `Asset upload error: ${uploadError.message}`
-        });
+      } else {
+        console.error('Upload promise unexpectedly rejected:', settled.reason);
       }
     }
 
@@ -913,183 +915,182 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Step 4: Create Ads for each uploaded asset
+    // Step 4: Create Ads for each uploaded asset in parallel
     const primaryAdSetId = result.adSetIds[0];
 
-    for (let i = 0; i < uploadedAssets.length; i++) {
-      const { item, assetId, assetType } = uploadedAssets[i];
-      const formatPrefix = assetType === 'video' ? 'V' : 'G';
-      const descriptor = item.concept?.hookLabel || item.concept?.title || 'Creative';
-      const adName = `${formatPrefix} - ${descriptor}`;
-      
-      // Normalize copy fields - prioritizes angle-level selected copy, then item-level copy
-      const copy = normalizeCopy(item, angles, angleCopy, copySelections);
-      if (!copy) {
-        console.error(`No copy found for ${adName}, skipping...`);
-        result.failedAds.push({
-          conceptId: item.id,
-          conceptTitle: item.concept?.title || 'Unknown',
-          error: 'No ad copy found'
-        });
-        continue;
-      }
-      
-      try {
-        // Build object_story_spec based on asset type
-        let objectStorySpec: any;
-        
-        if (assetType === 'video') {
-          // Fetch video thumbnail from Meta API
-          let videoThumbnailUrl = '';
-          try {
-            const thumbResponse = await fetch(
-              `https://graph.facebook.com/v25.0/${assetId}?fields=thumbnails&access_token=${metaAccessToken}`
-            );
-            const thumbData = await thumbResponse.json();
-            if (thumbData.thumbnails?.data?.[0]?.uri) {
-              videoThumbnailUrl = thumbData.thumbnails.data[0].uri;
-            }
-          } catch (e) {
-            console.log('Could not fetch video thumbnail, Meta will auto-generate');
-          }
-          
-          const videoData: any = {
-            video_id: assetId,
-            title: copy.headline || 'Watch Now',
-            message: copy.primaryText || '',
-            link_description: copy.description || '',
-            call_to_action: {
-              type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_'),
-              value: { link: destinationUrl }
-            }
-          };
-          
-          if (videoThumbnailUrl) {
-            videoData.image_url = videoThumbnailUrl;
-          }
-          
-          objectStorySpec = {
-            page_id: pageId,
-            video_data: videoData
-          };
-          if (igAccountId) {
-            objectStorySpec.instagram_user_id = igAccountId;
-          }
-        } else {
-          objectStorySpec = {
-            page_id: pageId,
-            link_data: {
-              image_hash: assetId,
-              link: destinationUrl,
-              message: copy.primaryText || '',
-              name: copy.headline || '',
-              description: copy.description || '',
-              call_to_action: {
-                type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_')
+    const adSettled = await Promise.allSettled(
+      uploadedAssets.map(async ({ item, assetId, assetType }) => {
+        const formatPrefix = assetType === 'video' ? 'V' : 'G';
+        const descriptor = item.concept?.hookLabel || item.concept?.title || 'Creative';
+        const adName = `${formatPrefix} - ${descriptor}`;
+
+        // Normalize copy fields - prioritizes angle-level selected copy, then item-level copy
+        const copy = normalizeCopy(item, angles, angleCopy, copySelections);
+        if (!copy) {
+          console.error(`No copy found for ${adName}, skipping...`);
+          return { success: false as const, item, error: 'No ad copy found' };
+        }
+
+        try {
+          // Build object_story_spec based on asset type
+          let objectStorySpec: any;
+
+          if (assetType === 'video') {
+            // Fetch video thumbnail from Meta API
+            let videoThumbnailUrl = '';
+            try {
+              const thumbResponse = await fetch(
+                `https://graph.facebook.com/v25.0/${assetId}?fields=thumbnails&access_token=${metaAccessToken}`
+              );
+              const thumbData = await thumbResponse.json();
+              if (thumbData.thumbnails?.data?.[0]?.uri) {
+                videoThumbnailUrl = thumbData.thumbnails.data[0].uri;
               }
+            } catch (e) {
+              console.log('Could not fetch video thumbnail, Meta will auto-generate');
+            }
+
+            const videoData: any = {
+              video_id: assetId,
+              title: copy.headline || 'Watch Now',
+              message: copy.primaryText || '',
+              link_description: copy.description || '',
+              call_to_action: {
+                type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_'),
+                value: { link: destinationUrl }
+              }
+            };
+
+            if (videoThumbnailUrl) {
+              videoData.image_url = videoThumbnailUrl;
+            }
+
+            objectStorySpec = {
+              page_id: pageId,
+              video_data: videoData
+            };
+            if (igAccountId) {
+              objectStorySpec.instagram_user_id = igAccountId;
+            }
+          } else {
+            objectStorySpec = {
+              page_id: pageId,
+              link_data: {
+                image_hash: assetId,
+                link: destinationUrl,
+                message: copy.primaryText || '',
+                name: copy.headline || '',
+                description: copy.description || '',
+                call_to_action: {
+                  type: (copy.cta || 'LEARN_MORE').toUpperCase().replace(/ /g, '_')
+                }
+              }
+            };
+            if (igAccountId) {
+              objectStorySpec.instagram_user_id = igAccountId;
+            }
+          }
+
+          // Force-disable Advantage+ creative enhancements including multi-advertiser ads.
+          // Meta requires explicit OPT_OUT on every standard enhancement to prevent the
+          // "multi-advertiser ads" checkbox from auto-enabling at the ad level.
+          // Force-disable Advantage+ creative enhancements. Only keys currently
+          // accepted by Meta v25.0 in creative_features_spec are included here.
+          // Sending unrecognized keys (e.g. "music", "advantage_plus_creative")
+          // causes Meta error #100 and blocks creative creation.
+          // Allowed keys: IG_VIDEO_NATIVE_SUBTITLE, IMAGE_ANIMATION,
+          // PRODUCT_METADATA_AUTOMATION, PROFILE_CARD,
+          // STANDARD_ENHANCEMENTS_CATALOG, TEXT_OVERLAY_TRANSLATION.
+          const degreesOfFreedomSpec = {
+            creative_features_spec: {
+              ig_video_native_subtitle: { enroll_status: 'OPT_OUT' },
+              image_animation: { enroll_status: 'OPT_OUT' },
+              product_metadata_automation: { enroll_status: 'OPT_OUT' },
+              profile_card: { enroll_status: 'OPT_OUT' },
+              standard_enhancements_catalog: { enroll_status: 'OPT_OUT' },
+              text_overlay_translation: { enroll_status: 'OPT_OUT' },
             }
           };
-          if (igAccountId) {
-            objectStorySpec.instagram_user_id = igAccountId;
+
+          // Create ad creative
+          const creativeParams: Record<string, string> = {
+            name: `Creative - ${adName}`,
+            object_story_spec: JSON.stringify(objectStorySpec),
+            degrees_of_freedom_spec: JSON.stringify(degreesOfFreedomSpec),
+            access_token: metaAccessToken
+          };
+
+          const creativeResponse = await fetch(
+            `https://graph.facebook.com/v25.0/act_${accountId}/adcreatives`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams(creativeParams)
+            }
+          );
+
+          const creativeData = await creativeResponse.json();
+
+          if (creativeData.error) {
+            console.error(`Creative creation failed for ${adName}:`, creativeData.error);
+            return { success: false as const, item, error: `Creative creation failed: ${getMetaErrorMessage(creativeData.error)}` };
           }
+
+          const creativeId = creativeData.id;
+          console.log(`Creative created for ${adName}:`, creativeId);
+
+          // Create the ad
+          const adParams: Record<string, string> = {
+            adset_id: primaryAdSetId,
+            name: adName,
+            creative: JSON.stringify({ creative_id: creativeId }),
+            status: launchStatus,
+            multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
+            access_token: metaAccessToken,
+          };
+          if (trackingSpecs) {
+            adParams.tracking_specs = JSON.stringify(trackingSpecs);
+          }
+
+          const adResponse = await fetch(
+            `https://graph.facebook.com/v25.0/act_${accountId}/ads`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams(adParams),
+            }
+          );
+
+          const adData = await adResponse.json();
+
+          if (adData.error) {
+            console.error(`Ad creation failed for ${adName}:`, adData.error);
+            return { success: false as const, item, error: `Ad creation failed: ${getMetaErrorMessage(adData.error)}` };
+          }
+
+          console.log(`Ad created: ${adData.id}`);
+          return { success: true as const, adId: adData.id as string };
+        } catch (adError: any) {
+          console.error(`Error creating ad for ${adName}:`, adError);
+          return { success: false as const, item, error: `Ad creation error: ${adError.message}` };
         }
+      })
+    );
 
-        // Force-disable Advantage+ creative enhancements including multi-advertiser ads.
-        // Meta requires explicit OPT_OUT on every standard enhancement to prevent the
-        // "multi-advertiser ads" checkbox from auto-enabling at the ad level.
-        // Force-disable Advantage+ creative enhancements. Only keys currently
-        // accepted by Meta v25.0 in creative_features_spec are included here.
-        // Sending unrecognized keys (e.g. "music", "advantage_plus_creative")
-        // causes Meta error #100 and blocks creative creation.
-        // Allowed keys: IG_VIDEO_NATIVE_SUBTITLE, IMAGE_ANIMATION,
-        // PRODUCT_METADATA_AUTOMATION, PROFILE_CARD,
-        // STANDARD_ENHANCEMENTS_CATALOG, TEXT_OVERLAY_TRANSLATION.
-        const degreesOfFreedomSpec = {
-          creative_features_spec: {
-            ig_video_native_subtitle: { enroll_status: 'OPT_OUT' },
-            image_animation: { enroll_status: 'OPT_OUT' },
-            product_metadata_automation: { enroll_status: 'OPT_OUT' },
-            profile_card: { enroll_status: 'OPT_OUT' },
-            standard_enhancements_catalog: { enroll_status: 'OPT_OUT' },
-            text_overlay_translation: { enroll_status: 'OPT_OUT' },
-          }
-        };
-
-        // Create ad creative
-        const creativeParams: Record<string, string> = {
-          name: `Creative - ${adName}`,
-          object_story_spec: JSON.stringify(objectStorySpec),
-          degrees_of_freedom_spec: JSON.stringify(degreesOfFreedomSpec),
-          access_token: metaAccessToken
-        };
-
-        const creativeResponse = await fetch(
-          `https://graph.facebook.com/v25.0/act_${accountId}/adcreatives`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(creativeParams)
-          }
-        );
-
-        const creativeData = await creativeResponse.json();
-        
-        if (creativeData.error) {
-          console.error(`Creative creation failed for ${adName}:`, creativeData.error);
+    for (const settled of adSettled) {
+      if (settled.status === 'fulfilled') {
+        const outcome = settled.value;
+        if (outcome.success) {
+          result.adIds.push(outcome.adId);
+        } else {
           result.failedAds.push({
-            conceptId: item.id,
-            conceptTitle: item.concept?.title || 'Unknown',
-            error: `Creative creation failed: ${getMetaErrorMessage(creativeData.error)}`
+            conceptId: outcome.item.id,
+            conceptTitle: outcome.item.concept?.title || 'Unknown',
+            error: outcome.error,
           });
-          continue;
         }
-
-        const creativeId = creativeData.id;
-        console.log(`Creative created for ${adName}:`, creativeId);
-
-        // Create the ad
-        const adParams: Record<string, string> = {
-          adset_id: primaryAdSetId,
-          name: adName,
-          creative: JSON.stringify({ creative_id: creativeId }),
-          status: launchStatus,
-          multi_advertiser_ads: JSON.stringify({ use_multi_advertiser_ads: false }),
-          access_token: metaAccessToken,
-        };
-        if (trackingSpecs) {
-          adParams.tracking_specs = JSON.stringify(trackingSpecs);
-        }
-
-        const adResponse = await fetch(
-          `https://graph.facebook.com/v25.0/act_${accountId}/ads`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams(adParams),
-          }
-        );
-
-        const adData = await adResponse.json();
-        
-        if (adData.error) {
-          console.error(`Ad creation failed for ${adName}:`, adData.error);
-          result.failedAds.push({
-            conceptId: item.id,
-            conceptTitle: item.concept?.title || 'Unknown',
-            error: `Ad creation failed: ${getMetaErrorMessage(adData.error)}`
-          });
-          continue;
-        }
-
-        result.adIds.push(adData.id);
-        console.log(`Ad created: ${adData.id}`);
-      } catch (adError: any) {
-        console.error(`Error creating ad for ${adName}:`, adError);
-        result.failedAds.push({
-          conceptId: item.id,
-          conceptTitle: item.concept?.title || 'Unknown',
-          error: `Ad creation error: ${adError.message}`
-        });
+      } else {
+        console.error('Ad creation promise unexpectedly rejected:', settled.reason);
       }
     }
 
