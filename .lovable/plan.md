@@ -1,105 +1,77 @@
-# LUMI Strategy Recommendations
+## Goal
 
-Add a third card on the Create page that lets LUMI recommend a complete multi-campaign strategy based on the user's brand, industry, and website — feeling like they're being told exactly what to do next.
+Turn the partner welcome experience into a fully admin-configurable system. An admin fills out a form per partner (Ashley, future affiliates), gets a code, and anyone who signs up with that code automatically sees a custom welcome modal + gets recommended strategies/campaigns surfaced in their workspace.
 
-## 1. Third option on the Create page (`src/pages/Create.tsx`)
+## What gets built
 
-Add a third card above the existing two, styled as the hero/recommended choice:
+### 1. Database changes (extend `partner_access_tokens`)
 
-- **Title:** "Let LUMI recommend my strategy"
-- **Subtitle:** "Tell us your goal — we'll build the exact campaign plan for your business"
-- **Badge:** "Recommended"
-- **Icon:** Sparkles, gradient background matching the lumi palette
-- **Action:** navigate to `/recommended-strategy`
+Add fields so each partner row is a full "welcome package":
+- `welcome_message` (text) — custom message from the partner
+- `partner_photo_url` (text) — headshot/logo
+- `partner_title` (text) — e.g. "Wedding Industry Coach"
+- `support_links` (jsonb) — array of `{ label, url, type }` (call booking, office hours, email, etc.)
+- `recommended_strategies` (jsonb) — array of `{ title, description, template_slug? }` pointing at campaign templates to highlight
+- `is_active` (boolean) — toggle without deleting
+- Existing `perks` and `partner_display_name` stay
 
-## 2. New `recommended_strategies` table (admin-managed)
+Update `get_partner_welcome` RPC to return all new fields.
 
-Pre-determined strategies keyed by business type. Admin CRUD in the admin dashboard.
+New storage bucket `partner-assets` (public) for partner photos.
 
-```text
-recommended_strategies
-  id uuid pk
-  slug text unique           -- e.g. "wedding-services-leads"
-  name text                  -- "Wedding Pros — Grow + Leads"
-  industry text[]            -- ["wedding", "photographer", "event-planner"]
-  business_model text[]      -- ["service", "local-service"]
-  primary_goals text[]       -- ["book_calls", "grow_social"]
-  keywords text[]            -- match signals from website content
-  description text           -- user-facing explanation
-  why_it_works text          -- LUMI's rationale
-  campaigns jsonb            -- array of {name, objective, goal, audience, budget_pct, creative_brief}
-  is_active boolean default true
-  created_by uuid
-  created_at, updated_at
-```
+### 2. Admin dashboard page — `/admin/partners`
 
-RLS: authenticated SELECT on active rows; admin INSERT/UPDATE/DELETE via `has_role(auth.uid(), 'admin')`. Public-schema GRANTs included.
+A new admin-only page (gated by `has_role(..., 'admin')`) with:
+- Table of all partner codes (name, code, active toggle, signups count, edit/delete)
+- "New partner" button → form drawer/modal
+- Form fields:
+  - Partner display name
+  - Partner title (optional)
+  - Trial code (auto-uppercased, validated unique)
+  - Photo upload (to `partner-assets` bucket)
+  - Custom welcome message (textarea)
+  - Perks (repeatable list of `{ title, description, icon }`)
+  - Support links (repeatable `{ label, url }` — for "Book your 1:1", "Join office hours", etc.)
+  - Recommended strategies (repeatable `{ title, description }` + optional dropdown to pick from existing `campaign_templates`)
+  - Active toggle
+- Edit + delete existing partners
+- Shows the shareable referral URL (`adsbylumi.com/?code=XXXXX`) with copy button
 
-## 3. New `strategy_requests` table (fallback)
+Linked from the existing admin sidebar/nav.
 
-When no template matches, log it for admin and email them.
+### 3. Updated `PartnerWelcomeModal`
 
-```text
-strategy_requests
-  id uuid pk
-  user_id uuid
-  brand_id uuid
-  brand_snapshot jsonb       -- name, website, industry, offers, audiences
-  user_goal text
-  status text                -- 'pending' | 'answered' | 'dismissed'
-  admin_response jsonb       -- filled in later, can be promoted into recommended_strategies
-  created_at, responded_at
-```
+Render the full custom package:
+- Partner photo (circular) + name + title at top
+- Custom welcome message
+- Perks list (existing)
+- **New: "Strategies Ashley recommends"** section — cards for each recommended strategy with title/description; if linked to a template, "Use this strategy" button routes to the planning flow with that template preselected
+- **New: Support links** section — buttons for booking calls, office hours, etc.
+- Falls back gracefully if any field is empty (so simple partners still work)
 
-Admin can view, respond, and "promote to template."
+### 4. Recommended strategies surfaced beyond the modal
 
-## 4. Recommendation edge function `recommend-strategy`
+Store the partner code on the user's profile at signup (new column `profiles.partner_code`). On the Planning dashboard, if the user has a partner code with `recommended_strategies`, show a small "Recommended for you by {partner}" row above the template grid. This way the recommendations don't disappear after the modal closes.
 
-Input: `{ brand_id }`. Steps:
-1. Load brand, offers, audiences, website auto-summary.
-2. Fetch all active `recommended_strategies`.
-3. Use Lovable AI (`google/gemini-3-flash-preview`) with `Output.object` to score matches against industry/business_model/keywords and pick the best template **or** return `no_match: true` with a short reason.
-4. If matched: return the template plus a personalized intro paragraph.
-5. If no match: insert a `strategy_requests` row, send an email to the admin notification address via existing email infra, and return `pending: true`.
+### 5. Seed Ashley's data
 
-## 5. New page `/recommended-strategy` (`src/pages/RecommendedStrategy.tsx`)
-
-Flow (clean, one decision at a time):
-1. **Brand confirm** — show detected industry/business type from brand profile. "Is this you?" with edit link.
-2. **One question:** "What's your #1 goal right now?" (uses the same goal chips as Create step 1).
-3. **LUMI is thinking** loading state — calls `recommend-strategy`.
-4. **Result screens:**
-   - **Matched:** Hero card with strategy name, "Why this works for you" paragraph, then the campaign cards (e.g. "Campaign 1: Grow on Instagram" + "Campaign 2: Lead form fills") each with objective, audience, suggested budget split, and a creative brief preview. CTA: **"Build this strategy"** → routes into existing campaign build flow with the campaigns pre-filled.
-   - **Pending:** Friendly screen: "LUMI is putting together a custom plan for your business. We'll email you within 1 business day." Button to set a reminder / go back to dashboard. Show the request id.
-
-## 6. Admin dashboard additions
-
-Under existing admin routes:
-- `/admin/strategies` — list, create, edit, archive `recommended_strategies`. Form fields match the schema; campaigns edited as a structured repeater (name, objective, goal, audience, budget %, creative brief).
-- `/admin/strategy-requests` — inbox of pending requests with brand snapshot. Actions: "Respond" (write a custom strategy JSON → emails the user, marks answered), "Promote to template" (prefill the new-template form), "Dismiss."
-
-## 7. Admin email notification
-
-Reuse existing transactional email setup. On new `strategy_requests` insert (DB trigger calling an edge function, or function-side after insert), send `admin@adsbylumi.com` an email with brand info and a link to `/admin/strategy-requests`.
-
-## 8. Seed data
-
-Seed 3 starter templates so the feature feels alive on day one:
-- Wedding / event service pros → Grow IG + Lead form (2 campaigns)
-- Coaches & course creators → Training + Cold + Warm (3 campaigns, matches existing After Organic framework)
-- Local service business → Local awareness + Lead form (2 campaigns)
+Update Ashley's existing `ASHLEY` row with:
+- Title: e.g. "Wedding Industry Strategist"
+- Welcome message (placeholder you can edit)
+- Photo (placeholder until you upload)
+- Perks: 30-min 1:1 setup call + Monday 10am EST office hours (already there)
+- Support links: Calendly link for the call, Google Meet link for office hours
+- Recommended strategies: "Wedding Pro Strategy" + "Event Geo-Targeting Strategy"
 
 ## Technical notes
 
-- Goal chips: reuse the existing `selectedGoal` options from `Create.tsx` (extract into a shared constant).
-- Campaign build hand-off: pass `recommendedStrategyId` in query params; existing build flow reads it and pre-populates campaigns + creative briefs.
-- AI matching uses structured output (`Output.object` with zod) — no manual JSON parsing.
-- All new tables include GRANTs and RLS in the same migration.
-- Edge function follows project standards (Deno.serve, npm:@supabase/supabase-js@2, CORS, 200 + JSON error body).
-- No changes to billing or tier limits in this scope.
+- All admin writes happen via direct table inserts/updates gated by RLS using `has_role(auth.uid(), 'admin')` — no edge function needed for CRUD.
+- Photo upload uses Supabase Storage client directly.
+- `recommended_strategies[].template_slug` (optional) joins to `campaign_templates.slug` so clicking "Use this strategy" can deep-link into the existing planner flow.
+- `profiles.partner_code` is set in the same guest-checkout paths where we already call `setPartnerWelcomeCode` (`Sales.tsx`, `FreeTrial.tsx`) so the recommendation row persists after signup.
 
-## Out of scope (for follow-ups)
+## Open questions before I build
 
-- Multi-language strategies
-- Strategy A/B variants
-- Auto-execution without user review (always show the plan first)
+1. For "Recommended strategies," do you want them to map to existing `campaign_templates` rows (so clicking opens the planner pre-filled), or are they just descriptive text cards for now?
+2. Should the admin page live at `/admin/partners` and be linked from the existing admin nav, or somewhere else?
+3. Anything else you want the admin form to capture (e.g. partner email, internal notes, commission %)?

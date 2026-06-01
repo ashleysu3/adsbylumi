@@ -1914,33 +1914,51 @@ export type Database = {
           email: string
           expires_at: string | null
           id: string
+          is_active: boolean
           partner_display_name: string | null
+          partner_photo_url: string | null
+          partner_title: string | null
           partner_trial_code: string | null
           perks: Json
+          recommended_strategies: Json
           rewardful_affiliate_id: string | null
+          support_links: Json
           token: string
+          welcome_message: string | null
         }
         Insert: {
           created_at?: string
           email: string
           expires_at?: string | null
           id?: string
+          is_active?: boolean
           partner_display_name?: string | null
+          partner_photo_url?: string | null
+          partner_title?: string | null
           partner_trial_code?: string | null
           perks?: Json
+          recommended_strategies?: Json
           rewardful_affiliate_id?: string | null
+          support_links?: Json
           token?: string
+          welcome_message?: string | null
         }
         Update: {
           created_at?: string
           email?: string
           expires_at?: string | null
           id?: string
+          is_active?: boolean
           partner_display_name?: string | null
+          partner_photo_url?: string | null
+          partner_title?: string | null
           partner_trial_code?: string | null
           perks?: Json
+          recommended_strategies?: Json
           rewardful_affiliate_id?: string | null
+          support_links?: Json
           token?: string
+          welcome_message?: string | null
         }
         Relationships: []
       }
