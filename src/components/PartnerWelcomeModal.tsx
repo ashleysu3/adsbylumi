@@ -10,7 +10,7 @@ interface Perk { title: string; description: string }
 interface LinkItem { label: string; url: string }
 interface StrategyItem { title: string; description: string }
 
-interface PartnerWelcome {
+export interface PartnerWelcome {
   partner_display_name: string | null;
   partner_trial_code: string | null;
   partner_title: string | null;
@@ -27,11 +27,20 @@ export function setPartnerWelcomeCode(code: string) {
   } catch { /* ignore */ }
 }
 
-export function PartnerWelcomeModal() {
+interface Props {
+  /** Controlled preview mode: when provided, modal ignores localStorage and shows this data. */
+  previewData?: PartnerWelcome | null;
+  previewOpen?: boolean;
+  onPreviewOpenChange?: (open: boolean) => void;
+}
+
+export function PartnerWelcomeModal({ previewData, previewOpen, onPreviewOpenChange }: Props = {}) {
+  const isPreview = previewData !== undefined;
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<PartnerWelcome | null>(null);
 
   useEffect(() => {
+    if (isPreview) return;
     let cancelled = false;
     const code = (() => {
       try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
@@ -50,18 +59,24 @@ export function PartnerWelcomeModal() {
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [isPreview]);
 
   const handleClose = () => {
+    if (isPreview) {
+      onPreviewOpenChange?.(false);
+      return;
+    }
     setOpen(false);
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   };
 
-  if (!data) return null;
-  const name = data.partner_display_name || "your referral partner";
-  const perks = data.perks || [];
-  const links = data.support_links || [];
-  const strategies = data.recommended_strategies || [];
+  const effectiveData = isPreview ? previewData : data;
+  const effectiveOpen = isPreview ? !!previewOpen : open;
+  if (!effectiveData) return null;
+  const name = effectiveData.partner_display_name || "your referral partner";
+  const perks = effectiveData.perks || [];
+  const links = effectiveData.support_links || [];
+  const strategies = effectiveData.recommended_strategies || [];
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
