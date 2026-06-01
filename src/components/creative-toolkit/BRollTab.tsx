@@ -20,6 +20,7 @@ interface BRollIdea {
   scene: string;
   direction: string;
   mood: string;
+  whyItResonates?: string;
 }
 
 const MOOD_COLORS: Record<string, string> = {
@@ -29,6 +30,8 @@ const MOOD_COLORS: Record<string, string> = {
   Warm: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
   Authentic: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   Energetic: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  Aspirational: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+  Grounded: "bg-stone-100 text-stone-700 dark:bg-stone-900/30 dark:text-stone-400",
 };
 
 const STOCK_SOURCES = [
@@ -215,6 +218,11 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
                           <h4 className="font-display font-bold text-sm text-foreground">{idea.scene}</h4>
                         </div>
                         <p className="text-xs text-muted-foreground">{idea.direction}</p>
+                        {idea.whyItResonates && (
+                          <p className="text-[11px] italic text-foreground/70 border-l-2 border-primary/40 pl-2">
+                            {idea.whyItResonates}
+                          </p>
+                        )}
                         <Badge className={`text-[10px] ${MOOD_COLORS[idea.mood] || "bg-muted text-muted-foreground"}`}>
                           {idea.mood}
                         </Badge>
