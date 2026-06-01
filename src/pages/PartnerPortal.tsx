@@ -225,6 +225,60 @@ export default function PartnerPortal() {
           </Card>
         )}
 
+        {/* Recommended Lumi features for their audience */}
+        {((p.recommended_features || []).filter((f: any) => f.selected !== false && (f.feature || f.share_copy))).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Wand2 className="h-5 w-5" /> Lumi features your audience will love</CardTitle>
+              <CardDescription>Hand-picked for the people you serve — with ready-to-share copy.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(p.recommended_features || [])
+                .filter((f: any) => f.selected !== false && (f.feature || f.share_copy))
+                .map((f: any, i: number) => (
+                <div key={i} className="rounded-lg border p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="font-medium">{f.feature}</h4>
+                  </div>
+                  {f.why_audience_cares && (
+                    <p className="text-sm text-muted-foreground">{f.why_audience_cares}</p>
+                  )}
+                  {f.share_copy && (
+                    <div className="rounded-md bg-muted/40 p-3 space-y-2">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Share copy</p>
+                      <p className="text-sm whitespace-pre-wrap">{f.share_copy}</p>
+                      <Button size="sm" variant="outline" onClick={() => copy(f.share_copy, "Copy ready to paste")}>
+                        <Copy className="h-3 w-3 mr-2" /> Copy
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Brand assets */}
+        {cfg.brand_assets_url && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><FolderOpen className="h-5 w-5" /> Lumi brand assets</CardTitle>
+              <CardDescription>Logos, headshots, graphics and more — grab anything you need.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="h-auto py-3 justify-start w-full sm:w-auto" onClick={() => window.open(cfg.brand_assets_url, "_blank")}>
+                <FolderOpen className="h-4 w-4 mr-3" />
+                <div className="text-left">
+                  <div className="font-medium">Open the brand assets folder</div>
+                  <div className="text-xs text-muted-foreground">Google Drive — logos, photos, graphics</div>
+                </div>
+                <ExternalLink className="h-3 w-3 ml-3" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+
         {/* Support + grow */}
         <Card>
           <CardHeader>
