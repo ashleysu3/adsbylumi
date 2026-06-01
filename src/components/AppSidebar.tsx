@@ -38,8 +38,7 @@ const createNav = [
 ];
 
 const brandNav = [
-  { path: "/dashboard", icon: Building2, label: "Home", tooltip: "Your brand info and settings" },
-  { path: "/offers", icon: Package, label: "Offers", tooltip: "Add and manage your offers and services" },
+  { path: "/dashboard", icon: Building2, label: "Home", tooltip: "Your brand info, offers, and settings" },
   { path: "/style", icon: Palette, label: "Style", tooltip: "Ad copy voice, emojis, b-roll, and text overlays" },
   { path: "/content-library", icon: Library, label: "Concept Library", tooltip: "Browse your saved ad concepts" },
 ];
