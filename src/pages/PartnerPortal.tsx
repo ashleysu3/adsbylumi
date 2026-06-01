@@ -20,6 +20,7 @@ interface PortalData {
     owner_email?: string;
     office_hours_url?: string;
     webinar_request_to?: string;
+    brand_assets_url?: string;
   };
 }
 
