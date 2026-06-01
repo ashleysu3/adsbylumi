@@ -699,6 +699,17 @@ export default function AdminPartners() {
                   <div>
                     <Label>Trial code *</Label>
                     <Input value={editing.partner_trial_code || ""} onChange={(e) => setEditing({ ...editing, partner_trial_code: e.target.value.toUpperCase() })} placeholder="ASHLEY" />
+                    <div className="flex items-center justify-between gap-2 mt-2">
+                      <p className="text-xs text-muted-foreground">
+                        {(editing as any).stripe_promotion_code_id
+                          ? `Synced as Stripe promo code · ${(editing as any).stripe_promo_synced_at ? new Date((editing as any).stripe_promo_synced_at).toLocaleDateString() : ""}`
+                          : "Not yet synced as a Stripe promo code."}
+                      </p>
+                      <Button type="button" size="sm" variant="outline" disabled={!editing.id || syncingPromo} onClick={() => syncStripePromo()}>
+                        {syncingPromo ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                        {(editing as any).stripe_promotion_code_id ? "Re-sync Stripe promo" : "Sync to Stripe"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 <div>
