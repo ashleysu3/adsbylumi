@@ -773,13 +773,13 @@ export default function Create() {
               <p className="text-muted-foreground">Choose how you'd like to get started</p>
             </div>
 
-            <div className="grid gap-4">
+            <div className="space-y-4">
               {/* LUMI Recommends */}
               <button
-              onClick={() => navigate("/recommended-strategy")}
-              className="group text-left w-full">
-
-                <Card variant="glow" className="p-6 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50 relative overflow-hidden">
+                onClick={() => navigate("/recommended-strategy")}
+                className="group text-left w-full"
+              >
+                <Card variant="gradient" className="p-6 hover:shadow-lumi transition-all cursor-pointer relative overflow-hidden">
                   <div className="absolute top-3 right-3">
                     <span className="text-[10px] uppercase tracking-wider font-semibold bg-gradient-to-r from-lumi-pink-1 to-lumi-orange-1 text-white px-2 py-1 rounded-full">
                       Recommended
@@ -790,9 +790,9 @@ export default function Create() {
                       <Sparkles className="h-6 w-6 text-white" />
                     </div>
                     <div className="flex-1 min-w-0 pr-20">
-                      <h3 className="font-semibold text-foreground text-lg">Let LUMI recommend my strategy</h3>
+                      <h3 className="font-semibold text-foreground text-lg">LUMI recommended strategy</h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Tell us your goal — we'll build the exact campaign plan for your business
+                        Based on your website and business information provided
                       </p>
                     </div>
                     <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all mt-1 flex-shrink-0" />
@@ -800,47 +800,42 @@ export default function Create() {
                 </Card>
               </button>
 
-              {/* New Campaign */}
-              <button
-              onClick={() => setCurrentStep(1)}
-              className="group text-left w-full">
-              
-                <Card variant="glow" className="p-6 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50">
-                  <div className="flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
-                      <Rocket className="h-6 w-6 text-white" />
+              {/* Backup options */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Pick my ad campaign */}
+                <button
+                  onClick={() => setCurrentStep(1)}
+                  className="group text-left w-full"
+                >
+                  <Card variant="glow" className="p-4 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50 h-full">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
+                        <Rocket className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-foreground text-sm">Pick my ad campaign</h3>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground text-lg">Create a New Ad Campaign</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Start from scratch — pick your offer, strategy, and generate creative
-                      </p>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all mt-1 flex-shrink-0" />
-                  </div>
-                </Card>
-              </button>
+                  </Card>
+                </button>
 
-              {/* Existing Campaign */}
-              <button
-              onClick={() => navigate("/advanced-build")}
-              className="group text-left w-full">
-              
-                <Card variant="glow" className="p-6 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50">
-                  <div className="flex items-start gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-lumi-purple-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
-                      <Upload className="h-6 w-6 text-white" />
+                {/* Create New Ads for Existing */}
+                <button
+                  onClick={() => navigate("/advanced-build")}
+                  className="group text-left w-full"
+                >
+                  <Card variant="glow" className="p-4 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50 h-full">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-lumi-purple-1 to-lumi-pink-1 flex items-center justify-center flex-shrink-0">
+                        <Upload className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-foreground text-sm">Create new ads</h3>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground text-lg">Create New Ads for an Existing Campaign</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Add fresh creative to a campaign that's already running
-                      </p>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all mt-1 flex-shrink-0" />
-                  </div>
-                </Card>
-              </button>
+                  </Card>
+                </button>
+              </div>
             </div>
 
           </motion.div>
