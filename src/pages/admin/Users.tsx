@@ -1497,6 +1497,27 @@ export default function AdminUsers() {
                   )}
                 </TabsContent>
 
+                {/* Team Tab */}
+                <TabsContent value="team" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
+                  <Card>
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Users className="w-4 h-4" /> Team Members
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        People who can log in and access this user's brand. Invite teammates, change roles, or remove access on their behalf.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                      {userDetails.brand ? (
+                        <TeamMembersSection brandId={userDetails.brand.id} />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">This user hasn't created a brand yet.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
                 {/* Actions Tab */}
                 <TabsContent value="actions" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
                   {/* Role Management */}
