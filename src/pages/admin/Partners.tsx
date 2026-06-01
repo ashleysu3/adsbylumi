@@ -476,6 +476,33 @@ export default function AdminPartners() {
     toast.success("Referral link copied");
   };
 
+  const syncStripePromo = async () => {
+    if (!editing?.id) { toast.error("Save the partner first"); return; }
+    if (!editing.partner_trial_code) { toast.error("Set a trial code first"); return; }
+    setSyncingPromo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-partner-promo", {
+        body: { partner_id: editing.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`Synced "${(data as any).code}" as Stripe promo code`);
+      setEditing({
+        ...editing,
+        ...({
+          stripe_coupon_id: (data as any).stripe_coupon_id,
+          stripe_promotion_code_id: (data as any).stripe_promotion_code_id,
+          stripe_promo_synced_at: new Date().toISOString(),
+        } as any),
+      });
+      await load();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to sync Stripe promo");
+    } finally {
+      setSyncingPromo(false);
+    }
+  };
+
   const saveConfig = async () => {
     setSavingConfig(true);
     try {
