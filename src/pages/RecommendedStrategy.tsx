@@ -170,7 +170,9 @@ export default function RecommendedStrategy() {
         </Button>
 
         <div className="text-center space-y-2 mb-8">
-          <CyclingBasedOn />
+          <h1 className="text-3xl md:text-4xl font-heading font-bold tracking-tight">
+            <span className="text-gradient-lumi">LUMI recommends</span>
+          </h1>
           {activeBrand && (
             <p className="text-sm text-muted-foreground">
               For <span className="font-medium text-foreground">{activeBrand.name}</span>
