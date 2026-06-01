@@ -128,8 +128,8 @@ export default function AdminPartners() {
   const [welcomePreviewOpen, setWelcomePreviewOpen] = useState(false);
 
   // Global config
-  const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
-    owner_email: "", owner_calendar_url: "", office_hours_url: "", webinar_request_to: "",
+  const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string; brand_assets_url: string }>({
+    owner_email: "", owner_calendar_url: "", office_hours_url: "", webinar_request_to: "", brand_assets_url: "",
   });
   const [savingConfig, setSavingConfig] = useState(false);
 
