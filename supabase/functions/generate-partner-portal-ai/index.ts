@@ -85,13 +85,22 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (appErr || !app) return json({ error: "Application not found" });
 
-    // Load REAL Lumi source-of-truth: admin features catalog + recent changelog + recent partner updates.
-    const [{ data: configRow }, { data: changelog }, { data: partnerUpdates }] = await Promise.all([
+    // Load REAL Lumi source-of-truth: structured features catalog + admin settings + recent changelog + recent partner updates.
+    const [{ data: configRow }, { data: changelog }, { data: partnerUpdates }, { data: featuresRows }] = await Promise.all([
       admin.from("site_settings").select("value").eq("key", "partner_portal_config").maybeSingle(),
       admin.from("changelog_entries").select("title, body, category, created_at").eq("is_user_visible", true).order("created_at", { ascending: false }).limit(25),
       admin.from("partner_updates").select("title, body, published_at").eq("is_published", true).order("published_at", { ascending: false }).limit(15),
+      admin.from("lumi_features").select("name, area, short_description, why_helpful, ideal_audience, status, highlight, marketing_angles, tags").eq("is_active", true).order("sort_order", { ascending: true }),
     ]);
-    const featuresCatalog = ((configRow?.value as any)?.lumi_features_catalog || "").toString().trim();
+    const legacyCatalog = ((configRow?.value as any)?.lumi_features_catalog || "").toString().trim();
+    const structuredCatalogText = (featuresRows || []).map((f: any) => {
+      const parts = [`- ${f.name}${f.area ? ` (${f.area})` : ""}${f.highlight ? " ★" : ""} — ${f.short_description || ""}`];
+      if (f.why_helpful) parts.push(`    why it helps: ${f.why_helpful}`);
+      if (f.ideal_audience) parts.push(`    ideal for: ${f.ideal_audience}`);
+      if (Array.isArray(f.marketing_angles) && f.marketing_angles.length) parts.push(`    angles: ${f.marketing_angles.join(" | ")}`);
+      return parts.join("\n");
+    }).join("\n") || "";
+    const featuresCatalog = [structuredCatalogText, legacyCatalog].filter(Boolean).join("\n\n");
     const changelogText = (changelog || []).map((c: any) => `- [${c.category}] ${c.title}${c.body ? ` — ${c.body}` : ""}`).join("\n") || "(none)";
     const updatesText = (partnerUpdates || []).map((u: any) => `- ${u.title}${u.body ? ` — ${u.body}` : ""}`).join("\n") || "(none)";
 
