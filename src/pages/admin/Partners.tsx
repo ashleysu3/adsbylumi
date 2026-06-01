@@ -1215,35 +1215,81 @@ export default function AdminPartners() {
                   </TabsContent>
                 )}
 
-                {/* AFFILIATE TAB */}
-                {linkedAff && (
-                  <TabsContent value="affiliate" className="space-y-4 pt-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Leads</p><p className="text-xl font-semibold">{linkedAff.leads_count ?? linkedAff.visitors_count ?? 0}</p></div>
-                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Conversions</p><p className="text-xl font-semibold">{linkedAff.conversions_count ?? 0}</p></div>
-                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Earned</p><p className="text-xl font-semibold">${(((linkedAff.earnings_balance?.amount_cents ?? linkedAff.commissions_total_cents) || 0) / 100).toFixed(2)}</p></div>
-                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Status</p><Badge className="capitalize">{linkedAff.state || 'active'}</Badge></div>
+                {/* WELCOME POPUP TAB — controls what the partner's referred users see */}
+                <TabsContent value="welcome" className="space-y-4 pt-3">
+                  <div className="rounded-lg border p-3 bg-muted/30 flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-sm font-medium">What signups using {editing.partner_trial_code || "this code"} will see</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Their photo & name come from the Partner File tab. Everything below shows up in the welcome popup right after a referred user signs up.
+                      </p>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">Referral code</Label>
-                      <p className="text-sm font-mono">{linkedAff.links?.[0]?.token || '—'}</p>
-                    </div>
-                    {linkedAff.links?.[0]?.url && (
-                      <div className="space-y-1">
-                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Referral link</Label>
-                        <div className="flex gap-2">
-                          <Input readOnly value={linkedAff.links[0].url} className="font-mono text-xs" />
-                          <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(linkedAff.links![0].url!); toast.success("Copied"); }}>
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
+                    {editing?.id && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const data: PartnerWelcome = {
+                            partner_display_name: editing.partner_display_name || null,
+                            partner_trial_code: editing.partner_trial_code || null,
+                            partner_title: editing.partner_title || null,
+                            partner_photo_url: editing.partner_photo_url || null,
+                            welcome_message: (editing as any).welcome_message || null,
+                            perks: ((editing as any).perks || []) as any,
+                            support_links: ((editing as any).support_links || []) as any,
+                            audience_strategies: (((editing as any).audience_strategies || []) as StrategyItem[]).filter(s => s.title),
+                          };
+                          setWelcomePreview(data);
+                          setWelcomePreviewOpen(true);
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-1" /> Preview popup
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-lg border p-3">
+                    {editing.partner_photo_url ? (
+                      <img src={editing.partner_photo_url} alt="" className="h-14 w-14 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center text-xl font-semibold">
+                        {(editing.partner_display_name || "?")[0]}
                       </div>
                     )}
-                    <a href="https://app.rewardful.com" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                      Open in Rewardful <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </TabsContent>
-                )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{editing.partner_display_name || "—"}</p>
+                      {editing.partner_title && <p className="text-xs text-muted-foreground truncate">{editing.partner_title}</p>}
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Edit photo & name in the Partner File tab.</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>Custom note from {editing.partner_display_name?.split(" ")[0] || "the partner"}</Label>
+                    <Textarea
+                      rows={4}
+                      value={editing.welcome_message || ""}
+                      onChange={(e) => setEditing({ ...editing, welcome_message: e.target.value })}
+                      placeholder="Personal note from the partner to new signups..."
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Shown in quotes at the top of the welcome popup.</p>
+                  </div>
+
+                  <RepeaterField
+                    label="Bonus perks their referred users get"
+                    items={(editing.perks || []) as any}
+                    onChange={(perks) => setEditing({ ...editing, perks: perks as any })}
+                    fields={[{ key: "title", placeholder: "Perk title (e.g. Free strategy call)" }, { key: "description", placeholder: "Short description" }]}
+                  />
+
+                  <RepeaterField
+                    label="Preferred ad strategies the partner recommends to their audience"
+                    items={(editing.audience_strategies || []) as any}
+                    onChange={(audience_strategies) => setEditing({ ...editing, audience_strategies: audience_strategies as any })}
+                    fields={[{ key: "title", placeholder: "Strategy title (e.g. Lead with a free guide)" }, { key: "description", placeholder: "Why it works for their audience" }]}
+                  />
+                </TabsContent>
+
               </Tabs>
               );
             })()}
