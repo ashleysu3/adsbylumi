@@ -785,12 +785,38 @@ export default function AdminPartners() {
                   </div>
                   <div>
                     <Label>Partner referral link</Label>
-                    <Input
-                      value={editing.referral_link || ""}
-                      onChange={(e) => setEditing({ ...editing, referral_link: e.target.value })}
-                      placeholder="https://adsbylumi.com/?via=ashley"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Signups with this code give the partner referral credit.</p>
+                    {(() => {
+                      const aff = affiliateForPartner(editing);
+                      const autoLink = aff?.links?.[0]?.url || "";
+                      const usingAuto = !editing.referral_link && !!autoLink;
+                      return (
+                        <>
+                          <Input
+                            value={editing.referral_link || autoLink}
+                            onChange={(e) => setEditing({ ...editing, referral_link: e.target.value })}
+                            placeholder="https://adsbylumi.com/?via=ashley"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {usingAuto
+                              ? `Auto-filled from Rewardful${editing.partner_trial_code ? ` and linked to trial code ${editing.partner_trial_code}` : ""}. Edit to override.`
+                              : autoLink
+                                ? "Manual override active. Clear to use the Rewardful link."
+                                : "Signups with this code give the partner referral credit."}
+                          </p>
+                          {usingAuto && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2"
+                              onClick={() => setEditing({ ...editing, referral_link: autoLink })}
+                            >
+                              Save Rewardful link to partner
+                            </Button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
