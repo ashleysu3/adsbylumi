@@ -34,9 +34,23 @@ const SCHEMA = {
         required: ["title", "description", "type"],
       },
     },
+    recommended_features: {
+      type: "array",
+      description: "4 Lumi features this partner's audience would find most helpful/interesting, each with ready-to-share copy the partner can post.",
+      items: {
+        type: "object",
+        properties: {
+          feature: { type: "string", description: "Name of the Lumi feature (e.g. 'AI Ad Script Generator', 'Weekly Performance Reports')." },
+          why_audience_cares: { type: "string", description: "1-2 sentence explanation of why THIS audience specifically would care." },
+          share_copy: { type: "string", description: "Ready-to-paste social/email caption (~2-4 sentences) the partner can post to introduce this feature to their audience. Include a soft mention of using their partner code." },
+        },
+        required: ["feature", "why_audience_cares", "share_copy"],
+      },
+    },
   },
-  required: ["partner_title", "recommended_strategies", "share_resources"],
+  required: ["partner_title", "recommended_strategies", "share_resources", "recommended_features"],
 };
+
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
