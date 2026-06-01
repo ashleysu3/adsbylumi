@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
+import { TeamMembersSection } from "@/components/TeamMembersSection";
 import { format as dfFormat } from "date-fns";
 
 const format = (date: any, fmt: string): string => {
@@ -1034,12 +1035,13 @@ export default function AdminUsers() {
           ) : userDetails && (
             <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col">
               {/* Mobile: scrollable horizontal tabs, Desktop: grid */}
-              <TabsList className="flex sm:grid sm:grid-cols-6 w-full overflow-x-auto gap-1 h-auto p-1">
+              <TabsList className="flex sm:grid sm:grid-cols-7 w-full overflow-x-auto gap-1 h-auto p-1">
                 <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Overview</TabsTrigger>
                 <TabsTrigger value="activity" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Activity</TabsTrigger>
                 <TabsTrigger value="bugs" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Bugs ({userDetails.bugReports.length})</TabsTrigger>
                 <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Notes ({userDetails.adminNotes.length})</TabsTrigger>
                 <TabsTrigger value="billing" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Billing</TabsTrigger>
+                <TabsTrigger value="team" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Team</TabsTrigger>
                 <TabsTrigger value="actions" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Actions</TabsTrigger>
               </TabsList>
 
@@ -1494,6 +1496,27 @@ export default function AdminUsers() {
                       </CardContent>
                     </Card>
                   )}
+                </TabsContent>
+
+                {/* Team Tab */}
+                <TabsContent value="team" className="space-y-3 sm:space-y-4 pr-2 sm:pr-4">
+                  <Card>
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Users className="w-4 h-4" /> Team Members
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        People who can log in and access this user's brand. Invite teammates, change roles, or remove access on their behalf.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
+                      {userDetails.brand ? (
+                        <TeamMembersSection brandId={userDetails.brand.id} />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">This user hasn't created a brand yet.</p>
+                      )}
+                    </CardContent>
+                  </Card>
                 </TabsContent>
 
                 {/* Actions Tab */}
