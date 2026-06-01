@@ -69,6 +69,7 @@ import PartnerDashboard from "./pages/PartnerDashboard";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
+import AdminPayouts from "./pages/admin/Payouts";
 import AdminPartners from "./pages/admin/Partners";
 import AdminPartnerApplications from "./pages/admin/PartnerApplications";
 import AdminEmailLogs from "./pages/admin/EmailLogs";
