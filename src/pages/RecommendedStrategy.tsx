@@ -96,8 +96,18 @@ export default function RecommendedStrategy() {
 
   const handleBuild = () => {
     if (!matched) return;
-    // Hand off to existing create flow with strategy slug
-    navigate(`/create?recommended=${matched.slug}`);
+    const campaigns = matched.campaigns ?? [];
+    const stored = {
+      slug: matched.slug,
+      name: matched.name,
+      why_it_works: matched.why_it_works,
+      intro,
+      campaigns,
+      statuses: campaigns.map(() => "todo" as const),
+      activeIndex: null as number | null,
+    };
+    sessionStorage.setItem("lumi_strategy_plan", JSON.stringify(stored));
+    navigate("/strategy-plan");
   };
 
   return (
