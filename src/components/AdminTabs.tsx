@@ -50,6 +50,7 @@ const adminGroups: AdminGroup[] = [
       { path: "/admin/creative-toolkit", label: "Creative Toolkit", icon: Wrench },
       { path: "/admin/overlay-templates", label: "Overlay Templates", icon: Palette },
       { path: "/admin/emails", label: "Emails", icon: Mail },
+      { path: "/admin/updates", label: "Updates & Newsletter", icon: Mail },
     ],
   },
   {

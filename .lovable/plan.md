@@ -1,99 +1,119 @@
-## Goal
 
-1. Let admins **comp a partner's Lumi membership** with a single toggle on the partner record.
-2. Give partners a **dedicated Partner Portal** they reach from a persistent banner at the top of every Lumi screen, with everything they need to promote Lumi.
+# Lumi Updates → Newsletter System
 
----
+A single admin workflow that captures product updates, drafts both a user newsletter and a partner edition, tracks engagement, and rewards friend referrals.
 
-## 1. Link partners to user accounts + comp toggle
+## 1. Updates hub (Admin)
 
-To both comp memberships and show the banner only to partners, each partner record needs to know which Lumi user is the partner.
+New admin page `/admin/updates`:
+- **Auto-pulled signals** shown as checkable cards:
+  - Recent deploys / git activity (from a new `release_log` table populated via a deploy webhook; backfill manually for now)
+  - Manual changelog entries you log anytime (`changelog_entries` table)
+  - Usage analytics — most-used and least-used features over the last 30 days (from existing event tables; "needs attention" = low usage + recently shipped)
+- Checkbox each item you want to highlight this month
+- Add 2–4 **angle ideas** per highlighted item (AI-suggested, editable: e.g., "time-saver", "before/after", "founder story")
+- A **custom note from Ashley** field
+- "Generate draft" button → calls AI with the selected items + angles + your note
 
-**Migration on `partner_access_tokens`:**
+Reuses existing `partner_updates` table for the items that should also appear in the partner portal — auto-published when included in a sent newsletter.
 
-- `partner_user_id uuid` — the user account that belongs to this partner (nullable; set by admin via email lookup).
-- `partner_email text` — convenience field shown in admin.
-- `membership_comped boolean default false` — when true, subscription checks treat them as a paid Agency-tier user.
-- `comped_at timestamptz`, `comped_by uuid` — audit.
+## 2. Newsletter drafting & editing
 
-**Admin Partners page (`/admin/partners`):**
+New table `newsletter_campaigns` (one row = one monthly send):
+- Stores: month label, selected update IDs, angles, custom note, **user_html**, **partner_html**, **subject_a**, **subject_b** (resend subject), status (`draft|scheduled|sending|sent`), `scheduled_at`, `sent_at`
+- AI generates:
+  - 3 subject line options for each variant (you pick one + a backup for the 48h resend)
+  - **User newsletter body**: product news, friendly Ashley tone, footer with "Forward to a friend → they get Lumi, you get $40 credit" with the user's unique referral URL
+  - **Partner edition body**: same news + appended "How to share this month" section with copy tidbits, swipe captions, and angle ideas. No forward CTA.
+- Rich editor (Tiptap, already in stack pattern) to tweak both bodies and subject lines before scheduling
+- Preview pane that swaps between user and partner views
 
-- New "Partner account" section with:
-  - Email input → "Link account" button (resolves to `auth.users` via existing admin email lookup pattern; stores `partner_user_id`).
-  - Shows linked account email + "Unlink".
-  - Toggle: **"Comp Lumi membership"** (disabled until account is linked). Saves `membership_comped`, `comped_at`, `comped_by`.
+## 3. Sending, scheduling, resend
 
-**Subscription gating:**
+- "Send now" or "Schedule for…"
+- A cron-scheduled edge function `dispatch-newsletter` runs every 5 min, picks up due campaigns, and enqueues one transactional email per recipient via the built-in `send-transactional-email` function (one template `monthly-newsletter` with `variant: user|partner` and per-recipient `referralUrl`)
+- Recipients:
+  - User edition → all users with `newsletter_opt_in = true` (new column on profiles, default true; unsubscribe handled by existing footer)
+  - Partner edition → everyone in `partner_access_tokens` with a linked `partner_user_id`
+- **48h resend with new subject**: a second cron job re-enqueues unopened recipients with `subject_b`. Tracked via `newsletter_sends` rows (one per recipient per variant)
 
-- Extend `SubscriptionContext` (and the server-side check used by edge functions) to treat a user as fully active when a row in `partner_access_tokens` matches `partner_user_id = auth.uid()` AND `membership_comped = true`. They get Agency-tier limits while comped.
+## 4. Open/click tracking & results dashboard
 
----
+- `newsletter_sends` table: campaign_id, recipient_email, variant, message_id, sent_at, opened_at, clicked_at, resent_at
+- Tracking pixel + link wrapping handled inside the `monthly-newsletter` template; an edge function `newsletter-track` records opens/clicks
+- Results view in `/admin/updates/[campaignId]`: total sent, open rate, click rate, top links, partner vs user breakdown, list of who hasn't opened (feeds the resend)
 
-## 2. Partner Portal page
+## 5. Friend-forward + $40 referral credit
 
-New route `**/partner-portal**` (auth-gated, only accessible to linked partners).
+- Footer CTA in user newsletter only: "Know someone who needs Lumi? Send them your link → they get Lumi, you get $40 off your next month"
+- Each user gets a stable `referral_code` (added to `profiles`)
+- Landing on `/?ref=CODE` stores the code in localStorage; checkout edge function reads it and:
+  - On successful paid signup, inserts a row into new `account_credits` table for the referrer ($40, currency USD, applied to next Stripe invoice via `stripe.customers.createBalanceTransaction`)
+  - Records the referral in `referrals` table (referrer_user_id, referred_user_id, status, credited_at)
+- Credit is only granted when the referred user is a **standard** (non-partner) signup — partners already have their own Rewardful flow
+- User-facing "Your credits" card on Settings page shows balance and history
 
-**Sections (all driven by fields already on `partner_access_tokens` plus a few new ones):**
+## 6. What the user (Ashley) sees
 
-1. **Hero** — partner photo + name + "Welcome back, {name}".
-2. **Your referral toolkit**
-  - Big copy-to-clipboard card for their `referral_link`.
-  - Their unique `partner_trial_code` (with copy button) + the trial length they're offering.
-  - "Share preview" — link to `/?code=ASHLEY` so they can see what their audience sees.
-3. **Resources for sharing** (new jsonb `share_resources` on partner row, admin-editable list of `{ title, description, url, type }` — swipe copy, graphics, demo videos, email templates).
-4. **What's new in Lumi** — pulled from existing `site_settings` / changelog data if available; otherwise a new `partner_updates` admin-managed list (title, body, link, published_at). Shows latest 5.
-5. **Get support & grow with us**
-  - "Book a 1:1 call with Ashley" → calendar link (admin-configurable global setting).
-  - "Join office hours" → `/office-hours` link.
-  - "Request a joint webinar / community training" → opens a simple form that emails Ashley (reuses existing Resend setup).
-  - "Email Ashley directly" → `mailto:` with prefilled subject (configurable global setting).
-6. **Your impact** (lightweight) — display the Rewardful-tracked stats if easy; otherwise just a "View earnings on Rewardful" button using the referral link's `?via=` slug.
+```text
+/admin/updates
+├─ "This month's updates" — checklist of auto-pulled + manual items
+├─ Angles & custom note section
+├─ [Generate draft]
+├─ Draft editor (User tab | Partner tab)
+│   ├─ Subject line picker (A + resend B)
+│   └─ Rich text body with merge tags
+├─ [Save draft] [Schedule] [Send now]
+└─ Past campaigns list → click into results dashboard
+```
 
-**Persistent banner:**
+## Technical section
 
-- New `PartnerPortalBanner` component rendered inside `DashboardLayout` (above `SubscriptionBanner`), shown only when the logged-in user is linked to a partner row.
-- Copy: "You're a Lumi Partner — open your Partner Portal" + button → `/partner-portal`.
-- Dismissible per-session (localStorage), but reappears on next login.
+**New tables (all with GRANTs + RLS):**
+- `changelog_entries` (title, body, category, created_by, created_at) — admin-only
+- `release_log` (sha, title, deployed_at, summary) — admin-only, populated manually for now
+- `newsletter_campaigns` (see fields above) — admin-only write, no public read
+- `newsletter_sends` (campaign_id, recipient_email, variant, message_id, sent_at, opened_at, clicked_at, resent_at, resend_message_id) — admin-only read
+- `account_credits` (user_id, amount_cents, currency, source, source_ref, applied_at, stripe_balance_transaction_id) — user can read own
+- `referrals` (referrer_user_id, referred_user_id, referred_email, code, status, credited_at) — user can read own (as referrer)
+- Add `referral_code` (unique) and `newsletter_opt_in` (bool default true) to `profiles`
 
----
+**New edge functions:**
+- `generate-newsletter-draft` — calls Lovable AI (google/gemini-2.5-pro) with selected updates + angles + note; returns `{user_html, partner_html, subject_options:[3], resend_subject_options:[3], partner_share_tidbits}`
+- `suggest-update-angles` — small AI call returning 4 angles per update item
+- `dispatch-newsletter` — cron, drains due campaigns, enqueues per-recipient sends via `send-transactional-email` with idempotency key `nl-{campaign_id}-{variant}-{recipient}`
+- `resend-newsletter-unopened` — cron, runs hourly, finds sends >48h old with `opened_at IS NULL AND resent_at IS NULL`, re-enqueues with `subject_b` and idempotency key `nl-{campaign_id}-{variant}-{recipient}-resend`
+- `newsletter-track` — public GET endpoints for pixel (`/open?s=...`) and link redirect (`/c?s=...&u=...`); writes timestamps
+- `process-referral-credit` — called from Stripe webhook on first successful paid invoice for a referred user; inserts `account_credits` row, calls Stripe `createBalanceTransaction` for -$4000 on referrer's customer
 
-## 3. Global settings used by the portal
+**New transactional template:** `monthly-newsletter.tsx` accepts `{variant, subject, htmlBody, referralUrl?, recipientName?}`. Partner variant omits the forward block entirely. Registered in template registry.
 
-Stored in existing `site_settings` table (one row, key `partner_portal_config`):
+**Cron jobs (via pg_cron):**
+- `dispatch-newsletter` every 5 min
+- `resend-newsletter-unopened` every hour
 
-- `andrew_calendar_url`
-- `andrew_email`
-- `webinar_request_recipient`
-- `default_share_resources` (used as fallback if a partner has none of their own)
+**Auto-pull queries:**
+- Deploys: `release_log` last 30 days
+- Manual: `changelog_entries` last 30 days where `included_in_campaign_id IS NULL`
+- Usage: read from existing analytics events — top 5 / bottom 5 features by event count, plus features deployed in last 30 days with low adoption (flagged "needs attention")
 
-Admin manages these inside the existing `/admin/settings` page (new "Partner Portal" tab).
+**Frontend pages/components:**
+- `src/pages/admin/Updates.tsx` — hub + drafting flow
+- `src/pages/admin/UpdatesResults.tsx` — per-campaign analytics
+- `src/components/admin/UpdatesChecklist.tsx`, `NewsletterEditor.tsx`, `SubjectPicker.tsx`
+- `src/pages/Settings.tsx` — add "Your credits" + "Your referral link" card
+- Hook `useReferralCapture` mounted in `App.tsx` to persist `?ref=` to localStorage
+- Add Updates link to `AdminTabs.tsx`
 
----
+**Reuses existing infrastructure:**
+- `send-transactional-email` (no new sender)
+- `partner_updates` table — auto-publish included items when campaign sends
+- Stripe customer + subscription already wired
+- Admin auth via existing `has_role`
 
-## Technical notes
+## What I'll skip unless you ask
 
-- New edge function `partner-webinar-request` — validates auth + partner status, sends Resend email to Andrew.
-- Reuse `partner-assets` storage bucket for any uploaded resources.
-- `get_partner_welcome` RPC unchanged; add a new RPC `get_my_partner_portal()` that returns the full portal payload for `auth.uid()` (joins partner row + global settings + updates).
-- All new tables/columns get GRANTs + RLS.
-- No changes to public sales / onboarding flow.
-
----
-
-## Files
-
-**New:**
-
-- `supabase/migrations/<ts>_partner_portal.sql`
-- `supabase/functions/partner-webinar-request/index.ts`
-- `src/pages/PartnerPortal.tsx`
-- `src/components/PartnerPortalBanner.tsx`
-- `src/components/admin/PartnerPortalSettings.tsx`
-
-**Edited:**
-
-- `src/pages/admin/Partners.tsx` — link account + comp toggle + share resources repeater + partner updates repeater
-- `src/pages/admin/Settings.tsx` — new Partner Portal tab
-- `src/App.tsx` — `/partner-portal` route
-- `src/components/DashboardLayout.tsx` + `MobileHeader.tsx` — render `PartnerPortalBanner`
-- `src/contexts/SubscriptionContext.tsx` — honor `membership_comped`
+- A/B testing beyond the 48h resend
+- Multi-segment user lists (only opt-in / opt-out)
+- Editing already-sent campaigns
+- Auto-publishing release notes from GitHub (manual `release_log` for now; add webhook later)

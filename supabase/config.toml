@@ -157,3 +157,13 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = false
   [functions.winback-offer]
     verify_jwt = false
+  [functions.newsletter-track]
+    verify_jwt = false
+  [functions.dispatch-newsletter]
+    verify_jwt = true
+  [functions.generate-newsletter-draft]
+    verify_jwt = true
+  [functions.suggest-update-angles]
+    verify_jwt = true
+  [functions.capture-referral]
+    verify_jwt = true

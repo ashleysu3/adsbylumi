@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_credits: {
+        Row: {
+          amount_cents: number
+          applied_at: string | null
+          created_at: string
+          currency: string
+          id: string
+          note: string | null
+          source: string
+          source_ref: string | null
+          stripe_balance_transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          applied_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          note?: string | null
+          source: string
+          source_ref?: string | null
+          stripe_balance_transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          applied_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          note?: string | null
+          source?: string
+          source_ref?: string | null
+          stripe_balance_transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ad_action_log: {
         Row: {
           action_detail: Json
@@ -1087,6 +1126,39 @@ export type Database = {
         }
         Relationships: []
       }
+      changelog_entries: {
+        Row: {
+          body: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          id: string
+          included_in_campaign_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          included_in_campaign_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          included_in_campaign_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_portal_activity: {
         Row: {
           action: string
@@ -1774,6 +1846,119 @@ export type Database = {
           },
         ]
       }
+      newsletter_campaigns: {
+        Row: {
+          angles: Json
+          created_at: string
+          created_by: string | null
+          custom_note: string | null
+          id: string
+          month_label: string
+          partner_html: string | null
+          partner_resend_subject: string | null
+          partner_subject: string | null
+          scheduled_at: string | null
+          selected_update_ids: string[]
+          sent_at: string | null
+          status: string
+          updated_at: string
+          user_html: string | null
+          user_resend_subject: string | null
+          user_subject: string | null
+        }
+        Insert: {
+          angles?: Json
+          created_at?: string
+          created_by?: string | null
+          custom_note?: string | null
+          id?: string
+          month_label: string
+          partner_html?: string | null
+          partner_resend_subject?: string | null
+          partner_subject?: string | null
+          scheduled_at?: string | null
+          selected_update_ids?: string[]
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_html?: string | null
+          user_resend_subject?: string | null
+          user_subject?: string | null
+        }
+        Update: {
+          angles?: Json
+          created_at?: string
+          created_by?: string | null
+          custom_note?: string | null
+          id?: string
+          month_label?: string
+          partner_html?: string | null
+          partner_resend_subject?: string | null
+          partner_subject?: string | null
+          scheduled_at?: string | null
+          selected_update_ids?: string[]
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+          user_html?: string | null
+          user_resend_subject?: string | null
+          user_subject?: string | null
+        }
+        Relationships: []
+      }
+      newsletter_sends: {
+        Row: {
+          campaign_id: string
+          click_count: number
+          clicked_at: string | null
+          id: string
+          message_id: string | null
+          opened_at: string | null
+          recipient_email: string
+          recipient_user_id: string | null
+          resend_message_id: string | null
+          resent_at: string | null
+          sent_at: string
+          variant: string
+        }
+        Insert: {
+          campaign_id: string
+          click_count?: number
+          clicked_at?: string | null
+          id?: string
+          message_id?: string | null
+          opened_at?: string | null
+          recipient_email: string
+          recipient_user_id?: string | null
+          resend_message_id?: string | null
+          resent_at?: string | null
+          sent_at?: string
+          variant: string
+        }
+        Update: {
+          campaign_id?: string
+          click_count?: number
+          clicked_at?: string | null
+          id?: string
+          message_id?: string | null
+          opened_at?: string | null
+          recipient_email?: string
+          recipient_user_id?: string | null
+          resend_message_id?: string | null
+          resent_at?: string | null
+          sent_at?: string
+          variant?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "newsletter_sends_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "newsletter_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offers: {
         Row: {
           ai_generated_description: boolean | null
@@ -2152,8 +2337,10 @@ export type Database = {
           id: string
           is_agency_user: boolean | null
           is_beta_user: boolean
+          newsletter_opt_in: boolean
           onboarding_email_step: number
           policy_acknowledged_at: string | null
+          referral_code: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2167,8 +2354,10 @@ export type Database = {
           id: string
           is_agency_user?: boolean | null
           is_beta_user?: boolean
+          newsletter_opt_in?: boolean
           onboarding_email_step?: number
           policy_acknowledged_at?: string | null
+          referral_code?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2182,8 +2371,10 @@ export type Database = {
           id?: string
           is_agency_user?: boolean | null
           is_beta_user?: boolean
+          newsletter_opt_in?: boolean
           onboarding_email_step?: number
           policy_acknowledged_at?: string | null
+          referral_code?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -2239,6 +2430,42 @@ export type Database = {
           sort_order?: number
           updated_at?: string
           why_it_works?: string
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          code: string
+          created_at: string
+          credited_at: string | null
+          id: string
+          referred_email: string
+          referred_user_id: string | null
+          referrer_user_id: string
+          source: string
+          status: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          credited_at?: string | null
+          id?: string
+          referred_email: string
+          referred_user_id?: string | null
+          referrer_user_id: string
+          source?: string
+          status?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          credited_at?: string | null
+          id?: string
+          referred_email?: string
+          referred_user_id?: string | null
+          referrer_user_id?: string
+          source?: string
+          status?: string
         }
         Relationships: []
       }
@@ -2851,6 +3078,7 @@ export type Database = {
     }
     Functions: {
       accept_team_invite: { Args: { p_token: string }; Returns: Json }
+      admin_get_newsletter_signals: { Args: never; Returns: Json }
       admin_link_partner_user: {
         Args: { p_email: string; p_partner_id: string }
         Returns: Json
@@ -2866,8 +3094,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      generate_referral_code: { Args: never; Returns: string }
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
       get_my_partner_portal: { Args: never; Returns: Json }
+      get_my_referral_summary: { Args: never; Returns: Json }
       get_partner_welcome: { Args: { p_code: string }; Returns: Json }
       get_shared_report: { Args: { p_share_token: string }; Returns: Json }
       get_winback_offer_by_token: { Args: { p_token: string }; Returns: Json }
