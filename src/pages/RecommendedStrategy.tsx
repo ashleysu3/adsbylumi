@@ -70,7 +70,7 @@ function CyclingBasedOn() {
     <div className="text-center">
       <h1 className="text-2xl font-heading font-bold leading-snug">
         Based on{" "}
-        <span className="relative inline-block min-w-[12ch] text-left">
+        <span className="relative inline-block min-w-[12ch] text-center">
           <AnimatePresence mode="wait">
             <motion.span
               key={index}
@@ -78,7 +78,7 @@ function CyclingBasedOn() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="absolute left-0 top-0 whitespace-nowrap text-gradient-lumi"
+              className="absolute left-1/2 top-0 -translate-x-1/2 whitespace-nowrap text-gradient-lumi"
             >
               {CYCLE_PHRASES[index]}
             </motion.span>
