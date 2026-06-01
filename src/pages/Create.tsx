@@ -665,6 +665,7 @@ export default function Create() {
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto">
+        <StrategyPlanBanner />
         {/* Resume Progress Prompt - Enhanced with preview */}
         <AnimatePresence>
           {showResumePrompt && savedProgress &&
