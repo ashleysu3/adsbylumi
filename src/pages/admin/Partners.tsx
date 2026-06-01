@@ -29,8 +29,25 @@ interface Partner {
   support_links: LinkItem[];
   recommended_strategies: StrategyItem[];
   is_active: boolean;
+  trial_days: number;
+  referral_link: string | null;
   created_at: string;
 }
+
+const blankForm = (): Partial<Partner> => ({
+  email: "",
+  partner_trial_code: "",
+  partner_display_name: "",
+  partner_title: "",
+  partner_photo_url: "",
+  welcome_message: "",
+  perks: [],
+  support_links: [],
+  recommended_strategies: [],
+  is_active: true,
+  trial_days: 14,
+  referral_link: "",
+});
 
 const blankForm = (): Partial<Partner> => ({
   email: "",
