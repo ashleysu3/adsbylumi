@@ -165,5 +165,7 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.suggest-update-angles]
     verify_jwt = true
+  [functions.suggest-update-ideas]
+    verify_jwt = true
   [functions.capture-referral]
     verify_jwt = true
