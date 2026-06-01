@@ -271,8 +271,8 @@ export default function RecommendedStrategy() {
               </p>
             )}
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => setStep("goal")}>
-                Try another goal
+              <Button variant="outline" onClick={() => navigate("/create")}>
+                Pick a campaign myself
               </Button>
               <Button onClick={() => navigate("/create")}>
                 <CheckCircle2 className="h-4 w-4 mr-1" /> Got it
