@@ -504,6 +504,11 @@ export default function Onboarding() {
                       <Sparkles className="h-3 w-3 animate-pulse" />
                       Analyzing your website...
                     </>
+                  ) : extractError ? (
+                    <>
+                      <AlertCircle className="h-3 w-3 text-destructive" />
+                      <span className="text-destructive">{extractError}</span>
+                    </>
                   ) : hasExtracted ? (
                     <>
                       <CheckCircle2 className="h-3 w-3 text-green-500" />
