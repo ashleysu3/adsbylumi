@@ -2092,6 +2092,60 @@ export type Database = {
         }
         Relationships: []
       }
+      recommended_strategies: {
+        Row: {
+          business_model: string[]
+          campaigns: Json
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          industry: string[]
+          is_active: boolean
+          keywords: string[]
+          name: string
+          primary_goals: string[]
+          slug: string
+          sort_order: number
+          updated_at: string
+          why_it_works: string
+        }
+        Insert: {
+          business_model?: string[]
+          campaigns?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          industry?: string[]
+          is_active?: boolean
+          keywords?: string[]
+          name: string
+          primary_goals?: string[]
+          slug: string
+          sort_order?: number
+          updated_at?: string
+          why_it_works?: string
+        }
+        Update: {
+          business_model?: string[]
+          campaigns?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          industry?: string[]
+          is_active?: boolean
+          keywords?: string[]
+          name?: string
+          primary_goals?: string[]
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+          why_it_works?: string
+        }
+        Relationships: []
+      }
       review_logs: {
         Row: {
           action_plan: string | null
@@ -2246,6 +2300,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      strategy_requests: {
+        Row: {
+          admin_notes: string | null
+          admin_response: Json | null
+          brand_id: string
+          brand_snapshot: Json
+          created_at: string
+          id: string
+          responded_at: string | null
+          status: string
+          user_goal: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          admin_response?: Json | null
+          brand_id: string
+          brand_snapshot?: Json
+          created_at?: string
+          id?: string
+          responded_at?: string | null
+          status?: string
+          user_goal?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          admin_response?: Json | null
+          brand_id?: string
+          brand_snapshot?: Json
+          created_at?: string
+          id?: string
+          responded_at?: string | null
+          status?: string
+          user_goal?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       subscriptions: {
         Row: {
