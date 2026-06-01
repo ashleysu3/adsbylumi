@@ -286,8 +286,8 @@ export default function AdminUpdates() {
                 <p className="text-sm text-muted-foreground">Check the items to highlight. Hit "Suggest angles" for ideas on how to talk about each one.</p>
               </CardHeader>
               <CardContent className="space-y-2">
-                {entries.length === 0 && <p className="text-sm text-muted-foreground">No changelog entries yet. Add one in the Changelog tab.</p>}
-                {entries.map((e) => (
+                {entries.filter((e) => e.approval_status !== "draft" && e.approval_status !== "rejected").length === 0 && <p className="text-sm text-muted-foreground">No approved entries yet. Add one (or approve a draft) in the Changelog tab.</p>}
+                {entries.filter((e) => e.approval_status !== "draft" && e.approval_status !== "rejected").map((e) => (
                   <div key={e.id} className="flex items-start gap-3 p-3 border rounded-lg">
                     <Checkbox checked={selectedIds.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
                     <div className="flex-1 min-w-0">
