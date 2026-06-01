@@ -121,6 +121,8 @@ export default function AdminPartners() {
   const [generatingAI, setGeneratingAI] = useState(false);
   const [draftingEmail, setDraftingEmail] = useState(false);
   const [emailDraft, setEmailDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
+  const [welcomePreview, setWelcomePreview] = useState<PartnerWelcome | null>(null);
+  const [welcomePreviewOpen, setWelcomePreviewOpen] = useState(false);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
