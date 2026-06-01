@@ -251,7 +251,7 @@ export default function Create() {
     setGeneratedAngles([]);
     setSelectedCreativeTemplates([]);
     setShowSocialGrowthFlow(false);
-    setCurrentStep(0);
+    setCurrentStep(fromStrategy ? 1 : 0);
   }, [activeBrand?.id]);
 
   const fetchData = async () => {
