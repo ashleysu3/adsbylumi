@@ -227,8 +227,48 @@ Deno.serve(async (req) => {
       }
     }
 
-    // If the fetch outright failed, surface a real error so the user knows
-    // — instead of letting the AI invent generic content.
+    // If the direct fetch failed (Cloudflare, WAF, JS-rendered, etc.) or returned
+    // too little content, fall back to Firecrawl which handles bot protection.
+    if (fetchFailed || !websiteContent || websiteContent.length < 50) {
+      const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
+      if (FIRECRAWL_API_KEY) {
+        try {
+          console.log('Direct fetch insufficient, trying Firecrawl fallback...');
+          const fcRes = await fetch('https://api.firecrawl.dev/v2/scrape', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              url: websiteUrl,
+              formats: ['markdown'],
+              onlyMainContent: true,
+            }),
+          });
+          const fcData = await fcRes.json().catch(() => null);
+          const md: string | undefined =
+            fcData?.data?.markdown || fcData?.markdown;
+          const meta = fcData?.data?.metadata || fcData?.metadata || {};
+          if (fcRes.ok && md && md.length > 50) {
+            const parts: string[] = [];
+            if (meta?.title) parts.push(`PAGE TITLE: ${meta.title}`);
+            if (meta?.description) parts.push(`META DESCRIPTION: ${meta.description}`);
+            parts.push(`PAGE CONTENT:\n${md.substring(0, 4000)}`);
+            websiteContent = parts.join('\n\n');
+            fetchFailed = false;
+            console.log('Firecrawl fallback success, content length:', websiteContent.length);
+          } else {
+            console.warn('Firecrawl fallback failed:', fcRes.status, JSON.stringify(fcData)?.slice(0, 300));
+          }
+        } catch (fcErr: any) {
+          console.error('Firecrawl fallback error:', fcErr?.message || fcErr);
+        }
+      } else {
+        console.warn('FIRECRAWL_API_KEY not configured — cannot fall back.');
+      }
+    }
+
     if (fetchFailed || !websiteContent || websiteContent.length < 50) {
       return new Response(
         JSON.stringify({ error: fetchErrorMessage || "We couldn't read enough content from that page to analyze your brand." }),
