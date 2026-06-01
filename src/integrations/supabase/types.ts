@@ -2103,6 +2103,7 @@ export type Database = {
           id: string
           is_active: boolean
           membership_comped: boolean
+          partner_application_id: string | null
           partner_display_name: string | null
           partner_email: string | null
           partner_photo_url: string | null
@@ -2128,6 +2129,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           membership_comped?: boolean
+          partner_application_id?: string | null
           partner_display_name?: string | null
           partner_email?: string | null
           partner_photo_url?: string | null
@@ -2153,6 +2155,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           membership_comped?: boolean
+          partner_application_id?: string | null
           partner_display_name?: string | null
           partner_email?: string | null
           partner_photo_url?: string | null
@@ -2169,7 +2172,15 @@ export type Database = {
           trial_days?: number
           welcome_message?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "partner_access_tokens_partner_application_id_fkey"
+            columns: ["partner_application_id"]
+            isOneToOne: false
+            referencedRelation: "partner_applications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       partner_applications: {
         Row: {
