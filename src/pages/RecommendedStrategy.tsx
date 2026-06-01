@@ -239,7 +239,7 @@ export default function RecommendedStrategy() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setStep("goal")} className="flex-1">
+              <Button variant="outline" onClick={() => navigate("/create")} className="flex-1">
                 Pick a different goal
               </Button>
               <Button onClick={handleBuild} className="flex-1">
