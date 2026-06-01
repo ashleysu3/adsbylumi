@@ -262,6 +262,7 @@ export default function AdminPartners() {
         perks: editing.perks || [],
         support_links: editing.support_links || [],
         recommended_strategies: editing.recommended_strategies || [],
+        audience_strategies: editing.audience_strategies || [],
         share_resources: editing.share_resources || [],
         recommended_features: editing.recommended_features || [],
         is_active: editing.is_active ?? true,
