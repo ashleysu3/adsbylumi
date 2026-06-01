@@ -37,6 +37,8 @@ export default function PartnerPortal() {
   const [welcomePreview, setWelcomePreview] = useState<PartnerWelcome | null>(null);
   const [welcomePreviewOpen, setWelcomePreviewOpen] = useState(false);
   const [loadingWelcomePreview, setLoadingWelcomePreview] = useState(false);
+  const [earnings, setEarnings] = useState<any | null>(null);
+  const [earningsLoading, setEarningsLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
