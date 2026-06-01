@@ -30,6 +30,8 @@ Deno.serve(async (req) => {
       referral_link,
       selected_ideas = [],
       selected_resources = [],
+      booking_url = "",
+      reply_to_email = "",
     } = body;
 
     if (!partner_display_name) return json({ error: "partner_display_name required" });
