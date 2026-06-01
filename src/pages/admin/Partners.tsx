@@ -37,6 +37,7 @@ interface Partner {
   support_links: LinkItem[];
   recommended_strategies: StrategyItem[];
   share_resources: ResourceItem[];
+  recommended_features: FeatureItem[];
   is_active: boolean;
   trial_days: number;
   referral_link: string | null;
