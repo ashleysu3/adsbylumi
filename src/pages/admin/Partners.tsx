@@ -686,6 +686,18 @@ export default function AdminPartners() {
             <div><Label>Book-a-call URL</Label><Input value={config.owner_calendar_url} onChange={(e) => setConfig({ ...config, owner_calendar_url: e.target.value })} placeholder="https://cal.com/..." /></div>
             <div><Label>Office hours URL (optional)</Label><Input value={config.office_hours_url} onChange={(e) => setConfig({ ...config, office_hours_url: e.target.value })} placeholder="https://meet.google.com/..." /></div>
             <div className="sm:col-span-2"><Label>Lumi brand assets (Google Drive folder)</Label><Input value={config.brand_assets_url} onChange={(e) => setConfig({ ...config, brand_assets_url: e.target.value })} placeholder="https://drive.google.com/drive/folders/..." /><p className="text-xs text-muted-foreground mt-1">Shown to every partner in their portal — logos, headshots, graphics, etc.</p></div>
+            <div className="sm:col-span-2">
+              <Label>Lumi features catalog (grounds AI feature suggestions)</Label>
+              <Textarea
+                rows={8}
+                value={config.lumi_features_catalog}
+                onChange={(e) => setConfig({ ...config, lumi_features_catalog: e.target.value })}
+                placeholder={`One feature per line. Example:\n- AI Ad Planner — builds full Meta strategy from your offer URL\n- Talking-head Script Generator — 30s scripts with hooks + B-roll shot lists\n- Weekly Performance Reports — auto-emailed KPI + fatigue analysis\n- Creative Mix Bundles — headlines, primary copy, carousel outlines in one click`}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                The AI will ONLY pick "Lumi features your audience will love" from this list, your recent product changelog, and your partner updates above. Keep it current with what's actually shipped or having a moment.
+              </p>
+            </div>
             <div className="sm:col-span-2"><Button onClick={saveConfig} disabled={savingConfig}>{savingConfig && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Save portal settings</Button></div>
           </CardContent>
         </Card>
