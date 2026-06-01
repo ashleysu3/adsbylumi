@@ -1356,7 +1356,7 @@ export default function AdPerformance() {
 
                   <div className="flex justify-end pt-2">
                     <Button variant="ghost" size="sm" onClick={() => openDrawer(c.workspace_id)}>
-                      View Campaign <ExternalLink className="h-3 w-3 ml-1" />
+                      View Details <ExternalLink className="h-3 w-3 ml-1" />
                     </Button>
                   </div>
                 </CardContent>
