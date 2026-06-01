@@ -51,8 +51,7 @@ type MatchedStrategy = {
 export default function RecommendedStrategy() {
   const navigate = useNavigate();
   const { activeBrand, loading: brandsLoading } = useBrand();
-  const [step, setStep] = useState<"goal" | "thinking" | "result">("goal");
-  const [goal, setGoal] = useState<string | null>(null);
+  const [step, setStep] = useState<"thinking" | "result" | "error">("thinking");
   const [matched, setMatched] = useState<MatchedStrategy | null>(null);
   const [intro, setIntro] = useState<string>("");
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
@@ -65,15 +64,14 @@ export default function RecommendedStrategy() {
     }
   }, [brandsLoading, activeBrand, navigate]);
 
-  const runRecommendation = async (selectedGoal: string) => {
+  const runRecommendation = async () => {
     if (!activeBrand) return;
-    setGoal(selectedGoal);
     setStep("thinking");
     setErrorMsg(null);
     try {
       const { data, error } = await supabase.functions.invoke(
         "recommend-strategy",
-        { body: { brand_id: activeBrand.id, user_goal: selectedGoal } },
+        { body: { brand_id: activeBrand.id, user_goal: "auto" } },
       );
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -89,10 +87,17 @@ export default function RecommendedStrategy() {
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err?.message ?? "Something went wrong");
-      setStep("goal");
+      setStep("error");
       toast.error(err?.message ?? "Could not get a recommendation");
     }
   };
+
+  useEffect(() => {
+    if (activeBrand && step === "thinking" && !matched) {
+      runRecommendation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrand]);
 
   const handleBuild = () => {
     if (!matched) return;
@@ -140,39 +145,22 @@ export default function RecommendedStrategy() {
           )}
         </div>
 
-        {step === "goal" && (
+        {step === "error" && (
           <motion.div
-            key="goal"
+            key="error"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-3"
+            className="text-center py-10 space-y-4"
           >
-            <p className="text-sm font-medium text-foreground mb-3">
-              What's your #1 goal right now?
+            <p className="text-sm text-destructive">
+              {errorMsg ?? "We couldn't generate a recommendation right now."}
             </p>
-            {GOALS.map((g) => {
-              const Icon = g.icon;
-              return (
-                <button
-                  key={g.id}
-                  onClick={() => runRecommendation(g.id)}
-                  className="w-full text-left group"
-                >
-                  <Card className="p-4 hover:border-primary/50 hover:shadow-glow transition-all cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                        <Icon className="h-5 w-5 text-foreground" />
-                      </div>
-                      <div className="flex-1 font-medium">{g.title}</div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                    </div>
-                  </Card>
-                </button>
-              );
-            })}
-            {errorMsg && (
-              <p className="text-sm text-destructive text-center pt-2">{errorMsg}</p>
-            )}
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" onClick={() => navigate("/create")}>
+                Pick a campaign myself
+              </Button>
+              <Button onClick={runRecommendation}>Try again</Button>
+            </div>
           </motion.div>
         )}
 
@@ -251,7 +239,7 @@ export default function RecommendedStrategy() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setStep("goal")} className="flex-1">
+              <Button variant="outline" onClick={() => navigate("/create")} className="flex-1">
                 Pick a different goal
               </Button>
               <Button onClick={handleBuild} className="flex-1">
@@ -283,8 +271,8 @@ export default function RecommendedStrategy() {
               </p>
             )}
             <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={() => setStep("goal")}>
-                Try another goal
+              <Button variant="outline" onClick={() => navigate("/create")}>
+                Pick a campaign myself
               </Button>
               <Button onClick={() => navigate("/create")}>
                 <CheckCircle2 className="h-4 w-4 mr-1" /> Got it
