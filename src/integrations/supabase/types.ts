@@ -2118,6 +2118,9 @@ export type Database = {
           referral_link: string | null
           rewardful_affiliate_id: string | null
           share_resources: Json
+          stripe_coupon_id: string | null
+          stripe_promo_synced_at: string | null
+          stripe_promotion_code_id: string | null
           support_links: Json
           token: string
           trial_days: number
@@ -2144,6 +2147,9 @@ export type Database = {
           referral_link?: string | null
           rewardful_affiliate_id?: string | null
           share_resources?: Json
+          stripe_coupon_id?: string | null
+          stripe_promo_synced_at?: string | null
+          stripe_promotion_code_id?: string | null
           support_links?: Json
           token?: string
           trial_days?: number
@@ -2170,6 +2176,9 @@ export type Database = {
           referral_link?: string | null
           rewardful_affiliate_id?: string | null
           share_resources?: Json
+          stripe_coupon_id?: string | null
+          stripe_promo_synced_at?: string | null
+          stripe_promotion_code_id?: string | null
           support_links?: Json
           token?: string
           trial_days?: number
