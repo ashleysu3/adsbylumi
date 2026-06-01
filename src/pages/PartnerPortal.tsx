@@ -14,7 +14,7 @@ import { PartnerWelcomeModal, type PartnerWelcome } from "@/components/PartnerWe
 
 interface PortalData {
   partner: any;
-  updates: Array<{ id: string; title: string; body?: string; link_url?: string; link_label?: string; published_at: string }>;
+  updates: Array<{ id: string; title: string; body?: string; link_url?: string; link_label?: string; published_at: string; source?: string; category?: string }>;
   config: {
     owner_calendar_url?: string;
     owner_email?: string;
@@ -342,9 +342,14 @@ export default function PartnerPortal() {
               <p className="text-sm text-muted-foreground">No updates yet — check back soon.</p>
             )}
             {data.updates.map((u) => (
-              <div key={u.id} className="border-l-2 border-primary/40 pl-3">
-                <div className="flex items-baseline justify-between gap-2">
-                  <h4 className="font-medium">{u.title}</h4>
+              <div key={`${u.source || 'u'}-${u.id}`} className="border-l-2 border-primary/40 pl-3">
+                <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-medium">{u.title}</h4>
+                    {u.source === 'changelog' && u.category && (
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{u.category}</span>
+                    )}
+                  </div>
                   <span className="text-xs text-muted-foreground">{new Date(u.published_at).toLocaleDateString()}</span>
                 </div>
                 {u.body && <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{u.body}</p>}

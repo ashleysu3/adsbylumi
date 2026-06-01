@@ -85,6 +85,16 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (appErr || !app) return json({ error: "Application not found" });
 
+    // Load REAL Lumi source-of-truth: admin features catalog + recent changelog + recent partner updates.
+    const [{ data: configRow }, { data: changelog }, { data: partnerUpdates }] = await Promise.all([
+      admin.from("site_settings").select("value").eq("key", "partner_portal_config").maybeSingle(),
+      admin.from("changelog_entries").select("title, body, category, created_at").eq("is_user_visible", true).order("created_at", { ascending: false }).limit(25),
+      admin.from("partner_updates").select("title, body, published_at").eq("is_published", true).order("published_at", { ascending: false }).limit(15),
+    ]);
+    const featuresCatalog = ((configRow?.value as any)?.lumi_features_catalog || "").toString().trim();
+    const changelogText = (changelog || []).map((c: any) => `- [${c.category}] ${c.title}${c.body ? ` — ${c.body}` : ""}`).join("\n") || "(none)";
+    const updatesText = (partnerUpdates || []).map((u: any) => `- ${u.title}${u.body ? ` — ${u.body}` : ""}`).join("\n") || "(none)";
+
     // 1. Firecrawl the website for content + branding (logo).
     let pageMarkdown = "";
     let pageSummary = "";
@@ -120,7 +130,9 @@ Deno.serve(async (req) => {
 Lumi (adsbylumi.com) is a Meta Ads assistant for coaches, course creators, and service providers — it builds strategy, scripts, copy, and creative direction without requiring ads expertise.
 Given a partner's website + audience info, produce a customized portal package: a short title/subtitle, recommended ways for THEM to market Lumi to THEIR audience, and a swipe file (ready-to-paste copy + marketing ideas + collaboration ideas with the Lumi team).
 Tone: warm, advisory ("We recommend…"), no hype, no "secret/guaranteed/overnight" language. Be specific to the partner's actual niche.
-Never suggest landing-page or retargeting optimizations.`;
+Never suggest landing-page or retargeting optimizations.
+
+CRITICAL GROUNDING RULE for recommended_features: You MUST only choose features, updates, fixes, or highlights that are explicitly listed in the LUMI FEATURES CATALOG, RECENT PRODUCT CHANGELOG, or RECENT PARTNER UPDATES sections below. Do NOT invent or imagine features. If those sources are sparse, return fewer items (or an empty array) rather than making anything up. Use feature names verbatim from the source material.`;
 
     const userPrompt = `PARTNER
 Name: ${app.first_name} ${app.last_name}
@@ -136,9 +148,18 @@ ${pageMarkdown || "(none)"}
 
 DETECTED LOGO URL (use as partner_photo_url if it looks like a real logo): ${logoUrl || "(none)"}
 
+=== LUMI FEATURES CATALOG (admin-maintained list of real, currently-shipped features) ===
+${featuresCatalog || "(not configured)"}
+
+=== RECENT PRODUCT CHANGELOG (real shipped updates & fixes) ===
+${changelogText}
+
+=== RECENT PARTNER UPDATES (real announcements shared with partners) ===
+${updatesText}
+
 Generate the portal package now. For share_resources, mix the 6 items as roughly: 2x type=copy (full ready-to-post emails or social captions inviting their audience to try Lumi with their partner code), 2x type=idea (specific marketing campaign ideas they can run), 2x type=collab (ideas for joint things the Lumi team could do with them — webinar, guest workshop, swipe-file giveaway, podcast, etc).
 
-For recommended_features, choose 4 Lumi capabilities this audience would find most useful (examples to draw from: AI ad strategy planner, talking-head script generator, hook/headline library, creative direction packs, performance benchmarks + weekly reports, fatigue/scaling recommendations, broad-audience campaign builder, Meta connection without needing Ads Manager skills). For each, write share_copy as a ready-to-paste caption/email blurb that mentions the trial code naturally.`;
+For recommended_features, pick up to 4 of the MOST RELEVANT items for this audience FROM THE THREE GROUNDED SOURCES ABOVE (catalog, changelog, partner updates). You may select brand-new updates/fixes OR existing features worth re-highlighting. Use the exact feature name from the source. For each, write share_copy as a ready-to-paste caption/email blurb that mentions the partner's trial code naturally. If all three sources are empty, return an empty array — do NOT invent features.`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
