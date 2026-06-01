@@ -14,7 +14,6 @@ import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { BRollLibrary } from "@/components/BRollLibrary";
 import { BRollLibrariesManager } from "@/components/BRollLibrariesManager";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
-import { StylePreviewPanel } from "@/components/StylePreviewPanel";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
 import { DEFAULT_OVERLAY_STYLE } from "@/components/VideoTextPreview";
 import { Building2, Smile, X, Loader2, Palette } from "lucide-react";
@@ -192,230 +191,217 @@ export default function Style() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
-          <div className="space-y-6 md:space-y-8 min-w-0">
-        {/* Copy Voice */}
-        <Card variant="glow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Ad Copy Voice
-            </CardTitle>
-            <CardDescription>
-              Should your ads say "I" or "We"? This applies to all generated ad copy for this brand.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => handleSaveCopyPerspective("I")}
-                className={cn(
-                  "rounded-xl border-2 p-4 text-left transition-all",
-                  brand.copy_perspective !== "We"
-                    ? "border-primary bg-primary/5 shadow-sm"
-                    : "border-border hover:border-muted-foreground/50"
-                )}
-              >
-                <span className="font-semibold text-sm">Personal "I"</span>
-                <p className="text-xs text-muted-foreground mt-1 italic">
-                  "I help entrepreneurs scale..."
-                </p>
-              </button>
-              <button
-                onClick={() => handleSaveCopyPerspective("We")}
-                className={cn(
-                  "rounded-xl border-2 p-4 text-left transition-all",
-                  brand.copy_perspective === "We"
-                    ? "border-primary bg-primary/5 shadow-sm"
-                    : "border-border hover:border-muted-foreground/50"
-                )}
-              >
-                <span className="font-semibold text-sm">Team "We"</span>
-                <p className="text-xs text-muted-foreground mt-1 italic">
-                  "We help entrepreneurs scale..."
-                </p>
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Emoji Settings */}
-        <Card variant="glow">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Smile className="h-5 w-5" />
-              Emoji Preferences
-            </CardTitle>
-            <CardDescription>
-              Control how emojis are used in your smart-generated ad copy.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label className="text-base">Use Emojis in Copy</Label>
-                <p className="text-sm text-muted-foreground">
-                  Enable or disable emoji usage in generated headlines, descriptions, and primary copy
-                </p>
-              </div>
-              <Switch
-                checked={emojiSettings.use_emojis}
-                onCheckedChange={(checked) => setEmojiSettings((prev) => ({ ...prev, use_emojis: checked }))}
-              />
-            </div>
-
-            {emojiSettings.use_emojis && (
-              <>
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-base">Your Brand Emojis</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Choose up to 6 emojis that represent your brand. These will be used in your ad copy.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {emojiSettings.brand_emojis.map((emoji) => (
-                      <div
-                        key={emoji}
-                        className="flex items-center gap-1 px-3 py-2 bg-muted rounded-lg border"
-                      >
-                        <span className="text-xl">{emoji}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5 hover:bg-destructive/20"
-                          onClick={() => removeEmoji(emoji)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {emojiSettings.brand_emojis.length < 6 && (
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <EmojiQuickPicker
-                        onSelect={(emoji) => {
-                          if (emojiSettings.brand_emojis.length >= 6) {
-                            toast.error("Maximum 6 emojis allowed");
-                            return;
-                          }
-                          if (emojiSettings.brand_emojis.includes(emoji)) {
-                            toast.error("Emoji already added");
-                            return;
-                          }
-                          setEmojiSettings((prev) => ({
-                            ...prev,
-                            brand_emojis: [...prev.brand_emojis, emoji],
-                          }));
-                        }}
-                        selectedEmojis={emojiSettings.brand_emojis}
-                      />
-                      <span className="text-xs text-muted-foreground">or</span>
-                      <div className="flex gap-2">
-                        <Input
-                          value={newEmoji}
-                          onChange={(e) => setNewEmoji(e.target.value)}
-                          placeholder="Paste emoji..."
-                          className="w-24"
-                          maxLength={4}
-                        />
-                        <Button variant="ghost" size="sm" onClick={addEmoji}>
-                          Add
-                        </Button>
-                      </div>
-                    </div>
+        <div className="space-y-6 md:space-y-8 min-w-0">
+          {/* Copy Voice */}
+          <Card variant="glow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Ad Copy Voice
+              </CardTitle>
+              <CardDescription>
+                Should your ads say "I" or "We"? This applies to all generated ad copy for this brand.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleSaveCopyPerspective("I")}
+                  className={cn(
+                    "rounded-xl border-2 p-4 text-left transition-all",
+                    brand.copy_perspective !== "We"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-muted-foreground/50"
                   )}
+                >
+                  <span className="font-semibold text-sm">Personal "I"</span>
+                  <p className="text-xs text-muted-foreground mt-1 italic">
+                    "I help entrepreneurs scale..."
+                  </p>
+                </button>
+                <button
+                  onClick={() => handleSaveCopyPerspective("We")}
+                  className={cn(
+                    "rounded-xl border-2 p-4 text-left transition-all",
+                    brand.copy_perspective === "We"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-muted-foreground/50"
+                  )}
+                >
+                  <span className="font-semibold text-sm">Team "We"</span>
+                  <p className="text-xs text-muted-foreground mt-1 italic">
+                    "We help entrepreneurs scale..."
+                  </p>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Emoji Settings */}
+          <Card variant="glow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Smile className="h-5 w-5" />
+                Emoji Preferences
+              </CardTitle>
+              <CardDescription>
+                Control how emojis are used in your smart-generated ad copy.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base">Use Emojis in Copy</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Enable or disable emoji usage in generated headlines, descriptions, and primary copy
+                  </p>
                 </div>
+                <Switch
+                  checked={emojiSettings.use_emojis}
+                  onCheckedChange={(checked) => setEmojiSettings((prev) => ({ ...prev, use_emojis: checked }))}
+                />
+              </div>
 
-                <Separator />
+              {emojiSettings.use_emojis && (
+                <>
+                  <Separator />
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-base">Bullet Point Style</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Choose the emoji or symbol used for bullet points in your primary copy
-                    </p>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-base">Your Brand Emojis</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Choose up to 6 emojis that represent your brand. These will be used in your ad copy.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {emojiSettings.brand_emojis.map((emoji) => (
+                        <div
+                          key={emoji}
+                          className="flex items-center gap-1 px-3 py-2 bg-muted rounded-lg border"
+                        >
+                          <span className="text-xl">{emoji}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 hover:bg-destructive/20"
+                            onClick={() => removeEmoji(emoji)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {emojiSettings.brand_emojis.length < 6 && (
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <EmojiQuickPicker
+                          onSelect={(emoji) => {
+                            if (emojiSettings.brand_emojis.length >= 6) {
+                              toast.error("Maximum 6 emojis allowed");
+                              return;
+                            }
+                            if (emojiSettings.brand_emojis.includes(emoji)) {
+                              toast.error("Emoji already added");
+                              return;
+                            }
+                            setEmojiSettings((prev) => ({
+                              ...prev,
+                              brand_emojis: [...prev.brand_emojis, emoji],
+                            }));
+                          }}
+                          selectedEmojis={emojiSettings.brand_emojis}
+                        />
+                        <span className="text-xs text-muted-foreground">or</span>
+                        <div className="flex gap-2">
+                          <Input
+                            value={newEmoji}
+                            onChange={(e) => setNewEmoji(e.target.value)}
+                            placeholder="Paste emoji..."
+                            className="w-24"
+                            maxLength={4}
+                          />
+                          <Button variant="ghost" size="sm" onClick={addEmoji}>
+                            Add
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {BULLET_OPTIONS.map((bullet) => (
-                      <Button
-                        key={bullet}
-                        variant={emojiSettings.bullet_emoji === bullet ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setEmojiSettings((prev) => ({ ...prev, bullet_emoji: bullet }))}
-                        className="text-lg w-10 h-10 p-0"
-                      >
-                        {bullet}
-                      </Button>
-                    ))}
-                  </div>
+                  <Separator />
 
-                  <div className="bg-muted/50 rounded-lg p-4 border">
-                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Preview</p>
-                    <div className="space-y-1 text-sm">
-                      <p>{emojiSettings.bullet_emoji} Stop wasting time on ads that don't convert</p>
-                      <p>{emojiSettings.bullet_emoji} Get smart creative that actually works</p>
-                      <p>{emojiSettings.bullet_emoji} Launch campaigns in minutes, not days</p>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-base">Bullet Point Style</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Choose the emoji or symbol used for bullet points in your primary copy
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {BULLET_OPTIONS.map((bullet) => (
+                        <Button
+                          key={bullet}
+                          variant={emojiSettings.bullet_emoji === bullet ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setEmojiSettings((prev) => ({ ...prev, bullet_emoji: bullet }))}
+                          className="text-lg w-10 h-10 p-0"
+                        >
+                          {bullet}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <div className="bg-muted/50 rounded-lg p-4 border">
+                      <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Preview</p>
+                      <div className="space-y-1 text-sm">
+                        <p>{emojiSettings.bullet_emoji} Stop wasting time on ads that don't convert</p>
+                        <p>{emojiSettings.bullet_emoji} Get smart creative that actually works</p>
+                        <p>{emojiSettings.bullet_emoji} Launch campaigns in minutes, not days</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
 
-            <div className="pt-4">
-              <Button onClick={handleSaveEmojiSettings} disabled={saving} variant="lumi">
-                {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Save Emoji Settings
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="pt-4">
+                <Button onClick={handleSaveEmojiSettings} disabled={saving} variant="lumi">
+                  {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Save Emoji Settings
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* B-Roll Libraries */}
-        <BRollLibrariesManager
-          brandId={brand.id}
-          brandClips={brollClips}
-          onBrandClipsChange={(clips) => setBrollClips(clips)}
-        />
+          {/* B-Roll Libraries */}
+          <BRollLibrariesManager
+            brandId={brand.id}
+            brandClips={brollClips}
+            onBrandClipsChange={(clips) => setBrollClips(clips)}
+          />
 
-        {/* Overlay Style Picker */}
-        <OverlayStylePicker
-          style={overlayStyle}
-          onChange={setOverlayStyle}
-          brandId={brand.id}
-          onSave={async () => {
-            setSaving(true);
-            try {
-              const { error } = await supabase
-                .from("brands")
-                .update({ overlay_style: overlayStyle as any })
-                .eq("id", brand.id);
-              if (error) throw error;
-              toast.success("Overlay style saved");
-            } catch {
-              toast.error("Failed to save overlay style");
-            }
-            setSaving(false);
-          }}
-          saving={saving}
-        />
-          </div>
-
-          <div className="lg:block">
-            <StylePreviewPanel
-              brandName={brand?.name}
-              copyPerspective={brand?.copy_perspective === "We" ? "We" : "I"}
-              useEmojis={emojiSettings.use_emojis}
-              brandEmojis={emojiSettings.brand_emojis}
-              bulletEmoji={emojiSettings.bullet_emoji}
-              overlayStyle={overlayStyle}
-            />
-          </div>
+          {/* Overlay Style Picker */}
+          <OverlayStylePicker
+            style={overlayStyle}
+            onChange={setOverlayStyle}
+            brandId={brand.id}
+            onSave={async () => {
+              setSaving(true);
+              try {
+                const { error } = await supabase
+                  .from("brands")
+                  .update({ overlay_style: overlayStyle as any })
+                  .eq("id", brand.id);
+                if (error) throw error;
+                toast.success("Overlay style saved");
+              } catch {
+                toast.error("Failed to save overlay style");
+              }
+              setSaving(false);
+            }}
+            saving={saving}
+          />
         </div>
       </div>
     </DashboardLayout>
