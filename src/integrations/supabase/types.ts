@@ -1921,9 +1921,11 @@ export type Database = {
           partner_trial_code: string | null
           perks: Json
           recommended_strategies: Json
+          referral_link: string | null
           rewardful_affiliate_id: string | null
           support_links: Json
           token: string
+          trial_days: number
           welcome_message: string | null
         }
         Insert: {
@@ -1938,9 +1940,11 @@ export type Database = {
           partner_trial_code?: string | null
           perks?: Json
           recommended_strategies?: Json
+          referral_link?: string | null
           rewardful_affiliate_id?: string | null
           support_links?: Json
           token?: string
+          trial_days?: number
           welcome_message?: string | null
         }
         Update: {
@@ -1955,9 +1959,11 @@ export type Database = {
           partner_trial_code?: string | null
           perks?: Json
           recommended_strategies?: Json
+          referral_link?: string | null
           rewardful_affiliate_id?: string | null
           support_links?: Json
           token?: string
+          trial_days?: number
           welcome_message?: string | null
         }
         Relationships: []
