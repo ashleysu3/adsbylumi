@@ -314,6 +314,7 @@ Deno.serve(async (req) => {
 KNOWLEDGE BASE:
 ${kbContext}
 ${contentAssetsContext}
+${socialProofContext}
 ${insightsContext}
 ${offerAudienceContext}
 ${preGenContext}
