@@ -1028,7 +1028,7 @@ export default function AdPerformance() {
     setCampaignsNeedingGoals([{
       id: workspaceId,
       name: workspaceName,
-      brandId: ws?.brandId,
+      brandId: ws?.brandId || brandId || undefined,
       offerPrice: null,
       templateSlug: null,
     }]);
