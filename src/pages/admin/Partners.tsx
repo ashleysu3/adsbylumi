@@ -257,24 +257,25 @@ export default function AdminPartners() {
 
                 <RepeaterField
                   label="Bonus perks"
-                  items={editing.perks || []}
-                  onChange={(perks) => setEditing({ ...editing, perks })}
+                  items={(editing.perks || []) as any}
+                  onChange={(perks) => setEditing({ ...editing, perks: perks as any })}
                   fields={[{ key: "title", placeholder: "Perk title" }, { key: "description", placeholder: "Description" }]}
                 />
 
                 <RepeaterField
                   label="Support links (calls, office hours, etc.)"
-                  items={editing.support_links || []}
-                  onChange={(support_links) => setEditing({ ...editing, support_links })}
+                  items={(editing.support_links || []) as any}
+                  onChange={(support_links) => setEditing({ ...editing, support_links: support_links as any })}
                   fields={[{ key: "label", placeholder: "Button label" }, { key: "url", placeholder: "https://..." }]}
                 />
 
                 <RepeaterField
                   label="Recommended strategies"
-                  items={editing.recommended_strategies || []}
-                  onChange={(recommended_strategies) => setEditing({ ...editing, recommended_strategies })}
+                  items={(editing.recommended_strategies || []) as any}
+                  onChange={(recommended_strategies) => setEditing({ ...editing, recommended_strategies: recommended_strategies as any })}
                   fields={[{ key: "title", placeholder: "Strategy name" }, { key: "description", placeholder: "Why it's great for their audience" }]}
                 />
+
 
                 <div className="flex items-center justify-between border-t pt-3">
                   <div>
