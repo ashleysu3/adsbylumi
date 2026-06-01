@@ -795,7 +795,7 @@ export default function Create() {
                         Based on your website and business information provided
                       </p>
                     </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all mt-1 flex-shrink-0" />
+                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all self-end flex-shrink-0" />
                   </div>
                 </Card>
               </button>
