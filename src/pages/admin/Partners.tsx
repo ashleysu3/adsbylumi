@@ -126,6 +126,9 @@ export default function AdminPartners() {
   const [emailDraft, setEmailDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
   const [welcomePreview, setWelcomePreview] = useState<PartnerWelcome | null>(null);
   const [welcomePreviewOpen, setWelcomePreviewOpen] = useState(false);
+  const [sendingCompInvite, setSendingCompInvite] = useState(false);
+  const [accountExists, setAccountExists] = useState<null | boolean>(null);
+  const [checkingAccount, setCheckingAccount] = useState(false);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string; brand_assets_url: string }>({
