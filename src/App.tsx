@@ -79,6 +79,7 @@ import Welcome from "./pages/Welcome";
 import BrandPatterns from "./pages/BrandPatterns";
 import Retrospectives from "./pages/Retrospectives";
 import RecommendedStrategy from "./pages/RecommendedStrategy";
+import StrategyPlan from "./pages/StrategyPlan";
 import AdminStrategies from "./pages/admin/Strategies";
 
 function CreativeRedirect() {
