@@ -643,71 +643,8 @@ export function OfferDialog({ open, onOpenChange, brandId, onSuccess }: OfferDia
             />
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Before & After</Label>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Lumi uses this to write ads that speak to your audience's real experience</p>
-              </div>
-              {extractedData && formData.target_outcome ? (
-                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                  ✨ Auto-filled • Click to edit
-                </span>
-              ) : extractedData && !formData.target_outcome && extractedData.needs_clarification ? (
-                <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-700">
-                  Needs info
-                </Badge>
-              ) : null}
-            </div>
-            <div className="space-y-2">
-              <div>
-                <Label htmlFor="target_before" className="text-xs">😩 Before</Label>
-                <Textarea
-                  id="target_before"
-                  rows={2}
-                  value={(() => {
-                    const match = formData.target_outcome?.match(/^Before:\s*(.*?)(?:\.\s*After:|$)/s);
-                    return match ? match[1].trim() : (formData.target_outcome && !formData.target_outcome.startsWith("Before:") ? formData.target_outcome : "");
-                  })()}
-                  onChange={(e) => {
-                    const afterMatch = formData.target_outcome?.match(/After:\s*(.*?)\.?\s*$/s);
-                    const after = afterMatch ? afterMatch[1].trim() : "";
-                    const before = e.target.value;
-                    setFormData(prev => ({ ...prev, target_outcome: `Before: ${before}. After: ${after}.` }));
-                  }}
-                  placeholder="What are they struggling with right now?"
-                  className={`min-h-[60px] transition-all ${
-                    extractedData && formData.target_outcome 
-                      ? 'border-primary/30 bg-primary/5 focus:bg-background cursor-text' 
-                      : ''
-                  }`}
-                />
-              </div>
-              <div>
-                <Label htmlFor="target_after" className="text-xs">✨ After</Label>
-                <Textarea
-                  id="target_after"
-                  rows={2}
-                  value={(() => {
-                    const match = formData.target_outcome?.match(/After:\s*(.*?)\.?\s*$/s);
-                    return match ? match[1].trim() : "";
-                  })()}
-                  onChange={(e) => {
-                    const beforeMatch = formData.target_outcome?.match(/^Before:\s*(.*?)(?:\.\s*After:|$)/s);
-                    const before = beforeMatch ? beforeMatch[1].trim() : "";
-                    const after = e.target.value;
-                    setFormData(prev => ({ ...prev, target_outcome: `Before: ${before}. After: ${after}.` }));
-                  }}
-                  placeholder="What does life look like after they buy?"
-                  className={`min-h-[60px] transition-all ${
-                    extractedData && formData.target_outcome 
-                      ? 'border-primary/30 bg-primary/5 focus:bg-background cursor-text' 
-                      : ''
-                  }`}
-                />
-              </div>
-            </div>
-          </div>
+          {/* Before & After is auto-generated and used in ads, but hidden from the user */}
+
 
           {/* Apply brand Style defaults */}
           <div className="rounded-lg border bg-muted/30 p-3 flex items-start justify-between gap-3">
