@@ -832,8 +832,13 @@ export default function AdminPartners() {
                           welcome_message: (editing as any).welcome_message || null,
                           perks: ((editing as any).perks || []) as any,
                           support_links: ((editing as any).support_links || []) as any,
-                          recommended_strategies: (((editing as any).recommended_strategies || []) as StrategyItem[])
-                            .filter(s => s.selected !== false && s.title),
+                          audience_strategies: (() => {
+                            const aud = (((editing as any).audience_strategies || []) as StrategyItem[]).filter(s => s.title);
+                            if (aud.length > 0) return aud;
+                            // fallback to legacy recommended_strategies for partners that haven't migrated yet
+                            return (((editing as any).recommended_strategies || []) as StrategyItem[])
+                              .filter(s => s.selected !== false && s.title);
+                          })(),
                         };
                         setWelcomePreview(data);
                         setWelcomePreviewOpen(true);
