@@ -459,9 +459,12 @@ export default function AdminUpdates() {
                 {entries.map((e) => (
                   <div key={e.id} className="flex items-start justify-between p-3 border rounded-lg">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{e.title}</span>
                         <Badge variant="outline" className="text-xs">{e.category}</Badge>
+                        {e.approval_status === "draft" && <Badge className="text-xs bg-amber-500/15 text-amber-700 hover:bg-amber-500/15">Draft</Badge>}
+                        {e.approval_status === "rejected" && <Badge variant="secondary" className="text-xs">Rejected</Badge>}
+                        {e.source === "github" && <Badge variant="outline" className="text-xs"><GitCommit className="w-3 h-3 mr-1" />GitHub</Badge>}
                       </div>
                       {e.body && <p className="text-sm text-muted-foreground mt-1">{e.body}</p>}
                       <p className="text-xs text-muted-foreground mt-1">{new Date(e.created_at).toLocaleString()}</p>
