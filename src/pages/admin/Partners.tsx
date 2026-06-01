@@ -9,13 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, Copy, Pencil, Upload, X, Users } from "lucide-react";
+import { Loader2, Plus, Trash2, Copy, Pencil, Upload, X, Users, Link2, Gift } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PerkItem { title: string; description: string }
 interface LinkItem { label: string; url: string }
 interface StrategyItem { title: string; description: string }
+interface ResourceItem { title: string; description: string; url: string; type: string }
+interface UpdateItem { id?: string; title: string; body: string; link_url: string; link_label: string; is_published: boolean }
 
 interface Partner {
   id: string;
@@ -28,9 +30,13 @@ interface Partner {
   perks: PerkItem[];
   support_links: LinkItem[];
   recommended_strategies: StrategyItem[];
+  share_resources: ResourceItem[];
   is_active: boolean;
   trial_days: number;
   referral_link: string | null;
+  partner_user_id: string | null;
+  partner_email: string | null;
+  membership_comped: boolean;
   created_at: string;
 }
 
@@ -44,9 +50,13 @@ const blankForm = (): Partial<Partner> => ({
   perks: [],
   support_links: [],
   recommended_strategies: [],
+  share_resources: [],
   is_active: true,
   trial_days: 14,
   referral_link: "",
+  partner_user_id: null,
+  partner_email: "",
+  membership_comped: false,
 });
 
 
@@ -56,21 +66,37 @@ export default function AdminPartners() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [editing, setEditing] = useState<Partial<Partner> | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linking, setLinking] = useState(false);
+
+  // Global config
+  const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
+    owner_email: "", owner_calendar_url: "", office_hours_url: "", webinar_request_to: "",
+  });
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  // Updates manager
+  const [updates, setUpdates] = useState<any[]>([]);
+  const [editingUpdate, setEditingUpdate] = useState<UpdateItem | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("partner_access_tokens")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setPartners((data || []) as unknown as Partner[]);
+      const [partnersRes, configRes, updatesRes] = await Promise.all([
+        supabase.from("partner_access_tokens").select("*").order("created_at", { ascending: false }),
+        supabase.from("site_settings").select("value").eq("key", "partner_portal_config").maybeSingle(),
+        supabase.from("partner_updates" as any).select("*").order("published_at", { ascending: false }),
+      ]);
+      if (partnersRes.error) throw partnersRes.error;
+      setPartners((partnersRes.data || []) as unknown as Partner[]);
+      if (configRes.data?.value) setConfig({ ...config, ...(configRes.data.value as any) });
+      setUpdates(updatesRes.data || []);
     } catch (e: any) {
-      toast.error(e.message || "Failed to load partners");
+      toast.error(e.message || "Failed to load");
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -93,9 +119,12 @@ export default function AdminPartners() {
         perks: editing.perks || [],
         support_links: editing.support_links || [],
         recommended_strategies: editing.recommended_strategies || [],
+        share_resources: editing.share_resources || [],
         is_active: editing.is_active ?? true,
         trial_days: editing.trial_days ?? 14,
         referral_link: editing.referral_link || null,
+        partner_email: editing.partner_email || null,
+        membership_comped: editing.membership_comped ?? false,
       };
       if (editing.id) {
         const { error } = await supabase.from("partner_access_tokens").update(payload).eq("id", editing.id);
@@ -113,6 +142,34 @@ export default function AdminPartners() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleLinkAccount = async () => {
+    if (!editing?.id || !linkEmail.trim()) return toast.error("Save partner first, then link an account");
+    setLinking(true);
+    try {
+      const { data, error } = await supabase.rpc("admin_link_partner_user" as any, { p_partner_id: editing.id, p_email: linkEmail.trim() });
+      if (error) throw error;
+      const res = data as any;
+      if (!res?.success) throw new Error(res?.error || "Could not link");
+      toast.success("Account linked");
+      setEditing({ ...editing, partner_user_id: res.partner_user_id, partner_email: linkEmail.trim() });
+      setLinkEmail("");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    if (!editing?.id) return;
+    try {
+      const { error } = await supabase.from("partner_access_tokens").update({ partner_user_id: null, partner_email: null, membership_comped: false }).eq("id", editing.id);
+      if (error) throw error;
+      setEditing({ ...editing, partner_user_id: null, partner_email: null, membership_comped: false });
+      toast.success("Unlinked");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const handleDelete = async (id: string) => {
@@ -156,6 +213,48 @@ export default function AdminPartners() {
     toast.success("Referral link copied");
   };
 
+  const saveConfig = async () => {
+    setSavingConfig(true);
+    try {
+      const { error } = await supabase.from("site_settings").upsert({ key: "partner_portal_config", value: config as any }, { onConflict: "key" });
+      if (error) throw error;
+      toast.success("Portal settings saved");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setSavingConfig(false); }
+  };
+
+  const saveUpdate = async () => {
+    if (!editingUpdate) return;
+    try {
+      const payload: any = {
+        title: editingUpdate.title,
+        body: editingUpdate.body || null,
+        link_url: editingUpdate.link_url || null,
+        link_label: editingUpdate.link_label || null,
+        is_published: editingUpdate.is_published,
+      };
+      if (editingUpdate.id) {
+        const { error } = await supabase.from("partner_updates" as any).update(payload).eq("id", editingUpdate.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("partner_updates" as any).insert(payload);
+        if (error) throw error;
+      }
+      toast.success("Saved");
+      setEditingUpdate(null);
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const deleteUpdate = async (id: string) => {
+    if (!confirm("Delete this update?")) return;
+    try {
+      const { error } = await supabase.from("partner_updates" as any).delete().eq("id", id);
+      if (error) throw error;
+      load();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-6 space-y-6">
@@ -169,6 +268,52 @@ export default function AdminPartners() {
             <Plus className="h-4 w-4 mr-2" /> New Partner
           </Button>
         </div>
+
+        {/* Global portal config */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Partner Portal global settings</CardTitle>
+            <CardDescription>These power the support buttons inside every partner's portal.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid sm:grid-cols-2 gap-3">
+            <div><Label>Your direct email</Label><Input value={config.owner_email} onChange={(e) => setConfig({ ...config, owner_email: e.target.value })} placeholder="andrew@adsbylumi.com" /></div>
+            <div><Label>Webinar requests sent to</Label><Input value={config.webinar_request_to} onChange={(e) => setConfig({ ...config, webinar_request_to: e.target.value })} placeholder="Defaults to direct email" /></div>
+            <div><Label>Book-a-call URL</Label><Input value={config.owner_calendar_url} onChange={(e) => setConfig({ ...config, owner_calendar_url: e.target.value })} placeholder="https://cal.com/..." /></div>
+            <div><Label>Office hours URL (optional)</Label><Input value={config.office_hours_url} onChange={(e) => setConfig({ ...config, office_hours_url: e.target.value })} placeholder="https://meet.google.com/..." /></div>
+            <div className="sm:col-span-2"><Button onClick={saveConfig} disabled={savingConfig}>{savingConfig && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Save portal settings</Button></div>
+          </CardContent>
+        </Card>
+
+        {/* Updates manager */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-base">"What's new in Lumi" updates</CardTitle>
+              <CardDescription>Shown to all partners in their portal.</CardDescription>
+            </div>
+            <Button size="sm" onClick={() => setEditingUpdate({ title: "", body: "", link_url: "", link_label: "", is_published: true })}>
+              <Plus className="h-4 w-4 mr-1" /> Add update
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {updates.length === 0 && <p className="text-sm text-muted-foreground">No updates yet.</p>}
+            {updates.map((u) => (
+              <div key={u.id} className="flex items-start justify-between gap-2 p-3 rounded border">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{u.title}</span>
+                    {!u.is_published && <Badge variant="outline">Draft</Badge>}
+                  </div>
+                  {u.body && <p className="text-xs text-muted-foreground line-clamp-2">{u.body}</p>}
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingUpdate(u)}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => deleteUpdate(u.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
@@ -189,12 +334,15 @@ export default function AdminPartners() {
                       <h3 className="font-semibold">{p.partner_display_name || "Unnamed"}</h3>
                       <Badge variant="outline">{p.partner_trial_code}</Badge>
                       <Badge variant={p.is_active ? "default" : "secondary"}>{p.is_active ? "Active" : "Inactive"}</Badge>
+                      {p.membership_comped && <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30"><Gift className="h-3 w-3 mr-1" />Comped</Badge>}
+                      {p.partner_user_id && <Badge variant="outline"><Link2 className="h-3 w-3 mr-1" />Linked</Badge>}
                     </div>
                     {p.partner_title && <p className="text-sm text-muted-foreground">{p.partner_title}</p>}
                     <div className="flex gap-3 text-xs text-muted-foreground mt-1">
                       <span>{(p.perks || []).length} perks</span>
                       <span>{(p.support_links || []).length} support links</span>
                       <span>{(p.recommended_strategies || []).length} strategies</span>
+                      <span>{(p.share_resources || []).length} resources</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -290,6 +438,43 @@ export default function AdminPartners() {
                   </div>
                 </div>
 
+                {/* Partner account + comp toggle */}
+                <div className="border-t pt-3 space-y-3">
+                  <div>
+                    <Label>Partner Lumi account</Label>
+                    <p className="text-xs text-muted-foreground mb-2">Link this partner to a Lumi user so they see the Partner Portal banner and (optionally) get a comped membership.</p>
+                    {editing.partner_user_id ? (
+                      <div className="flex items-center justify-between rounded border p-2">
+                        <div className="text-sm">
+                          <Link2 className="h-3 w-3 inline mr-1" />
+                          {editing.partner_email || editing.partner_user_id}
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={handleUnlink}>Unlink</Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Input value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} placeholder="partner@email.com" type="email" />
+                        <Button onClick={handleLinkAccount} disabled={linking || !editing.id}>
+                          {linking && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Link
+                        </Button>
+                      </div>
+                    )}
+                    {!editing.id && <p className="text-xs text-amber-600 mt-1">Save the partner first to link an account.</p>}
+                  </div>
+
+                  <div className="flex items-center justify-between rounded border p-3 bg-emerald-500/5">
+                    <div>
+                      <Label className="flex items-center gap-2"><Gift className="h-4 w-4" /> Comp their Lumi membership</Label>
+                      <p className="text-xs text-muted-foreground">Grants Agency-tier access for free. Requires linked account.</p>
+                    </div>
+                    <Switch
+                      checked={editing.membership_comped ?? false}
+                      disabled={!editing.partner_user_id}
+                      onCheckedChange={(v) => setEditing({ ...editing, membership_comped: v })}
+                    />
+                  </div>
+                </div>
+
                 <RepeaterField
                   label="Bonus perks"
                   items={(editing.perks || []) as any}
@@ -311,6 +496,17 @@ export default function AdminPartners() {
                   fields={[{ key: "title", placeholder: "Strategy name" }, { key: "description", placeholder: "Why it's great for their audience" }]}
                 />
 
+                <RepeaterField
+                  label="Share resources (shown in their Partner Portal)"
+                  items={(editing.share_resources || []) as any}
+                  onChange={(share_resources) => setEditing({ ...editing, share_resources: share_resources as any })}
+                  fields={[
+                    { key: "title", placeholder: "Resource title (e.g. Swipe copy)" },
+                    { key: "description", placeholder: "Short description" },
+                    { key: "url", placeholder: "https://..." },
+                    { key: "type", placeholder: "Type (copy, graphic, video, email)" },
+                  ]}
+                />
 
                 <div className="flex items-center justify-between border-t pt-3">
                   <div>
@@ -326,6 +522,31 @@ export default function AdminPartners() {
               <Button onClick={handleSave} disabled={saving}>
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Save Partner
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Update editor */}
+        <Dialog open={!!editingUpdate} onOpenChange={(v) => !v && setEditingUpdate(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{editingUpdate?.id ? "Edit update" : "New update"}</DialogTitle></DialogHeader>
+            {editingUpdate && (
+              <div className="space-y-3">
+                <div><Label>Title</Label><Input value={editingUpdate.title} onChange={(e) => setEditingUpdate({ ...editingUpdate, title: e.target.value })} /></div>
+                <div><Label>Body</Label><Textarea rows={4} value={editingUpdate.body} onChange={(e) => setEditingUpdate({ ...editingUpdate, body: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Link URL</Label><Input value={editingUpdate.link_url} onChange={(e) => setEditingUpdate({ ...editingUpdate, link_url: e.target.value })} /></div>
+                  <div><Label>Link label</Label><Input value={editingUpdate.link_label} onChange={(e) => setEditingUpdate({ ...editingUpdate, link_label: e.target.value })} placeholder="Learn more" /></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Published</Label>
+                  <Switch checked={editingUpdate.is_published} onCheckedChange={(v) => setEditingUpdate({ ...editingUpdate, is_published: v })} />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingUpdate(null)}>Cancel</Button>
+              <Button onClick={saveUpdate}>Save</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
