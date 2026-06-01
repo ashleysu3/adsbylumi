@@ -632,6 +632,8 @@ export default function Create() {
         if (selectedGoal === "grow_social") return "Choose your creative";
         if (selectedGoal === "local") return "Choose your local strategy";
         if (selectedGoal === "event_location") return "Event & location targeting";
+        if (selectedGoal === "book_calls") return "Choose your inquiry page";
+        if (selectedGoal === "get_leads") return "Choose your lead magnet";
         return "Choose your offer";
       case 2:return "Recommended strategy";
       default:return "";
@@ -645,6 +647,8 @@ export default function Create() {
         if (selectedGoal === "grow_social") return "Select the posts you'd like to promote";
         if (selectedGoal === "local") return "LUMI will match the right approach";
         if (selectedGoal === "event_location") return "Get in front of people at conferences, trade shows, or specific venues";
+        if (selectedGoal === "book_calls") return "Where should people go to book a call or send an inquiry?";
+        if (selectedGoal === "get_leads") return "What freebie or opt-in are we promoting?";
         return "What are we promoting?";
       case 2:return isLocalStrategy ?
         "Lumi matched this location-based strategy for you" :
@@ -939,7 +943,7 @@ export default function Create() {
                         <p className="text-sm text-muted-foreground italic">
                           {selectedGoal === "promote_offer" && "Which offer are you promoting?"}
                           {selectedGoal === "get_leads" && "Which lead magnet or freebie?"}
-                          {selectedGoal === "book_calls" && "Which offer are discovery calls for?"}
+                          {selectedGoal === "book_calls" && "Which discovery call or inquiry page should people land on?"}
                         </p>
                         {offers.map((offer) =>
                   <StepOption
@@ -958,7 +962,7 @@ export default function Create() {
                       onClick={() => setShowOfferDialog(true)}>
                       
                             <Plus className="h-4 w-4 mr-2" />
-                            Add a new offer
+                            {selectedGoal === "book_calls" ? "Add a new inquiry page" : selectedGoal === "get_leads" ? "Add a new lead magnet" : "Add a new offer"}
                           </Button>
                         </div>
                       </> :
@@ -967,9 +971,18 @@ export default function Create() {
                         <CardContent className="p-6 text-center space-y-4">
                           <Package className="h-12 w-12 mx-auto text-muted-foreground" />
                           <div>
-                            <p className="font-semibold text-lg">First, let's set up your offer</p>
+                            <p className="font-semibold text-lg">
+                              {selectedGoal === "book_calls" && "First, let's add your inquiry page"}
+                              {selectedGoal === "get_leads" && "First, let's add your lead magnet"}
+                              {selectedGoal === "promote_offer" && "First, let's set up your offer"}
+                            </p>
                             <p className="text-sm text-muted-foreground mt-2">
-                              An "offer" in LUMI is anything you want to promote — your webinar, your freebie, your coaching program, your course. LUMI uses your offer details to build a campaign that actually sells it.
+                              {selectedGoal === "book_calls" &&
+                          'Add the page where people book a discovery call or fill out an inquiry form — like your contact page, Calendly link, or "work with me" page. LUMI uses it to send the right people there.'}
+                              {selectedGoal === "get_leads" &&
+                          "Add the freebie, opt-in, or lead magnet you're promoting — the page where people drop their email to get it. LUMI uses it to build a campaign that brings in qualified leads."}
+                              {selectedGoal === "promote_offer" &&
+                          'An "offer" in LUMI is anything you want to promote — your webinar, your freebie, your coaching program, your course. LUMI uses your offer details to build a campaign that actually sells it.'}
                             </p>
                           </div>
                           <Button
@@ -977,10 +990,12 @@ export default function Create() {
                       onClick={() => setShowOfferDialog(true)}>
                       
                             <Plus className="h-4 w-4 mr-2" />
-                            Set Up My First Offer
+                            {selectedGoal === "book_calls" && "Add My Inquiry Page"}
+                            {selectedGoal === "get_leads" && "Add My Lead Magnet"}
+                            {selectedGoal === "promote_offer" && "Set Up My First Offer"}
                           </Button>
                           <p className="text-xs text-muted-foreground">
-                            Takes about 2 minutes. You only need to do this once per offer.
+                            Takes about 2 minutes. You only need to do this once.
                           </p>
                         </CardContent>
                       </Card>
