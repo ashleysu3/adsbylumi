@@ -49,18 +49,6 @@ const blankForm = (): Partial<Partner> => ({
   referral_link: "",
 });
 
-const blankForm = (): Partial<Partner> => ({
-  email: "",
-  partner_trial_code: "",
-  partner_display_name: "",
-  partner_title: "",
-  partner_photo_url: "",
-  welcome_message: "",
-  perks: [],
-  support_links: [],
-  recommended_strategies: [],
-  is_active: true,
-});
 
 export default function AdminPartners() {
   const [loading, setLoading] = useState(true);
