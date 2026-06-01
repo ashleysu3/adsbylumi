@@ -88,24 +88,36 @@ Deno.serve(async (req) => {
       if (appErr || !data) return json({ error: "Application not found" });
       app = data;
     } else {
-      // Build a synthetic "app" record from the partner row so we can generate ideas without a linked application.
+      // No application_id passed — load the partner and prefer their linked application if there is one.
       const { data: partner, error: pErr } = await admin
         .from("partner_access_tokens")
-        .select("partner_display_name, partner_title, partner_email, email, partner_website, audience_description")
+        .select("partner_display_name, partner_title, partner_email, email, partner_application_id")
         .eq("id", partner_id)
         .maybeSingle();
       if (pErr || !partner) return json({ error: "Partner not found" });
-      const name = (partner.partner_display_name || "").trim();
-      const [first, ...rest] = name.split(/\s+/);
-      app = {
-        first_name: first || name || "this partner",
-        last_name: rest.join(" "),
-        email: partner.partner_email || partner.email || "",
-        website: partner.partner_website || "",
-        audience_description: partner.audience_description || partner.partner_title || "",
-        promotion_plan: "",
-        how_will_you_share: "",
-      };
+
+      if (partner.partner_application_id) {
+        const { data: linkedApp } = await admin
+          .from("partner_applications")
+          .select("first_name, last_name, email, website, audience_description, promotion_plan, how_will_you_share")
+          .eq("id", partner.partner_application_id)
+          .maybeSingle();
+        if (linkedApp) app = linkedApp;
+      }
+
+      if (!app) {
+        const name = (partner.partner_display_name || "").trim();
+        const [first, ...rest] = name.split(/\s+/);
+        app = {
+          first_name: first || name || "this partner",
+          last_name: rest.join(" "),
+          email: partner.partner_email || partner.email || "",
+          website: "",
+          audience_description: partner.partner_title || "",
+          promotion_plan: "",
+          how_will_you_share: "",
+        };
+      }
     }
 
     // Load REAL Lumi source-of-truth: structured features catalog + admin settings + recent changelog + recent partner updates.
