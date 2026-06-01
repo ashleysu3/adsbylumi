@@ -169,3 +169,7 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.capture-referral]
     verify_jwt = true
+  [functions.sync-partner-promo]
+    verify_jwt = true
+  [functions.resolve-checkout-partner]
+    verify_jwt = false
