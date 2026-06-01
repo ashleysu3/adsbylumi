@@ -173,3 +173,5 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.resolve-checkout-partner]
     verify_jwt = false
+  [functions.generate-partner-portal-ai]
+    verify_jwt = true
