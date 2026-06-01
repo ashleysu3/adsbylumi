@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, Copy, Pencil, Upload, X, Users, Link2, Gift } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Plus, Trash2, Copy, Pencil, Upload, X, Users, Link2, Gift, ExternalLink, Check, Mail, RotateCcw, Inbox } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -37,7 +40,41 @@ interface Partner {
   partner_user_id: string | null;
   partner_email: string | null;
   membership_comped: boolean;
+  partner_application_id: string | null;
+  rewardful_affiliate_id: string | null;
   created_at: string;
+}
+
+interface PartnerApplication {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  website?: string;
+  audience_description?: string;
+  promotion_plan?: string;
+  how_will_you_share?: string;
+  status: string;
+  application_type: string;
+  rewardful_affiliate_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+interface AffiliateRecord {
+  id: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  state?: string;
+  visitors_count?: number;
+  leads_count?: number;
+  conversions_count?: number;
+  commissions_total_cents?: number;
+  earnings_balance?: { amount_cents?: number };
+  campaign?: { name?: string };
+  links?: { token?: string; url?: string }[];
 }
 
 const blankForm = (): Partial<Partner> => ({
@@ -57,17 +94,27 @@ const blankForm = (): Partial<Partner> => ({
   partner_user_id: null,
   partner_email: "",
   membership_comped: false,
+  partner_application_id: null,
+  rewardful_affiliate_id: null,
 });
 
 
 export default function AdminPartners() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [applications, setApplications] = useState<PartnerApplication[]>([]);
+  const [affiliates, setAffiliates] = useState<AffiliateRecord[]>([]);
   const [editing, setEditing] = useState<Partial<Partner> | null>(null);
+  const [editingTab, setEditingTab] = useState<string>("overview");
   const [uploading, setUploading] = useState(false);
   const [linkEmail, setLinkEmail] = useState("");
   const [linking, setLinking] = useState(false);
+  const [approvalMessage, setApprovalMessage] = useState("");
+  const [appActionLoading, setAppActionLoading] = useState(false);
+  const [confirmDecline, setConfirmDecline] = useState(false);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
@@ -82,15 +129,22 @@ export default function AdminPartners() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [partnersRes, configRes, updatesRes] = await Promise.all([
+      const { data: { session } } = await supabase.auth.getSession();
+      const [partnersRes, configRes, updatesRes, affRes] = await Promise.all([
         supabase.from("partner_access_tokens").select("*").order("created_at", { ascending: false }),
         supabase.from("site_settings").select("value").eq("key", "partner_portal_config").maybeSingle(),
         supabase.from("partner_updates" as any).select("*").order("published_at", { ascending: false }),
+        supabase.functions.invoke('admin-get-affiliates', {
+          headers: { Authorization: `Bearer ${session?.access_token}` }
+        }).catch((e) => { console.error('affiliates load failed', e); return { data: null, error: e }; }),
       ]);
       if (partnersRes.error) throw partnersRes.error;
       setPartners((partnersRes.data || []) as unknown as Partner[]);
       if (configRes.data?.value) setConfig({ ...config, ...(configRes.data.value as any) });
       setUpdates(updatesRes.data || []);
+      const affData: any = (affRes as any)?.data || {};
+      setApplications((affData.applications || []).filter((a: PartnerApplication) => a.application_type === 'partner'));
+      setAffiliates(affData.affiliates || []);
     } catch (e: any) {
       toast.error(e.message || "Failed to load");
     } finally {
@@ -100,6 +154,79 @@ export default function AdminPartners() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Lookup helpers
+  const partnersByAppId = useMemo(() => {
+    const map = new Map<string, Partner>();
+    partners.forEach((p) => { if (p.partner_application_id) map.set(p.partner_application_id, p); });
+    return map;
+  }, [partners]);
+
+  const partnersByEmail = useMemo(() => {
+    const map = new Map<string, Partner>();
+    partners.forEach((p) => {
+      const e = (p.partner_email || p.email || '').toLowerCase();
+      if (e) map.set(e, p);
+    });
+    return map;
+  }, [partners]);
+
+  const affiliateForPartner = useCallback((p: Partial<Partner> | null): AffiliateRecord | null => {
+    if (!p) return null;
+    if (p.rewardful_affiliate_id) {
+      const byId = affiliates.find((a) => a.id === p.rewardful_affiliate_id);
+      if (byId) return byId;
+    }
+    const email = (p.partner_email || p.email || '').toLowerCase();
+    if (email) return affiliates.find((a) => (a.email || '').toLowerCase() === email) || null;
+    return null;
+  }, [affiliates]);
+
+  const applicationForPartner = useCallback((p: Partial<Partner> | null): PartnerApplication | null => {
+    if (!p) return null;
+    if (p.partner_application_id) {
+      return applications.find((a) => a.id === p.partner_application_id) || null;
+    }
+    const email = (p.partner_email || p.email || '').toLowerCase();
+    if (email) return applications.find((a) => a.email.toLowerCase() === email) || null;
+    return null;
+  }, [applications]);
+
+  // Open from an application (creates a pre-filled new-partner dialog if no linked row yet)
+  const openFromApplication = useCallback((app: PartnerApplication) => {
+    const existing = partnersByAppId.get(app.id) || partnersByEmail.get(app.email.toLowerCase());
+    if (existing) {
+      setEditing(existing);
+      setEditingTab("application");
+      return;
+    }
+    const baseCode = (app.first_name || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) + '14';
+    setEditing({
+      ...blankForm(),
+      partner_display_name: `${app.first_name} ${app.last_name}`.trim(),
+      partner_trial_code: baseCode,
+      partner_email: app.email,
+      email: app.email,
+      partner_application_id: app.id,
+      rewardful_affiliate_id: app.rewardful_affiliate_id || null,
+    });
+    setEditingTab("application");
+  }, [partnersByAppId, partnersByEmail]);
+
+  // Deep-link: ?app=APP_ID auto-opens the dialog once data is loaded
+  useEffect(() => {
+    const appId = searchParams.get('app');
+    if (!appId || loading || editing) return;
+    const app = applications.find((a) => a.id === appId);
+    if (app) {
+      openFromApplication(app);
+      // clear param so we don't re-open
+      const next = new URLSearchParams(searchParams);
+      next.delete('app');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, applications, loading, editing, openFromApplication, setSearchParams]);
+
 
   const handleSave = async () => {
     if (!editing) return;
@@ -125,6 +252,8 @@ export default function AdminPartners() {
         referral_link: editing.referral_link || null,
         partner_email: editing.partner_email || null,
         membership_comped: editing.membership_comped ?? false,
+        partner_application_id: editing.partner_application_id || null,
+        rewardful_affiliate_id: editing.rewardful_affiliate_id || null,
       };
       if (editing.id) {
         const { error } = await supabase.from("partner_access_tokens").update(payload).eq("id", editing.id);
@@ -190,6 +319,139 @@ export default function AdminPartners() {
       if (error) throw error;
       load();
     } catch (e: any) { toast.error(e.message); }
+  };
+
+  // Approve from inside the unified dialog: runs the same flow as the Affiliates page
+  const handleApproveApplication = async () => {
+    if (!editing) return;
+    const app = applicationForPartner(editing);
+    if (!app) return toast.error("No application linked");
+    setAppActionLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-affiliate', {
+        body: { email: app.email, firstName: app.first_name, lastName: app.last_name, campaignId: 'partner' }
+      });
+      if (error) throw error;
+      const referralLink = (data as any)?.referralLink || '';
+      const referralCode = (data as any)?.referralCode || '';
+      const affiliateId = (data as any)?.id || null;
+
+      // Ensure unique trial code (use the one in the form, fall back to generated)
+      let trialCode = (editing.partner_trial_code || '').toUpperCase().trim();
+      if (!trialCode) {
+        const base = (app.first_name || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) + '14';
+        const { data: existing } = await supabase.from('partner_access_tokens').select('partner_trial_code').ilike('partner_trial_code', `${base}%`);
+        trialCode = existing && existing.length > 0 ? `${base}${existing.length}` : base;
+      }
+
+      // Save / upsert the partner record
+      const payload: any = {
+        email: editing.email || app.email,
+        partner_trial_code: trialCode,
+        partner_display_name: editing.partner_display_name || `${app.first_name} ${app.last_name}`.trim(),
+        partner_title: editing.partner_title || null,
+        partner_photo_url: editing.partner_photo_url || null,
+        welcome_message: editing.welcome_message || null,
+        perks: editing.perks || [],
+        support_links: editing.support_links || [],
+        recommended_strategies: editing.recommended_strategies || [],
+        share_resources: editing.share_resources || [],
+        is_active: true,
+        trial_days: editing.trial_days ?? 14,
+        referral_link: referralLink || editing.referral_link || null,
+        partner_email: app.email,
+        membership_comped: editing.membership_comped ?? false,
+        partner_application_id: app.id,
+        rewardful_affiliate_id: affiliateId,
+      };
+      let savedId = editing.id;
+      if (savedId) {
+        const { error: upErr } = await supabase.from('partner_access_tokens').update(payload).eq('id', savedId);
+        if (upErr) throw upErr;
+      } else {
+        const { data: inserted, error: insErr } = await supabase.from('partner_access_tokens').insert(payload).select('id').single();
+        if (insErr) throw insErr;
+        savedId = inserted.id;
+      }
+
+      // Mark application approved
+      const { error: appErr } = await supabase.from('partner_applications').update({
+        status: 'approved',
+        rewardful_affiliate_id: affiliateId,
+        updated_at: new Date().toISOString(),
+      }).eq('id', app.id);
+      if (appErr) throw appErr;
+
+      // Send welcome email
+      const { error: emailErr } = await supabase.functions.invoke('send-partner-approval', {
+        body: {
+          email: app.email,
+          firstName: app.first_name,
+          lastName: app.last_name,
+          referralLink,
+          referralCode,
+          rewardfulAffiliateId: affiliateId,
+          customMessage: approvalMessage || undefined,
+          partnerTrialCode: trialCode,
+        }
+      });
+      if (emailErr) console.error('approval email failed', emailErr);
+
+      toast.success("Approved, partner created, welcome email sent 🎉");
+      setApprovalMessage("");
+      setEditing(null);
+      await load();
+    } catch (e: any) {
+      toast.error("Failed to approve: " + (e.message || 'Unknown error'));
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const handleDeclineApplication = async () => {
+    const app = applicationForPartner(editing);
+    if (!app) return;
+    setAppActionLoading(true);
+    try {
+      const { error } = await supabase.from('partner_applications').update({
+        status: 'declined', updated_at: new Date().toISOString(),
+      }).eq('id', app.id);
+      if (error) throw error;
+      toast.success("Application declined");
+      setConfirmDecline(false);
+      setEditing(null);
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const handleReconsiderApplication = async () => {
+    const app = applicationForPartner(editing);
+    if (!app) return;
+    setAppActionLoading(true);
+    try {
+      const { error } = await supabase.from('partner_applications').update({
+        status: 'pending', updated_at: new Date().toISOString(),
+      }).eq('id', app.id);
+      if (error) throw error;
+      toast.success("Status reset to pending");
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const handleApplicationNoteSave = async (notes: string) => {
+    const app = applicationForPartner(editing);
+    if (!app) return;
+    await supabase.from('partner_applications').update({
+      notes, updated_at: new Date().toISOString(),
+    }).eq('id', app.id);
   };
 
   const handlePhotoUpload = async (file: File) => {
@@ -315,11 +577,51 @@ export default function AdminPartners() {
           </CardContent>
         </Card>
 
+        {/* Partner Applications */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Inbox className="h-4 w-4" /> Partner Applications
+              {applications.filter((a) => a.status === 'pending').length > 0 && (
+                <Badge className="bg-amber-100 text-amber-800 border-0">
+                  {applications.filter((a) => a.status === 'pending').length} pending
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>Open an application to review, approve, and turn it into a managed partner — all in one place.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {applications.length === 0 && <p className="text-sm text-muted-foreground">No partner applications yet.</p>}
+            {applications.map((app) => {
+              const linkedPartner = partnersByAppId.get(app.id) || partnersByEmail.get(app.email.toLowerCase());
+              return (
+                <div key={app.id} className="flex items-start justify-between gap-3 p-3 rounded border hover:bg-muted/40 cursor-pointer" onClick={() => openFromApplication(app)}>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm">{app.first_name} {app.last_name}</span>
+                      <Badge variant="outline" className="capitalize text-xs">{app.status}</Badge>
+                      {linkedPartner && <Badge variant="outline" className="text-xs"><Link2 className="h-3 w-3 mr-1" />Has partner code</Badge>}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{app.email}</p>
+                    {app.audience_description && <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{app.audience_description}</p>}
+                  </div>
+                  <div className="text-xs text-muted-foreground shrink-0 text-right">
+                    {new Date(app.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : (
           <div className="grid gap-4">
-            {partners.map((p) => (
+            {partners.map((p) => {
+              const aff = affiliateForPartner(p);
+              const linkedApp = applicationForPartner(p);
+              return (
               <Card key={p.id}>
                 <CardContent className="p-4 flex items-start gap-4">
                   {p.partner_photo_url ? (
@@ -336,13 +638,15 @@ export default function AdminPartners() {
                       <Badge variant={p.is_active ? "default" : "secondary"}>{p.is_active ? "Active" : "Inactive"}</Badge>
                       {p.membership_comped && <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30"><Gift className="h-3 w-3 mr-1" />Comped</Badge>}
                       {p.partner_user_id && <Badge variant="outline"><Link2 className="h-3 w-3 mr-1" />Linked</Badge>}
+                      {linkedApp && <Badge variant="outline" className="text-xs capitalize">App: {linkedApp.status}</Badge>}
                     </div>
                     {p.partner_title && <p className="text-sm text-muted-foreground">{p.partner_title}</p>}
-                    <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+                    <div className="flex gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
                       <span>{(p.perks || []).length} perks</span>
                       <span>{(p.support_links || []).length} support links</span>
                       <span>{(p.recommended_strategies || []).length} strategies</span>
                       <span>{(p.share_resources || []).length} resources</span>
+                      {aff && <span className="text-foreground">· {aff.conversions_count ?? 0} conv · ${(((aff.earnings_balance?.amount_cents ?? aff.commissions_total_cents) || 0) / 100).toFixed(0)} earned</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -350,7 +654,7 @@ export default function AdminPartners() {
                     <Button size="sm" variant="ghost" onClick={() => p.partner_trial_code && copyLink(p.partner_trial_code)}>
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(p)}>
+                    <Button size="sm" variant="ghost" onClick={() => { setEditing(p); setEditingTab("overview"); }}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => handleDelete(p.id)}>
@@ -359,7 +663,8 @@ export default function AdminPartners() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
             {partners.length === 0 && (
               <Card><CardContent className="p-8 text-center text-muted-foreground">No partner codes yet. Click "New Partner" to add one.</CardContent></Card>
             )}
@@ -372,8 +677,20 @@ export default function AdminPartners() {
               <DialogTitle>{editing?.id ? "Edit Partner" : "New Partner"}</DialogTitle>
               <DialogDescription>Anyone who signs up with this code gets the custom welcome experience below.</DialogDescription>
             </DialogHeader>
-            {editing && (
-              <div className="space-y-4 py-2">
+            {editing && (() => {
+              const linkedApp = applicationForPartner(editing);
+              const linkedAff = affiliateForPartner(editing);
+              return (
+              <Tabs value={editingTab} onValueChange={setEditingTab} className="py-2">
+                <TabsList className="w-full">
+                  <TabsTrigger value="overview" className="flex-1 text-xs">Portal</TabsTrigger>
+                  <TabsTrigger value="application" className="flex-1 text-xs" disabled={!linkedApp}>
+                    Application {linkedApp && <Badge variant="outline" className="ml-1 text-[10px] capitalize">{linkedApp.status}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="affiliate" className="flex-1 text-xs" disabled={!linkedAff}>Affiliate</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-4 pt-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Partner name *</Label>
@@ -515,8 +832,126 @@ export default function AdminPartners() {
                   </div>
                   <Switch checked={editing.is_active ?? true} onCheckedChange={(v) => setEditing({ ...editing, is_active: v })} />
                 </div>
-              </div>
-            )}
+                </TabsContent>
+
+                {/* APPLICATION TAB */}
+                {linkedApp && (
+                  <TabsContent value="application" className="space-y-4 pt-3">
+                    <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{linkedApp.first_name} {linkedApp.last_name}</p>
+                          <p className="text-xs text-muted-foreground">{linkedApp.email}</p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">{linkedApp.status}</Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Applied {new Date(linkedApp.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                      </div>
+                      {linkedApp.website && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Website: </span>
+                          <a href={linkedApp.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                            {linkedApp.website} <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Audience description</Label>
+                        <p className="text-sm whitespace-pre-wrap mt-1">{linkedApp.audience_description || "Not provided"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">How they'll share / promotion plan</Label>
+                        <p className="text-sm whitespace-pre-wrap mt-1">{linkedApp.promotion_plan || linkedApp.how_will_you_share || "Not provided"}</p>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">Admin notes</Label>
+                      <Textarea
+                        defaultValue={linkedApp.notes || ""}
+                        placeholder="Internal notes about this application..."
+                        className="min-h-[80px]"
+                        onBlur={(e) => { if (e.target.value !== (linkedApp.notes || "")) handleApplicationNoteSave(e.target.value); }}
+                      />
+                    </div>
+
+                    {linkedApp.status === "pending" && (
+                      <>
+                        <Separator />
+                        <div className="space-y-2">
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Custom welcome message (optional)</Label>
+                          <Textarea
+                            value={approvalMessage}
+                            onChange={(e) => setApprovalMessage(e.target.value)}
+                            placeholder="Personal note included in their approval email..."
+                            className="min-h-[80px]"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={appActionLoading} onClick={handleApproveApplication}>
+                            {appActionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                            Approve & Send Welcome Email
+                          </Button>
+                          <Button variant="destructive" disabled={appActionLoading} onClick={() => setConfirmDecline(true)}>
+                            <X className="h-4 w-4 mr-2" /> Decline
+                          </Button>
+                        </div>
+                      </>
+                    )}
+
+                    {linkedApp.status === "declined" && (
+                      <Button variant="outline" disabled={appActionLoading} onClick={handleReconsiderApplication}>
+                        {appActionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+                        Reconsider Application
+                      </Button>
+                    )}
+
+                    {linkedApp.status === "approved" && (
+                      <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+                        ✅ Approved {linkedApp.updated_at ? `on ${new Date(linkedApp.updated_at).toLocaleDateString()}` : ''}.
+                      </div>
+                    )}
+                  </TabsContent>
+                )}
+
+                {/* AFFILIATE TAB */}
+                {linkedAff && (
+                  <TabsContent value="affiliate" className="space-y-4 pt-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Leads</p><p className="text-xl font-semibold">{linkedAff.leads_count ?? linkedAff.visitors_count ?? 0}</p></div>
+                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Conversions</p><p className="text-xl font-semibold">{linkedAff.conversions_count ?? 0}</p></div>
+                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Earned</p><p className="text-xl font-semibold">${(((linkedAff.earnings_balance?.amount_cents ?? linkedAff.commissions_total_cents) || 0) / 100).toFixed(2)}</p></div>
+                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Status</p><Badge className="capitalize">{linkedAff.state || 'active'}</Badge></div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">Referral code</Label>
+                      <p className="text-sm font-mono">{linkedAff.links?.[0]?.token || '—'}</p>
+                    </div>
+                    {linkedAff.links?.[0]?.url && (
+                      <div className="space-y-1">
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Referral link</Label>
+                        <div className="flex gap-2">
+                          <Input readOnly value={linkedAff.links[0].url} className="font-mono text-xs" />
+                          <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(linkedAff.links![0].url!); toast.success("Copied"); }}>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <a href="https://app.rewardful.com" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                      Open in Rewardful <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </TabsContent>
+                )}
+              </Tabs>
+              );
+            })()}
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
               <Button onClick={handleSave} disabled={saving}>
@@ -547,6 +982,20 @@ export default function AdminPartners() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingUpdate(null)}>Cancel</Button>
               <Button onClick={saveUpdate}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Decline confirmation */}
+        <Dialog open={confirmDecline} onOpenChange={setConfirmDecline}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Decline application?</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">This marks the application as declined. You can reconsider later.</p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmDecline(false)}>Cancel</Button>
+              <Button variant="destructive" disabled={appActionLoading} onClick={handleDeclineApplication}>
+                {appActionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Decline
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

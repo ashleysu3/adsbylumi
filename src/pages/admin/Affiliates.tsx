@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Users, Search, ExternalLink, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import AdminTabs from "@/components/AdminTabs";
 import PartnerApplicationDrawer from "@/components/admin/PartnerApplicationDrawer";
 
 export default function AdminAffiliates() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [affiliates, setAffiliates] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
@@ -319,14 +321,14 @@ export default function AdminAffiliates() {
                       </TableHeader>
                       <TableBody>
                         {filteredApps.map(app => (
-                          <TableRow key={app.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedApp(app)}>
+                          <TableRow key={app.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/admin/partners?app=${app.id}`)}>
                             <TableCell>
                               <p className="font-medium text-sm">{app.first_name} {app.last_name}</p>
                               <p className="text-xs text-muted-foreground">{app.email}</p>
                             </TableCell>
                             <TableCell>
                               {app.website ? (
-                                <a href={app.website} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                                <a href={app.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-xs text-primary hover:underline flex items-center gap-1">
                                   Link <ExternalLink className="h-3 w-3" />
                                 </a>
                               ) : <span className="text-xs text-muted-foreground">—</span>}
@@ -348,9 +350,9 @@ export default function AdminAffiliates() {
                                 variant="outline"
                                 size="sm"
                                 className="text-xs"
-                                onClick={(e) => { e.stopPropagation(); setSelectedApp(app); }}
+                                onClick={(e) => { e.stopPropagation(); navigate(`/admin/partners?app=${app.id}`); }}
                               >
-                                Open Application
+                                Manage in Partners
                               </Button>
                             </TableCell>
                             <TableCell>
