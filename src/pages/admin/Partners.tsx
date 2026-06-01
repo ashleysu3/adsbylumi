@@ -302,7 +302,7 @@ export default function AdminPartners() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this partner code? This cannot be undone.")) return;
+    if (!confirm("Delete this partner? This cannot be undone.")) return;
     try {
       const { error } = await supabase.from("partner_access_tokens").delete().eq("id", id);
       if (error) throw error;
@@ -523,7 +523,7 @@ export default function AdminPartners() {
         <AdminTabs />
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="h-6 w-6" /> Partner Codes</h1>
+            <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="h-6 w-6" /> Partners</h1>
             <p className="text-muted-foreground text-sm">Configure custom welcome packages for affiliates and partners.</p>
           </div>
           <Button onClick={() => setEditing(blankForm())}>
@@ -600,7 +600,7 @@ export default function AdminPartners() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-sm">{app.first_name} {app.last_name}</span>
                       <Badge variant="outline" className="capitalize text-xs">{app.status}</Badge>
-                      {linkedPartner && <Badge variant="outline" className="text-xs"><Link2 className="h-3 w-3 mr-1" />Has partner code</Badge>}
+                      {linkedPartner && <Badge variant="outline" className="text-xs"><Link2 className="h-3 w-3 mr-1" />Has partner</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{app.email}</p>
                     {app.audience_description && <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{app.audience_description}</p>}
@@ -666,7 +666,7 @@ export default function AdminPartners() {
               );
             })}
             {partners.length === 0 && (
-              <Card><CardContent className="p-8 text-center text-muted-foreground">No partner codes yet. Click "New Partner" to add one.</CardContent></Card>
+              <Card><CardContent className="p-8 text-center text-muted-foreground">No partners yet. Click "New Partner" to add one.</CardContent></Card>
             )}
           </div>
         )}
