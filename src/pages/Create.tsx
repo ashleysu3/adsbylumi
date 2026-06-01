@@ -165,7 +165,7 @@ export default function Create() {
   const [templates, setTemplates] = useState<CampaignTemplate[]>([]);
 
   // Wizard state
-  const [selectedGoal, setSelectedGoal] = useState<string>("");
+  const [selectedGoal, setSelectedGoal] = useState<string>(fromStrategy ? "promote_offer" : "");
   const [selectedOfferId, setSelectedOfferId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [recommendedTemplate, setRecommendedTemplate] = useState<CampaignTemplate | null>(null);
