@@ -542,6 +542,36 @@ export default function AdminPartners() {
     }
   };
 
+  const draftPitchEmail = async () => {
+    if (!editing) return;
+    const ideas = ((editing.recommended_strategies || []) as StrategyItem[]).filter(i => i.selected !== false && i.title);
+    if (ideas.length === 0) { toast.error("Select at least one idea to pitch"); return; }
+    const resources = ((editing.share_resources || []) as ResourceItem[]).filter(r => r.selected !== false && r.title);
+    const aff = affiliateForPartner(editing);
+    setDraftingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("draft-partner-pitch-email", {
+        body: {
+          partner_display_name: editing.partner_display_name,
+          partner_email: editing.partner_email || editing.email,
+          partner_trial_code: editing.partner_trial_code,
+          partner_title: editing.partner_title,
+          referral_link: editing.referral_link || aff?.links?.[0]?.url || "",
+          selected_ideas: ideas,
+          selected_resources: resources,
+        },
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.error) throw new Error(res.error);
+      setEmailDraft({ to: res.to || "", subject: res.subject || "", body: res.body || "" });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to draft email");
+    } finally {
+      setDraftingEmail(false);
+    }
+  };
+
 
 
   const saveConfig = async () => {
