@@ -78,6 +78,8 @@ import FreeTrial from "./pages/FreeTrial";
 import Welcome from "./pages/Welcome";
 import BrandPatterns from "./pages/BrandPatterns";
 import Retrospectives from "./pages/Retrospectives";
+import RecommendedStrategy from "./pages/RecommendedStrategy";
+import AdminStrategies from "./pages/admin/Strategies";
 
 function CreativeRedirect() {
   const location = useLocation();
