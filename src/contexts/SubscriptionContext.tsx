@@ -155,6 +155,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
       const isAgencyUser = profileData?.is_agency_user ?? false;
 
+      // Check if user is a comped partner — grants agency tier
+      let isCompedPartner = false;
+      try {
+        const { data: compRes } = await supabase.rpc("is_current_user_comped_partner" as any);
+        isCompedPartner = !!compRes;
+      } catch { /* noop */ }
+
       let data: any = null;
       let lastError: any = null;
       for (let attempt = 0; attempt < 3; attempt++) {
@@ -175,21 +182,21 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         getTierFromProductId(data.product_id) ??
         getTierFromPriceId(data.price_id);
 
-      // Auto-grant agency tier for agency users
-      if (isAgencyUser && tier !== 'agency') {
+      // Auto-grant agency tier for agency users or comped partners
+      if ((isAgencyUser || isCompedPartner) && tier !== 'agency') {
         tier = 'agency';
       }
       
       setState({
         isLoading: false,
-        isSubscribed: isAgencyUser ? true : data.subscribed,
+        isSubscribed: (isAgencyUser || isCompedPartner) ? true : data.subscribed,
         tier: tier as TierKey | null,
         isAnnual: isAnnualPrice(data.price_id),
         subscriptionEnd: data.subscription_end,
         cancelAtPeriodEnd: data.cancel_at_period_end,
         productId: data.product_id,
         priceId: data.price_id,
-        isCodeBased: data.is_code_based || false,
+        isCodeBased: data.is_code_based || isCompedPartner,
         isTrial: data.is_trial || false,
         status: data.status || null,
         discount: data.discount || null,
