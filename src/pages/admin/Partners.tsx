@@ -1177,10 +1177,118 @@ export default function AdminPartners() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Pitch email draft */}
+        <Dialog open={!!emailDraft} onOpenChange={(v) => !v && setEmailDraft(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Pitch email draft</DialogTitle>
+              <DialogDescription>Review, edit, then copy or open in your mail client.</DialogDescription>
+            </DialogHeader>
+            {emailDraft && (
+              <div className="space-y-3">
+                <div>
+                  <Label>To</Label>
+                  <Input value={emailDraft.to} onChange={(e) => setEmailDraft({ ...emailDraft, to: e.target.value })} placeholder="partner@email.com" />
+                </div>
+                <div>
+                  <Label>Subject</Label>
+                  <Input value={emailDraft.subject} onChange={(e) => setEmailDraft({ ...emailDraft, subject: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Body</Label>
+                  <Textarea rows={14} value={emailDraft.body} onChange={(e) => setEmailDraft({ ...emailDraft, body: e.target.value })} />
+                </div>
+              </div>
+            )}
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setEmailDraft(null)}>Close</Button>
+              <Button variant="outline" onClick={() => {
+                if (!emailDraft) return;
+                navigator.clipboard.writeText(`Subject: ${emailDraft.subject}\n\n${emailDraft.body}`);
+                toast.success("Copied to clipboard");
+              }}><Copy className="h-3 w-3 mr-1" />Copy</Button>
+              <Button onClick={() => {
+                if (!emailDraft) return;
+                const url = `mailto:${encodeURIComponent(emailDraft.to)}?subject=${encodeURIComponent(emailDraft.subject)}&body=${encodeURIComponent(emailDraft.body)}`;
+                window.open(url, "_blank");
+              }}><Mail className="h-3 w-3 mr-1" />Open in mail</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
 }
+
+function MarketingIdeasEditor({
+  items, onChange,
+}: { items: StrategyItem[]; onChange: (next: StrategyItem[]) => void }) {
+  const update = (i: number, patch: Partial<StrategyItem>) => {
+    const next = [...items];
+    next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
+  const add = () => onChange([...items, { title: "", description: "", selected: true, custom_notes: "" }]);
+  const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>Marketing ideas</Label>
+        <Button type="button" size="sm" variant="outline" onClick={add}>
+          <Plus className="h-3 w-3 mr-1" /> Add idea
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, i) => {
+          const selected = item.selected !== false;
+          return (
+            <div key={i} className={`rounded-md border p-3 space-y-2 ${selected ? "bg-primary/5 border-primary/30" : "bg-muted/30"}`}>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  checked={selected}
+                  onCheckedChange={(v) => update(i, { selected: !!v })}
+                  className="mt-1"
+                />
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={item.title || ""}
+                    onChange={(e) => update(i, { title: e.target.value })}
+                    placeholder="Idea title (e.g. Live workshop for your email list)"
+                    className="font-medium"
+                  />
+                  <Textarea
+                    rows={2}
+                    value={item.description || ""}
+                    onChange={(e) => update(i, { description: e.target.value })}
+                    placeholder="Why it's great for their audience — what they'd do, what their people get"
+                  />
+                  <Textarea
+                    rows={2}
+                    value={item.custom_notes || ""}
+                    onChange={(e) => update(i, { custom_notes: e.target.value })}
+                    placeholder="Your custom notes for the pitch (optional — e.g. 'offer to co-host', 'we'll provide swipe copy')"
+                    className="text-xs bg-background"
+                  />
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        {items.length === 0 && (
+          <p className="text-xs text-muted-foreground py-4 text-center border rounded-md bg-muted/30">
+            No ideas yet. Add one or use "Generate more" to have AI draft custom ideas based on their audience.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function RepeaterField<T extends Record<string, string>>({
   label, items, onChange, fields,
