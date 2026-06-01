@@ -973,6 +973,21 @@ export default function AdminPartners() {
                       </div>
                     </div>
 
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Auto-fill portal with AI</p>
+                          <p className="text-xs text-muted-foreground">
+                            Scans {linkedApp.website ? "their website" : "their application"} + audience info, then proposes a title/subtitle, logo, marketing strategies for Lumi, and a custom swipe file. Review before saving.
+                          </p>
+                        </div>
+                        <Button size="sm" disabled={generatingAI} onClick={generatePortalFromAI}>
+                          {generatingAI ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                          Generate
+                        </Button>
+                      </div>
+                    </div>
+
                     <Separator />
 
                     <div className="space-y-2">
