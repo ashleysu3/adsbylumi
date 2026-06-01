@@ -648,6 +648,17 @@ export default function Dashboard() {
           />
         </div>
 
+        {/* Brand Voice */}
+        <BrandVoiceCard
+          brandId={brand.id}
+          brandVoice={brand.brand_voice ?? null}
+          voiceProfile={(brand as any).voice_profile ?? null}
+          voiceGeneratedAt={(brand as any).voice_profile_generated_at ?? null}
+          onUpdate={fetchBrandData}
+        />
+
+
+
 
 
         {/* Content Library + Psychology */}
