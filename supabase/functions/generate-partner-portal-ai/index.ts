@@ -187,6 +187,7 @@ For recommended_features, choose 4 Lumi capabilities this audience would find mo
       partner_photo_url: parsed.partner_photo_url || "",
       recommended_strategies: parsed.recommended_strategies || [],
       share_resources: parsed.share_resources || [],
+      recommended_features: parsed.recommended_features || [],
     });
   } catch (e: any) {
     log("ERROR", { message: e.message });
