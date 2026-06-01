@@ -526,6 +526,8 @@ export type Database = {
           use_emojis: boolean | null
           user_id: string
           value_proposition: string | null
+          voice_profile: Json | null
+          voice_profile_generated_at: string | null
           website_url: string | null
         }
         Insert: {
@@ -571,6 +573,8 @@ export type Database = {
           use_emojis?: boolean | null
           user_id: string
           value_proposition?: string | null
+          voice_profile?: Json | null
+          voice_profile_generated_at?: string | null
           website_url?: string | null
         }
         Update: {
@@ -616,6 +620,8 @@ export type Database = {
           use_emojis?: boolean | null
           user_id?: string
           value_proposition?: string | null
+          voice_profile?: Json | null
+          voice_profile_generated_at?: string | null
           website_url?: string | null
         }
         Relationships: []

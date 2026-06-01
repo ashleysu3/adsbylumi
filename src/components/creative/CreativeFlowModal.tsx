@@ -212,6 +212,7 @@ export function CreativeFlowModal({ open, onOpenChange, workspaceId, onComplete 
           brandInfo: {
             name: workspace.brands?.name,
             brand_voice: workspace.brands?.brand_voice,
+            voice_profile: (workspace.brands as any)?.voice_profile,
           },
           offerData: offerData || {
             name: workspace.offer_name,

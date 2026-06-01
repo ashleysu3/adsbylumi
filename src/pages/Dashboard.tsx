@@ -23,6 +23,7 @@ import { useLumiRecommend } from "@/components/LumiAssistant";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
 import { OfferManager } from "@/components/OfferManager";
+import { BrandVoiceCard } from "@/components/BrandVoiceCard";
 import { BRollLibrary } from "@/components/BRollLibrary";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
@@ -646,6 +647,17 @@ export default function Dashboard() {
             onUpdate={fetchBrandData}
           />
         </div>
+
+        {/* Brand Voice */}
+        <BrandVoiceCard
+          brandId={brand.id}
+          brandVoice={brand.brand_voice ?? null}
+          voiceProfile={(brand as any).voice_profile ?? null}
+          voiceGeneratedAt={(brand as any).voice_profile_generated_at ?? null}
+          onUpdate={fetchBrandData}
+        />
+
+
 
 
 

@@ -287,6 +287,7 @@ export default function AdvancedBuild() {
         body: {
           brandName: brand?.name,
           brandVoice: brand?.brand_voice,
+          voiceProfile: (brand as any)?.voice_profile,
           offerName: offer?.name || workspace?.offer_name,
           offerDescription: offer?.description || workspace?.offer_description,
           offerUrl: offer?.url || workspace?.offer_url,

@@ -169,6 +169,7 @@ Generate 3-5 variations of ad copy for EACH creative angle. Each variation shoul
 
 ## BRAND CONTEXT
 ${brandInfo?.brand_voice ? `Brand Voice: ${brandInfo.brand_voice}` : ''}
+${brandInfo?.voice_profile ? `\nDETAILED BRAND VOICE PROFILE (match this — it's how the brand actually sounds, override any generic copy instinct that conflicts):\n${JSON.stringify(brandInfo.voice_profile, null, 2).slice(0, 1800)}` : ''}
 
 ## OFFER DETAILS
 - Name: ${offerData?.name || 'Not specified'}
