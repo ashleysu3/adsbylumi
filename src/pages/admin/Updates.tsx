@@ -76,7 +76,7 @@ export default function AdminUpdates() {
         supabase.from("newsletter_campaigns").select("*").order("created_at", { ascending: false }).limit(30),
       ]);
       setSignals(s.data);
-      setEntries(e.data || []);
+      setEntries((e.data as any[]) || []);
       setCampaigns(c.data || []);
     } catch (err: any) {
       toast.error("Failed to load: " + err.message);
