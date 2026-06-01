@@ -184,6 +184,13 @@ export default function PartnerPortal() {
                 <p className="text-xs text-muted-foreground mt-1">What your audience sees when they click.</p>
               </div>
             </div>
+            <div className="pt-2 border-t flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Want to see exactly what your audience gets after signing up with your code?</p>
+              <Button variant="outline" size="sm" onClick={previewWelcomePopup} disabled={loadingWelcomePreview}>
+                {loadingWelcomePreview ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Eye className="h-4 w-4 mr-2" />}
+                Preview welcome popup
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
