@@ -1128,35 +1128,44 @@ export type Database = {
       }
       changelog_entries: {
         Row: {
+          approval_status: string
           body: string | null
           category: string
+          commit_refs: Json
           created_at: string
           created_by: string | null
           id: string
           included_in_campaign_id: string | null
           is_user_visible: boolean
+          source: string
           title: string
           updated_at: string
         }
         Insert: {
+          approval_status?: string
           body?: string | null
           category?: string
+          commit_refs?: Json
           created_at?: string
           created_by?: string | null
           id?: string
           included_in_campaign_id?: string | null
           is_user_visible?: boolean
+          source?: string
           title: string
           updated_at?: string
         }
         Update: {
+          approval_status?: string
           body?: string | null
           category?: string
+          commit_refs?: Json
           created_at?: string
           created_by?: string | null
           id?: string
           included_in_campaign_id?: string | null
           is_user_visible?: boolean
+          source?: string
           title?: string
           updated_at?: string
         }

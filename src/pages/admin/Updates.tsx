@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Sparkles, Send, Calendar, Trash2, BarChart3, Mail, Eye, MousePointer, RotateCw, Lightbulb } from "lucide-react";
+import { Plus, Sparkles, Send, Calendar, Trash2, BarChart3, Mail, Eye, MousePointer, RotateCw, Lightbulb, Check, X, GitCommit } from "lucide-react";
 import { toast } from "sonner";
 
 interface ChangelogEntry {
@@ -23,6 +23,9 @@ interface ChangelogEntry {
   category: string;
   created_at: string;
   included_in_campaign_id: string | null;
+  approval_status?: string;
+  source?: string;
+  commit_refs?: Array<{ sha?: string; message?: string; author?: string | null; url?: string | null }>;
 }
 
 interface Campaign {
@@ -73,7 +76,7 @@ export default function AdminUpdates() {
         supabase.from("newsletter_campaigns").select("*").order("created_at", { ascending: false }).limit(30),
       ]);
       setSignals(s.data);
-      setEntries(e.data || []);
+      setEntries((e.data as any[]) || []);
       setCampaigns(c.data || []);
     } catch (err: any) {
       toast.error("Failed to load: " + err.message);
@@ -96,6 +99,17 @@ export default function AdminUpdates() {
     await supabase.from("changelog_entries").delete().eq("id", id);
     load();
   }
+
+  async function setApproval(id: string, status: "approved" | "rejected") {
+    const { error } = await supabase
+      .from("changelog_entries")
+      .update({ approval_status: status })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(status === "approved" ? "Approved & published" : "Rejected");
+    load();
+  }
+
 
   async function suggestIdeas() {
     setIdeasLoading(true);
@@ -272,8 +286,8 @@ export default function AdminUpdates() {
                 <p className="text-sm text-muted-foreground">Check the items to highlight. Hit "Suggest angles" for ideas on how to talk about each one.</p>
               </CardHeader>
               <CardContent className="space-y-2">
-                {entries.length === 0 && <p className="text-sm text-muted-foreground">No changelog entries yet. Add one in the Changelog tab.</p>}
-                {entries.map((e) => (
+                {entries.filter((e) => e.approval_status !== "draft" && e.approval_status !== "rejected").length === 0 && <p className="text-sm text-muted-foreground">No approved entries yet. Add one (or approve a draft) in the Changelog tab.</p>}
+                {entries.filter((e) => e.approval_status !== "draft" && e.approval_status !== "rejected").map((e) => (
                   <div key={e.id} className="flex items-start gap-3 p-3 border rounded-lg">
                     <Checkbox checked={selectedIds.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
                     <div className="flex-1 min-w-0">
@@ -319,6 +333,69 @@ export default function AdminUpdates() {
 
           {/* CHANGELOG */}
           <TabsContent value="changelog" className="space-y-4">
+            {entries.some((e) => e.approval_status === "draft") && (
+              <Card className="border-amber-500/40 bg-amber-500/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GitCommit className="w-5 h-5 text-amber-600" />
+                    Pending approval
+                    <Badge variant="secondary" className="ml-2">
+                      {entries.filter((e) => e.approval_status === "draft").length}
+                    </Badge>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Auto-drafted from recent code changes. Approve to publish to "What's new" and partner portals — or reject to discard.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {entries
+                    .filter((e) => e.approval_status === "draft")
+                    .map((e) => (
+                      <div key={e.id} className="p-3 border rounded-lg bg-background space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium">{e.title}</span>
+                              <Badge variant="outline" className="text-xs capitalize">{e.category}</Badge>
+                              {e.source === "github" && (
+                                <Badge variant="outline" className="text-xs">
+                                  <GitCommit className="w-3 h-3 mr-1" /> GitHub
+                                </Badge>
+                              )}
+                            </div>
+                            {e.body && <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{e.body}</p>}
+                            {Array.isArray(e.commit_refs) && e.commit_refs.length > 0 && (
+                              <details className="mt-2 text-xs text-muted-foreground">
+                                <summary className="cursor-pointer hover:text-foreground">
+                                  {e.commit_refs.length} commit{e.commit_refs.length === 1 ? "" : "s"}
+                                </summary>
+                                <ul className="mt-1 space-y-0.5 pl-3">
+                                  {e.commit_refs.map((c, i) => (
+                                    <li key={i} className="font-mono">
+                                      {c.sha && <span className="text-primary mr-1">{c.sha}</span>}
+                                      {c.message}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </details>
+                            )}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button size="sm" variant="default" onClick={() => setApproval(e.id, "approved")}>
+                              <Check className="w-3 h-3 mr-1" /> Approve
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setApproval(e.id, "rejected")}>
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+
+
             <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -382,9 +459,12 @@ export default function AdminUpdates() {
                 {entries.map((e) => (
                   <div key={e.id} className="flex items-start justify-between p-3 border rounded-lg">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium">{e.title}</span>
                         <Badge variant="outline" className="text-xs">{e.category}</Badge>
+                        {e.approval_status === "draft" && <Badge className="text-xs bg-amber-500/15 text-amber-700 hover:bg-amber-500/15">Draft</Badge>}
+                        {e.approval_status === "rejected" && <Badge variant="secondary" className="text-xs">Rejected</Badge>}
+                        {e.source === "github" && <Badge variant="outline" className="text-xs"><GitCommit className="w-3 h-3 mr-1" />GitHub</Badge>}
                       </div>
                       {e.body && <p className="text-sm text-muted-foreground mt-1">{e.body}</p>}
                       <p className="text-xs text-muted-foreground mt-1">{new Date(e.created_at).toLocaleString()}</p>

@@ -177,3 +177,5 @@ project_id = "sqwjbndgighjtifijgws"
     verify_jwt = true
   [functions.draft-partner-pitch-email]
     verify_jwt = true
+  [functions.github-changelog-webhook]
+    verify_jwt = false
