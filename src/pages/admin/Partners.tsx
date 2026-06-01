@@ -126,6 +126,9 @@ export default function AdminPartners() {
   const [emailDraft, setEmailDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
   const [welcomePreview, setWelcomePreview] = useState<PartnerWelcome | null>(null);
   const [welcomePreviewOpen, setWelcomePreviewOpen] = useState(false);
+  const [sendingCompInvite, setSendingCompInvite] = useState(false);
+  const [accountExists, setAccountExists] = useState<null | boolean>(null);
+  const [checkingAccount, setCheckingAccount] = useState(false);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string; brand_assets_url: string }>({
@@ -285,16 +288,22 @@ export default function AdminPartners() {
     }
   };
 
-  const handleLinkAccount = async () => {
-    if (!editing?.id || !linkEmail.trim()) return toast.error("Save partner first, then link an account");
+  const handleLinkAccount = async (overrideEmail?: string) => {
+    const target = (overrideEmail ?? linkEmail).trim();
+    if (!editing?.id || !target) return toast.error("Save partner first, then link an account");
     setLinking(true);
     try {
-      const { data, error } = await supabase.rpc("admin_link_partner_user" as any, { p_partner_id: editing.id, p_email: linkEmail.trim() });
+      const { data, error } = await supabase.rpc("admin_link_partner_user" as any, { p_partner_id: editing.id, p_email: target });
       if (error) throw error;
       const res = data as any;
-      if (!res?.success) throw new Error(res?.error || "Could not link");
+      if (!res?.success) {
+        setAccountExists(false);
+        toast.error(res?.error || "No Lumi account with that email. You can send a comp invite instead.");
+        return;
+      }
+      setAccountExists(true);
       toast.success("Account linked");
-      setEditing({ ...editing, partner_user_id: res.partner_user_id, partner_email: linkEmail.trim() });
+      setEditing({ ...editing, partner_user_id: res.partner_user_id, partner_email: target });
       setLinkEmail("");
     } catch (e: any) {
       toast.error(e.message);
@@ -302,6 +311,26 @@ export default function AdminPartners() {
       setLinking(false);
     }
   };
+
+  const sendCompInvite = async (email: string, firstName?: string) => {
+    if (!editing?.id) return toast.error("Save partner first");
+    if (!email) return toast.error("No email on file");
+    setSendingCompInvite(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-partner-comp-invite", {
+        body: { email, first_name: firstName, partner_id: editing.id },
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.error) throw new Error(res.error);
+      toast.success(`Comp invite sent to ${email}`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to send invite");
+    } finally {
+      setSendingCompInvite(false);
+    }
+  };
+
 
   const handleUnlink = async () => {
     if (!editing?.id) return;
@@ -692,42 +721,20 @@ export default function AdminPartners() {
           </CardContent>
         </Card>
 
-        {/* Partner Applications */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Inbox className="h-4 w-4" /> Partner Applications
-              {applications.filter((a) => a.status === 'pending').length > 0 && (
-                <Badge className="bg-amber-100 text-amber-800 border-0">
-                  {applications.filter((a) => a.status === 'pending').length} pending
-                </Badge>
-              )}
-            </CardTitle>
-            <CardDescription>Open an application to review, approve, and turn it into a managed partner — all in one place.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {applications.length === 0 && <p className="text-sm text-muted-foreground">No partner applications yet.</p>}
-            {applications.map((app) => {
-              const linkedPartner = partnersByAppId.get(app.id) || partnersByEmail.get(app.email.toLowerCase());
-              return (
-                <div key={app.id} className="flex items-start justify-between gap-3 p-3 rounded border hover:bg-muted/40 cursor-pointer" onClick={() => openFromApplication(app)}>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm">{app.first_name} {app.last_name}</span>
-                      <Badge variant="outline" className="capitalize text-xs">{app.status}</Badge>
-                      {linkedPartner && <Badge variant="outline" className="text-xs"><Link2 className="h-3 w-3 mr-1" />Has partner</Badge>}
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">{app.email}</p>
-                    {app.audience_description && <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{app.audience_description}</p>}
-                  </div>
-                  <div className="text-xs text-muted-foreground shrink-0 text-right">
-                    {new Date(app.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+        {/* Partner Applications moved to its own page */}
+        {applications.filter((a) => a.status === 'pending').length > 0 && (
+          <Card className="border-amber-300/50 bg-amber-50/40">
+            <CardContent className="p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Inbox className="h-4 w-4 text-amber-700" />
+                <span className="font-medium">{applications.filter((a) => a.status === 'pending').length} pending partner application(s)</span>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => navigate('/admin/partner-applications')}>
+                Review applications <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
@@ -951,6 +958,41 @@ export default function AdminPartners() {
                   <div>
                     <Label>Partner Lumi account</Label>
                     <p className="text-xs text-muted-foreground mb-2">Link this partner to a Lumi user so they see the Partner Portal banner and (optionally) get a comped membership.</p>
+
+                    {/* Application contact email surfaced here */}
+                    {(linkedApp?.email || editing.partner_email) && !editing.partner_user_id && (
+                      <div className="rounded-md border bg-muted/40 p-3 space-y-2 mb-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Application email:</span>{" "}
+                            <span className="font-medium">{linkedApp?.email || editing.partner_email}</span>
+                          </div>
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={linking || !editing.id}
+                              onClick={() => handleLinkAccount(linkedApp?.email || editing.partner_email || "")}
+                            >
+                              {linking ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Link2 className="h-3 w-3 mr-1" />}
+                              Link existing Lumi account
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={sendingCompInvite || !editing.id}
+                              onClick={() => sendCompInvite(linkedApp?.email || editing.partner_email || "", linkedApp?.first_name || (editing.partner_display_name || "").split(" ")[0])}
+                            >
+                              {sendingCompInvite ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Gift className="h-3 w-3 mr-1" />}
+                              Send comp invite
+                            </Button>
+                          </div>
+                        </div>
+                        {accountExists === false && (
+                          <p className="text-xs text-amber-700">No Lumi account found at this email yet. Send the comp invite so they can claim a free account.</p>
+                        )}
+                      </div>
+                    )}
+
                     {editing.partner_user_id ? (
                       <div className="flex items-center justify-between rounded border p-2">
                         <div className="text-sm">
@@ -961,8 +1003,8 @@ export default function AdminPartners() {
                       </div>
                     ) : (
                       <div className="flex gap-2">
-                        <Input value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} placeholder="partner@email.com" type="email" />
-                        <Button onClick={handleLinkAccount} disabled={linking || !editing.id}>
+                        <Input value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} placeholder="Or link a different email..." type="email" />
+                        <Button onClick={() => handleLinkAccount()} disabled={linking || !editing.id || !linkEmail.trim()}>
                           {linking && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Link
                         </Button>
                       </div>
