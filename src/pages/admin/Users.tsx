@@ -1034,12 +1034,13 @@ export default function AdminUsers() {
           ) : userDetails && (
             <Tabs defaultValue="overview" className="flex-1 overflow-hidden flex flex-col">
               {/* Mobile: scrollable horizontal tabs, Desktop: grid */}
-              <TabsList className="flex sm:grid sm:grid-cols-6 w-full overflow-x-auto gap-1 h-auto p-1">
+              <TabsList className="flex sm:grid sm:grid-cols-7 w-full overflow-x-auto gap-1 h-auto p-1">
                 <TabsTrigger value="overview" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Overview</TabsTrigger>
                 <TabsTrigger value="activity" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Activity</TabsTrigger>
                 <TabsTrigger value="bugs" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Bugs ({userDetails.bugReports.length})</TabsTrigger>
                 <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Notes ({userDetails.adminNotes.length})</TabsTrigger>
                 <TabsTrigger value="billing" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Billing</TabsTrigger>
+                <TabsTrigger value="team" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Team</TabsTrigger>
                 <TabsTrigger value="actions" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">Actions</TabsTrigger>
               </TabsList>
 
