@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Copy, ExternalLink, Calendar, Mail, Video, Sparkles, BookOpen, Megaphone, Gift, Eye } from "lucide-react";
+import { Loader2, Copy, ExternalLink, Calendar, Mail, Video, Sparkles, BookOpen, Megaphone, Gift, Eye, Wand2, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PartnerWelcomeModal, type PartnerWelcome } from "@/components/PartnerWelcomeModal";
