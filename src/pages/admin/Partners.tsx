@@ -551,11 +551,10 @@ export default function AdminPartners() {
   const generatePortalFromAI = async () => {
     if (!editing) return;
     const app = applicationForPartner(editing);
-    if (!app) { toast.error("Link an application first"); return; }
     setGeneratingAI(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-partner-portal-ai", {
-        body: { application_id: app.id },
+        body: app ? { application_id: app.id } : { partner_id: editing.id },
       });
       if (error) throw error;
       const res = data as any;
@@ -563,7 +562,7 @@ export default function AdminPartners() {
 
       setEditing((prev) => prev ? {
         ...prev,
-        partner_display_name: prev.partner_display_name || res.partner_display_name || `${app.first_name} ${app.last_name}`.trim(),
+        partner_display_name: prev.partner_display_name || res.partner_display_name || (app ? `${app.first_name} ${app.last_name}`.trim() : ""),
         partner_title: prev.partner_title || res.partner_title || prev.partner_title,
         partner_photo_url: prev.partner_photo_url || res.partner_photo_url || prev.partner_photo_url,
         recommended_strategies: [
@@ -1099,7 +1098,7 @@ export default function AdminPartners() {
                       {((editing.recommended_strategies || []) as StrategyItem[]).filter(i => i.selected !== false && i.title).length} idea(s) selected
                     </p>
                     <div className="flex gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={generatePortalFromAI} disabled={generatingAI || !applicationForPartner(editing)}>
+                      <Button type="button" variant="outline" size="sm" onClick={generatePortalFromAI} disabled={generatingAI}>
                         {generatingAI ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
                         Generate more
                       </Button>

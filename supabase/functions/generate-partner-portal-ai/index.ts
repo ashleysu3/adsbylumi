@@ -75,15 +75,50 @@ Deno.serve(async (req) => {
     const { data: roleRow } = await admin.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle();
     if (!roleRow) return json({ error: "Admin only" });
 
-    const { application_id } = await req.json();
-    if (!application_id) return json({ error: "application_id required" });
+    const { application_id, partner_id } = await req.json();
+    if (!application_id && !partner_id) return json({ error: "application_id or partner_id required" });
 
-    const { data: app, error: appErr } = await admin
-      .from("partner_applications")
-      .select("first_name, last_name, email, website, audience_description, promotion_plan, how_will_you_share")
-      .eq("id", application_id)
-      .maybeSingle();
-    if (appErr || !app) return json({ error: "Application not found" });
+    let app: any = null;
+    if (application_id) {
+      const { data, error: appErr } = await admin
+        .from("partner_applications")
+        .select("first_name, last_name, email, website, audience_description, promotion_plan, how_will_you_share")
+        .eq("id", application_id)
+        .maybeSingle();
+      if (appErr || !data) return json({ error: "Application not found" });
+      app = data;
+    } else {
+      // No application_id passed — load the partner and prefer their linked application if there is one.
+      const { data: partner, error: pErr } = await admin
+        .from("partner_access_tokens")
+        .select("partner_display_name, partner_title, partner_email, email, partner_application_id")
+        .eq("id", partner_id)
+        .maybeSingle();
+      if (pErr || !partner) return json({ error: "Partner not found" });
+
+      if (partner.partner_application_id) {
+        const { data: linkedApp } = await admin
+          .from("partner_applications")
+          .select("first_name, last_name, email, website, audience_description, promotion_plan, how_will_you_share")
+          .eq("id", partner.partner_application_id)
+          .maybeSingle();
+        if (linkedApp) app = linkedApp;
+      }
+
+      if (!app) {
+        const name = (partner.partner_display_name || "").trim();
+        const [first, ...rest] = name.split(/\s+/);
+        app = {
+          first_name: first || name || "this partner",
+          last_name: rest.join(" "),
+          email: partner.partner_email || partner.email || "",
+          website: "",
+          audience_description: partner.partner_title || "",
+          promotion_plan: "",
+          how_will_you_share: "",
+        };
+      }
+    }
 
     // Load REAL Lumi source-of-truth: structured features catalog + admin settings + recent changelog + recent partner updates.
     const [{ data: configRow }, { data: changelog }, { data: partnerUpdates }, { data: featuresRows }] = await Promise.all([
