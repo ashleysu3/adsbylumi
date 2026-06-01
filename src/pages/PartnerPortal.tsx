@@ -25,21 +25,31 @@ interface PortalData {
 
 export default function PartnerPortal() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const previewPartnerId = searchParams.get("preview_as");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<PortalData | null>(null);
   const [webinarOpen, setWebinarOpen] = useState(false);
   const [webinarBody, setWebinarBody] = useState("");
   const [webinarAudience, setWebinarAudience] = useState("");
   const [sending, setSending] = useState(false);
+  const [welcomePreview, setWelcomePreview] = useState<PartnerWelcome | null>(null);
+  const [welcomePreviewOpen, setWelcomePreviewOpen] = useState(false);
+  const [loadingWelcomePreview, setLoadingWelcomePreview] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { navigate("/auth"); return; }
-        const { data: rpc, error } = await supabase.rpc("get_my_partner_portal" as any);
+        const rpcName = previewPartnerId ? "get_partner_portal_admin" : "get_my_partner_portal";
+        const args = previewPartnerId ? { p_partner_id: previewPartnerId } : undefined;
+        const { data: rpc, error } = await supabase.rpc(rpcName as any, args as any);
         if (error) throw error;
-        if (!rpc) { navigate("/start"); return; }
+        if (!rpc) {
+          if (previewPartnerId) { toast.error("Admin preview not available"); navigate("/admin/partners"); return; }
+          navigate("/start"); return;
+        }
         setData(rpc as unknown as PortalData);
       } catch (e: any) {
         toast.error(e.message || "Could not load Partner Portal");
@@ -47,7 +57,7 @@ export default function PartnerPortal() {
         setLoading(false);
       }
     })();
-  }, [navigate]);
+  }, [navigate, previewPartnerId]);
 
   const copy = (text: string, label = "Copied") => {
     navigator.clipboard.writeText(text);
