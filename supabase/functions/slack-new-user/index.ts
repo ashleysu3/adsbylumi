@@ -1,6 +1,15 @@
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
 const SLACK_CHANNEL = 'lumi-alerts';
 
+// Note: this function is invoked by the handle_new_user() DB trigger via pg_net.
+// pg_net cannot read Edge Function env vars or vault secrets without a manual
+// setup, so we cannot require service-role auth here today without breaking
+// signup notifications. As a defense-in-depth measure we (a) cap payload size,
+// (b) require both `email` and `full_name` to look like a real signup, and
+// (c) reject obviously-bogus requests. The Slack channel is internal-only and
+// the worst case is spam to the team channel; rotating credentials is unaffected.
+const MAX_BODY_BYTES = 2_000;
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204 });
@@ -17,17 +26,33 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, full_name } = await req.json();
+    // Cap body size to prevent abusive payloads
+    const raw = await req.text();
+    if (raw.length > MAX_BODY_BYTES) {
+      return new Response(JSON.stringify({ error: 'Payload too large' }), { status: 413 });
+    }
+    let body: { email?: unknown; full_name?: unknown } = {};
+    try { body = JSON.parse(raw); } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
+    }
+    const email = typeof body.email === 'string' ? body.email.trim() : '';
+    const full_name = typeof body.full_name === 'string' ? body.full_name.trim() : '';
 
-    const displayName = full_name || 'Unknown';
-    const text = `🎉 New user signed up: *${displayName}* (${email})`;
+    // Basic validation — must look like a real signup payload
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+    if (!emailOk) {
+      return new Response(JSON.stringify({ error: 'Invalid email' }), { status: 400 });
+    }
+    const displayName = (full_name || 'Unknown').slice(0, 120);
+    const safeEmail = email.slice(0, 254);
+    const text = `🎉 New user signed up: *${displayName}* (${safeEmail})`;
 
     const blocks = [
       {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `:tada: *New User Signup*\n\n*Name:* ${displayName}\n*Email:* ${email}\n*Time:* ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`,
+          text: `:tada: *New User Signup*\n\n*Name:* ${displayName}\n*Email:* ${safeEmail}\n*Time:* ${new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`,
         },
       },
     ];
