@@ -45,6 +45,7 @@ import AdminStripe from "./pages/admin/Stripe";
 import AdminCoupons from "./pages/admin/Coupons";
 import AdminUpdates from "./pages/admin/Updates";
 import AdminUpdatesResults from "./pages/admin/UpdatesResults";
+import AdminFeatures from "./pages/admin/Features";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 
 function ReferralCaptureMount() {
@@ -213,8 +214,9 @@ const App = () => {
                   <Route path="/admin/reviews" element={<AdminReviews />} />
                   <Route path="/admin/meta-debug" element={<AdminMetaDebug />} />
                   <Route path="/admin/overlay-templates" element={<AdminOverlayTemplates />} />
-                  <Route path="/admin/updates" element={<AdminUpdates />} />
-                  <Route path="/admin/updates/:campaignId" element={<AdminUpdatesResults />} />
+                 <Route path="/admin/updates" element={<AdminUpdates />} />
+                 <Route path="/admin/updates/:campaignId" element={<AdminUpdatesResults />} />
+                 <Route path="/admin/features" element={<AdminFeatures />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
