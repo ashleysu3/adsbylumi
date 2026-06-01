@@ -915,10 +915,10 @@ export default function AdminPartners() {
                     )}
                   </div>
                 </div>
-                <div>
-                  <Label>Custom welcome message</Label>
-                  <Textarea rows={4} value={editing.welcome_message || ""} onChange={(e) => setEditing({ ...editing, welcome_message: e.target.value })} placeholder="Personal note from the partner to new signups..." />
+                <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+                  💡 The custom note, bonus perks, and preferred ad strategies their referred users see live in the <strong>Welcome Popup</strong> tab.
                 </div>
+
 
                 <div className="grid grid-cols-2 gap-3 border-t pt-3">
                   <div>
