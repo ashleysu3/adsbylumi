@@ -577,11 +577,51 @@ export default function AdminPartners() {
           </CardContent>
         </Card>
 
+        {/* Partner Applications */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Inbox className="h-4 w-4" /> Partner Applications
+              {applications.filter((a) => a.status === 'pending').length > 0 && (
+                <Badge className="bg-amber-100 text-amber-800 border-0">
+                  {applications.filter((a) => a.status === 'pending').length} pending
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>Open an application to review, approve, and turn it into a managed partner — all in one place.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {applications.length === 0 && <p className="text-sm text-muted-foreground">No partner applications yet.</p>}
+            {applications.map((app) => {
+              const linkedPartner = partnersByAppId.get(app.id) || partnersByEmail.get(app.email.toLowerCase());
+              return (
+                <div key={app.id} className="flex items-start justify-between gap-3 p-3 rounded border hover:bg-muted/40 cursor-pointer" onClick={() => openFromApplication(app)}>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm">{app.first_name} {app.last_name}</span>
+                      <Badge variant="outline" className="capitalize text-xs">{app.status}</Badge>
+                      {linkedPartner && <Badge variant="outline" className="text-xs"><Link2 className="h-3 w-3 mr-1" />Has partner code</Badge>}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{app.email}</p>
+                    {app.audience_description && <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{app.audience_description}</p>}
+                  </div>
+                  <div className="text-xs text-muted-foreground shrink-0 text-right">
+                    {new Date(app.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
         ) : (
           <div className="grid gap-4">
-            {partners.map((p) => (
+            {partners.map((p) => {
+              const aff = affiliateForPartner(p);
+              const linkedApp = applicationForPartner(p);
+              return (
               <Card key={p.id}>
                 <CardContent className="p-4 flex items-start gap-4">
                   {p.partner_photo_url ? (
@@ -598,13 +638,15 @@ export default function AdminPartners() {
                       <Badge variant={p.is_active ? "default" : "secondary"}>{p.is_active ? "Active" : "Inactive"}</Badge>
                       {p.membership_comped && <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30"><Gift className="h-3 w-3 mr-1" />Comped</Badge>}
                       {p.partner_user_id && <Badge variant="outline"><Link2 className="h-3 w-3 mr-1" />Linked</Badge>}
+                      {linkedApp && <Badge variant="outline" className="text-xs capitalize">App: {linkedApp.status}</Badge>}
                     </div>
                     {p.partner_title && <p className="text-sm text-muted-foreground">{p.partner_title}</p>}
-                    <div className="flex gap-3 text-xs text-muted-foreground mt-1">
+                    <div className="flex gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
                       <span>{(p.perks || []).length} perks</span>
                       <span>{(p.support_links || []).length} support links</span>
                       <span>{(p.recommended_strategies || []).length} strategies</span>
                       <span>{(p.share_resources || []).length} resources</span>
+                      {aff && <span className="text-foreground">· {aff.conversions_count ?? 0} conv · ${(((aff.earnings_balance?.amount_cents ?? aff.commissions_total_cents) || 0) / 100).toFixed(0)} earned</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -612,7 +654,7 @@ export default function AdminPartners() {
                     <Button size="sm" variant="ghost" onClick={() => p.partner_trial_code && copyLink(p.partner_trial_code)}>
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(p)}>
+                    <Button size="sm" variant="ghost" onClick={() => { setEditing(p); setEditingTab("overview"); }}>
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => handleDelete(p.id)}>
@@ -621,7 +663,8 @@ export default function AdminPartners() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
             {partners.length === 0 && (
               <Card><CardContent className="p-8 text-center text-muted-foreground">No partner codes yet. Click "New Partner" to add one.</CardContent></Card>
             )}
