@@ -252,6 +252,8 @@ export default function AdminPartners() {
         referral_link: editing.referral_link || null,
         partner_email: editing.partner_email || null,
         membership_comped: editing.membership_comped ?? false,
+        partner_application_id: editing.partner_application_id || null,
+        rewardful_affiliate_id: editing.rewardful_affiliate_id || null,
       };
       if (editing.id) {
         const { error } = await supabase.from("partner_access_tokens").update(payload).eq("id", editing.id);
