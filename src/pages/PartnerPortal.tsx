@@ -358,6 +358,37 @@ export default function PartnerPortal() {
           </Card>
         )}
 
+        {/* Marketing ideas — pitch ideas curated for this partner (admin-managed, only partner sees them) */}
+        {((p.recommended_strategies || []).filter((s: any) => s.selected !== false && s.title)).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Megaphone className="h-5 w-5" /> Marketing ideas just for you</CardTitle>
+              <CardDescription>Ways to introduce Lumi to your audience — copy, tweak, or use as-is.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(p.recommended_strategies || [])
+                .filter((s: any) => s.selected !== false && s.title)
+                .map((s: any, i: number) => (
+                <div key={i} className="rounded-lg border p-4 space-y-2">
+                  <h4 className="font-medium">{s.title}</h4>
+                  {s.description && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{s.description}</p>}
+                  {s.swipe_copy && (
+                    <div className="rounded-md bg-muted/40 p-3 space-y-2">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Swipe copy</p>
+                      <p className="text-sm whitespace-pre-wrap">{s.swipe_copy}</p>
+                      <Button size="sm" variant="outline" onClick={() => copy(s.swipe_copy, "Copy ready to paste")}>
+                        <Copy className="h-3 w-3 mr-2" /> Copy
+                      </Button>
+                    </div>
+                  )}
+                  {s.notes && <p className="text-xs text-muted-foreground italic">Note: {s.notes}</p>}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+
         {/* Brand assets */}
         {cfg.brand_assets_url && (
           <Card>

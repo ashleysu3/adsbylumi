@@ -2098,6 +2098,7 @@ export type Database = {
       }
       partner_access_tokens: {
         Row: {
+          audience_strategies: Json
           comped_at: string | null
           comped_by: string | null
           created_at: string
@@ -2128,6 +2129,7 @@ export type Database = {
           welcome_message: string | null
         }
         Insert: {
+          audience_strategies?: Json
           comped_at?: string | null
           comped_by?: string | null
           created_at?: string
@@ -2158,6 +2160,7 @@ export type Database = {
           welcome_message?: string | null
         }
         Update: {
+          audience_strategies?: Json
           comped_at?: string | null
           comped_by?: string | null
           created_at?: string
