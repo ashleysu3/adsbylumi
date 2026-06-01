@@ -217,6 +217,84 @@ export default function PartnerPortal() {
           </CardContent>
         </Card>
 
+        {/* Earnings & payouts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5" /> Earnings & payouts</CardTitle>
+            <CardDescription>Live from Rewardful. We pay out monthly once commissions are payable.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {earningsLoading && <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>}
+            {!earningsLoading && !earnings?.exists && (
+              <p className="text-sm text-muted-foreground">We haven't tracked any referrals yet — once someone signs up with your link or code, your stats will appear here.</p>
+            )}
+            {!earningsLoading && earnings?.exists && (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "People referred", value: earnings.leadsCount ?? 0 },
+                    { label: "Paying subscribers", value: earnings.conversionsCount ?? 0 },
+                    { label: "Total earned", value: `$${((earnings.earningsCents || 0) / 100).toFixed(2)}` },
+                    { label: "Unpaid balance", value: `$${((earnings.unpaidBalanceCents ?? earnings.earningsCents ?? 0) / 100).toFixed(2)}` },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-lg border p-3">
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <p className="text-lg font-bold">{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {(earnings.upcomingPayouts || []).length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Upcoming payouts</p>
+                    {earnings.upcomingPayouts.map((p: any) => (
+                      <div key={p.id} className="flex items-center justify-between border rounded-md px-3 py-2 text-sm">
+                        <div>
+                          <span className="font-medium">${((p.amount || 0) / 100).toFixed(2)} {p.currency}</span>
+                          <span className="text-xs text-muted-foreground ml-2">created {new Date(p.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <Badge variant="outline" className="capitalize">{p.state}</Badge>
+                      </div>
+                    ))}
+                    <p className="text-[11px] text-muted-foreground">"Due" means it's queued for payout this cycle. We process payouts monthly.</p>
+                  </div>
+                )}
+
+                {(earnings.recentPaidPayouts || []).length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Recently paid</p>
+                    {earnings.recentPaidPayouts.map((p: any) => (
+                      <div key={p.id} className="flex items-center justify-between text-sm text-muted-foreground">
+                        <span>${((p.amount || 0) / 100).toFixed(2)} {p.currency}</span>
+                        <span className="text-xs">paid {p.paid_at ? new Date(p.paid_at).toLocaleDateString() : "—"}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!earnings.paypalEmail && !earnings.wiseEmail && (
+                  <div className="rounded-md border border-amber-300/40 bg-amber-50/40 dark:bg-amber-950/20 p-3 text-sm">
+                    <strong>Add a payout method.</strong> We can't send your earnings until you set PayPal or Wise in your Rewardful account.
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                  <Button variant="outline" size="sm" asChild>
+                    <a href="https://app.rewardful.com/login" target="_blank" rel="noopener noreferrer">
+                      <Receipt className="h-4 w-4 mr-1" />Tax docs & payout settings <ExternalLink className="h-3 w-3 ml-1" />
+                    </a>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href="https://app.rewardful.com/login" target="_blank" rel="noopener noreferrer">
+                      Open full Rewardful dashboard <ExternalLink className="h-3 w-3 ml-1" />
+                    </a>
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Resources */}
         {(p.share_resources || []).length > 0 && (
           <Card>
