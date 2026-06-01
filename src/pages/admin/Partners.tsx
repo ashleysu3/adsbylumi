@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Plus, Trash2, Copy, Pencil, Upload, X, Users, Link2, Gift, ExternalLink, Check, Mail, RotateCcw, Inbox } from "lucide-react";
+import { Loader2, Plus, Trash2, Copy, Pencil, Upload, X, Users, Link2, Gift, ExternalLink, Check, Mail, RotateCcw, Inbox, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -116,6 +116,7 @@ export default function AdminPartners() {
   const [appActionLoading, setAppActionLoading] = useState(false);
   const [confirmDecline, setConfirmDecline] = useState(false);
   const [syncingPromo, setSyncingPromo] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
@@ -502,6 +503,44 @@ export default function AdminPartners() {
       setSyncingPromo(false);
     }
   };
+
+  const generatePortalFromAI = async () => {
+    if (!editing) return;
+    const app = applicationForPartner(editing);
+    if (!app) { toast.error("Link an application first"); return; }
+    setGeneratingAI(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-partner-portal-ai", {
+        body: { application_id: app.id },
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.error) throw new Error(res.error);
+
+      setEditing((prev) => prev ? {
+        ...prev,
+        partner_display_name: prev.partner_display_name || res.partner_display_name || `${app.first_name} ${app.last_name}`.trim(),
+        partner_title: prev.partner_title || res.partner_title || prev.partner_title,
+        partner_photo_url: prev.partner_photo_url || res.partner_photo_url || prev.partner_photo_url,
+        recommended_strategies: [
+          ...((prev.recommended_strategies || []) as any[]),
+          ...((res.recommended_strategies || []) as any[]),
+        ] as any,
+        share_resources: [
+          ...((prev.share_resources || []) as any[]),
+          ...((res.share_resources || []) as any[]),
+        ] as any,
+      } : prev);
+      toast.success("Portal package generated ✨ Review & save");
+      setEditingTab("overview");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate");
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
+
 
   const saveConfig = async () => {
     setSavingConfig(true);
@@ -931,6 +970,21 @@ export default function AdminPartners() {
                       <div>
                         <Label className="text-xs uppercase tracking-wide text-muted-foreground">How they'll share / promotion plan</Label>
                         <p className="text-sm whitespace-pre-wrap mt-1">{linkedApp.promotion_plan || linkedApp.how_will_you_share || "Not provided"}</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Auto-fill portal with AI</p>
+                          <p className="text-xs text-muted-foreground">
+                            Scans {linkedApp.website ? "their website" : "their application"} + audience info, then proposes a title/subtitle, logo, marketing strategies for Lumi, and a custom swipe file. Review before saving.
+                          </p>
+                        </div>
+                        <Button size="sm" disabled={generatingAI} onClick={generatePortalFromAI}>
+                          {generatingAI ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                          Generate
+                        </Button>
                       </div>
                     </div>
 
