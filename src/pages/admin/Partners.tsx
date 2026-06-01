@@ -29,6 +29,8 @@ interface Partner {
   support_links: LinkItem[];
   recommended_strategies: StrategyItem[];
   is_active: boolean;
+  trial_days: number;
+  referral_link: string | null;
   created_at: string;
 }
 
@@ -43,7 +45,10 @@ const blankForm = (): Partial<Partner> => ({
   support_links: [],
   recommended_strategies: [],
   is_active: true,
+  trial_days: 14,
+  referral_link: "",
 });
+
 
 export default function AdminPartners() {
   const [loading, setLoading] = useState(true);
@@ -89,6 +94,8 @@ export default function AdminPartners() {
         support_links: editing.support_links || [],
         recommended_strategies: editing.recommended_strategies || [],
         is_active: editing.is_active ?? true,
+        trial_days: editing.trial_days ?? 14,
+        referral_link: editing.referral_link || null,
       };
       if (editing.id) {
         const { error } = await supabase.from("partner_access_tokens").update(payload).eq("id", editing.id);
@@ -253,6 +260,34 @@ export default function AdminPartners() {
                 <div>
                   <Label>Custom welcome message</Label>
                   <Textarea rows={4} value={editing.welcome_message || ""} onChange={(e) => setEditing({ ...editing, welcome_message: e.target.value })} placeholder="Personal note from the partner to new signups..." />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                  <div>
+                    <Label>Free trial length</Label>
+                    <div className="flex gap-2 mt-1">
+                      {[7, 14, 30].map((d) => (
+                        <Button
+                          key={d}
+                          type="button"
+                          size="sm"
+                          variant={(editing.trial_days ?? 14) === d ? "default" : "outline"}
+                          onClick={() => setEditing({ ...editing, trial_days: d })}
+                        >
+                          {d} days
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Partner referral link</Label>
+                    <Input
+                      value={editing.referral_link || ""}
+                      onChange={(e) => setEditing({ ...editing, referral_link: e.target.value })}
+                      placeholder="https://adsbylumi.com/?via=ashley"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Signups with this code give the partner referral credit.</p>
+                  </div>
                 </div>
 
                 <RepeaterField

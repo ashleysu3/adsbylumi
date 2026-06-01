@@ -29,6 +29,8 @@ serve(async (req) => {
     // Check for partner trial code
     let isPartnerTrial = false;
     let partnerEmail = '';
+    let partnerTrialDays = 0;
+    let partnerReferralId = '';
     if (partnerCode) {
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL") ?? "",
@@ -36,23 +38,34 @@ serve(async (req) => {
       );
       const { data: tokenData } = await supabase
         .from("partner_access_tokens")
-        .select("email, rewardful_affiliate_id")
+        .select("email, rewardful_affiliate_id, trial_days, referral_link, is_active")
         .eq("partner_trial_code", partnerCode.toUpperCase().trim())
         .maybeSingle();
 
-      if (tokenData) {
+      if (tokenData && (tokenData as any).is_active !== false) {
         isPartnerTrial = true;
         partnerEmail = tokenData.email;
-        logStep("Partner trial code valid", { partnerEmail, code: partnerCode });
+        partnerTrialDays = (tokenData as any).trial_days || 14;
+        const refLink = (tokenData as any).referral_link as string | null;
+        if (refLink) {
+          try {
+            const u = new URL(refLink);
+            partnerReferralId = u.searchParams.get("via") || "";
+          } catch { /* ignore */ }
+        }
+        if (!partnerReferralId && tokenData.rewardful_affiliate_id) {
+          partnerReferralId = tokenData.rewardful_affiliate_id;
+        }
+        logStep("Partner trial code valid", { partnerEmail, code: partnerCode, partnerTrialDays, partnerReferralId });
       } else {
-        logStep("Partner trial code not found", { code: partnerCode });
+        logStep("Partner trial code not found or inactive", { code: partnerCode });
       }
     }
 
     const returnOrigin = origin || "https://youradassistant.lovable.app";
 
     const sessionOptions: any = {
-      client_reference_id: rewardful_referral || undefined,
+      client_reference_id: partnerReferralId || rewardful_referral || undefined,
       line_items: [
         {
           price: priceId,
@@ -69,12 +82,12 @@ serve(async (req) => {
     };
 
     if (isPartnerTrial) {
-      // Partner trial: 14-day free trial overrides the default 7-day
       sessionOptions.subscription_data = {
-        trial_period_days: 14,
+        trial_period_days: partnerTrialDays,
         metadata: {
           partner_code: partnerCode.toUpperCase().trim(),
           partner_email: partnerEmail,
+          partner_referral_id: partnerReferralId || '',
         },
       };
     }
