@@ -208,9 +208,7 @@ export default function RecommendedStrategy() {
           >
             <Loader2 className="h-10 w-10 animate-spin text-lumi-pink-1 mx-auto mb-4" />
             <p className="font-medium">LUMI is matching the right strategy for you…</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Reading your brand, offers, and goal.
-            </p>
+            <CyclingReviewing />
           </motion.div>
         )}
 
