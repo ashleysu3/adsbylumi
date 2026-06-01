@@ -1910,57 +1910,75 @@ export type Database = {
       }
       partner_access_tokens: {
         Row: {
+          comped_at: string | null
+          comped_by: string | null
           created_at: string
           email: string
           expires_at: string | null
           id: string
           is_active: boolean
+          membership_comped: boolean
           partner_display_name: string | null
+          partner_email: string | null
           partner_photo_url: string | null
           partner_title: string | null
           partner_trial_code: string | null
+          partner_user_id: string | null
           perks: Json
           recommended_strategies: Json
           referral_link: string | null
           rewardful_affiliate_id: string | null
+          share_resources: Json
           support_links: Json
           token: string
           trial_days: number
           welcome_message: string | null
         }
         Insert: {
+          comped_at?: string | null
+          comped_by?: string | null
           created_at?: string
           email: string
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          membership_comped?: boolean
           partner_display_name?: string | null
+          partner_email?: string | null
           partner_photo_url?: string | null
           partner_title?: string | null
           partner_trial_code?: string | null
+          partner_user_id?: string | null
           perks?: Json
           recommended_strategies?: Json
           referral_link?: string | null
           rewardful_affiliate_id?: string | null
+          share_resources?: Json
           support_links?: Json
           token?: string
           trial_days?: number
           welcome_message?: string | null
         }
         Update: {
+          comped_at?: string | null
+          comped_by?: string | null
           created_at?: string
           email?: string
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          membership_comped?: boolean
           partner_display_name?: string | null
+          partner_email?: string | null
           partner_photo_url?: string | null
           partner_title?: string | null
           partner_trial_code?: string | null
+          partner_user_id?: string | null
           perks?: Json
           recommended_strategies?: Json
           referral_link?: string | null
           rewardful_affiliate_id?: string | null
+          share_resources?: Json
           support_links?: Json
           token?: string
           trial_days?: number
@@ -2016,6 +2034,42 @@ export type Database = {
           status?: string
           updated_at?: string | null
           website?: string | null
+        }
+        Relationships: []
+      }
+      partner_updates: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          is_published: boolean
+          link_label: string | null
+          link_url: string | null
+          published_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          link_label?: string | null
+          link_url?: string | null
+          published_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          link_label?: string | null
+          link_url?: string | null
+          published_at?: string
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2797,6 +2851,10 @@ export type Database = {
     }
     Functions: {
       accept_team_invite: { Args: { p_token: string }; Returns: Json }
+      admin_link_partner_user: {
+        Args: { p_email: string; p_partner_id: string }
+        Returns: Json
+      }
       claim_first_campaign_launch: { Args: never; Returns: boolean }
       claim_invite_code: { Args: { code_input: string }; Returns: boolean }
       delete_email: {
@@ -2809,6 +2867,7 @@ export type Database = {
         Returns: number
       }
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
+      get_my_partner_portal: { Args: never; Returns: Json }
       get_partner_welcome: { Args: { p_code: string }; Returns: Json }
       get_shared_report: { Args: { p_share_token: string }; Returns: Json }
       get_winback_offer_by_token: { Args: { p_token: string }; Returns: Json }
@@ -2819,6 +2878,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_current_user_comped_partner: { Args: never; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
