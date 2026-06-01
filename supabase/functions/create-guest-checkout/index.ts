@@ -73,7 +73,7 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${returnOrigin}/auth?signup=true&paid=true`,
+      success_url: `${returnOrigin}/auth?signup=true&paid=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${returnOrigin}/`,
       allow_promotion_codes: true,
       subscription_data: {

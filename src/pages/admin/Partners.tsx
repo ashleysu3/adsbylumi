@@ -115,6 +115,7 @@ export default function AdminPartners() {
   const [approvalMessage, setApprovalMessage] = useState("");
   const [appActionLoading, setAppActionLoading] = useState(false);
   const [confirmDecline, setConfirmDecline] = useState(false);
+  const [syncingPromo, setSyncingPromo] = useState(false);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
@@ -475,6 +476,33 @@ export default function AdminPartners() {
     toast.success("Referral link copied");
   };
 
+  const syncStripePromo = async () => {
+    if (!editing?.id) { toast.error("Save the partner first"); return; }
+    if (!editing.partner_trial_code) { toast.error("Set a trial code first"); return; }
+    setSyncingPromo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("sync-partner-promo", {
+        body: { partner_id: editing.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`Synced "${(data as any).code}" as Stripe promo code`);
+      setEditing({
+        ...editing,
+        ...({
+          stripe_coupon_id: (data as any).stripe_coupon_id,
+          stripe_promotion_code_id: (data as any).stripe_promotion_code_id,
+          stripe_promo_synced_at: new Date().toISOString(),
+        } as any),
+      });
+      await load();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to sync Stripe promo");
+    } finally {
+      setSyncingPromo(false);
+    }
+  };
+
   const saveConfig = async () => {
     setSavingConfig(true);
     try {
@@ -699,6 +727,17 @@ export default function AdminPartners() {
                   <div>
                     <Label>Trial code *</Label>
                     <Input value={editing.partner_trial_code || ""} onChange={(e) => setEditing({ ...editing, partner_trial_code: e.target.value.toUpperCase() })} placeholder="ASHLEY" />
+                    <div className="flex items-center justify-between gap-2 mt-2">
+                      <p className="text-xs text-muted-foreground">
+                        {(editing as any).stripe_promotion_code_id
+                          ? `Synced as Stripe promo code · ${(editing as any).stripe_promo_synced_at ? new Date((editing as any).stripe_promo_synced_at).toLocaleDateString() : ""}`
+                          : "Not yet synced as a Stripe promo code."}
+                      </p>
+                      <Button type="button" size="sm" variant="outline" disabled={!editing.id || syncingPromo} onClick={() => syncStripePromo()}>
+                        {syncingPromo ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                        {(editing as any).stripe_promotion_code_id ? "Re-sync Stripe promo" : "Sync to Stripe"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 <div>
