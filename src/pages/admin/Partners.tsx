@@ -18,8 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface PerkItem { title: string; description: string }
 interface LinkItem { label: string; url: string }
-interface StrategyItem { title: string; description: string }
-interface ResourceItem { title: string; description: string; url: string; type: string }
+interface StrategyItem { title: string; description: string; selected?: boolean; custom_notes?: string }
+interface ResourceItem { title: string; description: string; url: string; type: string; selected?: boolean }
 interface UpdateItem { id?: string; title: string; body: string; link_url: string; link_label: string; is_published: boolean }
 
 interface Partner {
