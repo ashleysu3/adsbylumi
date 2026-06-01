@@ -100,6 +100,17 @@ export default function AdminUpdates() {
     load();
   }
 
+  async function setApproval(id: string, status: "approved" | "rejected") {
+    const { error } = await supabase
+      .from("changelog_entries")
+      .update({ approval_status: status })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(status === "approved" ? "Approved & published" : "Rejected");
+    load();
+  }
+
+
   async function suggestIdeas() {
     setIdeasLoading(true);
     try {
