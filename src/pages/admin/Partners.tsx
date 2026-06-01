@@ -288,16 +288,22 @@ export default function AdminPartners() {
     }
   };
 
-  const handleLinkAccount = async () => {
-    if (!editing?.id || !linkEmail.trim()) return toast.error("Save partner first, then link an account");
+  const handleLinkAccount = async (overrideEmail?: string) => {
+    const target = (overrideEmail ?? linkEmail).trim();
+    if (!editing?.id || !target) return toast.error("Save partner first, then link an account");
     setLinking(true);
     try {
-      const { data, error } = await supabase.rpc("admin_link_partner_user" as any, { p_partner_id: editing.id, p_email: linkEmail.trim() });
+      const { data, error } = await supabase.rpc("admin_link_partner_user" as any, { p_partner_id: editing.id, p_email: target });
       if (error) throw error;
       const res = data as any;
-      if (!res?.success) throw new Error(res?.error || "Could not link");
+      if (!res?.success) {
+        setAccountExists(false);
+        toast.error(res?.error || "No Lumi account with that email. You can send a comp invite instead.");
+        return;
+      }
+      setAccountExists(true);
       toast.success("Account linked");
-      setEditing({ ...editing, partner_user_id: res.partner_user_id, partner_email: linkEmail.trim() });
+      setEditing({ ...editing, partner_user_id: res.partner_user_id, partner_email: target });
       setLinkEmail("");
     } catch (e: any) {
       toast.error(e.message);
@@ -305,6 +311,26 @@ export default function AdminPartners() {
       setLinking(false);
     }
   };
+
+  const sendCompInvite = async (email: string, firstName?: string) => {
+    if (!editing?.id) return toast.error("Save partner first");
+    if (!email) return toast.error("No email on file");
+    setSendingCompInvite(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-partner-comp-invite", {
+        body: { email, first_name: firstName, partner_id: editing.id },
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.error) throw new Error(res.error);
+      toast.success(`Comp invite sent to ${email}`);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to send invite");
+    } finally {
+      setSendingCompInvite(false);
+    }
+  };
+
 
   const handleUnlink = async () => {
     if (!editing?.id) return;
