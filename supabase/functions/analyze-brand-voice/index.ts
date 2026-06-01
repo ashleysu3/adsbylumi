@@ -141,6 +141,34 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Also pull any offer sales pages so we capture testimonials, case studies,
+    // and press features that live on a sales page rather than the homepage.
+    let salesPagesText = "";
+    try {
+      const { data: offers } = await admin
+        .from("offers")
+        .select("name, url")
+        .eq("brand_id", brandId)
+        .limit(5);
+      if (Array.isArray(offers)) {
+        for (const o of offers) {
+          const u = (o as any)?.url as string | undefined;
+          if (!u || !isValidPublicUrl(u)) continue;
+          if (websiteUrl && u === websiteUrl) continue;
+          let txt = await fetchWebsiteText(u);
+          if ((!txt || txt.length < 200) && FIRECRAWL_API_KEY) {
+            txt = await firecrawlScrape(u, FIRECRAWL_API_KEY);
+          }
+          if (txt) {
+            salesPagesText += `\n\n--- SALES PAGE: ${(o as any)?.name || u} (${u}) ---\n${txt}`;
+          }
+        }
+        salesPagesText = salesPagesText.slice(0, 16000);
+      }
+    } catch (e) {
+      console.error("sales page scrape failed", (e as any)?.message || e);
+    }
+
     let igText = "";
     if (instagramHandle && FIRECRAWL_API_KEY) {
       igText = await fetchInstagramCaptions(instagramHandle, FIRECRAWL_API_KEY);
