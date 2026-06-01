@@ -1259,6 +1259,12 @@ export default function AdminPartners() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <PartnerWelcomeModal
+          previewData={welcomePreview}
+          previewOpen={welcomePreviewOpen}
+          onPreviewOpenChange={setWelcomePreviewOpen}
+        />
       </div>
     </DashboardLayout>
   );
