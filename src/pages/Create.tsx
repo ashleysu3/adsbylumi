@@ -43,6 +43,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import lumiLogo from "@/assets/lumi-logo.png";
 import { SocialGrowthFlow } from "@/components/SocialGrowthFlow";
 import { LumiEducationCard } from "@/components/LumiEducationCard";
+import { StrategyPlanBanner } from "@/components/StrategyPlanBanner";
 
 // System offer IDs
 const SOCIAL_GROWTH_OFFER_ID = "system-social-growth";
