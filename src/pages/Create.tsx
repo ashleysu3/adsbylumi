@@ -772,6 +772,32 @@ export default function Create() {
             </div>
 
             <div className="grid gap-4">
+              {/* LUMI Recommends */}
+              <button
+              onClick={() => navigate("/recommended-strategy")}
+              className="group text-left w-full">
+
+                <Card variant="glow" className="p-6 hover:shadow-glow transition-all cursor-pointer group-hover:border-primary/50 relative overflow-hidden">
+                  <div className="absolute top-3 right-3">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold bg-gradient-to-r from-lumi-pink-1 to-lumi-orange-1 text-white px-2 py-1 rounded-full">
+                      Recommended
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-lumi-pink-1 to-lumi-purple-1 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0 pr-20">
+                      <h3 className="font-semibold text-foreground text-lg">Let LUMI recommend my strategy</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Tell us your goal — we'll build the exact campaign plan for your business
+                      </p>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all mt-1 flex-shrink-0" />
+                  </div>
+                </Card>
+              </button>
+
               {/* New Campaign */}
               <button
               onClick={() => setCurrentStep(1)}
@@ -814,6 +840,7 @@ export default function Create() {
                 </Card>
               </button>
             </div>
+
           </motion.div>
         }
 
