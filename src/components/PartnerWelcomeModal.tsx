@@ -2,19 +2,23 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Gift, CheckCircle2 } from "lucide-react";
+import { Sparkles, Gift, CheckCircle2, Calendar, Lightbulb, ExternalLink } from "lucide-react";
 
 const STORAGE_KEY = "lumi_partner_welcome_code";
 
-interface Perk {
-  title: string;
-  description: string;
-}
+interface Perk { title: string; description: string }
+interface LinkItem { label: string; url: string }
+interface StrategyItem { title: string; description: string }
 
 interface PartnerWelcome {
   partner_display_name: string | null;
   partner_trial_code: string | null;
+  partner_title: string | null;
+  partner_photo_url: string | null;
+  welcome_message: string | null;
   perks: Perk[];
+  support_links: LinkItem[];
+  recommended_strategies: StrategyItem[];
 }
 
 export function setPartnerWelcomeCode(code: string) {
@@ -40,7 +44,7 @@ export function PartnerWelcomeModal() {
         if (cancelled) return;
         if (error || !result) return;
         const payload = result as unknown as PartnerWelcome;
-        if (!payload?.partner_display_name && (!payload?.perks || payload.perks.length === 0)) return;
+        if (!payload?.partner_display_name) return;
         setData(payload);
         setOpen(true);
       } catch { /* ignore */ }
@@ -55,43 +59,103 @@ export function PartnerWelcomeModal() {
 
   if (!data) return null;
   const name = data.partner_display_name || "your referral partner";
+  const perks = data.perks || [];
+  const links = data.support_links || [];
+  const strategies = data.recommended_strategies || [];
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="mx-auto h-12 w-12 rounded-full bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center mb-2">
-            <Sparkles className="h-6 w-6 text-white" />
-          </div>
+          {data.partner_photo_url ? (
+            <img
+              src={data.partner_photo_url}
+              alt={name}
+              className="mx-auto h-20 w-20 rounded-full object-cover ring-4 ring-primary/20 mb-2"
+            />
+          ) : (
+            <div className="mx-auto h-14 w-14 rounded-full bg-gradient-to-br from-lumi-orange-1 to-lumi-pink-1 flex items-center justify-center mb-2">
+              <Sparkles className="h-7 w-7 text-white" />
+            </div>
+          )}
           <DialogTitle className="text-center text-2xl">
             Congrats — you're in!
           </DialogTitle>
           <DialogDescription className="text-center">
-            You signed up through <span className="font-semibold text-foreground">{name}</span>,
-            which means you've unlocked some bonus perks 🎁
+            You signed up through <span className="font-semibold text-foreground">{name}</span>
+            {data.partner_title && <span className="text-muted-foreground"> · {data.partner_title}</span>}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Gift className="h-4 w-4 text-primary" />
-            Your bonus perks
-          </div>
-          <ul className="space-y-3">
-            {data.perks.map((perk, i) => (
-              <li key={i} className="flex gap-3 rounded-lg border bg-muted/30 p-3">
-                <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-sm">{perk.title}</p>
-                  {perk.description && (
-                    <p className="text-sm text-muted-foreground mt-0.5">{perk.description}</p>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-          <p className="text-xs text-muted-foreground text-center pt-2">
-            Plus your full 14-day free trial. We'll be in touch about your perks shortly.
+        <div className="space-y-5 pt-2">
+          {data.welcome_message && (
+            <div className="rounded-lg bg-muted/40 border p-3 text-sm italic text-foreground/90">
+              "{data.welcome_message}"
+            </div>
+          )}
+
+          {perks.length > 0 && (
+            <section className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Gift className="h-4 w-4 text-primary" /> Your bonus perks
+              </div>
+              <ul className="space-y-2">
+                {perks.map((perk, i) => (
+                  <li key={i} className="flex gap-3 rounded-lg border bg-muted/30 p-3">
+                    <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm">{perk.title}</p>
+                      {perk.description && (
+                        <p className="text-sm text-muted-foreground mt-0.5">{perk.description}</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {strategies.length > 0 && (
+            <section className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Lightbulb className="h-4 w-4 text-primary" /> Strategies {name.split(" ")[0]} recommends
+              </div>
+              <ul className="space-y-2">
+                {strategies.map((s, i) => (
+                  <li key={i} className="rounded-lg border bg-gradient-to-br from-primary/5 to-transparent p-3">
+                    <p className="font-semibold text-sm">{s.title}</p>
+                    {s.description && (
+                      <p className="text-sm text-muted-foreground mt-0.5">{s.description}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {links.length > 0 && (
+            <section className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Calendar className="h-4 w-4 text-primary" /> Get help from {name.split(" ")[0]}
+              </div>
+              <div className="grid gap-2">
+                {links.map((link, i) => (
+                  <Button
+                    key={i}
+                    variant="outline"
+                    className="justify-between"
+                    onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")}
+                  >
+                    <span>{link.label}</span>
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <p className="text-xs text-muted-foreground text-center pt-1">
+            Plus your full 14-day free trial.
           </p>
         </div>
 
