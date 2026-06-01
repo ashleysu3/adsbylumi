@@ -1,65 +1,105 @@
-## Win-Back Trial: Consent-Based Reactivation Flow
+# LUMI Strategy Recommendations
 
-Today, clicking "Grant 14-Day Trial + Email" in the admin panel immediately creates a Stripe subscription. That's both the source of the `non-2xx` error you saw and the wrong UX — the user has no say in when their trial clock starts or when billing resumes.
+Add a third card on the Create page that lets LUMI recommend a complete multi-campaign strategy based on the user's brand, industry, and website — feeling like they're being told exactly what to do next.
 
-This plan reworks it into a true *offer* the user accepts on their own terms.
+## 1. Third option on the Create page (`src/pages/Create.tsx`)
 
----
+Add a third card above the existing two, styled as the hero/recommended choice:
 
-### New end-to-end flow
+- **Title:** "Let LUMI recommend my strategy"
+- **Subtitle:** "Tell us your goal — we'll build the exact campaign plan for your business"
+- **Badge:** "Recommended"
+- **Icon:** Sparkles, gradient background matching the lumi palette
+- **Action:** navigate to `/recommended-strategy`
 
-1. **Admin** opens the user's Actions tab → clicks **"Send 14-Day Trial Offer"** (renamed). Optionally edits the post-trial monthly price shown in the offer.
-2. **Backend** creates a `winback_offers` row (token, user, price, expiry — e.g. 30 days to accept) and emails the user a branded "Welcome back" message with a single CTA button: *"Reactivate my account"*.
-3. **User clicks the link** → lands on a new public page `/reactivate/:token` showing:
-   - "Your 14-day free trial starts the moment you confirm."
-   - "After the trial ends on **{trialEnd}**, your card on file (•••• {last4}) will be charged **${price}/mo**."
-   - "Cancel anytime before then and you won't be charged."
-   - Required checkbox: *"I understand and agree to reactivate my subscription."*
-   - **Confirm & Reactivate** button (disabled until checked).
-4. **On confirm** → backend records consent (IP, timestamp, user agent), creates the Stripe subscription *now* with `trial_period_days: 14` using the saved payment method, marks the offer `accepted`, and redirects user to…
-5. **New onboarding choice page** `/welcome-back`:
-   - **"Pick up where I left off"** → restores their previous brand/campaigns and routes to the dashboard.
-   - **"Start fresh"** → archives prior brand data and routes to the standard new-user onboarding wizard.
+## 2. New `recommended_strategies` table (admin-managed)
 
-The offer link is single-use, expires after 30 days, and shows a clean "this offer has expired / already used" state if reused.
+Pre-determined strategies keyed by business type. Admin CRUD in the admin dashboard.
 
----
+```text
+recommended_strategies
+  id uuid pk
+  slug text unique           -- e.g. "wedding-services-leads"
+  name text                  -- "Wedding Pros — Grow + Leads"
+  industry text[]            -- ["wedding", "photographer", "event-planner"]
+  business_model text[]      -- ["service", "local-service"]
+  primary_goals text[]       -- ["book_calls", "grow_social"]
+  keywords text[]            -- match signals from website content
+  description text           -- user-facing explanation
+  why_it_works text          -- LUMI's rationale
+  campaigns jsonb            -- array of {name, objective, goal, audience, budget_pct, creative_brief}
+  is_active boolean default true
+  created_by uuid
+  created_at, updated_at
+```
 
-### Fix for the current `non-2xx` error
+RLS: authenticated SELECT on active rows; admin INSERT/UPDATE/DELETE via `has_role(auth.uid(), 'admin')`. Public-schema GRANTs included.
 
-The current edge function fails for one of these reasons (all addressed by the new flow):
+## 3. New `strategy_requests` table (fallback)
 
-- The customer has **no saved payment method** → `default_incomplete` creates a sub that can never auto-charge. The new flow checks for a usable payment method *before* creating the offer, and if none exists, the reactivation page collects one via Stripe Checkout in setup mode before creating the subscription.
-- The previous `price_id` was **archived/deleted** in Stripe → we'll fall back to the current standard price (or the admin-overridden custom price) and surface a clear error if neither is resolvable.
-- The user already had a `canceled` sub whose price product is gone → same fallback.
-- Resend send failure was swallowed, but the Stripe error wasn't — we'll add explicit try/catch with readable error messages returned to the admin UI.
+When no template matches, log it for admin and email them.
 
-I'll also log the exact failure reason to the function logs so future issues are diagnosable from the admin Audit Log.
+```text
+strategy_requests
+  id uuid pk
+  user_id uuid
+  brand_id uuid
+  brand_snapshot jsonb       -- name, website, industry, offers, audiences
+  user_goal text
+  status text                -- 'pending' | 'answered' | 'dismissed'
+  admin_response jsonb       -- filled in later, can be promoted into recommended_strategies
+  created_at, responded_at
+```
 
----
+Admin can view, respond, and "promote to template."
 
-### What gets built
+## 4. Recommendation edge function `recommend-strategy`
 
-**Database (new migration)**
-- `winback_offers` table: `id`, `user_id`, `email`, `token` (unique), `offered_price_cents`, `trial_days`, `status` (`pending`/`accepted`/`expired`/`revoked`), `expires_at`, `accepted_at`, `consent_ip`, `consent_user_agent`, `stripe_subscription_id`, `created_by_admin_id`, timestamps. RLS: admins manage, public can read by token only.
+Input: `{ brand_id }`. Steps:
+1. Load brand, offers, audiences, website auto-summary.
+2. Fetch all active `recommended_strategies`.
+3. Use Lovable AI (`google/gemini-3-flash-preview`) with `Output.object` to score matches against industry/business_model/keywords and pick the best template **or** return `no_match: true` with a short reason.
+4. If matched: return the template plus a personalized intro paragraph.
+5. If no match: insert a `strategy_requests` row, send an email to the admin notification address via existing email infra, and return `pending: true`.
 
-**Edge functions**
-- `admin-user-management`: replace `grant_winback_trial` action with `create_winback_offer` (no Stripe sub created — just the offer row + email).
-- New `winback-offer` function with two actions:
-  - `get` (public, by token) → returns offer details + card last4 + computed dates.
-  - `accept` (public, by token) → validates, creates Stripe subscription with 14-day trial, records consent, returns redirect URL.
+## 5. New page `/recommended-strategy` (`src/pages/RecommendedStrategy.tsx`)
 
-**Frontend**
-- `src/pages/admin/Users.tsx`: rename button to "Send 14-Day Trial Offer", add optional price override input, show toast with offer link for manual share.
-- New page `src/pages/Reactivate.tsx` (public route `/reactivate/:token`): offer summary, consent checkbox, confirm button, expired/used states.
-- New page `src/pages/WelcomeBack.tsx` (auth-required `/welcome-back`): two-card choice screen, wires to existing brand/onboarding flow.
-- Route registrations in `App.tsx`.
+Flow (clean, one decision at a time):
+1. **Brand confirm** — show detected industry/business type from brand profile. "Is this you?" with edit link.
+2. **One question:** "What's your #1 goal right now?" (uses the same goal chips as Create step 1).
+3. **LUMI is thinking** loading state — calls `recommend-strategy`.
+4. **Result screens:**
+   - **Matched:** Hero card with strategy name, "Why this works for you" paragraph, then the campaign cards (e.g. "Campaign 1: Grow on Instagram" + "Campaign 2: Lead form fills") each with objective, audience, suggested budget split, and a creative brief preview. CTA: **"Build this strategy"** → routes into existing campaign build flow with the campaigns pre-filled.
+   - **Pending:** Friendly screen: "LUMI is putting together a custom plan for your business. We'll email you within 1 business day." Button to set a reminder / go back to dashboard. Show the request id.
 
-**Email**
-- New branded "Reactivation offer" template sent via existing Resend setup, with the unique link and clear pricing disclosure.
+## 6. Admin dashboard additions
 
-### Why this is safer
+Under existing admin routes:
+- `/admin/strategies` — list, create, edit, archive `recommended_strategies`. Form fields match the schema; campaigns edited as a structured repeater (name, objective, goal, audience, budget %, creative brief).
+- `/admin/strategy-requests` — inbox of pending requests with brand snapshot. Actions: "Respond" (write a custom strategy JSON → emails the user, marks answered), "Promote to template" (prefill the new-template form), "Dismiss."
 
-- No subscription exists until the user explicitly clicks **and** checks the consent box → no surprise charges, no double-billing risk.
-- Stored consent record (IP + timestamp + user agent) gives you a paper trail if a user later disputes.
-- Pre-flight validation (payment method present, price resolvable) eliminates the current error class entirely.
+## 7. Admin email notification
+
+Reuse existing transactional email setup. On new `strategy_requests` insert (DB trigger calling an edge function, or function-side after insert), send `admin@adsbylumi.com` an email with brand info and a link to `/admin/strategy-requests`.
+
+## 8. Seed data
+
+Seed 3 starter templates so the feature feels alive on day one:
+- Wedding / event service pros → Grow IG + Lead form (2 campaigns)
+- Coaches & course creators → Training + Cold + Warm (3 campaigns, matches existing After Organic framework)
+- Local service business → Local awareness + Lead form (2 campaigns)
+
+## Technical notes
+
+- Goal chips: reuse the existing `selectedGoal` options from `Create.tsx` (extract into a shared constant).
+- Campaign build hand-off: pass `recommendedStrategyId` in query params; existing build flow reads it and pre-populates campaigns + creative briefs.
+- AI matching uses structured output (`Output.object` with zod) — no manual JSON parsing.
+- All new tables include GRANTs and RLS in the same migration.
+- Edge function follows project standards (Deno.serve, npm:@supabase/supabase-js@2, CORS, 200 + JSON error body).
+- No changes to billing or tier limits in this scope.
+
+## Out of scope (for follow-ups)
+
+- Multi-language strategies
+- Strategy A/B variants
+- Auto-execution without user review (always show the plan first)
