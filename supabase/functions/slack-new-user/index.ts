@@ -1,9 +1,19 @@
+import { isServiceRoleRequest } from '../_shared/internal-auth.ts';
+
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
 const SLACK_CHANNEL = 'lumi-alerts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204 });
+  }
+
+  // Only internal database/edge triggers using the service role may invoke this.
+  if (!isServiceRoleRequest(req)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
