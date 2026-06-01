@@ -18,7 +18,9 @@ export interface PartnerWelcome {
   welcome_message: string | null;
   perks: Perk[];
   support_links: LinkItem[];
-  recommended_strategies: StrategyItem[];
+  audience_strategies?: StrategyItem[];
+  /** @deprecated kept for backward compatibility — use audience_strategies */
+  recommended_strategies?: StrategyItem[];
 }
 
 export function setPartnerWelcomeCode(code: string) {
