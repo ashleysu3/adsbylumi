@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isServiceRoleRequest } from '../_shared/internal-auth.ts';
 
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
 
@@ -6,6 +7,14 @@ Deno.serve(async (req) => {
   // This function is called internally by other edge functions, no CORS needed
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204 });
+  }
+
+  // Only internal callers using the service role may post to Slack.
+  if (!isServiceRoleRequest(req)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
