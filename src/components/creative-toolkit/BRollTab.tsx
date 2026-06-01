@@ -218,6 +218,11 @@ export function BRollTab({ brollSources, shotLists }: BRollTabProps = {}) {
                           <h4 className="font-display font-bold text-sm text-foreground">{idea.scene}</h4>
                         </div>
                         <p className="text-xs text-muted-foreground">{idea.direction}</p>
+                        {idea.whyItResonates && (
+                          <p className="text-[11px] italic text-foreground/70 border-l-2 border-primary/40 pl-2">
+                            {idea.whyItResonates}
+                          </p>
+                        )}
                         <Badge className={`text-[10px] ${MOOD_COLORS[idea.mood] || "bg-muted text-muted-foreground"}`}>
                           {idea.mood}
                         </Badge>
