@@ -17,6 +17,7 @@ import AdminTabs from "@/components/AdminTabs";
 import PartnerApplicationDrawer from "@/components/admin/PartnerApplicationDrawer";
 
 export default function AdminAffiliates() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [affiliates, setAffiliates] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
