@@ -78,7 +78,9 @@ export function PartnerWelcomeModal({ previewData, previewOpen, onPreviewOpenCha
   const name = effectiveData.partner_display_name || "your referral partner";
   const perks = effectiveData.perks || [];
   const links = effectiveData.support_links || [];
-  const strategies = effectiveData.recommended_strategies || [];
+  const strategies = (effectiveData.audience_strategies && effectiveData.audience_strategies.length > 0)
+    ? effectiveData.audience_strategies
+    : (effectiveData.recommended_strategies || []);
 
   return (
     <Dialog open={effectiveOpen} onOpenChange={(v) => { if (!v) handleClose(); }}>
