@@ -40,7 +40,41 @@ interface Partner {
   partner_user_id: string | null;
   partner_email: string | null;
   membership_comped: boolean;
+  partner_application_id: string | null;
+  rewardful_affiliate_id: string | null;
   created_at: string;
+}
+
+interface PartnerApplication {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  website?: string;
+  audience_description?: string;
+  promotion_plan?: string;
+  how_will_you_share?: string;
+  status: string;
+  application_type: string;
+  rewardful_affiliate_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+interface AffiliateRecord {
+  id: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  state?: string;
+  visitors_count?: number;
+  leads_count?: number;
+  conversions_count?: number;
+  commissions_total_cents?: number;
+  earnings_balance?: { amount_cents?: number };
+  campaign?: { name?: string };
+  links?: { token?: string; url?: string }[];
 }
 
 const blankForm = (): Partial<Partner> => ({
@@ -60,6 +94,8 @@ const blankForm = (): Partial<Partner> => ({
   partner_user_id: null,
   partner_email: "",
   membership_comped: false,
+  partner_application_id: null,
+  rewardful_affiliate_id: null,
 });
 
 
