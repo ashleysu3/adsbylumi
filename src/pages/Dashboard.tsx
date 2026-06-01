@@ -22,6 +22,7 @@ import { AlertsBanner } from "@/components/AlertsBanner";
 import { useLumiRecommend } from "@/components/LumiAssistant";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
+import { OfferManager } from "@/components/OfferManager";
 import { BRollLibrary } from "@/components/BRollLibrary";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
@@ -636,6 +637,17 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Offers */}
+        <div data-section="offers">
+          <OfferManager
+            brandId={brand.id}
+            offers={offers}
+            onUpdate={fetchBrandData}
+          />
+        </div>
+
+
 
         {/* Content Library + Psychology */}
         <div data-section="brand-brain">

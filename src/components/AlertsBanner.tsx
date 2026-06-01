@@ -4,6 +4,8 @@ import { AlertTriangle, X, AlertCircle, Info, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { useBrand } from "@/contexts/BrandContext";
+
 
 interface Alert {
   id: string;
@@ -21,6 +23,7 @@ export function AlertsBanner() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [dismissing, setDismissing] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { activeBrand } = useBrand();
 
   useEffect(() => {
     fetchAlerts();
@@ -44,15 +47,15 @@ export function AlertsBanner() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [activeBrand?.id]);
 
   const fetchAlerts = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
     const now = new Date().toISOString();
-    
-    const { data, error } = await supabase
+
+    let query = supabase
       .from('user_alerts')
       .select('*')
       .eq('user_id', user.id)
@@ -61,13 +64,28 @@ export function AlertsBanner() {
       .order('created_at', { ascending: false })
       .limit(5);
 
+    // Strict brand isolation: only show alerts for the active brand or global (null brand_id)
+    if (activeBrand?.id) {
+      query = query.or(`brand_id.is.null,brand_id.eq.${activeBrand.id}`);
+    } else {
+      query = query.is('brand_id', null);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
       console.error('Error fetching alerts:', error);
       return;
     }
 
-    setAlerts(data || []);
+    // Defense-in-depth: filter client-side to verify brand match
+    const filtered = (data || []).filter(
+      (a) => !a.brand_id || a.brand_id === activeBrand?.id
+    );
+
+    setAlerts(filtered);
   };
+
 
   const dismissAlert = async (alertId: string) => {
     setDismissing(alertId);
