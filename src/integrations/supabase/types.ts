@@ -1814,6 +1814,72 @@ export type Database = {
         }
         Relationships: []
       }
+      lumi_features: {
+        Row: {
+          area: string | null
+          category: string
+          created_at: string
+          highlight: boolean
+          id: string
+          ideal_audience: string | null
+          is_active: boolean
+          last_updated_note: string | null
+          long_description: string | null
+          marketing_angles: string[]
+          name: string
+          related_pages: string[]
+          short_description: string | null
+          slug: string | null
+          sort_order: number
+          status: string
+          tags: string[]
+          updated_at: string
+          why_helpful: string | null
+        }
+        Insert: {
+          area?: string | null
+          category?: string
+          created_at?: string
+          highlight?: boolean
+          id?: string
+          ideal_audience?: string | null
+          is_active?: boolean
+          last_updated_note?: string | null
+          long_description?: string | null
+          marketing_angles?: string[]
+          name: string
+          related_pages?: string[]
+          short_description?: string | null
+          slug?: string | null
+          sort_order?: number
+          status?: string
+          tags?: string[]
+          updated_at?: string
+          why_helpful?: string | null
+        }
+        Update: {
+          area?: string | null
+          category?: string
+          created_at?: string
+          highlight?: boolean
+          id?: string
+          ideal_audience?: string | null
+          is_active?: boolean
+          last_updated_note?: string | null
+          long_description?: string | null
+          marketing_angles?: string[]
+          name?: string
+          related_pages?: string[]
+          short_description?: string | null
+          slug?: string | null
+          sort_order?: number
+          status?: string
+          tags?: string[]
+          updated_at?: string
+          why_helpful?: string | null
+        }
+        Relationships: []
+      }
       meta_connection_checks: {
         Row: {
           brand_id: string
