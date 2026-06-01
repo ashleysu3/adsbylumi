@@ -958,6 +958,41 @@ export default function AdminPartners() {
                   <div>
                     <Label>Partner Lumi account</Label>
                     <p className="text-xs text-muted-foreground mb-2">Link this partner to a Lumi user so they see the Partner Portal banner and (optionally) get a comped membership.</p>
+
+                    {/* Application contact email surfaced here */}
+                    {(linkedApp?.email || editing.partner_email) && !editing.partner_user_id && (
+                      <div className="rounded-md border bg-muted/40 p-3 space-y-2 mb-2">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="text-sm">
+                            <span className="text-muted-foreground">Application email:</span>{" "}
+                            <span className="font-medium">{linkedApp?.email || editing.partner_email}</span>
+                          </div>
+                          <div className="flex gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={linking || !editing.id}
+                              onClick={() => handleLinkAccount(linkedApp?.email || editing.partner_email || "")}
+                            >
+                              {linking ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Link2 className="h-3 w-3 mr-1" />}
+                              Link existing Lumi account
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={sendingCompInvite || !editing.id}
+                              onClick={() => sendCompInvite(linkedApp?.email || editing.partner_email || "", linkedApp?.first_name || (editing.partner_display_name || "").split(" ")[0])}
+                            >
+                              {sendingCompInvite ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Gift className="h-3 w-3 mr-1" />}
+                              Send comp invite
+                            </Button>
+                          </div>
+                        </div>
+                        {accountExists === false && (
+                          <p className="text-xs text-amber-700">No Lumi account found at this email yet. Send the comp invite so they can claim a free account.</p>
+                        )}
+                      </div>
+                    )}
+
                     {editing.partner_user_id ? (
                       <div className="flex items-center justify-between rounded border p-2">
                         <div className="text-sm">
@@ -968,8 +1003,8 @@ export default function AdminPartners() {
                       </div>
                     ) : (
                       <div className="flex gap-2">
-                        <Input value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} placeholder="partner@email.com" type="email" />
-                        <Button onClick={handleLinkAccount} disabled={linking || !editing.id}>
+                        <Input value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} placeholder="Or link a different email..." type="email" />
+                        <Button onClick={() => handleLinkAccount()} disabled={linking || !editing.id || !linkEmail.trim()}>
                           {linking && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Link
                         </Button>
                       </div>
