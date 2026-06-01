@@ -1046,12 +1046,8 @@ export default function AdminPartners() {
                   </div>
                 </div>
 
-                <RepeaterField
-                  label="Bonus perks"
-                  items={(editing.perks || []) as any}
-                  onChange={(perks) => setEditing({ ...editing, perks: perks as any })}
-                  fields={[{ key: "title", placeholder: "Perk title" }, { key: "description", placeholder: "Description" }]}
-                />
+
+
 
                 <RepeaterField
                   label="Support links (calls, office hours, etc.)"
