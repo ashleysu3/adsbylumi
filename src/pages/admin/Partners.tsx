@@ -1032,6 +1032,11 @@ export default function AdminPartners() {
                     onChange={(recommended_strategies) => setEditing({ ...editing, recommended_strategies })}
                   />
 
+                  <FeaturesEditor
+                    items={(editing.recommended_features || []) as FeatureItem[]}
+                    onChange={(recommended_features) => setEditing({ ...editing, recommended_features })}
+                  />
+
                   <div className="flex items-center justify-between border-t pt-3 gap-2">
                     <p className="text-xs text-muted-foreground">
                       {((editing.recommended_strategies || []) as StrategyItem[]).filter(i => i.selected !== false && i.title).length} idea(s) selected
