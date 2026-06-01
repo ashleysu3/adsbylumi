@@ -1429,10 +1429,10 @@ export default function AdPerformance() {
                           : 'No performance goals set for this campaign. LUMI can\'t track performance without a target.'}
                       </p>
                       <div className="flex gap-2 mt-3">
-                        <Button size="sm" variant="outline" onClick={() => openDrawer(c.workspace_id)}>
+                        <Button size="sm" variant="default" onClick={() => handleCustomizeGoal(c.workspace_id, c.workspace_name)}>
                           <Target className="h-3 w-3 mr-1" /> Set Goals →
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => openDrawer(c.workspace_id)}>View Campaign →</Button>
+                        <Button size="sm" variant="ghost" onClick={() => openDrawer(c.workspace_id)}>View Details →</Button>
                       </div>
                     </CardContent>
                   </Card>
