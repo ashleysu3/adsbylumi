@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Sparkles, Send, Calendar, Trash2, BarChart3, Mail, Eye, MousePointer, RotateCw, Lightbulb } from "lucide-react";
+import { Plus, Sparkles, Send, Calendar, Trash2, BarChart3, Mail, Eye, MousePointer, RotateCw, Lightbulb, Check, X, GitCommit } from "lucide-react";
 import { toast } from "sonner";
 
 interface ChangelogEntry {
@@ -23,6 +23,9 @@ interface ChangelogEntry {
   category: string;
   created_at: string;
   included_in_campaign_id: string | null;
+  approval_status?: string;
+  source?: string;
+  commit_refs?: Array<{ sha?: string; message?: string; author?: string | null; url?: string | null }>;
 }
 
 interface Campaign {
