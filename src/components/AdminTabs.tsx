@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   BookOpen, LayoutTemplate, BarChart3, CreditCard, Bug, Users, Settings,
   Shield, Gift, DollarSign, Mail, XCircle, FileWarning, Star, Monitor, Wrench,
-  ChevronDown, Palette, Tag, Inbox,
+  ChevronDown, Palette, Tag, Inbox, Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
@@ -52,6 +52,7 @@ const adminGroups: AdminGroup[] = [
       { path: "/admin/overlay-templates", label: "Overlay Templates", icon: Palette },
       { path: "/admin/emails", label: "Emails", icon: Mail },
       { path: "/admin/updates", label: "Updates & Newsletter", icon: Mail },
+      { path: "/admin/features", label: "Features Catalog", icon: Sparkles },
     ],
   },
   {
