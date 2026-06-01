@@ -250,7 +250,7 @@ export default function AdminPartners() {
         share_resources: editing.share_resources || [],
         is_active: editing.is_active ?? true,
         trial_days: editing.trial_days ?? 14,
-        referral_link: editing.referral_link || null,
+        referral_link: editing.referral_link || affiliateForPartner(editing)?.links?.[0]?.url || null,
         partner_email: editing.partner_email || null,
         membership_comped: editing.membership_comped ?? false,
         partner_application_id: editing.partner_application_id || null,
