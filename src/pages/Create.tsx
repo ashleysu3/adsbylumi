@@ -247,7 +247,7 @@ export default function Create() {
 
   // Reset state when brand changes
   useEffect(() => {
-    setSelectedGoal(fromStrategy ? "promote_offer" : "");
+    setSelectedGoal(initialGoal);
     setSelectedOfferId("");
     setSelectedTemplateId("");
     setSelectedAngle(null);
