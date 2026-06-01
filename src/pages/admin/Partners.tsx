@@ -860,7 +860,7 @@ export default function AdminPartners() {
             </DialogHeader>
             {editing && (() => {
               const linkedApp = applicationForPartner(editing);
-              void affiliateForPartner;
+              
               return (
               <Tabs value={editingTab} onValueChange={setEditingTab} className="py-2">
                 <TabsList className="w-full">
