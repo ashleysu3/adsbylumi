@@ -46,6 +46,13 @@ function isValidPublicUrl(urlString: string): { valid: boolean; error?: string }
   }
 }
 
+function jsonResponse(payload: Record<string, unknown>, corsHeaders: Record<string, string>, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -61,10 +68,7 @@ Deno.serve(async (req) => {
     // Input validation
     if (!websiteUrlInput) {
       console.log('extract-brand-info: missing websiteUrl');
-      return new Response(
-        JSON.stringify({ error: 'Website URL is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Website URL is required' }, corsHeaders);
     }
 
     // Normalize URL: collapse stray slashes after scheme, add https:// if missing
@@ -81,34 +85,22 @@ Deno.serve(async (req) => {
     try {
       const parsed = new URL(websiteUrl);
       if (!parsed.hostname || !parsed.hostname.includes('.')) {
-        return new Response(
-          JSON.stringify({ error: 'Please enter a valid website URL (e.g. yourbrand.com)' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return jsonResponse({ error: 'Please enter a valid website URL (e.g. yourbrand.com)' }, corsHeaders);
       }
     } catch {
-      return new Response(
-        JSON.stringify({ error: 'Invalid URL format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Invalid URL format' }, corsHeaders);
     }
 
     if (websiteUrl.length > 500) {
       console.log('extract-brand-info: url too long');
-      return new Response(
-        JSON.stringify({ error: 'Invalid URL format or URL too long' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Invalid URL format or URL too long' }, corsHeaders);
     }
 
     // SSRF protection - validate URL
     const urlValidation = isValidPublicUrl(websiteUrl);
     if (!urlValidation.valid) {
       console.log('extract-brand-info: url rejected', { reason: urlValidation.error });
-      return new Response(
-        JSON.stringify({ error: urlValidation.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: urlValidation.error || 'This website URL is not allowed' }, corsHeaders);
     }
 
     console.log('Extracting brand info from:', websiteUrl);
