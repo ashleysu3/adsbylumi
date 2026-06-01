@@ -560,6 +560,8 @@ export default function AdminPartners() {
           referral_link: editing.referral_link || aff?.links?.[0]?.url || "",
           selected_ideas: ideas,
           selected_resources: resources,
+          booking_url: config.owner_calendar_url || "",
+          reply_to_email: config.owner_email || "",
         },
       });
       if (error) throw error;
