@@ -1,77 +1,99 @@
 ## Goal
 
-Turn the partner welcome experience into a fully admin-configurable system. An admin fills out a form per partner (Ashley, future affiliates), gets a code, and anyone who signs up with that code automatically sees a custom welcome modal + gets recommended strategies/campaigns surfaced in their workspace.
+1. Let admins **comp a partner's Lumi membership** with a single toggle on the partner record.
+2. Give partners a **dedicated Partner Portal** they reach from a persistent banner at the top of every Lumi screen, with everything they need to promote Lumi.
 
-## What gets built
+---
 
-### 1. Database changes (extend `partner_access_tokens`)
+## 1. Link partners to user accounts + comp toggle
 
-Add fields so each partner row is a full "welcome package":
-- `welcome_message` (text) — custom message from the partner
-- `partner_photo_url` (text) — headshot/logo
-- `partner_title` (text) — e.g. "Wedding Industry Coach"
-- `support_links` (jsonb) — array of `{ label, url, type }` (call booking, office hours, email, etc.)
-- `recommended_strategies` (jsonb) — array of `{ title, description, template_slug? }` pointing at campaign templates to highlight
-- `is_active` (boolean) — toggle without deleting
-- Existing `perks` and `partner_display_name` stay
+To both comp memberships and show the banner only to partners, each partner record needs to know which Lumi user is the partner.
 
-Update `get_partner_welcome` RPC to return all new fields.
+**Migration on `partner_access_tokens`:**
 
-New storage bucket `partner-assets` (public) for partner photos.
+- `partner_user_id uuid` — the user account that belongs to this partner (nullable; set by admin via email lookup).
+- `partner_email text` — convenience field shown in admin.
+- `membership_comped boolean default false` — when true, subscription checks treat them as a paid Agency-tier user.
+- `comped_at timestamptz`, `comped_by uuid` — audit.
 
-### 2. Admin dashboard page — `/admin/partners`
+**Admin Partners page (`/admin/partners`):**
 
-A new admin-only page (gated by `has_role(..., 'admin')`) with:
-- Table of all partner codes (name, code, active toggle, signups count, edit/delete)
-- "New partner" button → form drawer/modal
-- Form fields:
-  - Partner display name
-  - Partner title (optional)
-  - Trial code (auto-uppercased, validated unique)
-  - Photo upload (to `partner-assets` bucket)
-  - Custom welcome message (textarea)
-  - Perks (repeatable list of `{ title, description, icon }`)
-  - Support links (repeatable `{ label, url }` — for "Book your 1:1", "Join office hours", etc.)
-  - Recommended strategies (repeatable `{ title, description }` + optional dropdown to pick from existing `campaign_templates`)
-  - Active toggle
-- Edit + delete existing partners
-- Shows the shareable referral URL (`adsbylumi.com/?code=XXXXX`) with copy button
+- New "Partner account" section with:
+  - Email input → "Link account" button (resolves to `auth.users` via existing admin email lookup pattern; stores `partner_user_id`).
+  - Shows linked account email + "Unlink".
+  - Toggle: **"Comp Lumi membership"** (disabled until account is linked). Saves `membership_comped`, `comped_at`, `comped_by`.
 
-Linked from the existing admin sidebar/nav.
+**Subscription gating:**
 
-### 3. Updated `PartnerWelcomeModal`
+- Extend `SubscriptionContext` (and the server-side check used by edge functions) to treat a user as fully active when a row in `partner_access_tokens` matches `partner_user_id = auth.uid()` AND `membership_comped = true`. They get Agency-tier limits while comped.
 
-Render the full custom package:
-- Partner photo (circular) + name + title at top
-- Custom welcome message
-- Perks list (existing)
-- **New: "Strategies Ashley recommends"** section — cards for each recommended strategy with title/description; if linked to a template, "Use this strategy" button routes to the planning flow with that template preselected
-- **New: Support links** section — buttons for booking calls, office hours, etc.
-- Falls back gracefully if any field is empty (so simple partners still work)
+---
 
-### 4. Recommended strategies surfaced beyond the modal
+## 2. Partner Portal page
 
-Store the partner code on the user's profile at signup (new column `profiles.partner_code`). On the Planning dashboard, if the user has a partner code with `recommended_strategies`, show a small "Recommended for you by {partner}" row above the template grid. This way the recommendations don't disappear after the modal closes.
+New route `**/partner-portal**` (auth-gated, only accessible to linked partners).
 
-### 5. Seed Ashley's data
+**Sections (all driven by fields already on `partner_access_tokens` plus a few new ones):**
 
-Update Ashley's existing `ASHLEY` row with:
-- Title: e.g. "Wedding Industry Strategist"
-- Welcome message (placeholder you can edit)
-- Photo (placeholder until you upload)
-- Perks: 30-min 1:1 setup call + Monday 10am EST office hours (already there)
-- Support links: Calendly link for the call, Google Meet link for office hours
-- Recommended strategies: "Wedding Pro Strategy" + "Event Geo-Targeting Strategy"
+1. **Hero** — partner photo + name + "Welcome back, {name}".
+2. **Your referral toolkit**
+  - Big copy-to-clipboard card for their `referral_link`.
+  - Their unique `partner_trial_code` (with copy button) + the trial length they're offering.
+  - "Share preview" — link to `/?code=ASHLEY` so they can see what their audience sees.
+3. **Resources for sharing** (new jsonb `share_resources` on partner row, admin-editable list of `{ title, description, url, type }` — swipe copy, graphics, demo videos, email templates).
+4. **What's new in Lumi** — pulled from existing `site_settings` / changelog data if available; otherwise a new `partner_updates` admin-managed list (title, body, link, published_at). Shows latest 5.
+5. **Get support & grow with us**
+  - "Book a 1:1 call with Ashley" → calendar link (admin-configurable global setting).
+  - "Join office hours" → `/office-hours` link.
+  - "Request a joint webinar / community training" → opens a simple form that emails Ashley (reuses existing Resend setup).
+  - "Email Ashley directly" → `mailto:` with prefilled subject (configurable global setting).
+6. **Your impact** (lightweight) — display the Rewardful-tracked stats if easy; otherwise just a "View earnings on Rewardful" button using the referral link's `?via=` slug.
+
+**Persistent banner:**
+
+- New `PartnerPortalBanner` component rendered inside `DashboardLayout` (above `SubscriptionBanner`), shown only when the logged-in user is linked to a partner row.
+- Copy: "You're a Lumi Partner — open your Partner Portal" + button → `/partner-portal`.
+- Dismissible per-session (localStorage), but reappears on next login.
+
+---
+
+## 3. Global settings used by the portal
+
+Stored in existing `site_settings` table (one row, key `partner_portal_config`):
+
+- `andrew_calendar_url`
+- `andrew_email`
+- `webinar_request_recipient`
+- `default_share_resources` (used as fallback if a partner has none of their own)
+
+Admin manages these inside the existing `/admin/settings` page (new "Partner Portal" tab).
+
+---
 
 ## Technical notes
 
-- All admin writes happen via direct table inserts/updates gated by RLS using `has_role(auth.uid(), 'admin')` — no edge function needed for CRUD.
-- Photo upload uses Supabase Storage client directly.
-- `recommended_strategies[].template_slug` (optional) joins to `campaign_templates.slug` so clicking "Use this strategy" can deep-link into the existing planner flow.
-- `profiles.partner_code` is set in the same guest-checkout paths where we already call `setPartnerWelcomeCode` (`Sales.tsx`, `FreeTrial.tsx`) so the recommendation row persists after signup.
+- New edge function `partner-webinar-request` — validates auth + partner status, sends Resend email to Andrew.
+- Reuse `partner-assets` storage bucket for any uploaded resources.
+- `get_partner_welcome` RPC unchanged; add a new RPC `get_my_partner_portal()` that returns the full portal payload for `auth.uid()` (joins partner row + global settings + updates).
+- All new tables/columns get GRANTs + RLS.
+- No changes to public sales / onboarding flow.
 
-## Open questions before I build
+---
 
-1. For "Recommended strategies," do you want them to map to existing `campaign_templates` rows (so clicking opens the planner pre-filled), or are they just descriptive text cards for now?
-2. Should the admin page live at `/admin/partners` and be linked from the existing admin nav, or somewhere else?
-3. Anything else you want the admin form to capture (e.g. partner email, internal notes, commission %)?
+## Files
+
+**New:**
+
+- `supabase/migrations/<ts>_partner_portal.sql`
+- `supabase/functions/partner-webinar-request/index.ts`
+- `src/pages/PartnerPortal.tsx`
+- `src/components/PartnerPortalBanner.tsx`
+- `src/components/admin/PartnerPortalSettings.tsx`
+
+**Edited:**
+
+- `src/pages/admin/Partners.tsx` — link account + comp toggle + share resources repeater + partner updates repeater
+- `src/pages/admin/Settings.tsx` — new Partner Portal tab
+- `src/App.tsx` — `/partner-portal` route
+- `src/components/DashboardLayout.tsx` + `MobileHeader.tsx` — render `PartnerPortalBanner`
+- `src/contexts/SubscriptionContext.tsx` — honor `membership_comped`
