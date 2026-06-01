@@ -258,6 +258,7 @@ export default function AdminPartners() {
         support_links: editing.support_links || [],
         recommended_strategies: editing.recommended_strategies || [],
         share_resources: editing.share_resources || [],
+        recommended_features: editing.recommended_features || [],
         is_active: editing.is_active ?? true,
         trial_days: editing.trial_days ?? 14,
         referral_link: editing.referral_link || affiliateForPartner(editing)?.links?.[0]?.url || null,
