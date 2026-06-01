@@ -152,9 +152,11 @@ interface WizardProgress {
 
 export default function Create() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromStrategy = searchParams.get("from") === "strategy";
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState(0); // 0 = entry choice
+  const [currentStep, setCurrentStep] = useState(fromStrategy ? 1 : 0); // 0 = entry choice
   const totalSteps = 2;
 
   // Data
