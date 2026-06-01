@@ -282,19 +282,30 @@ ${igText || "(not available)"}`;
       return json({ error: "Couldn't parse voice profile" }, cors, 200);
     }
 
-    // Persist
+    // Split out social_proof so it lives in its own column and the voice_profile
+    // stays focused on tone/style.
+    const socialProof = profile && typeof profile === "object" ? profile.social_proof ?? null : null;
+    const voiceOnly = profile && typeof profile === "object" ? { ...profile } : profile;
+    if (voiceOnly && typeof voiceOnly === "object") delete (voiceOnly as any).social_proof;
+
     const summary =
       typeof profile?.summary === "string" && profile.summary.length > 0
         ? profile.summary
         : (brand.brand_voice as string | null) || "";
 
+    const updatePayload: Record<string, unknown> = {
+      voice_profile: voiceOnly,
+      voice_profile_generated_at: new Date().toISOString(),
+      brand_voice: summary,
+    };
+    if (socialProof) {
+      updatePayload.social_proof = socialProof;
+      updatePayload.social_proof_generated_at = new Date().toISOString();
+    }
+
     const { error: updErr } = await admin
       .from("brands")
-      .update({
-        voice_profile: profile,
-        voice_profile_generated_at: new Date().toISOString(),
-        brand_voice: summary,
-      })
+      .update(updatePayload)
       .eq("id", brandId)
       .select()
       .single();
@@ -304,7 +315,7 @@ ${igText || "(not available)"}`;
       return json({ error: "Couldn't save voice profile" }, cors, 200);
     }
 
-    return json({ voice_profile: profile, brand_voice: summary }, cors, 200);
+    return json({ voice_profile: voiceOnly, brand_voice: summary, social_proof: socialProof }, cors, 200);
   } catch (e: any) {
     console.error("analyze-brand-voice error", e?.message || e);
     return json({ error: e?.message || "Unexpected error" }, cors, 200);
