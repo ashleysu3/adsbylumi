@@ -538,6 +538,9 @@ export default function AdminPartners() {
     } finally {
       setGeneratingAI(false);
     }
+  };
+
+
 
   const saveConfig = async () => {
     setSavingConfig(true);
