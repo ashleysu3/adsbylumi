@@ -71,6 +71,10 @@ ${selected_resources.map((r: any) => `- [${r.type || "resource"}] ${r.title}: ${
 WHAT'S NEW IN LUMI
 ${(updates || []).map((u: any) => `- ${u.title}${u.body ? ": " + u.body.slice(0, 140) : ""}`).join("\n") || "(no recent updates)"}
 
+CALL-TO-ACTION DETAILS
+Book-a-call link with Ashley: ${booking_url || "(none — omit the booking option)"}
+Reply-to email: ${reply_to_email || "(use a plain reply)"}
+
 Write a friendly email (subject + body) that:
 1. Greets them by first name only.
 2. Briefly mentions we've put together some custom marketing ideas for THEIR audience.
@@ -78,8 +82,11 @@ Write a friendly email (subject + body) that:
 4. Mentions their partner portal has the full set + customized swipe files / copy / graphics ready to grab.
 5. Includes the portal link (${portalUrl}) and their referral link (${referral_link || shareUrl}) clearly.
 6. Mentions 1 thing that's new in Lumi if relevant to their audience.
-7. Closes with a low-pressure offer to brainstorm together.
-Keep body under ~220 words. Sign off "— The Lumi team".`;
+7. Ends with a clear two-option CTA so they know exactly how to move forward:
+   (a) Reply to this email with the numbers of the ideas they'd like to explore further (reference the numbered ideas above), OR
+   (b) ${booking_url ? `Book a call with Ashley to brainstorm together: ${booking_url}` : "Reply to set up a quick brainstorm call with Ashley"}.
+   Make the two options feel low-pressure and easy.
+Keep body under ~240 words. Sign off "— The Lumi team".`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
