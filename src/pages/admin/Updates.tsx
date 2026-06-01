@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Sparkles, Send, Calendar, Trash2, BarChart3, Mail, Eye, MousePointer, RotateCw } from "lucide-react";
+import { Plus, Sparkles, Send, Calendar, Trash2, BarChart3, Mail, Eye, MousePointer, RotateCw, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 
 interface ChangelogEntry {
@@ -46,6 +46,8 @@ export default function AdminUpdates() {
 
   // New entry
   const [newEntry, setNewEntry] = useState({ title: "", body: "", category: "feature" });
+  const [ideas, setIdeas] = useState<Array<{ title: string; body: string; category: string }>>([]);
+  const [ideasLoading, setIdeasLoading] = useState(false);
 
   // Draft builder
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -92,6 +94,29 @@ export default function AdminUpdates() {
   async function deleteEntry(id: string) {
     if (!confirm("Delete this entry?")) return;
     await supabase.from("changelog_entries").delete().eq("id", id);
+    load();
+  }
+
+  async function suggestIdeas() {
+    setIdeasLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-update-ideas", { body: {} });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      setIdeas(data.ideas || []);
+      if ((data.ideas || []).length === 0) toast.info("No ideas came back — try again");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setIdeasLoading(false);
+    }
+  }
+
+  async function addIdea(idx: number) {
+    const idea = ideas[idx];
+    const { error } = await supabase.from("changelog_entries").insert(idea);
+    if (error) return toast.error(error.message);
+    toast.success("Added to changelog");
+    setIdeas((arr) => arr.filter((_, i) => i !== idx));
     load();
   }
 
@@ -294,6 +319,43 @@ export default function AdminUpdates() {
 
           {/* CHANGELOG */}
           <TabsContent value="changelog" className="space-y-4">
+            <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-primary" /> Need ideas?
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">Let Lumi suggest fresh update ideas based on what's been shipping lately.</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button onClick={suggestIdeas} disabled={ideasLoading} variant="outline">
+                  <Sparkles className="w-4 h-4 mr-2" /> {ideasLoading ? "Brainstorming…" : "Suggest update ideas"}
+                </Button>
+                {ideas.length > 0 && (
+                  <div className="space-y-2">
+                    {ideas.map((idea, i) => (
+                      <div key={i} className="flex items-start gap-3 p-3 border rounded-lg bg-background">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{idea.title}</span>
+                            <Badge variant="outline" className="text-xs capitalize">{idea.category}</Badge>
+                          </div>
+                          {idea.body && <p className="text-sm text-muted-foreground mt-1">{idea.body}</p>}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => { setNewEntry(idea); toast.success("Loaded — tweak below"); }}>
+                            Edit
+                          </Button>
+                          <Button size="sm" onClick={() => addIdea(i)}>
+                            <Plus className="w-3 h-3 mr-1" /> Add
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader><CardTitle>Log a new update</CardTitle></CardHeader>
               <CardContent className="space-y-3">

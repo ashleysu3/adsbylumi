@@ -1134,6 +1134,7 @@ export type Database = {
           created_by: string | null
           id: string
           included_in_campaign_id: string | null
+          is_user_visible: boolean
           title: string
           updated_at: string
         }
@@ -1144,6 +1145,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           included_in_campaign_id?: string | null
+          is_user_visible?: boolean
           title: string
           updated_at?: string
         }
@@ -1154,6 +1156,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           included_in_campaign_id?: string | null
+          is_user_visible?: boolean
           title?: string
           updated_at?: string
         }
@@ -2348,6 +2351,7 @@ export type Database = {
           id: string
           is_agency_user: boolean | null
           is_beta_user: boolean
+          last_seen_updates_at: string | null
           newsletter_opt_in: boolean
           onboarding_email_step: number
           policy_acknowledged_at: string | null
@@ -2365,6 +2369,7 @@ export type Database = {
           id: string
           is_agency_user?: boolean | null
           is_beta_user?: boolean
+          last_seen_updates_at?: string | null
           newsletter_opt_in?: boolean
           onboarding_email_step?: number
           policy_acknowledged_at?: string | null
@@ -2382,6 +2387,7 @@ export type Database = {
           id?: string
           is_agency_user?: boolean | null
           is_beta_user?: boolean
+          last_seen_updates_at?: string | null
           newsletter_opt_in?: boolean
           onboarding_email_step?: number
           policy_acknowledged_at?: string | null
@@ -3111,6 +3117,7 @@ export type Database = {
       get_my_referral_summary: { Args: never; Returns: Json }
       get_partner_welcome: { Args: { p_code: string }; Returns: Json }
       get_shared_report: { Args: { p_share_token: string }; Returns: Json }
+      get_whats_new: { Args: never; Returns: Json }
       get_winback_offer_by_token: { Args: { p_token: string }; Returns: Json }
       has_role: {
         Args: {
@@ -3120,6 +3127,7 @@ export type Database = {
         Returns: boolean
       }
       is_current_user_comped_partner: { Args: never; Returns: boolean }
+      mark_updates_seen: { Args: never; Returns: undefined }
       move_to_dlq: {
         Args: {
           dlq_name: string

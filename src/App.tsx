@@ -13,6 +13,7 @@ import { RenderQueueProvider } from "@/contexts/RenderQueueContext";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { GlobalAnnouncementBanner } from "@/components/GlobalAnnouncementBanner";
 import { PartnerWelcomeModal } from "@/components/PartnerWelcomeModal";
+import { WhatsNewModal } from "@/components/WhatsNewModal";
 import SplashScreen from "@/components/SplashScreen";
 
 import Index from "./pages/Index";
@@ -128,6 +129,7 @@ const App = () => {
                   <GlobalAnnouncementBanner />
                   <ImpersonationBanner />
                   <PartnerWelcomeModal />
+                  <WhatsNewModal />
                   
                   
                 <Routes>
