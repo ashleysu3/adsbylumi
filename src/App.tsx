@@ -42,6 +42,8 @@ import AdminSettings from "./pages/admin/Settings";
 import AdminTeam from "./pages/admin/Team";
 import AdminStripe from "./pages/admin/Stripe";
 import AdminCoupons from "./pages/admin/Coupons";
+import AdminUpdates from "./pages/admin/Updates";
+import AdminUpdatesResults from "./pages/admin/UpdatesResults";
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
@@ -197,6 +199,8 @@ const App = () => {
                   <Route path="/admin/reviews" element={<AdminReviews />} />
                   <Route path="/admin/meta-debug" element={<AdminMetaDebug />} />
                   <Route path="/admin/overlay-templates" element={<AdminOverlayTemplates />} />
+                  <Route path="/admin/updates" element={<AdminUpdates />} />
+                  <Route path="/admin/updates/:campaignId" element={<AdminUpdatesResults />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
