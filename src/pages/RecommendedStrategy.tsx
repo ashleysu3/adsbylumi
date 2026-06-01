@@ -128,15 +128,7 @@ export default function RecommendedStrategy() {
         </Button>
 
         <div className="text-center space-y-2 mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-lumi-pink-1/10 to-lumi-purple-1/10 border border-lumi-pink-1/20 mb-2">
-            <Sparkles className="h-3.5 w-3.5 text-lumi-pink-1" />
-            <span className="text-xs font-medium text-lumi-pink-1">
-              LUMI Strategy Recommendation
-            </span>
-          </div>
-          <h1 className="text-2xl font-heading font-bold">
-            Tell LUMI what you want — we'll plan the rest
-          </h1>
+          <CyclingBasedOn />
           {activeBrand && (
             <p className="text-sm text-muted-foreground">
               For <span className="font-medium text-foreground">{activeBrand.name}</span>
