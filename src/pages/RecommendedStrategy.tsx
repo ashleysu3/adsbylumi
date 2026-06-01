@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
   ArrowRight,
@@ -47,6 +47,53 @@ type MatchedStrategy = {
   why_it_works: string;
   campaigns: CampaignPlan[];
 };
+
+const CYCLE_PHRASES = [
+  "your website",
+  "your audience psychological profile",
+  "your brand information",
+  "your offers",
+  "your goals",
+];
+
+function CyclingBasedOn() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % CYCLE_PHRASES.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="text-center">
+      <h1 className="text-2xl font-heading font-bold leading-snug">
+        Based on{" "}
+        <span className="relative inline-block min-w-[12ch] text-left">
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="absolute left-0 top-0 whitespace-nowrap text-gradient-lumi"
+            >
+              {CYCLE_PHRASES[index]}
+            </motion.span>
+          </AnimatePresence>
+          <span className="invisible whitespace-nowrap">
+            {CYCLE_PHRASES.reduce((a, b) => (a.length > b.length ? a : b))}
+          </span>
+        </span>
+      </h1>
+      <p className="text-sm text-muted-foreground mt-2">
+        LUMI is building your personalized strategy…
+      </p>
+    </div>
+  );
+}
 
 export default function RecommendedStrategy() {
   const navigate = useNavigate();
@@ -128,15 +175,7 @@ export default function RecommendedStrategy() {
         </Button>
 
         <div className="text-center space-y-2 mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-lumi-pink-1/10 to-lumi-purple-1/10 border border-lumi-pink-1/20 mb-2">
-            <Sparkles className="h-3.5 w-3.5 text-lumi-pink-1" />
-            <span className="text-xs font-medium text-lumi-pink-1">
-              LUMI Strategy Recommendation
-            </span>
-          </div>
-          <h1 className="text-2xl font-heading font-bold">
-            Tell LUMI what you want — we'll plan the rest
-          </h1>
+          <CyclingBasedOn />
           {activeBrand && (
             <p className="text-sm text-muted-foreground">
               For <span className="font-medium text-foreground">{activeBrand.name}</span>
