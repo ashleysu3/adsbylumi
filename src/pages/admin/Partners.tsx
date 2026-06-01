@@ -779,8 +779,46 @@ export default function AdminPartners() {
         <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editing?.id ? "Edit Partner" : "New Partner"}</DialogTitle>
-              <DialogDescription>Anyone who signs up with this code gets the custom welcome experience below.</DialogDescription>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <DialogTitle>{editing?.id ? "Partner File" : "New Partner File"}</DialogTitle>
+                  <DialogDescription>Anyone who signs up with this code gets the custom welcome experience below.</DialogDescription>
+                </div>
+                {editing?.id && (
+                  <div className="flex flex-wrap gap-2 shrink-0">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const data: PartnerWelcome = {
+                          partner_display_name: editing.partner_display_name || null,
+                          partner_trial_code: editing.partner_trial_code || null,
+                          partner_title: editing.partner_title || null,
+                          partner_photo_url: editing.partner_photo_url || null,
+                          welcome_message: (editing as any).welcome_message || null,
+                          perks: ((editing as any).perks || []) as any,
+                          support_links: ((editing as any).support_links || []) as any,
+                          recommended_strategies: (((editing as any).recommended_strategies || []) as StrategyItem[])
+                            .filter(s => s.selected !== false && s.title),
+                        };
+                        setWelcomePreview(data);
+                        setWelcomePreviewOpen(true);
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-1" /> Preview welcome popup
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => window.open(`/partner-portal?preview_as=${editing.id}`, "_blank", "noopener,noreferrer")}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-1" /> Preview portal
+                    </Button>
+                  </div>
+                )}
+              </div>
             </DialogHeader>
             {editing && (() => {
               const linkedApp = applicationForPartner(editing);
