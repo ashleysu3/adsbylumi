@@ -131,8 +131,8 @@ export default function AdminPartners() {
   const [checkingAccount, setCheckingAccount] = useState(false);
 
   // Global config
-  const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string; brand_assets_url: string }>({
-    owner_email: "", owner_calendar_url: "", office_hours_url: "", webinar_request_to: "", brand_assets_url: "",
+  const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string; brand_assets_url: string; lumi_features_catalog: string }>({
+    owner_email: "", owner_calendar_url: "", office_hours_url: "", webinar_request_to: "", brand_assets_url: "", lumi_features_catalog: "",
   });
   const [savingConfig, setSavingConfig] = useState(false);
 
