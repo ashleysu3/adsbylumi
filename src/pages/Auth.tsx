@@ -45,6 +45,27 @@ export default function Auth() {
     }
   }, []);
 
+  // If returning from Stripe checkout, resolve any partner promo code used at checkout
+  // and prime the PartnerWelcomeModal so it pops up after the user signs in.
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id');
+    if (!hasPaid || !sessionId) return;
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('resolve-checkout-partner', {
+          body: { session_id: sessionId },
+        });
+        if (error) return;
+        const code = (data as any)?.partner_code;
+        if (code) {
+          const { setPartnerWelcomeCode } = await import('@/components/PartnerWelcomeModal');
+          setPartnerWelcomeCode(code);
+        }
+      } catch { /* ignore */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Redirect already-authenticated users away from auth page
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
