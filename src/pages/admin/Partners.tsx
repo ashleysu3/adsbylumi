@@ -94,6 +94,8 @@ export default function AdminPartners() {
         support_links: editing.support_links || [],
         recommended_strategies: editing.recommended_strategies || [],
         is_active: editing.is_active ?? true,
+        trial_days: editing.trial_days ?? 14,
+        referral_link: editing.referral_link || null,
       };
       if (editing.id) {
         const { error } = await supabase.from("partner_access_tokens").update(payload).eq("id", editing.id);
