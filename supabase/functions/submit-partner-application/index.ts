@@ -112,11 +112,11 @@ Deno.serve(async (req) => {
             <div style="font-family: 'Red Hat Display', sans-serif; max-width: 600px; margin: 0 auto; padding: 32px;">
               <h2 style="color: #111;">New Partner Application</h2>
               <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Name</td><td style="padding: 8px;">${firstName} ${lastName}</td></tr>
-                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Email</td><td style="padding: 8px;">${email}</td></tr>
-                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Website</td><td style="padding: 8px;">${website || 'Not provided'}</td></tr>
-                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Audience</td><td style="padding: 8px;">${audienceDescription || 'Not provided'}</td></tr>
-                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Promotion Plan</td><td style="padding: 8px;">${promotionPlan || 'Not provided'}</td></tr>
+                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Name</td><td style="padding: 8px;">${escapeHtml(firstName)} ${escapeHtml(lastName)}</td></tr>
+                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Email</td><td style="padding: 8px;">${escapeHtml(email)}</td></tr>
+                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Website</td><td style="padding: 8px;">${escapeHtml(website) || 'Not provided'}</td></tr>
+                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Audience</td><td style="padding: 8px;">${escapeHtml(audienceDescription) || 'Not provided'}</td></tr>
+                <tr><td style="padding: 8px; font-weight: 600; color: #666;">Promotion Plan</td><td style="padding: 8px;">${escapeHtml(promotionPlan) || 'Not provided'}</td></tr>
               </table>
               <p style="color: #666; margin-top: 24px;">Log in to your LUMI admin dashboard to review and approve this application.</p>
             </div>
