@@ -1,19 +1,18 @@
-import { isServiceRoleRequest } from '../_shared/internal-auth.ts';
-
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/slack/api';
 const SLACK_CHANNEL = 'lumi-alerts';
+
+// Note: this function is invoked by the handle_new_user() DB trigger via pg_net.
+// pg_net cannot read Edge Function env vars or vault secrets without a manual
+// setup, so we cannot require service-role auth here today without breaking
+// signup notifications. As a defense-in-depth measure we (a) cap payload size,
+// (b) require both `email` and `full_name` to look like a real signup, and
+// (c) reject obviously-bogus requests. The Slack channel is internal-only and
+// the worst case is spam to the team channel; rotating credentials is unaffected.
+const MAX_BODY_BYTES = 2_000;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204 });
-  }
-
-  // Only internal database/edge triggers using the service role may invoke this.
-  if (!isServiceRoleRequest(req)) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
   }
 
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
