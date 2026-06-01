@@ -1028,7 +1028,7 @@ export default function AdPerformance() {
     setCampaignsNeedingGoals([{
       id: workspaceId,
       name: workspaceName,
-      brandId: ws?.brandId,
+      brandId: ws?.brandId || brandId || undefined,
       offerPrice: null,
       templateSlug: null,
     }]);
@@ -1171,26 +1171,25 @@ export default function AdPerformance() {
           />
         }
 
-        {/* ─── Campaign Health Summary (from optimization report) ─── */}
-        {optimizationReport && view === 'home' && reportData.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-foreground">{reportSummary.total}</div>
-              <div className="text-xs text-muted-foreground">Tracked campaigns</div>
-            </CardContent></Card>
-            <Card className="border-green-200 dark:border-green-800"><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-foreground">{reportSummary.green}</div>
-              <div className="text-xs text-muted-foreground">🟢 On track</div>
-            </CardContent></Card>
-            <Card className="border-amber-200 dark:border-amber-800"><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-foreground">{reportSummary.yellow}</div>
-              <div className="text-xs text-muted-foreground">🟡 Watch</div>
-            </CardContent></Card>
-            <Card className="border-red-200 dark:border-red-800"><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-foreground">{reportSummary.red}</div>
-              <div className="text-xs text-muted-foreground">🔴 Need attention</div>
-            </CardContent></Card>
-          </div>
+        {/* ─── Report Settings (inline) ─── */}
+        {view === 'home' && brandId && (
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 text-sm">
+                <Bell className="h-4 w-4 text-primary" />
+                <span className="font-medium">Emailed Reports</span>
+                <span className="text-muted-foreground">
+                  {digestSettings.enabled
+                    ? `${digestSettings.send_days.length} day${digestSettings.send_days.length !== 1 ? 's' : ''}/wk at ${digestSettings.send_time}`
+                    : 'Disabled'}
+                  {digestSettings.additional_emails.length > 0 && ` · +${digestSettings.additional_emails.length} recipient${digestSettings.additional_emails.length !== 1 ? 's' : ''}`}
+                </span>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setDigestOpen(true)}>
+                Manage report frequency & recipients
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* ─── Main Content ─── */}
@@ -1357,7 +1356,7 @@ export default function AdPerformance() {
 
                   <div className="flex justify-end pt-2">
                     <Button variant="ghost" size="sm" onClick={() => openDrawer(c.workspace_id)}>
-                      View Campaign <ExternalLink className="h-3 w-3 ml-1" />
+                      View Details <ExternalLink className="h-3 w-3 ml-1" />
                     </Button>
                   </div>
                 </CardContent>
@@ -1430,10 +1429,10 @@ export default function AdPerformance() {
                           : 'No performance goals set for this campaign. LUMI can\'t track performance without a target.'}
                       </p>
                       <div className="flex gap-2 mt-3">
-                        <Button size="sm" variant="outline" onClick={() => openDrawer(c.workspace_id)}>
+                        <Button size="sm" variant="default" onClick={() => handleCustomizeGoal(c.workspace_id, c.workspace_name)}>
                           <Target className="h-3 w-3 mr-1" /> Set Goals →
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => openDrawer(c.workspace_id)}>View Campaign →</Button>
+                        <Button size="sm" variant="ghost" onClick={() => openDrawer(c.workspace_id)}>View Details →</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -1803,6 +1802,7 @@ export default function AdPerformance() {
             setCampaignsNeedingGoals([]);
             setGoalsVersion(v => v + 1);
             fetchCampaigns();
+            loadOptimizationReport();
           }}
         />
       </div>
