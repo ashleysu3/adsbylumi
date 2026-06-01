@@ -250,7 +250,7 @@ export default function AdminPartners() {
         share_resources: editing.share_resources || [],
         is_active: editing.is_active ?? true,
         trial_days: editing.trial_days ?? 14,
-        referral_link: editing.referral_link || null,
+        referral_link: editing.referral_link || affiliateForPartner(editing)?.links?.[0]?.url || null,
         partner_email: editing.partner_email || null,
         membership_comped: editing.membership_comped ?? false,
         partner_application_id: editing.partner_application_id || null,
@@ -785,12 +785,38 @@ export default function AdminPartners() {
                   </div>
                   <div>
                     <Label>Partner referral link</Label>
-                    <Input
-                      value={editing.referral_link || ""}
-                      onChange={(e) => setEditing({ ...editing, referral_link: e.target.value })}
-                      placeholder="https://adsbylumi.com/?via=ashley"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Signups with this code give the partner referral credit.</p>
+                    {(() => {
+                      const aff = affiliateForPartner(editing);
+                      const autoLink = aff?.links?.[0]?.url || "";
+                      const usingAuto = !editing.referral_link && !!autoLink;
+                      return (
+                        <>
+                          <Input
+                            value={editing.referral_link || autoLink}
+                            onChange={(e) => setEditing({ ...editing, referral_link: e.target.value })}
+                            placeholder="https://adsbylumi.com/?via=ashley"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {usingAuto
+                              ? `Auto-filled from Rewardful${editing.partner_trial_code ? ` and linked to trial code ${editing.partner_trial_code}` : ""}. Edit to override.`
+                              : autoLink
+                                ? "Manual override active. Clear to use the Rewardful link."
+                                : "Signups with this code give the partner referral credit."}
+                          </p>
+                          {usingAuto && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2"
+                              onClick={() => setEditing({ ...editing, referral_link: autoLink })}
+                            >
+                              Save Rewardful link to partner
+                            </Button>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
