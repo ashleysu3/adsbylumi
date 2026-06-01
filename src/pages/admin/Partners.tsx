@@ -1353,6 +1353,75 @@ function MarketingIdeasEditor({
   );
 }
 
+function FeaturesEditor({
+  items, onChange,
+}: { items: FeatureItem[]; onChange: (next: FeatureItem[]) => void }) {
+  const update = (i: number, patch: Partial<FeatureItem>) => {
+    const next = [...items];
+    next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
+  const add = () => onChange([...items, { feature: "", why_audience_cares: "", share_copy: "", selected: true }]);
+  const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="space-y-2 border-t pt-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <Label>Recommended Lumi features for their audience</Label>
+          <p className="text-xs text-muted-foreground">Each one comes with ready-to-share copy the partner can post.</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={add}>
+          <Plus className="h-3 w-3 mr-1" /> Add feature
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, i) => {
+          const selected = item.selected !== false;
+          return (
+            <div key={i} className={`rounded-md border p-3 space-y-2 ${selected ? "bg-primary/5 border-primary/30" : "bg-muted/30"}`}>
+              <div className="flex items-start gap-2">
+                <Checkbox checked={selected} onCheckedChange={(v) => update(i, { selected: !!v })} className="mt-1" />
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={item.feature || ""}
+                    onChange={(e) => update(i, { feature: e.target.value })}
+                    placeholder="Lumi feature (e.g. AI Ad Script Generator)"
+                    className="font-medium"
+                  />
+                  <Textarea
+                    rows={2}
+                    value={item.why_audience_cares || ""}
+                    onChange={(e) => update(i, { why_audience_cares: e.target.value })}
+                    placeholder="Why this audience will care about this feature"
+                  />
+                  <Textarea
+                    rows={3}
+                    value={item.share_copy || ""}
+                    onChange={(e) => update(i, { share_copy: e.target.value })}
+                    placeholder="Ready-to-paste social/email copy the partner can post to share this feature"
+                    className="text-xs bg-background"
+                  />
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        {items.length === 0 && (
+          <p className="text-xs text-muted-foreground py-4 text-center border rounded-md bg-muted/30">
+            No features yet. Use "Generate more" to have AI propose features tailored to their audience.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+
 
 function RepeaterField<T extends Record<string, string>>({
   label, items, onChange, fields,
