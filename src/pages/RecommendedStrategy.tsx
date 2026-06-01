@@ -48,6 +48,53 @@ type MatchedStrategy = {
   campaigns: CampaignPlan[];
 };
 
+const CYCLE_PHRASES = [
+  "your website",
+  "your audience psychological profile",
+  "your brand information",
+  "your offers",
+  "your goals",
+];
+
+function CyclingBasedOn() {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % CYCLE_PHRASES.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="text-center">
+      <h1 className="text-2xl font-heading font-bold leading-snug">
+        Based on{" "}
+        <span className="relative inline-block min-w-[12ch] text-left">
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="absolute left-0 top-0 whitespace-nowrap text-gradient-lumi"
+            >
+              {CYCLE_PHRASES[index]}
+            </motion.span>
+          </AnimatePresence>
+          <span className="invisible whitespace-nowrap">
+            {CYCLE_PHRASES.reduce((a, b) => (a.length > b.length ? a : b))}
+          </span>
+        </span>
+      </h1>
+      <p className="text-sm text-muted-foreground mt-2">
+        LUMI is building your personalized strategy…
+      </p>
+    </div>
+  );
+}
+
 export default function RecommendedStrategy() {
   const navigate = useNavigate();
   const { activeBrand, loading: brandsLoading } = useBrand();
