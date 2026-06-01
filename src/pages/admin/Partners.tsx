@@ -321,6 +321,139 @@ export default function AdminPartners() {
     } catch (e: any) { toast.error(e.message); }
   };
 
+  // Approve from inside the unified dialog: runs the same flow as the Affiliates page
+  const handleApproveApplication = async () => {
+    if (!editing) return;
+    const app = applicationForPartner(editing);
+    if (!app) return toast.error("No application linked");
+    setAppActionLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-affiliate', {
+        body: { email: app.email, firstName: app.first_name, lastName: app.last_name, campaignId: 'partner' }
+      });
+      if (error) throw error;
+      const referralLink = (data as any)?.referralLink || '';
+      const referralCode = (data as any)?.referralCode || '';
+      const affiliateId = (data as any)?.id || null;
+
+      // Ensure unique trial code (use the one in the form, fall back to generated)
+      let trialCode = (editing.partner_trial_code || '').toUpperCase().trim();
+      if (!trialCode) {
+        const base = (app.first_name || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) + '14';
+        const { data: existing } = await supabase.from('partner_access_tokens').select('partner_trial_code').ilike('partner_trial_code', `${base}%`);
+        trialCode = existing && existing.length > 0 ? `${base}${existing.length}` : base;
+      }
+
+      // Save / upsert the partner record
+      const payload: any = {
+        email: editing.email || app.email,
+        partner_trial_code: trialCode,
+        partner_display_name: editing.partner_display_name || `${app.first_name} ${app.last_name}`.trim(),
+        partner_title: editing.partner_title || null,
+        partner_photo_url: editing.partner_photo_url || null,
+        welcome_message: editing.welcome_message || null,
+        perks: editing.perks || [],
+        support_links: editing.support_links || [],
+        recommended_strategies: editing.recommended_strategies || [],
+        share_resources: editing.share_resources || [],
+        is_active: true,
+        trial_days: editing.trial_days ?? 14,
+        referral_link: referralLink || editing.referral_link || null,
+        partner_email: app.email,
+        membership_comped: editing.membership_comped ?? false,
+        partner_application_id: app.id,
+        rewardful_affiliate_id: affiliateId,
+      };
+      let savedId = editing.id;
+      if (savedId) {
+        const { error: upErr } = await supabase.from('partner_access_tokens').update(payload).eq('id', savedId);
+        if (upErr) throw upErr;
+      } else {
+        const { data: inserted, error: insErr } = await supabase.from('partner_access_tokens').insert(payload).select('id').single();
+        if (insErr) throw insErr;
+        savedId = inserted.id;
+      }
+
+      // Mark application approved
+      const { error: appErr } = await supabase.from('partner_applications').update({
+        status: 'approved',
+        rewardful_affiliate_id: affiliateId,
+        updated_at: new Date().toISOString(),
+      }).eq('id', app.id);
+      if (appErr) throw appErr;
+
+      // Send welcome email
+      const { error: emailErr } = await supabase.functions.invoke('send-partner-approval', {
+        body: {
+          email: app.email,
+          firstName: app.first_name,
+          lastName: app.last_name,
+          referralLink,
+          referralCode,
+          rewardfulAffiliateId: affiliateId,
+          customMessage: approvalMessage || undefined,
+          partnerTrialCode: trialCode,
+        }
+      });
+      if (emailErr) console.error('approval email failed', emailErr);
+
+      toast.success("Approved, partner created, welcome email sent 🎉");
+      setApprovalMessage("");
+      setEditing(null);
+      await load();
+    } catch (e: any) {
+      toast.error("Failed to approve: " + (e.message || 'Unknown error'));
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const handleDeclineApplication = async () => {
+    const app = applicationForPartner(editing);
+    if (!app) return;
+    setAppActionLoading(true);
+    try {
+      const { error } = await supabase.from('partner_applications').update({
+        status: 'declined', updated_at: new Date().toISOString(),
+      }).eq('id', app.id);
+      if (error) throw error;
+      toast.success("Application declined");
+      setConfirmDecline(false);
+      setEditing(null);
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const handleReconsiderApplication = async () => {
+    const app = applicationForPartner(editing);
+    if (!app) return;
+    setAppActionLoading(true);
+    try {
+      const { error } = await supabase.from('partner_applications').update({
+        status: 'pending', updated_at: new Date().toISOString(),
+      }).eq('id', app.id);
+      if (error) throw error;
+      toast.success("Status reset to pending");
+      await load();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setAppActionLoading(false);
+    }
+  };
+
+  const handleApplicationNoteSave = async (notes: string) => {
+    const app = applicationForPartner(editing);
+    if (!app) return;
+    await supabase.from('partner_applications').update({
+      notes, updated_at: new Date().toISOString(),
+    }).eq('id', app.id);
+  };
+
   const handlePhotoUpload = async (file: File) => {
     setUploading(true);
     try {
