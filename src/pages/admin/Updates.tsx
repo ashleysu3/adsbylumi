@@ -97,6 +97,29 @@ export default function AdminUpdates() {
     load();
   }
 
+  async function suggestIdeas() {
+    setIdeasLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-update-ideas", { body: {} });
+      if (error || data?.error) throw new Error(data?.error || error?.message);
+      setIdeas(data.ideas || []);
+      if ((data.ideas || []).length === 0) toast.info("No ideas came back — try again");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setIdeasLoading(false);
+    }
+  }
+
+  async function addIdea(idx: number) {
+    const idea = ideas[idx];
+    const { error } = await supabase.from("changelog_entries").insert(idea);
+    if (error) return toast.error(error.message);
+    toast.success("Added to changelog");
+    setIdeas((arr) => arr.filter((_, i) => i !== idx));
+    load();
+  }
+
   function toggleSelect(id: string) {
     const next = new Set(selectedIds);
     next.has(id) ? next.delete(id) : next.add(id);
