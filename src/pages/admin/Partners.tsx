@@ -541,6 +541,10 @@ export default function AdminPartners() {
           ...((prev.share_resources || []) as any[]),
           ...((res.share_resources || []) as any[]),
         ] as any,
+        recommended_features: [
+          ...((prev.recommended_features || []) as any[]),
+          ...((res.recommended_features || []) as any[]),
+        ] as any,
       } : prev);
       toast.success("Portal package generated ✨ Review & save");
       setEditingTab("overview");
