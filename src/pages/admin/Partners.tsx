@@ -36,6 +36,7 @@ interface Partner {
   perks: PerkItem[];
   support_links: LinkItem[];
   recommended_strategies: StrategyItem[];
+  audience_strategies: StrategyItem[];
   share_resources: ResourceItem[];
   recommended_features: FeatureItem[];
   is_active: boolean;
