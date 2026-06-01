@@ -13,9 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Plus, Trash2, Copy, Pencil, Upload, X, Users, Link2, Gift, ExternalLink, Check, Mail, RotateCcw, Inbox, Sparkles } from "lucide-react";
+import { Loader2, Plus, Trash2, Copy, Pencil, Upload, X, Users, Link2, Gift, ExternalLink, Check, Mail, RotateCcw, Inbox, Sparkles, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PartnerWelcomeModal, type PartnerWelcome } from "@/components/PartnerWelcomeModal";
 
 interface PerkItem { title: string; description: string }
 interface LinkItem { label: string; url: string }
