@@ -23,6 +23,7 @@ import { useLumiRecommend } from "@/components/LumiAssistant";
 import EmojiQuickPicker from "@/components/EmojiQuickPicker";
 import { ContentAssetsEditor } from "@/components/ContentAssetsEditor";
 import { OfferManager } from "@/components/OfferManager";
+import { BrandVoiceCard } from "@/components/BrandVoiceCard";
 import { BRollLibrary } from "@/components/BRollLibrary";
 import { OverlayStylePicker } from "@/components/OverlayStylePicker";
 import type { OverlayStyle } from "@/components/VideoTextPreview";
