@@ -692,42 +692,20 @@ export default function AdminPartners() {
           </CardContent>
         </Card>
 
-        {/* Partner Applications */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Inbox className="h-4 w-4" /> Partner Applications
-              {applications.filter((a) => a.status === 'pending').length > 0 && (
-                <Badge className="bg-amber-100 text-amber-800 border-0">
-                  {applications.filter((a) => a.status === 'pending').length} pending
-                </Badge>
-              )}
-            </CardTitle>
-            <CardDescription>Open an application to review, approve, and turn it into a managed partner — all in one place.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {applications.length === 0 && <p className="text-sm text-muted-foreground">No partner applications yet.</p>}
-            {applications.map((app) => {
-              const linkedPartner = partnersByAppId.get(app.id) || partnersByEmail.get(app.email.toLowerCase());
-              return (
-                <div key={app.id} className="flex items-start justify-between gap-3 p-3 rounded border hover:bg-muted/40 cursor-pointer" onClick={() => openFromApplication(app)}>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm">{app.first_name} {app.last_name}</span>
-                      <Badge variant="outline" className="capitalize text-xs">{app.status}</Badge>
-                      {linkedPartner && <Badge variant="outline" className="text-xs"><Link2 className="h-3 w-3 mr-1" />Has partner</Badge>}
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">{app.email}</p>
-                    {app.audience_description && <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{app.audience_description}</p>}
-                  </div>
-                  <div className="text-xs text-muted-foreground shrink-0 text-right">
-                    {new Date(app.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+        {/* Partner Applications moved to its own page */}
+        {applications.filter((a) => a.status === 'pending').length > 0 && (
+          <Card className="border-amber-300/50 bg-amber-50/40">
+            <CardContent className="p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Inbox className="h-4 w-4 text-amber-700" />
+                <span className="font-medium">{applications.filter((a) => a.status === 'pending').length} pending partner application(s)</span>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => navigate('/admin/partner-applications')}>
+                Review applications <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {loading ? (
           <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
