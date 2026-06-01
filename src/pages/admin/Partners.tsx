@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Plus, Trash2, Copy, Pencil, Upload, X, Users, Link2, Gift, ExternalLink, Check, Mail, RotateCcw, Inbox, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -18,8 +19,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface PerkItem { title: string; description: string }
 interface LinkItem { label: string; url: string }
-interface StrategyItem { title: string; description: string }
-interface ResourceItem { title: string; description: string; url: string; type: string }
+interface StrategyItem { title: string; description: string; selected?: boolean; custom_notes?: string }
+interface ResourceItem { title: string; description: string; url: string; type: string; selected?: boolean }
 interface UpdateItem { id?: string; title: string; body: string; link_url: string; link_label: string; is_published: boolean }
 
 interface Partner {
@@ -117,6 +118,8 @@ export default function AdminPartners() {
   const [confirmDecline, setConfirmDecline] = useState(false);
   const [syncingPromo, setSyncingPromo] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [draftingEmail, setDraftingEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
@@ -540,6 +543,36 @@ export default function AdminPartners() {
     }
   };
 
+  const draftPitchEmail = async () => {
+    if (!editing) return;
+    const ideas = ((editing.recommended_strategies || []) as StrategyItem[]).filter(i => i.selected !== false && i.title);
+    if (ideas.length === 0) { toast.error("Select at least one idea to pitch"); return; }
+    const resources = ((editing.share_resources || []) as ResourceItem[]).filter(r => r.selected !== false && r.title);
+    const aff = affiliateForPartner(editing);
+    setDraftingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("draft-partner-pitch-email", {
+        body: {
+          partner_display_name: editing.partner_display_name,
+          partner_email: editing.partner_email || editing.email,
+          partner_trial_code: editing.partner_trial_code,
+          partner_title: editing.partner_title,
+          referral_link: editing.referral_link || aff?.links?.[0]?.url || "",
+          selected_ideas: ideas,
+          selected_resources: resources,
+        },
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.error) throw new Error(res.error);
+      setEmailDraft({ to: res.to || "", subject: res.subject || "", body: res.body || "" });
+    } catch (e: any) {
+      toast.error(e.message || "Failed to draft email");
+    } finally {
+      setDraftingEmail(false);
+    }
+  };
+
 
 
   const saveConfig = async () => {
@@ -751,6 +784,7 @@ export default function AdminPartners() {
               <Tabs value={editingTab} onValueChange={setEditingTab} className="py-2">
                 <TabsList className="w-full">
                   <TabsTrigger value="overview" className="flex-1 text-xs">Portal</TabsTrigger>
+                  <TabsTrigger value="ideas" className="flex-1 text-xs">Marketing Ideas</TabsTrigger>
                   <TabsTrigger value="application" className="flex-1 text-xs" disabled={!linkedApp}>
                     Application {linkedApp && <Badge variant="outline" className="ml-1 text-[10px] capitalize">{linkedApp.status}</Badge>}
                   </TabsTrigger>
@@ -911,13 +945,6 @@ export default function AdminPartners() {
                 />
 
                 <RepeaterField
-                  label="Recommended strategies"
-                  items={(editing.recommended_strategies || []) as any}
-                  onChange={(recommended_strategies) => setEditing({ ...editing, recommended_strategies: recommended_strategies as any })}
-                  fields={[{ key: "title", placeholder: "Strategy name" }, { key: "description", placeholder: "Why it's great for their audience" }]}
-                />
-
-                <RepeaterField
                   label="Share resources (shown in their Partner Portal)"
                   items={(editing.share_resources || []) as any}
                   onChange={(share_resources) => setEditing({ ...editing, share_resources: share_resources as any })}
@@ -937,6 +964,38 @@ export default function AdminPartners() {
                   <Switch checked={editing.is_active ?? true} onCheckedChange={(v) => setEditing({ ...editing, is_active: v })} />
                 </div>
                 </TabsContent>
+
+                {/* MARKETING IDEAS TAB */}
+                <TabsContent value="ideas" className="space-y-4 pt-3">
+                  <div className="rounded-lg border p-3 bg-muted/30">
+                    <p className="text-sm font-medium">Customize ideas for pitching {editing.partner_display_name || "this partner"}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Edit, add notes, and check the ones you want to include. Then draft a pitch email with their portal link, referral link, and customized swipe files.
+                    </p>
+                  </div>
+
+                  <MarketingIdeasEditor
+                    items={(editing.recommended_strategies || []) as StrategyItem[]}
+                    onChange={(recommended_strategies) => setEditing({ ...editing, recommended_strategies })}
+                  />
+
+                  <div className="flex items-center justify-between border-t pt-3 gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {((editing.recommended_strategies || []) as StrategyItem[]).filter(i => i.selected !== false && i.title).length} idea(s) selected
+                    </p>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={generatePortalFromAI} disabled={generatingAI || !applicationForPartner(editing)}>
+                        {generatingAI ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                        Generate more
+                      </Button>
+                      <Button type="button" size="sm" onClick={draftPitchEmail} disabled={draftingEmail}>
+                        {draftingEmail ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Mail className="h-3 w-3 mr-1" />}
+                        Draft pitch email
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+
 
                 {/* APPLICATION TAB */}
                 {linkedApp && (
@@ -1118,10 +1177,118 @@ export default function AdminPartners() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Pitch email draft */}
+        <Dialog open={!!emailDraft} onOpenChange={(v) => !v && setEmailDraft(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Pitch email draft</DialogTitle>
+              <DialogDescription>Review, edit, then copy or open in your mail client.</DialogDescription>
+            </DialogHeader>
+            {emailDraft && (
+              <div className="space-y-3">
+                <div>
+                  <Label>To</Label>
+                  <Input value={emailDraft.to} onChange={(e) => setEmailDraft({ ...emailDraft, to: e.target.value })} placeholder="partner@email.com" />
+                </div>
+                <div>
+                  <Label>Subject</Label>
+                  <Input value={emailDraft.subject} onChange={(e) => setEmailDraft({ ...emailDraft, subject: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Body</Label>
+                  <Textarea rows={14} value={emailDraft.body} onChange={(e) => setEmailDraft({ ...emailDraft, body: e.target.value })} />
+                </div>
+              </div>
+            )}
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setEmailDraft(null)}>Close</Button>
+              <Button variant="outline" onClick={() => {
+                if (!emailDraft) return;
+                navigator.clipboard.writeText(`Subject: ${emailDraft.subject}\n\n${emailDraft.body}`);
+                toast.success("Copied to clipboard");
+              }}><Copy className="h-3 w-3 mr-1" />Copy</Button>
+              <Button onClick={() => {
+                if (!emailDraft) return;
+                const url = `mailto:${encodeURIComponent(emailDraft.to)}?subject=${encodeURIComponent(emailDraft.subject)}&body=${encodeURIComponent(emailDraft.body)}`;
+                window.open(url, "_blank");
+              }}><Mail className="h-3 w-3 mr-1" />Open in mail</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
 }
+
+function MarketingIdeasEditor({
+  items, onChange,
+}: { items: StrategyItem[]; onChange: (next: StrategyItem[]) => void }) {
+  const update = (i: number, patch: Partial<StrategyItem>) => {
+    const next = [...items];
+    next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
+  const add = () => onChange([...items, { title: "", description: "", selected: true, custom_notes: "" }]);
+  const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label>Marketing ideas</Label>
+        <Button type="button" size="sm" variant="outline" onClick={add}>
+          <Plus className="h-3 w-3 mr-1" /> Add idea
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, i) => {
+          const selected = item.selected !== false;
+          return (
+            <div key={i} className={`rounded-md border p-3 space-y-2 ${selected ? "bg-primary/5 border-primary/30" : "bg-muted/30"}`}>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  checked={selected}
+                  onCheckedChange={(v) => update(i, { selected: !!v })}
+                  className="mt-1"
+                />
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={item.title || ""}
+                    onChange={(e) => update(i, { title: e.target.value })}
+                    placeholder="Idea title (e.g. Live workshop for your email list)"
+                    className="font-medium"
+                  />
+                  <Textarea
+                    rows={2}
+                    value={item.description || ""}
+                    onChange={(e) => update(i, { description: e.target.value })}
+                    placeholder="Why it's great for their audience — what they'd do, what their people get"
+                  />
+                  <Textarea
+                    rows={2}
+                    value={item.custom_notes || ""}
+                    onChange={(e) => update(i, { custom_notes: e.target.value })}
+                    placeholder="Your custom notes for the pitch (optional — e.g. 'offer to co-host', 'we'll provide swipe copy')"
+                    className="text-xs bg-background"
+                  />
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        {items.length === 0 && (
+          <p className="text-xs text-muted-foreground py-4 text-center border rounded-md bg-muted/30">
+            No ideas yet. Add one or use "Generate more" to have AI draft custom ideas based on their audience.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function RepeaterField<T extends Record<string, string>>({
   label, items, onChange, fields,
