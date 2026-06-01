@@ -100,13 +100,21 @@ const blankForm = (): Partial<Partner> => ({
 
 
 export default function AdminPartners() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [applications, setApplications] = useState<PartnerApplication[]>([]);
+  const [affiliates, setAffiliates] = useState<AffiliateRecord[]>([]);
   const [editing, setEditing] = useState<Partial<Partner> | null>(null);
+  const [editingTab, setEditingTab] = useState<string>("overview");
   const [uploading, setUploading] = useState(false);
   const [linkEmail, setLinkEmail] = useState("");
   const [linking, setLinking] = useState(false);
+  const [approvalMessage, setApprovalMessage] = useState("");
+  const [appActionLoading, setAppActionLoading] = useState(false);
+  const [confirmDecline, setConfirmDecline] = useState(false);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
@@ -121,15 +129,22 @@ export default function AdminPartners() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [partnersRes, configRes, updatesRes] = await Promise.all([
+      const { data: { session } } = await supabase.auth.getSession();
+      const [partnersRes, configRes, updatesRes, affRes] = await Promise.all([
         supabase.from("partner_access_tokens").select("*").order("created_at", { ascending: false }),
         supabase.from("site_settings").select("value").eq("key", "partner_portal_config").maybeSingle(),
         supabase.from("partner_updates" as any).select("*").order("published_at", { ascending: false }),
+        supabase.functions.invoke('admin-get-affiliates', {
+          headers: { Authorization: `Bearer ${session?.access_token}` }
+        }).catch((e) => { console.error('affiliates load failed', e); return { data: null, error: e }; }),
       ]);
       if (partnersRes.error) throw partnersRes.error;
       setPartners((partnersRes.data || []) as unknown as Partner[]);
       if (configRes.data?.value) setConfig({ ...config, ...(configRes.data.value as any) });
       setUpdates(updatesRes.data || []);
+      const affData: any = (affRes as any)?.data || {};
+      setApplications((affData.applications || []).filter((a: PartnerApplication) => a.application_type === 'partner'));
+      setAffiliates(affData.affiliates || []);
     } catch (e: any) {
       toast.error(e.message || "Failed to load");
     } finally {
@@ -139,6 +154,79 @@ export default function AdminPartners() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Lookup helpers
+  const partnersByAppId = useMemo(() => {
+    const map = new Map<string, Partner>();
+    partners.forEach((p) => { if (p.partner_application_id) map.set(p.partner_application_id, p); });
+    return map;
+  }, [partners]);
+
+  const partnersByEmail = useMemo(() => {
+    const map = new Map<string, Partner>();
+    partners.forEach((p) => {
+      const e = (p.partner_email || p.email || '').toLowerCase();
+      if (e) map.set(e, p);
+    });
+    return map;
+  }, [partners]);
+
+  const affiliateForPartner = useCallback((p: Partial<Partner> | null): AffiliateRecord | null => {
+    if (!p) return null;
+    if (p.rewardful_affiliate_id) {
+      const byId = affiliates.find((a) => a.id === p.rewardful_affiliate_id);
+      if (byId) return byId;
+    }
+    const email = (p.partner_email || p.email || '').toLowerCase();
+    if (email) return affiliates.find((a) => (a.email || '').toLowerCase() === email) || null;
+    return null;
+  }, [affiliates]);
+
+  const applicationForPartner = useCallback((p: Partial<Partner> | null): PartnerApplication | null => {
+    if (!p) return null;
+    if (p.partner_application_id) {
+      return applications.find((a) => a.id === p.partner_application_id) || null;
+    }
+    const email = (p.partner_email || p.email || '').toLowerCase();
+    if (email) return applications.find((a) => a.email.toLowerCase() === email) || null;
+    return null;
+  }, [applications]);
+
+  // Open from an application (creates a pre-filled new-partner dialog if no linked row yet)
+  const openFromApplication = useCallback((app: PartnerApplication) => {
+    const existing = partnersByAppId.get(app.id) || partnersByEmail.get(app.email.toLowerCase());
+    if (existing) {
+      setEditing(existing);
+      setEditingTab("application");
+      return;
+    }
+    const baseCode = (app.first_name || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) + '14';
+    setEditing({
+      ...blankForm(),
+      partner_display_name: `${app.first_name} ${app.last_name}`.trim(),
+      partner_trial_code: baseCode,
+      partner_email: app.email,
+      email: app.email,
+      partner_application_id: app.id,
+      rewardful_affiliate_id: app.rewardful_affiliate_id || null,
+    });
+    setEditingTab("application");
+  }, [partnersByAppId, partnersByEmail]);
+
+  // Deep-link: ?app=APP_ID auto-opens the dialog once data is loaded
+  useEffect(() => {
+    const appId = searchParams.get('app');
+    if (!appId || loading || editing) return;
+    const app = applications.find((a) => a.id === appId);
+    if (app) {
+      openFromApplication(app);
+      // clear param so we don't re-open
+      const next = new URLSearchParams(searchParams);
+      next.delete('app');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, applications, loading, editing, openFromApplication, setSearchParams]);
+
 
   const handleSave = async () => {
     if (!editing) return;
