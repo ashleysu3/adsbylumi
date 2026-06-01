@@ -78,6 +78,8 @@ import FreeTrial from "./pages/FreeTrial";
 import Welcome from "./pages/Welcome";
 import BrandPatterns from "./pages/BrandPatterns";
 import Retrospectives from "./pages/Retrospectives";
+import RecommendedStrategy from "./pages/RecommendedStrategy";
+import AdminStrategies from "./pages/admin/Strategies";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -125,6 +127,7 @@ const App = () => {
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/start" element={<Start />} />
                   <Route path="/create" element={<Create />} />
+                  <Route path="/recommended-strategy" element={<RecommendedStrategy />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/planning" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/creative" element={<CreativeRedirect />} />
@@ -162,6 +165,7 @@ const App = () => {
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
                   <Route path="/admin/templates" element={<AdminTemplates />} />
+                  <Route path="/admin/strategies" element={<AdminStrategies />} />
                   <Route path="/admin/creative-toolkit" element={<AdminCreativeToolkit />} />
                   <Route path="/admin/subscriptions" element={<AdminSubscriptions />} />
                   <Route path="/admin/bug-reports" element={<AdminBugReports />} />
