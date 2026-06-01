@@ -62,7 +62,7 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${returnOrigin}/onboarding`,
+      success_url: `${returnOrigin}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${returnOrigin}/auth`,
       metadata: {
         user_id: user.id,
