@@ -56,7 +56,7 @@ const CYCLE_PHRASES = [
   "your goals",
 ];
 
-function CyclingBasedOn() {
+function CyclingReviewing() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -67,31 +67,26 @@ function CyclingBasedOn() {
   }, []);
 
   return (
-    <div className="text-center">
-      <h1 className="text-2xl font-heading font-bold leading-snug">
-        Based on{" "}
-        <span className="relative inline-block min-w-[12ch] text-center">
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="absolute left-1/2 top-0 -translate-x-1/2 whitespace-nowrap text-gradient-lumi"
-            >
-              {CYCLE_PHRASES[index]}
-            </motion.span>
-          </AnimatePresence>
-          <span className="invisible whitespace-nowrap">
-            {CYCLE_PHRASES.reduce((a, b) => (a.length > b.length ? a : b))}
-          </span>
+    <p className="text-sm text-muted-foreground mt-3">
+      Reviewing{" "}
+      <span className="relative inline-block min-w-[12ch] text-center align-bottom">
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={index}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
+            className="absolute left-1/2 top-0 -translate-x-1/2 whitespace-nowrap text-gradient-lumi font-medium"
+          >
+            {CYCLE_PHRASES[index]}
+          </motion.span>
+        </AnimatePresence>
+        <span className="invisible whitespace-nowrap">
+          {CYCLE_PHRASES.reduce((a, b) => (a.length > b.length ? a : b))}
         </span>
-      </h1>
-      <p className="text-sm text-muted-foreground mt-2">
-        LUMI is building your personalized strategy…
-      </p>
-    </div>
+      </span>
+    </p>
   );
 }
 
