@@ -115,6 +115,7 @@ export default function AdminPartners() {
   const [approvalMessage, setApprovalMessage] = useState("");
   const [appActionLoading, setAppActionLoading] = useState(false);
   const [confirmDecline, setConfirmDecline] = useState(false);
+  const [syncingPromo, setSyncingPromo] = useState(false);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
