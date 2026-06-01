@@ -92,6 +92,7 @@ const blankForm = (): Partial<Partner> => ({
   perks: [],
   support_links: [],
   recommended_strategies: [],
+  audience_strategies: [],
   share_resources: [],
   recommended_features: [],
   is_active: true,
