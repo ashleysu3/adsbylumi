@@ -819,7 +819,7 @@ export default function Create() {
                   </Card>
                 </button>
 
-                {/* Create New Ads for Existing */}
+                {/* Update Existing Ads */}
                 <button
                   onClick={() => navigate("/advanced-build")}
                   className="group text-left w-full"
@@ -830,7 +830,7 @@ export default function Create() {
                         <Upload className="h-4 w-4 text-white" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-foreground text-sm">Create new ads</h3>
+                        <h3 className="font-medium text-foreground text-sm">Update existing ads</h3>
                       </div>
                     </div>
                   </Card>
@@ -1191,7 +1191,7 @@ export default function Create() {
                               }
                             }}
                             icon={<Wand2 className="h-5 w-5" />}
-                            title="Create new ads with Creative Studio"
+                            title="Update existing ads with Creative Studio"
                             description="Generate DM-focused scripts, copy, and creative direction" />
                         </div>
                       </div>
