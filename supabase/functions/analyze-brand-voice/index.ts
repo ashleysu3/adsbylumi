@@ -141,12 +141,40 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Also pull any offer sales pages so we capture testimonials, case studies,
+    // and press features that live on a sales page rather than the homepage.
+    let salesPagesText = "";
+    try {
+      const { data: offers } = await admin
+        .from("offers")
+        .select("name, url")
+        .eq("brand_id", brandId)
+        .limit(5);
+      if (Array.isArray(offers)) {
+        for (const o of offers) {
+          const u = (o as any)?.url as string | undefined;
+          if (!u || !isValidPublicUrl(u)) continue;
+          if (websiteUrl && u === websiteUrl) continue;
+          let txt = await fetchWebsiteText(u);
+          if ((!txt || txt.length < 200) && FIRECRAWL_API_KEY) {
+            txt = await firecrawlScrape(u, FIRECRAWL_API_KEY);
+          }
+          if (txt) {
+            salesPagesText += `\n\n--- SALES PAGE: ${(o as any)?.name || u} (${u}) ---\n${txt}`;
+          }
+        }
+        salesPagesText = salesPagesText.slice(0, 16000);
+      }
+    } catch (e) {
+      console.error("sales page scrape failed", (e as any)?.message || e);
+    }
+
     let igText = "";
     if (instagramHandle && FIRECRAWL_API_KEY) {
       igText = await fetchInstagramCaptions(instagramHandle, FIRECRAWL_API_KEY);
     }
 
-    if (!websiteText && !igText) {
+    if (!websiteText && !igText && !salesPagesText) {
       return json(
         { error: "Couldn't read enough content from your website or Instagram to analyze your voice." },
         cors,
@@ -154,7 +182,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert brand voice strategist. Analyze the user's real writing (from their website and/or Instagram) and produce a STRUCTURED brand voice profile that captures HOW THEY ACTUALLY SOUND — not generic marketing advice.
+    const systemPrompt = `You are an expert brand voice strategist AND social proof analyst. Analyze the user's real writing (from their website, sales pages, and/or Instagram) and produce TWO things in one JSON object:
+
+1) A STRUCTURED brand voice profile that captures HOW THEY ACTUALLY SOUND.
+2) A SOCIAL PROOF inventory of every real piece of credibility found in the source (testimonials, case studies, press features, notable clients, stats, awards, credentials).
 
 Return ONLY JSON matching this shape:
 {
@@ -169,12 +200,28 @@ Return ONLY JSON matching this shape:
   "vocabulary_avoids": ["words/phrases that would feel OFF for this brand (hype words they don't use, jargon, etc.)"],
   "example_sentences": ["3-5 short sentences written in their voice, suitable as style references for ad copy"],
   "do": ["3-5 concrete dos a copywriter should follow to sound like this brand"],
-  "dont": ["3-5 concrete don'ts"]
+  "dont": ["3-5 concrete don'ts"],
+  "social_proof": {
+    "testimonials": [
+      { "quote": "exact words from the source", "attribution": "name/role/handle if present, else null", "result": "specific outcome mentioned if any" }
+    ],
+    "case_studies": [
+      { "client": "who", "before": "starting situation", "after": "result/transformation", "details": "any specifics like timeframe or numbers" }
+    ],
+    "press_features": [
+      { "outlet": "publication or podcast or stage name", "context": "what it was (interview, feature, speaker, etc.) if mentioned" }
+    ],
+    "notable_clients": ["brands, companies, or recognizable names they've worked with"],
+    "credentials": ["certifications, degrees, years of experience, titles"],
+    "stats": ["concrete numeric proof, e.g. '$2M+ generated for clients', '10,000 students', '4.9★ rating'"],
+    "awards": ["awards, rankings, bestseller status"]
+  }
 }
 
 Hard rules:
 - Ground every field in the source text. Quote real phrases when possible.
-- Do not invent a tone that isn't in the source.
+- Do not invent a tone, testimonial, press feature, or stat that isn't in the source. If a category has nothing, return an empty array.
+- Pull the strongest 3-10 testimonials when many exist. Preserve the client's actual wording verbatim.
 - Keep arrays tight — quality over quantity.
 - No markdown, no commentary, JSON only.`;
 
@@ -184,6 +231,9 @@ ${brand.target_audience ? `AUDIENCE: ${brand.target_audience}` : ""}
 
 === WEBSITE COPY ===
 ${websiteText || "(not available)"}
+
+=== SALES PAGE COPY ===
+${salesPagesText || "(not available)"}
 
 === INSTAGRAM COPY ===
 ${igText || "(not available)"}`;
@@ -232,19 +282,30 @@ ${igText || "(not available)"}`;
       return json({ error: "Couldn't parse voice profile" }, cors, 200);
     }
 
-    // Persist
+    // Split out social_proof so it lives in its own column and the voice_profile
+    // stays focused on tone/style.
+    const socialProof = profile && typeof profile === "object" ? profile.social_proof ?? null : null;
+    const voiceOnly = profile && typeof profile === "object" ? { ...profile } : profile;
+    if (voiceOnly && typeof voiceOnly === "object") delete (voiceOnly as any).social_proof;
+
     const summary =
       typeof profile?.summary === "string" && profile.summary.length > 0
         ? profile.summary
         : (brand.brand_voice as string | null) || "";
 
+    const updatePayload: Record<string, unknown> = {
+      voice_profile: voiceOnly,
+      voice_profile_generated_at: new Date().toISOString(),
+      brand_voice: summary,
+    };
+    if (socialProof) {
+      updatePayload.social_proof = socialProof;
+      updatePayload.social_proof_generated_at = new Date().toISOString();
+    }
+
     const { error: updErr } = await admin
       .from("brands")
-      .update({
-        voice_profile: profile,
-        voice_profile_generated_at: new Date().toISOString(),
-        brand_voice: summary,
-      })
+      .update(updatePayload)
       .eq("id", brandId)
       .select()
       .single();
@@ -254,7 +315,7 @@ ${igText || "(not available)"}`;
       return json({ error: "Couldn't save voice profile" }, cors, 200);
     }
 
-    return json({ voice_profile: profile, brand_voice: summary }, cors, 200);
+    return json({ voice_profile: voiceOnly, brand_voice: summary, social_proof: socialProof }, cors, 200);
   } catch (e: any) {
     console.error("analyze-brand-voice error", e?.message || e);
     return json({ error: e?.message || "Unexpected error" }, cors, 200);

@@ -50,6 +50,81 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Pull the brand's social_proof (testimonials, case studies, press features,
+    // notable clients, stats, awards, credentials) so angles can leverage it.
+    let socialProof: any = null;
+    if (brandId) {
+      const { data: brandRow } = await supabase
+        .from("brands")
+        .select("social_proof")
+        .eq("id", brandId)
+        .maybeSingle();
+      socialProof = (brandRow as any)?.social_proof ?? null;
+    }
+
+    const nonEmptyArr = (v: any) => Array.isArray(v) && v.length > 0;
+    const hasAnySocialProof = socialProof && (
+      nonEmptyArr(socialProof.testimonials) ||
+      nonEmptyArr(socialProof.case_studies) ||
+      nonEmptyArr(socialProof.press_features) ||
+      nonEmptyArr(socialProof.notable_clients) ||
+      nonEmptyArr(socialProof.stats) ||
+      nonEmptyArr(socialProof.awards) ||
+      nonEmptyArr(socialProof.credentials)
+    );
+
+    let socialProofContext = "";
+    if (hasAnySocialProof) {
+      socialProofContext = "\n\n=== REAL SOCIAL PROOF PULLED FROM THE BRAND'S WEBSITE / SALES PAGES ===\n";
+      socialProofContext += "These are real, verifiable credibility assets this brand already owns. You MUST treat them as first-class material for angles and concepts, not background flavor.\n\n";
+
+      if (nonEmptyArr(socialProof.testimonials)) {
+        socialProofContext += "TESTIMONIALS (client quotes — use verbatim where possible):\n";
+        socialProof.testimonials.slice(0, 10).forEach((t: any, i: number) => {
+          const attr = t?.attribution ? ` — ${t.attribution}` : "";
+          const result = t?.result ? ` [result: ${t.result}]` : "";
+          socialProofContext += `${i + 1}. "${t?.quote}"${attr}${result}\n`;
+        });
+        socialProofContext += "\n";
+      }
+      if (nonEmptyArr(socialProof.case_studies)) {
+        socialProofContext += "CLIENT CASE STUDIES (before/after transformations):\n";
+        socialProof.case_studies.slice(0, 8).forEach((c: any, i: number) => {
+          socialProofContext += `${i + 1}. ${c?.client || "Client"} — Before: ${c?.before || "?"} → After: ${c?.after || "?"}${c?.details ? ` (${c.details})` : ""}\n`;
+        });
+        socialProofContext += "\n";
+      }
+      if (nonEmptyArr(socialProof.press_features)) {
+        socialProofContext += "PRESS / FEATURED IN (use as authority hooks like \"As seen in...\"):\n";
+        socialProof.press_features.slice(0, 10).forEach((p: any) => {
+          socialProofContext += `- ${p?.outlet}${p?.context ? ` (${p.context})` : ""}\n`;
+        });
+        socialProofContext += "\n";
+      }
+      if (nonEmptyArr(socialProof.notable_clients)) {
+        socialProofContext += `NOTABLE CLIENTS / BRANDS WORKED WITH: ${socialProof.notable_clients.join(", ")}\n\n`;
+      }
+      if (nonEmptyArr(socialProof.stats)) {
+        socialProofContext += `CONCRETE STATS / PROOF NUMBERS: ${socialProof.stats.join(" | ")}\n\n`;
+      }
+      if (nonEmptyArr(socialProof.awards)) {
+        socialProofContext += `AWARDS / RANKINGS: ${socialProof.awards.join(" | ")}\n\n`;
+      }
+      if (nonEmptyArr(socialProof.credentials)) {
+        socialProofContext += `CREDENTIALS: ${socialProof.credentials.join(" | ")}\n\n`;
+      }
+
+      socialProofContext += "MANDATORY RULES FOR USING THIS SOCIAL PROOF:\n";
+      if (nonEmptyArr(socialProof.testimonials) || nonEmptyArr(socialProof.case_studies)) {
+        socialProofContext += "- At least ONE angle MUST be built around a real testimonial or case study above. Use the client's actual words / actual transformation as the foundation of the hook.\n";
+      }
+      if (nonEmptyArr(socialProof.press_features) || nonEmptyArr(socialProof.notable_clients) || nonEmptyArr(socialProof.awards)) {
+        socialProofContext += "- At least ONE angle MUST leverage authority signals (press features, notable clients, awards) as a credibility-first hook (e.g. \"As featured in...\", \"The method [Notable Client] used...\").\n";
+      }
+      socialProofContext += "- For the remaining angles, SPRINKLE this proof in naturally — reference a stat, name-drop a feature, or echo a real client phrase whenever it strengthens the angle.\n";
+      socialProofContext += "- NEVER invent testimonials, press features, clients, or numbers. Only use what's listed above.\n";
+    }
+
     // Fetch content assets for this brand
     let contentAssetsContext = "";
     if (brandId) {
@@ -239,6 +314,7 @@ Deno.serve(async (req) => {
 KNOWLEDGE BASE:
 ${kbContext}
 ${contentAssetsContext}
+${socialProofContext}
 ${insightsContext}
 ${offerAudienceContext}
 ${preGenContext}

@@ -521,6 +521,8 @@ export type Database = {
           psychology_generated_at: string | null
           psychology_status: string | null
           site_links_enabled: boolean | null
+          social_proof: Json | null
+          social_proof_generated_at: string | null
           target_audience: string | null
           updated_at: string | null
           use_emojis: boolean | null
@@ -568,6 +570,8 @@ export type Database = {
           psychology_generated_at?: string | null
           psychology_status?: string | null
           site_links_enabled?: boolean | null
+          social_proof?: Json | null
+          social_proof_generated_at?: string | null
           target_audience?: string | null
           updated_at?: string | null
           use_emojis?: boolean | null
@@ -615,6 +619,8 @@ export type Database = {
           psychology_generated_at?: string | null
           psychology_status?: string | null
           site_links_enabled?: boolean | null
+          social_proof?: Json | null
+          social_proof_generated_at?: string | null
           target_audience?: string | null
           updated_at?: string | null
           use_emojis?: boolean | null

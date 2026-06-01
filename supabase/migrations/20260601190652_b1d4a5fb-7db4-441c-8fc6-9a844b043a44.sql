@@ -1,0 +1,1 @@
+ALTER TABLE public.brands ADD COLUMN IF NOT EXISTS social_proof JSONB, ADD COLUMN IF NOT EXISTS social_proof_generated_at TIMESTAMPTZ;
