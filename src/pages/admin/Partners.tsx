@@ -504,6 +504,41 @@ export default function AdminPartners() {
     }
   };
 
+  const generatePortalFromAI = async () => {
+    if (!editing) return;
+    const app = applicationForPartner(editing);
+    if (!app) { toast.error("Link an application first"); return; }
+    setGeneratingAI(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-partner-portal-ai", {
+        body: { application_id: app.id },
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.error) throw new Error(res.error);
+
+      setEditing((prev) => prev ? {
+        ...prev,
+        partner_display_name: prev.partner_display_name || res.partner_display_name || `${app.first_name} ${app.last_name}`.trim(),
+        partner_title: prev.partner_title || res.partner_title || prev.partner_title,
+        partner_photo_url: prev.partner_photo_url || res.partner_photo_url || prev.partner_photo_url,
+        recommended_strategies: [
+          ...((prev.recommended_strategies || []) as any[]),
+          ...((res.recommended_strategies || []) as any[]),
+        ] as any,
+        share_resources: [
+          ...((prev.share_resources || []) as any[]),
+          ...((res.share_resources || []) as any[]),
+        ] as any,
+      } : prev);
+      toast.success("Portal package generated ✨ Review & save");
+      setEditingTab("overview");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate");
+    } finally {
+      setGeneratingAI(false);
+    }
+
   const saveConfig = async () => {
     setSavingConfig(true);
     try {
