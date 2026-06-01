@@ -262,6 +262,34 @@ export default function AdminPartners() {
                   <Textarea rows={4} value={editing.welcome_message || ""} onChange={(e) => setEditing({ ...editing, welcome_message: e.target.value })} placeholder="Personal note from the partner to new signups..." />
                 </div>
 
+                <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                  <div>
+                    <Label>Free trial length</Label>
+                    <div className="flex gap-2 mt-1">
+                      {[7, 14, 30].map((d) => (
+                        <Button
+                          key={d}
+                          type="button"
+                          size="sm"
+                          variant={(editing.trial_days ?? 14) === d ? "default" : "outline"}
+                          onClick={() => setEditing({ ...editing, trial_days: d })}
+                        >
+                          {d} days
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Partner referral link</Label>
+                    <Input
+                      value={editing.referral_link || ""}
+                      onChange={(e) => setEditing({ ...editing, referral_link: e.target.value })}
+                      placeholder="https://adsbylumi.com/?via=ashley"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Signups with this code give the partner referral credit.</p>
+                  </div>
+                </div>
+
                 <RepeaterField
                   label="Bonus perks"
                   items={(editing.perks || []) as any}
