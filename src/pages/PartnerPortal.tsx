@@ -103,9 +103,32 @@ export default function PartnerPortal() {
   const cfg = data.config || {};
   const shareUrl = p.partner_trial_code ? `https://adsbylumi.com/?code=${p.partner_trial_code}` : "";
 
+  const previewWelcomePopup = async () => {
+    if (!p.partner_trial_code) { toast.error("No trial code set yet."); return; }
+    setLoadingWelcomePreview(true);
+    try {
+      const { data: result, error } = await supabase.rpc("get_partner_welcome", { p_code: p.partner_trial_code });
+      if (error) throw error;
+      const payload = result as unknown as PartnerWelcome;
+      if (!payload?.partner_display_name) throw new Error("Welcome popup data not ready.");
+      setWelcomePreview(payload);
+      setWelcomePreviewOpen(true);
+    } catch (e: any) {
+      toast.error(e.message || "Could not load welcome preview");
+    } finally {
+      setLoadingWelcomePreview(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto space-y-6">
+        {previewPartnerId && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 px-4 py-3 text-sm flex items-center justify-between gap-3">
+            <span><strong>Admin preview</strong> — viewing this partner's portal as they would see it.</span>
+            <Button size="sm" variant="outline" onClick={() => navigate("/admin/partners")}>Back to partners</Button>
+          </div>
+        )}
         {/* Hero */}
         <Card className="overflow-hidden border-primary/20">
           <div className="bg-gradient-to-br from-primary/10 via-fuchsia-500/5 to-orange-400/10 p-6 flex items-center gap-4">
