@@ -2114,6 +2114,7 @@ export type Database = {
           partner_trial_code: string | null
           partner_user_id: string | null
           perks: Json
+          recommended_features: Json
           recommended_strategies: Json
           referral_link: string | null
           rewardful_affiliate_id: string | null
@@ -2143,6 +2144,7 @@ export type Database = {
           partner_trial_code?: string | null
           partner_user_id?: string | null
           perks?: Json
+          recommended_features?: Json
           recommended_strategies?: Json
           referral_link?: string | null
           rewardful_affiliate_id?: string | null
@@ -2172,6 +2174,7 @@ export type Database = {
           partner_trial_code?: string | null
           partner_user_id?: string | null
           perks?: Json
+          recommended_features?: Json
           recommended_strategies?: Json
           referral_link?: string | null
           rewardful_affiliate_id?: string | null

@@ -22,6 +22,7 @@ interface PerkItem { title: string; description: string }
 interface LinkItem { label: string; url: string }
 interface StrategyItem { title: string; description: string; selected?: boolean; custom_notes?: string }
 interface ResourceItem { title: string; description: string; url: string; type: string; selected?: boolean }
+interface FeatureItem { feature: string; why_audience_cares: string; share_copy: string; selected?: boolean }
 interface UpdateItem { id?: string; title: string; body: string; link_url: string; link_label: string; is_published: boolean }
 
 interface Partner {
@@ -36,6 +37,7 @@ interface Partner {
   support_links: LinkItem[];
   recommended_strategies: StrategyItem[];
   share_resources: ResourceItem[];
+  recommended_features: FeatureItem[];
   is_active: boolean;
   trial_days: number;
   referral_link: string | null;
@@ -90,6 +92,7 @@ const blankForm = (): Partial<Partner> => ({
   support_links: [],
   recommended_strategies: [],
   share_resources: [],
+  recommended_features: [],
   is_active: true,
   trial_days: 14,
   referral_link: "",
@@ -125,8 +128,8 @@ export default function AdminPartners() {
   const [welcomePreviewOpen, setWelcomePreviewOpen] = useState(false);
 
   // Global config
-  const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
-    owner_email: "", owner_calendar_url: "", office_hours_url: "", webinar_request_to: "",
+  const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string; brand_assets_url: string }>({
+    owner_email: "", owner_calendar_url: "", office_hours_url: "", webinar_request_to: "", brand_assets_url: "",
   });
   const [savingConfig, setSavingConfig] = useState(false);
 
@@ -255,6 +258,7 @@ export default function AdminPartners() {
         support_links: editing.support_links || [],
         recommended_strategies: editing.recommended_strategies || [],
         share_resources: editing.share_resources || [],
+        recommended_features: editing.recommended_features || [],
         is_active: editing.is_active ?? true,
         trial_days: editing.trial_days ?? 14,
         referral_link: editing.referral_link || affiliateForPartner(editing)?.links?.[0]?.url || null,
@@ -364,6 +368,7 @@ export default function AdminPartners() {
         support_links: editing.support_links || [],
         recommended_strategies: editing.recommended_strategies || [],
         share_resources: editing.share_resources || [],
+        recommended_features: editing.recommended_features || [],
         is_active: true,
         trial_days: editing.trial_days ?? 14,
         referral_link: referralLink || editing.referral_link || null,
@@ -536,6 +541,10 @@ export default function AdminPartners() {
           ...((prev.share_resources || []) as any[]),
           ...((res.share_resources || []) as any[]),
         ] as any,
+        recommended_features: [
+          ...((prev.recommended_features || []) as any[]),
+          ...((res.recommended_features || []) as any[]),
+        ] as any,
       } : prev);
       toast.success("Portal package generated ✨ Review & save");
       setEditingTab("overview");
@@ -647,6 +656,7 @@ export default function AdminPartners() {
             <div><Label>Webinar requests sent to</Label><Input value={config.webinar_request_to} onChange={(e) => setConfig({ ...config, webinar_request_to: e.target.value })} placeholder="Defaults to direct email" /></div>
             <div><Label>Book-a-call URL</Label><Input value={config.owner_calendar_url} onChange={(e) => setConfig({ ...config, owner_calendar_url: e.target.value })} placeholder="https://cal.com/..." /></div>
             <div><Label>Office hours URL (optional)</Label><Input value={config.office_hours_url} onChange={(e) => setConfig({ ...config, office_hours_url: e.target.value })} placeholder="https://meet.google.com/..." /></div>
+            <div className="sm:col-span-2"><Label>Lumi brand assets (Google Drive folder)</Label><Input value={config.brand_assets_url} onChange={(e) => setConfig({ ...config, brand_assets_url: e.target.value })} placeholder="https://drive.google.com/drive/folders/..." /><p className="text-xs text-muted-foreground mt-1">Shown to every partner in their portal — logos, headshots, graphics, etc.</p></div>
             <div className="sm:col-span-2"><Button onClick={saveConfig} disabled={savingConfig}>{savingConfig && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Save portal settings</Button></div>
           </CardContent>
         </Card>
@@ -1022,6 +1032,11 @@ export default function AdminPartners() {
                     onChange={(recommended_strategies) => setEditing({ ...editing, recommended_strategies })}
                   />
 
+                  <FeaturesEditor
+                    items={(editing.recommended_features || []) as FeatureItem[]}
+                    onChange={(recommended_features) => setEditing({ ...editing, recommended_features })}
+                  />
+
                   <div className="flex items-center justify-between border-t pt-3 gap-2">
                     <p className="text-xs text-muted-foreground">
                       {((editing.recommended_strategies || []) as StrategyItem[]).filter(i => i.selected !== false && i.title).length} idea(s) selected
@@ -1337,6 +1352,75 @@ function MarketingIdeasEditor({
     </div>
   );
 }
+
+function FeaturesEditor({
+  items, onChange,
+}: { items: FeatureItem[]; onChange: (next: FeatureItem[]) => void }) {
+  const update = (i: number, patch: Partial<FeatureItem>) => {
+    const next = [...items];
+    next[i] = { ...next[i], ...patch };
+    onChange(next);
+  };
+  const add = () => onChange([...items, { feature: "", why_audience_cares: "", share_copy: "", selected: true }]);
+  const remove = (i: number) => onChange(items.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="space-y-2 border-t pt-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <Label>Recommended Lumi features for their audience</Label>
+          <p className="text-xs text-muted-foreground">Each one comes with ready-to-share copy the partner can post.</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={add}>
+          <Plus className="h-3 w-3 mr-1" /> Add feature
+        </Button>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, i) => {
+          const selected = item.selected !== false;
+          return (
+            <div key={i} className={`rounded-md border p-3 space-y-2 ${selected ? "bg-primary/5 border-primary/30" : "bg-muted/30"}`}>
+              <div className="flex items-start gap-2">
+                <Checkbox checked={selected} onCheckedChange={(v) => update(i, { selected: !!v })} className="mt-1" />
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={item.feature || ""}
+                    onChange={(e) => update(i, { feature: e.target.value })}
+                    placeholder="Lumi feature (e.g. AI Ad Script Generator)"
+                    className="font-medium"
+                  />
+                  <Textarea
+                    rows={2}
+                    value={item.why_audience_cares || ""}
+                    onChange={(e) => update(i, { why_audience_cares: e.target.value })}
+                    placeholder="Why this audience will care about this feature"
+                  />
+                  <Textarea
+                    rows={3}
+                    value={item.share_copy || ""}
+                    onChange={(e) => update(i, { share_copy: e.target.value })}
+                    placeholder="Ready-to-paste social/email copy the partner can post to share this feature"
+                    className="text-xs bg-background"
+                  />
+                </div>
+                <Button type="button" size="sm" variant="ghost" onClick={() => remove(i)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        {items.length === 0 && (
+          <p className="text-xs text-muted-foreground py-4 text-center border rounded-md bg-muted/30">
+            No features yet. Use "Generate more" to have AI propose features tailored to their audience.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
 
 
 function RepeaterField<T extends Record<string, string>>({

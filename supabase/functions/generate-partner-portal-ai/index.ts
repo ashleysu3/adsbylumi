@@ -34,9 +34,23 @@ const SCHEMA = {
         required: ["title", "description", "type"],
       },
     },
+    recommended_features: {
+      type: "array",
+      description: "4 Lumi features this partner's audience would find most helpful/interesting, each with ready-to-share copy the partner can post.",
+      items: {
+        type: "object",
+        properties: {
+          feature: { type: "string", description: "Name of the Lumi feature (e.g. 'AI Ad Script Generator', 'Weekly Performance Reports')." },
+          why_audience_cares: { type: "string", description: "1-2 sentence explanation of why THIS audience specifically would care." },
+          share_copy: { type: "string", description: "Ready-to-paste social/email caption (~2-4 sentences) the partner can post to introduce this feature to their audience. Include a soft mention of using their partner code." },
+        },
+        required: ["feature", "why_audience_cares", "share_copy"],
+      },
+    },
   },
-  required: ["partner_title", "recommended_strategies", "share_resources"],
+  required: ["partner_title", "recommended_strategies", "share_resources", "recommended_features"],
 };
+
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
@@ -122,7 +136,9 @@ ${pageMarkdown || "(none)"}
 
 DETECTED LOGO URL (use as partner_photo_url if it looks like a real logo): ${logoUrl || "(none)"}
 
-Generate the portal package now. For share_resources, mix the 6 items as roughly: 2x type=copy (full ready-to-post emails or social captions inviting their audience to try Lumi with their partner code), 2x type=idea (specific marketing campaign ideas they can run), 2x type=collab (ideas for joint things the Lumi team could do with them — webinar, guest workshop, swipe-file giveaway, podcast, etc).`;
+Generate the portal package now. For share_resources, mix the 6 items as roughly: 2x type=copy (full ready-to-post emails or social captions inviting their audience to try Lumi with their partner code), 2x type=idea (specific marketing campaign ideas they can run), 2x type=collab (ideas for joint things the Lumi team could do with them — webinar, guest workshop, swipe-file giveaway, podcast, etc).
+
+For recommended_features, choose 4 Lumi capabilities this audience would find most useful (examples to draw from: AI ad strategy planner, talking-head script generator, hook/headline library, creative direction packs, performance benchmarks + weekly reports, fatigue/scaling recommendations, broad-audience campaign builder, Meta connection without needing Ads Manager skills). For each, write share_copy as a ready-to-paste caption/email blurb that mentions the trial code naturally.`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -171,6 +187,7 @@ Generate the portal package now. For share_resources, mix the 6 items as roughly
       partner_photo_url: parsed.partner_photo_url || "",
       recommended_strategies: parsed.recommended_strategies || [],
       share_resources: parsed.share_resources || [],
+      recommended_features: parsed.recommended_features || [],
     });
   } catch (e: any) {
     log("ERROR", { message: e.message });
