@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useBrand } from "@/contexts/BrandContext";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -152,9 +152,11 @@ interface WizardProgress {
 
 export default function Create() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromStrategy = searchParams.get("from") === "strategy";
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState(0); // 0 = entry choice
+  const [currentStep, setCurrentStep] = useState(fromStrategy ? 1 : 0); // 0 = entry choice
   const totalSteps = 2;
 
   // Data
@@ -249,7 +251,7 @@ export default function Create() {
     setGeneratedAngles([]);
     setSelectedCreativeTemplates([]);
     setShowSocialGrowthFlow(false);
-    setCurrentStep(0);
+    setCurrentStep(fromStrategy ? 1 : 0);
   }, [activeBrand?.id]);
 
   const fetchData = async () => {

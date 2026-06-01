@@ -88,7 +88,7 @@ export default function StrategyPlan() {
     const statuses = [...plan.statuses];
     if (statuses[idx] === "todo") statuses[idx] = "in_progress";
     update({ ...plan, statuses, activeIndex: idx });
-    navigate("/create");
+    navigate("/create?from=strategy");
   };
 
   const markDone = (idx: number) => {
