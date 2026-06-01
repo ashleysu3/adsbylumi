@@ -145,39 +145,22 @@ export default function RecommendedStrategy() {
           )}
         </div>
 
-        {step === "goal" && (
+        {step === "error" && (
           <motion.div
-            key="goal"
+            key="error"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-3"
+            className="text-center py-10 space-y-4"
           >
-            <p className="text-sm font-medium text-foreground mb-3">
-              What's your #1 goal right now?
+            <p className="text-sm text-destructive">
+              {errorMsg ?? "We couldn't generate a recommendation right now."}
             </p>
-            {GOALS.map((g) => {
-              const Icon = g.icon;
-              return (
-                <button
-                  key={g.id}
-                  onClick={() => runRecommendation(g.id)}
-                  className="w-full text-left group"
-                >
-                  <Card className="p-4 hover:border-primary/50 hover:shadow-glow transition-all cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                        <Icon className="h-5 w-5 text-foreground" />
-                      </div>
-                      <div className="flex-1 font-medium">{g.title}</div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                    </div>
-                  </Card>
-                </button>
-              );
-            })}
-            {errorMsg && (
-              <p className="text-sm text-destructive text-center pt-2">{errorMsg}</p>
-            )}
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" onClick={() => navigate("/create")}>
+                Pick a campaign myself
+              </Button>
+              <Button onClick={runRecommendation}>Try again</Button>
+            </div>
           </motion.div>
         )}
 
