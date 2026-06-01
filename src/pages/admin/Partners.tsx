@@ -117,6 +117,8 @@ export default function AdminPartners() {
   const [confirmDecline, setConfirmDecline] = useState(false);
   const [syncingPromo, setSyncingPromo] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [draftingEmail, setDraftingEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState<{ to: string; subject: string; body: string } | null>(null);
 
   // Global config
   const [config, setConfig] = useState<{ owner_email: string; owner_calendar_url: string; office_hours_url: string; webinar_request_to: string }>({
