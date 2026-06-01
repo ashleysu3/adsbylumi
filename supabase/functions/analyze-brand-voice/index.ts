@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
       igText = await fetchInstagramCaptions(instagramHandle, FIRECRAWL_API_KEY);
     }
 
-    if (!websiteText && !igText) {
+    if (!websiteText && !igText && !salesPagesText) {
       return json(
         { error: "Couldn't read enough content from your website or Instagram to analyze your voice." },
         cors,
@@ -182,7 +182,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert brand voice strategist. Analyze the user's real writing (from their website and/or Instagram) and produce a STRUCTURED brand voice profile that captures HOW THEY ACTUALLY SOUND — not generic marketing advice.
+    const systemPrompt = `You are an expert brand voice strategist AND social proof analyst. Analyze the user's real writing (from their website, sales pages, and/or Instagram) and produce TWO things in one JSON object:
+
+1) A STRUCTURED brand voice profile that captures HOW THEY ACTUALLY SOUND.
+2) A SOCIAL PROOF inventory of every real piece of credibility found in the source (testimonials, case studies, press features, notable clients, stats, awards, credentials).
 
 Return ONLY JSON matching this shape:
 {
@@ -197,12 +200,28 @@ Return ONLY JSON matching this shape:
   "vocabulary_avoids": ["words/phrases that would feel OFF for this brand (hype words they don't use, jargon, etc.)"],
   "example_sentences": ["3-5 short sentences written in their voice, suitable as style references for ad copy"],
   "do": ["3-5 concrete dos a copywriter should follow to sound like this brand"],
-  "dont": ["3-5 concrete don'ts"]
+  "dont": ["3-5 concrete don'ts"],
+  "social_proof": {
+    "testimonials": [
+      { "quote": "exact words from the source", "attribution": "name/role/handle if present, else null", "result": "specific outcome mentioned if any" }
+    ],
+    "case_studies": [
+      { "client": "who", "before": "starting situation", "after": "result/transformation", "details": "any specifics like timeframe or numbers" }
+    ],
+    "press_features": [
+      { "outlet": "publication or podcast or stage name", "context": "what it was (interview, feature, speaker, etc.) if mentioned" }
+    ],
+    "notable_clients": ["brands, companies, or recognizable names they've worked with"],
+    "credentials": ["certifications, degrees, years of experience, titles"],
+    "stats": ["concrete numeric proof, e.g. '$2M+ generated for clients', '10,000 students', '4.9★ rating'"],
+    "awards": ["awards, rankings, bestseller status"]
+  }
 }
 
 Hard rules:
 - Ground every field in the source text. Quote real phrases when possible.
-- Do not invent a tone that isn't in the source.
+- Do not invent a tone, testimonial, press feature, or stat that isn't in the source. If a category has nothing, return an empty array.
+- Pull the strongest 3-10 testimonials when many exist. Preserve the client's actual wording verbatim.
 - Keep arrays tight — quality over quantity.
 - No markdown, no commentary, JSON only.`;
 
@@ -212,6 +231,9 @@ ${brand.target_audience ? `AUDIENCE: ${brand.target_audience}` : ""}
 
 === WEBSITE COPY ===
 ${websiteText || "(not available)"}
+
+=== SALES PAGE COPY ===
+${salesPagesText || "(not available)"}
 
 === INSTAGRAM COPY ===
 ${igText || "(not available)"}`;
