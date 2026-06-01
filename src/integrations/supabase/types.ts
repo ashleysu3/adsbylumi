@@ -3124,6 +3124,10 @@ export type Database = {
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
       get_my_partner_portal: { Args: never; Returns: Json }
       get_my_referral_summary: { Args: never; Returns: Json }
+      get_partner_portal_admin: {
+        Args: { p_partner_id: string }
+        Returns: Json
+      }
       get_partner_welcome: { Args: { p_code: string }; Returns: Json }
       get_shared_report: { Args: { p_share_token: string }; Returns: Json }
       get_whats_new: { Args: never; Returns: Json }

@@ -10,7 +10,7 @@ interface Perk { title: string; description: string }
 interface LinkItem { label: string; url: string }
 interface StrategyItem { title: string; description: string }
 
-interface PartnerWelcome {
+export interface PartnerWelcome {
   partner_display_name: string | null;
   partner_trial_code: string | null;
   partner_title: string | null;
@@ -27,11 +27,20 @@ export function setPartnerWelcomeCode(code: string) {
   } catch { /* ignore */ }
 }
 
-export function PartnerWelcomeModal() {
+interface Props {
+  /** Controlled preview mode: when provided, modal ignores localStorage and shows this data. */
+  previewData?: PartnerWelcome | null;
+  previewOpen?: boolean;
+  onPreviewOpenChange?: (open: boolean) => void;
+}
+
+export function PartnerWelcomeModal({ previewData, previewOpen, onPreviewOpenChange }: Props = {}) {
+  const isPreview = previewData !== undefined;
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<PartnerWelcome | null>(null);
 
   useEffect(() => {
+    if (isPreview) return;
     let cancelled = false;
     const code = (() => {
       try { return localStorage.getItem(STORAGE_KEY); } catch { return null; }
@@ -50,26 +59,32 @@ export function PartnerWelcomeModal() {
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [isPreview]);
 
   const handleClose = () => {
+    if (isPreview) {
+      onPreviewOpenChange?.(false);
+      return;
+    }
     setOpen(false);
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   };
 
-  if (!data) return null;
-  const name = data.partner_display_name || "your referral partner";
-  const perks = data.perks || [];
-  const links = data.support_links || [];
-  const strategies = data.recommended_strategies || [];
+  const effectiveData = isPreview ? previewData : data;
+  const effectiveOpen = isPreview ? !!previewOpen : open;
+  if (!effectiveData) return null;
+  const name = effectiveData.partner_display_name || "your referral partner";
+  const perks = effectiveData.perks || [];
+  const links = effectiveData.support_links || [];
+  const strategies = effectiveData.recommended_strategies || [];
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+    <Dialog open={effectiveOpen} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          {data.partner_photo_url ? (
+          {effectiveData.partner_photo_url ? (
             <img
-              src={data.partner_photo_url}
+              src={effectiveData.partner_photo_url}
               alt={name}
               className="mx-auto h-20 w-20 rounded-full object-cover ring-4 ring-primary/20 mb-2"
             />
@@ -83,14 +98,14 @@ export function PartnerWelcomeModal() {
           </DialogTitle>
           <DialogDescription className="text-center">
             You signed up through <span className="font-semibold text-foreground">{name}</span>
-            {data.partner_title && <span className="text-muted-foreground"> · {data.partner_title}</span>}
+            {effectiveData.partner_title && <span className="text-muted-foreground"> · {effectiveData.partner_title}</span>}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 pt-2">
-          {data.welcome_message && (
+          {effectiveData.welcome_message && (
             <div className="rounded-lg bg-muted/40 border p-3 text-sm italic text-foreground/90">
-              "{data.welcome_message}"
+              "{effectiveData.welcome_message}"
             </div>
           )}
 

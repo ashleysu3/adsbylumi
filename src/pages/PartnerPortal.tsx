@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Copy, ExternalLink, Calendar, Mail, Video, Sparkles, BookOpen, Megaphone, Gift } from "lucide-react";
+import { Loader2, Copy, ExternalLink, Calendar, Mail, Video, Sparkles, BookOpen, Megaphone, Gift, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PartnerWelcomeModal, type PartnerWelcome } from "@/components/PartnerWelcomeModal";
 
 interface PortalData {
   partner: any;
@@ -24,21 +25,31 @@ interface PortalData {
 
 export default function PartnerPortal() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const previewPartnerId = searchParams.get("preview_as");
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<PortalData | null>(null);
   const [webinarOpen, setWebinarOpen] = useState(false);
   const [webinarBody, setWebinarBody] = useState("");
   const [webinarAudience, setWebinarAudience] = useState("");
   const [sending, setSending] = useState(false);
+  const [welcomePreview, setWelcomePreview] = useState<PartnerWelcome | null>(null);
+  const [welcomePreviewOpen, setWelcomePreviewOpen] = useState(false);
+  const [loadingWelcomePreview, setLoadingWelcomePreview] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) { navigate("/auth"); return; }
-        const { data: rpc, error } = await supabase.rpc("get_my_partner_portal" as any);
+        const rpcName = previewPartnerId ? "get_partner_portal_admin" : "get_my_partner_portal";
+        const args = previewPartnerId ? { p_partner_id: previewPartnerId } : undefined;
+        const { data: rpc, error } = await supabase.rpc(rpcName as any, args as any);
         if (error) throw error;
-        if (!rpc) { navigate("/start"); return; }
+        if (!rpc) {
+          if (previewPartnerId) { toast.error("Admin preview not available"); navigate("/admin/partners"); return; }
+          navigate("/start"); return;
+        }
         setData(rpc as unknown as PortalData);
       } catch (e: any) {
         toast.error(e.message || "Could not load Partner Portal");
@@ -46,7 +57,7 @@ export default function PartnerPortal() {
         setLoading(false);
       }
     })();
-  }, [navigate]);
+  }, [navigate, previewPartnerId]);
 
   const copy = (text: string, label = "Copied") => {
     navigator.clipboard.writeText(text);
@@ -92,9 +103,32 @@ export default function PartnerPortal() {
   const cfg = data.config || {};
   const shareUrl = p.partner_trial_code ? `https://adsbylumi.com/?code=${p.partner_trial_code}` : "";
 
+  const previewWelcomePopup = async () => {
+    if (!p.partner_trial_code) { toast.error("No trial code set yet."); return; }
+    setLoadingWelcomePreview(true);
+    try {
+      const { data: result, error } = await supabase.rpc("get_partner_welcome", { p_code: p.partner_trial_code });
+      if (error) throw error;
+      const payload = result as unknown as PartnerWelcome;
+      if (!payload?.partner_display_name) throw new Error("Welcome popup data not ready.");
+      setWelcomePreview(payload);
+      setWelcomePreviewOpen(true);
+    } catch (e: any) {
+      toast.error(e.message || "Could not load welcome preview");
+    } finally {
+      setLoadingWelcomePreview(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-5xl mx-auto space-y-6">
+        {previewPartnerId && (
+          <div className="rounded-lg border border-primary/40 bg-primary/5 px-4 py-3 text-sm flex items-center justify-between gap-3">
+            <span><strong>Admin preview</strong> — viewing this partner's portal as they would see it.</span>
+            <Button size="sm" variant="outline" onClick={() => navigate("/admin/partners")}>Back to partners</Button>
+          </div>
+        )}
         {/* Hero */}
         <Card className="overflow-hidden border-primary/20">
           <div className="bg-gradient-to-br from-primary/10 via-fuchsia-500/5 to-orange-400/10 p-6 flex items-center gap-4">
@@ -149,6 +183,13 @@ export default function PartnerPortal() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">What your audience sees when they click.</p>
               </div>
+            </div>
+            <div className="pt-2 border-t flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Want to see exactly what your audience gets after signing up with your code?</p>
+              <Button variant="outline" size="sm" onClick={previewWelcomePopup} disabled={loadingWelcomePreview}>
+                {loadingWelcomePreview ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Eye className="h-4 w-4 mr-2" />}
+                Preview welcome popup
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -285,6 +326,12 @@ export default function PartnerPortal() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <PartnerWelcomeModal
+          previewData={welcomePreview}
+          previewOpen={welcomePreviewOpen}
+          onPreviewOpenChange={setWelcomePreviewOpen}
+        />
       </div>
     </DashboardLayout>
   );
