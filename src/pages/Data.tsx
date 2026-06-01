@@ -1802,6 +1802,7 @@ export default function AdPerformance() {
             setCampaignsNeedingGoals([]);
             setGoalsVersion(v => v + 1);
             fetchCampaigns();
+            loadOptimizationReport();
           }}
         />
       </div>
