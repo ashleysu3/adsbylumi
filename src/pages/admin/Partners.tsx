@@ -864,12 +864,12 @@ export default function AdminPartners() {
               return (
               <Tabs value={editingTab} onValueChange={setEditingTab} className="py-2">
                 <TabsList className="w-full">
-                  <TabsTrigger value="overview" className="flex-1 text-xs">Portal</TabsTrigger>
+                  <TabsTrigger value="overview" className="flex-1 text-xs">Partner File</TabsTrigger>
+                  <TabsTrigger value="welcome" className="flex-1 text-xs">Welcome Popup</TabsTrigger>
                   <TabsTrigger value="ideas" className="flex-1 text-xs">Marketing Ideas</TabsTrigger>
                   <TabsTrigger value="application" className="flex-1 text-xs" disabled={!linkedApp}>
                     Application {linkedApp && <Badge variant="outline" className="ml-1 text-[10px] capitalize">{linkedApp.status}</Badge>}
                   </TabsTrigger>
-                  <TabsTrigger value="affiliate" className="flex-1 text-xs" disabled={!linkedAff}>Affiliate</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4 pt-3">
