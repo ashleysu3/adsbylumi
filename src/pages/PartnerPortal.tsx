@@ -62,6 +62,26 @@ export default function PartnerPortal() {
     })();
   }, [navigate, previewPartnerId]);
 
+  // Fetch live Rewardful earnings for the logged-in partner (skip in admin preview).
+  useEffect(() => {
+    if (previewPartnerId || !data) return;
+    let cancelled = false;
+    (async () => {
+      setEarningsLoading(true);
+      try {
+        const { data: res, error } = await supabase.functions.invoke("get-affiliate-data");
+        if (cancelled) return;
+        if (error) throw error;
+        if (res && !res.error) setEarnings(res);
+      } catch (e: any) {
+        console.error("earnings load failed", e);
+      } finally {
+        if (!cancelled) setEarningsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [previewPartnerId, data]);
+
   const copy = (text: string, label = "Copied") => {
     navigator.clipboard.writeText(text);
     toast.success(label);
