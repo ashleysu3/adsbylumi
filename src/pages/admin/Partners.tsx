@@ -634,8 +634,20 @@ export default function AdminPartners() {
               <DialogTitle>{editing?.id ? "Edit Partner" : "New Partner"}</DialogTitle>
               <DialogDescription>Anyone who signs up with this code gets the custom welcome experience below.</DialogDescription>
             </DialogHeader>
-            {editing && (
-              <div className="space-y-4 py-2">
+            {editing && (() => {
+              const linkedApp = applicationForPartner(editing);
+              const linkedAff = affiliateForPartner(editing);
+              return (
+              <Tabs value={editingTab} onValueChange={setEditingTab} className="py-2">
+                <TabsList className="w-full">
+                  <TabsTrigger value="overview" className="flex-1 text-xs">Portal</TabsTrigger>
+                  <TabsTrigger value="application" className="flex-1 text-xs" disabled={!linkedApp}>
+                    Application {linkedApp && <Badge variant="outline" className="ml-1 text-[10px] capitalize">{linkedApp.status}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="affiliate" className="flex-1 text-xs" disabled={!linkedAff}>Affiliate</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-4 pt-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Partner name *</Label>
@@ -777,8 +789,126 @@ export default function AdminPartners() {
                   </div>
                   <Switch checked={editing.is_active ?? true} onCheckedChange={(v) => setEditing({ ...editing, is_active: v })} />
                 </div>
-              </div>
-            )}
+                </TabsContent>
+
+                {/* APPLICATION TAB */}
+                {linkedApp && (
+                  <TabsContent value="application" className="space-y-4 pt-3">
+                    <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{linkedApp.first_name} {linkedApp.last_name}</p>
+                          <p className="text-xs text-muted-foreground">{linkedApp.email}</p>
+                        </div>
+                        <Badge variant="outline" className="capitalize">{linkedApp.status}</Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Applied {new Date(linkedApp.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+                      </div>
+                      {linkedApp.website && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">Website: </span>
+                          <a href={linkedApp.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                            {linkedApp.website} <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Audience description</Label>
+                        <p className="text-sm whitespace-pre-wrap mt-1">{linkedApp.audience_description || "Not provided"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">How they'll share / promotion plan</Label>
+                        <p className="text-sm whitespace-pre-wrap mt-1">{linkedApp.promotion_plan || linkedApp.how_will_you_share || "Not provided"}</p>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">Admin notes</Label>
+                      <Textarea
+                        defaultValue={linkedApp.notes || ""}
+                        placeholder="Internal notes about this application..."
+                        className="min-h-[80px]"
+                        onBlur={(e) => { if (e.target.value !== (linkedApp.notes || "")) handleApplicationNoteSave(e.target.value); }}
+                      />
+                    </div>
+
+                    {linkedApp.status === "pending" && (
+                      <>
+                        <Separator />
+                        <div className="space-y-2">
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Custom welcome message (optional)</Label>
+                          <Textarea
+                            value={approvalMessage}
+                            onChange={(e) => setApprovalMessage(e.target.value)}
+                            placeholder="Personal note included in their approval email..."
+                            className="min-h-[80px]"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" disabled={appActionLoading} onClick={handleApproveApplication}>
+                            {appActionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                            Approve & Send Welcome Email
+                          </Button>
+                          <Button variant="destructive" disabled={appActionLoading} onClick={() => setConfirmDecline(true)}>
+                            <X className="h-4 w-4 mr-2" /> Decline
+                          </Button>
+                        </div>
+                      </>
+                    )}
+
+                    {linkedApp.status === "declined" && (
+                      <Button variant="outline" disabled={appActionLoading} onClick={handleReconsiderApplication}>
+                        {appActionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+                        Reconsider Application
+                      </Button>
+                    )}
+
+                    {linkedApp.status === "approved" && (
+                      <div className="rounded-lg bg-green-50 border border-green-200 p-3 text-sm text-green-800">
+                        ✅ Approved {linkedApp.updated_at ? `on ${new Date(linkedApp.updated_at).toLocaleDateString()}` : ''}.
+                      </div>
+                    )}
+                  </TabsContent>
+                )}
+
+                {/* AFFILIATE TAB */}
+                {linkedAff && (
+                  <TabsContent value="affiliate" className="space-y-4 pt-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Leads</p><p className="text-xl font-semibold">{linkedAff.leads_count ?? linkedAff.visitors_count ?? 0}</p></div>
+                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Conversions</p><p className="text-xl font-semibold">{linkedAff.conversions_count ?? 0}</p></div>
+                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Earned</p><p className="text-xl font-semibold">${(((linkedAff.earnings_balance?.amount_cents ?? linkedAff.commissions_total_cents) || 0) / 100).toFixed(2)}</p></div>
+                      <div className="rounded border p-3"><p className="text-xs text-muted-foreground">Status</p><Badge className="capitalize">{linkedAff.state || 'active'}</Badge></div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wide text-muted-foreground">Referral code</Label>
+                      <p className="text-sm font-mono">{linkedAff.links?.[0]?.token || '—'}</p>
+                    </div>
+                    {linkedAff.links?.[0]?.url && (
+                      <div className="space-y-1">
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Referral link</Label>
+                        <div className="flex gap-2">
+                          <Input readOnly value={linkedAff.links[0].url} className="font-mono text-xs" />
+                          <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(linkedAff.links![0].url!); toast.success("Copied"); }}>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <a href="https://app.rewardful.com" target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                      Open in Rewardful <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </TabsContent>
+                )}
+              </Tabs>
+              );
+            })()}
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
               <Button onClick={handleSave} disabled={saving}>
