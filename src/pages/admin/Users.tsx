@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import AdminTabs from "@/components/AdminTabs";
+import { TeamMembersSection } from "@/components/TeamMembersSection";
 import { format as dfFormat } from "date-fns";
 
 const format = (date: any, fmt: string): string => {
