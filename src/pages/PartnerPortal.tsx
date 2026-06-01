@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Copy, ExternalLink, Calendar, Mail, Video, Sparkles, BookOpen, Megaphone, Gift } from "lucide-react";
+import { Loader2, Copy, ExternalLink, Calendar, Mail, Video, Sparkles, BookOpen, Megaphone, Gift, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { PartnerWelcomeModal, type PartnerWelcome } from "@/components/PartnerWelcomeModal";
 
 interface PortalData {
   partner: any;
