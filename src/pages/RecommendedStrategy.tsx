@@ -51,8 +51,7 @@ type MatchedStrategy = {
 export default function RecommendedStrategy() {
   const navigate = useNavigate();
   const { activeBrand, loading: brandsLoading } = useBrand();
-  const [step, setStep] = useState<"goal" | "thinking" | "result">("goal");
-  const [goal, setGoal] = useState<string | null>(null);
+  const [step, setStep] = useState<"thinking" | "result" | "error">("thinking");
   const [matched, setMatched] = useState<MatchedStrategy | null>(null);
   const [intro, setIntro] = useState<string>("");
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
@@ -65,15 +64,14 @@ export default function RecommendedStrategy() {
     }
   }, [brandsLoading, activeBrand, navigate]);
 
-  const runRecommendation = async (selectedGoal: string) => {
+  const runRecommendation = async () => {
     if (!activeBrand) return;
-    setGoal(selectedGoal);
     setStep("thinking");
     setErrorMsg(null);
     try {
       const { data, error } = await supabase.functions.invoke(
         "recommend-strategy",
-        { body: { brand_id: activeBrand.id, user_goal: selectedGoal } },
+        { body: { brand_id: activeBrand.id, user_goal: "auto" } },
       );
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -89,10 +87,17 @@ export default function RecommendedStrategy() {
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err?.message ?? "Something went wrong");
-      setStep("goal");
+      setStep("error");
       toast.error(err?.message ?? "Could not get a recommendation");
     }
   };
+
+  useEffect(() => {
+    if (activeBrand && step === "thinking" && !matched) {
+      runRecommendation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBrand]);
 
   const handleBuild = () => {
     if (!matched) return;
