@@ -12,6 +12,7 @@ import { LumiAssistantProvider } from "@/components/LumiAssistant";
 import { RenderQueueProvider } from "@/contexts/RenderQueueContext";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 import { GlobalAnnouncementBanner } from "@/components/GlobalAnnouncementBanner";
+import { PartnerWelcomeModal } from "@/components/PartnerWelcomeModal";
 import SplashScreen from "@/components/SplashScreen";
 
 import Index from "./pages/Index";
@@ -115,6 +116,7 @@ const App = () => {
                 <LumiAssistantProvider>
                   <GlobalAnnouncementBanner />
                   <ImpersonationBanner />
+                  <PartnerWelcomeModal />
                   
                 <Routes>
                   <Route path="/" element={<Sales />} />

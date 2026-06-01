@@ -1914,7 +1914,9 @@ export type Database = {
           email: string
           expires_at: string | null
           id: string
+          partner_display_name: string | null
           partner_trial_code: string | null
+          perks: Json
           rewardful_affiliate_id: string | null
           token: string
         }
@@ -1923,7 +1925,9 @@ export type Database = {
           email: string
           expires_at?: string | null
           id?: string
+          partner_display_name?: string | null
           partner_trial_code?: string | null
+          perks?: Json
           rewardful_affiliate_id?: string | null
           token?: string
         }
@@ -1932,7 +1936,9 @@ export type Database = {
           email?: string
           expires_at?: string | null
           id?: string
+          partner_display_name?: string | null
           partner_trial_code?: string | null
+          perks?: Json
           rewardful_affiliate_id?: string | null
           token?: string
         }
@@ -2779,6 +2785,7 @@ export type Database = {
         Returns: number
       }
       get_meta_token: { Args: { p_brand_id: string }; Returns: string }
+      get_partner_welcome: { Args: { p_code: string }; Returns: Json }
       get_shared_report: { Args: { p_share_token: string }; Returns: Json }
       get_winback_offer_by_token: { Args: { p_token: string }; Returns: Json }
       has_role: {

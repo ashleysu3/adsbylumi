@@ -101,6 +101,11 @@ const Sales = () => {
 
       if (error) throw error;
 
+      if (partnerCodeValid && partnerCode) {
+        const { setPartnerWelcomeCode } = await import("@/components/PartnerWelcomeModal");
+        setPartnerWelcomeCode(partnerCode);
+      }
+
       if (data?.url) {
         window.location.href = data.url;
       }
