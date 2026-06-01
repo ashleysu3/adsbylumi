@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Sparkles, Send, Calendar, Trash2, BarChart3, Mail, Eye, MousePointer, RotateCw } from "lucide-react";
+import { Plus, Sparkles, Send, Calendar, Trash2, BarChart3, Mail, Eye, MousePointer, RotateCw, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 
 interface ChangelogEntry {
@@ -46,6 +46,8 @@ export default function AdminUpdates() {
 
   // New entry
   const [newEntry, setNewEntry] = useState({ title: "", body: "", category: "feature" });
+  const [ideas, setIdeas] = useState<Array<{ title: string; body: string; category: string }>>([]);
+  const [ideasLoading, setIdeasLoading] = useState(false);
 
   // Draft builder
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
