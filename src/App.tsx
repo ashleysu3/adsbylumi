@@ -70,6 +70,7 @@ import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
 import AdminPartners from "./pages/admin/Partners";
+import AdminPartnerApplications from "./pages/admin/PartnerApplications";
 import AdminEmailLogs from "./pages/admin/EmailLogs";
 import AdminEmails from "./pages/admin/Emails";
 import AdminCancellations from "./pages/admin/Cancellations";
