@@ -60,11 +60,11 @@ Deno.serve(async (req) => {
     const apiSecret = Deno.env.get('REWARDFUL_API_SECRET');
     if (!apiSecret) throw new Error('REWARDFUL_API_SECRET not configured');
 
-    const authHeader = 'Basic ' + btoa(apiSecret + ':');
+    const rwAuth = 'Basic ' + btoa(apiSecret + ':');
     const url = `https://api.getrewardful.com/v1/affiliates?expand[]=links&email=${encodeURIComponent(email)}`;
 
     const res = await fetchWithRetry(url, {
-      headers: { 'Authorization': authHeader },
+      headers: { 'Authorization': rwAuth },
     });
 
     const data = await res.json();
@@ -87,6 +87,24 @@ Deno.serve(async (req) => {
 
     const referralLink = affiliate.links?.[0]?.url || '';
     const referralCode = affiliate.links?.[0]?.token || '';
+
+    // Fetch any upcoming/in-progress payouts for this affiliate
+    let upcomingPayouts: any[] = [];
+    let recentPaidPayouts: any[] = [];
+    try {
+      const payoutsRes = await fetchWithRetry(
+        `https://api.getrewardful.com/v1/payouts?affiliate_id=${encodeURIComponent(affiliate.id)}&state[]=pending&state[]=due&state[]=processing&state[]=paid&per_page=20`,
+        { headers: { Authorization: rwAuth } }
+      );
+      if (payoutsRes.ok) {
+        const payoutsData = await payoutsRes.json();
+        const list = Array.isArray(payoutsData) ? payoutsData : payoutsData.data || [];
+        upcomingPayouts = list.filter((p: any) => p.state !== 'paid');
+        recentPaidPayouts = list.filter((p: any) => p.state === 'paid').slice(0, 5);
+      }
+    } catch (e) {
+      console.error('Failed to fetch payouts:', e);
+    }
 
     // Look up partner trial code
     let partnerTrialCode = '';
@@ -115,7 +133,12 @@ Deno.serve(async (req) => {
         leadsCount: affiliate.leads_count || affiliate.visitors_count || 0,
         conversionsCount: affiliate.conversions_count || 0,
         earningsCents: affiliate.earnings_balance?.amount_cents || affiliate.commissions_total_cents || 0,
+        unpaidBalanceCents: affiliate.unpaid_commissions_total_cents ?? null,
+        paypalEmail: affiliate.paypal_email || null,
+        wiseEmail: affiliate.wise_email || null,
         campaignName: affiliate.campaign?.name || '',
+        upcomingPayouts,
+        recentPaidPayouts,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

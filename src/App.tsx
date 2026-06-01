@@ -69,6 +69,7 @@ import PartnerDashboard from "./pages/PartnerDashboard";
 import CreativeToolkit from "./pages/CreativeToolkit";
 import TrendTranslator from "./pages/TrendTranslator";
 import AdminAffiliates from "./pages/admin/Affiliates";
+import AdminPayouts from "./pages/admin/Payouts";
 import AdminPartners from "./pages/admin/Partners";
 import AdminPartnerApplications from "./pages/admin/PartnerApplications";
 import AdminEmailLogs from "./pages/admin/EmailLogs";
@@ -183,6 +184,7 @@ const App = () => {
                   <Route path="/partner-dashboard" element={<PartnerDashboard />} />
                   <Route path="/admin/knowledge" element={<AdminKnowledge />} />
                   <Route path="/admin/affiliates" element={<AdminAffiliates />} />
+                  <Route path="/admin/payouts" element={<AdminPayouts />} />
                   <Route path="/admin/partners" element={<AdminPartners />} />
                   <Route path="/admin/partner-applications" element={<AdminPartnerApplications />} />
                   <Route path="/admin/analytics" element={<AdminAnalytics />} />
