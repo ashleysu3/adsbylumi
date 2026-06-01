@@ -44,6 +44,12 @@ import AdminStripe from "./pages/admin/Stripe";
 import AdminCoupons from "./pages/admin/Coupons";
 import AdminUpdates from "./pages/admin/Updates";
 import AdminUpdatesResults from "./pages/admin/UpdatesResults";
+import { useReferralCapture } from "./hooks/useReferralCapture";
+
+function ReferralCaptureMount() {
+  useReferralCapture();
+  return null;
+}
 import Settings from "./pages/Settings";
 import MetaSettings from "./pages/MetaSettings";
 import WeeklyDigestPreview from "./pages/WeeklyDigestPreview";
@@ -118,9 +124,11 @@ const App = () => {
               <Sonner />
               <BrowserRouter>
                 <LumiAssistantProvider>
+                  <ReferralCaptureMount />
                   <GlobalAnnouncementBanner />
                   <ImpersonationBanner />
                   <PartnerWelcomeModal />
+                  
                   
                 <Routes>
                   <Route path="/" element={<Sales />} />
