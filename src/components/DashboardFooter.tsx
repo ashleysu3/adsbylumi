@@ -13,6 +13,13 @@ export function DashboardFooter() {
           Cancellation Policy
         </Link>
         <span className="hidden sm:inline">·</span>
+        <Link
+          to="/office-hours"
+          className="hover:text-foreground transition-colors underline underline-offset-2"
+        >
+          Office Hours
+        </Link>
+        <span className="hidden sm:inline">·</span>
         <a
           href="mailto:support@adsbylumi.com"
           className="hover:text-foreground transition-colors underline underline-offset-2"

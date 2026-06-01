@@ -81,6 +81,7 @@ import Retrospectives from "./pages/Retrospectives";
 import RecommendedStrategy from "./pages/RecommendedStrategy";
 import StrategyPlan from "./pages/StrategyPlan";
 import AdminStrategies from "./pages/admin/Strategies";
+import OfficeHours from "./pages/OfficeHours";
 
 function CreativeRedirect() {
   const location = useLocation();
@@ -183,6 +184,7 @@ const App = () => {
                   <Route path="/client-portal/:portalId" element={<ClientPortal />} />
                   <Route path="/agency-settings" element={<AgencySettings />} />
                   <Route path="/cancellation-policy" element={<CancellationPolicy />} />
+                  <Route path="/office-hours" element={<OfficeHours />} />
                   <Route path="/ads-manager" element={<AdsManager />} />
                   <Route path="/ads-manager/client/:id" element={<AdsManagerClient />} />
                   <Route path="/review" element={<SubmitReview />} />
