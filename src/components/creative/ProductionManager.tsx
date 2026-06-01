@@ -23,6 +23,7 @@ import { AdPreviewModal } from "./AdPreviewModal";
 import { ExportChecklistModal } from "./ExportChecklistModal";
 import { ShareWithClientDialog } from "./ShareWithClientDialog";
 import { ClientActivityFeed } from "./ClientActivityFeed";
+import { ProductionChecklistWizard } from "./ProductionChecklistWizard";
 import { format } from "date-fns";
 import { useRenderQueue, type AttachedRenderInfo } from "@/contexts/RenderQueueContext";
 import type { RenderStyle } from "@/lib/ffmpeg-renderer";
@@ -978,8 +979,12 @@ export function ProductionManager({
       />
       
       <div className="space-y-4">
+        {/* First-time wizard */}
+        <ProductionChecklistWizard enabled={productionItems.length > 0} />
+
         {/* Creative Checklist - Full Width */}
         <div className="space-y-4">
+
           {/* Recommendation Banner */}
           <div className="flex items-start gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
             <Info className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
@@ -1508,13 +1513,14 @@ export function ProductionManager({
                     title={!isReadyToBuild ? "Upload at least one creative asset to build" : undefined}
                   >
                     <Rocket className="h-5 w-5" />
-                    Build Campaign
+                    Continue
                   </Button>
-                  {!isReadyToBuild && (
-                    <p className="text-xs text-muted-foreground text-right">
-                      Upload at least one creative asset above to enable building
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground text-right max-w-[260px]">
+                    {!isReadyToBuild
+                      ? "Upload at least one creative asset above to continue"
+                      : "Next: Lumi organizes your creative and copy into each angle and makes sure everything looks cohesive. You'll review before anything is published to Meta."}
+                  </p>
+
                 </div>
               </div>
             </CardContent>
