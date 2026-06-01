@@ -88,7 +88,10 @@ export default function StrategyPlan() {
     const statuses = [...plan.statuses];
     if (statuses[idx] === "todo") statuses[idx] = "in_progress";
     update({ ...plan, statuses, activeIndex: idx });
-    navigate("/create?from=strategy");
+    const goal = plan.campaigns[idx]?.goal;
+    const params = new URLSearchParams({ from: "strategy" });
+    if (goal) params.set("goal", goal);
+    navigate(`/create?${params.toString()}`);
   };
 
   const markDone = (idx: number) => {

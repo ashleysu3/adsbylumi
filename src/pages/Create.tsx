@@ -154,6 +154,9 @@ export default function Create() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const fromStrategy = searchParams.get("from") === "strategy";
+  const strategyGoal = searchParams.get("goal") || "";
+  const VALID_GOALS = ["promote_offer", "grow_social", "get_leads", "book_calls", "dm_leads", "local", "event_location"];
+  const initialGoal = fromStrategy && VALID_GOALS.includes(strategyGoal) ? strategyGoal : (fromStrategy ? "promote_offer" : "");
   const { activeBrand } = useBrand();
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(fromStrategy ? 1 : 0); // 0 = entry choice
@@ -165,7 +168,7 @@ export default function Create() {
   const [templates, setTemplates] = useState<CampaignTemplate[]>([]);
 
   // Wizard state
-  const [selectedGoal, setSelectedGoal] = useState<string>(fromStrategy ? "promote_offer" : "");
+  const [selectedGoal, setSelectedGoal] = useState<string>(initialGoal);
   const [selectedOfferId, setSelectedOfferId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [recommendedTemplate, setRecommendedTemplate] = useState<CampaignTemplate | null>(null);
@@ -244,7 +247,7 @@ export default function Create() {
 
   // Reset state when brand changes
   useEffect(() => {
-    setSelectedGoal(fromStrategy ? "promote_offer" : "");
+    setSelectedGoal(initialGoal);
     setSelectedOfferId("");
     setSelectedTemplateId("");
     setSelectedAngle(null);
