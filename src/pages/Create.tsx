@@ -632,6 +632,8 @@ export default function Create() {
         if (selectedGoal === "grow_social") return "Choose your creative";
         if (selectedGoal === "local") return "Choose your local strategy";
         if (selectedGoal === "event_location") return "Event & location targeting";
+        if (selectedGoal === "book_calls") return "Choose your inquiry page";
+        if (selectedGoal === "get_leads") return "Choose your lead magnet";
         return "Choose your offer";
       case 2:return "Recommended strategy";
       default:return "";
@@ -645,6 +647,8 @@ export default function Create() {
         if (selectedGoal === "grow_social") return "Select the posts you'd like to promote";
         if (selectedGoal === "local") return "LUMI will match the right approach";
         if (selectedGoal === "event_location") return "Get in front of people at conferences, trade shows, or specific venues";
+        if (selectedGoal === "book_calls") return "Where should people go to book a call or send an inquiry?";
+        if (selectedGoal === "get_leads") return "What freebie or opt-in are we promoting?";
         return "What are we promoting?";
       case 2:return isLocalStrategy ?
         "Lumi matched this location-based strategy for you" :
