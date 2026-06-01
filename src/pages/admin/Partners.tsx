@@ -944,13 +944,6 @@ export default function AdminPartners() {
                 />
 
                 <RepeaterField
-                  label="Recommended strategies"
-                  items={(editing.recommended_strategies || []) as any}
-                  onChange={(recommended_strategies) => setEditing({ ...editing, recommended_strategies: recommended_strategies as any })}
-                  fields={[{ key: "title", placeholder: "Strategy name" }, { key: "description", placeholder: "Why it's great for their audience" }]}
-                />
-
-                <RepeaterField
                   label="Share resources (shown in their Partner Portal)"
                   items={(editing.share_resources || []) as any}
                   onChange={(share_resources) => setEditing({ ...editing, share_resources: share_resources as any })}
@@ -970,6 +963,38 @@ export default function AdminPartners() {
                   <Switch checked={editing.is_active ?? true} onCheckedChange={(v) => setEditing({ ...editing, is_active: v })} />
                 </div>
                 </TabsContent>
+
+                {/* MARKETING IDEAS TAB */}
+                <TabsContent value="ideas" className="space-y-4 pt-3">
+                  <div className="rounded-lg border p-3 bg-muted/30">
+                    <p className="text-sm font-medium">Customize ideas for pitching {editing.partner_display_name || "this partner"}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Edit, add notes, and check the ones you want to include. Then draft a pitch email with their portal link, referral link, and customized swipe files.
+                    </p>
+                  </div>
+
+                  <MarketingIdeasEditor
+                    items={(editing.recommended_strategies || []) as StrategyItem[]}
+                    onChange={(recommended_strategies) => setEditing({ ...editing, recommended_strategies })}
+                  />
+
+                  <div className="flex items-center justify-between border-t pt-3 gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {((editing.recommended_strategies || []) as StrategyItem[]).filter(i => i.selected !== false && i.title).length} idea(s) selected
+                    </p>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={generatePortalFromAI} disabled={generatingAI || !applicationForPartner(editing)}>
+                        {generatingAI ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                        Generate more
+                      </Button>
+                      <Button type="button" size="sm" onClick={draftPitchEmail} disabled={draftingEmail}>
+                        {draftingEmail ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Mail className="h-3 w-3 mr-1" />}
+                        Draft pitch email
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+
 
                 {/* APPLICATION TAB */}
                 {linkedApp && (
