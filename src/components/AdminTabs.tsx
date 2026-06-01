@@ -61,6 +61,7 @@ const adminGroups: AdminGroup[] = [
       { path: "/admin/reviews", label: "Reviews", icon: Star },
       { path: "/admin/email-logs", label: "Email Logs", icon: Mail },
       { path: "/admin/affiliates", label: "Affiliates", icon: Gift },
+      { path: "/admin/partner-applications", label: "Partner Applications", icon: Inbox },
       { path: "/admin/partners", label: "Partners", icon: Gift },
     ],
   },
