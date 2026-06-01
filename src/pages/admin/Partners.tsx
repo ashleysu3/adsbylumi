@@ -985,6 +985,20 @@ export default function AdminPartners() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Decline confirmation */}
+        <Dialog open={confirmDecline} onOpenChange={setConfirmDecline}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Decline application?</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">This marks the application as declined. You can reconsider later.</p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmDecline(false)}>Cancel</Button>
+              <Button variant="destructive" disabled={appActionLoading} onClick={handleDeclineApplication}>
+                {appActionLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Decline
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
