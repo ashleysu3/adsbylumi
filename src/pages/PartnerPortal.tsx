@@ -14,7 +14,7 @@ import { PartnerWelcomeModal, type PartnerWelcome } from "@/components/PartnerWe
 
 interface PortalData {
   partner: any;
-  updates: Array<{ id: string; title: string; body?: string; link_url?: string; link_label?: string; published_at: string }>;
+  updates: Array<{ id: string; title: string; body?: string; link_url?: string; link_label?: string; published_at: string; source?: string; category?: string }>;
   config: {
     owner_calendar_url?: string;
     owner_email?: string;
