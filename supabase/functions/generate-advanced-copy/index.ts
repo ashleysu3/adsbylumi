@@ -38,6 +38,7 @@ serve(async (req) => {
     const {
       brandName,
       brandVoice,
+      voiceProfile,
       offerName,
       offerDescription,
       offerUrl,
@@ -114,6 +115,7 @@ serve(async (req) => {
 - Brand voice: ${brandVoice || "Professional, warm, strategic"}
 - Write in ${perspective} perspective consistently
 - Match the brand's tone exactly — be their voice, not a generic marketer
+${voiceProfile ? `\n## DETAILED BRAND VOICE PROFILE (MATCH THIS — it's how the brand actually sounds across their website and social. Override any generic copywriting instinct that conflicts.)\n${JSON.stringify(voiceProfile, null, 2).slice(0, 2000)}` : ""}
 
 ## FORMATTING RULES (CRITICAL)
 - Primary text MUST follow this structure:
