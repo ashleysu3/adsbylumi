@@ -46,6 +46,13 @@ function isValidPublicUrl(urlString: string): { valid: boolean; error?: string }
   }
 }
 
+function jsonResponse(payload: Record<string, unknown>, corsHeaders: Record<string, string>, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
@@ -61,10 +68,7 @@ Deno.serve(async (req) => {
     // Input validation
     if (!websiteUrlInput) {
       console.log('extract-brand-info: missing websiteUrl');
-      return new Response(
-        JSON.stringify({ error: 'Website URL is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Website URL is required' }, corsHeaders);
     }
 
     // Normalize URL: collapse stray slashes after scheme, add https:// if missing
@@ -81,34 +85,22 @@ Deno.serve(async (req) => {
     try {
       const parsed = new URL(websiteUrl);
       if (!parsed.hostname || !parsed.hostname.includes('.')) {
-        return new Response(
-          JSON.stringify({ error: 'Please enter a valid website URL (e.g. yourbrand.com)' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return jsonResponse({ error: 'Please enter a valid website URL (e.g. yourbrand.com)' }, corsHeaders);
       }
     } catch {
-      return new Response(
-        JSON.stringify({ error: 'Invalid URL format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Invalid URL format' }, corsHeaders);
     }
 
     if (websiteUrl.length > 500) {
       console.log('extract-brand-info: url too long');
-      return new Response(
-        JSON.stringify({ error: 'Invalid URL format or URL too long' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Invalid URL format or URL too long' }, corsHeaders);
     }
 
     // SSRF protection - validate URL
     const urlValidation = isValidPublicUrl(websiteUrl);
     if (!urlValidation.valid) {
       console.log('extract-brand-info: url rejected', { reason: urlValidation.error });
-      return new Response(
-        JSON.stringify({ error: urlValidation.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: urlValidation.error || 'This website URL is not allowed' }, corsHeaders);
     }
 
     console.log('Extracting brand info from:', websiteUrl);
@@ -259,10 +251,17 @@ Deno.serve(async (req) => {
             fetchFailed = false;
             console.log('Firecrawl fallback success, content length:', websiteContent.length);
           } else {
-            console.warn('Firecrawl fallback failed:', fcRes.status, JSON.stringify(fcData)?.slice(0, 300));
+          console.warn('Firecrawl fallback failed:', fcRes.status, JSON.stringify(fcData)?.slice(0, 300));
+          const firecrawlError = fcData?.error || fcData?.message;
+          fetchErrorMessage = firecrawlError
+            ? `Website analysis failed: ${firecrawlError}`
+            : fetchErrorMessage || `Website analysis failed with status ${fcRes.status}. Please double-check the URL or try again.`;
           }
         } catch (fcErr: any) {
           console.error('Firecrawl fallback error:', fcErr?.message || fcErr);
+          fetchErrorMessage = fcErr?.message
+            ? `Website analysis failed: ${fcErr.message}`
+            : fetchErrorMessage || 'Website analysis failed. Please double-check the URL or try again.';
         }
       } else {
         console.warn('FIRECRAWL_API_KEY not configured — cannot fall back.');
@@ -270,10 +269,7 @@ Deno.serve(async (req) => {
     }
 
     if (fetchFailed || !websiteContent || websiteContent.length < 50) {
-      return new Response(
-        JSON.stringify({ error: fetchErrorMessage || "We couldn't read enough content from that page to analyze your brand." }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: fetchErrorMessage || "We couldn't read enough content from that page to analyze your brand." }, corsHeaders);
     }
 
     const systemPrompt = `You are a brand strategist analyzing websites to extract key business information.
@@ -322,7 +318,7 @@ Return ONLY a valid JSON object:
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error('AI API Error:', aiResponse.status, errorText);
-      throw new Error(`AI API error: ${aiResponse.status}`);
+      return jsonResponse({ error: `Website content was found, but Lumi could not analyze it right now. Please try again. (${aiResponse.status})` }, corsHeaders);
     }
 
     const aiData = await aiResponse.json();
@@ -361,18 +357,10 @@ Return ONLY a valid JSON object:
 
     console.log('Brand info extracted successfully');
 
-    return new Response(JSON.stringify(brandInfo), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse(brandInfo, corsHeaders);
 
   } catch (error: any) {
     console.error('Error in extract-brand-info:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Failed to extract brand info' }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return jsonResponse({ error: error.message || 'Failed to extract brand info' }, corsHeaders);
   }
 });

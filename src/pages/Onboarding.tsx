@@ -44,6 +44,7 @@ export default function Onboarding() {
   const [extracting, setExtracting] = useState(false);
   const [step, setStep] = useState(1);
   const [hasExtracted, setHasExtracted] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
   const [autoExtractPending, setAutoExtractPending] = useState(false);
   const [createdBrandId, setCreatedBrandId] = useState<string | null>(null);
   const [showPostConnectionAnalysis, setShowPostConnectionAnalysis] = useState(false);
@@ -96,6 +97,7 @@ export default function Onboarding() {
     const normalizedUrl = normalizeWebsiteUrl(url);
     if (!normalizedUrl || normalizedUrl.length < 10) return;
     if (hasExtractedUrlRef.current === normalizedUrl) return;
+    setExtractError(null);
     
     if (extractDebounceRef.current) clearTimeout(extractDebounceRef.current);
     
@@ -117,8 +119,10 @@ export default function Onboarding() {
         });
         if (error) throw error;
         if (data?.error) {
-          // Soft fail in auto-extract: don't toast, just let the user fill in manually
-          console.warn("Auto-extract returned error:", data.error);
+          const message = String(data.error);
+          console.warn("Auto-extract returned error:", message);
+          setExtractError(message);
+          toast.error(message);
           return;
         }
         setValueProposition(data.value_proposition || "");
@@ -129,6 +133,9 @@ export default function Onboarding() {
         toast.success("✨ Website analyzed! Review the extracted info below.");
       } catch (error: any) {
         console.error("Auto-extract error:", error);
+        const message = `Website analysis failed: ${formatInvokeError(error)}`;
+        setExtractError(message);
+        toast.error(message);
       } finally {
         extractingRef.current = false;
         setExtracting(false);
@@ -138,6 +145,7 @@ export default function Onboarding() {
 
   const handleWebsiteUrlChange = (value: string) => {
     setWebsiteUrl(value);
+    setExtractError(null);
     const normalizedNew = normalizeWebsiteUrl(value);
     if (hasExtractedUrlRef.current && hasExtractedUrlRef.current !== normalizedNew) {
       setHasExtracted(false);
@@ -162,8 +170,10 @@ export default function Onboarding() {
         });
         if (error) throw error;
         if (data?.error) {
-          toast.error(data.error);
-          setHasExtracted(true);
+          const message = String(data.error);
+          setExtractError(message);
+          toast.error(message);
+          return;
         } else {
           setValueProposition(data.value_proposition);
           setTargetAudience(data.target_audience);
@@ -173,8 +183,10 @@ export default function Onboarding() {
         }
       } catch (error: any) {
         console.error("Error extracting brand info:", error);
-        toast.error(`Could not auto-extract info: ${formatInvokeError(error)}. Please fill in manually on the next step.`);
-        setHasExtracted(true);
+        const message = `Could not analyze this website: ${formatInvokeError(error)}`;
+        setExtractError(message);
+        toast.error(message);
+        return;
       } finally {
         setExtracting(false);
       }
@@ -491,6 +503,11 @@ export default function Onboarding() {
                     <>
                       <Sparkles className="h-3 w-3 animate-pulse" />
                       Analyzing your website...
+                    </>
+                  ) : extractError ? (
+                    <>
+                      <AlertCircle className="h-3 w-3 text-destructive" />
+                      <span className="text-destructive">{extractError}</span>
                     </>
                   ) : hasExtracted ? (
                     <>
