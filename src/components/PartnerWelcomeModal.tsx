@@ -79,12 +79,12 @@ export function PartnerWelcomeModal({ previewData, previewOpen, onPreviewOpenCha
   const strategies = effectiveData.recommended_strategies || [];
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+    <Dialog open={effectiveOpen} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          {data.partner_photo_url ? (
+          {effectiveData.partner_photo_url ? (
             <img
-              src={data.partner_photo_url}
+              src={effectiveData.partner_photo_url}
               alt={name}
               className="mx-auto h-20 w-20 rounded-full object-cover ring-4 ring-primary/20 mb-2"
             />
@@ -98,14 +98,14 @@ export function PartnerWelcomeModal({ previewData, previewOpen, onPreviewOpenCha
           </DialogTitle>
           <DialogDescription className="text-center">
             You signed up through <span className="font-semibold text-foreground">{name}</span>
-            {data.partner_title && <span className="text-muted-foreground"> · {data.partner_title}</span>}
+            {effectiveData.partner_title && <span className="text-muted-foreground"> · {effectiveData.partner_title}</span>}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 pt-2">
-          {data.welcome_message && (
+          {effectiveData.welcome_message && (
             <div className="rounded-lg bg-muted/40 border p-3 text-sm italic text-foreground/90">
-              "{data.welcome_message}"
+              "{effectiveData.welcome_message}"
             </div>
           )}
 
