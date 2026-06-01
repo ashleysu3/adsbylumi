@@ -1171,26 +1171,25 @@ export default function AdPerformance() {
           />
         }
 
-        {/* ─── Campaign Health Summary (from optimization report) ─── */}
-        {optimizationReport && view === 'home' && reportData.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-foreground">{reportSummary.total}</div>
-              <div className="text-xs text-muted-foreground">Tracked campaigns</div>
-            </CardContent></Card>
-            <Card className="border-green-200 dark:border-green-800"><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-foreground">{reportSummary.green}</div>
-              <div className="text-xs text-muted-foreground">🟢 On track</div>
-            </CardContent></Card>
-            <Card className="border-amber-200 dark:border-amber-800"><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-foreground">{reportSummary.yellow}</div>
-              <div className="text-xs text-muted-foreground">🟡 Watch</div>
-            </CardContent></Card>
-            <Card className="border-red-200 dark:border-red-800"><CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-foreground">{reportSummary.red}</div>
-              <div className="text-xs text-muted-foreground">🔴 Need attention</div>
-            </CardContent></Card>
-          </div>
+        {/* ─── Report Settings (inline) ─── */}
+        {view === 'home' && brandId && (
+          <Card>
+            <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 text-sm">
+                <Bell className="h-4 w-4 text-primary" />
+                <span className="font-medium">Emailed Reports</span>
+                <span className="text-muted-foreground">
+                  {digestSettings.enabled
+                    ? `${digestSettings.send_days.length} day${digestSettings.send_days.length !== 1 ? 's' : ''}/wk at ${digestSettings.send_time}`
+                    : 'Disabled'}
+                  {digestSettings.additional_emails.length > 0 && ` · +${digestSettings.additional_emails.length} recipient${digestSettings.additional_emails.length !== 1 ? 's' : ''}`}
+                </span>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setDigestOpen(true)}>
+                Manage report frequency & recipients
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* ─── Main Content ─── */}
