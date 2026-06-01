@@ -274,9 +274,9 @@ export default function Partners() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="promotionPlan">How do you plan to promote LUMI? *</Label>
+                        <Label htmlFor="promotionPlan">How can we support you in sharing about LUMI? *</Label>
                         <Textarea id="promotionPlan" required value={promotionPlan} onChange={e => setPromotionPlan(e.target.value)}
-                          placeholder="e.g. dedicated email, Instagram story, YouTube mention..." rows={3}
+                          placeholder="Would you like to have us do a free training in your community, offer additional resources, or do you have other ideas? We're all ears!" rows={3}
                         />
                       </div>
 
