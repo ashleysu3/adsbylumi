@@ -142,14 +142,6 @@ export default function Settings() {
     fatigue_action: 'notify_only' as 'auto_rotate' | 'notify_only',
   });
 
-  // Copy Style state
-  const DEFAULT_EMOJIS = ['✨', '🎯', '💡', '🚀', '💪', '⭐'];
-  const BULLET_OPTIONS = ['✅', '→', '•', '✓', '▸', '★', '💫', '🔥'];
-  const [copyPerspective, setCopyPerspective] = useState<'I' | 'We'>('I');
-  const [useEmojis, setUseEmojis] = useState(true);
-  const [brandEmojis, setBrandEmojis] = useState<string[]>(DEFAULT_EMOJIS);
-  const [bulletEmoji, setBulletEmoji] = useState('✅');
-  const [newEmoji, setNewEmoji] = useState('');
   const [savingCopyStyle, setSavingCopyStyle] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   
