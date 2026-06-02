@@ -53,7 +53,26 @@ Deno.serve(async (req) => {
           role: 'user',
           content: `You're Ashley's product partner at Lumi (Meta ads app for non-expert coaches and creators). Brainstorm 6 fresh "What's new" / marketing update ideas she could log this month — these will seed newsletter, social, and changelog content. Mix categories (feature, improvement, fix, announcement). Each should be: warm, specific, written for non-expert creators, no hype words. Avoid duplicating items in "already_logged".
 
-You MUST ground every idea in the REAL FEATURES CATALOG, RECENT CHANGELOG, or recent activity — re-highlight an existing feature, surface a recent fix as an improvement, or build on a real marketing angle. Do NOT invent features that don't exist in the catalog.
+=== LUMI REALITY — HARD GUARDRAILS (read carefully) ===
+Lumi ONLY does the things listed below. If an idea references anything outside this list, it is WRONG and must be discarded:
+- Campaign structure: Advantage+ Shopping / Sales / Leads / Traffic with "Broad+" audience ONLY. Generic ad set names ("Ad Set {index}").
+- Audiences: Broad+ (Advantage+ targeting) is the default. Sometimes a simple warm/engagement audience or a geolocated audience. That's it.
+- Creative: AI-generated 9:16 vertical video scripts, hooks, 27-char headlines, primary copy, b-roll shot lists. Image/video uploads capped at 250MB.
+- Onboarding: 5-step brand wizard, pixel verification with fallback to "book a call with Ashley" or "run a Traffic campaign instead" if the pixel won't install.
+- Reporting: weekly emailed optimization report (LIVE campaigns only), green/yellow/red diagnostics, budget hog + creative fatigue detection.
+- Tooling: budget calculator (work back from goal conversions / revenue / set spend, anchored to 50 conv/week), Lumi onboarding concierge AI, partner/agency portals, features catalog, founder pricing ($97/mo), 7-day free trial.
+
+DO NOT — under any circumstances — write ideas about:
+- Interest targeting, detailed targeting, audience interests, custom audiences from interests, lookalike audiences
+- Retargeting, pixel-based remarketing strategies, warm funnels beyond simple engagement audiences
+- Landing page optimization, CRO, page-speed advice, form optimization
+- A/B testing audiences (we test creative, not audiences)
+- Manual bidding strategies, cost caps, bid caps, manual placements
+- "Beta" language — use "Founder Pricing" instead
+- Generic Meta ads advice not tied to a real Lumi feature in the catalog below
+- Guarantees, "overnight," "secret," health/income/age claims
+
+Every idea MUST map to a specific feature in the LUMI FEATURES CATALOG or a recent changelog entry. If you can't ground it in something real, drop it.
 
 === LUMI FEATURES CATALOG (source of truth) ===
 ${featuresText}

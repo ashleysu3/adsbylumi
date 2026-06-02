@@ -63,10 +63,16 @@ async function summarizeWithAI(commits: Commit[], repo: string, branch: string) 
 Below are raw git commit messages from a push to ${repo} (${branch}).
 Summarize them into ONE warm, clear entry users would actually care about.
 
+=== LUMI REALITY — HARD GUARDRAILS ===
+Lumi uses Advantage+ "Broad+" audiences ONLY. We do NOT do interest targeting, lookalikes, custom-interest audiences, retargeting funnels, landing page optimization, manual bidding, or audience A/B tests.
+NEVER write changelog copy that implies any of those exist. If a commit clearly maps to one of those, treat the push as "internal".
+Anchor every entry in real Lumi surfaces: brand wizard, campaign builder, creative generator (9:16 video scripts, 27-char headlines), budget calculator, weekly optimization report, pixel verification + fallback, partner portal, features catalog, founder pricing.
+Never say "beta" — use "Founder Pricing" if pricing is involved.
+
 Rules:
 - Title: max 70 chars, plain English, no emojis, no commit hashes
 - Body: 1–3 short sentences. Focus on what changed for the user, not the code.
-- Skip pure refactors, formatting, dependency bumps, and merge commits — if EVERY commit is internal, return category "internal" and a brief note.
+- Skip pure refactors, formatting, dependency bumps, and merge commits — if EVERY commit is internal or maps to a banned topic above, return category "internal" and a brief note.
 - Category must be one of: feature, improvement, fix, announcement, internal
 - Return ONLY JSON: {"title":"","body":"","category":""}
 
