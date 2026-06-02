@@ -160,6 +160,7 @@ const App = () => {
                   <Route path="/past-reports" element={<Navigate to="/ad-performance" replace />} />
                   <Route path="/production" element={<Navigate to="/campaigns" replace />} />
                   <Route path="/campaigns" element={<Campaigns />} />
+                  <Route path="/ad-generator" element={<AdGenerator />} />
                   <Route path="/workspace/:workspaceId" element={<WorkspaceRedirect />} />
                   <Route path="/campaigns/build" element={<CampaignBuilder />} />
                   <Route path="/meta-oauth-callback" element={<MetaOAuthCallback />} />
