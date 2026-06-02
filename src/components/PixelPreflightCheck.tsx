@@ -2,15 +2,56 @@ import { useState, useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Activity, CheckCircle2, XCircle, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Loader2, Activity, CheckCircle2, XCircle, AlertTriangle, ExternalLink, Calendar, ArrowRightLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface PixelPreflightCheckProps {
   brandId: string;
   landingPageUrl?: string;
   campaignGoal?: string;
   onStatusChange?: (status: 'ready' | 'warning' | 'error') => void;
+  /** Optional: called when user opts to switch this campaign to a Traffic objective instead of fighting with pixel setup. */
+  onSwitchToTraffic?: () => void;
+}
+
+/** Shared fallback shown whenever pixel/events aren't ready so users are never stuck. */
+function PixelStuckHelp({ onSwitchToTraffic }: { onSwitchToTraffic?: () => void }) {
+  const navigate = useNavigate();
+  return (
+    <div className="mt-3 rounded-md border border-border/60 bg-muted/30 p-3 space-y-2">
+      <p className="text-xs font-medium text-foreground">Stuck on pixel setup? You have options:</p>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => navigate('/office-hours')}
+        >
+          <Calendar className="h-3 w-3 mr-1" />
+          Book a 1:1 with Ashley
+        </Button>
+        {onSwitchToTraffic ? (
+          <Button size="sm" variant="outline" onClick={onSwitchToTraffic}>
+            <ArrowRightLeft className="h-3 w-3 mr-1" />
+            Run a Traffic campaign instead
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => navigate('/create?objective=traffic')}
+          >
+            <ArrowRightLeft className="h-3 w-3 mr-1" />
+            Run a Traffic campaign instead
+          </Button>
+        )}
+      </div>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        Traffic campaigns don't require a working pixel — Meta optimizes for clicks to your page so you can still launch today while we fix tracking.
+      </p>
+    </div>
+  );
 }
 
 interface PixelStatus {
