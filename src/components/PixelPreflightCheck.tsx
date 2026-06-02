@@ -304,6 +304,7 @@ export function PixelPreflightCheck({
           <ExternalLink className="h-3 w-3 mr-1" />
           Set Up Event Tracking
         </Button>
+        <PixelStuckHelp onSwitchToTraffic={onSwitchToTraffic} />
       </AlertDescription>
     </Alert>
   );
